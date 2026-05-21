@@ -77,3 +77,27 @@ src/
 - Google OAuth: dùng Firebase Auth hoặc NextAuth.js
 - Apple Sign In: dùng Firebase Auth
 - File upload: dùng Supabase Storage hoặc AWS S3
+
+## Deploy on Vercel
+
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+
+## Zep Memory Integration
+
+This project now includes:
+- Long-term AI memory
+- Multi-agent medical memory
+- Temporal patient graph concepts
+- AI consensus memory
+- Example API route for Zep integration
+
+### Setup
+
+```bash
+npm install
+cp .env.example .env.local
+npm run dev
+```
