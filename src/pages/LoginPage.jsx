@@ -4,7 +4,7 @@ import { useApp } from '../context/AppContext'
 
 export default function LoginPage({ onSuccess }) {
   const { loginWithGoogle, loginWithApple, loginWithEmail } = useAuth()
-  const { t, theme, toggleTheme } = useApp()
+  const { t, theme, toggleTheme, lang, setLang } = useApp()
   const [mode, setMode] = useState('login') // 'login' | 'register'
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -79,17 +79,24 @@ export default function LoginPage({ onSuccess }) {
     switch: { textAlign: 'center', marginTop: 20, fontSize: 13, color: isDark ? 'rgba(232,240,248,0.5)' : '#888' },
     switchBtn: { color: '#00b8cc', cursor: 'pointer', fontWeight: 600, background: 'none', border: 'none', fontSize: 13 },
     themeBtn: {
-      position: 'absolute', top: 20, right: 20, background: 'none', border: 'none',
-      cursor: 'pointer', fontSize: 20, color: isDark ? '#e8f0f8' : '#1a2035',
+      background: 'none', cursor: 'pointer', fontSize: 16, fontWeight: 600,
+      border: `1px solid ${isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)'}`,
+      borderRadius: 8, padding: '6px 12px',
+      color: isDark ? '#e8f0f8' : '#1a2035',
     },
     label: { display: 'block', fontSize: 12, fontWeight: 600, color: isDark ? 'rgba(232,240,248,0.6)' : '#555', marginBottom: 6 },
   }
 
   return (
     <div style={s.page}>
-      <button style={s.themeBtn} onClick={toggleTheme} title="Toggle theme">
-        {isDark ? '☀️' : '🌙'}
-      </button>
+      <div style={{ position: 'absolute', top: 20, right: 20, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <button style={s.themeBtn} onClick={() => setLang(l => l === 'vi' ? 'en' : 'vi')}>
+          {lang === 'vi' ? '🇻🇳 VI' : '🇬🇧 EN'}
+        </button>
+        <button style={s.themeBtn} onClick={toggleTheme} title="Toggle theme">
+          {isDark ? '☀️' : '🌙'}
+        </button>
+      </div>
       <div style={s.card}>
         <div style={s.logo}>
           <div style={s.logoIcon}>Rx</div>
