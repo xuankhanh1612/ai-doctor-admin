@@ -21,7 +21,7 @@ function useIsMobile() {
 }
 
 export default function Sidebar({ active, onNavigate }) {
-  const { user } = useAuth()
+  const { user, logout } = useAuth()
   const { t, theme } = useApp()
   const isDark = theme === 'dark'
   const isMobile = useIsMobile()
@@ -117,6 +117,27 @@ export default function Sidebar({ active, onNavigate }) {
           </div>
         )
       })}
+
+      {/* Logout */}
+      {user && (
+        <button
+          onClick={() => { logout(); setOpen(false) }}
+          style={{
+            marginTop: 16, width: '100%', padding: '10px 12px',
+            display: 'flex', alignItems: 'center', gap: 10,
+            borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600,
+            border: '1px solid rgba(255,82,82,0.25)',
+            background: 'rgba(255,82,82,0.06)',
+            color: '#ff5252', fontFamily: 'inherit', textAlign: 'left',
+            transition: 'all 0.18s',
+          }}
+          onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,82,82,0.14)'}
+          onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,82,82,0.06)'}
+        >
+          <span style={{ fontSize: 15 }}>🚪</span>
+          <span>Đăng xuất</span>
+        </button>
+      )}
     </>
   )
 
