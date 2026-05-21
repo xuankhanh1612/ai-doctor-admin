@@ -1,0 +1,911 @@
+
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#04060f;--bg2:#080c1a;--bg3:#0d1226;
+  --surface:rgba(255,255,255,0.03);--surface2:rgba(255,255,255,0.06);
+  --border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.15);
+  --cyan:#00e5ff;--cyan2:#00b8cc;--violet:#9c6fff;--violet2:#6b3fd4;
+  --green:#00e676;--amber:#ffb74d;--red:#ff5252;--pink:#f48fb1;
+  --text:#e8f0f8;--text2:rgba(232,240,248,0.55);--text3:rgba(232,240,248,0.28);
+  --font-d:'Syne',sans-serif;--font-m:'JetBrains Mono',monospace;
+  --radius:10px;--radius-lg:16px;
+}
+.light{
+  --bg:#f0f2f5;--bg2:#ffffff;--bg3:#e8eaf0;
+  --surface:rgba(0,0,0,0.03);--surface2:rgba(0,0,0,0.06);
+  --border:rgba(0,0,0,0.09);--border2:rgba(0,0,0,0.16);
+  --text:#0d1226;--text2:rgba(13,18,38,0.6);--text3:rgba(13,18,38,0.35);
+}
+body,#app{min-height:600px;background:var(--bg);color:var(--text);font-family:var(--font-d);font-size:13px;line-height:1.5}
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+
+/* Auth screen */
+.auth-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:600px;padding:32px;background:var(--bg)}
+.auth-card{width:100%;max-width:420px;background:var(--bg2);border:1px solid var(--border2);border-radius:20px;padding:40px 36px}
+.auth-logo{display:flex;align-items:center;gap:12px;margin-bottom:32px}
+.logo-icon{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,var(--cyan2),var(--violet2));display:flex;align-items:center;justify-content:center;font-family:var(--font-m);font-weight:700;font-size:13px;color:#fff;flex-shrink:0}
+.auth-btn{width:100%;padding:12px 16px;border-radius:10px;border:1px solid var(--border2);background:var(--surface);color:var(--text);font-family:var(--font-d);font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:12px;transition:all .2s;margin-bottom:10px}
+.auth-btn:hover{background:var(--surface2);border-color:var(--cyan)}
+.auth-btn svg{flex-shrink:0}
+.auth-divider{text-align:center;color:var(--text3);font-size:11px;font-family:var(--font-m);letter-spacing:.1em;margin:16px 0;position:relative}
+.auth-divider::before,.auth-divider::after{content:'';position:absolute;top:50%;width:42%;height:1px;background:var(--border)}
+.auth-divider::before{left:0}.auth-divider::after{right:0}
+.auth-input{width:100%;padding:10px 14px;border-radius:8px;border:1px solid var(--border2);background:var(--surface);color:var(--text);font-family:var(--font-d);font-size:13px;margin-bottom:10px;outline:none}
+.auth-input:focus{border-color:var(--cyan)}
+.auth-input::placeholder{color:var(--text3)}
+.btn-primary{width:100%;padding:12px;border-radius:10px;border:none;background:linear-gradient(135deg,var(--cyan2),var(--violet2));color:#fff;font-family:var(--font-d);font-size:13px;font-weight:700;cursor:pointer;transition:opacity .2s}
+.btn-primary:hover{opacity:.85}
+
+/* Main app layout */
+.app-wrap{display:flex;flex-direction:column;height:600px;overflow:hidden;background:var(--bg)}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid var(--border);background:rgba(4,6,15,0.9);flex-shrink:0;gap:8px}
+.topbar-logo{display:flex;align-items:center;gap:10px}
+.topbar-right{display:flex;align-items:center;gap:10px}
+.avatar{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--cyan2),var(--violet2));display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;cursor:pointer;flex-shrink:0;overflow:hidden}
+.avatar img{width:100%;height:100%;object-fit:cover}
+.icon-btn{padding:5px 8px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text2);cursor:pointer;font-size:11px;font-family:var(--font-m);transition:all .2s}
+.icon-btn:hover{background:var(--surface2);color:var(--text)}
+.icon-btn.active{background:rgba(0,229,255,0.1);border-color:rgba(0,229,255,0.3);color:var(--cyan)}
+
+.body-wrap{display:flex;flex:1;overflow:hidden}
+.sidebar{width:200px;border-right:1px solid var(--border);background:rgba(4,6,15,0.6);display:flex;flex-direction:column;padding:12px 8px;gap:3px;flex-shrink:0;overflow-y:auto}
+.nav-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:12px;color:var(--text2);border:1px solid transparent;transition:all .18s;background:transparent;width:100%;text-align:left;font-family:var(--font-d)}
+.nav-item:hover{background:var(--surface2);color:var(--text)}
+.nav-item.active{background:rgba(0,229,255,0.08);border-color:rgba(0,229,255,0.2);color:var(--cyan)}
+.nav-sep{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);font-family:var(--font-m);padding:10px 10px 4px;margin-top:4px}
+.nav-dot{width:5px;height:5px;border-radius:50%;background:currentColor;flex-shrink:0}
+
+.main{flex:1;overflow-y:auto;padding:20px}
+
+/* Cards */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px}
+.card-title{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);font-family:var(--font-m);margin-bottom:12px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+
+/* Tags / chips */
+.tag{display:inline-flex;align-items:center;padding:2px 8px;border-radius:4px;font-size:10px;font-family:var(--font-m);letter-spacing:.05em;border:1px solid}
+.tag-cyan{background:rgba(0,229,255,.1);color:var(--cyan);border-color:rgba(0,229,255,.2)}
+.tag-violet{background:rgba(156,111,255,.1);color:var(--violet);border-color:rgba(156,111,255,.2)}
+.tag-green{background:rgba(0,230,118,.1);color:var(--green);border-color:rgba(0,230,118,.2)}
+.tag-amber{background:rgba(255,183,77,.1);color:var(--amber);border-color:rgba(255,183,77,.2)}
+.tag-red{background:rgba(255,82,82,.1);color:var(--red);border-color:rgba(255,82,82,.2)}
+.tag-pink{background:rgba(244,143,177,.1);color:var(--pink);border-color:rgba(244,143,177,.2)}
+
+/* Upload zone */
+.upload-zone{border:2px dashed var(--border2);border-radius:12px;padding:32px;text-align:center;cursor:pointer;transition:all .2s;background:var(--surface)}
+.upload-zone:hover,.upload-zone.drag{border-color:var(--cyan);background:rgba(0,229,255,0.04)}
+.upload-zone input{display:none}
+
+/* Patient row */
+.patient-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface);cursor:pointer;transition:all .2s;margin-bottom:6px}
+.patient-row:hover{border-color:var(--border2);background:var(--surface2)}
+.patient-avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
+
+/* Family tree */
+.family-node{display:inline-flex;flex-direction:column;align-items:center;gap:4px;padding:8px 12px;border-radius:10px;border:1px solid var(--border2);background:var(--surface2);cursor:pointer;transition:all .2s;font-size:11px}
+.family-node:hover{border-color:var(--cyan)}
+.family-node.selected{border-color:var(--cyan);background:rgba(0,229,255,.08)}
+.family-node .fn-avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;margin-bottom:2px}
+.family-line{stroke:var(--border2);stroke-width:1.5;fill:none}
+
+/* Progress bar */
+.prog-bar{height:4px;background:var(--surface2);border-radius:2px;overflow:hidden;margin-top:4px}
+.prog-fill{height:100%;border-radius:2px;transition:width .6s ease}
+
+/* Animations */
+@keyframes fade-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes spin{to{transform:rotate(360deg)}}
+.anim{animation:fade-in .35s ease both}
+
+/* Suggestion card */
+.suggest-card{background:linear-gradient(135deg,rgba(0,229,255,0.05),rgba(156,111,255,0.05));border:1px solid rgba(0,229,255,0.2);border-radius:12px;padding:14px}
+
+/* Notification dot */
+.notif{width:7px;height:7px;border-radius:50%;background:var(--red);position:absolute;top:-1px;right:-1px}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:3px;height:3px}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+
+/* Admin table */
+.adm-table{width:100%;border-collapse:collapse;font-size:12px}
+.adm-table th{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);font-family:var(--font-m);padding:8px 10px;text-align:left;border-bottom:1px solid var(--border)}
+.adm-table td{padding:10px;border-bottom:1px solid var(--border);color:var(--text2)}
+.adm-table tr:hover td{background:var(--surface2)}
+
+/* Timeline dot */
+.tl-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:4px}
+
+/* Modal overlay faux */
+.modal-wrap{position:absolute;inset:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:200}
+.modal-box{background:var(--bg2);border:1px solid var(--border2);border-radius:16px;padding:24px;max-width:400px;width:90%}
+
+/* Lang switch */
+.lang-btn{padding:3px 8px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text3);font-size:10px;font-family:var(--font-m);cursor:pointer;transition:all .2s}
+.lang-btn.active{background:rgba(0,229,255,.1);border-color:rgba(0,229,255,.3);color:var(--cyan)}
+
+/* Status badge */
+.status{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-family:var(--font-m)}
+.status::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor;flex-shrink:0}
+.status.online{color:var(--green)}
+.status.watch{color:var(--amber)}
+.status.critical{color:var(--red)}
+</style>
+
+<div id="app" class="anim">
+<h2 class="sr-only">Consensus Doctor v2 — Nền tảng y tế AI đa người dùng với xác thực, quản lý gia đình, và dashboard quản trị</h2>
+</div>
+
+<script>
+const T = {
+  vi: {
+    appName:'CONSENSUS DOCTOR',appSub:'Nền tảng AI Y Tế · Phân tích Đa Tác nhân',
+    signIn:'Đăng nhập',signInWith:'Đăng nhập với',continueEmail:'Tiếp tục với Email',
+    or:'hoặc',emailPlaceholder:'Email của bạn',passwdPlaceholder:'Mật khẩu',
+    forgotPwd:'Quên mật khẩu?',noAcc:'Chưa có tài khoản?',register:'Đăng ký',
+    nav:{patients:'Bệnh nhân của tôi',family:'Gia phả',upload:'Upload hồ sơ',
+         imaging:'Phân tích hình ảnh',suggest:'Gợi ý xét nghiệm',
+         admin:'Quản trị viên',settings:'Cài đặt'},
+    patients:'Bệnh nhân',addPatient:'Thêm bệnh nhân',
+    familyTree:'Gia phả bệnh lý',uploadRecord:'Upload bệnh án',
+    dragDrop:'Kéo thả hoặc nhấn để chọn file',
+    supportedFmt:'Hỗ trợ: DICOM, PDF, JPG, PNG, ZIP',
+    uploadedFiles:'Hồ sơ đã upload',
+    aiSuggest:'Gợi ý AI',
+    testsSuggest:'Xét nghiệm đề nghị thêm',
+    adminDash:'Bảng điều khiển quản trị',
+    allPatients:'Tất cả bệnh nhân',recentActivity:'Hoạt động gần đây',
+    darkMode:'Chế độ tối',lightMode:'Chế độ sáng',
+    logout:'Đăng xuất',profile:'Hồ sơ cá nhân',
+    relation:'Quan hệ',addRelative:'Thêm người thân',
+    generation:'Thế hệ',disease:'Bệnh lý',
+    confidence:'Độ tin cậy',recommendation:'Khuyến nghị',
+    status:{active:'Đang điều trị',watch:'Theo dõi',stable:'Ổn định',critical:'Nguy kịch'},
+    greeting:'Xin chào',role:{admin:'Quản trị viên',patient:'Bệnh nhân'},
+    uploadHint:'Upload hồ sơ bệnh án, kết quả xét nghiệm, hình ảnh chẩn đoán',
+    aiHint:'AI phân tích hồ sơ và đề xuất xét nghiệm bổ sung',
+    caseHong:'Bệnh án: Cô Hồng - Ung thư gan di căn',
+    suggestReason:'Chưa xác định được ổ ung thư nguyên phát. AI khuyến nghị theo trình tự:',
+    newPatient:'Bệnh nhân mới',editProfile:'Chỉnh sửa hồ sơ',
+  },
+  en: {
+    appName:'CONSENSUS DOCTOR',appSub:'AI Medical Platform · Multi-Agent Analysis',
+    signIn:'Sign In',signInWith:'Sign in with',continueEmail:'Continue with Email',
+    or:'or',emailPlaceholder:'Your email',passwdPlaceholder:'Password',
+    forgotPwd:'Forgot password?',noAcc:"Don't have an account?",register:'Register',
+    nav:{patients:'My Patients',family:'Family Graph',upload:'Upload Records',
+         imaging:'Imaging Analysis',suggest:'Test Suggestions',
+         admin:'Admin Dashboard',settings:'Settings'},
+    patients:'Patients',addPatient:'Add Patient',
+    familyTree:'Family Disease Tree',uploadRecord:'Upload Medical Record',
+    dragDrop:'Drag & drop or click to select',
+    supportedFmt:'Supported: DICOM, PDF, JPG, PNG, ZIP',
+    uploadedFiles:'Uploaded Records',
+    aiSuggest:'AI Suggestion',
+    testsSuggest:'Recommended Additional Tests',
+    adminDash:'Admin Dashboard',
+    allPatients:'All Patients',recentActivity:'Recent Activity',
+    darkMode:'Dark Mode',lightMode:'Light Mode',
+    logout:'Sign Out',profile:'Profile',
+    relation:'Relation',addRelative:'Add Relative',
+    generation:'Generation',disease:'Disease',
+    confidence:'Confidence',recommendation:'Recommendation',
+    status:{active:'Under Treatment',watch:'Monitoring',stable:'Stable',critical:'Critical'},
+    greeting:'Hello',role:{admin:'Administrator',patient:'Patient'},
+    uploadHint:'Upload medical records, lab results, diagnostic images',
+    aiHint:'AI analyzes records and recommends additional tests',
+    caseHong:'Case: Mrs. Hong - Metastatic Liver Cancer',
+    suggestReason:'Primary cancer origin unknown. AI recommends in sequence:',
+    newPatient:'New Patient',editProfile:'Edit Profile',
+  }
+};
+
+let lang = 'vi';
+let darkMode = true;
+let currentPage = 'login';
+let currentNav = 'patients';
+let uploadedFiles = [];
+let selectedPatient = null;
+let showModal = false;
+
+const currentUser = {
+  name:'Nguyễn Admin Khánh',email:'admin@consensus.doctor',
+  avatar:'https://ui-avatars.com/api/?name=Admin+Khanh&background=00b8cc&color=fff&size=60',
+  role:'admin'
+};
+
+const patients = [
+  {id:'LXK-001',name:'Lê Xuân Khánh',age:47,gender:'M',diag:'NSCLC Stage IIA',status:'watch',
+   avatar:'LK',color:'#00e5ff',lastScan:'2024-01-15',
+   family:[{id:'f1',name:'Lê Văn Bình',rel:'Cha',age:72,disease:'Ung thư phổi',gen:0,x:100,y:20},
+           {id:'f2',name:'Trần Thị Mai',rel:'Mẹ',age:69,disease:'Tăng huyết áp',gen:0,x:220,y:20},
+           {id:'f3',name:'Lê Xuân Khánh',rel:'Bệnh nhân',age:47,disease:'NSCLC',gen:1,x:160,y:100,self:true},
+           {id:'f4',name:'Lê Xuân Nam',rel:'Anh',age:52,disease:'Khỏe mạnh',gen:1,x:40,y:100},
+           {id:'f5',name:'Nguyễn Thị Hoa',rel:'Vợ',age:44,disease:'Khỏe mạnh',gen:1,x:280,y:100},
+           {id:'f6',name:'Lê Minh Tú',rel:'Con trai',age:19,disease:'Theo dõi',gen:2,x:110,y:180},
+           {id:'f7',name:'Lê Minh An',rel:'Con gái',age:16,disease:'Khỏe mạnh',gen:2,x:220,y:180}],
+   uploads:[{name:'CT-Scan-Jan2024.dcm',type:'DICOM',size:'4.2 MB',date:'2024-01-10',status:'analyzed'},
+            {name:'BloodTest-Dec2023.pdf',type:'PDF',size:'0.8 MB',date:'2023-12-20',status:'analyzed'},
+            {name:'XRay-Nov2023.jpg',type:'Image',size:'1.1 MB',date:'2023-11-05',status:'pending'}]},
+  {id:'NTH-002',name:'Nguyễn Thị Hồng',age:55,gender:'F',diag:'Ung thư gan di căn - chưa rõ nguyên phát',status:'critical',
+   avatar:'NH',color:'#ff5252',lastScan:'2024-01-18',isCaseStudy:true,
+   family:[{id:'g1',name:'Nguyễn Văn Long',rel:'Cha',age:80,disease:'Ung thư dạ dày',gen:0,x:80,y:20},
+           {id:'g2',name:'Phạm Thị Lan',rel:'Mẹ',age:76,disease:'Ung thư vú',gen:0,x:220,y:20},
+           {id:'g3',name:'Nguyễn Thị Hồng',rel:'Bệnh nhân',age:55,disease:'Ung thư gan di căn',gen:1,x:150,y:100,self:true},
+           {id:'g4',name:'Nguyễn Minh Đức',rel:'Anh',age:58,disease:'Xơ gan',gen:1,x:30,y:100},
+           {id:'g5',name:'Trần Văn Hùng',rel:'Chồng',age:57,disease:'Khỏe mạnh',gen:1,x:270,y:100}],
+   uploads:[{name:'Liver-MRI-Jan2024.dcm',type:'DICOM',size:'6.8 MB',date:'2024-01-15',status:'analyzed'},
+            {name:'AFP-Marker-Jan2024.pdf',type:'PDF',size:'0.5 MB',date:'2024-01-10',status:'analyzed'}]},
+  {id:'TTM-003',name:'Trần Thị Mai',age:62,gender:'F',diag:'Tăng huyết áp + Tiểu đường type 2',status:'stable',
+   avatar:'TM',color:'#00e676',lastScan:'2024-01-05',
+   family:[],uploads:[]},
+  {id:'PVN-004',name:'Phạm Văn Nam',age:38,gender:'M',diag:'Theo dõi định kỳ - tiền sử gia đình',status:'active',
+   avatar:'PN',color:'#9c6fff',lastScan:'2023-12-28',
+   family:[],uploads:[]},
+];
+
+const hongSuggestions = [
+  {step:1,title:'Nội soi dạ dày - đại tràng',title_en:'Gastroscopy & Colonoscopy',reason:'Cha có tiền sử ung thư dạ dày. Loại trừ nguyên phát đường tiêu hóa',reason_en:"Father had stomach cancer. Rule out GI primary",icon:'🔬',priority:'Cao',conf:91,done:false},
+  {step:2,title:'Sinh thiết hạch lympho',title_en:'Lymph Node Biopsy',reason:'Xác định pattern di căn từ hạch → xác định nguồn gốc tế bào ung thư',reason_en:'Determine metastasis pattern from lymph nodes',icon:'🧫',priority:'Cao',conf:88,done:false},
+  {step:3,title:'Xét nghiệm dấu ấn ung thư toàn diện',title_en:'Comprehensive Tumor Markers Panel',reason:'CA-125, CA19-9, CEA, CA15-3, PSA - xác định cơ quan nguyên phát',reason_en:'CA-125, CA19-9, CEA, CA15-3 - identify primary organ',icon:'🩸',priority:'Trung bình',conf:85,done:false},
+  {step:4,title:'PET-CT toàn thân',title_en:'Whole-body PET-CT',reason:'Bước cuối xác định chắc chắn ổ ung thư nguyên phát và đánh giá toàn bộ di căn',reason_en:'Final step to confirm primary cancer origin and all metastases',icon:'🏥',priority:'Cao',conf:97,done:false},
+];
+
+function t(key){
+  const keys = key.split('.');
+  let val = T[lang];
+  for(const k of keys){if(val) val=val[k];}
+  return val||key;
+}
+
+function render(){
+  const app = document.getElementById('app');
+  if(!darkMode) app.classList.add('light');
+  else app.classList.remove('light');
+
+  if(currentPage==='login') app.innerHTML = renderLogin();
+  else if(currentPage==='app') app.innerHTML = renderApp();
+  bindEvents();
+}
+
+function renderLogin(){
+  return `
+  <div class="auth-wrap">
+    <div class="auth-card">
+      <div class="auth-logo">
+        <div class="logo-icon">Rx</div>
+        <div>
+          <div style="font-weight:800;font-size:14px;letter-spacing:.06em;color:var(--cyan)">${t('appName')}</div>
+          <div style="font-size:10px;color:var(--text3);font-family:var(--font-m)">AI MEDICAL PLATFORM</div>
+        </div>
+        <div style="margin-left:auto;display:flex;gap:4px">
+          <button class="lang-btn ${lang==='vi'?'active':''}" onclick="setLang('vi')">VI</button>
+          <button class="lang-btn ${lang==='en'?'active':''}" onclick="setLang('en')">EN</button>
+        </div>
+      </div>
+
+      <h3 style="font-size:20px;font-weight:800;margin-bottom:6px">${t('signIn')}</h3>
+      <p style="font-size:12px;color:var(--text2);margin-bottom:24px">Đăng nhập để truy cập hồ sơ bệnh nhân của bạn</p>
+
+      <button class="auth-btn" onclick="loginAsAdmin()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+          <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+          <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+          <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+          <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+        </svg>
+        ${t('signInWith')} Google
+      </button>
+
+      <button class="auth-btn" onclick="loginAsAdmin()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="var(--text)">
+          <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
+        </svg>
+        ${t('signInWith')} Apple
+      </button>
+
+      <div class="auth-divider">${t('or')}</div>
+
+      <input class="auth-input" type="email" placeholder="${t('emailPlaceholder')}" id="email-input" value="admin@consensus.doctor">
+      <input class="auth-input" type="password" placeholder="${t('passwdPlaceholder')}" id="pwd-input" value="••••••••">
+      <div style="text-align:right;margin-bottom:14px">
+        <span style="font-size:11px;color:var(--cyan);cursor:pointer">${t('forgotPwd')}</span>
+      </div>
+      <button class="btn-primary" onclick="loginAsAdmin()">${t('continueEmail')}</button>
+
+      <p style="text-align:center;font-size:11px;color:var(--text3);margin-top:16px">
+        ${t('noAcc')} <span style="color:var(--cyan);cursor:pointer">${t('register')}</span>
+      </p>
+
+      <div style="margin-top:20px;padding:10px;background:rgba(0,229,255,.05);border-radius:8px;border:1px solid rgba(0,229,255,.15)">
+        <div style="font-size:10px;font-family:var(--font-m);color:var(--cyan);margin-bottom:4px">DEMO ADMIN ACCESS</div>
+        <div style="font-size:11px;color:var(--text2)">admin@consensus.doctor · Nhấn bất kỳ nút đăng nhập nào</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderApp(){
+  const p = patients.find(x=>x.id===selectedPatient)||patients[0];
+  const nav = currentNav;
+  return `
+  <div class="app-wrap" style="position:relative">
+    ${renderTopbar()}
+    <div class="body-wrap">
+      ${renderSidebar()}
+      <div class="main anim">
+        ${nav==='patients'?renderPatients():
+          nav==='family'?renderFamily(p):
+          nav==='upload'?renderUpload(p):
+          nav==='suggest'?renderSuggest(p):
+          nav==='admin'?renderAdmin():
+          nav==='settings'?renderSettings():
+          renderPatients()}
+      </div>
+    </div>
+    ${showModal?renderNewPatientModal():''}
+  </div>`;
+}
+
+function renderTopbar(){
+  return `
+  <header class="topbar">
+    <div class="topbar-logo">
+      <div class="logo-icon" style="width:32px;height:32px;font-size:10px">Rx</div>
+      <div>
+        <div style="font-weight:800;font-size:11px;letter-spacing:.08em;color:var(--cyan)">${t('appName')}</div>
+        <div style="font-size:9px;color:var(--text3);font-family:var(--font-m)">${t('appSub')}</div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div style="width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);animation:pulse-dot 2s infinite"></div>
+      <span style="font-size:10px;color:var(--green);font-family:var(--font-m)">4 AGENTS</span>
+      <button class="lang-btn ${lang==='vi'?'active':''}" onclick="setLang('vi')">VI</button>
+      <button class="lang-btn ${lang==='en'?'active':''}" onclick="setLang('en')">EN</button>
+      <button class="icon-btn" onclick="toggleDark()">${darkMode?'☀':'🌙'}</button>
+      <div style="position:relative;cursor:pointer" onclick="goNav('admin')">
+        <div class="avatar"><img src="${currentUser.avatar}" alt="avatar"></div>
+      </div>
+    </div>
+  </header>`;
+}
+
+function renderSidebar(){
+  const nav = currentNav;
+  const items = [
+    {id:'patients',icon:'👥',label:t('nav.patients')},
+    {id:'family',icon:'🌳',label:t('nav.family')},
+    {id:'upload',icon:'📁',label:t('nav.upload')},
+    {id:'suggest',icon:'🔬',label:t('nav.suggest')},
+  ];
+  const adminItems = [
+    {id:'admin',icon:'⚙️',label:t('nav.admin')},
+    {id:'settings',icon:'👤',label:t('nav.settings')},
+  ];
+  return `
+  <aside class="sidebar">
+    <div class="nav-sep">WORKSPACE</div>
+    ${items.map(i=>`
+    <button class="nav-item ${nav===i.id?'active':''}" onclick="goNav('${i.id}')">
+      <span>${i.icon}</span><span>${i.label}</span>
+    </button>`).join('')}
+    <div class="nav-sep" style="margin-top:12px">ADMIN</div>
+    ${adminItems.map(i=>`
+    <button class="nav-item ${nav===i.id?'active':''}" onclick="goNav('${i.id}')">
+      <span>${i.icon}</span><span>${i.label}</span>
+    </button>`).join('')}
+    <div style="flex:1"></div>
+    <div style="padding:10px 8px;border-top:1px solid var(--border)">
+      <div style="display:flex;align-items:center;gap:8px">
+        <img src="${currentUser.avatar}" style="width:28px;height:28px;border-radius:50%">
+        <div style="min-width:0">
+          <div style="font-size:11px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${currentUser.name.split(' ').slice(-2).join(' ')}</div>
+          <div style="font-size:9px;color:var(--cyan);font-family:var(--font-m)">ADMIN</div>
+        </div>
+      </div>
+    </div>
+  </aside>`;
+}
+
+function renderPatients(){
+  const statusColors = {active:'cyan',watch:'amber',stable:'green',critical:'red'};
+  return `
+  <div style="display:flex;flex-direction:column;gap:16px">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <h2 style="font-size:18px;font-weight:800">${t('patients')}</h2>
+        <p style="font-size:11px;color:var(--text2);margin-top:2px">${patients.length} bệnh nhân đang quản lý</p>
+      </div>
+      <button class="btn-primary" style="width:auto;padding:8px 16px;font-size:12px" onclick="openModal()">${t('addPatient')}</button>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <div class="card-title">TỔNG QUAN</div>
+        <div class="grid2" style="gap:8px">
+          ${[{l:'Tổng bệnh nhân',v:patients.length,c:'cyan'},
+             {l:'Nguy kịch',v:patients.filter(p=>p.status==='critical').length,c:'red'},
+             {l:'Ổn định',v:patients.filter(p=>p.status==='stable').length,c:'green'},
+             {l:'Theo dõi',v:patients.filter(p=>p.status==='watch').length,c:'amber'}
+          ].map(s=>`
+          <div style="padding:8px 10px;background:var(--surface2);border-radius:8px">
+            <div style="font-size:9px;color:var(--text3);font-family:var(--font-m);margin-bottom:4px">${s.l}</div>
+            <div style="font-size:22px;font-weight:800;color:var(--${s.c})">${s.v}</div>
+          </div>`).join('')}
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">CẢNH BÁO AI</div>
+        <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px">
+          <div style="width:6px;height:6px;border-radius:50%;background:var(--red);margin-top:5px;flex-shrink:0;animation:pulse-dot 1s infinite"></div>
+          <div style="font-size:11px;color:var(--text2)"><b style="color:var(--red)">NTH-002:</b> Cô Hồng cần bổ sung xét nghiệm để xác định nguồn ung thư nguyên phát</div>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:8px">
+          <div style="width:6px;height:6px;border-radius:50%;background:var(--amber);margin-top:5px;flex-shrink:0"></div>
+          <div style="font-size:11px;color:var(--text2)"><b style="color:var(--amber)">LXK-001:</b> L2 lesion tăng 8% - cần sinh thiết tại tuần 8</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">DANH SÁCH BỆNH NHÂN</div>
+      ${patients.map(p=>`
+      <div class="patient-row" onclick="selectPatient('${p.id}','family')">
+        <div class="patient-avatar" style="background:${p.color}22;color:${p.color}">${p.avatar}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px">
+            ${p.name}
+            ${p.isCaseStudy?'<span class="tag tag-red" style="font-size:8px">CASE</span>':''}
+          </div>
+          <div style="font-size:10px;color:var(--text3);margin-top:1px">${p.diag}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <span class="tag tag-${statusColors[p.status]||'cyan'}">${t('status.'+p.status)}</span>
+          <div style="font-size:9px;color:var(--text3);margin-top:4px;font-family:var(--font-m)">${p.id}</div>
+        </div>
+      </div>`).join('')}
+    </div>
+  </div>`;
+}
+
+function renderFamily(p){
+  const fam = p.family||[];
+  const genColors = ['#00e5ff','#9c6fff','#00e676'];
+  const diseaseColor = (d)=>{
+    if(!d||d.includes('Khỏe')) return 'var(--green)';
+    if(d.includes('ung thư')||d.includes('Ung thư')||d.includes('NSCLC')||d.includes('di căn')) return 'var(--red)';
+    return 'var(--amber)';
+  };
+  return `
+  <div style="display:flex;flex-direction:column;gap:16px">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <h2 style="font-size:18px;font-weight:800">${t('familyTree')}</h2>
+        <p style="font-size:11px;color:var(--text2);margin-top:2px">${p.name} · Phân tích di truyền bệnh lý gia đình</p>
+      </div>
+      <div style="display:flex;gap:8px">
+        ${patients.map(pt=>`<button class="icon-btn ${selectedPatient===pt.id?'active':''}" onclick="selectPatient('${pt.id}','family')" style="font-size:11px">${pt.avatar}</button>`).join('')}
+      </div>
+    </div>
+
+    ${p.isCaseStudy?`
+    <div class="suggest-card">
+      <div style="font-size:9px;font-family:var(--font-m);color:var(--red);margin-bottom:6px">⚠ AI CẢNH BÁO</div>
+      <div style="font-size:12px;font-weight:600;margin-bottom:4px">${t('caseHong')}</div>
+      <div style="font-size:11px;color:var(--text2)">Tiền sử gia đình: Cha - ung thư dạ dày, Mẹ - ung thư vú. Anh - xơ gan. Nguy cơ di truyền cao. <span style="color:var(--cyan);cursor:pointer" onclick="goNav('suggest')">Xem gợi ý xét nghiệm →</span></div>
+    </div>`:''}
+
+    <div class="card">
+      <div class="card-title">${t('familyTree').toUpperCase()}</div>
+      <div style="overflow-x:auto">
+        <svg width="340" height="220" viewBox="0 0 340 220">
+          ${fam.length?renderFamilySVG(fam,diseaseColor):'<text x="170" y="110" text-anchor="middle" fill="rgba(232,240,248,0.28)" font-size="12" font-family="Syne">Chưa có dữ liệu gia đình</text>'}
+        </svg>
+      </div>
+      <div style="display:flex;gap:12px;margin-top:8px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text2)"><div style="width:8px;height:8px;border-radius:50%;background:var(--red)"></div>Bệnh ung thư</div>
+        <div style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text2)"><div style="width:8px;height:8px;border-radius:50%;background:var(--amber)"></div>Bệnh mãn tính</div>
+        <div style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text2)"><div style="width:8px;height:8px;border-radius:50%;background:var(--green)"></div>Khỏe mạnh</div>
+        <div style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--cyan)"><div style="width:8px;height:8px;border-radius:2px;background:rgba(0,229,255,.3);border:1px solid var(--cyan)"></div>Bệnh nhân</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">THÀNH VIÊN GIA ĐÌNH (${fam.length})</div>
+      ${fam.length?fam.map(m=>`
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+        <div style="width:32px;height:32px;border-radius:50%;background:${diseaseColor(m.disease)}22;color:${diseaseColor(m.disease)};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700">${m.name.slice(-2)}</div>
+        <div style="flex:1">
+          <div style="font-size:12px;font-weight:600">${m.name} ${m.self?'<span class="tag tag-cyan" style="font-size:8px">BN</span>':''}</div>
+          <div style="font-size:10px;color:var(--text3)">${m.rel} · ${m.age} tuổi</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:11px;color:${diseaseColor(m.disease)}">${m.disease}</div>
+        </div>
+      </div>`).join(''):
+      `<div style="text-align:center;padding:20px;color:var(--text3)">
+        <div style="font-size:24px;margin-bottom:8px">🌳</div>
+        <div style="font-size:12px">Chưa có thông tin gia đình</div>
+        <button class="btn-primary" style="width:auto;padding:8px 16px;margin-top:12px;font-size:12px">${t('addRelative')}</button>
+      </div>`}
+    </div>
+  </div>`;
+}
+
+function renderFamilySVG(fam, diseaseColor){
+  const genMap = {0:30,1:110,2:190};
+  let lines = '';
+  let nodes = '';
+  const byGen = {};
+  fam.forEach(m=>{byGen[m.gen]=byGen[m.gen]||[];byGen[m.gen].push(m);});
+
+  Object.entries(byGen).forEach(([gen,members])=>{
+    const y = genMap[gen]||30+gen*80;
+    const spacing = 320/(members.length+1);
+    members.forEach((m,i)=>{
+      m._x = spacing*(i+1);
+      m._y = y;
+    });
+  });
+
+  fam.forEach(m=>{
+    if(m.gen>0){
+      const prevGen = fam.filter(f=>f.gen===m.gen-1);
+      if(prevGen.length){
+        const mid = prevGen.reduce((s,f)=>s+f._x,0)/prevGen.length;
+        lines+=`<line x1="${mid}" y1="${prevGen[0]._y+28}" x2="${m._x}" y2="${m._y-28}" stroke="${m.disease&&(m.disease.includes('ung thư')||m.disease.includes('Ung thư')||m.disease.includes('NSCLC'))?'rgba(255,82,82,0.3)':'rgba(255,255,255,0.1)'}" stroke-width="1" stroke-dasharray="${m.disease&&(m.disease.includes('ung thư')||m.disease.includes('Ung thư'))?'3,2':'0'}"/>`;
+      }
+    }
+  });
+
+  fam.forEach(m=>{
+    const dc = diseaseColor(m.disease);
+    const isPatient = m.self;
+    nodes+=`
+    <g>
+      <circle cx="${m._x}" cy="${m._y}" r="20" fill="${dc}22" stroke="${isPatient?'#00e5ff':dc}" stroke-width="${isPatient?2:1}"/>
+      ${isPatient?`<circle cx="${m._x}" cy="${m._y}" r="23" fill="none" stroke="rgba(0,229,255,0.3)" stroke-width="1" stroke-dasharray="3,2"/>`:''}
+      <text x="${m._x}" y="${m._y+1}" text-anchor="middle" dominant-baseline="central" fill="${dc}" font-size="9" font-weight="700" font-family="Syne">${m.name.slice(-2)}</text>
+      <text x="${m._x}" y="${m._y+28}" text-anchor="middle" fill="rgba(232,240,248,0.5)" font-size="8" font-family="Syne">${m.rel}</text>
+      <text x="${m._x}" y="${m._y+37}" text-anchor="middle" fill="${dc}" font-size="7" font-family="Syne">${m.disease.length>10?m.disease.slice(0,10)+'…':m.disease}</text>
+    </g>`;
+  });
+
+  return lines+nodes;
+}
+
+function renderUpload(p){
+  const files = p.uploads||[];
+  const typeIcon = (t)=>({DICOM:'🏥',PDF:'📄',Image:'🖼️',ZIP:'📦'}[t]||'📁');
+  const statusColor = (s)=>s==='analyzed'?'green':'amber';
+  return `
+  <div style="display:flex;flex-direction:column;gap:16px">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <h2 style="font-size:18px;font-weight:800">${t('uploadRecord')}</h2>
+        <p style="font-size:11px;color:var(--text2);margin-top:2px">${p.name} · ${t('uploadHint')}</p>
+      </div>
+      <div style="display:flex;gap:8px">
+        ${patients.map(pt=>`<button class="icon-btn ${selectedPatient===pt.id?'active':''}" onclick="selectPatient('${pt.id}','upload')" style="font-size:11px">${pt.avatar}</button>`).join('')}
+      </div>
+    </div>
+
+    ${p.isCaseStudy?`
+    <div class="suggest-card">
+      <div style="font-size:9px;font-family:var(--font-m);color:var(--amber);margin-bottom:4px">📋 HƯỚNG DẪN UPLOAD - ${p.name}</div>
+      <div style="font-size:11px;color:var(--text2)">${t('suggestReason')} <span style="color:var(--cyan);cursor:pointer" onclick="goNav('suggest')">Xem trình tự xét nghiệm →</span></div>
+    </div>`:''}
+
+    <div class="upload-zone" onclick="triggerUpload()" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')">
+      <input type="file" id="file-input" multiple accept=".dcm,.pdf,.jpg,.jpeg,.png,.zip" onchange="handleFiles(event)">
+      <div style="font-size:32px;margin-bottom:10px">📤</div>
+      <div style="font-size:14px;font-weight:600;margin-bottom:4px">${t('dragDrop')}</div>
+      <div style="font-size:11px;color:var(--text3)">${t('supportedFmt')}</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">${t('uploadedFiles')} (${files.length})</div>
+      ${files.length?files.map(f=>`
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
+        <span style="font-size:20px">${typeIcon(f.type)}</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${f.name}</div>
+          <div style="font-size:10px;color:var(--text3);margin-top:2px">${f.size} · ${f.date}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="tag tag-${statusColor(f.status)}">${f.status==='analyzed'?'Đã phân tích':'Đang xử lý'}</span>
+          <button class="icon-btn" style="font-size:10px;padding:3px 6px">👁</button>
+        </div>
+      </div>`).join(''):`
+      <div style="text-align:center;padding:20px;color:var(--text3)">
+        <div style="font-size:12px">Chưa có hồ sơ nào được upload</div>
+      </div>`}
+    </div>
+
+    ${uploadedFiles.length?`
+    <div class="card">
+      <div class="card-title">VỪA UPLOAD (phiên này)</div>
+      ${uploadedFiles.map(f=>`
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+        <span>📎</span>
+        <div style="flex:1">
+          <div style="font-size:12px;font-weight:600">${f.name}</div>
+          <div style="font-size:10px;color:var(--text3)">${(f.size/1024).toFixed(1)} KB</div>
+        </div>
+        <div class="prog-bar" style="width:80px">
+          <div class="prog-fill" style="width:100%;background:var(--cyan)"></div>
+        </div>
+        <span class="tag tag-green">Xong</span>
+      </div>`).join('')}
+    </div>`:''}
+  </div>`;
+}
+
+function renderSuggest(p){
+  const sug = p.isCaseStudy?hongSuggestions:[];
+  const prioColor = s=>s==='Cao'?'red':s==='Trung bình'?'amber':'green';
+  return `
+  <div style="display:flex;flex-direction:column;gap:16px">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <h2 style="font-size:18px;font-weight:800">${t('testsSuggest')}</h2>
+        <p style="font-size:11px;color:var(--text2);margin-top:2px">${t('aiHint')}</p>
+      </div>
+      <div style="display:flex;gap:8px">
+        ${patients.map(pt=>`<button class="icon-btn ${selectedPatient===pt.id?'active':''}" onclick="selectPatient('${pt.id}','suggest')" style="font-size:11px">${pt.avatar}</button>`).join('')}
+      </div>
+    </div>
+
+    ${p.isCaseStudy?`
+    <div class="suggest-card">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <div style="font-size:9px;font-family:var(--font-m);color:var(--red)">🤖 AI CONSENSUS ANALYSIS</div>
+        <span class="tag tag-red">CASE PHỨC TẠP</span>
+      </div>
+      <div style="font-size:13px;font-weight:700;margin-bottom:6px">${t('caseHong')}</div>
+      <div style="font-size:11px;color:var(--text2);margin-bottom:10px">Di căn gan giai đoạn muộn. Chưa xác định được ổ ung thư nguyên phát. Tiền sử gia đình: cha ung thư dạ dày, mẹ ung thư vú - nguy cơ di truyền cao.</div>
+      <div style="font-size:10px;color:var(--text3)">${t('suggestReason')}</div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:10px">
+      ${sug.map((s,i)=>`
+      <div style="display:flex;gap:12px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;position:relative;overflow:hidden">
+        <div style="width:3px;border-radius:2px;background:var(--${prioColor(s.priority)});flex-shrink:0"></div>
+        <div style="width:32px;height:32px;border-radius:8px;background:rgba(0,229,255,.08);border:1px solid rgba(0,229,255,.2);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">${s.icon}</div>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+            <span style="font-size:9px;font-family:var(--font-m);color:var(--text3)">BƯỚC ${s.step}</span>
+            <span class="tag tag-${prioColor(s.priority)}">${s.priority}</span>
+            <span style="font-size:9px;color:var(--text3);font-family:var(--font-m);margin-left:auto">AI: ${s.conf}%</span>
+          </div>
+          <div style="font-size:13px;font-weight:700;margin-bottom:4px">${lang==='en'?s.title_en:s.title}</div>
+          <div style="font-size:11px;color:var(--text2)">${lang==='en'?s.reason_en:s.reason}</div>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button class="icon-btn" style="font-size:10px" onclick="markDone(${i})">
+              ${s.done?'✅ Đã làm':'📋 Đặt lịch'}
+            </button>
+            <button class="icon-btn" style="font-size:10px" onclick="goNav('upload')">📎 Upload kết quả</button>
+          </div>
+        </div>
+        <div style="position:absolute;top:10px;right:10px;font-size:18px;opacity:0.07;font-weight:900">${s.step}</div>
+      </div>`).join('')}
+    </div>
+
+    <div class="card">
+      <div class="card-title">KẾT LUẬN AI</div>
+      <div style="font-size:12px;color:var(--text2);line-height:1.8">
+        Sau khi hoàn thành <b style="color:var(--cyan)">4 bước xét nghiệm</b> trên, kết quả <b style="color:var(--violet)">PET-CT toàn thân</b> sẽ xác định được ổ ung thư nguyên phát với độ chính xác ~97%. Bước 1-3 giúp thu hẹp phạm vi và tiết kiệm chi phí trước khi thực hiện PET-CT.
+      </div>
+      <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+        <span class="tag tag-cyan">Ưu tiên: Nội soi ngay</span>
+        <span class="tag tag-violet">Sinh thiết: Tuần 2</span>
+        <span class="tag tag-amber">PET-CT: Tuần 4-6</span>
+      </div>
+    </div>`:
+    `<div class="card" style="text-align:center;padding:40px">
+      <div style="font-size:40px;margin-bottom:12px">🤖</div>
+      <div style="font-size:14px;font-weight:600;margin-bottom:8px">AI đang phân tích hồ sơ</div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:16px">Chọn bệnh nhân có hồ sơ để AI gợi ý xét nghiệm bổ sung</div>
+      <button class="btn-primary" style="width:auto;padding:8px 16px;font-size:12px" onclick="selectPatient('NTH-002','suggest')">Xem case Cô Hồng</button>
+    </div>`}
+  </div>`;
+}
+
+function renderAdmin(){
+  const recent = [
+    {time:'14:32',user:'Nguyễn Thị Hồng',action:'Upload Liver-MRI-Jan2024.dcm',type:'upload'},
+    {time:'13:15',user:'Lê Xuân Khánh',action:'AI phân tích CT scan - L2 tăng 8%',type:'ai'},
+    {time:'11:48',user:'Trần Thị Mai',action:'Đăng nhập lần đầu - Google OAuth',type:'auth'},
+    {time:'10:20',user:'Admin',action:'Thêm bệnh nhân mới: Phạm Văn Nam',type:'admin'},
+    {time:'09:05',user:'Nguyễn Thị Hồng',action:'AI gợi ý: Thêm xét nghiệm nội soi',type:'ai'},
+  ];
+  const typeColor = {upload:'cyan',ai:'violet',auth:'green',admin:'amber'};
+  return `
+  <div style="display:flex;flex-direction:column;gap:16px">
+    <div>
+      <h2 style="font-size:18px;font-weight:800">${t('adminDash')}</h2>
+      <p style="font-size:11px;color:var(--text2);margin-top:2px">${t('greeting')}, <b style="color:var(--cyan)">${currentUser.name}</b> · ${t('role.admin')}</p>
+    </div>
+
+    <div class="grid3">
+      ${[{l:'Tổng người dùng',v:patients.length+1,c:'cyan',i:'👥'},
+         {l:'Upload tuần này',v:7,c:'violet',i:'📁'},
+         {l:'AI phân tích',v:12,c:'green',i:'🤖'},
+         {l:'Cảnh báo',v:2,c:'red',i:'⚠'},
+         {l:'Đăng nhập hôm nay',v:3,c:'amber',i:'🔐'},
+         {l:'Hồ sơ chờ',v:1,c:'pink',i:'⏳'}
+      ].map(s=>`
+      <div style="padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:10px">
+        <div style="font-size:18px;margin-bottom:4px">${s.i}</div>
+        <div style="font-size:22px;font-weight:800;color:var(--${s.c})">${s.v}</div>
+        <div style="font-size:10px;color:var(--text3);font-family:var(--font-m)">${s.l}</div>
+      </div>`).join('')}
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <div class="card-title">${t('allPatients')}</div>
+        <table class="adm-table">
+          <thead><tr>
+            <th>Bệnh nhân</th><th>Chẩn đoán</th><th>Upload</th><th>Trạng thái</th>
+          </tr></thead>
+          <tbody>
+            ${patients.map(p=>`<tr style="cursor:pointer" onclick="selectPatient('${p.id}','family')">
+              <td><div style="display:flex;align-items:center;gap:6px">
+                <div style="width:24px;height:24px;border-radius:50%;background:${p.color}22;color:${p.color};display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700">${p.avatar}</div>
+                <span style="font-size:11px;font-weight:600;color:var(--text)">${p.name}</span>
+              </div></td>
+              <td style="font-size:10px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.diag}</td>
+              <td style="font-family:var(--font-m);text-align:center;color:var(--cyan)">${p.uploads?.length||0}</td>
+              <td><span class="tag tag-${{active:'cyan',watch:'amber',stable:'green',critical:'red'}[p.status]}" style="font-size:9px">${t('status.'+p.status)}</span></td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <div class="card-title">${t('recentActivity')}</div>
+        ${recent.map(r=>`
+        <div style="display:flex;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)">
+          <div class="tl-dot" style="background:var(--${typeColor[r.type]})"></div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:11px;font-weight:600;color:var(--text)">${r.user}</div>
+            <div style="font-size:10px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.action}</div>
+          </div>
+          <div style="font-size:9px;font-family:var(--font-m);color:var(--text3);flex-shrink:0">${r.time}</div>
+        </div>`).join('')}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">LỊCH SỬ TIẾN TRIỂN BỆNH - LÊ XUÂN KHÁNH</div>
+      <div style="display:flex;gap:0;overflow-x:auto;padding-bottom:4px">
+        ${['T-12Mo','T-9Mo','T-6Mo','T-3Mo','Hiện tại'].map((t,i)=>`
+        <div style="flex:1;min-width:80px;text-align:center;padding:8px;position:relative">
+          ${i<4?`<div style="position:absolute;top:18px;right:0;width:50%;height:1px;background:var(--border2);z-index:0"></div><div style="position:absolute;top:18px;left:0;width:50%;height:1px;background:var(--border2);z-index:0"></div>`:
+          `<div style="position:absolute;top:18px;left:0;width:50%;height:1px;background:var(--border2);z-index:0"></div>`}
+          <div style="width:18px;height:18px;border-radius:50%;background:${i===4?'var(--cyan)':'var(--surface2)'};border:2px solid ${i===4?'var(--cyan)':'var(--border2)'};margin:0 auto 6px;position:relative;z-index:1"></div>
+          <div style="font-size:9px;font-family:var(--font-m);color:${i===4?'var(--cyan)':'var(--text3)'}">${t}</div>
+          <div style="font-size:10px;font-weight:600;color:var(--text);margin-top:3px">${['4.1cm','3.8cm','3.2cm','2.8cm','2.3cm'][i]}</div>
+          <div style="font-size:9px;color:var(--green)">${['','−7%','−16%','−13%','−18%'][i]}</div>
+        </div>`).join('')}
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderSettings(){
+  return `
+  <div style="display:flex;flex-direction:column;gap:16px">
+    <h2 style="font-size:18px;font-weight:800">${t('profile')}</h2>
+    <div class="card">
+      <div class="card-title">HỒ SƠ CÁ NHÂN</div>
+      <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
+        <img src="${currentUser.avatar}" style="width:56px;height:56px;border-radius:50%;border:2px solid var(--cyan)">
+        <div>
+          <div style="font-size:16px;font-weight:800">${currentUser.name}</div>
+          <div style="font-size:11px;color:var(--text2)">${currentUser.email}</div>
+          <span class="tag tag-cyan" style="margin-top:4px">ADMIN</span>
+        </div>
+        <button class="icon-btn" style="margin-left:auto">${t('editProfile')}</button>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        ${[['Họ tên','Nguyễn Admin Khánh'],['Email','admin@consensus.doctor'],['Đăng nhập qua','Google OAuth'],['Ngôn ngữ',lang==='vi'?'Tiếng Việt':'English'],['Vai trò','Quản trị viên']].map(([l,v])=>`
+        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">
+          <span style="font-size:11px;color:var(--text3)">${l}</span>
+          <span style="font-size:11px;font-weight:600">${v}</span>
+        </div>`).join('')}
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">GIAO DIỆN</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0">
+        <span style="font-size:12px">${darkMode?t('darkMode'):t('lightMode')}</span>
+        <button class="icon-btn" onclick="toggleDark()">${darkMode?'☀ Chuyển sáng':'🌙 Chuyển tối'}</button>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-top:1px solid var(--border)">
+        <span style="font-size:12px">Ngôn ngữ</span>
+        <div style="display:flex;gap:4px">
+          <button class="lang-btn ${lang==='vi'?'active':''}" onclick="setLang('vi')">Tiếng Việt</button>
+          <button class="lang-btn ${lang==='en'?'active':''}" onclick="setLang('en')">English</button>
+        </div>
+      </div>
+    </div>
+    <button class="auth-btn" onclick="logout()" style="max-width:200px">🚪 ${t('logout')}</button>
+  </div>`;
+}
+
+function renderNewPatientModal(){
+  return `
+  <div class="modal-wrap" onclick="if(event.target===this)closeModal()">
+    <div class="modal-box">
+      <div style="display:flex;justify-content:space-between;margin-bottom:16px">
+        <h3 style="font-size:15px;font-weight:800">${t('newPatient')}</h3>
+        <button class="icon-btn" onclick="closeModal()">✕</button>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <input class="auth-input" placeholder="Họ tên bệnh nhân *" id="new-name">
+        <input class="auth-input" placeholder="Email (tùy chọn)" id="new-email" type="email">
+        <input class="auth-input" placeholder="Tuổi" id="new-age" type="number">
+        <select class="auth-input" id="new-rel">
+          <option value="">Quan hệ với bệnh nhân hiện có</option>
+          <option>Cha/Mẹ</option><option>Anh/Chị/Em</option>
+          <option>Con</option><option>Vợ/Chồng</option><option>Không liên quan</option>
+        </select>
+        <input class="auth-input" placeholder="Chẩn đoán sơ bộ" id="new-diag">
+      </div>
+      <div style="display:flex;gap:8px;margin-top:16px">
+        <button class="btn-primary" onclick="addNewPatient()" style="flex:1">Thêm bệnh nhân</button>
+        <button class="icon-btn" onclick="closeModal()" style="flex:1">Huỷ</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function loginAsAdmin(){
+  currentPage='app';
+  currentNav='patients';
+  selectedPatient=patients[0].id;
+  render();
+}
+function logout(){currentPage='login';render();}
+function goNav(nav){currentNav=nav;render();}
+function selectPatient(id,nav){selectedPatient=id;currentNav=nav||currentNav;render();}
+function toggleDark(){darkMode=!darkMode;render();}
+function setLang(l){lang=l;render();}
+function openModal(){showModal=true;render();}
+function closeModal(){showModal=false;render();}
+function triggerUpload(){document.getElementById('file-input')&&document.getElementById('file-input').click();}
+function handleFiles(e){
+  uploadedFiles=[...e.target.files];
+  render();
+  setTimeout(()=>{uploadedFiles=[];render();},5000);
+}
+function markDone(i){
+  hongSuggestions[i].done=!hongSuggestions[i].done;
+  render();
+}
+function addNewPatient(){
+  const name=document.getElementById('new-name')?.value;
+  if(!name){alert('Vui lòng nhập họ tên bệnh nhân');return;}
+  const initials=name.split(' ').slice(-2).map(w=>w[0]).join('').toUpperCase();
+  const colors=['#00e5ff','#9c6fff','#00e676','#f48fb1','#ffb74d','#ff5252'];
+  patients.push({
+    id:'NEW-'+Date.now().toString().slice(-3),
+    name,age:document.getElementById('new-age')?.value||'—',gender:'—',
+    diag:document.getElementById('new-diag')?.value||'Chưa chẩn đoán',
+    status:'active',avatar:initials,color:colors[Math.floor(Math.random()*colors.length)],
+    lastScan:'—',family:[],uploads:[]
+  });
+  showModal=false;
+  render();
+}
+function bindEvents(){}
+
+render();
+</script>

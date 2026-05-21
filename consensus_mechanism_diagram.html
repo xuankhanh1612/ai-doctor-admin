@@ -1,0 +1,208 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+.wrap{padding:8px 0;font-family:var(--font-sans)}
+.section-label{font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--color-text-tertiary);margin-bottom:10px;font-weight:500}
+.flow{display:flex;flex-direction:column;gap:0}
+
+/* Input row */
+.input-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:0}
+.input-card{background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:10px 10px 8px;text-align:center}
+.input-icon{font-size:18px;margin-bottom:4px}
+.input-label{font-size:11px;font-weight:500;color:var(--color-text-primary);line-height:1.2}
+.input-sub{font-size:10px;color:var(--color-text-tertiary);margin-top:2px}
+
+/* Arrow connector */
+.arrow-col{display:flex;justify-content:center;align-items:center;padding:6px 0}
+.arrow-down{width:1px;height:24px;background:var(--color-border-secondary);position:relative;margin:0 auto}
+.arrow-down::after{content:'';position:absolute;bottom:-5px;left:-4px;width:0;height:0;border-left:4px solid transparent;border-right:4px solid transparent;border-top:6px solid var(--color-border-secondary)}
+.arrows-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+
+/* Agent row */
+.agents-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.agent-card{border-radius:var(--border-radius-md);padding:12px 10px;border:0.5px solid;cursor:pointer;transition:transform 0.15s;position:relative}
+.agent-card:hover{transform:translateY(-2px)}
+.agent-card.cyan{background:rgba(0,180,200,0.06);border-color:rgba(0,180,200,0.25)}
+.agent-card.violet{background:rgba(100,60,200,0.06);border-color:rgba(100,60,200,0.25)}
+.agent-card.pink{background:rgba(190,80,130,0.06);border-color:rgba(190,80,130,0.25)}
+.agent-card.green{background:rgba(20,160,80,0.06);border-color:rgba(20,160,80,0.25)}
+.agent-abbr{font-size:10px;font-weight:500;letter-spacing:0.08em;margin-bottom:6px}
+.agent-abbr.cyan{color:rgb(0,180,200)}
+.agent-abbr.violet{color:rgb(140,110,255)}
+.agent-abbr.pink{color:rgb(210,110,160)}
+.agent-abbr.green{color:rgb(20,160,80)}
+.agent-name{font-size:12px;font-weight:500;color:var(--color-text-primary);margin-bottom:2px}
+.agent-role{font-size:10px;color:var(--color-text-tertiary);margin-bottom:10px;line-height:1.4}
+.agent-output{font-size:10px;padding:6px 8px;border-radius:6px;line-height:1.5}
+.agent-output.cyan{background:rgba(0,180,200,0.08);color:rgb(0,160,180)}
+.agent-output.violet{background:rgba(100,60,200,0.08);color:rgb(140,110,255)}
+.agent-output.pink{background:rgba(190,80,130,0.08);color:rgb(210,110,160)}
+.agent-output.green{background:rgba(20,160,80,0.08);color:rgb(20,160,80)}
+.confidence-row{display:flex;align-items:center;gap:6px;margin-top:8px}
+.conf-bar{flex:1;height:3px;border-radius:2px;background:var(--color-border-tertiary);overflow:hidden}
+.conf-fill{height:100%;border-radius:2px}
+.conf-fill.cyan{background:rgb(0,180,200)}
+.conf-fill.violet{background:rgb(140,110,255)}
+.conf-fill.pink{background:rgb(210,110,160)}
+.conf-fill.green{background:rgb(20,160,80)}
+.conf-val{font-size:10px;font-weight:500;min-width:28px;text-align:right}
+.conf-val.cyan{color:rgb(0,180,200)}
+.conf-val.violet{color:rgb(140,110,255)}
+.conf-val.pink{color:rgb(210,110,160)}
+.conf-val.green{color:rgb(20,160,80)}
+.vote-badge{position:absolute;top:8px;right:8px;font-size:9px;padding:2px 7px;border-radius:4px;font-weight:500}
+.vote-agree{background:rgba(20,160,80,0.12);color:rgb(20,160,80);border:0.5px solid rgba(20,160,80,0.25)}
+.vote-flag{background:rgba(220,150,0,0.12);color:rgb(200,140,0);border:0.5px solid rgba(220,150,0,0.25)}
+
+/* Aggregation row */
+.agg-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.agg-connector{display:flex;flex-direction:column;align-items:center;gap:0}
+
+/* Weight cards */
+.weights-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:0}
+.weight-pill{background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:8px 10px;text-align:center}
+.weight-val{font-size:16px;font-weight:500;line-height:1}
+.weight-label{font-size:10px;color:var(--color-text-tertiary);margin-top:3px}
+
+/* Merge arrow */
+.merge-container{position:relative;height:48px;margin:0}
+.merge-svg{width:100%;height:48px}
+
+/* Meta agent */
+.meta-card{background:var(--color-background-primary);border:0.5px solid var(--color-border-primary);border-radius:var(--border-radius-lg);padding:16px;margin-bottom:0}
+.meta-header{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.meta-icon{width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,rgba(0,180,200,0.2),rgba(100,60,200,0.2));border:0.5px solid var(--color-border-secondary);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:500;color:var(--color-text-primary)}
+.meta-title{font-size:14px;font-weight:500;color:var(--color-text-primary)}
+.meta-sub{font-size:11px;color:var(--color-text-tertiary)}
+.dissent-box{background:rgba(220,150,0,0.06);border:0.5px solid rgba(220,150,0,0.2);border-radius:6px;padding:10px 12px;margin-bottom:10px}
+.dissent-label{font-size:10px;color:rgb(200,140,0);font-weight:500;margin-bottom:4px}
+.dissent-text{font-size:11px;color:var(--color-text-secondary);line-height:1.5}
+.consensus-meter{margin-bottom:10px}
+.meter-row{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.meter-bar{flex:1;height:6px;border-radius:3px;background:var(--color-border-tertiary);overflow:hidden}
+.meter-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,rgb(20,160,80),rgb(0,180,200))}
+.meter-val{font-size:13px;font-weight:500;color:var(--color-text-primary);min-width:36px;text-align:right}
+.output-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.output-item{background:var(--color-background-secondary);border-radius:6px;padding:8px 10px}
+.output-key{font-size:10px;color:var(--color-text-tertiary);margin-bottom:2px}
+.output-val{font-size:12px;font-weight:500;color:var(--color-text-primary)}
+
+/* Phases legend */
+.phases{display:flex;gap:6px;flex-wrap:wrap;margin-top:16px}
+.phase-chip{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--color-text-secondary)}
+.phase-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+</style>
+
+<div class="wrap">
+  <h2 class="sr-only">Multi-agent consensus mechanism diagram showing how four specialist AI agents vote and synthesize a unified medical recommendation</h2>
+
+  <div class="section-label">Phase 1 — Patient context broadcast</div>
+  <div class="input-row">
+    <div class="input-card"><div class="input-icon"><i class="ti ti-scan" aria-hidden="true" style="font-size:18px;color:var(--color-text-secondary)"></i></div><div class="input-label">Imaging</div><div class="input-sub">X-ray · CT · MRI</div></div>
+    <div class="input-card"><div class="input-icon"><i class="ti ti-dna" aria-hidden="true" style="font-size:18px;color:var(--color-text-secondary)"></i></div><div class="input-label">Genomics</div><div class="input-sub">EGFR · T790M</div></div>
+    <div class="input-card"><div class="input-icon"><i class="ti ti-history" aria-hidden="true" style="font-size:18px;color:var(--color-text-secondary)"></i></div><div class="input-label">History</div><div class="input-sub">Family · Lifestyle</div></div>
+    <div class="input-card"><div class="input-icon"><i class="ti ti-world" aria-hidden="true" style="font-size:18px;color:var(--color-text-secondary)"></i></div><div class="input-label">Environment</div><div class="input-sub">AQI · Location</div></div>
+  </div>
+
+  <div class="arrows-row" style="margin:6px 0">
+    <div class="arrow-col"><div class="arrow-down"></div></div>
+    <div class="arrow-col"><div class="arrow-down"></div></div>
+    <div class="arrow-col"><div class="arrow-down"></div></div>
+    <div class="arrow-col"><div class="arrow-down"></div></div>
+  </div>
+
+  <div class="section-label">Phase 2 — Parallel specialist deliberation (simultaneous)</div>
+  <div class="agents-row">
+    <div class="agent-card cyan">
+      <div class="vote-badge vote-agree">✓ agree</div>
+      <div class="agent-abbr cyan">RADIOLOGY</div>
+      <div class="agent-name">Radiology AI</div>
+      <div class="agent-role">Lesion detection, heatmap analysis, imaging timeline</div>
+      <div class="agent-output cyan">L1 ↓18% · L2 ↑8%<br>Stage IIA · NSCLC</div>
+      <div class="confidence-row"><div class="conf-bar"><div class="conf-fill cyan" style="width:92%"></div></div><span class="conf-val cyan">92%</span></div>
+    </div>
+    <div class="agent-card violet">
+      <div class="vote-badge vote-agree">✓ agree</div>
+      <div class="agent-abbr violet">ONCOLOGY</div>
+      <div class="agent-name">Oncology AI</div>
+      <div class="agent-role">Staging, mutation profiles, treatment protocol</div>
+      <div class="agent-output violet">Scenario B preferred<br>Erlotinib 150mg/day</div>
+      <div class="confidence-row"><div class="conf-bar"><div class="conf-fill violet" style="width:87%"></div></div><span class="conf-val violet">87%</span></div>
+    </div>
+    <div class="agent-card pink">
+      <div class="vote-badge vote-flag">⚠ flag</div>
+      <div class="agent-abbr pink">PATHOLOGY</div>
+      <div class="agent-name">Pathology AI</div>
+      <div class="agent-role">Tissue markers, resistance indicators, anomaly flagging</div>
+      <div class="agent-output pink">T790M present<br>L2 growth — watch</div>
+      <div class="confidence-row"><div class="conf-bar"><div class="conf-fill pink" style="width:78%"></div></div><span class="conf-val pink">78%</span></div>
+    </div>
+    <div class="agent-card green">
+      <div class="vote-badge vote-agree">✓ agree</div>
+      <div class="agent-abbr green">GEN. PRACTICE</div>
+      <div class="agent-name">GenPractice AI</div>
+      <div class="agent-role">Holistic care, QoL, lifestyle integration</div>
+      <div class="agent-output green">Stress intervention<br>Maintain Scenario B</div>
+      <div class="confidence-row"><div class="conf-bar"><div class="conf-fill green" style="width:95%"></div></div><span class="conf-val green">95%</span></div>
+    </div>
+  </div>
+
+  <div style="margin:10px 0 6px">
+    <div class="section-label">Phase 3 — Confidence weighting</div>
+    <div class="weights-row">
+      <div class="weight-pill"><div class="weight-val" style="color:rgb(0,180,200)">0.92</div><div class="weight-label">Radiology weight</div></div>
+      <div class="weight-pill"><div class="weight-val" style="color:rgb(140,110,255)">0.87</div><div class="weight-label">Oncology weight</div></div>
+      <div class="weight-pill"><div class="weight-val" style="color:rgb(210,110,160)">0.78</div><div class="weight-label">Pathology weight</div></div>
+      <div class="weight-pill"><div class="weight-val" style="color:rgb(20,160,80)">0.95</div><div class="weight-label">GP weight</div></div>
+    </div>
+  </div>
+
+  <div style="margin:8px 0 6px">
+    <svg class="merge-svg" viewBox="0 0 680 48" preserveAspectRatio="none" aria-hidden="true">
+      <line x1="85" y1="0" x2="340" y2="40" stroke="var(--color-border-secondary)" stroke-width="0.5" fill="none"/>
+      <line x1="255" y1="0" x2="340" y2="40" stroke="var(--color-border-secondary)" stroke-width="0.5" fill="none"/>
+      <line x1="425" y1="0" x2="340" y2="40" stroke="var(--color-border-secondary)" stroke-width="0.5" fill="none"/>
+      <line x1="595" y1="0" x2="340" y2="40" stroke="var(--color-border-secondary)" stroke-width="0.5" fill="none"/>
+      <circle cx="340" cy="42" r="4" fill="var(--color-background-primary)" stroke="var(--color-border-primary)" stroke-width="0.5"/>
+    </svg>
+  </div>
+
+  <div class="section-label">Phase 4 — Meta-agent synthesis</div>
+  <div class="meta-card">
+    <div class="meta-header">
+      <div class="meta-icon">M</div>
+      <div>
+        <div class="meta-title">Meta-agent · Consensus coordinator</div>
+        <div class="meta-sub">Weighted aggregation · Dissent resolution · Unified output</div>
+      </div>
+    </div>
+
+    <div class="dissent-box">
+      <div class="dissent-label"><i class="ti ti-alert-triangle" aria-hidden="true" style="font-size:11px;vertical-align:-1px;margin-right:4px"></i>Dissent detected — Pathology AI</div>
+      <div class="dissent-text">Pathology flags T790M resistance risk and L2 secondary growth. 3 of 4 agents agree on Scenario B. Meta-agent preserves flag as conditional caveat rather than blocking consensus — recommends biopsy confirmation at week 8 before committing to maintenance dose.</div>
+    </div>
+
+    <div class="consensus-meter">
+      <div class="meter-row">
+        <span style="font-size:11px;color:var(--color-text-tertiary)">Agreement score</span>
+        <div class="meter-bar"><div class="meter-fill" style="width:87.5%"></div></div>
+        <span class="meter-val">87.5%</span>
+      </div>
+    </div>
+
+    <div class="output-grid">
+      <div class="output-item"><div class="output-key">Recommended plan</div><div class="output-val">Scenario B — Targeted</div></div>
+      <div class="output-item"><div class="output-key">Primary drug</div><div class="output-val">Erlotinib 150mg/day</div></div>
+      <div class="output-item"><div class="output-key">Next checkpoint</div><div class="output-val">PET-CT at week 6</div></div>
+      <div class="output-item"><div class="output-key">Conditional action</div><div class="output-val">Biopsy L2 at week 8</div></div>
+    </div>
+  </div>
+
+  <div class="phases">
+    <div class="phase-chip"><div class="phase-dot" style="background:var(--color-text-tertiary)"></div>Broadcast</div>
+    <div class="phase-chip"><div class="phase-dot" style="background:rgb(0,180,200)"></div>Parallel deliberation</div>
+    <div class="phase-chip"><div class="phase-dot" style="background:rgb(140,110,255)"></div>Confidence weighting</div>
+    <div class="phase-chip"><div class="phase-dot" style="background:rgb(20,160,80)"></div>Synthesis</div>
+    <div class="phase-chip"><div class="phase-dot" style="background:rgb(200,140,0)"></div>Dissent preserved</div>
+  </div>
+</div>

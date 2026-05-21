@@ -1,0 +1,556 @@
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap');
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --ink:#0a0e1a;--ink2:#1a2035;--ink3:#2a3250;
+    --cyan:#00e5ff;--cyan2:#00b8cc;--violet:#7c4dff;--violet2:#5b35cc;
+    --green:#00e676;--amber:#ffab40;--red:#ff5252;--pink:#f48fb1;
+    --glass:rgba(255,255,255,0.04);--glass2:rgba(255,255,255,0.08);
+    --border:rgba(0,229,255,0.15);--border2:rgba(0,229,255,0.3);
+  }
+  body{background:var(--ink);color:#e8f4f8;font-family:'DM Sans',sans-serif;font-size:14px}
+  .app{min-height:600px;background:linear-gradient(135deg,#040812 0%,#0a0e1a 40%,#0d1428 100%);padding:0;overflow:hidden;position:relative}
+  .grid-bg{position:absolute;inset:0;background-image:linear-gradient(rgba(0,229,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,229,255,0.03) 1px,transparent 1px);background-size:40px 40px;pointer-events:none}
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid var(--border);background:rgba(4,8,18,0.8);backdrop-filter:blur(8px);position:relative;z-index:10}
+  .logo{display:flex;align-items:center;gap:10px}
+  .logo-mark{width:32px;height:32px;background:linear-gradient(135deg,var(--cyan),var(--violet));border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'Space Mono',monospace;font-size:11px;color:#fff;font-weight:700}
+  .logo-text{font-family:'Space Mono',monospace;font-size:12px;color:var(--cyan);letter-spacing:0.05em}
+  .logo-sub{font-size:10px;color:rgba(255,255,255,0.4);letter-spacing:0.1em}
+  .status-row{display:flex;gap:16px;align-items:center}
+  .status-dot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+  .status-text{font-size:11px;color:var(--green);font-family:'Space Mono',monospace}
+  .agent-count{font-size:11px;color:rgba(255,255,255,0.4);font-family:'Space Mono',monospace}
+  .main{display:grid;grid-template-columns:220px 1fr 200px;gap:0;height:calc(600px - 61px)}
+  .sidebar{border-right:1px solid var(--border);padding:16px 12px;overflow-y:auto;background:rgba(4,8,18,0.5)}
+  .sidebar-title{font-size:9px;letter-spacing:0.15em;color:rgba(255,255,255,0.3);text-transform:uppercase;margin-bottom:12px;font-family:'Space Mono',monospace}
+  .nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;cursor:pointer;margin-bottom:4px;transition:all 0.2s;border:1px solid transparent;font-size:13px;color:rgba(255,255,255,0.5)}
+  .nav-item:hover{background:var(--glass2);color:rgba(255,255,255,0.8);border-color:var(--border)}
+  .nav-item.active{background:rgba(0,229,255,0.08);color:var(--cyan);border-color:var(--border2)}
+  .nav-dot{width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0}
+  .nav-step{font-size:9px;font-family:'Space Mono',monospace;color:rgba(255,255,255,0.2);margin-left:auto}
+  .content{overflow-y:auto;position:relative;padding:0}
+  .panel{display:none;padding:24px;height:100%}
+  .panel.active{display:flex;flex-direction:column;gap:20px}
+  .panel-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+  .panel-title{font-size:18px;font-weight:600;color:#fff;line-height:1.2}
+  .panel-sub{font-size:12px;color:rgba(255,255,255,0.4);margin-top:4px}
+  .tag{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:4px;font-size:10px;font-family:'Space Mono',monospace;letter-spacing:0.05em}
+  .tag-cyan{background:rgba(0,229,255,0.1);color:var(--cyan);border:1px solid rgba(0,229,255,0.2)}
+  .tag-violet{background:rgba(124,77,255,0.1);color:#b39dff;border:1px solid rgba(124,77,255,0.2)}
+  .tag-green{background:rgba(0,230,118,0.1);color:var(--green);border:1px solid rgba(0,230,118,0.2)}
+  .tag-amber{background:rgba(255,171,64,0.1);color:var(--amber);border:1px solid rgba(255,171,64,0.2)}
+  .tag-red{background:rgba(255,82,82,0.1);color:var(--red);border:1px solid rgba(255,82,82,0.2)}
+  .card{background:var(--glass);border:1px solid var(--border);border-radius:12px;padding:16px}
+  .card-title{font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,0.4);margin-bottom:12px;font-family:'Space Mono',monospace}
+  .metrics-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .metric{background:var(--glass2);border:1px solid var(--border);border-radius:8px;padding:12px}
+  .metric-val{font-size:22px;font-weight:600;font-family:'Space Mono',monospace;line-height:1}
+  .metric-label{font-size:10px;color:rgba(255,255,255,0.4);margin-top:4px}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:10px 18px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;border:none;transition:all 0.2s;font-family:'DM Sans',sans-serif}
+  .btn-primary{background:linear-gradient(135deg,var(--cyan2),var(--violet2));color:#fff}
+  .btn-primary:hover{opacity:0.85;transform:translateY(-1px)}
+  .btn-outline{background:transparent;border:1px solid var(--border2);color:var(--cyan)}
+  .btn-outline:hover{background:rgba(0,229,255,0.08)}
+  .btn-sm{padding:6px 12px;font-size:12px}
+  .agent-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.04)}
+  .agent-avatar{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:10px;font-family:'Space Mono',monospace;font-weight:700;flex-shrink:0}
+  .agent-info{flex:1;min-width:0}
+  .agent-name{font-size:12px;font-weight:500;color:#fff}
+  .agent-type{font-size:10px;color:rgba(255,255,255,0.35)}
+  .agent-status{flex-shrink:0}
+  .confidence-bar{height:3px;background:rgba(255,255,255,0.1);border-radius:2px;overflow:hidden;margin-top:4px}
+  .confidence-fill{height:100%;border-radius:2px;transition:width 1s ease}
+  .imaging-viewer{background:#000;border-radius:12px;overflow:hidden;position:relative;aspect-ratio:16/9}
+  .viewer-placeholder{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px}
+  .scan-line{position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--cyan),transparent);animation:scan 3s ease-in-out infinite;opacity:0.6}
+  @keyframes scan{0%{top:10%;opacity:0}20%{opacity:0.8}80%{opacity:0.8}100%{top:90%;opacity:0}}
+  .lesion-box{position:absolute;border:2px solid var(--red);border-radius:4px;animation:flicker 4s ease-in-out infinite}
+  .lesion-label{position:absolute;top:-18px;left:0;font-size:9px;font-family:'Space Mono',monospace;color:var(--red);white-space:nowrap}
+  @keyframes flicker{0%,100%{border-color:var(--red);opacity:1}50%{border-color:#ff8a80;opacity:0.7}}
+  .heatmap-overlay{position:absolute;inset:0;background:radial-gradient(ellipse 25% 20% at 45% 38%,rgba(255,82,82,0.3) 0%,transparent 70%),radial-gradient(ellipse 15% 15% at 65% 55%,rgba(255,171,64,0.2) 0%,transparent 70%);pointer-events:none}
+  .timeline-strip{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px}
+  .timeline-thumb{width:48px;height:48px;border-radius:6px;background:#111;border:2px solid transparent;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:9px;font-family:'Space Mono',monospace;color:rgba(255,255,255,0.4);transition:border-color 0.2s}
+  .timeline-thumb.active{border-color:var(--cyan)}
+  .timeline-thumb:hover{border-color:var(--border2)}
+  .simulation-viz{background:#000;border-radius:12px;padding:20px;position:relative;overflow:hidden}
+  .sim-title{font-size:11px;font-family:'Space Mono',monospace;color:rgba(255,255,255,0.3);margin-bottom:16px}
+  .scenario-btns{display:flex;gap:8px;margin-bottom:16px}
+  .scenario-btn{flex:1;padding:8px;border-radius:6px;text-align:center;cursor:pointer;font-size:12px;font-family:'Space Mono',monospace;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.5);transition:all 0.2s}
+  .scenario-btn.active{border-color:var(--cyan);color:var(--cyan);background:rgba(0,229,255,0.08)}
+  .particle-field{height:100px;position:relative;background:rgba(0,0,0,0.3);border-radius:8px;overflow:hidden;margin-bottom:12px}
+  .particle{position:absolute;border-radius:50%;animation:float linear infinite}
+  @keyframes float{from{transform:translateY(100px) translateX(var(--dx));opacity:0}10%{opacity:0.8}90%{opacity:0.8}to{transform:translateY(-10px) translateX(calc(var(--dx) + var(--dx2)));opacity:0}}
+  .twin-panel{background:var(--glass);border:1px solid var(--border);border-radius:10px;padding:14px}
+  .twin-row{display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04)}
+  .twin-key{font-size:11px;color:rgba(255,255,255,0.4)}
+  .twin-val{font-size:12px;font-weight:500;font-family:'Space Mono',monospace}
+  .flow-timeline{display:flex;flex-direction:column;gap:0}
+  .flow-step{display:flex;gap:12px;padding:12px 0}
+  .flow-line-col{display:flex;flex-direction:column;align-items:center;gap:0;width:20px}
+  .flow-node{width:12px;height:12px;border-radius:50%;flex-shrink:0;margin-top:2px}
+  .flow-connector{flex:1;width:2px;background:var(--border);min-height:20px}
+  .flow-body{flex:1;padding-bottom:8px}
+  .flow-label{font-size:12px;font-weight:500;color:#fff;line-height:1.3}
+  .flow-desc{font-size:11px;color:rgba(255,255,255,0.35);margin-top:3px}
+  .right-panel{border-left:1px solid var(--border);padding:16px 12px;overflow-y:auto;background:rgba(4,8,18,0.5)}
+  .mini-chart{height:60px;position:relative;overflow:hidden}
+  .chart-line{stroke-width:1.5;fill:none}
+  .chart-area{opacity:0.15}
+  .world-seed{margin-top:8px}
+  .seed-item{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:11px;color:rgba(255,255,255,0.5)}
+  .seed-icon{width:20px;height:20px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:9px;flex-shrink:0}
+  .inject-btn{width:100%;margin-top:12px}
+  .progress-bar-wrap{height:4px;background:rgba(255,255,255,0.08);border-radius:2px;overflow:hidden}
+  .progress-bar-fill{height:100%;border-radius:2px;transition:width 2s ease;width:0%}
+  .consensus-ring{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  .c-agent{padding:4px 8px;border-radius:4px;font-size:10px;font-family:'Space Mono',monospace;background:rgba(124,77,255,0.1);border:1px solid rgba(124,77,255,0.25);color:#b39dff}
+  .c-agent.agree{background:rgba(0,230,118,0.1);border-color:rgba(0,230,118,0.25);color:var(--green)}
+  .c-agent.flag{background:rgba(255,171,64,0.1);border-color:rgba(255,171,64,0.25);color:var(--amber)}
+</style>
+
+<h2 class="sr-only">Consensus Doctor AI Agents Platform — interactive medical digital twin demo</h2>
+
+<div class="app">
+  <div class="grid-bg"></div>
+  <div class="topbar">
+    <div class="logo">
+      <div class="logo-mark">Rx</div>
+      <div>
+        <div class="logo-text">CONSENSUS DOCTOR</div>
+        <div class="logo-sub">AI AGENTS PLATFORM · MEDICAL DIGITAL TWIN</div>
+      </div>
+    </div>
+    <div class="status-row">
+      <div class="status-dot"></div>
+      <div class="status-text">LIVE · 4 AGENTS ACTIVE</div>
+      <div class="agent-count">1,247 simulations run</div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="sidebar">
+      <div class="sidebar-title">Patient Journey</div>
+      <div class="nav-item active" onclick="switchPanel('imaging')">
+        <div class="nav-dot"></div> Imaging Analysis <span class="nav-step">01</span>
+      </div>
+      <div class="nav-item" onclick="switchPanel('checkin')">
+        <div class="nav-dot"></div> Symptom Check-in <span class="nav-step">02</span>
+      </div>
+      <div class="nav-item" onclick="switchPanel('twin')">
+        <div class="nav-dot"></div> Digital Twin <span class="nav-step">03</span>
+      </div>
+      <div class="nav-item" onclick="switchPanel('simulation')">
+        <div class="nav-dot"></div> Treatment Simulation <span class="nav-step">04</span>
+      </div>
+      <div class="nav-item" onclick="switchPanel('consensus')">
+        <div class="nav-dot"></div> Agent Consensus <span class="nav-step">05</span>
+      </div>
+
+      <div class="sidebar-title" style="margin-top:20px">AI Agents</div>
+      <div class="agent-row">
+        <div class="agent-avatar" style="background:rgba(0,229,255,0.15);color:var(--cyan)">RX</div>
+        <div class="agent-info">
+          <div class="agent-name">Radiology AI</div>
+          <div class="agent-type">Imaging analysis</div>
+          <div class="confidence-bar"><div class="confidence-fill" style="width:92%;background:var(--cyan)"></div></div>
+        </div>
+        <div class="tag tag-cyan btn-sm" style="padding:3px 8px;font-size:9px">92%</div>
+      </div>
+      <div class="agent-row">
+        <div class="agent-avatar" style="background:rgba(124,77,255,0.15);color:#b39dff">ON</div>
+        <div class="agent-info">
+          <div class="agent-name">Oncology AI</div>
+          <div class="agent-type">Tumor staging</div>
+          <div class="confidence-bar"><div class="confidence-fill" style="width:87%;background:#b39dff"></div></div>
+        </div>
+        <div class="tag tag-violet btn-sm" style="padding:3px 8px;font-size:9px">87%</div>
+      </div>
+      <div class="agent-row">
+        <div class="agent-avatar" style="background:rgba(244,143,177,0.15);color:var(--pink)">PT</div>
+        <div class="agent-info">
+          <div class="agent-name">Pathology AI</div>
+          <div class="agent-type">Tissue markers</div>
+          <div class="confidence-bar"><div class="confidence-fill" style="width:78%;background:var(--pink)"></div></div>
+        </div>
+        <div class="tag" style="background:rgba(244,143,177,0.1);color:var(--pink);border:1px solid rgba(244,143,177,0.2);padding:3px 8px;font-size:9px;border-radius:4px">78%</div>
+      </div>
+      <div class="agent-row">
+        <div class="agent-avatar" style="background:rgba(0,230,118,0.15);color:var(--green)">GP</div>
+        <div class="agent-info">
+          <div class="agent-name">GenPractice AI</div>
+          <div class="agent-type">Holistic care</div>
+          <div class="confidence-bar"><div class="confidence-fill" style="width:95%;background:var(--green)"></div></div>
+        </div>
+        <div class="tag tag-green btn-sm" style="padding:3px 8px;font-size:9px">95%</div>
+      </div>
+    </div>
+
+    <div class="content">
+      <!-- IMAGING PANEL -->
+      <div class="panel active" id="panel-imaging">
+        <div class="panel-header">
+          <div>
+            <div class="panel-title">Medical Imaging Analysis</div>
+            <div class="panel-sub">AI-powered X-ray, CT &amp; MRI lesion detection with heatmap overlay</div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <span class="tag tag-cyan">X-RAY</span>
+            <span class="tag tag-violet">CT</span>
+          </div>
+        </div>
+
+        <div class="imaging-viewer">
+          <div class="viewer-placeholder">
+            <svg width="80" height="80" viewBox="0 0 80 80" aria-hidden="true">
+              <rect x="5" y="5" width="70" height="70" rx="4" stroke="rgba(0,229,255,0.2)" stroke-width="1" fill="none"/>
+              <ellipse cx="40" cy="35" rx="18" ry="24" stroke="rgba(0,229,255,0.4)" stroke-width="1" fill="none"/>
+              <line x1="40" y1="11" x2="40" y2="59" stroke="rgba(0,229,255,0.15)" stroke-width="1"/>
+              <ellipse cx="30" cy="38" rx="7" ry="12" stroke="rgba(0,229,255,0.3)" stroke-width="1" fill="none"/>
+              <ellipse cx="50" cy="38" rx="7" ry="12" stroke="rgba(0,229,255,0.3)" stroke-width="1" fill="none"/>
+              <rect x="35" y="59" width="10" height="10" rx="1" stroke="rgba(0,229,255,0.2)" stroke-width="1" fill="none"/>
+            </svg>
+            <div style="font-size:11px;color:rgba(0,229,255,0.5);font-family:'Space Mono',monospace">Chest X-ray · Patient LXK-2024</div>
+          </div>
+          <div class="scan-line"></div>
+          <div class="heatmap-overlay"></div>
+          <div class="lesion-box" style="left:38%;top:28%;width:12%;height:14%">
+            <div class="lesion-label">L1 · 2.3cm</div>
+          </div>
+          <div class="lesion-box" style="left:58%;top:46%;width:9%;height:11%;border-color:var(--amber);animation-delay:2s">
+            <div class="lesion-label" style="color:var(--amber)">L2 · 1.1cm</div>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="card">
+            <div class="card-title">Lesion Tracking</div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="display:flex;align-items:center;justify-content:space-between">
+                <span style="font-size:12px">L1 (Primary)</span>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span class="tag tag-green" style="font-size:9px">↓ 18%</span>
+                  <span style="font-size:12px;font-family:'Space Mono',monospace">2.3cm</span>
+                </div>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between">
+                <span style="font-size:12px">L2 (Secondary)</span>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span class="tag tag-amber" style="font-size:9px">↑ 8%</span>
+                  <span style="font-size:12px;font-family:'Space Mono',monospace">1.1cm</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">AI Finding</div>
+            <div style="font-size:12px;color:rgba(255,255,255,0.7);line-height:1.6">Bilateral lung nodules detected. L1 shows regression response. L2 warrants monitoring — marginal growth trend.</div>
+            <div style="margin-top:10px;display:flex;gap:6px">
+              <span class="tag tag-cyan" style="font-size:9px">STAGE IIA</span>
+              <span class="tag tag-violet" style="font-size:9px">NSCLC</span>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="card-title" style="font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,0.3);margin-bottom:8px;font-family:'Space Mono',monospace">Scan Timeline</div>
+          <div class="timeline-strip">
+            <div class="timeline-thumb active">T−12<br>Mo</div>
+            <div class="timeline-thumb">T−9<br>Mo</div>
+            <div class="timeline-thumb">T−6<br>Mo</div>
+            <div class="timeline-thumb">T−3<br>Mo</div>
+            <div class="timeline-thumb" style="border-color:var(--green);color:var(--green)">NOW</div>
+          </div>
+        </div>
+
+        <button class="btn btn-primary" onclick="switchPanel('checkin')">Continue to Symptom Check-in →</button>
+      </div>
+
+      <!-- CHECKIN PANEL -->
+      <div class="panel" id="panel-checkin">
+        <div class="panel-header">
+          <div>
+            <div class="panel-title">Symptom &amp; History Check-in</div>
+            <div class="panel-sub">Seed data extraction for digital twin construction</div>
+          </div>
+          <span class="tag tag-violet">SEED COLLECTION</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="card">
+            <div class="card-title">Personal History</div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div class="twin-row"><span class="twin-key">Age</span><span class="twin-val" style="color:var(--cyan)">47</span></div>
+              <div class="twin-row"><span class="twin-key">Location</span><span class="twin-val" style="color:var(--cyan)">HCMC, VN</span></div>
+              <div class="twin-row"><span class="twin-key">Smoker</span><span class="twin-val" style="color:var(--amber)">Ex · 8yr</span></div>
+              <div class="twin-row"><span class="twin-key">Exercise</span><span class="twin-val" style="color:var(--green)">Moderate</span></div>
+              <div class="twin-row"><span class="twin-key">BMI</span><span class="twin-val" style="color:var(--cyan)">24.2</span></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">Family Medical History</div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div class="twin-row"><span class="twin-key">Father</span><span class="twin-val" style="color:var(--red)">Lung Ca.</span></div>
+              <div class="twin-row"><span class="twin-key">Mother</span><span class="twin-val" style="color:var(--amber)">Hypertension</span></div>
+              <div class="twin-row"><span class="twin-key">Sibling</span><span class="twin-val" style="color:var(--green)">Healthy</span></div>
+              <div class="twin-row"><span class="twin-key">BRCA</span><span class="twin-val" style="color:var(--green)">Negative</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Current Symptoms</div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px">
+            <span class="tag tag-red">Persistent cough</span>
+            <span class="tag tag-amber">Fatigue</span>
+            <span class="tag tag-amber">Mild dyspnea</span>
+            <span class="tag tag-cyan">Night sweats</span>
+          </div>
+          <div style="margin-top:12px;font-size:11px;color:rgba(255,255,255,0.35)">Duration: 6 weeks · Severity: 6/10</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Environmental Seed Signals</div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <div class="seed-item"><div class="seed-icon" style="background:rgba(0,229,255,0.1);color:var(--cyan)">📍</div>Air quality index HCMC: 128 (Unhealthy for Sensitive)</div>
+            <div class="seed-item"><div class="seed-icon" style="background:rgba(255,171,64,0.1);color:var(--amber)">📰</div>New EGFR inhibitor trial results — Nature Medicine, May 2026</div>
+            <div class="seed-item"><div class="seed-icon" style="background:rgba(0,230,118,0.1);color:var(--green)">💊</div>Current: Erlotinib 150mg/day · Cycle 4</div>
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="switchPanel('twin')">Build Digital Twin →</button>
+      </div>
+
+      <!-- TWIN PANEL -->
+      <div class="panel" id="panel-twin">
+        <div class="panel-header">
+          <div>
+            <div class="panel-title">Medical Digital Twin</div>
+            <div class="panel-sub">High-fidelity parallel world model — 1,247 agents initialized</div>
+          </div>
+          <span class="tag tag-green">TWIN ACTIVE</span>
+        </div>
+        <div class="metrics-grid">
+          <div class="metric"><div class="metric-val" style="color:var(--cyan)">1,247</div><div class="metric-label">Active agents</div></div>
+          <div class="metric"><div class="metric-val" style="color:var(--green)">94%</div><div class="metric-label">Twin fidelity</div></div>
+          <div class="metric"><div class="metric-val" style="color:var(--violet)">483</div><div class="metric-label">Interactions / sec</div></div>
+          <div class="metric"><div class="metric-val" style="color:var(--amber)">71%</div><div class="metric-label">Reality match</div></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Biological Data Visualization</div>
+          <div class="particle-field" id="particleField">
+            <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:24px;pointer-events:none">
+              <svg width="80" height="80" viewBox="0 0 80 80" aria-hidden="true">
+                <circle cx="40" cy="40" r="28" fill="none" stroke="rgba(0,229,255,0.3)" stroke-width="1"/>
+                <circle cx="40" cy="40" r="18" fill="none" stroke="rgba(124,77,255,0.3)" stroke-width="1"/>
+                <circle cx="40" cy="40" r="8" fill="rgba(0,229,255,0.2)" stroke="var(--cyan)" stroke-width="1"/>
+                <circle cx="24" cy="32" r="4" fill="rgba(255,82,82,0.3)" stroke="var(--red)" stroke-width="0.5"/>
+                <circle cx="56" cy="46" r="3" fill="rgba(0,230,118,0.3)" stroke="var(--green)" stroke-width="0.5"/>
+                <circle cx="48" cy="24" r="3.5" fill="rgba(255,171,64,0.3)" stroke="var(--amber)" stroke-width="0.5"/>
+              </svg>
+              <div style="text-align:left">
+                <div style="font-size:10px;font-family:'Space Mono',monospace;color:rgba(255,255,255,0.5);margin-bottom:4px">CELL MODEL · ACTIVE</div>
+                <div style="font-size:11px;color:rgba(255,255,255,0.6)">Tumor cell · <span style="color:var(--red)">mutating</span></div>
+                <div style="font-size:11px;color:rgba(255,255,255,0.6)">T-cells · <span style="color:var(--green)">responding</span></div>
+                <div style="font-size:11px;color:rgba(255,255,255,0.6)">Drug binding · <span style="color:var(--cyan)">active</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="twin-panel">
+          <div class="card-title">Body Composition Index</div>
+          <div class="twin-row"><span class="twin-key">Liver fat</span><div style="display:flex;align-items:center;gap:8px;flex:1;margin-left:12px"><div style="flex:1;height:4px;background:rgba(255,255,255,0.1);border-radius:2px"><div style="width:35%;height:100%;background:var(--amber);border-radius:2px"></div></div><span class="twin-val" style="color:var(--amber)">35%</span></div></div>
+          <div class="twin-row"><span class="twin-key">Lung capacity</span><div style="display:flex;align-items:center;gap:8px;flex:1;margin-left:12px"><div style="flex:1;height:4px;background:rgba(255,255,255,0.1);border-radius:2px"><div style="width:68%;height:100%;background:var(--cyan);border-radius:2px"></div></div><span class="twin-val" style="color:var(--cyan)">68%</span></div></div>
+          <div class="twin-row"><span class="twin-key">Immune score</span><div style="display:flex;align-items:center;gap:8px;flex:1;margin-left:12px"><div style="flex:1;height:4px;background:rgba(255,255,255,0.1);border-radius:2px"><div style="width:71%;height:100%;background:var(--green);border-radius:2px"></div></div><span class="twin-val" style="color:var(--green)">71%</span></div></div>
+          <div class="twin-row"><span class="twin-key">Drug response</span><div style="display:flex;align-items:center;gap:8px;flex:1;margin-left:12px"><div style="flex:1;height:4px;background:rgba(255,255,255,0.1);border-radius:2px"><div style="width:82%;height:100%;background:var(--violet);border-radius:2px"></div></div><span class="twin-val" style="color:#b39dff">82%</span></div></div>
+        </div>
+        <button class="btn btn-primary" onclick="switchPanel('simulation')">Run Treatment Simulations →</button>
+      </div>
+
+      <!-- SIMULATION PANEL -->
+      <div class="panel" id="panel-simulation">
+        <div class="panel-header">
+          <div>
+            <div class="panel-title">Treatment Simulation</div>
+            <div class="panel-sub">Rehearsing futures in a digital sandbox — god's-eye trajectory projection</div>
+          </div>
+          <span class="tag tag-amber">SIMULATION MODE</span>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Select Treatment Scenario</div>
+          <div class="scenario-btns" id="scenarioBtns">
+            <div class="scenario-btn" onclick="setScenario('A',this)">A · Chemo</div>
+            <div class="scenario-btn active" onclick="setScenario('B',this)">B · Targeted</div>
+            <div class="scenario-btn" onclick="setScenario('C',this)">C · Combined</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+            <span style="font-size:11px;color:rgba(255,255,255,0.4)">Projection horizon</span>
+            <input type="range" min="1" max="12" value="6" id="monthRange" style="flex:1" oninput="updateSim(this.value)"/>
+            <span id="monthLabel" style="font-size:12px;font-weight:500;font-family:'Space Mono',monospace;min-width:32px;color:var(--cyan)">6 mo</span>
+          </div>
+          <div class="particle-field" id="simField">
+            <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px">
+              <div id="simResult" style="font-size:28px;font-weight:600;font-family:'Space Mono',monospace;color:var(--cyan)">18%</div>
+              <div id="simLabel" style="font-size:11px;color:rgba(255,255,255,0.4)">Estimated lesion reduction · Scenario B</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+          <div class="metric"><div class="metric-val" style="color:var(--red);font-size:16px">52%</div><div class="metric-label">Scenario A · 6mo</div></div>
+          <div class="metric" style="border-color:var(--cyan)"><div class="metric-val" style="color:var(--cyan);font-size:16px">18%</div><div class="metric-label">Scenario B · 6mo ✓</div></div>
+          <div class="metric"><div class="metric-val" style="color:var(--green);font-size:16px">10%</div><div class="metric-label">Scenario C · 6mo</div></div>
+        </div>
+
+        <div class="flow-timeline">
+          <div class="flow-step">
+            <div class="flow-line-col"><div class="flow-node" style="background:var(--cyan)"></div><div class="flow-connector"></div></div>
+            <div class="flow-body"><div class="flow-label">Erlotinib · Day 0</div><div class="flow-desc">150mg/day · EGFR inhibitor · Oral</div></div>
+          </div>
+          <div class="flow-step">
+            <div class="flow-line-col"><div class="flow-node" style="background:var(--violet)"></div><div class="flow-connector"></div></div>
+            <div class="flow-body"><div class="flow-label">Checkpoint assessment · Week 6</div><div class="flow-desc">PET-CT re-staging + biomarker panel</div></div>
+          </div>
+          <div class="flow-step">
+            <div class="flow-line-col"><div class="flow-node" style="background:var(--green)"></div></div>
+            <div class="flow-body"><div class="flow-label">Response confirmed · Month 3</div><div class="flow-desc">Continue maintenance · Adjust dose PRN</div></div>
+          </div>
+        </div>
+
+        <button class="btn btn-primary" onclick="switchPanel('consensus')">Submit to Agent Consensus →</button>
+      </div>
+
+      <!-- CONSENSUS PANEL -->
+      <div class="panel" id="panel-consensus">
+        <div class="panel-header">
+          <div>
+            <div class="panel-title">AI Agent Consensus</div>
+            <div class="panel-sub">Multi-agent deliberation — 4 specialists, 1 unified recommendation</div>
+          </div>
+          <span class="tag tag-green">CONSENSUS REACHED</span>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Voting Result</div>
+          <div class="consensus-ring">
+            <div class="c-agent agree">Radiology AI ✓</div>
+            <div class="c-agent agree">Oncology AI ✓</div>
+            <div class="c-agent flag">Pathology AI ⚠</div>
+            <div class="c-agent agree">GenPractice AI ✓</div>
+          </div>
+          <div style="margin-top:12px">
+            <div style="display:flex;justify-content:space-between;font-size:11px;color:rgba(255,255,255,0.4);margin-bottom:6px">
+              <span>Consensus score</span><span style="color:var(--green)">87.5% agreement</span>
+            </div>
+            <div class="progress-bar-wrap"><div class="progress-bar-fill" id="consensusPbar" style="width:87.5%;background:linear-gradient(90deg,var(--green),var(--cyan))"></div></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Unified Recommendation</div>
+          <div style="font-size:13px;color:rgba(255,255,255,0.8);line-height:1.7;margin-bottom:12px">
+            Proceed with <strong style="color:var(--cyan)">Scenario B — Targeted Therapy</strong>. Erlotinib maintenance at 150mg/day. Schedule PET-CT at 6 weeks. Pathology agent flags L2 marginal growth — recommend adding bevacizumab at 8-week review pending biopsy confirmation.
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <span class="tag tag-green">Recommended</span>
+            <span class="tag tag-cyan">87.5% confidence</span>
+            <span class="tag tag-amber">L2 watch</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Simulation History · Top Outcomes</div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <div class="twin-row"><span class="twin-key">#1 Scenario B · 6 months</span><span class="twin-val" style="color:var(--green)">18% reduction</span></div>
+            <div class="twin-row"><span class="twin-key">#2 Scenario C · 9 months</span><span class="twin-val" style="color:var(--cyan)">10% reduction</span></div>
+            <div class="twin-row"><span class="twin-key">#3 Scenario B · 12 months</span><span class="twin-val" style="color:var(--cyan)">8% residual</span></div>
+            <div class="twin-row"><span class="twin-key">Worst · Scenario A · 3 months</span><span class="twin-val" style="color:var(--red)">52% growth</span></div>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:10px">
+          <button class="btn btn-outline" onclick="switchPanel('imaging')">← New Scan</button>
+          <button class="btn btn-primary" style="flex:1" onclick="sendPrompt('How does the Consensus Doctor AI platform work? What are the next steps for this patient case?')">Ask Claude about this case ↗</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="right-panel">
+      <div class="sidebar-title">World Seed Data</div>
+      <div class="world-seed">
+        <div class="seed-item"><div class="seed-icon" style="background:rgba(0,229,255,0.1);color:var(--cyan)">🧬</div>EGFR T790M mutation detected</div>
+        <div class="seed-item"><div class="seed-icon" style="background:rgba(255,82,82,0.1);color:var(--red)">🏙</div>HCMC AQI: 128 · Hazardous</div>
+        <div class="seed-item"><div class="seed-icon" style="background:rgba(0,230,118,0.1);color:var(--green)">🏃</div>Steps/day: 4,200 avg</div>
+        <div class="seed-item"><div class="seed-icon" style="background:rgba(255,171,64,0.1);color:var(--amber)">📰</div>New EGFR trial results</div>
+        <div class="seed-item"><div class="seed-icon" style="background:rgba(124,77,255,0.1);color:#b39dff">🧪</div>Erlotinib · Cycle 4</div>
+      </div>
+
+      <div class="sidebar-title" style="margin-top:20px">Swarm Pulse</div>
+      <div style="height:60px;position:relative;overflow:hidden;margin-bottom:12px">
+        <svg width="100%" height="60" viewBox="0 0 176 60" preserveAspectRatio="none" aria-label="Agent activity chart" role="img">
+          <polyline points="0,50 20,42 40,35 60,40 80,28 100,22 120,30 140,18 160,24 176,20" class="chart-line" stroke="rgba(0,229,255,0.7)" stroke-width="1.5" fill="none"/>
+          <polyline points="0,50 20,42 40,35 60,40 80,28 100,22 120,30 140,18 160,24 176,20 176,60 0,60" fill="rgba(0,229,255,0.1)" stroke="none"/>
+        </svg>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:9px;font-family:'Space Mono',monospace;color:rgba(255,255,255,0.3);margin-bottom:16px">
+        <span>483 int/s</span><span style="color:var(--green)">↑ 12%</span>
+      </div>
+
+      <div class="sidebar-title">Inject Variable</div>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;color:rgba(255,255,255,0.5)">
+          <span>Stress level</span>
+          <span id="stressVal" style="font-family:'Space Mono',monospace;color:var(--amber)">6</span>
+        </div>
+        <input type="range" min="1" max="10" value="6" oninput="document.getElementById('stressVal').textContent=this.value"/>
+        <div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;color:rgba(255,255,255,0.5)">
+          <span>Drug dose</span>
+          <span id="doseVal" style="font-family:'Space Mono',monospace;color:var(--cyan)">150mg</span>
+        </div>
+        <input type="range" min="50" max="300" value="150" step="50" oninput="document.getElementById('doseVal').textContent=this.value+'mg'"/>
+      </div>
+      <button class="btn btn-outline btn-sm inject-btn" onclick="sendPrompt('What happens if I inject higher stress levels into the digital twin simulation for this lung cancer patient?')">Re-run simulation ↗</button>
+
+      <div class="sidebar-title" style="margin-top:20px">Quick Actions</div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <button class="btn btn-outline btn-sm" onclick="sendPrompt('Explain the multi-agent consensus mechanism in the Consensus Doctor AI platform and how agents vote')" style="font-size:11px;justify-content:flex-start">Agent architecture ↗</button>
+        <button class="btn btn-outline btn-sm" onclick="sendPrompt('What is a medical digital twin and how does swarm intelligence improve cancer treatment prediction?')" style="font-size:11px;justify-content:flex-start">What is a digital twin ↗</button>
+        <button class="btn btn-outline btn-sm" onclick="sendPrompt('How can I build this Consensus Doctor AI platform with Next.js? What are the key technical components?')" style="font-size:11px;justify-content:flex-start">Build this platform ↗</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function switchPanel(id){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('panel-'+id).classList.add('active');
+  const idx={'imaging':0,'checkin':1,'twin':2,'simulation':3,'consensus':4};
+  const navItems=document.querySelectorAll('.nav-item');
+  if(idx[id]!==undefined) navItems[idx[id]].classList.add('active');
+}
+
+const scenarios={A:{result:'52%',label:'High progression risk · Scenario A',color:'var(--red)'},B:{result:'18%',label:'Estimated lesion reduction · Scenario B',color:'var(--cyan)'},C:{result:'10%',label:'Best-case combined therapy · Scenario C',color:'var(--green)'}};
+let curScenario='B';
+
+function setScenario(s,el){
+  curScenario=s;
+  document.querySelectorAll('.scenario-btn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  updateSim(document.getElementById('monthRange').value);
+}
+
+function updateSim(months){
+  document.getElementById('monthLabel').textContent=months+' mo';
+  const sc=scenarios[curScenario];
+  document.getElementById('simResult').style.color=sc.color;
+  document.getElementById('simResult').textContent=sc.result;
+  document.getElementById('simLabel').textContent=sc.label;
+}
+
+document.querySelectorAll('.timeline-thumb').forEach(t=>{
+  t.addEventListener('click',function(){
+    document.querySelectorAll('.timeline-thumb').forEach(x=>x.classList.remove('active'));
+    this.classList.add('active');
+  });
+});
+</script>

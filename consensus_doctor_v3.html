@@ -1,0 +1,1560 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Consensus Doctor v3</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#04060f;--bg2:#080c1a;--bg3:#0d1226;
+  --surface:rgba(255,255,255,0.03);--surface2:rgba(255,255,255,0.06);
+  --border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.15);
+  --cyan:#00e5ff;--cyan2:#00b8cc;--violet:#9c6fff;--violet2:#6b3fd4;
+  --green:#00e676;--amber:#ffb74d;--red:#ff5252;--pink:#f48fb1;
+  --text:#e8f0f8;--text2:rgba(232,240,248,0.55);--text3:rgba(232,240,248,0.28);
+  --font-d:'Syne',sans-serif;--font-m:'JetBrains Mono',monospace;
+  --radius:10px;--radius-lg:16px;
+  --sidebar-w:210px;
+}
+.light{
+  --bg:#f0f2f5;--bg2:#ffffff;--bg3:#e8eaf0;
+  --surface:rgba(0,0,0,0.03);--surface2:rgba(0,0,0,0.06);
+  --border:rgba(0,0,0,0.09);--border2:rgba(0,0,0,0.18);
+  --text:#0d1226;--text2:rgba(13,18,38,0.6);--text3:rgba(13,18,38,0.35);
+}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--text);font-family:var(--font-d);font-size:13px;line-height:1.5;transition:background .3s,color .3s}
+#app{height:100vh;display:flex;flex-direction:column;overflow:hidden}
+
+/* ===== AUTH ===== */
+.auth-wrap{flex:1;display:flex;align-items:center;justify-content:center;padding:24px;background:var(--bg);overflow-y:auto}
+.auth-card{width:100%;max-width:400px;background:var(--bg2);border:1px solid var(--border2);border-radius:20px;padding:36px 32px}
+.auth-logo{display:flex;align-items:center;gap:10px;margin-bottom:28px}
+.logo-icon{width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,var(--cyan2),var(--violet2));display:flex;align-items:center;justify-content:center;font-family:var(--font-m);font-weight:700;font-size:13px;color:#fff;flex-shrink:0}
+.auth-btn{width:100%;padding:11px 16px;border-radius:10px;border:1px solid var(--border2);background:var(--surface);color:var(--text);font-family:var(--font-d);font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:10px;transition:all .2s;margin-bottom:9px}
+.auth-btn:hover{background:var(--surface2);border-color:var(--cyan)}
+.auth-divider{text-align:center;color:var(--text3);font-size:11px;font-family:var(--font-m);letter-spacing:.08em;margin:14px 0;position:relative}
+.auth-divider::before,.auth-divider::after{content:'';position:absolute;top:50%;width:40%;height:1px;background:var(--border)}
+.auth-divider::before{left:0}.auth-divider::after{right:0}
+.auth-input{width:100%;padding:10px 13px;border-radius:8px;border:1px solid var(--border2);background:var(--surface);color:var(--text);font-family:var(--font-d);font-size:13px;margin-bottom:9px;outline:none;transition:border .2s}
+.auth-input:focus{border-color:var(--cyan)}
+.auth-input::placeholder{color:var(--text3)}
+.btn-primary{width:100%;padding:11px;border-radius:10px;border:none;background:linear-gradient(135deg,var(--cyan2),var(--violet2));color:#fff;font-family:var(--font-d);font-size:13px;font-weight:700;cursor:pointer;transition:opacity .2s}
+.btn-primary:hover{opacity:.85}
+.lang-btn{padding:3px 8px;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--text3);font-size:10px;font-family:var(--font-m);cursor:pointer;transition:all .2s}
+.lang-btn.active{background:rgba(0,229,255,.1);border-color:rgba(0,229,255,.3);color:var(--cyan)}
+
+/* ===== MAIN APP ===== */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:9px 18px;border-bottom:1px solid var(--border);background:rgba(4,6,15,0.92);backdrop-filter:blur(8px);flex-shrink:0;gap:8px;z-index:100}
+.light .topbar{background:rgba(240,242,245,0.95)}
+.topbar-logo{display:flex;align-items:center;gap:9px;cursor:pointer}
+.topbar-right{display:flex;align-items:center;gap:8px}
+.icon-btn{padding:5px 8px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text2);cursor:pointer;font-size:11px;font-family:var(--font-m);transition:all .2s;display:flex;align-items:center;gap:4px}
+.icon-btn:hover{background:var(--surface2);color:var(--text)}
+.icon-btn.active{background:rgba(0,229,255,0.1);border-color:rgba(0,229,255,0.3);color:var(--cyan)}
+.avatar{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--cyan2),var(--violet2));display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;cursor:pointer;flex-shrink:0;overflow:hidden;border:1.5px solid var(--border2)}
+.avatar img{width:100%;height:100%;object-fit:cover}
+
+.body-wrap{display:flex;flex:1;overflow:hidden}
+.sidebar{width:var(--sidebar-w);border-right:1px solid var(--border);background:rgba(4,6,15,0.6);display:flex;flex-direction:column;padding:10px 7px;gap:2px;flex-shrink:0;overflow-y:auto;transition:background .3s}
+.light .sidebar{background:rgba(240,242,245,0.8)}
+.nav-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:12px;color:var(--text2);border:1px solid transparent;transition:all .18s;background:transparent;width:100%;text-align:left;font-family:var(--font-d)}
+.nav-item:hover{background:var(--surface2);color:var(--text)}
+.nav-item.active{background:rgba(0,229,255,0.08);border-color:rgba(0,229,255,0.2);color:var(--cyan)}
+.nav-sep{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);font-family:var(--font-m);padding:8px 10px 3px;margin-top:2px}
+.sidebar-user{padding:10px 8px;border-top:1px solid var(--border);margin-top:auto;display:flex;align-items:center;gap:8px}
+
+.main{flex:1;overflow-y:auto;padding:18px;background:var(--bg)}
+.light .main{background:var(--bg)}
+
+/* ===== CARDS ===== */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px}
+.card-title{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);font-family:var(--font-m);margin-bottom:11px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px}
+.tag{display:inline-flex;align-items:center;padding:2px 7px;border-radius:4px;font-size:10px;font-family:var(--font-m);border:1px solid}
+.tag-cyan{background:rgba(0,229,255,.1);color:var(--cyan);border-color:rgba(0,229,255,.2)}
+.tag-violet{background:rgba(156,111,255,.1);color:var(--violet);border-color:rgba(156,111,255,.2)}
+.tag-green{background:rgba(0,230,118,.1);color:var(--green);border-color:rgba(0,230,118,.2)}
+.tag-amber{background:rgba(255,183,77,.1);color:var(--amber);border-color:rgba(255,183,77,.2)}
+.tag-red{background:rgba(255,82,82,.1);color:var(--red);border-color:rgba(255,82,82,.2)}
+.tag-pink{background:rgba(244,143,177,.1);color:var(--pink);border-color:rgba(244,143,177,.2)}
+
+/* ===== UPLOAD ===== */
+.upload-zone{border:2px dashed var(--border2);border-radius:12px;padding:28px;text-align:center;cursor:pointer;transition:all .2s;background:var(--surface)}
+.upload-zone:hover,.upload-zone.drag{border-color:var(--cyan);background:rgba(0,229,255,0.04)}
+.upload-zone input{display:none}
+
+/* ===== PATIENTS ===== */
+.patient-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface);cursor:pointer;transition:all .2s;margin-bottom:6px}
+.patient-row:hover{border-color:var(--border2);background:var(--surface2)}
+
+/* ===== SUGGEST ===== */
+.suggest-card{background:linear-gradient(135deg,rgba(0,229,255,.05),rgba(156,111,255,.05));border:1px solid rgba(0,229,255,.2);border-radius:12px;padding:13px}
+
+/* ===== FAMILY ===== */
+.family-tree-svg{overflow:visible}
+
+/* ===== ADMIN TABLE ===== */
+.adm-table{width:100%;border-collapse:collapse;font-size:12px}
+.adm-table th{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);font-family:var(--font-m);padding:7px 10px;text-align:left;border-bottom:1px solid var(--border)}
+.adm-table td{padding:9px 10px;border-bottom:1px solid var(--border);color:var(--text2)}
+.adm-table tr:hover td{background:var(--surface2)}
+
+/* ===== MODAL ===== */
+.modal-wrap{position:fixed;inset:0;background:rgba(0,0,0,0.65);display:flex;align-items:center;justify-content:center;z-index:300}
+.modal-box{background:var(--bg2);border:1px solid var(--border2);border-radius:16px;padding:24px;max-width:440px;width:92%;max-height:90vh;overflow-y:auto}
+
+/* ===== PROGRESS ===== */
+.prog-bar{height:3px;background:var(--surface2);border-radius:2px;overflow:hidden}
+.prog-fill{height:100%;border-radius:2px;transition:width .6s ease}
+
+/* ===== TIMELINE ===== */
+.tl-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:4px}
+
+/* ===== STATUS ===== */
+.status-badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-family:var(--font-m)}
+.status-badge::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor;flex-shrink:0}
+
+/* ===== ANIMATIONS ===== */
+@keyframes fade-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes spin{to{transform:rotate(360deg)}}
+.anim{animation:fade-in .3s ease both}
+
+/* ===== SCROLLBAR ===== */
+::-webkit-scrollbar{width:3px;height:3px}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+
+/* ===== NOTIFICATION ===== */
+.notif-dot{width:7px;height:7px;border-radius:50%;background:var(--red);position:absolute;top:-1px;right:-1px}
+
+/* ===== STEP TIMELINE ===== */
+.step-connector{width:2px;background:var(--border);flex:1;min-height:16px;margin:0 auto}
+
+/* ===== FILE PREVIEW ===== */
+.file-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
+.file-icon{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+
+/* ===== DARK/LIGHT TOGGLE ===== */
+.toggle-wrap{display:flex;align-items:center;gap:6px}
+.toggle{width:36px;height:20px;border-radius:10px;background:var(--surface2);border:1px solid var(--border2);position:relative;cursor:pointer;transition:background .2s}
+.toggle.on{background:rgba(0,229,255,.2)}
+.toggle::after{content:'';width:14px;height:14px;border-radius:50%;background:var(--text3);position:absolute;top:2px;left:2px;transition:left .2s,background .2s}
+.toggle.on::after{left:18px;background:var(--cyan)}
+
+/* ===== PAGINATION ===== */
+.page-nav{display:flex;justify-content:center;gap:6px;margin-top:12px}
+.page-btn{width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text2);cursor:pointer;font-size:12px;font-family:var(--font-m);display:flex;align-items:center;justify-content:center;transition:all .18s}
+.page-btn.active,.page-btn:hover{background:rgba(0,229,255,.1);border-color:rgba(0,229,255,.3);color:var(--cyan)}
+
+/* ===== SEARCH ===== */
+.search-box{width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-family:var(--font-d);font-size:12px;outline:none;transition:border .2s}
+.search-box:focus{border-color:var(--cyan)}
+.search-box::placeholder{color:var(--text3)}
+
+/* ===== RESPONSIVE ===== */
+@media(max-width:600px){
+  .sidebar{display:none}
+  .grid2,.grid3{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+// ============================================================
+// STATE
+// ============================================================
+const ADMIN_EMAILS = ['khanhlegood1@gmail.com','admin@consensus.doctor'];
+let state = {
+  lang: 'vi',
+  dark: true,
+  page: 'auth',  // auth | app
+  nav: 'patients',
+  user: null,
+  patients: [],
+  selectedPid: null,
+  modal: null, // null | 'newPatient' | 'addRelative' | 'viewFile' | 'editProfile'
+  uploadedNow: [],
+  searchQ: '',
+  modalData: {},
+};
+
+// ============================================================
+// I18N
+// ============================================================
+const T = {
+  vi:{
+    appName:'CONSENSUS DOCTOR',
+    appSub:'Nền tảng AI Y Tế · Đa Tác nhân',
+    signIn:'Đăng nhập',signInWith:'Đăng nhập với',
+    continueEmail:'Đăng nhập bằng Email',
+    or:'hoặc',email:'Email',password:'Mật khẩu',
+    forgotPwd:'Quên mật khẩu?',noAcc:'Chưa có tài khoản?',register:'Đăng ký',
+    nav:{
+      patients:'Bệnh nhân của tôi',family:'Gia phả bệnh lý',
+      upload:'Upload hồ sơ',imaging:'Phân tích hình ảnh',
+      suggest:'Gợi ý xét nghiệm',admin:'Quản trị viên',settings:'Hồ sơ cá nhân'
+    },
+    patients:'Bệnh nhân',addPatient:'+ Thêm bệnh nhân',
+    familyTree:'Gia phả bệnh lý',
+    uploadRecord:'Upload bệnh án',
+    dragDrop:'Kéo thả hoặc nhấn để chọn file',
+    supportedFmt:'Hỗ trợ: DICOM, PDF, JPG, PNG, ZIP',
+    uploadedFiles:'Hồ sơ đã upload',
+    testsSuggest:'Gợi ý xét nghiệm bổ sung',
+    adminDash:'Bảng điều khiển quản trị',
+    allPatients:'Tất cả bệnh nhân',
+    recentActivity:'Hoạt động gần đây',
+    darkMode:'Chế độ tối',lightMode:'Chế độ sáng',
+    logout:'Đăng xuất',profile:'Hồ sơ cá nhân',
+    addRelative:'+ Thêm người thân',
+    status:{active:'Đang điều trị',watch:'Theo dõi',stable:'Ổn định',critical:'Nguy kịch'},
+    greeting:'Xin chào',
+    uploadHint:'Upload kết quả xét nghiệm, hình ảnh chẩn đoán, bệnh án PDF',
+    aiHint:'AI phân tích hồ sơ và đề xuất xét nghiệm bổ sung phù hợp',
+    caseHong:'Cô Hồng · Ung thư gan di căn - chưa rõ nguồn gốc',
+    suggestReason:'Chưa xác định được ổ ung thư nguyên phát. AI khuyến nghị theo trình tự:',
+    newPatient:'Thêm bệnh nhân mới',
+    editProfile:'Chỉnh sửa',
+    save:'Lưu',cancel:'Huỷ',
+    analyzed:'Đã phân tích',processing:'Đang xử lý',
+    generation:{0:'Ông bà (thế hệ 0)',1:'Cha mẹ (thế hệ 1)',2:'Bệnh nhân & anh chị em',3:'Con cái'},
+    searchPlaceholder:'Tìm bệnh nhân...',
+    noPatients:'Chưa có bệnh nhân nào',
+    addFirst:'Thêm bệnh nhân đầu tiên',
+    familyRisk:'Nguy cơ di truyền',
+    role:{admin:'Quản trị viên',doctor:'Bác sĩ',patient:'Bệnh nhân'},
+    demo:'DEMO — Nhấn để đăng nhập ngay',
+    viewFile:'Xem file',deleteFile:'Xoá',
+    uploadSuccess:'Upload thành công!',
+    step:'Bước',priority:'Ưu tiên',conf:'Độ tin cậy AI',
+    schedule:'Đặt lịch',done:'Đã hoàn thành',uploadResult:'Upload kết quả',
+    aiConclusion:'Kết luận AI',
+    timeSeries:'Tiến triển bệnh theo thời gian',
+    addRelativeFor:'Thêm người thân cho',
+    relation:'Quan hệ',age:'Tuổi',disease:'Bệnh lý / tình trạng sức khoẻ',
+    name:'Họ tên',diagnosis:'Chẩn đoán sơ bộ',gender:'Giới tính',
+    male:'Nam',female:'Nữ',other:'Khác',
+    relOptions:['Cha','Mẹ','Anh trai','Chị gái','Em trai','Em gái','Con trai','Con gái','Chồng','Vợ','Ông nội','Bà nội','Ông ngoại','Bà ngoại','Khác'],
+    healthyLabel:'Khỏe mạnh',
+    diseaseHistory:'Tiền sử bệnh',
+    uploadDate:'Ngày upload',
+    fileSize:'Kích thước',
+    fileType:'Loại file',
+    totalRecords:'Tổng hồ sơ',
+    lastScan:'Lần scan cuối',
+    clearSearch:'Xoá tìm kiếm',
+  },
+  en:{
+    appName:'CONSENSUS DOCTOR',
+    appSub:'AI Medical Platform · Multi-Agent',
+    signIn:'Sign In',signInWith:'Sign in with',
+    continueEmail:'Sign in with Email',
+    or:'or',email:'Email',password:'Password',
+    forgotPwd:'Forgot password?',noAcc:"Don't have an account?",register:'Register',
+    nav:{
+      patients:'My Patients',family:'Family Graph',
+      upload:'Upload Records',imaging:'Imaging Analysis',
+      suggest:'Test Suggestions',admin:'Admin Dashboard',settings:'Profile'
+    },
+    patients:'Patients',addPatient:'+ Add Patient',
+    familyTree:'Family Disease Tree',
+    uploadRecord:'Upload Medical Record',
+    dragDrop:'Drag & drop or click to select',
+    supportedFmt:'Supported: DICOM, PDF, JPG, PNG, ZIP',
+    uploadedFiles:'Uploaded Records',
+    testsSuggest:'Recommended Additional Tests',
+    adminDash:'Admin Dashboard',
+    allPatients:'All Patients',
+    recentActivity:'Recent Activity',
+    darkMode:'Dark Mode',lightMode:'Light Mode',
+    logout:'Sign Out',profile:'Profile',
+    addRelative:'+ Add Relative',
+    status:{active:'Under Treatment',watch:'Monitoring',stable:'Stable',critical:'Critical'},
+    greeting:'Hello',
+    uploadHint:'Upload lab results, diagnostic images, medical records PDF',
+    aiHint:'AI analyzes records and suggests additional tests',
+    caseHong:'Mrs Hong · Liver cancer metastasis - unknown primary',
+    suggestReason:'Primary cancer origin unidentified. AI recommends sequence:',
+    newPatient:'Add New Patient',
+    editProfile:'Edit',
+    save:'Save',cancel:'Cancel',
+    analyzed:'Analyzed',processing:'Processing',
+    generation:{0:'Grandparents',1:'Parents',2:'Patient & Siblings',3:'Children'},
+    searchPlaceholder:'Search patients...',
+    noPatients:'No patients yet',
+    addFirst:'Add your first patient',
+    familyRisk:'Hereditary Risk',
+    role:{admin:'Administrator',doctor:'Doctor',patient:'Patient'},
+    demo:'DEMO — Click to sign in instantly',
+    viewFile:'View',deleteFile:'Delete',
+    uploadSuccess:'Upload successful!',
+    step:'Step',priority:'Priority',conf:'AI Confidence',
+    schedule:'Schedule',done:'Done',uploadResult:'Upload result',
+    aiConclusion:'AI Conclusion',
+    timeSeries:'Disease progression over time',
+    addRelativeFor:'Add relative for',
+    relation:'Relation',age:'Age',disease:'Disease / Health status',
+    name:'Full name',diagnosis:'Preliminary diagnosis',gender:'Gender',
+    male:'Male',female:'Female',other:'Other',
+    relOptions:['Father','Mother','Brother','Sister','Younger brother','Younger sister','Son','Daughter','Husband','Wife','Grandfather (pat.)','Grandmother (pat.)','Grandfather (mat.)','Grandmother (mat.)','Other'],
+    healthyLabel:'Healthy',
+    diseaseHistory:'Disease history',
+    uploadDate:'Upload date',
+    fileSize:'File size',
+    fileType:'File type',
+    totalRecords:'Total records',
+    lastScan:'Last scan',
+    clearSearch:'Clear search',
+  }
+};
+
+function t(key){
+  const keys=key.split('.');
+  let v=T[state.lang];
+  for(const k of keys){if(v!=null)v=v[k];}
+  return v!=null?v:key;
+}
+
+// ============================================================
+// SEED DATA (per-user stored in localStorage)
+// ============================================================
+function seedPatients(userEmail){
+  const isAdmin = ADMIN_EMAILS.includes(userEmail);
+  return [
+    {id:'LXK-001',name:'Lê Xuân Khánh',age:47,gender:'M',diag:'NSCLC Stage IIA - Ung thư phổi không tế bào nhỏ',status:'watch',
+     avatar:'LK',color:'#00e5ff',lastScan:'2024-01-15',ownerId:userEmail,
+     family:[
+       {id:'f1',name:'Lê Văn Bình',rel:'Cha',age:72,disease:'Ung thư phổi',gen:0},
+       {id:'f2',name:'Trần Thị Mai',rel:'Mẹ',age:69,disease:'Tăng huyết áp',gen:0},
+       {id:'f3',name:'Lê Xuân Khánh',rel:'Bệnh nhân',age:47,disease:'NSCLC Stage IIA',gen:1,self:true},
+       {id:'f4',name:'Lê Xuân Nam',rel:'Anh trai',age:52,disease:'Khỏe mạnh',gen:1},
+       {id:'f5',name:'Nguyễn Thị Hoa',rel:'Vợ',age:44,disease:'Khỏe mạnh',gen:1},
+       {id:'f6',name:'Lê Minh Tú',rel:'Con trai',age:19,disease:'Theo dõi',gen:2},
+       {id:'f7',name:'Lê Minh An',rel:'Con gái',age:16,disease:'Khỏe mạnh',gen:2},
+     ],
+     uploads:[
+       {id:'u1',name:'CT-Scan-Jan2024.dcm',type:'DICOM',size:'4.2 MB',date:'2024-01-10',status:'analyzed',notes:'L1↓18% · L2↑8%'},
+       {id:'u2',name:'BloodTest-Dec2023.pdf',type:'PDF',size:'0.8 MB',date:'2023-12-20',status:'analyzed',notes:'Bình thường'},
+       {id:'u3',name:'XRay-Nov2023.jpg',type:'Image',size:'1.1 MB',date:'2023-11-05',status:'processing',notes:'Đang phân tích'},
+     ],
+     timeline:[
+       {label:'T-12 tháng',val:'4.1cm',delta:'',date:'2023-01'},
+       {label:'T-9 tháng',val:'3.8cm',delta:'-7%',date:'2023-04'},
+       {label:'T-6 tháng',val:'3.2cm',delta:'-16%',date:'2023-07'},
+       {label:'T-3 tháng',val:'2.8cm',delta:'-13%',date:'2023-10'},
+       {label:'Hiện tại',val:'2.3cm',delta:'-18%',date:'2024-01'},
+     ]},
+    {id:'NTH-002',name:'Nguyễn Thị Hồng',age:55,gender:'F',diag:'Ung thư gan di căn - chưa rõ nguyên phát',status:'critical',
+     avatar:'NH',color:'#ff5252',lastScan:'2024-01-18',ownerId:userEmail,isCaseStudy:true,
+     family:[
+       {id:'g1',name:'Nguyễn Văn Long',rel:'Cha',age:80,disease:'Ung thư dạ dày',gen:0},
+       {id:'g2',name:'Phạm Thị Lan',rel:'Mẹ',age:76,disease:'Ung thư vú',gen:0},
+       {id:'g3',name:'Nguyễn Thị Hồng',rel:'Bệnh nhân',age:55,disease:'Ung thư gan di căn',gen:1,self:true},
+       {id:'g4',name:'Nguyễn Minh Đức',rel:'Anh trai',age:58,disease:'Xơ gan',gen:1},
+       {id:'g5',name:'Trần Văn Hùng',rel:'Chồng',age:57,disease:'Khỏe mạnh',gen:1},
+     ],
+     uploads:[
+       {id:'v1',name:'Liver-MRI-Jan2024.dcm',type:'DICOM',size:'6.8 MB',date:'2024-01-15',status:'analyzed',notes:'Di căn gan T4'},
+       {id:'v2',name:'AFP-Marker-Jan2024.pdf',type:'PDF',size:'0.5 MB',date:'2024-01-10',status:'analyzed',notes:'AFP 1240 ng/mL (↑↑↑)'},
+     ],
+     timeline:[
+       {label:'T-6 tháng',val:'AFP 280',delta:'',date:'2023-07'},
+       {label:'T-3 tháng',val:'AFP 650',delta:'+132%',date:'2023-10'},
+       {label:'Hiện tại',val:'AFP 1240',delta:'+91%',date:'2024-01'},
+     ]},
+    {id:'TTM-003',name:'Trần Thị Mai',age:62,gender:'F',diag:'Tăng huyết áp + Tiểu đường type 2',status:'stable',
+     avatar:'TM',color:'#00e676',lastScan:'2024-01-05',ownerId:userEmail,
+     family:[],uploads:[],timeline:[]},
+    {id:'PVN-004',name:'Phạm Văn Nam',age:38,gender:'M',diag:'Theo dõi định kỳ - tiền sử gia đình ung thư',status:'active',
+     avatar:'PN',color:'#9c6fff',lastScan:'2023-12-28',ownerId:userEmail,
+     family:[],uploads:[],timeline:[]},
+  ];
+}
+
+const hongSuggestions = [
+  {step:1,title:'Nội soi dạ dày - đại tràng',title_en:'Gastroscopy & Colonoscopy',
+   reason:'Cha có tiền sử ung thư dạ dày. Loại trừ nguyên phát đường tiêu hóa.',
+   reason_en:"Father had stomach cancer. Rule out GI primary origin.",
+   icon:'🔬',priority:'Cao',priority_en:'High',conf:91,done:false,week:'Tuần 1'},
+  {step:2,title:'Sinh thiết hạch lympho',title_en:'Lymph Node Biopsy',
+   reason:'Xác định pattern di căn từ hạch → xác định nguồn gốc tế bào ung thư.',
+   reason_en:'Determine metastasis pattern from lymph nodes → identify cancer cell origin.',
+   icon:'🧫',priority:'Cao',priority_en:'High',conf:88,done:false,week:'Tuần 2'},
+  {step:3,title:'Xét nghiệm dấu ấn ung thư toàn diện',title_en:'Comprehensive Tumor Markers Panel',
+   reason:'CA-125, CA19-9, CEA, CA15-3, PSA - thu hẹp cơ quan nguyên phát.',
+   reason_en:'CA-125, CA19-9, CEA, CA15-3 - narrow down primary organ.',
+   icon:'🩸',priority:'Trung bình',priority_en:'Medium',conf:85,done:false,week:'Tuần 2-3'},
+  {step:4,title:'PET-CT toàn thân',title_en:'Whole-body PET-CT',
+   reason:'Bước cuối - xác định chắc chắn ổ ung thư nguyên phát và đánh giá toàn bộ di căn.',
+   reason_en:'Final step - confirm primary cancer origin and assess all metastases.',
+   icon:'🏥',priority:'Cao',priority_en:'High',conf:97,done:false,week:'Tuần 4-6'},
+];
+
+// ============================================================
+// LOCAL STORAGE PER USER
+// ============================================================
+function lsKey(key){ return `cd3_${state.user?.email||'guest'}_${key}`; }
+function loadUserData(){
+  const raw = localStorage.getItem(lsKey('patients'));
+  if(raw){ try{ state.patients=JSON.parse(raw); }catch(e){ state.patients=seedPatients(state.user.email); } }
+  else{ state.patients=seedPatients(state.user.email); saveUserData(); }
+  const hongSug = localStorage.getItem(lsKey('hongSug'));
+  if(hongSug){ try{ const d=JSON.parse(hongSug); hongSuggestions.forEach((s,i)=>{if(d[i]!=null)s.done=d[i];}); }catch(e){} }
+}
+function saveUserData(){
+  localStorage.setItem(lsKey('patients'), JSON.stringify(state.patients));
+}
+function saveHongSug(){
+  localStorage.setItem(lsKey('hongSug'), JSON.stringify(hongSuggestions.map(s=>s.done)));
+}
+
+// ============================================================
+// ACTIVITY LOG (admin)
+// ============================================================
+let activityLog = JSON.parse(localStorage.getItem('cd3_activity')||'[]');
+function logActivity(action, user){
+  const entry = {time:new Date().toLocaleTimeString('vi',{hour:'2-digit',minute:'2-digit'}), user:user||state.user?.name||'?', action, ts:Date.now()};
+  activityLog.unshift(entry);
+  if(activityLog.length>50) activityLog=activityLog.slice(0,50);
+  localStorage.setItem('cd3_activity', JSON.stringify(activityLog));
+}
+
+// ============================================================
+// RENDER ENGINE
+// ============================================================
+function render(){
+  const app = document.getElementById('app');
+  document.body.classList.toggle('light', !state.dark);
+  app.innerHTML = state.page==='auth' ? renderAuth() : renderAppShell();
+  bindAll();
+}
+
+// ===== AUTH =====
+function renderAuth(){
+  return `
+  <div class="auth-wrap anim">
+    <div class="auth-card">
+      <div class="auth-logo">
+        <div class="logo-icon">Rx</div>
+        <div>
+          <div style="font-weight:800;font-size:14px;letter-spacing:.06em;color:var(--cyan)">${t('appName')}</div>
+          <div style="font-size:10px;color:var(--text3);font-family:var(--font-m)">AI MEDICAL PLATFORM v3</div>
+        </div>
+        <div style="margin-left:auto;display:flex;gap:4px">
+          <button class="lang-btn ${state.lang==='vi'?'active':''}" onclick="setLang('vi')">VI</button>
+          <button class="lang-btn ${state.lang==='en'?'active':''}" onclick="setLang('en')">EN</button>
+          <button class="lang-btn" onclick="toggleDark()" style="font-size:13px">${state.dark?'☀':'🌙'}</button>
+        </div>
+      </div>
+
+      <h3 style="font-size:20px;font-weight:800;margin-bottom:5px">${t('signIn')}</h3>
+      <p style="font-size:12px;color:var(--text2);margin-bottom:22px">Đăng nhập để truy cập hồ sơ bệnh nhân bảo mật</p>
+
+      <button class="auth-btn" onclick="loginGoogle()">
+        <svg width="18" height="18" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+        ${t('signInWith')} Google
+      </button>
+
+      <button class="auth-btn" onclick="loginApple()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="var(--text)"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+        ${t('signInWith')} Apple
+      </button>
+
+      <div class="auth-divider">${t('or')}</div>
+
+      <input class="auth-input" type="email" id="auth-email" placeholder="${t('email')}" value="khanhlegood1@gmail.com">
+      <input class="auth-input" type="password" id="auth-pwd" placeholder="${t('password')}" value="••••••••">
+      <div style="text-align:right;margin-bottom:12px"><span style="font-size:11px;color:var(--cyan);cursor:pointer">${t('forgotPwd')}</span></div>
+      <button class="btn-primary" onclick="loginEmail()">${t('continueEmail')}</button>
+
+      <p style="text-align:center;font-size:11px;color:var(--text3);margin-top:14px">
+        ${t('noAcc')} <span style="color:var(--cyan);cursor:pointer" onclick="openRegister()">${t('register')}</span>
+      </p>
+
+      <div style="margin-top:18px;padding:10px 12px;background:rgba(0,229,255,.05);border-radius:8px;border:1px solid rgba(0,229,255,.15);cursor:pointer" onclick="loginDemo()">
+        <div style="font-size:9px;font-family:var(--font-m);color:var(--cyan);margin-bottom:3px">⚡ ${t('demo')}</div>
+        <div style="font-size:11px;color:var(--text2)">khanhlegood1@gmail.com → Admin dashboard</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ===== APP SHELL =====
+function renderAppShell(){
+  return `
+  <header class="topbar">
+    <div class="topbar-logo" onclick="goNav('patients')">
+      <div class="logo-icon" style="width:30px;height:30px;font-size:10px">Rx</div>
+      <div>
+        <div style="font-weight:800;font-size:11px;letter-spacing:.06em;color:var(--cyan)">${t('appName')}</div>
+        <div style="font-size:9px;color:var(--text3);font-family:var(--font-m)">${t('appSub')}</div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div style="width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse-dot 2s infinite"></div>
+      <span style="font-size:10px;color:var(--green);font-family:var(--font-m)">4 AGENTS</span>
+      <button class="lang-btn ${state.lang==='vi'?'active':''}" onclick="setLang('vi')">VI</button>
+      <button class="lang-btn ${state.lang==='en'?'active':''}" onclick="setLang('en')">EN</button>
+      <button class="icon-btn" onclick="toggleDark()" title="${state.dark?t('lightMode'):t('darkMode')}">${state.dark?'☀':'🌙'}</button>
+      <div style="position:relative;cursor:pointer" onclick="goNav('settings')">
+        <div class="avatar">${state.user?.avatar?`<img src="${state.user.avatar}" alt="av">`:`<span>${(state.user?.name||'U').slice(0,1)}</span>`}</div>
+        ${state.user?.isAdmin?`<div class="notif-dot"></div>`:''}
+      </div>
+    </div>
+  </header>
+  <div class="body-wrap">
+    ${renderSidebar()}
+    <main class="main anim" id="main-content">
+      ${renderPage()}
+    </main>
+  </div>
+  ${state.modal?renderModal():''}`;
+}
+
+function renderSidebar(){
+  const nav = state.nav;
+  const u = state.user;
+  const navItems = [
+    {id:'patients',icon:'👥',label:t('nav.patients')},
+    {id:'family',icon:'🌳',label:t('nav.family')},
+    {id:'upload',icon:'📁',label:t('nav.upload')},
+    {id:'suggest',icon:'🔬',label:t('nav.suggest')},
+  ];
+  const adminItems = u?.isAdmin ? [{id:'admin',icon:'⚙️',label:t('nav.admin')}] : [];
+  const bottomItems = [{id:'settings',icon:'👤',label:t('nav.settings')}];
+
+  return `
+  <aside class="sidebar">
+    <div class="nav-sep">WORKSPACE</div>
+    ${navItems.map(i=>`
+      <button class="nav-item ${nav===i.id?'active':''}" onclick="goNav('${i.id}')">
+        <span>${i.icon}</span><span>${i.label}</span>
+      </button>`).join('')}
+    ${adminItems.length?`<div class="nav-sep" style="margin-top:10px">ADMIN</div>`:''}
+    ${adminItems.map(i=>`
+      <button class="nav-item ${nav===i.id?'active':''}" onclick="goNav('${i.id}')">
+        <span>${i.icon}</span><span>${i.label}</span>
+      </button>`).join('')}
+    <div style="flex:1"></div>
+    <div class="nav-sep">ACCOUNT</div>
+    ${bottomItems.map(i=>`
+      <button class="nav-item ${nav===i.id?'active':''}" onclick="goNav('${i.id}')">
+        <span>${i.icon}</span><span>${i.label}</span>
+      </button>`).join('')}
+    <div class="sidebar-user">
+      <div class="avatar" style="width:28px;height:28px;font-size:10px">
+        ${u?.avatar?`<img src="${u.avatar}" alt="av">`:`<span>${(u?.name||'U').slice(0,1)}</span>`}
+      </div>
+      <div style="min-width:0;flex:1">
+        <div style="font-size:11px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(u?.name||'').split(' ').slice(-2).join(' ')}</div>
+        <div style="font-size:9px;color:${u?.isAdmin?'var(--cyan)':'var(--text3)'};font-family:var(--font-m)">${u?.isAdmin?'ADMIN':'USER'}</div>
+      </div>
+    </div>
+  </aside>`;
+}
+
+function renderPage(){
+  const p = state.patients.find(x=>x.id===state.selectedPid)||state.patients[0];
+  switch(state.nav){
+    case 'patients': return renderPatients();
+    case 'family': return renderFamily(p);
+    case 'upload': return renderUpload(p);
+    case 'suggest': return renderSuggest(p);
+    case 'admin': return state.user?.isAdmin?renderAdmin():renderPatients();
+    case 'settings': return renderSettings();
+    default: return renderPatients();
+  }
+}
+
+// ============================================================
+// PATIENTS PAGE
+// ============================================================
+function renderPatients(){
+  const statusC = {active:'cyan',watch:'amber',stable:'green',critical:'red'};
+  const q = state.searchQ.toLowerCase();
+  const filtered = q ? state.patients.filter(p=>p.name.toLowerCase().includes(q)||p.diag.toLowerCase().includes(q)) : state.patients;
+  return `
+  <div style="display:flex;flex-direction:column;gap:15px">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <div>
+        <h2 style="font-size:17px;font-weight:800">${t('patients')}</h2>
+        <p style="font-size:11px;color:var(--text2)">${state.patients.length} ${state.lang==='vi'?'bệnh nhân đang quản lý':'patients managed'}</p>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input class="search-box" style="width:180px" placeholder="${t('searchPlaceholder')}" value="${state.searchQ}" oninput="onSearch(this.value)">
+        <button class="btn-primary" style="width:auto;padding:8px 14px;font-size:12px;white-space:nowrap" onclick="openModal('newPatient')">${t('addPatient')}</button>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <div class="card-title">TỔNG QUAN</div>
+        <div class="grid2" style="gap:7px">
+          ${[{l:state.lang==='vi'?'Tổng bệnh nhân':'Total',v:state.patients.length,c:'cyan'},
+             {l:state.lang==='vi'?'Nguy kịch':'Critical',v:state.patients.filter(p=>p.status==='critical').length,c:'red'},
+             {l:state.lang==='vi'?'Ổn định':'Stable',v:state.patients.filter(p=>p.status==='stable').length,c:'green'},
+             {l:state.lang==='vi'?'Theo dõi':'Watch',v:state.patients.filter(p=>p.status==='watch').length,c:'amber'}
+          ].map(s=>`
+          <div style="padding:8px;background:var(--surface2);border-radius:8px">
+            <div style="font-size:9px;color:var(--text3);font-family:var(--font-m);margin-bottom:3px">${s.l}</div>
+            <div style="font-size:22px;font-weight:800;color:var(--${s.c})">${s.v}</div>
+          </div>`).join('')}
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">🤖 AI ${state.lang==='vi'?'CẢNH BÁO':'ALERTS'}</div>
+        <div style="display:flex;align-items:flex-start;gap:7px;margin-bottom:8px">
+          <div style="width:6px;height:6px;border-radius:50%;background:var(--red);margin-top:4px;flex-shrink:0;animation:pulse-dot 1s infinite"></div>
+          <div style="font-size:11px;color:var(--text2)"><b style="color:var(--red)">NTH-002:</b> ${state.lang==='vi'?'Cô Hồng cần bổ sung xét nghiệm để xác định nguồn ung thư':'Mrs Hong needs additional tests to identify cancer origin'}</div>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:7px">
+          <div style="width:6px;height:6px;border-radius:50%;background:var(--amber);margin-top:4px;flex-shrink:0"></div>
+          <div style="font-size:11px;color:var(--text2)"><b style="color:var(--amber)">LXK-001:</b> ${state.lang==='vi'?'L2 lesion tăng 8% - cần sinh thiết tuần 8':'L2 lesion +8% - biopsy needed at week 8'}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">${state.lang==='vi'?'DANH SÁCH BỆNH NHÂN':'PATIENT LIST'} (${filtered.length})</div>
+      ${filtered.length===0?`
+        <div style="text-align:center;padding:30px;color:var(--text3)">
+          <div style="font-size:28px;margin-bottom:8px">🔍</div>
+          <div style="font-size:13px">${q?t('clearSearch'):t('noPatients')}</div>
+          ${!q?`<button class="btn-primary" style="width:auto;padding:8px 16px;margin-top:12px;font-size:12px" onclick="openModal('newPatient')">${t('addFirst')}</button>`:''}
+        </div>
+      `:`
+      ${filtered.map(p=>`
+      <div class="patient-row" onclick="selectPat('${p.id}','family')">
+        <div style="width:38px;height:38px;border-radius:50%;background:${p.color}22;color:${p.color};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">${p.avatar}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600;display:flex;align-items:center;gap:5px">
+            ${p.name}
+            ${p.isCaseStudy?'<span class="tag tag-red" style="font-size:8px">CASE</span>':''}
+          </div>
+          <div style="font-size:10px;color:var(--text3);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.diag}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <span class="tag tag-${statusC[p.status]||'cyan'}">${t('status.'+p.status)}</span>
+          <div style="font-size:9px;color:var(--text3);margin-top:3px;font-family:var(--font-m)">${p.id}</div>
+        </div>
+        <div style="color:var(--text3);font-size:16px;margin-left:4px">›</div>
+      </div>`).join('')}`}
+    </div>
+  </div>`;
+}
+
+// ============================================================
+// FAMILY PAGE
+// ============================================================
+function renderFamily(p){
+  if(!p) return `<div style="text-align:center;padding:40px;color:var(--text3)">Chọn bệnh nhân</div>`;
+  const fam = p.family||[];
+  const dc = (d)=>{
+    if(!d||d.includes('Khỏe')||d.toLowerCase().includes('healthy')) return 'var(--green)';
+    if(/(ung thư|cancer|nsclc|di căn|metast|gan|phổi|vú|dạ dày|xơ)/i.test(d)) return 'var(--red)';
+    return 'var(--amber)';
+  };
+  const cancerCount = fam.filter(m=>/(ung thư|cancer|nsclc|di căn)/i.test(m.disease||'')).length;
+
+  return `
+  <div style="display:flex;flex-direction:column;gap:15px">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <div>
+        <h2 style="font-size:17px;font-weight:800">${t('familyTree')}</h2>
+        <p style="font-size:11px;color:var(--text2)">${p.name} · ${state.lang==='vi'?'Phân tích di truyền bệnh lý':'Hereditary disease analysis'}</p>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        ${state.patients.map(pt=>`<button class="icon-btn ${state.selectedPid===pt.id?'active':''}" onclick="selectPat('${pt.id}','family')" style="font-size:11px">${pt.avatar}</button>`).join('')}
+        <button class="icon-btn" onclick="openModal('addRelative')" style="color:var(--cyan)">+ ${state.lang==='vi'?'Thêm':' Add'}</button>
+      </div>
+    </div>
+
+    ${p.isCaseStudy?`
+    <div class="suggest-card">
+      <div style="font-size:9px;font-family:var(--font-m);color:var(--red);margin-bottom:5px">⚠ AI CẢNH BÁO / AI WARNING</div>
+      <div style="font-size:12px;font-weight:700;margin-bottom:4px">${t('caseHong')}</div>
+      <div style="font-size:11px;color:var(--text2)">
+        ${state.lang==='vi'?'Tiền sử gia đình: Cha ung thư dạ dày, Mẹ ung thư vú, Anh xơ gan. Nguy cơ di truyền rất cao.':'Family history: Father stomach cancer, Mother breast cancer, Brother liver cirrhosis. Very high hereditary risk.'}
+        <span style="color:var(--cyan);cursor:pointer" onclick="goNav('suggest')"> ${state.lang==='vi'?'Xem gợi ý xét nghiệm →':'See test suggestions →'}</span>
+      </div>
+    </div>`:''}
+
+    <div class="grid2">
+      <div class="card">
+        <div class="card-title">${state.lang==='vi'?'SƠ ĐỒ GIA PHẢ':'FAMILY TREE'}</div>
+        ${fam.length?`
+        <div style="overflow:auto">
+          <svg width="320" height="${60+80*Math.max(...fam.map(m=>m.gen),0)+80}" viewBox="0 0 320 ${60+80*Math.max(...fam.map(m=>m.gen),0)+80}">
+            ${renderFamilySVG(fam,dc)}
+          </svg>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap">
+          <div style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text2)"><div style="width:7px;height:7px;border-radius:50%;background:var(--red)"></div>${state.lang==='vi'?'Ung thư':'Cancer'}</div>
+          <div style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text2)"><div style="width:7px;height:7px;border-radius:50%;background:var(--amber)"></div>${state.lang==='vi'?'Bệnh mãn tính':'Chronic'}</div>
+          <div style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text2)"><div style="width:7px;height:7px;border-radius:50%;background:var(--green)"></div>${state.lang==='vi'?'Khỏe mạnh':'Healthy'}</div>
+        </div>`:`
+        <div style="text-align:center;padding:30px;color:var(--text3)">
+          <div style="font-size:28px">🌳</div>
+          <div style="font-size:12px;margin-top:8px">${state.lang==='vi'?'Chưa có dữ liệu gia đình':'No family data yet'}</div>
+          <button class="btn-primary" style="width:auto;padding:8px 14px;margin-top:12px;font-size:12px" onclick="openModal('addRelative')">${t('addRelative')}</button>
+        </div>`}
+      </div>
+      <div class="card">
+        <div class="card-title">${t('familyRisk').toUpperCase()}</div>
+        ${[
+          {label:state.lang==='vi'?'Thành viên gia đình':'Family members',val:fam.length,c:'cyan'},
+          {label:state.lang==='vi'?'Có bệnh ung thư':'Cancer cases',val:cancerCount,c:cancerCount>1?'red':'amber'},
+          {label:state.lang==='vi'?'Thế hệ được ghi':'Generations',val:fam.length?Math.max(...fam.map(m=>m.gen))+1:0,c:'violet'},
+        ].map(s=>`
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border)">
+          <span style="font-size:12px;color:var(--text2)">${s.label}</span>
+          <span style="font-size:18px;font-weight:800;color:var(--${s.c})">${s.val}</span>
+        </div>`).join('')}
+        ${cancerCount>=2?`
+        <div style="margin-top:12px;padding:10px;background:rgba(255,82,82,.08);border-radius:8px;border:1px solid rgba(255,82,82,.2)">
+          <div style="font-size:10px;color:var(--red);font-weight:600;margin-bottom:4px">⚠ ${state.lang==='vi'?'CẢNH BÁO NGUY CƠ CAO':'HIGH RISK WARNING'}</div>
+          <div style="font-size:11px;color:var(--text2)">${state.lang==='vi'?`${cancerCount} thành viên gia đình bị ung thư. Đề nghị sàng lọc di truyền.`:`${cancerCount} family members with cancer. Genetic screening recommended.`}</div>
+        </div>`:''}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">${state.lang==='vi'?'DANH SÁCH THÀNH VIÊN':'FAMILY MEMBERS'} (${fam.length})</div>
+      ${fam.length?fam.map(m=>`
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+        <div style="width:32px;height:32px;border-radius:50%;background:${dc(m.disease)}22;color:${dc(m.disease)};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0">${m.name.replace(/\s+/g,' ').split(' ').filter(Boolean).slice(-1)[0]?.slice(0,2)||'??'}</div>
+        <div style="flex:1">
+          <div style="font-size:12px;font-weight:600">${m.name} ${m.self?'<span class="tag tag-cyan" style="font-size:8px">BN</span>':''}</div>
+          <div style="font-size:10px;color:var(--text3)">${m.rel} · ${m.age} ${state.lang==='vi'?'tuổi':'yrs'}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:11px;color:${dc(m.disease)};font-weight:500">${m.disease}</div>
+          <div style="font-size:9px;color:var(--text3);font-family:var(--font-m)">Gen ${m.gen}</div>
+        </div>
+      </div>`).join(''):`
+      <div style="text-align:center;padding:20px;color:var(--text3);font-size:12px">${state.lang==='vi'?'Chưa có thành viên gia đình nào':'No family members added yet'}</div>`}
+    </div>
+  </div>`;
+}
+
+function renderFamilySVG(fam,dc){
+  const byGen = {};
+  fam.forEach(m=>{(byGen[m.gen]=byGen[m.gen]||[]).push(m);});
+  const gens = Object.keys(byGen).map(Number).sort();
+  const W=320, colH=80;
+  gens.forEach(gen=>{
+    const members=byGen[gen];
+    members.forEach((m,i)=>{
+      m._x = W/(members.length+1)*(i+1);
+      m._y = 40+gen*colH;
+    });
+  });
+  let lines='',nodes='';
+  fam.forEach(m=>{
+    if(m.gen>0){
+      const prev=fam.filter(f=>f.gen===m.gen-1);
+      if(prev.length){
+        const cx=prev.reduce((s,f)=>s+f._x,0)/prev.length;
+        const cy=prev[0]._y;
+        const isCancer=/(ung thư|cancer|nsclc|di căn)/i.test(m.disease||'');
+        lines+=`<line x1="${cx}" y1="${cy+22}" x2="${m._x}" y2="${m._y-22}" stroke="${isCancer?'rgba(255,82,82,0.4)':'rgba(255,255,255,0.1)'}" stroke-width="1.5" stroke-dasharray="${isCancer?'4,2':'0'}"/>`;
+      }
+    }
+  });
+  fam.forEach(m=>{
+    const c=dc(m.disease);
+    const isSelf=m.self;
+    const shortName=(m.name||'').trim().split(' ').filter(Boolean).slice(-1)[0]?.slice(0,2)||'?';
+    nodes+=`
+    <g>
+      ${isSelf?`<circle cx="${m._x}" cy="${m._y}" r="24" fill="none" stroke="rgba(0,229,255,0.25)" stroke-width="1.5" stroke-dasharray="4,2"/>`:''}
+      <circle cx="${m._x}" cy="${m._y}" r="20" fill="${c}18" stroke="${isSelf?'#00e5ff':c}" stroke-width="${isSelf?2:1.5}"/>
+      <text x="${m._x}" y="${m._y}" text-anchor="middle" dominant-baseline="central" fill="${c}" font-size="9" font-weight="700" font-family="Syne">${shortName}</text>
+      <text x="${m._x}" y="${m._y+28}" text-anchor="middle" fill="rgba(232,240,248,0.45)" font-size="8" font-family="Syne">${m.rel||''}</text>
+      <text x="${m._x}" y="${m._y+37}" text-anchor="middle" fill="${c}" font-size="7" font-family="Syne">${(m.disease||'').slice(0,12)}${(m.disease||'').length>12?'…':''}</text>
+    </g>`;
+  });
+  return lines+nodes;
+}
+
+// ============================================================
+// UPLOAD PAGE
+// ============================================================
+function renderUpload(p){
+  if(!p) return `<div style="text-align:center;padding:40px;color:var(--text3)">Chọn bệnh nhân</div>`;
+  const files = p.uploads||[];
+  const typeIcon = (t)=>({DICOM:'🏥',PDF:'📄',Image:'🖼️',ZIP:'📦'}[t]||'📁');
+  const typeColor = (t)=>({DICOM:'violet',PDF:'amber',Image:'cyan',ZIP:'green'}[t]||'cyan');
+  const statusC = (s)=>s==='analyzed'?'green':'amber';
+  return `
+  <div style="display:flex;flex-direction:column;gap:15px">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <div>
+        <h2 style="font-size:17px;font-weight:800">${t('uploadRecord')}</h2>
+        <p style="font-size:11px;color:var(--text2)">${p.name} · ${t('uploadHint')}</p>
+      </div>
+      <div style="display:flex;gap:6px">
+        ${state.patients.map(pt=>`<button class="icon-btn ${state.selectedPid===pt.id?'active':''}" onclick="selectPat('${pt.id}','upload')">${pt.avatar}</button>`).join('')}
+      </div>
+    </div>
+
+    ${p.isCaseStudy?`
+    <div class="suggest-card">
+      <div style="font-size:9px;font-family:var(--font-m);color:var(--amber);margin-bottom:4px">📋 ${state.lang==='vi'?'HƯỚNG DẪN UPLOAD':'UPLOAD GUIDE'} · ${p.name}</div>
+      <div style="font-size:11px;color:var(--text2)">
+        ${state.lang==='vi'?t('suggestReason'):t('suggestReason')}
+        <span style="color:var(--cyan);cursor:pointer" onclick="goNav('suggest')"> ${state.lang==='vi'?'Xem trình tự →':'View sequence →'}</span>
+      </div>
+    </div>`:''}
+
+    <div class="upload-zone" id="drop-zone" onclick="document.getElementById('file-input').click()"
+      ondragover="event.preventDefault();this.classList.add('drag')"
+      ondragleave="this.classList.remove('drag')"
+      ondrop="handleDrop(event)">
+      <input type="file" id="file-input" multiple accept=".dcm,.pdf,.jpg,.jpeg,.png,.zip,.mp4" onchange="handleFiles(event)" style="display:none">
+      <div style="font-size:36px;margin-bottom:10px">📤</div>
+      <div style="font-size:14px;font-weight:700;margin-bottom:5px">${t('dragDrop')}</div>
+      <div style="font-size:11px;color:var(--text3)">${t('supportedFmt')}</div>
+      <div style="margin-top:12px;display:flex;gap:6px;justify-content:center;flex-wrap:wrap">
+        ${['DICOM','PDF','JPG/PNG','ZIP'].map(f=>`<span class="tag tag-cyan">${f}</span>`).join('')}
+      </div>
+    </div>
+
+    ${state.uploadedNow.length?`
+    <div class="card" style="border-color:rgba(0,230,118,.3);background:rgba(0,230,118,.04)">
+      <div class="card-title" style="color:var(--green)">✅ ${t('uploadSuccess')}</div>
+      ${state.uploadedNow.map(f=>`
+      <div class="file-item">
+        <div class="file-icon" style="background:rgba(0,229,255,.08);color:var(--cyan)">📎</div>
+        <div style="flex:1"><div style="font-size:12px;font-weight:600">${f.name}</div>
+        <div style="font-size:10px;color:var(--text3)">${(f.size/1024).toFixed(1)} KB</div></div>
+        <div class="prog-bar" style="width:80px"><div class="prog-fill" style="width:100%;background:var(--green)"></div></div>
+        <span class="tag tag-green">${state.lang==='vi'?'Xong':'Done'}</span>
+      </div>`).join('')}
+    </div>`:'' }
+
+    <div class="card">
+      <div class="card-title">${t('uploadedFiles')} (${files.length})</div>
+      ${files.length?`
+      ${files.map(f=>`
+      <div class="file-item">
+        <div class="file-icon" style="background:var(--surface2);color:var(--${typeColor(f.type)})">${typeIcon(f.type)}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${f.name}</div>
+          <div style="font-size:10px;color:var(--text3)">${f.size} · ${f.date}</div>
+          ${f.notes?`<div style="font-size:10px;color:var(--violet);margin-top:2px">🤖 ${f.notes}</div>`:''}
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+          <span class="tag tag-${statusC(f.status)}">${f.status==='analyzed'?t('analyzed'):t('processing')}</span>
+          <button class="icon-btn" style="font-size:10px;padding:3px 6px" onclick="viewFile('${f.id}','${p.id}')">👁</button>
+          <button class="icon-btn" style="font-size:10px;padding:3px 6px" onclick="deleteFile('${f.id}','${p.id}')">🗑</button>
+        </div>
+      </div>`).join('')}`:`
+      <div style="text-align:center;padding:24px;color:var(--text3)">
+        <div style="font-size:24px">📂</div>
+        <div style="font-size:12px;margin-top:8px">${state.lang==='vi'?'Chưa có hồ sơ nào':'No records uploaded yet'}</div>
+      </div>`}
+    </div>
+
+    ${p.timeline&&p.timeline.length?`
+    <div class="card">
+      <div class="card-title">${t('timeSeries').toUpperCase()}</div>
+      <div style="display:flex;gap:0;overflow-x:auto;padding-bottom:4px">
+        ${p.timeline.map((tp,i)=>`
+        <div style="flex:1;min-width:72px;text-align:center;padding:8px;position:relative">
+          ${i<p.timeline.length-1?`<div style="position:absolute;top:17px;left:50%;width:50%;height:1px;background:var(--border2)"></div>`:''}
+          ${i>0?`<div style="position:absolute;top:17px;right:50%;width:50%;height:1px;background:var(--border2)"></div>`:''}
+          <div style="width:16px;height:16px;border-radius:50%;background:${i===p.timeline.length-1?'var(--cyan)':'var(--surface2)'};border:2px solid ${i===p.timeline.length-1?'var(--cyan)':'var(--border2)'};margin:0 auto 5px;position:relative;z-index:1"></div>
+          <div style="font-size:9px;font-family:var(--font-m);color:${i===p.timeline.length-1?'var(--cyan)':'var(--text3)'}">${tp.label}</div>
+          <div style="font-size:11px;font-weight:700;margin-top:2px">${tp.val}</div>
+          <div style="font-size:9px;color:${tp.delta.includes('-')?'var(--green)':'var(--red)'}">${tp.delta}</div>
+        </div>`).join('')}
+      </div>
+    </div>`:''}
+  </div>`;
+}
+
+// ============================================================
+// SUGGEST PAGE
+// ============================================================
+function renderSuggest(p){
+  if(!p) return `<div style="text-align:center;padding:40px;color:var(--text3)">Chọn bệnh nhân</div>`;
+  const prioC = s=>(s==='Cao'||s==='High')?'red':(s==='Trung bình'||s==='Medium')?'amber':'green';
+  const doneCount = hongSuggestions.filter(s=>s.done).length;
+  return `
+  <div style="display:flex;flex-direction:column;gap:15px">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <div>
+        <h2 style="font-size:17px;font-weight:800">${t('testsSuggest')}</h2>
+        <p style="font-size:11px;color:var(--text2)">${t('aiHint')}</p>
+      </div>
+      <div style="display:flex;gap:6px">
+        ${state.patients.map(pt=>`<button class="icon-btn ${state.selectedPid===pt.id?'active':''}" onclick="selectPat('${pt.id}','suggest')">${pt.avatar}</button>`).join('')}
+      </div>
+    </div>
+
+    ${p.isCaseStudy?`
+    <div class="suggest-card">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <div style="font-size:9px;font-family:var(--font-m);color:var(--red)">🤖 AI CONSENSUS ANALYSIS</div>
+        <span class="tag tag-red">CASE ${state.lang==='vi'?'PHỨC TẠP':'COMPLEX'}</span>
+        <span class="tag tag-green" style="margin-left:auto">${doneCount}/${hongSuggestions.length} ${state.lang==='vi'?'hoàn thành':'done'}</span>
+      </div>
+      <div style="font-size:13px;font-weight:700;margin-bottom:6px">${t('caseHong')}</div>
+      <div style="font-size:11px;color:var(--text2);margin-bottom:8px">
+        ${state.lang==='vi'?'Di căn gan giai đoạn muộn. Tiền sử gia đình: cha ung thư dạ dày, mẹ ung thư vú - nguy cơ di truyền cao. Cần xác định ổ nguyên phát.':'Late-stage liver metastasis. Family history: father stomach cancer, mother breast cancer. Need to identify primary cancer origin.'}
+      </div>
+      <div class="prog-bar"><div class="prog-fill" style="width:${doneCount/hongSuggestions.length*100}%;background:linear-gradient(90deg,var(--green),var(--cyan))"></div></div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:10px">
+      ${hongSuggestions.map((s,i)=>`
+      <div style="display:flex;gap:12px;background:var(--surface);border:1px solid ${s.done?'rgba(0,230,118,.3)':p.isCaseStudy&&i===hongSuggestions.findIndex(x=>!x.done)?'rgba(0,229,255,.3)':'var(--border)'};border-radius:12px;padding:14px;position:relative;overflow:hidden;transition:border .2s">
+        <div style="width:3px;border-radius:2px;background:var(--${s.done?'green':prioC(state.lang==='vi'?s.priority:s.priority_en)});flex-shrink:0"></div>
+        <div style="width:32px;height:32px;border-radius:8px;background:${s.done?'rgba(0,230,118,.1)':'rgba(0,229,255,.08)'};border:1px solid ${s.done?'rgba(0,230,118,.2)':'rgba(0,229,255,.2)'};display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">${s.done?'✅':s.icon}</div>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap">
+            <span style="font-size:9px;font-family:var(--font-m);color:var(--text3)">${t('step').toUpperCase()} ${s.step} · ${s.week}</span>
+            <span class="tag tag-${prioC(state.lang==='vi'?s.priority:s.priority_en)}">${state.lang==='vi'?s.priority:s.priority_en}</span>
+            <span style="font-size:9px;color:var(--text3);font-family:var(--font-m);margin-left:auto">${t('conf')}: ${s.conf}%</span>
+          </div>
+          <div style="font-size:13px;font-weight:700;margin-bottom:4px;${s.done?'text-decoration:line-through;color:var(--text3)':''}">${state.lang==='vi'?s.title:s.title_en}</div>
+          <div style="font-size:11px;color:var(--text2)">${state.lang==='vi'?s.reason:s.reason_en}</div>
+          <div style="display:flex;gap:7px;margin-top:9px">
+            <button class="icon-btn ${s.done?'active':''}" style="font-size:10px" onclick="markDone(${i})">
+              ${s.done?`✅ ${t('done')}`:`📋 ${t('schedule')}`}
+            </button>
+            <button class="icon-btn" style="font-size:10px" onclick="selectPat('${p.id}','upload')">📎 ${t('uploadResult')}</button>
+          </div>
+        </div>
+        <div style="position:absolute;top:8px;right:10px;font-size:32px;opacity:0.05;font-weight:900">${s.step}</div>
+      </div>`).join('')}
+    </div>
+
+    <div class="card">
+      <div class="card-title">🤖 ${t('aiConclusion').toUpperCase()}</div>
+      <div style="font-size:12px;color:var(--text2);line-height:1.8">
+        ${state.lang==='vi'?`Sau khi hoàn thành <b style="color:var(--cyan)">4 bước xét nghiệm</b>, kết quả <b style="color:var(--violet)">PET-CT toàn thân</b> sẽ xác định ổ ung thư nguyên phát với độ chính xác <b style="color:var(--green)">~97%</b>. Bước 1-3 giúp thu hẹp phạm vi và tiết kiệm chi phí.`:`After completing <b style="color:var(--cyan)">4 diagnostic steps</b>, <b style="color:var(--violet)">Whole-body PET-CT</b> will identify the primary cancer with <b style="color:var(--green)">~97%</b> accuracy. Steps 1-3 narrow scope and reduce cost.`}
+      </div>
+      <div style="display:flex;gap:7px;margin-top:10px;flex-wrap:wrap">
+        <span class="tag tag-cyan">${state.lang==='vi'?'Ưu tiên: Nội soi ngay':'Priority: Endoscopy now'}</span>
+        <span class="tag tag-violet">${state.lang==='vi'?'Sinh thiết: Tuần 2':'Biopsy: Week 2'}</span>
+        <span class="tag tag-amber">${state.lang==='vi'?'PET-CT: Tuần 4-6':'PET-CT: Week 4-6'}</span>
+      </div>
+    </div>`:`
+
+    <div class="card" style="text-align:center;padding:40px">
+      <div style="font-size:40px;margin-bottom:12px">🤖</div>
+      <div style="font-size:14px;font-weight:700;margin-bottom:8px">${state.lang==='vi'?'AI đang phân tích hồ sơ':'AI analyzing records'}</div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:16px">${state.lang==='vi'?'Chọn bệnh nhân có hồ sơ để AI gợi ý xét nghiệm':'Select a patient with records for AI test suggestions'}</div>
+      <button class="btn-primary" style="width:auto;padding:8px 16px;font-size:12px" onclick="selectPat('NTH-002','suggest')">${state.lang==='vi'?'Xem case Cô Hồng':'View Mrs Hong case'}</button>
+    </div>`}
+  </div>`;
+}
+
+// ============================================================
+// ADMIN PAGE
+// ============================================================
+function renderAdmin(){
+  const allPatients = JSON.parse(localStorage.getItem('cd3_all_patients')||'[]');
+  const displayPats = state.patients;
+  const typeC = {upload:'cyan',ai:'violet',auth:'green',admin:'amber',delete:'red'};
+  const logs = activityLog.slice(0,10);
+  return `
+  <div style="display:flex;flex-direction:column;gap:15px">
+    <div>
+      <h2 style="font-size:17px;font-weight:800">${t('adminDash')}</h2>
+      <p style="font-size:11px;color:var(--text2)">${t('greeting')}, <b style="color:var(--cyan)">${state.user?.name}</b> · <span class="tag tag-cyan" style="vertical-align:middle">ADMIN</span></p>
+    </div>
+
+    <div class="grid3">
+      ${[
+        {l:state.lang==='vi'?'Tổng bệnh nhân':'Total patients',v:displayPats.length,c:'cyan',i:'👥'},
+        {l:state.lang==='vi'?'Nguy kịch':'Critical',v:displayPats.filter(p=>p.status==='critical').length,c:'red',i:'🔴'},
+        {l:state.lang==='vi'?'Tổng hồ sơ upload':'Total uploads',v:displayPats.reduce((s,p)=>s+(p.uploads?.length||0),0),c:'violet',i:'📁'},
+        {l:state.lang==='vi'?'AI phân tích':'AI analyzed',v:displayPats.reduce((s,p)=>s+(p.uploads?.filter(u=>u.status==='analyzed').length||0),0),c:'green',i:'🤖'},
+        {l:state.lang==='vi'?'Hoạt động hôm nay':'Activity today',v:logs.length,c:'amber',i:'📊'},
+        {l:state.lang==='vi'?'Cảnh báo AI':'AI alerts',v:displayPats.filter(p=>p.status==='critical'||p.status==='watch').length,c:'pink',i:'⚠️'},
+      ].map(s=>`
+      <div style="padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:10px">
+        <div style="font-size:18px;margin-bottom:4px">${s.i}</div>
+        <div style="font-size:22px;font-weight:800;color:var(--${s.c})">${s.v}</div>
+        <div style="font-size:10px;color:var(--text3);font-family:var(--font-m)">${s.l}</div>
+      </div>`).join('')}
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <div class="card-title">${t('allPatients').toUpperCase()}</div>
+        <table class="adm-table">
+          <thead><tr>
+            <th>${state.lang==='vi'?'Bệnh nhân':'Patient'}</th>
+            <th>${state.lang==='vi'?'Chẩn đoán':'Diagnosis'}</th>
+            <th>${state.lang==='vi'?'Hồ sơ':'Records'}</th>
+            <th>${state.lang==='vi'?'Trạng thái':'Status'}</th>
+          </tr></thead>
+          <tbody>
+            ${displayPats.map(p=>`
+            <tr style="cursor:pointer" onclick="selectPat('${p.id}','upload')">
+              <td>
+                <div style="display:flex;align-items:center;gap:6px">
+                  <div style="width:24px;height:24px;border-radius:50%;background:${p.color}22;color:${p.color};display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700">${p.avatar}</div>
+                  <span style="font-size:11px;font-weight:600;color:var(--text)">${p.name}</span>
+                </div>
+              </td>
+              <td style="font-size:10px;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.diag}</td>
+              <td style="font-family:var(--font-m);text-align:center;color:var(--cyan)">${p.uploads?.length||0}</td>
+              <td><span class="tag tag-${{active:'cyan',watch:'amber',stable:'green',critical:'red'}[p.status]}" style="font-size:9px">${t('status.'+p.status)}</span></td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <div class="card-title">${t('recentActivity').toUpperCase()}</div>
+        ${logs.length?logs.map(r=>`
+        <div style="display:flex;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)">
+          <div class="tl-dot" style="background:var(--${typeC[r.type]||'cyan'})"></div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:11px;font-weight:600;color:var(--text)">${r.user}</div>
+            <div style="font-size:10px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.action}</div>
+          </div>
+          <div style="font-size:9px;font-family:var(--font-m);color:var(--text3);flex-shrink:0">${r.time}</div>
+        </div>`).join(''):`
+        <div style="text-align:center;padding:20px;color:var(--text3);font-size:12px">${state.lang==='vi'?'Chưa có hoạt động':'No activity yet'}</div>`}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">${state.lang==='vi'?'TIẾN TRIỂN BỆNH - LÊ XUÂN KHÁNH':'DISEASE PROGRESSION - LÊ XUÂN KHÁNH'}</div>
+      <div style="display:flex;gap:0;overflow-x:auto;padding-bottom:4px">
+        ${(state.patients.find(p=>p.id==='LXK-001')?.timeline||[]).map((tp,i,arr)=>`
+        <div style="flex:1;min-width:72px;text-align:center;padding:8px;position:relative">
+          ${i<arr.length-1?`<div style="position:absolute;top:17px;left:50%;width:50%;height:1px;background:var(--border2)"></div>`:''}
+          ${i>0?`<div style="position:absolute;top:17px;right:50%;width:50%;height:1px;background:var(--border2)"></div>`:''}
+          <div style="width:16px;height:16px;border-radius:50%;background:${i===arr.length-1?'var(--cyan)':'var(--surface2)'};border:2px solid ${i===arr.length-1?'var(--cyan)':'var(--border2)'};margin:0 auto 5px;position:relative;z-index:1"></div>
+          <div style="font-size:9px;font-family:var(--font-m);color:${i===arr.length-1?'var(--cyan)':'var(--text3)'}">${tp.label}</div>
+          <div style="font-size:11px;font-weight:700;margin-top:2px">${tp.val}</div>
+          <div style="font-size:9px;color:var(--green)">${tp.delta}</div>
+        </div>`).join('')}
+      </div>
+    </div>
+  </div>`;
+}
+
+// ============================================================
+// SETTINGS PAGE
+// ============================================================
+function renderSettings(){
+  const u = state.user;
+  return `
+  <div style="display:flex;flex-direction:column;gap:15px">
+    <h2 style="font-size:17px;font-weight:800">${t('profile')}</h2>
+    <div class="card">
+      <div class="card-title">HỒ SƠ CÁ NHÂN</div>
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">
+        <div class="avatar" style="width:56px;height:56px;font-size:18px;border:2px solid var(--cyan)">
+          ${u?.avatar?`<img src="${u.avatar}" alt="av" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`:`<span>${(u?.name||'U').slice(0,1)}</span>`}
+        </div>
+        <div style="flex:1">
+          <div style="font-size:16px;font-weight:800">${u?.name||'Người dùng'}</div>
+          <div style="font-size:11px;color:var(--text2);margin-top:2px">${u?.email||''}</div>
+          <div style="margin-top:6px;display:flex;gap:5px">
+            ${u?.isAdmin?`<span class="tag tag-cyan">ADMIN</span>`:''}
+            <span class="tag tag-violet">${u?.provider==='google'?'Google':'Email'}</span>
+          </div>
+        </div>
+        <button class="icon-btn" onclick="openModal('editProfile')">${t('editProfile')}</button>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:0">
+        ${[
+          [state.lang==='vi'?'Họ tên':'Full name', u?.name||'—'],
+          [state.lang==='vi'?'Email':'Email', u?.email||'—'],
+          [state.lang==='vi'?'Đăng nhập qua':'Sign in via', u?.provider==='google'?'Google OAuth':'Email'],
+          [state.lang==='vi'?'Vai trò':'Role', u?.isAdmin?t('role.admin'):t('role.patient')],
+          [state.lang==='vi'?'Bệnh nhân quản lý':'Patients managed', state.patients.length],
+          [state.lang==='vi'?'Tổng hồ sơ':'Total records', state.patients.reduce((s,p)=>s+(p.uploads?.length||0),0)],
+        ].map(([l,v])=>`
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border)">
+          <span style="font-size:11px;color:var(--text3)">${l}</span>
+          <span style="font-size:12px;font-weight:600">${v}</span>
+        </div>`).join('')}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">${state.lang==='vi'?'GIAO DIỆN & NGÔN NGỮ':'DISPLAY & LANGUAGE'}</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border)">
+        <span style="font-size:12px">${state.dark?t('darkMode'):t('lightMode')}</span>
+        <div class="toggle ${state.dark?'on':''}" onclick="toggleDark()"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0">
+        <span style="font-size:12px">${state.lang==='vi'?'Ngôn ngữ':'Language'}</span>
+        <div style="display:flex;gap:5px">
+          <button class="lang-btn ${state.lang==='vi'?'active':''}" onclick="setLang('vi')">Tiếng Việt</button>
+          <button class="lang-btn ${state.lang==='en'?'active':''}" onclick="setLang('en')">English</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="border-color:rgba(255,82,82,.2)">
+      <div class="card-title" style="color:var(--red)">${state.lang==='vi'?'VÙNG NGUY HIỂM':'DANGER ZONE'}</div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-size:12px;font-weight:600">${t('logout')}</div>
+          <div style="font-size:11px;color:var(--text3)">${state.lang==='vi'?'Đăng xuất khỏi tài khoản':'Sign out of your account'}</div>
+        </div>
+        <button class="icon-btn" style="border-color:rgba(255,82,82,.3);color:var(--red)" onclick="logout()">🚪 ${t('logout')}</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ============================================================
+// MODALS
+// ============================================================
+function renderModal(){
+  switch(state.modal){
+    case 'newPatient': return renderModalNewPatient();
+    case 'addRelative': return renderModalAddRelative();
+    case 'editProfile': return renderModalEditProfile();
+    case 'viewFile': return renderModalViewFile();
+    default: return '';
+  }
+}
+
+function renderModalNewPatient(){
+  return `
+  <div class="modal-wrap" onclick="if(event.target===this)closeModal()">
+    <div class="modal-box anim">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <h3 style="font-size:15px;font-weight:800">${t('newPatient')}</h3>
+        <button class="icon-btn" onclick="closeModal()">✕</button>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <input class="auth-input" placeholder="${t('name')} *" id="m-name">
+        <input class="auth-input" placeholder="${t('email')} (${state.lang==='vi'?'tùy chọn':'optional'})" id="m-email" type="email">
+        <div style="display:flex;gap:8px">
+          <input class="auth-input" placeholder="${t('age')}" id="m-age" type="number" style="flex:1">
+          <select class="auth-input" id="m-gender" style="flex:1">
+            <option value="">${t('gender')}</option>
+            <option value="M">${t('male')}</option>
+            <option value="F">${t('female')}</option>
+            <option value="O">${t('other')}</option>
+          </select>
+        </div>
+        <input class="auth-input" placeholder="${t('diagnosis')}" id="m-diag">
+        <select class="auth-input" id="m-rel-pat">
+          <option value="">${state.lang==='vi'?'Liên kết với bệnh nhân hiện có (tùy chọn)':'Link to existing patient (optional)'}</option>
+          ${state.patients.map(p=>`<option value="${p.id}">${p.name}</option>`).join('')}
+        </select>
+        <select class="auth-input" id="m-rel-type">
+          <option value="">${state.lang==='vi'?'Quan hệ với bệnh nhân trên':'Relationship with selected patient'}</option>
+          ${t('relOptions').map(r=>`<option value="${r}">${r}</option>`).join('')}
+        </select>
+        <select class="auth-input" id="m-status">
+          <option value="active">${t('status.active')}</option>
+          <option value="stable">${t('status.stable')}</option>
+          <option value="watch">${t('status.watch')}</option>
+          <option value="critical">${t('status.critical')}</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:16px">
+        <button class="btn-primary" onclick="addNewPatient()" style="flex:1">${state.lang==='vi'?'Thêm bệnh nhân':'Add Patient'}</button>
+        <button class="icon-btn" onclick="closeModal()" style="flex:0.4">${t('cancel')}</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderModalAddRelative(){
+  const p = state.patients.find(x=>x.id===state.selectedPid)||state.patients[0];
+  return `
+  <div class="modal-wrap" onclick="if(event.target===this)closeModal()">
+    <div class="modal-box anim">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <h3 style="font-size:15px;font-weight:800">${t('addRelativeFor')} ${p?.name||''}</h3>
+        <button class="icon-btn" onclick="closeModal()">✕</button>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <input class="auth-input" placeholder="${t('name')} *" id="r-name">
+        <div style="display:flex;gap:8px">
+          <input class="auth-input" placeholder="${t('age')}" id="r-age" type="number" style="flex:1">
+          <select class="auth-input" id="r-rel" style="flex:1">
+            <option value="">${t('relation')} *</option>
+            ${t('relOptions').map(r=>`<option value="${r}">${r}</option>`).join('')}
+          </select>
+        </div>
+        <select class="auth-input" id="r-gen">
+          ${[0,1,2,3].map(g=>`<option value="${g}">${t('generation')[g]||'Gen '+g}</option>`).join('')}
+        </select>
+        <input class="auth-input" placeholder="${t('disease')} (${state.lang==='vi'?'để trống nếu khỏe mạnh':'leave blank if healthy'})" id="r-disease">
+      </div>
+      <div style="display:flex;gap:8px;margin-top:16px">
+        <button class="btn-primary" onclick="addRelative()" style="flex:1">${t('addRelative').replace('+ ','')}</button>
+        <button class="icon-btn" onclick="closeModal()" style="flex:0.4">${t('cancel')}</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderModalEditProfile(){
+  const u = state.user;
+  return `
+  <div class="modal-wrap" onclick="if(event.target===this)closeModal()">
+    <div class="modal-box anim">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <h3 style="font-size:15px;font-weight:800">${t('editProfile')}</h3>
+        <button class="icon-btn" onclick="closeModal()">✕</button>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <label style="font-size:11px;color:var(--text3)">${t('name')}</label>
+        <input class="auth-input" id="ep-name" value="${u?.name||''}">
+        <label style="font-size:11px;color:var(--text3)">${state.lang==='vi'?'Chuyên khoa / Ghi chú':'Specialty / Notes'}</label>
+        <input class="auth-input" id="ep-specialty" value="${u?.specialty||''}" placeholder="${state.lang==='vi'?'VD: Bác sĩ ung thư':'E.g.: Oncologist'}">
+      </div>
+      <div style="display:flex;gap:8px;margin-top:16px">
+        <button class="btn-primary" onclick="saveProfile()" style="flex:1">${t('save')}</button>
+        <button class="icon-btn" onclick="closeModal()" style="flex:0.4">${t('cancel')}</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderModalViewFile(){
+  const {file,patName} = state.modalData||{};
+  if(!file) return '';
+  const typeC = {DICOM:'violet',PDF:'amber',Image:'cyan',ZIP:'green'};
+  return `
+  <div class="modal-wrap" onclick="if(event.target===this)closeModal()">
+    <div class="modal-box anim">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <h3 style="font-size:14px;font-weight:800">${state.lang==='vi'?'Xem hồ sơ':'View Record'}</h3>
+        <button class="icon-btn" onclick="closeModal()">✕</button>
+      </div>
+      <div style="background:var(--surface2);border-radius:10px;padding:14px;margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:7px">
+          <span style="font-size:10px;color:var(--text3)">${t('fileType')}</span>
+          <span class="tag tag-${typeC[file.type]||'cyan'}">${file.type}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:7px">
+          <span style="font-size:10px;color:var(--text3)">${t('fileSize')}</span>
+          <span style="font-size:11px;font-weight:600">${file.size}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:7px">
+          <span style="font-size:10px;color:var(--text3)">${t('uploadDate')}</span>
+          <span style="font-size:11px;font-weight:600">${file.date}</span>
+        </div>
+        ${file.notes?`
+        <div style="margin-top:10px;padding:8px;background:rgba(156,111,255,.08);border-radius:6px;border:1px solid rgba(156,111,255,.2)">
+          <div style="font-size:10px;color:var(--violet);margin-bottom:3px">🤖 AI ${state.lang==='vi'?'Phân tích':'Analysis'}</div>
+          <div style="font-size:12px;font-weight:600">${file.notes}</div>
+        </div>`:''}
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border2);border-radius:8px;padding:24px;text-align:center;margin-bottom:14px">
+        <div style="font-size:36px;margin-bottom:8px">${{DICOM:'🏥',PDF:'📄',Image:'🖼️',ZIP:'📦'}[file.type]||'📁'}</div>
+        <div style="font-size:13px;font-weight:700;margin-bottom:4px">${file.name}</div>
+        <div style="font-size:11px;color:var(--text3)">${state.lang==='vi'?'Preview không khả dụng trong demo. File đã được lưu trên server.':'Preview not available in demo. File stored on server.'}</div>
+      </div>
+      <button class="btn-primary" onclick="closeModal()">${t('cancel')}</button>
+    </div>
+  </div>`;
+}
+
+// ============================================================
+// ACTIONS
+// ============================================================
+function loginWithUser(userData){
+  state.user = userData;
+  state.user.isAdmin = ADMIN_EMAILS.includes(userData.email);
+  state.page = 'app';
+  state.nav = state.user.isAdmin ? 'admin' : 'patients';
+  loadUserData();
+  state.selectedPid = state.patients[0]?.id||null;
+  logActivity(state.lang==='vi'?`Đăng nhập thành công via ${userData.provider||'email'}`:`Signed in via ${userData.provider||'email'}`, userData.name);
+  render();
+}
+
+function loginGoogle(){
+  loginWithUser({
+    name: 'Nguyễn Khánh',
+    email: 'khanhlegood1@gmail.com',
+    avatar: 'https://ui-avatars.com/api/?name=Nguyen+Khanh&background=00b8cc&color=fff&size=80&bold=true&rounded=true',
+    provider: 'google'
+  });
+}
+
+function loginApple(){
+  loginWithUser({
+    name: 'Apple User',
+    email: 'user@icloud.com',
+    avatar: null,
+    provider: 'apple'
+  });
+}
+
+function loginEmail(){
+  const email = document.getElementById('auth-email')?.value?.trim();
+  const pwd = document.getElementById('auth-pwd')?.value;
+  if(!email){ alert(state.lang==='vi'?'Vui lòng nhập email':'Please enter email'); return; }
+  loginWithUser({
+    name: email.split('@')[0].replace(/[._]/g,' ').replace(/\b\w/g,c=>c.toUpperCase()),
+    email: email,
+    avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(email)}&background=6b3fd4&color=fff&size=80&bold=true&rounded=true`,
+    provider: 'email'
+  });
+}
+
+function loginDemo(){
+  loginWithUser({
+    name: 'Nguyễn Admin Khánh',
+    email: 'khanhlegood1@gmail.com',
+    avatar: 'https://ui-avatars.com/api/?name=Admin+Khanh&background=00b8cc&color=fff&size=80&bold=true&rounded=true',
+    provider: 'google'
+  });
+}
+
+function openRegister(){
+  alert(state.lang==='vi'?'Tính năng đăng ký sẽ sớm ra mắt. Dùng demo để thử nghiệm.':'Registration coming soon. Use demo to try.');
+}
+
+function logout(){
+  state.user = null;
+  state.page = 'auth';
+  state.patients = [];
+  state.selectedPid = null;
+  state.uploadedNow = [];
+  render();
+}
+
+function goNav(nav){
+  state.nav = nav;
+  const p = state.patients.find(x=>x.id===state.selectedPid)||state.patients[0];
+  // Update main content without full re-render to avoid topbar flicker
+  const main = document.getElementById('main-content');
+  if(main){
+    main.innerHTML = renderPage();
+    main.classList.remove('anim');
+    void main.offsetWidth;
+    main.classList.add('anim');
+    bindPageEvents();
+  } else {
+    render();
+  }
+  // Re-render sidebar to update active state
+  const sidebar = document.querySelector('.sidebar');
+  if(sidebar) sidebar.innerHTML = renderSidebar().replace('<aside class="sidebar">','').replace('</aside>','');
+  const newSidebar = renderSidebar();
+  if(sidebar) sidebar.outerHTML = newSidebar;
+  render();
+}
+
+function selectPat(id, nav){
+  state.selectedPid = id;
+  if(nav) state.nav = nav;
+  render();
+}
+
+function toggleDark(){
+  state.dark = !state.dark;
+  document.body.classList.toggle('light', !state.dark);
+  if(state.page==='auth'){render();}else{render();}
+}
+
+function setLang(l){
+  state.lang = l;
+  render();
+}
+
+function onSearch(q){
+  state.searchQ = q;
+  const main = document.getElementById('main-content');
+  if(main){ main.innerHTML = renderPage(); bindPageEvents(); }
+}
+
+function openModal(type, data){
+  state.modal = type;
+  state.modalData = data||{};
+  render();
+}
+
+function closeModal(){
+  state.modal = null;
+  state.modalData = {};
+  render();
+}
+
+function addNewPatient(){
+  const name = document.getElementById('m-name')?.value?.trim();
+  if(!name){ alert(state.lang==='vi'?'Vui lòng nhập họ tên':'Please enter name'); return; }
+  const age = document.getElementById('m-age')?.value;
+  const gender = document.getElementById('m-gender')?.value||'O';
+  const diag = document.getElementById('m-diag')?.value||'Chưa chẩn đoán';
+  const status = document.getElementById('m-status')?.value||'active';
+  const relPat = document.getElementById('m-rel-pat')?.value;
+  const relType = document.getElementById('m-rel-type')?.value;
+  const colors = ['#00e5ff','#9c6fff','#00e676','#f48fb1','#ffb74d'];
+  const initials = name.trim().split(' ').filter(Boolean).slice(-2).map(w=>w[0]).join('').toUpperCase();
+  const newPat = {
+    id:'PAT-'+Date.now().toString().slice(-4),
+    name, age:age||'—', gender, diag, status,
+    avatar:initials,
+    color:colors[Math.floor(Math.random()*colors.length)],
+    lastScan:'—', ownerId:state.user?.email,
+    family:[], uploads:[], timeline:[],
+  };
+  state.patients.push(newPat);
+  // If linked to existing patient, add cross-reference
+  if(relPat && relType){
+    const linked = state.patients.find(p=>p.id===relPat);
+    if(linked){
+      linked.family = linked.family||[];
+      linked.family.push({
+        id:'fm-'+Date.now(),name,rel:relType,age:parseInt(age)||0,
+        disease:diag,gen:1
+      });
+    }
+  }
+  saveUserData();
+  logActivity(state.lang==='vi'?`Thêm bệnh nhân mới: ${name}`:`Added new patient: ${name}`);
+  state.selectedPid = newPat.id;
+  state.modal = null;
+  state.nav = 'patients';
+  render();
+}
+
+function addRelative(){
+  const name = document.getElementById('r-name')?.value?.trim();
+  const rel = document.getElementById('r-rel')?.value;
+  if(!name||!rel){ alert(state.lang==='vi'?'Vui lòng nhập họ tên và quan hệ':'Please enter name and relation'); return; }
+  const age = parseInt(document.getElementById('r-age')?.value)||0;
+  const gen = parseInt(document.getElementById('r-gen')?.value)||1;
+  const disease = document.getElementById('r-disease')?.value||'Khỏe mạnh';
+  const p = state.patients.find(x=>x.id===state.selectedPid)||state.patients[0];
+  if(!p) return;
+  p.family = p.family||[];
+  p.family.push({id:'fm-'+Date.now(),name,rel,age,disease,gen});
+  saveUserData();
+  logActivity(state.lang==='vi'?`Thêm người thân ${name} cho ${p.name}`:`Added relative ${name} to ${p.name}`);
+  state.modal = null;
+  render();
+}
+
+function handleFiles(e){
+  const files = [...e.target.files];
+  addFilesToPatient(files);
+}
+
+function handleDrop(e){
+  e.preventDefault();
+  document.getElementById('drop-zone')?.classList.remove('drag');
+  const files = [...e.dataTransfer.files];
+  addFilesToPatient(files);
+}
+
+function addFilesToPatient(files){
+  const p = state.patients.find(x=>x.id===state.selectedPid)||state.patients[0];
+  if(!p) return;
+  state.uploadedNow = files;
+  const typeMap = {'.dcm':'DICOM','.pdf':'PDF','.jpg':'Image','.jpeg':'Image','.png':'Image','.zip':'ZIP'};
+  files.forEach(f=>{
+    const ext = '.'+f.name.split('.').pop().toLowerCase();
+    const type = typeMap[ext]||'Other';
+    const record = {
+      id:'up-'+Date.now()+Math.random().toString(36).slice(2,5),
+      name:f.name, type, size:`${(f.size/1024/1024).toFixed(1)} MB`,
+      date:new Date().toISOString().split('T')[0],
+      status:'processing', notes:''
+    };
+    p.uploads = p.uploads||[];
+    p.uploads.unshift(record);
+    // Simulate analysis
+    setTimeout(()=>{
+      record.status = 'analyzed';
+      record.notes = state.lang==='vi'?'AI phân tích hoàn tất':'AI analysis complete';
+      saveUserData();
+    }, 3000);
+  });
+  p.lastScan = new Date().toISOString().split('T')[0];
+  saveUserData();
+  logActivity(state.lang==='vi'?`Upload ${files.length} file(s) cho ${p.name}`:`Uploaded ${files.length} file(s) for ${p.name}`);
+  render();
+  setTimeout(()=>{ state.uploadedNow=[]; render(); }, 4000);
+}
+
+function viewFile(fileId, patId){
+  const p = state.patients.find(x=>x.id===patId);
+  const file = p?.uploads?.find(f=>f.id===fileId);
+  if(file){ openModal('viewFile',{file,patName:p?.name}); }
+}
+
+function deleteFile(fileId, patId){
+  const p = state.patients.find(x=>x.id===patId);
+  if(!p) return;
+  if(!confirm(state.lang==='vi'?`Xoá file này?`:`Delete this file?`)) return;
+  const fname = p.uploads?.find(f=>f.id===fileId)?.name||'';
+  p.uploads = (p.uploads||[]).filter(f=>f.id!==fileId);
+  saveUserData();
+  logActivity(state.lang==='vi'?`Xoá file ${fname} của ${p.name}`:`Deleted file ${fname} from ${p.name}`,'type:delete');
+  render();
+}
+
+function markDone(i){
+  hongSuggestions[i].done = !hongSuggestions[i].done;
+  saveHongSug();
+  logActivity(state.lang==='vi'?`${hongSuggestions[i].done?'Đánh dấu hoàn thành':'Bỏ đánh dấu'}: ${hongSuggestions[i].title}`:`${hongSuggestions[i].done?'Marked done':'Unmarked'}: ${hongSuggestions[i].title_en}`);
+  const main = document.getElementById('main-content');
+  if(main){ main.innerHTML = renderPage(); bindPageEvents(); }
+}
+
+function saveProfile(){
+  const name = document.getElementById('ep-name')?.value?.trim();
+  const specialty = document.getElementById('ep-specialty')?.value?.trim();
+  if(name && state.user) {
+    state.user.name = name;
+    state.user.specialty = specialty;
+    // Update avatar
+    state.user.avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=00b8cc&color=fff&size=80&bold=true&rounded=true`;
+  }
+  state.modal = null;
+  render();
+}
+
+// ============================================================
+// BIND EVENTS
+// ============================================================
+function bindAll(){
+  // keyboard: Enter on auth
+  const authPwd = document.getElementById('auth-pwd');
+  if(authPwd) authPwd.onkeydown = e=>{ if(e.key==='Enter') loginEmail(); };
+  const authEmail = document.getElementById('auth-email');
+  if(authEmail) authEmail.onkeydown = e=>{ if(e.key==='Enter') document.getElementById('auth-pwd')?.focus(); };
+  bindPageEvents();
+}
+
+function bindPageEvents(){
+  const si = document.getElementById('file-input');
+  if(si) si.onchange = handleFiles;
+  const dz = document.getElementById('drop-zone');
+  if(dz){
+    dz.ondragover = e=>{ e.preventDefault(); dz.classList.add('drag'); };
+    dz.ondragleave = ()=>{ dz.classList.remove('drag'); };
+    dz.ondrop = handleDrop;
+    dz.onclick = ()=>{ document.getElementById('file-input')?.click(); };
+  }
+}
+
+// ============================================================
+// INIT
+// ============================================================
+render();
+</script>
+</body>
+</html>
