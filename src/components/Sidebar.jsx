@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { AGENTS } from '../data/mockData.js'
 import { useAuth } from '../context/AuthContext'
 import { useApp } from '../context/AppContext'
@@ -10,13 +10,25 @@ const COLOR_MAP = {
   green:  { bg: 'rgba(0,230,118,0.12)',   color: '#00e676' },
 }
 
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < 768)
+    window.addEventListener('resize', handler)
+    return () => window.removeEventListener('resize', handler)
+  }, [])
+  return isMobile
+}
+
 export default function Sidebar({ active, onNavigate }) {
   const { user } = useAuth()
   const { t, theme } = useApp()
   const isDark = theme === 'dark'
+  const isMobile = useIsMobile()
+  const [open, setOpen] = useState(false)
 
   const border = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.08)'
-  const bg = isDark ? 'rgba(4,6,15,0.6)' : 'rgba(255,255,255,0.7)'
+  const bg = isDark ? 'rgba(4,6,15,0.97)' : 'rgba(255,255,255,0.97)'
   const text = isDark ? '#e8f0f8' : '#1a2035'
   const text2 = isDark ? 'rgba(232,240,248,0.55)' : '#666'
   const text3 = isDark ? 'rgba(232,240,248,0.28)' : '#aaa'
@@ -24,26 +36,26 @@ export default function Sidebar({ active, onNavigate }) {
   const surface2 = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'
 
   const STEPS = [
-    { id: 'imaging',    label: t('imaging'),    step: '01' },
-    { id: 'checkin',    label: t('checkin'),    step: '02' },
-    { id: 'upload',     label: t('uploadRecords'), step: '03' },
-    { id: 'family',     label: t('familyTree'), step: '04' },
-    { id: 'twin',       label: t('twin'),       step: '05' },
-    { id: 'simulation', label: t('simulation'), step: '06' },
-    { id: 'consensus',  label: t('consensus'),  step: '07' },
+    { id: 'imaging',    label: t('imaging'),      step: '01' },
+    { id: 'checkin',    label: t('checkin'),      step: '02' },
+    { id: 'upload',     label: t('uploadRecords'),step: '03' },
+    { id: 'family',     label: t('familyTree'),   step: '04' },
+    { id: 'twin',       label: t('twin'),         step: '05' },
+    { id: 'simulation', label: t('simulation'),   step: '06' },
+    { id: 'consensus',  label: t('consensus'),    step: '07' },
   ]
 
   const ADMIN_STEPS = user?.isAdmin ? [
     { id: 'admin', label: t('adminPanel'), step: '★' },
   ] : []
 
-  return (
-    <aside style={{
-      width: 228, borderRight: `1px solid ${border}`,
-      background: bg, backdropFilter: 'blur(8px)',
-      display: 'flex', flexDirection: 'column', padding: '20px 12px', gap: 4,
-      flexShrink: 0, overflowY: 'auto',
-    }}>
+  const handleNavigate = (id) => {
+    onNavigate(id)
+    if (isMobile) setOpen(false)
+  }
+
+  const sidebarContent = (
+    <>
       {/* User card */}
       {user && (
         <div style={{
@@ -60,7 +72,7 @@ export default function Sidebar({ active, onNavigate }) {
 
       <SectionLabel color={text3}>Patient Journey</SectionLabel>
       {STEPS.map(s => (
-        <NavItem key={s.id} active={active === s.id} onClick={() => onNavigate(s.id)} text={text} text2={text2} isDark={isDark}>
+        <NavItem key={s.id} active={active === s.id} onClick={() => handleNavigate(s.id)} text={text} text2={text2} isDark={isDark}>
           <div style={{ width: 6, height: 6, borderRadius: '50%', background: active === s.id ? '#00e5ff' : text3, flexShrink: 0, transition: 'background 0.2s' }} />
           <span style={{ flex: 1 }}>{s.label}</span>
           <span style={{ fontSize: 10, fontFamily: 'monospace', color: text3 }}>{s.step}</span>
@@ -71,7 +83,7 @@ export default function Sidebar({ active, onNavigate }) {
         <>
           <SectionLabel color={text3} style={{ marginTop: 16 }}>Admin</SectionLabel>
           {ADMIN_STEPS.map(s => (
-            <NavItem key={s.id} active={active === s.id} onClick={() => onNavigate(s.id)} text="#ff5252" text2={text2} isDark={isDark} isAdmin>
+            <NavItem key={s.id} active={active === s.id} onClick={() => handleNavigate(s.id)} text="#ff5252" text2={text2} isDark={isDark} isAdmin>
               <span style={{ fontSize: 12 }}>🛡️</span>
               <span style={{ flex: 1 }}>{s.label}</span>
               <span style={{ fontSize: 10, fontFamily: 'monospace', color: '#ff5252' }}>{s.step}</span>
@@ -105,6 +117,74 @@ export default function Sidebar({ active, onNavigate }) {
           </div>
         )
       })}
+    </>
+  )
+
+  // ── MOBILE: hamburger button + overlay drawer ──
+  if (isMobile) {
+    return (
+      <>
+        {/* Hamburger button */}
+        <button
+          onClick={() => setOpen(o => !o)}
+          style={{
+            position: 'fixed', top: 12, left: 12, zIndex: 300,
+            width: 40, height: 40, borderRadius: 10,
+            background: isDark ? 'rgba(4,6,15,0.92)' : 'rgba(255,255,255,0.92)',
+            border: `1px solid ${border}`,
+            backdropFilter: 'blur(8px)',
+            cursor: 'pointer',
+            display: 'flex', flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'center', gap: 5,
+            padding: 0,
+          }}
+          aria-label="Toggle menu"
+        >
+          <span style={{ display: 'block', width: 18, height: 2, borderRadius: 2, background: open ? '#00e5ff' : text, transition: 'all 0.2s', transform: open ? 'translateY(7px) rotate(45deg)' : 'none' }} />
+          <span style={{ display: 'block', width: 18, height: 2, borderRadius: 2, background: open ? '#00e5ff' : text, transition: 'all 0.2s', opacity: open ? 0 : 1 }} />
+          <span style={{ display: 'block', width: 18, height: 2, borderRadius: 2, background: open ? '#00e5ff' : text, transition: 'all 0.2s', transform: open ? 'translateY(-7px) rotate(-45deg)' : 'none' }} />
+        </button>
+
+        {/* Backdrop */}
+        {open && (
+          <div
+            onClick={() => setOpen(false)}
+            style={{
+              position: 'fixed', inset: 0, zIndex: 200,
+              background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(2px)',
+            }}
+          />
+        )}
+
+        {/* Drawer */}
+        <aside style={{
+          position: 'fixed', top: 0, left: 0, bottom: 0, zIndex: 250,
+          width: 260,
+          background: bg,
+          backdropFilter: 'blur(12px)',
+          borderRight: `1px solid ${border}`,
+          display: 'flex', flexDirection: 'column',
+          padding: '64px 12px 20px',
+          gap: 4,
+          overflowY: 'auto',
+          transform: open ? 'translateX(0)' : 'translateX(-100%)',
+          transition: 'transform 0.25s cubic-bezier(0.4,0,0.2,1)',
+        }}>
+          {sidebarContent}
+        </aside>
+      </>
+    )
+  }
+
+  // ── DESKTOP: sidebar thường ──
+  return (
+    <aside style={{
+      width: 228, borderRight: `1px solid ${border}`,
+      background: bg, backdropFilter: 'blur(8px)',
+      display: 'flex', flexDirection: 'column', padding: '20px 12px', gap: 4,
+      flexShrink: 0, overflowY: 'auto',
+    }}>
+      {sidebarContent}
     </aside>
   )
 }
