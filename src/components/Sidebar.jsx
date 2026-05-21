@@ -135,7 +135,7 @@ export default function Sidebar({ active, onNavigate }) {
           onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,82,82,0.06)'}
         >
           <span style={{ fontSize: 15 }}>🚪</span>
-          <span>Đăng xuất</span>
+          <span>{t('logout')}</span>
         </button>
       )}
     </>
