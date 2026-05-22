@@ -2,15 +2,76 @@ import React, { createContext, useContext, useState, useEffect } from 'react'
 
 const AuthContext = createContext(null)
 const ADMIN_EMAIL = 'khanhlegood1@gmail.com'
+
 const getUsers = () => { try { return JSON.parse(localStorage.getItem('cdoc_users') || '{}') } catch { return {} } }
 const saveUsers = (u) => localStorage.setItem('cdoc_users', JSON.stringify(u))
 const getSavedSession = () => { try { return JSON.parse(localStorage.getItem('cdoc_session') || 'null') } catch { return null } }
 const saveSession = (s) => s ? localStorage.setItem('cdoc_session', JSON.stringify(s)) : localStorage.removeItem('cdoc_session')
 
+// Simulate Google OAuth — in production replace with real Google Sign-In SDK
+// Returns a profile object mimicking what Google's ID token gives you
+function simulateGoogleOAuth(hint = null) {
+  // If hint is an email (admin shortcut), use that identity
+  if (hint === ADMIN_EMAIL) {
+    return {
+      email: ADMIN_EMAIL,
+      name: 'Lê Xuân Khánh',
+      given_name: 'Khánh',
+      family_name: 'Lê',
+      // Google-style avatar via their People API
+      picture: `https://ui-avatars.com/api/?name=Le+Xuan+Khanh&background=00b8cc&color=fff&size=128&bold=true&rounded=true`,
+      provider: 'google',
+      email_verified: true,
+      locale: 'vi',
+    }
+  }
+  // Generic demo Google user
+  return {
+    email: 'nguyen.demo@gmail.com',
+    name: 'Nguyễn Văn Demo',
+    given_name: 'Demo',
+    family_name: 'Nguyễn',
+    picture: `https://ui-avatars.com/api/?name=Nguyen+Demo&background=4285F4&color=fff&size=128&bold=true&rounded=true`,
+    provider: 'google',
+    email_verified: true,
+    locale: 'vi',
+  }
+}
+
+function simulateAppleOAuth() {
+  return {
+    email: 'user@icloud.com',
+    name: 'Apple User',
+    given_name: 'Apple',
+    family_name: 'User',
+    picture: `https://ui-avatars.com/api/?name=Apple+User&background=1c1c1e&color=fff&size=128&bold=true&rounded=true`,
+    provider: 'apple',
+    email_verified: true,
+    locale: 'vi',
+  }
+}
+
 function seedAdmin() {
   const users = getUsers()
   if (!users[ADMIN_EMAIL]) {
-    users[ADMIN_EMAIL] = { email: ADMIN_EMAIL, name: 'Lê Xuân Khánh', password: 'admin123', avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=khanh`, provider: 'email', createdAt: '2024-01-01T00:00:00.000Z', patients: [], records: [] }
+    const googleProfile = simulateGoogleOAuth(ADMIN_EMAIL)
+    users[ADMIN_EMAIL] = {
+      email: ADMIN_EMAIL,
+      name: googleProfile.name,
+      given_name: googleProfile.given_name,
+      family_name: googleProfile.family_name,
+      // Use Google avatar as default — user can change later
+      avatar: googleProfile.picture,
+      googleAvatar: googleProfile.picture, // keep original Google avatar
+      provider: 'google',
+      password: 'admin123',
+      specialty: 'Quản trị hệ thống',
+      phone: '',
+      profileComplete: true, // admin profile pre-seeded
+      createdAt: '2024-01-01T00:00:00.000Z',
+      patients: [],
+      records: [],
+    }
     saveUsers(users)
   }
 }
@@ -18,29 +79,180 @@ function seedAdmin() {
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
+  // needsProfileSetup = true right after first OAuth login, triggers setup modal
+  const [needsProfileSetup, setNeedsProfileSetup] = useState(false)
+
   useEffect(() => {
     seedAdmin()
     const session = getSavedSession()
-    if (session) { const users = getUsers(); if (users[session.email]) setUser({ ...users[session.email], isAdmin: session.email === ADMIN_EMAIL }) }
+    if (session) {
+      const users = getUsers()
+      if (users[session.email]) {
+        setUser({ ...users[session.email], isAdmin: session.email === ADMIN_EMAIL })
+      }
+    }
     setLoading(false)
   }, [])
-  const _finalize = (u) => { const enriched = { ...u, isAdmin: u.email === ADMIN_EMAIL }; setUser(enriched); saveSession({ email: u.email }); return enriched }
-  const _upsert = (providerUser) => { const users = getUsers(); if (!users[providerUser.email]) { users[providerUser.email] = { ...providerUser, patients: [], records: [], createdAt: new Date().toISOString() }; saveUsers(users) } return _finalize(users[providerUser.email]) }
-  const loginWithGoogle = async () => _upsert({ email: 'demo.google@gmail.com', name: 'Nguyễn Demo Google', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=googlevn', provider: 'google', password: null })
-  const loginWithApple = async () => _upsert({ email: 'demo.apple@icloud.com', name: 'Trần Demo Apple', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=applevn', provider: 'apple', password: null })
+
+  // Enrich and save a new or returning user, then set as current session
+  const _finalize = (u) => {
+    const enriched = { ...u, isAdmin: u.email === ADMIN_EMAIL }
+    setUser(enriched)
+    saveSession({ email: u.email })
+    return enriched
+  }
+
+  // Create user from OAuth profile if first time, else merge only non-overridable fields
+  const _upsertOAuth = (oauthProfile) => {
+    const users = getUsers()
+    const existing = users[oauthProfile.email]
+
+    if (!existing) {
+      // First-time login: seed from Google/Apple profile
+      const newUser = {
+        email: oauthProfile.email,
+        name: oauthProfile.name,                  // from Google
+        given_name: oauthProfile.given_name,
+        family_name: oauthProfile.family_name,
+        avatar: oauthProfile.picture,             // Google photo
+        googleAvatar: oauthProfile.picture,       // keep original; used in profile UI
+        provider: oauthProfile.provider,
+        email_verified: oauthProfile.email_verified,
+        locale: oauthProfile.locale || 'vi',
+        specialty: '',
+        phone: '',
+        profileComplete: false,                   // trigger profile-setup prompt
+        password: null,
+        patients: [],
+        records: [],
+        createdAt: new Date().toISOString(),
+      }
+      users[oauthProfile.email] = newUser
+      saveUsers(users)
+      setNeedsProfileSetup(true)              // show profile setup after login
+      return _finalize(newUser)
+    } else {
+      // Returning user: refresh Google avatar in case it changed, but keep custom name if set
+      const refreshed = {
+        ...existing,
+        googleAvatar: oauthProfile.picture,   // always sync latest Google photo
+        // Only update avatar if user hasn't customised it
+        avatar: existing.avatarCustomized ? existing.avatar : oauthProfile.picture,
+      }
+      users[oauthProfile.email] = refreshed
+      saveUsers(users)
+      return _finalize(refreshed)
+    }
+  }
+
+  const loginWithGoogle = async (adminHint = null) => {
+    const profile = simulateGoogleOAuth(adminHint)
+    return _upsertOAuth(profile)
+  }
+
+  const loginWithApple = async () => {
+    const profile = simulateAppleOAuth()
+    return _upsertOAuth(profile)
+  }
+
   const loginWithEmail = async (email, password, name = null) => {
     const users = getUsers()
-    if (name) { if (users[email]) throw new Error('Email đã tồn tại. Vui lòng đăng nhập.'); const u = { email, name, password, avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`, provider: 'email', patients: [], records: [], createdAt: new Date().toISOString() }; users[email] = u; saveUsers(users); return _finalize(u) }
-    else { const u = users[email]; if (!u) throw new Error('Tài khoản không tồn tại'); if (u.password !== password) throw new Error('Sai mật khẩu'); return _finalize(u) }
+    if (name) {
+      // Register
+      if (users[email]) throw new Error('Email đã tồn tại. Vui lòng đăng nhập.')
+      const u = {
+        email, name,
+        given_name: name.split(' ').pop(),
+        family_name: name.split(' ').slice(0, -1).join(' '),
+        password,
+        avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=6b3fd4&color=fff&size=128&bold=true&rounded=true`,
+        googleAvatar: null,
+        provider: 'email',
+        specialty: '',
+        phone: '',
+        profileComplete: false,
+        patients: [], records: [],
+        createdAt: new Date().toISOString(),
+      }
+      users[email] = u
+      saveUsers(users)
+      setNeedsProfileSetup(true)
+      return _finalize(u)
+    } else {
+      // Login
+      const u = users[email]
+      if (!u) throw new Error('Tài khoản không tồn tại')
+      if (u.password !== password) throw new Error('Sai mật khẩu')
+      return _finalize(u)
+    }
   }
-  const logout = () => { setUser(null); saveSession(null) }
-  const updateProfile = (updates) => { const users = getUsers(); const updated = { ...users[user.email], ...updates }; users[user.email] = updated; saveUsers(users); setUser({ ...updated, isAdmin: user.isAdmin }) }
+
+  const logout = () => {
+    setUser(null)
+    setNeedsProfileSetup(false)
+    saveSession(null)
+  }
+
+  // Called from ProfileSetupModal or Settings when user updates their info
+  const updateProfile = (updates) => {
+    const users = getUsers()
+    const hasCustomAvatar = updates.avatar && updates.avatar !== users[user.email]?.googleAvatar
+    const updated = {
+      ...users[user.email],
+      ...updates,
+      avatarCustomized: hasCustomAvatar || users[user.email]?.avatarCustomized || false,
+      profileComplete: true,
+    }
+    users[user.email] = updated
+    saveUsers(users)
+    const enriched = { ...updated, isAdmin: user.isAdmin }
+    setUser(enriched)
+    return enriched
+  }
+
+  const dismissProfileSetup = () => {
+    setNeedsProfileSetup(false)
+    // Mark profile as "seen" so we don't re-prompt on refresh
+    const users = getUsers()
+    if (users[user?.email]) {
+      users[user.email].profileComplete = true
+      saveUsers(users)
+      setUser(u => ({ ...u, profileComplete: true }))
+    }
+  }
+
   const getAllUsers = () => Object.values(getUsers()).map(u => ({ ...u, isAdmin: u.email === ADMIN_EMAIL }))
   const getPatients = () => { try { return JSON.parse(localStorage.getItem('cdoc_patients') || '[]') } catch { return [] } }
-  const savePatient = (patient) => { const patients = getPatients(); const idx = patients.findIndex(p => p.id === patient.id); if (idx >= 0) patients[idx] = patient; else patients.push(patient); localStorage.setItem('cdoc_patients', JSON.stringify(patients)) }
-  const getMedicalRecords = (patientId) => { try { const all = JSON.parse(localStorage.getItem('cdoc_records') || '[]'); return patientId ? all.filter(r => r.patientId === patientId) : all } catch { return [] } }
-  const saveMedicalRecord = (record) => { const records = getMedicalRecords(); records.push({ ...record, id: `R-${Date.now()}`, createdAt: new Date().toISOString(), uploadedBy: user?.email }); localStorage.setItem('cdoc_records', JSON.stringify(records)); return records[records.length - 1] }
-  return <AuthContext.Provider value={{ user, loading, loginWithGoogle, loginWithApple, loginWithEmail, logout, updateProfile, getAllUsers, getPatients, savePatient, getMedicalRecords, saveMedicalRecord }}>{children}</AuthContext.Provider>
+  const savePatient = (patient) => {
+    const patients = getPatients()
+    const idx = patients.findIndex(p => p.id === patient.id)
+    if (idx >= 0) patients[idx] = patient; else patients.push(patient)
+    localStorage.setItem('cdoc_patients', JSON.stringify(patients))
+  }
+  const getMedicalRecords = (patientId) => {
+    try {
+      const all = JSON.parse(localStorage.getItem('cdoc_records') || '[]')
+      return patientId ? all.filter(r => r.patientId === patientId) : all
+    } catch { return [] }
+  }
+  const saveMedicalRecord = (record) => {
+    const records = getMedicalRecords()
+    records.push({ ...record, id: `R-${Date.now()}`, createdAt: new Date().toISOString(), uploadedBy: user?.email })
+    localStorage.setItem('cdoc_records', JSON.stringify(records))
+    return records[records.length - 1]
+  }
+
+  return (
+    <AuthContext.Provider value={{
+      user, loading,
+      needsProfileSetup, dismissProfileSetup,
+      loginWithGoogle, loginWithApple, loginWithEmail,
+      logout, updateProfile,
+      getAllUsers, getPatients, savePatient, getMedicalRecords, saveMedicalRecord,
+    }}>
+      {children}
+    </AuthContext.Provider>
+  )
 }
 
 export const useAuth = () => useContext(AuthContext)

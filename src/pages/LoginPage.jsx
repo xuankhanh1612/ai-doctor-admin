@@ -37,9 +37,7 @@ export default function LoginPage({ onSuccess }) {
       borderRadius: 20, padding: '36px 32px',
       boxShadow: isDark ? '0 24px 80px rgba(0,0,0,0.6)' : '0 24px 80px rgba(0,0,0,0.12)',
     },
-    logo: {
-      display: 'flex', alignItems: 'center', gap: 12, marginBottom: 28, justifyContent: 'center',
-    },
+    logo: { display: 'flex', alignItems: 'center', gap: 12, marginBottom: 28, justifyContent: 'center' },
     logoIcon: {
       width: 44, height: 44, borderRadius: 12,
       background: 'linear-gradient(135deg, #00b8cc, #6b3fd4)',
@@ -48,7 +46,7 @@ export default function LoginPage({ onSuccess }) {
     },
     title: { fontSize: 22, fontWeight: 800, color: isDark ? '#e8f0f8' : '#1a2035', textAlign: 'center', marginBottom: 4 },
     sub: { fontSize: 12, color: isDark ? 'rgba(232,240,248,0.4)' : '#888', textAlign: 'center', marginBottom: 28 },
-    socialBtn: (color) => ({
+    socialBtn: () => ({
       width: '100%', padding: '12px 16px', borderRadius: 12, cursor: 'pointer',
       border: `1px solid ${isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)'}`,
       background: isDark ? 'rgba(255,255,255,0.04)' : '#fff',
@@ -97,6 +95,7 @@ export default function LoginPage({ onSuccess }) {
           {isDark ? '☀️' : '🌙'}
         </button>
       </div>
+
       <div style={s.card}>
         <div style={s.logo}>
           <div style={s.logoIcon}>Rx</div>
@@ -109,12 +108,18 @@ export default function LoginPage({ onSuccess }) {
         <div style={s.title}>{mode === 'login' ? t('login') : t('register')}</div>
         <div style={s.sub}>{t('tagline')}</div>
 
-        {/* Social buttons */}
-        <button style={s.socialBtn()} onClick={() => handle(loginWithGoogle)}>
-          <GoogleIcon /> {t('continueGoogle')}
+        {/* Google — profile auto-filled from OAuth */}
+        <button style={s.socialBtn()} onClick={() => handle(() => loginWithGoogle())}>
+          <GoogleIcon />
+          {lang === 'vi' ? 'Tiếp tục với Google' : 'Continue with Google'}
+          <span style={{ marginLeft: 'auto', fontSize: 10, opacity: 0.5 }}>
+            {lang === 'vi' ? '· Avatar tự động' : '· Auto avatar'}
+          </span>
         </button>
+
         <button style={s.socialBtn()} onClick={() => handle(loginWithApple)}>
-          <AppleIcon isDark={isDark} /> {t('continueApple')}
+          <AppleIcon isDark={isDark} />
+          {lang === 'vi' ? 'Tiếp tục với Apple' : 'Continue with Apple'}
         </button>
 
         <div style={s.divider}><div style={s.line}/>{t('orEmail')}<div style={s.line}/></div>
@@ -128,7 +133,11 @@ export default function LoginPage({ onSuccess }) {
         <label style={s.label}>{t('email')}</label>
         <input style={s.input} type="email" placeholder="email@example.com" value={email} onChange={e => setEmail(e.target.value)} />
         <label style={s.label}>{t('password')}</label>
-        <input style={s.input} type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} />
+        <input
+          style={s.input} type="password" placeholder="••••••••"
+          value={password} onChange={e => setPassword(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && handle(() => loginWithEmail(email, password, mode === 'register' ? name : null))}
+        />
 
         {error && <div style={s.error}>{error}</div>}
 
@@ -136,11 +145,13 @@ export default function LoginPage({ onSuccess }) {
           {loading ? '...' : (mode === 'login' ? t('login') : t('register'))}
         </button>
 
-        {/* Quick admin shortcut - remove in production */}
+        {/* Admin shortcut — uses Google OAuth profile for khanhlegood1@gmail.com */}
         <div style={{ textAlign: 'center', marginTop: 12 }}>
-          <button style={{ ...s.switchBtn, fontSize: 11, color: '#9c6fff' }}
-            onClick={() => handle(() => loginWithEmail('khanhlegood1@gmail.com', 'admin123'))}>
-            🔑 Admin: khanhlegood1@gmail.com
+          <button
+            style={{ ...s.switchBtn, fontSize: 11, color: '#9c6fff' }}
+            onClick={() => handle(() => loginWithGoogle('khanhlegood1@gmail.com'))}
+          >
+            🔑 {lang === 'vi' ? 'Đăng nhập Admin (Google)' : 'Admin login (Google)'}
           </button>
         </div>
 
