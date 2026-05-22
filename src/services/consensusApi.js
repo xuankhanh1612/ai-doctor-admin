@@ -15,7 +15,7 @@
 const BASE_URL =
   (typeof import.meta !== 'undefined' && import.meta.env?.VITE_CONSENSUS_API_URL)
     ? import.meta.env.VITE_CONSENSUS_API_URL
-    : 'http://127.0.0.1:8000'
+    : 'https://ai-doctor-engine.vercel.app'
 
 async function _post(path, body) {
   const res = await fetch(`${BASE_URL}${path}`, {
