@@ -7,11 +7,11 @@ export default defineConfig({
     proxy: {
       // Proxy /api/* and /health to the FastAPI backend
       '/api': {
-        target: 'http://127.0.0.1:8000',
+        target: 'https://ai-doctor-engine.vercel.app',
         changeOrigin: true,
       },
       '/health': {
-        target: 'http://127.0.0.1:8000',
+        target: 'https://ai-doctor-engine.vercel.app',
         changeOrigin: true,
       },
     },
