@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useApp } from '../context/AppContext'
 
 // ─── API — Consensus Engine (https://ai-doctor-engine.vercel.app) ──────────
@@ -185,16 +185,53 @@ const BarLine = ({ value, max = 100, color = 'var(--cyan)', height = 3 }) => (
 
 // ─── Section renderers ────────────────────────────────────────────────────
 const SECTIONS = [
-  { id: 'diseases',     label: 'Diseases',     icon: '🦠', color: 'var(--red)'    },
-  { id: 'symptoms',     label: 'Symptoms',     icon: '🌡', color: 'var(--amber)'  },
-  { id: 'labs',         label: 'Labs',         icon: '🧪', color: 'var(--cyan)'   },
-  { id: 'imaging',      label: 'Imaging',      icon: '🏥', color: 'var(--violet)' },
-  { id: 'medications',  label: 'Medications',  icon: '💊', color: 'var(--green)'  },
-  { id: 'allergies',    label: 'Allergies',    icon: '⚠️', color: 'var(--pink)'   },
-  { id: 'genomics',     label: 'Genomics',     icon: '🧬', color: '#e8c97a'       },
-  { id: 'timeline',     label: 'Timeline',     icon: '📅', color: 'var(--text2)'  },
-  { id: 'risk_factors', label: 'Risk Factors', icon: '📊', color: 'var(--amber)'  },
+  { id: 'diseases',     label: 'Diseases',     labelVi: 'Bệnh',        icon: '🦠', color: 'var(--red)'    },
+  { id: 'symptoms',     label: 'Symptoms',     labelVi: 'Triệu chứng', icon: '🌡', color: 'var(--amber)'  },
+  { id: 'labs',         label: 'Labs',         labelVi: 'Xét nghiệm',  icon: '🧪', color: 'var(--cyan)'   },
+  { id: 'imaging',      label: 'Imaging',      labelVi: 'Hình ảnh',    icon: '🏥', color: 'var(--violet)' },
+  { id: 'medications',  label: 'Medications',  labelVi: 'Thuốc',       icon: '💊', color: 'var(--green)'  },
+  { id: 'allergies',    label: 'Allergies',    labelVi: 'Dị ứng',      icon: '⚠️', color: 'var(--pink)'   },
+  { id: 'genomics',     label: 'Genomics',     labelVi: 'Gen',         icon: '🧬', color: '#e8c97a'       },
+  { id: 'timeline',     label: 'Timeline',     labelVi: 'Lịch sử',     icon: '📅', color: 'var(--cyan2)'  },
+  { id: 'risk_factors', label: 'Risk Factors', labelVi: 'Rủi ro',      icon: '📊', color: 'var(--amber)'  },
 ]
+
+// CSS injected once for section tab animations
+const SECTION_STYLE = `
+  .sec-tab { position: relative; overflow: hidden; transition: all 0.18s cubic-bezier(.4,0,.2,1) !important; }
+  .sec-tab::after {
+    content: '';
+    position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
+    height: 2px; border-radius: 2px;
+    width: 0; transition: width 0.22s ease;
+    background: currentColor;
+  }
+  .sec-tab.sec-active::after { width: 70%; }
+  .sec-tab:hover:not(.sec-active) { background: rgba(255,255,255,0.04) !important; }
+  .sec-tab-ripple {
+    position: absolute; inset: 0; border-radius: inherit;
+    background: currentColor; opacity: 0;
+    animation: sec-ripple 0.38s ease-out forwards;
+    pointer-events: none;
+  }
+  @keyframes sec-ripple {
+    from { opacity: 0.18; transform: scale(0.6); }
+    to   { opacity: 0;    transform: scale(1.1); }
+  }
+  .mini-chip { transition: all 0.15s ease !important; }
+  .mini-chip:hover { transform: translateY(-1px); }
+  .mini-chip.mini-active {
+    box-shadow: 0 0 10px currentColor;
+    transform: translateY(-1px);
+  }
+  .section-content-panel {
+    animation: sec-fade-in 0.22s ease;
+  }
+  @keyframes sec-fade-in {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+`
 
 function renderSection(id, data) {
   if (!data?.length) return <div style={{ padding: 24, textAlign: 'center', color: 'var(--text3)', fontSize: 12 }}>Không có dữ liệu</div>
@@ -483,6 +520,32 @@ export default function PatientRecordPanel({ onNext, selectedMember }) {
     }
   }, [selectedMember])
   const [activeSection, setSection]       = useState('diseases')
+  const [rippleId, setRippleId]           = useState(null)
+  const [sectionKey, setSectionKey]       = useState(0)
+  const sectionContentRef                 = useRef(null)
+  const tabsRef                           = useRef(null)
+
+  // Inject animation CSS once
+  useEffect(() => {
+    if (!document.getElementById('sec-tab-style')) {
+      const el = document.createElement('style')
+      el.id = 'sec-tab-style'
+      el.textContent = SECTION_STYLE
+      document.head.appendChild(el)
+    }
+  }, [])
+
+  const handleSectionClick = useCallback((id) => {
+    if (id === activeSection) return
+    setSection(id)
+    setSectionKey(k => k + 1)  // triggers content animation
+    setRippleId(id)
+    setTimeout(() => setRippleId(null), 400)
+    // Smooth scroll to content
+    setTimeout(() => {
+      sectionContentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    }, 60)
+  }, [activeSection])
   const [consensusData, setConsensusData] = useState(null)
   const [consensusLoading, setCLoading]   = useState(false)
   const [consensusError, setCError]       = useState('')
@@ -603,12 +666,43 @@ export default function PatientRecordPanel({ onNext, selectedMember }) {
           </div>
         </div>
         <div style={{ display: 'flex', gap: 6, marginTop: 14, flexWrap: 'wrap' }}>
-          {SECTIONS.map(s => (
-            <div key={s.id} onClick={() => setSection(s.id)} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 10px', borderRadius: 6, background: s.color + '15', border: `1px solid ${s.color}25`, cursor: 'pointer' }}>
-              <span style={{ fontSize: 11 }}>{s.icon}</span>
-              <span style={{ fontSize: 9, fontFamily: 'var(--font-mono)', color: s.color }}>{(patient[s.id] || []).length}</span>
-            </div>
-          ))}
+          {SECTIONS.map(s => {
+            const isActive = activeSection === s.id
+            const count = (patient[s.id] || []).length
+            const hasCritical = s.id === 'labs' && (patient.labs||[]).some(l=>l.critical)
+                             || s.id === 'diseases' && (patient.diseases||[]).some(d=>d.severity==='critical')
+            return (
+              <div
+                key={s.id}
+                className={`mini-chip${isActive ? ' mini-active' : ''}`}
+                onClick={() => handleSectionClick(s.id)}
+                title={s.labelVi}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 4,
+                  padding: '4px 10px', borderRadius: 8, cursor: 'pointer',
+                  background: isActive ? s.color + '22' : s.color + '10',
+                  border: `1.5px solid ${isActive ? s.color : s.color + '30'}`,
+                  color: s.color,
+                  boxShadow: isActive ? `0 0 8px ${s.color}55` : 'none',
+                  position: 'relative',
+                }}
+              >
+                <span style={{ fontSize: 12 }}>{s.icon}</span>
+                <span style={{ fontSize: 9, fontFamily: 'var(--font-mono)', fontWeight: isActive ? 700 : 400 }}>
+                  {count}
+                </span>
+                {hasCritical && (
+                  <span style={{
+                    position: 'absolute', top: -3, right: -3,
+                    width: 7, height: 7, borderRadius: '50%',
+                    background: 'var(--red)',
+                    boxShadow: '0 0 6px var(--red)',
+                    animation: 'pulse-dot 1.2s ease infinite',
+                  }}/>
+                )}
+              </div>
+            )
+          })}
         </div>
       </div>
 
@@ -685,30 +779,135 @@ export default function PatientRecordPanel({ onNext, selectedMember }) {
       )}
 
       {/* Section tabs */}
-      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', background: surfaceBg, border: `1px solid ${borderCol}`, borderRadius: 14, padding: 6 }}>
+      <div
+        ref={tabsRef}
+        style={{
+          display: 'flex', gap: 3, flexWrap: 'wrap',
+          background: surfaceBg,
+          border: `1px solid ${borderCol}`,
+          borderRadius: 14, padding: 5,
+          position: 'sticky', top: 0, zIndex: 10,
+          backdropFilter: 'blur(12px)',
+        }}
+      >
         {SECTIONS.map(s => {
           const isActive = activeSection === s.id
+          const isRippling = rippleId === s.id
+          const count = (patient[s.id] || []).length
+          const hasCritical = (s.id === 'labs' && (patient.labs||[]).some(l=>l.critical))
+                           || (s.id === 'diseases' && (patient.diseases||[]).some(d=>d.severity==='critical'))
           return (
-            <button key={s.id} onClick={() => setSection(s.id)} style={{
-              flex: '1 1 auto', padding: '8px 6px', borderRadius: 8, border: 'none', cursor: 'pointer',
-              background: isActive ? s.color + '18' : 'transparent',
-              color: isActive ? s.color : text3, fontSize: 11, fontFamily: 'var(--font-mono)',
-              outline: isActive ? `1px solid ${s.color}30` : 'none', transition: 'all .15s',
-            }}>
-              <div style={{ fontSize: 14, marginBottom: 2 }}>{s.icon}</div>
-              {s.label}
-              <span style={{ marginLeft: 4, fontSize: 9, opacity: .55 }}>{(patient[s.id] || []).length}</span>
+            <button
+              key={s.id}
+              className={`sec-tab${isActive ? ' sec-active' : ''}`}
+              onClick={() => handleSectionClick(s.id)}
+              style={{
+                flex: '1 1 auto', padding: '9px 5px', borderRadius: 9,
+                border: isActive ? `1px solid ${s.color}45` : '1px solid transparent',
+                cursor: 'pointer', position: 'relative', overflow: 'hidden',
+                background: isActive ? s.color + '15' : 'transparent',
+                color: isActive ? s.color : text3,
+                fontSize: 11, fontFamily: 'var(--font-mono)',
+                boxShadow: isActive ? `0 2px 12px ${s.color}30, inset 0 0 12px ${s.color}08` : 'none',
+                transform: isActive ? 'translateY(-1px)' : 'none',
+              }}
+            >
+              {/* Ripple on click */}
+              {isRippling && <span className="sec-tab-ripple" style={{ color: s.color }} />}
+
+              {/* Critical dot */}
+              {hasCritical && (
+                <span style={{
+                  position: 'absolute', top: 5, right: 5,
+                  width: 5, height: 5, borderRadius: '50%',
+                  background: 'var(--red)',
+                  animation: isActive ? 'none' : 'pulse-dot 1.5s ease infinite',
+                  boxShadow: '0 0 5px var(--red)',
+                }}/>
+              )}
+
+              {/* Icon */}
+              <div style={{
+                fontSize: 16, marginBottom: 3,
+                filter: isActive ? `drop-shadow(0 0 4px ${s.color}90)` : 'none',
+                transition: 'filter 0.2s',
+              }}>
+                {s.icon}
+              </div>
+
+              {/* Label */}
+              <div style={{ lineHeight: 1.2, fontWeight: isActive ? 700 : 400, letterSpacing: isActive ? '.04em' : '.02em' }}>
+                {s.labelVi}
+              </div>
+
+              {/* Count badge */}
+              <div style={{
+                marginTop: 3, fontSize: 9, fontWeight: 700,
+                color: isActive ? s.color : text3,
+                opacity: isActive ? 1 : 0.5,
+              }}>
+                {count}
+              </div>
             </button>
           )
         })}
       </div>
 
       {/* Section content */}
-      <div style={{ background: surfaceBg, border: `1px solid ${borderCol}`, borderRadius: 14, padding: 20, minHeight: 300 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, paddingBottom: 12, borderBottom: `1px solid ${borderCol}` }}>
-          <span style={{ fontSize: 18 }}>{sec?.icon}</span>
-          <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)', letterSpacing: '.15em', textTransform: 'uppercase', color: sec?.color }}>{sec?.label}</span>
-          <span style={{ marginLeft: 'auto', fontSize: 10, color: text3, fontFamily: 'var(--font-mono)' }}>{sectionData.length} items</span>
+      <div
+        ref={sectionContentRef}
+        key={sectionKey}
+        className="section-content-panel"
+        style={{
+          background: surfaceBg,
+          border: `1.5px solid ${sec?.color + '35' || borderCol}`,
+          borderRadius: 14, padding: 20, minHeight: 300,
+          boxShadow: sec?.color ? `0 0 20px ${sec.color}10, inset 0 0 30px ${sec.color}04` : 'none',
+          transition: 'border-color 0.2s, box-shadow 0.2s',
+        }}
+      >
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 10,
+          marginBottom: 16, paddingBottom: 12,
+          borderBottom: `1px solid ${sec?.color + '25' || borderCol}`,
+        }}>
+          <div style={{
+            width: 32, height: 32, borderRadius: 9, flexShrink: 0,
+            background: (sec?.color || 'var(--cyan)') + '18',
+            border: `1.5px solid ${sec?.color || 'var(--cyan)'}35`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 16,
+            filter: `drop-shadow(0 0 5px ${sec?.color || 'var(--cyan)'}60)`,
+          }}>
+            {sec?.icon}
+          </div>
+          <div>
+            <div style={{
+              fontSize: 12, fontFamily: 'var(--font-mono)', letterSpacing: '.15em',
+              textTransform: 'uppercase', fontWeight: 700,
+              color: sec?.color || 'var(--text)',
+            }}>
+              {sec?.label}
+            </div>
+            <div style={{ fontSize: 10, color: text3, fontFamily: 'var(--font-mono)' }}>
+              {sec?.labelVi}
+            </div>
+          </div>
+          <div style={{
+            marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6,
+          }}>
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              width: 24, height: 24, borderRadius: '50%',
+              background: (sec?.color || 'var(--cyan)') + '20',
+              border: `1px solid ${sec?.color || 'var(--cyan)'}35`,
+              fontSize: 11, fontWeight: 800, fontFamily: 'var(--font-mono)',
+              color: sec?.color || 'var(--text)',
+            }}>
+              {sectionData.length}
+            </span>
+            <span style={{ fontSize: 9, color: text3, fontFamily: 'var(--font-mono)' }}>items</span>
+          </div>
         </div>
         {renderSection(activeSection, sectionData)}
       </div>
