@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react'
+import React, { useState, useCallback } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { useApp } from '../../context/AppContext'
 
@@ -52,38 +52,12 @@ const saveMembers = (patientId, members) => {
 
 // ─── Default demo data ─────────────────────────────────────────────────────
 const DEFAULT_MEMBERS = [
-  // ── Thế hệ ông bà ─────────────────────────────────────────────────────────
-  { id:'fm-0', relation:'grandparent', name:'Lê Văn Tấn',     age:94, gender:'M', conditions:['Ung thư phổi'],          alive:false, note:'Ông nội · mất 1992' },
-  { id:'fm-9', relation:'grandparent', name:'Trần Thị Ngọc',  age:88, gender:'F', conditions:['Tăng huyết áp'],         alive:false, note:'Bà nội · mất 2005' },
-  // ── Thế hệ cha mẹ ─────────────────────────────────────────────────────────
-  { id:'fm-1', relation:'father',      name:'Lê Văn Bình',    age:72, gender:'M', conditions:['Ung thư phổi','Tăng huyết áp'], alive:false, note:'Mất 2018 — ung thư phổi' },
-  { id:'fm-2', relation:'mother',      name:'Nguyễn Thị Lan', age:68, gender:'F', conditions:['Tăng huyết áp'],         alive:true,  note:'' },
-  { id:'fm-7', relation:'uncle_aunt',  name:'Lê Văn Hùng',    age:65, gender:'M', conditions:['Xơ gan'],               alive:true,  note:'Bác ruột · viêm gan B' },
-  // ── Bệnh nhân chính + gia đình trực tiếp ──────────────────────────────────
-  {
-    id:'fm-3', relation:'self',
-    name:'Lê Xuân Khánh',
-    age:47, gender:'M',
-    conditions:['NSCLC · Stage IIA','Ung thư gan di căn (HCC)','Xơ gan Child-Pugh A'],
-    alive:true,
-    note:'Bệnh nhân chính · EGFR Exon19del · T790M · Erlotinib Cycle 4',
-    // Full merged medical record — synced from PatientRecordPanel
-    medicalRecord: {
-      blood_type: 'O+',
-      dob: '1977-04-10',
-      diagnoses: ['NSCLC Stage IIA (C34.1)','HCC T3N0M0 di căn (C22.0)','Xơ gan Child-Pugh A (K74.6)','Viêm gan B mãn tính (B18.1)'],
-      key_labs: { AFP: '1840 ng/mL ↑↑↑', CEA: '28 ng/mL ↑', 'CA19-9': '980 U/mL ↑↑↑', ALT: '142 U/L ↑', ctDNA: '0.8%' },
-      genomics: ['EGFR Exon 19 del (Pathogenic)', 'T790M (Pathogenic · resistance risk)', 'TP53 R248W (Pathogenic)', 'TERT C228T (Pathogenic)', 'CTNNB1 S45F (Likely Pathogenic)'],
-      medications: ['Erlotinib 150mg/day (active)', 'Sorafenib 400mg 2×/day (active)', 'Entecavir 0.5mg (active)', 'Furosemide 40mg (active)'],
-      allergies: ['Penicillin — mề đay (severe)', 'Ibuprofen — xuất huyết tiêu hoá (moderate)'],
-    },
-  },
-  { id:'fm-4', relation:'spouse',   name:'Trần Thị Hoa',   age:44, gender:'F', conditions:['Khỏe mạnh'],            alive:true, note:'' },
-  { id:'fm-5', relation:'sibling',  name:'Lê Xuân Nam',    age:44, gender:'M', conditions:['Viêm gan B mãn tính'], alive:true, note:'Anh trai · cần tầm soát AFP' },
-  { id:'fm-8', relation:'sibling',  name:'Lê Thị Mai',     age:50, gender:'F', conditions:['Khỏe mạnh'],           alive:true, note:'Chị gái' },
-  // ── Thế hệ con ────────────────────────────────────────────────────────────
-  { id:'fm-6', relation:'child',    name:'Lê Minh Tú',     age:19, gender:'M', conditions:['Khỏe mạnh'],           alive:true, note:'Con trai · cần tầm soát EGFR từ 40 tuổi + xét nghiệm HBsAg' },
-  { id:'fm-10',relation:'child',    name:'Lê Thị Bảo Nhi', age:15, gender:'F', conditions:['Khỏe mạnh'],           alive:true, note:'Con gái · theo dõi HBsAg định kỳ' },
+  { id:'fm-1', relation:'father',     name:'Lê Văn Bình',     age:72, gender:'M', conditions:['Ung thư phổi','Tăng huyết áp'], alive:false, note:'' },
+  { id:'fm-2', relation:'mother',     name:'Nguyễn Thị Lan',  age:68, gender:'F', conditions:['Tăng huyết áp'],              alive:true,  note:'' },
+  { id:'fm-3', relation:'self',       name:'Lê Xuân Khánh',   age:47, gender:'M', conditions:['NSCLC · Stage IIA'],           alive:true,  note:'Bệnh nhân chính' },
+  { id:'fm-4', relation:'spouse',     name:'Trần Thị Hoa',    age:44, gender:'F', conditions:['Khỏe mạnh'],                  alive:true,  note:'' },
+  { id:'fm-5', relation:'sibling',    name:'Lê Xuân Nam',     age:44, gender:'M', conditions:['Khỏe mạnh'],                  alive:true,  note:'' },
+  { id:'fm-6', relation:'child',      name:'Lê Minh Tú',      age:19, gender:'M', conditions:['Khỏe mạnh'],                  alive:true,  note:'Cần tầm soát EGFR từ 40 tuổi' },
 ]
 
 // ─── Build patient record for Patient Record Visualizer ───────────────────
@@ -132,7 +106,6 @@ const buildMemberRecord = (member) => ({
 
   timeline: [
     { id:'t1', date:'—', event:`Thành viên gia đình · ${RELATION_META[member.relation]?.label?.vi || member.relation}`, type:'diagnosis' },
-    ...(member.medicalRecord?.diagnoses?.map((d,i) => ({ id:'td'+i, date:'—', event:d, type:'diagnosis', severity: /ung thư|cancer|hcc|nsclc/i.test(d)?'critical':'moderate' })) || []),
     ...(member.note ? [{ id:'t2', date:'—', event: member.note, type:'consult' }] : []),
     ...(member.alive === false ? [{ id:'t3', date:'—', event:'Đã mất', type:'consult' }] : []),
   ],
@@ -251,23 +224,18 @@ function MemberCard({ member, lang, isDark, c, onViewRecord, onEdit, onDelete })
   )
 }
 
-// ─── Standalone Field wrapper (must be outside modal to avoid remount) ───────
-function Field({ label, children }) {
-  return (
-    <div style={{ marginBottom:12 }}>
-      <label style={{ display:'block', fontSize:11, color:'var(--text3,#aaa)', marginBottom:5, fontWeight:600 }}>{label}</label>
-      {children}
-    </div>
-  )
-}
-
 // ─── Member Form Modal ─────────────────────────────────────────────────────
-function MemberFormModal({ mode, initialForm, onSave, onClose, lang, isDark, c }) {
-  // Use local ref-backed state so typing never causes parent re-render
-  const [localForm, setLocalForm] = useState(initialForm)
+function MemberFormModal({ mode, form, setForm, onSave, onClose, lang, isDark, c }) {
   const title = mode === 'add'
     ? (lang === 'vi' ? '+ Thêm thành viên' : '+ Add Member')
     : (lang === 'vi' ? '✏️ Sửa thành viên' : '✏️ Edit Member')
+
+  const Field = ({ label, children }) => (
+    <div style={{ marginBottom:12 }}>
+      <label style={{ display:'block', fontSize:11, color:c.text3, marginBottom:5, fontWeight:600 }}>{label}</label>
+      {children}
+    </div>
+  )
 
   const inputStyle = {
     width:'100%', padding:'9px 12px', borderRadius:8,
@@ -298,7 +266,7 @@ function MemberFormModal({ mode, initialForm, onSave, onClose, lang, isDark, c }
 
         <Field label={lang === 'vi' ? 'Họ và tên *' : 'Full Name *'}>
           <input
-            value={localForm.name} onChange={e => setLocalForm(p => ({ ...p, name:e.target.value }))}
+            value={form.name} onChange={e => setForm(p => ({ ...p, name:e.target.value }))}
             placeholder={lang === 'vi' ? 'Nguyễn Văn A' : 'John Doe'}
             style={inputStyle}
           />
@@ -307,12 +275,12 @@ function MemberFormModal({ mode, initialForm, onSave, onClose, lang, isDark, c }
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
           <Field label={lang === 'vi' ? 'Tuổi' : 'Age'}>
             <input
-              type="number" value={localForm.age} onChange={e => setLocalForm(p => ({ ...p, age:e.target.value }))}
+              type="number" value={form.age} onChange={e => setForm(p => ({ ...p, age:e.target.value }))}
               placeholder="45" min={0} max={120} style={inputStyle}
             />
           </Field>
           <Field label={lang === 'vi' ? 'Giới tính' : 'Gender'}>
-            <select value={localForm.gender} onChange={e => setLocalForm(p => ({ ...p, gender:e.target.value }))} style={selectStyle}>
+            <select value={form.gender} onChange={e => setForm(p => ({ ...p, gender:e.target.value }))} style={selectStyle}>
               <option value="M">{lang === 'vi' ? 'Nam' : 'Male'}</option>
               <option value="F">{lang === 'vi' ? 'Nữ' : 'Female'}</option>
             </select>
@@ -320,7 +288,7 @@ function MemberFormModal({ mode, initialForm, onSave, onClose, lang, isDark, c }
         </div>
 
         <Field label={lang === 'vi' ? 'Quan hệ với bệnh nhân' : 'Relation to Patient'}>
-          <select value={localForm.relation} onChange={e => setLocalForm(p => ({ ...p, relation:e.target.value }))} style={selectStyle}>
+          <select value={form.relation} onChange={e => setForm(p => ({ ...p, relation:e.target.value }))} style={selectStyle}>
             {RELATIONS.map(r => (
               <option key={r} value={r}>{RELATION_META[r]?.label?.[lang] || RELATION_META[r]?.label?.vi || r}</option>
             ))}
@@ -329,8 +297,8 @@ function MemberFormModal({ mode, initialForm, onSave, onClose, lang, isDark, c }
 
         <Field label={lang === 'vi' ? 'Bệnh lý (phân cách bằng dấu phẩy)' : 'Conditions (comma-separated)'}>
           <input
-            value={localForm.conditions}
-            onChange={e => setLocalForm(p => ({ ...p, conditions:e.target.value }))}
+            value={form.conditions}
+            onChange={e => setForm(p => ({ ...p, conditions:e.target.value }))}
             placeholder={lang === 'vi' ? 'Ung thư phổi, Tăng huyết áp' : 'Lung Cancer, Hypertension'}
             style={inputStyle}
           />
@@ -341,7 +309,7 @@ function MemberFormModal({ mode, initialForm, onSave, onClose, lang, isDark, c }
 
         <Field label={lang === 'vi' ? 'Ghi chú thêm' : 'Additional Notes'}>
           <input
-            value={localForm.note} onChange={e => setLocalForm(p => ({ ...p, note:e.target.value }))}
+            value={form.note} onChange={e => setForm(p => ({ ...p, note:e.target.value }))}
             placeholder={lang === 'vi' ? 'Ví dụ: cần tầm soát định kỳ từ 40 tuổi' : 'E.g: needs annual screening from age 40'}
             style={inputStyle}
           />
@@ -349,31 +317,31 @@ function MemberFormModal({ mode, initialForm, onSave, onClose, lang, isDark, c }
 
         <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:20 }}>
           <div
-            onClick={() => setLocalForm(p => ({ ...p, alive:!p.alive }))}
+            onClick={() => setForm(p => ({ ...p, alive:!p.alive }))}
             style={{
               width:40, height:22, borderRadius:11, cursor:'pointer', transition:'all .2s',
-              background: localForm.alive ? '#00b8cc' : 'rgba(255,255,255,0.15)',
+              background: form.alive ? '#00b8cc' : 'rgba(255,255,255,0.15)',
               position:'relative', flexShrink:0,
             }}
           >
             <div style={{
               width:16, height:16, borderRadius:'50%', background:'#fff',
               position:'absolute', top:3, transition:'left .2s',
-              left: localForm.alive ? 21 : 3,
+              left: form.alive ? 21 : 3,
             }} />
           </div>
           <span style={{ fontSize:12, color:c.text2 }}>
-            {localForm.alive ? (lang === 'vi' ? '✅ Còn sống' : '✅ Alive') : (lang === 'vi' ? '✝ Đã mất' : '✝ Deceased')}
+            {form.alive ? (lang === 'vi' ? '✅ Còn sống' : '✅ Alive') : (lang === 'vi' ? '✝ Đã mất' : '✝ Deceased')}
           </span>
         </div>
 
         <div style={{ display:'flex', gap:10 }}>
           <button
-            onClick={() => onSave(localForm)} disabled={!localForm.name.trim()}
+            onClick={onSave} disabled={!form.name.trim()}
             style={{
-              flex:1, padding:'11px', borderRadius:9, cursor: localForm.name.trim() ? 'pointer' : 'not-allowed',
+              flex:1, padding:'11px', borderRadius:9, cursor: form.name.trim() ? 'pointer' : 'not-allowed',
               border:'none', background:'linear-gradient(135deg,#00b8cc,#6b3fd4)',
-              color:'#fff', fontWeight:700, fontSize:13, opacity: localForm.name.trim() ? 1 : 0.5,
+              color:'#fff', fontWeight:700, fontSize:13, opacity: form.name.trim() ? 1 : 0.5,
               fontFamily:'inherit',
             }}
           >{mode === 'add' ? (lang === 'vi' ? '+ Thêm' : '+ Add') : (lang === 'vi' ? '💾 Lưu' : '💾 Save')}</button>
@@ -443,15 +411,15 @@ export default function FamilyTreePanel({ patientId, onNext, onViewRecord }) {
     setModal('edit')
   }
 
-  const handleSave = (localForm) => {
+  const handleSave = () => {
     const parsed = {
-      name:       localForm.name.trim(),
-      age:        parseInt(localForm.age) || 0,
-      gender:     localForm.gender,
-      relation:   localForm.relation,
-      conditions: localForm.conditions.split(',').map(s => s.trim()).filter(Boolean),
-      alive:      localForm.alive,
-      note:       localForm.note.trim(),
+      name:       form.name.trim(),
+      age:        parseInt(form.age) || 0,
+      gender:     form.gender,
+      relation:   form.relation,
+      conditions: form.conditions.split(',').map(s => s.trim()).filter(Boolean),
+      alive:      form.alive,
+      note:       form.note.trim(),
     }
     if (!parsed.name) return
 
@@ -683,8 +651,7 @@ export default function FamilyTreePanel({ patientId, onNext, onViewRecord }) {
       {/* ── Add / Edit Modal ─────────────────────────────────────────────────── */}
       {modal && (
         <MemberFormModal
-          key={editId || 'add'}
-          mode={modal} initialForm={form}
+          mode={modal} form={form} setForm={setForm}
           onSave={handleSave} onClose={() => setModal(null)}
           lang={lang} isDark={isDark} c={c}
         />
