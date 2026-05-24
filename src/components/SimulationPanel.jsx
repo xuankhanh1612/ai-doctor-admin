@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useApp } from '../context/AppContext'
 import { SCENARIOS } from '../data/mockData.js'
+import NavButtons from './NavButtons.jsx'
 
 const Card = ({ title, children }) => (
   <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 16 }}>
@@ -16,7 +17,7 @@ const ROADMAP = [
   { label: 'Response confirmed · Month 3', desc: 'Continue maintenance · Adjust dose PRN',          color: 'var(--green)'  },
 ]
 
-export default function SimulationPanel({ onNext }) {
+export default function SimulationPanel({ onNext, onPrev, prevLabel }) {
   const { t } = useApp()
   const [scenario, setScenario] = useState('B')
   const [months, setMonths] = useState(6)
@@ -110,12 +111,7 @@ export default function SimulationPanel({ onNext }) {
         </div>
       </Card>
 
-      <button onClick={onNext} style={{
-        padding: '12px 22px', borderRadius: 10, cursor: 'pointer',
-        background: 'linear-gradient(135deg, var(--cyan2), var(--violet2))',
-        color: '#fff', fontSize: 13, fontWeight: 600,
-        border: 'none', fontFamily: 'var(--font-display)', alignSelf: 'flex-start',
-      }}>{t('submitConsensus')}</button>
+      <NavButtons onNext={onNext} nextLabel={t('submitConsensus')} onPrev={onPrev} prevLabel={prevLabel} />
     </div>
   )
 }

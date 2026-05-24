@@ -209,7 +209,7 @@ function CompareGrid({ allResults }) {
 
 // ── Main panel ────────────────────────────────────────────────────────────
 
-export default function ConsensusPanel({ onReset }) {
+export default function ConsensusPanel({ onReset, onPrev, prevLabel }) {
   const { t } = useApp()
   const {
     phase, agentStates, consensusResult, run, reset,
@@ -423,7 +423,7 @@ export default function ConsensusPanel({ onReset }) {
               )}
 
               {/* ── Action buttons ───────────────────────────────────────── */}
-              <div style={{ display: 'flex', gap: 10 }}>
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                 <button onClick={() => { reset(); onReset() }} style={{
                   padding: '11px 20px', borderRadius: 10, cursor: 'pointer',
                   background: 'transparent', border: '1px solid var(--border2)',
@@ -436,6 +436,18 @@ export default function ConsensusPanel({ onReset }) {
                   color: 'var(--text2)', fontSize: 13, fontWeight: 600,
                   fontFamily: 'var(--font-display)',
                 }}>{t('rerunConsensus')}</button>
+                {onPrev && prevLabel && (
+                  <button onClick={onPrev} style={{
+                    padding: '11px 18px', borderRadius: 10, cursor: 'pointer',
+                    background: 'transparent', border: '1px solid var(--border2)',
+                    color: 'var(--text2)', fontSize: 12, fontWeight: 500,
+                    fontFamily: 'var(--font-display)', whiteSpace: 'nowrap',
+                    transition: 'all 0.18s',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface2)'; e.currentTarget.style.color = 'var(--text)' }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text2)' }}
+                  >← {prevLabel}</button>
+                )}
               </div>
             </div>
           )}

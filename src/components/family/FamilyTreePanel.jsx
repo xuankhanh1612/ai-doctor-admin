@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { useApp } from '../../context/AppContext'
+import NavButtons from '../NavButtons.jsx'
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 const RELATIONS = ['self','father','mother','spouse','sibling','child','grandparent','grandchild','uncle_aunt','cousin']
@@ -389,7 +390,7 @@ function MemberFormModal({ mode, initialForm, onSave, onClose, lang, isDark, c }
 }
 
 // ─── Main Component ────────────────────────────────────────────────────────
-export default function FamilyTreePanel({ patientId, onNext, onViewRecord }) {
+export default function FamilyTreePanel({ patientId, onNext, onPrev, prevLabel, onViewRecord }) {
   const { theme, lang, t } = useApp()
   const isDark    = theme === 'dark'
 
@@ -670,12 +671,8 @@ export default function FamilyTreePanel({ patientId, onNext, onViewRecord }) {
         </div>
       </div>
 
-      {/* ── Next button ─────────────────────────────────────────────────────── */}
-      {onNext && (
-        <button onClick={onNext} style={{ padding:'12px 24px', borderRadius:10, cursor:'pointer', background:'linear-gradient(135deg,#00b8cc,#6b3fd4)', color:'#fff', fontSize:13, fontWeight:700, border:'none', alignSelf:'flex-start', fontFamily:'inherit' }}>
-          {t('next')} →
-        </button>
-      )}
+      {/* ── Navigation ─────────────────────────────────────────────────────── */}
+      <NavButtons onNext={onNext} nextLabel={`${t('next')} →`} onPrev={onPrev} prevLabel={prevLabel} />
 
       {/* ── Add / Edit Modal ─────────────────────────────────────────────────── */}
       {modal && (

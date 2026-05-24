@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react'
 import { useAuth } from '/src/context/AuthContext'
 import { useApp } from '/src/context/AppContext'
+import NavButtons from '../NavButtons.jsx'
 
 const FILE_TYPES = {
   'image/jpeg': { icon: '🖼️', label: 'JPEG Image' },
@@ -27,7 +28,7 @@ const AI_SUGGESTIONS = {
   ]
 }
 
-export default function UploadPanel({ patientId, onNext }) {
+export default function UploadPanel({ patientId, onNext, onPrev, prevLabel }) {
   const { saveMedicalRecord, getMedicalRecords } = useAuth()
   const { t, lang, theme } = useApp()
   const isDark = theme === 'dark'
@@ -205,15 +206,7 @@ export default function UploadPanel({ patientId, onNext }) {
         </div>
       </div>
 
-      {onNext && (
-        <button onClick={onNext} style={{
-          padding: '12px 22px', borderRadius: 10, cursor: 'pointer',
-          background: 'linear-gradient(135deg, #00b8cc, #6b3fd4)',
-          color: '#fff', fontSize: 13, fontWeight: 600, border: 'none', alignSelf: 'flex-start',
-        }}>
-          {t('next')} →
-        </button>
-      )}
+      <NavButtons onNext={onNext} nextLabel={`${t('next')} →`} onPrev={onPrev} prevLabel={prevLabel} />
     </div>
   )
 }

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useApp } from '../context/AppContext'
+import NavButtons from './NavButtons.jsx'
 
 // ─── API — Consensus Engine (https://ai-doctor-engine.vercel.app) ──────────
 const API_BASE =
@@ -503,7 +504,7 @@ function ConsensusCard({ result, method, color }) {
 // ─── Main component ────────────────────────────────────────────────────────
 const METHOD_COLORS = { bayesian: 'var(--cyan)', weighted: 'var(--violet)', majority: 'var(--green)', graph: 'var(--amber)' }
 
-export default function PatientRecordPanel({ onNext, selectedMember }) {
+export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selectedMember }) {
   const { theme, t, lang } = useApp()
   const isDark = theme === 'dark'
 
@@ -607,9 +608,7 @@ export default function PatientRecordPanel({ onNext, selectedMember }) {
             {consensusLoading ? '⟳ ' + (lang === 'vi' ? 'Đang chạy…' : 'Running…') : '🤖 ' + t('runConsensus')}
           </button>
           {onNext && (
-            <button onClick={onNext} style={{ padding: '8px 18px', borderRadius: 8, border: '1px solid var(--border2)', background: 'var(--surface)', color: text2, fontSize: 12, cursor: 'pointer' }}>
-              {t('next')} →
-            </button>
+            <NavButtons onNext={onNext} nextLabel={`${t('next')} →`} onPrev={onPrev} prevLabel={prevLabel} style={{ marginTop: 0 }} />
           )}
         </div>
       </div>

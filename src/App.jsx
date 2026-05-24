@@ -14,12 +14,12 @@ import AdminPanel from './components/admin/AdminPanel.jsx'
 import PatientRecordPanel from './components/PatientRecordPanel.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 
-const PANELS = ['imaging', 'checkin', 'upload', 'family', 'record', 'twin', 'simulation', 'consensus']
+const PANELS = ['upload', 'imaging', 'checkin', 'family', 'record', 'twin', 'simulation', 'consensus']
 
 export default function App() {
   const { user, loading } = useAuth()
   const { theme } = useApp()
-  const [active, setActive] = useState('imaging')
+  const [active, setActive] = useState('upload')
   const [selectedMember, setSelectedMember] = useState(null)
 
   const navigateToRecord = (member) => {
@@ -31,6 +31,26 @@ export default function App() {
     const idx = PANELS.indexOf(active)
     if (idx < PANELS.length - 1) setActive(PANELS[idx + 1])
   }
+
+  const goPrev = () => {
+    const idx = PANELS.indexOf(active)
+    if (idx > 0) setActive(PANELS[idx - 1])
+  }
+
+  // Label of the previous panel for the back button
+  const PANEL_LABELS = {
+    upload:     'Tải lên hồ sơ',
+    imaging:    'Chẩn đoán hình ảnh',
+    checkin:    'Kiểm tra triệu chứng',
+    family:     'Gia phả bệnh lý',
+    record:     'Hồ sơ bệnh nhân',
+    twin:       'Digital Twin',
+    simulation: 'Mô phỏng điều trị',
+    consensus:  'Đồng thuận AI',
+  }
+
+  const prevPanel = PANELS[PANELS.indexOf(active) - 1]
+  const prevLabel = prevPanel ? PANEL_LABELS[prevPanel] : null
 
   if (loading) {
     return (
@@ -57,14 +77,14 @@ export default function App() {
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         <Sidebar active={active} onNavigate={setActive} />
         <main style={{ flex: 1, overflowY: 'auto', background: mainBg }}>
-          {active === 'imaging'    && <ImagingPanel       onNext={goNext} />}
-          {active === 'checkin'   && <CheckinPanel       onNext={goNext} />}
-          {active === 'upload'    && <UploadPanel        patientId="LXK-2024" onNext={goNext} />}
-          {active === 'family'    && <FamilyTreePanel    patientId="LXK-2024" onNext={goNext} onViewRecord={navigateToRecord} />}
-          {active === 'record'    && <PatientRecordPanel onNext={goNext} selectedMember={selectedMember} />}
-          {active === 'twin'      && <TwinPanel          onNext={goNext} />}
-          {active === 'simulation'&& <SimulationPanel    onNext={goNext} />}
-          {active === 'consensus' && <ConsensusPanel     onReset={() => setActive('imaging')} />}
+          {active === 'upload'    && <UploadPanel        patientId="LXK-2024" onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
+          {active === 'imaging'    && <ImagingPanel       onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
+          {active === 'checkin'   && <CheckinPanel       onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
+          {active === 'family'    && <FamilyTreePanel    patientId="LXK-2024" onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} onViewRecord={navigateToRecord} />}
+          {active === 'record'    && <PatientRecordPanel onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} selectedMember={selectedMember} />}
+          {active === 'twin'      && <TwinPanel          onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
+          {active === 'simulation'&& <SimulationPanel    onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
+          {active === 'consensus' && <ConsensusPanel     onReset={() => setActive('upload')} onPrev={goPrev} prevLabel={prevLabel} />}
           {active === 'admin'     && user?.isAdmin && <AdminPanel />}
           {active === 'admin'     && !user?.isAdmin && (
             <div style={{ padding: 40, textAlign: 'center', color: '#ff5252' }}>🔒 Admin only</div>

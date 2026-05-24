@@ -1,6 +1,7 @@
 import React from 'react'
 import { PATIENT } from '../data/mockData.js'
 import { useApp } from '../context/AppContext'
+import NavButtons from './NavButtons.jsx'
 
 const Tag = ({ children, color = 'cyan' }) => {
   const colors = {
@@ -37,7 +38,7 @@ const Card = ({ title, children }) => (
   </div>
 )
 
-export default function CheckinPanel({ onNext }) {
+export default function CheckinPanel({ onNext, onPrev, prevLabel }) {
   const { t } = useApp()
   return (
     <div className="animate-fade" style={{ padding: 28, display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -98,12 +99,7 @@ export default function CheckinPanel({ onNext }) {
         ))}
       </Card>
 
-      <button onClick={onNext} style={{
-        padding: '12px 22px', borderRadius: 10, cursor: 'pointer',
-        background: 'linear-gradient(135deg, var(--cyan2), var(--violet2))',
-        color: '#fff', fontSize: 13, fontWeight: 600,
-        border: 'none', fontFamily: 'var(--font-display)', alignSelf: 'flex-start',
-      }}>{t('buildTwin')}</button>
+      <NavButtons onNext={onNext} nextLabel={t('buildTwin')} onPrev={onPrev} prevLabel={prevLabel} />
     </div>
   )
 }

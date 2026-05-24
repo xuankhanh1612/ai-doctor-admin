@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useApp } from '../context/AppContext'
 import { PATIENT } from '../data/mockData.js'
+import NavButtons from './NavButtons.jsx'
 
 const Tag = ({ children, color = 'cyan' }) => {
   const colors = {
@@ -20,7 +21,7 @@ const Tag = ({ children, color = 'cyan' }) => {
   )
 }
 
-export default function ImagingPanel({ onNext }) {
+export default function ImagingPanel({ onNext, onPrev, prevLabel }) {
   const { t } = useApp()
   const [activeSlice, setActiveSlice] = useState(4)
 
@@ -165,7 +166,7 @@ export default function ImagingPanel({ onNext }) {
         </div>
       </Card>
 
-      <NextBtn onClick={onNext}>{t('continueCheckin')}</NextBtn>
+      <NavButtons onNext={onNext} nextLabel={t('continueCheckin')} onPrev={onPrev} prevLabel={prevLabel} />
     </div>
   )
 }

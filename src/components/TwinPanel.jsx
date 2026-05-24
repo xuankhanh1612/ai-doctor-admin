@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useApp } from '../context/AppContext'
 import { PATIENT } from '../data/mockData.js'
+import NavButtons from './NavButtons.jsx'
 
 const Card = ({ title, children }) => (
   <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 16 }}>
@@ -31,7 +32,7 @@ const BiometricBar = ({ label, value, color }) => (
   </div>
 )
 
-export default function TwinPanel({ onNext }) {
+export default function TwinPanel({ onNext, onPrev, prevLabel }) {
   const { t } = useApp()
   const [count, setCount] = useState(0)
 
@@ -118,12 +119,7 @@ export default function TwinPanel({ onNext }) {
         <BiometricBar label="Drug response"   value={PATIENT.biomarkers.drugResponse}  color="var(--violet)" />
       </Card>
 
-      <button onClick={onNext} style={{
-        padding: '12px 22px', borderRadius: 10, cursor: 'pointer',
-        background: 'linear-gradient(135deg, var(--cyan2), var(--violet2))',
-        color: '#fff', fontSize: 13, fontWeight: 600,
-        border: 'none', fontFamily: 'var(--font-display)', alignSelf: 'flex-start',
-      }}>{t('runSimulation')}</button>
+      <NavButtons onNext={onNext} nextLabel={t('runSimulation')} onPrev={onPrev} prevLabel={prevLabel} />
     </div>
   )
 }

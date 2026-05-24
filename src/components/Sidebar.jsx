@@ -36,9 +36,9 @@ export default function Sidebar({ active, onNavigate }) {
   const surface2 = isDark ? 'rgba(255,255,255,0.06)'  : 'rgba(0,0,0,0.06)'
 
   const STEPS = [
-    { id: 'imaging',    label: t('imaging'),        step: '01' },
-    { id: 'checkin',   label: t('checkin'),         step: '02' },
-    { id: 'upload',    label: t('uploadRecords'),   step: '03' },
+    { id: 'upload',    label: t('uploadRecords'),   step: '01' },
+    { id: 'imaging',    label: t('imaging'),        step: '02' },
+    { id: 'checkin',   label: t('checkin'),         step: '03' },
     { id: 'family',    label: t('familyTree'),      step: '04' },
     { id: 'record',    label: t('patientRecord'),   step: '05' },
     { id: 'twin',      label: t('twin'),            step: '06' },
