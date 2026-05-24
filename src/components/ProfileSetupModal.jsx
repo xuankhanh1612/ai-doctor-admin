@@ -78,12 +78,10 @@ export default function ProfileSetupModal() {
             <span style={{ fontSize: 28 }}>👋</span>
           </div>
           <h2 style={{ fontSize: 20, fontWeight: 800, color: text, margin: '8px 0 6px' }}>
-            {vi ? 'Chào mừng đến Consensus Doctor!' : 'Welcome to Consensus Doctor!'}
+            {t('welcomeTitle')}
           </h2>
           <p style={{ fontSize: 13, color: sub, lineHeight: 1.6 }}>
-            {vi
-              ? 'Hồ sơ đã được tạo từ tài khoản của bạn. Xem lại và chỉnh sửa nếu cần.'
-              : 'Your profile was created from your account. Review and update if needed.'}
+            {t('profileCreated')}
           </p>
         </div>
 
@@ -125,7 +123,7 @@ export default function ProfileSetupModal() {
                   onChange={e => setUseGooglePhoto(e.target.checked)}
                   style={{ accentColor: '#00b8cc' }}
                 />
-                {vi ? `Dùng ảnh từ ${user.provider === 'google' ? 'Google' : 'Apple'}` : `Use ${user.provider} photo`}
+                {lang === 'vi' ? `Dùng ảnh từ ${user.provider === 'google' ? 'Google' : 'Apple'}` : `Use ${user.provider} photo`}
               </label>
             )}
           </div>
@@ -135,7 +133,7 @@ export default function ProfileSetupModal() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div>
             <label style={{ fontSize: 12, fontWeight: 600, color: sub, display: 'block', marginBottom: 5 }}>
-              {vi ? 'Họ và tên' : 'Full name'}
+              {t('name')}
             </label>
             <input
               value={name}
@@ -145,13 +143,13 @@ export default function ProfileSetupModal() {
                 border: `1px solid ${border}`, background: inputBg, color: text, outline: 'none',
                 boxSizing: 'border-box',
               }}
-              placeholder={vi ? 'Nguyễn Văn A' : 'John Doe'}
+              placeholder={lang === 'vi' ? 'Nguyễn Văn A' : 'John Doe'}
             />
           </div>
 
           <div>
             <label style={{ fontSize: 12, fontWeight: 600, color: sub, display: 'block', marginBottom: 5 }}>
-              {vi ? 'Chuyên khoa / Vai trò' : 'Specialty / Role'} <span style={{ color: sub, fontWeight: 400 }}>({vi ? 'tùy chọn' : 'optional'})</span>
+              {t('specialtyRole')} <span style={{ color: sub, fontWeight: 400 }}>({t('optional')})</span>
             </label>
             <input
               value={specialty}
@@ -161,13 +159,13 @@ export default function ProfileSetupModal() {
                 border: `1px solid ${border}`, background: inputBg, color: text, outline: 'none',
                 boxSizing: 'border-box',
               }}
-              placeholder={vi ? 'VD: Bác sĩ ung thư, Bệnh nhân...' : 'E.g.: Oncologist, Patient...'}
+              placeholder={lang === 'vi' ? 'VD: Bác sĩ ung thư, Bệnh nhân...' : 'E.g.: Oncologist, Patient...'}
             />
           </div>
 
           <div>
             <label style={{ fontSize: 12, fontWeight: 600, color: sub, display: 'block', marginBottom: 5 }}>
-              {vi ? 'Số điện thoại' : 'Phone'} <span style={{ color: sub, fontWeight: 400 }}>({vi ? 'tùy chọn' : 'optional'})</span>
+              {t('phone')} <span style={{ color: sub, fontWeight: 400 }}>({t('optional')})</span>
             </label>
             <input
               value={phone}
@@ -190,9 +188,7 @@ export default function ProfileSetupModal() {
           border: `1px solid rgba(0,184,204,0.2)`, borderRadius: 10,
           fontSize: 11, color: sub, lineHeight: 1.6,
         }}>
-          ℹ️ {vi
-            ? 'Bạn có thể chỉnh sửa thông tin này bất cứ lúc nào trong phần Hồ sơ cá nhân.'
-            : 'You can edit this information anytime in your Profile settings.'}
+          ℹ️ {t('editAnytime')}
         </div>
 
         {/* Actions */}
@@ -205,7 +201,7 @@ export default function ProfileSetupModal() {
               color: sub, fontSize: 14, fontWeight: 500,
             }}
           >
-            {vi ? 'Bỏ qua' : 'Skip'}
+            {t('skip')}
           </button>
           <button
             onClick={handleSave}
@@ -217,7 +213,7 @@ export default function ProfileSetupModal() {
               opacity: saving ? 0.8 : 1, transition: 'opacity 0.2s',
             }}
           >
-            {saving ? '...' : (vi ? '💾 Lưu hồ sơ' : '💾 Save profile')}
+            {saving ? '...' : (t('saveProfile'))}
           </button>
         </div>
       </div>

@@ -43,15 +43,15 @@ export default function AdminPanel() {
 
   // Stats
   const stats = [
-    { label: lang === 'vi' ? 'Tổng người dùng' : 'Total Users', value: users.length, icon: '👥', color: '#00b8cc' },
-    { label: lang === 'vi' ? 'Hồ sơ y tế' : 'Medical Records', value: records.length, icon: '📋', color: '#9c6fff' },
-    { label: lang === 'vi' ? 'Phân tích hôm nay' : 'Analyses Today', value: 7, icon: '🤖', color: '#00e676' },
-    { label: lang === 'vi' ? 'Bệnh nhân đang theo dõi' : 'Active Patients', value: 3, icon: '🏥', color: '#ffb74d' },
+    { label: t('totalUsers'), value: users.length, icon: '👥', color: '#00b8cc' },
+    { label: t('medicalRecords'), value: records.length, icon: '📋', color: '#9c6fff' },
+    { label: t('analysesToday'), value: 7, icon: '🤖', color: '#00e676' },
+    { label: t('activePatients'), value: 3, icon: '🏥', color: '#ffb74d' },
   ]
 
   const TABS = [
-    { id: 'users', label: lang === 'vi' ? '👥 Người dùng' : '👥 Users' },
-    { id: 'records', label: lang === 'vi' ? '📋 Hồ sơ' : '📋 Records' },
+    { id: 'users', label: lang === 'vi' ? '👥 ' + t('patients') : '👥 Users' },
+    { id: 'records', label: lang === 'vi' ? '📋 Hồ sơ' : '📋 ' + t('records') },
     { id: 'activity', label: lang === 'vi' ? '📊 Nhật ký' : '📊 Activity' },
   ]
 
@@ -69,7 +69,7 @@ export default function AdminPanel() {
           <p style={{ color: c.text2, fontSize: 12 }}>Lê Xuân Khánh · khanhlegood1@gmail.com</p>
         </div>
         <div style={{ fontSize: 10, color: c.text3, fontFamily: 'monospace', textAlign: 'right' }}>
-          {lang === 'vi' ? 'Phiên làm việc' : 'Session'}<br />
+          {t('session')}<br />
           {new Date().toLocaleString(lang === 'vi' ? 'vi-VN' : 'en-US')}
         </div>
       </div>
@@ -101,11 +101,11 @@ export default function AdminPanel() {
       {tab === 'users' && (
         <div style={{ background: c.surface, border: `1px solid ${c.border}`, borderRadius: 14, overflow: 'hidden' }}>
           <div style={{ padding: '12px 16px', borderBottom: `1px solid ${c.border}`, fontSize: 10, letterSpacing: '0.12em', color: c.text3, textTransform: 'uppercase' }}>
-            {t('allUsers')} · {users.length} {lang === 'vi' ? 'tài khoản' : 'accounts'}
+            {t('allUsers')} · {users.length} {t('accounts')}
           </div>
           {users.length === 0 ? (
             <div style={{ padding: 32, textAlign: 'center', color: c.text3 }}>
-              {lang === 'vi' ? 'Chưa có người dùng nào ngoài admin' : 'No users yet except admin'}
+              {t('noUsers')}
             </div>
           ) : users.map((u, i) => (
             <div key={u.email} style={{
@@ -122,7 +122,7 @@ export default function AdminPanel() {
               </div>
               <div style={{ textAlign: 'right' }}>
                 <div style={{ fontSize: 11, color: c.text2 }}>{formatDate(u.createdAt)}</div>
-                <div style={{ fontSize: 10, color: c.text3 }}>{(u.patients || []).length} {lang === 'vi' ? 'bệnh nhân' : 'patients'}</div>
+                <div style={{ fontSize: 10, color: c.text3 }}>{(u.patients || []).length} {t('patients')}</div>
               </div>
             </div>
           ))}
@@ -133,11 +133,11 @@ export default function AdminPanel() {
       {tab === 'records' && (
         <div style={{ background: c.surface, border: `1px solid ${c.border}`, borderRadius: 14, overflow: 'hidden' }}>
           <div style={{ padding: '12px 16px', borderBottom: `1px solid ${c.border}`, fontSize: 10, letterSpacing: '0.12em', color: c.text3, textTransform: 'uppercase' }}>
-            {t('allRecords')} · {records.length} {lang === 'vi' ? 'hồ sơ' : 'records'}
+            {t('allRecords')} · {records.length} {t('records')}
           </div>
           {records.length === 0 ? (
             <div style={{ padding: 32, textAlign: 'center', color: c.text3 }}>
-              {lang === 'vi' ? 'Chưa có hồ sơ nào được tải lên' : 'No records uploaded yet'}
+              {t('noRecords')}
             </div>
           ) : records.map((r, i) => (
             <div key={r.id} style={{
@@ -150,7 +150,7 @@ export default function AdminPanel() {
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 13, fontWeight: 600, color: c.text }}>{r.fileName}</div>
                 <div style={{ fontSize: 10, color: c.text3 }}>
-                  {lang === 'vi' ? 'Bệnh nhân' : 'Patient'}: {r.patientId || '-'} · {r.uploadedBy} · {formatDate(r.createdAt)}
+                  {t('patients')}: {r.patientId || '-'} · {r.uploadedBy} · {formatDate(r.createdAt)}
                 </div>
               </div>
               <span style={{ fontSize: 10, padding: '3px 8px', borderRadius: 6, background: 'rgba(0,180,200,0.1)', color: '#00b8cc', border: '1px solid rgba(0,180,200,0.2)' }}>

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { useApp } from '../context/AppContext'
 import { PATIENT } from '../data/mockData.js'
 
 const Card = ({ title, children }) => (
@@ -31,6 +32,7 @@ const BiometricBar = ({ label, value, color }) => (
 )
 
 export default function TwinPanel({ onNext }) {
+  const { t } = useApp()
   const [count, setCount] = useState(0)
 
   useEffect(() => {
@@ -49,20 +51,20 @@ export default function TwinPanel({ onNext }) {
     <div className="animate-fade" style={{ padding: 28, display: 'flex', flexDirection: 'column', gap: 20 }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
         <div>
-          <h2 style={{ fontSize: 22, fontWeight: 800, color: '#fff' }}>Medical Digital Twin</h2>
+          <h2 style={{ fontSize: 22, fontWeight: 800, color: '#fff' }}>{t('twinTitle')}</h2>
           <p style={{ color: 'var(--text2)', fontSize: 12, marginTop: 4 }}>High-fidelity parallel world model — swarm agents initialized</p>
         </div>
         <span style={{
           padding: '4px 12px', borderRadius: 5, fontSize: 10, fontFamily: 'var(--font-mono)',
           background: 'rgba(0,230,118,0.1)', color: 'var(--green)', border: '1px solid rgba(0,230,118,0.25)',
-        }}>TWIN ACTIVE</span>
+        }}>{t('twinActive')}</span>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
-        <MetricBox value={count.toLocaleString()} label="Active agents"      color="var(--cyan)"   />
-        <MetricBox value="94%"                    label="Twin fidelity"       color="var(--green)"  />
-        <MetricBox value="483"                    label="Interactions / sec"  color="var(--violet)" />
-        <MetricBox value="71%"                    label="Reality match score" color="var(--amber)"  />
+        <MetricBox value={count.toLocaleString()} label="{t('activeAgents')}"      color="var(--cyan)"   />
+        <MetricBox value="94%"                    label="{t('twinFidelity')}"       color="var(--green)"  />
+        <MetricBox value="483"                    label="{t('interactionsPerSec')}"  color="var(--violet)" />
+        <MetricBox value="71%"                    label="{t('realityMatch')}" color="var(--amber)"  />
       </div>
 
       <Card title="Biological Visualization · Cell Model">
@@ -109,7 +111,7 @@ export default function TwinPanel({ onNext }) {
         </div>
       </Card>
 
-      <Card title="Body Composition Index">
+      <Card title="{t('bodyComposition')}">
         <BiometricBar label="Liver fat"       value={PATIENT.biomarkers.liverFat}      color="var(--amber)"  />
         <BiometricBar label="Lung capacity"   value={PATIENT.biomarkers.lungCapacity}  color="var(--cyan)"   />
         <BiometricBar label="Immune score"    value={PATIENT.biomarkers.immuneScore}   color="var(--green)"  />
@@ -121,7 +123,7 @@ export default function TwinPanel({ onNext }) {
         background: 'linear-gradient(135deg, var(--cyan2), var(--violet2))',
         color: '#fff', fontSize: 13, fontWeight: 600,
         border: 'none', fontFamily: 'var(--font-display)', alignSelf: 'flex-start',
-      }}>Run Treatment Simulations →</button>
+      }}>{t('runSimulation')}</button>
     </div>
   )
 }

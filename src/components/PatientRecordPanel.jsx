@@ -504,7 +504,7 @@ function ConsensusCard({ result, method, color }) {
 const METHOD_COLORS = { bayesian: 'var(--cyan)', weighted: 'var(--violet)', majority: 'var(--green)', graph: 'var(--amber)' }
 
 export default function PatientRecordPanel({ onNext, selectedMember }) {
-  const { theme } = useApp()
+  const { theme, t, lang } = useApp()
   const isDark = theme === 'dark'
 
   const [patient, setPatient]             = useState(selectedMember || DEMO_PATIENT)
@@ -604,11 +604,11 @@ export default function PatientRecordPanel({ onNext, selectedMember }) {
             padding: '8px 18px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700,
             background: 'linear-gradient(135deg,var(--cyan2),var(--violet2))', color: '#fff', opacity: consensusLoading ? 0.7 : 1,
           }}>
-            {consensusLoading ? '⟳ Đang chạy…' : '🤖 Run Consensus'}
+            {consensusLoading ? '⟳ ' + (lang === 'vi' ? 'Đang chạy…' : 'Running…') : '🤖 ' + t('runConsensus')}
           </button>
           {onNext && (
             <button onClick={onNext} style={{ padding: '8px 18px', borderRadius: 8, border: '1px solid var(--border2)', background: 'var(--surface)', color: text2, fontSize: 12, cursor: 'pointer' }}>
-              Next →
+              {t('next')} →
             </button>
           )}
         </div>

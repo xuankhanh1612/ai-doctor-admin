@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { useApp } from '../context/AppContext'
 import { PATIENT } from '../data/mockData.js'
 
 const Tag = ({ children, color = 'cyan' }) => {
@@ -20,6 +21,7 @@ const Tag = ({ children, color = 'cyan' }) => {
 }
 
 export default function ImagingPanel({ onNext }) {
+  const { t } = useApp()
   const [activeSlice, setActiveSlice] = useState(4)
 
   return (
@@ -27,7 +29,7 @@ export default function ImagingPanel({ onNext }) {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
         <div>
-          <h2 style={{ fontSize: 22, fontWeight: 800, color: '#fff' }}>Medical Imaging Analysis</h2>
+          <h2 style={{ fontSize: 22, fontWeight: 800, color: '#fff' }}>{t('imagingTitle')}</h2>
           <p style={{ color: 'var(--text2)', fontSize: 12, marginTop: 4 }}>AI-powered lesion detection with heatmap overlay · Patient {PATIENT.id}</p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
@@ -116,7 +118,7 @@ export default function ImagingPanel({ onNext }) {
 
       {/* Lesion cards + finding */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-        <Card title="Lesion Tracking">
+        <Card title="{t('lesionTracking')}">
           {PATIENT.lesions.map(l => (
             <div key={l.id} style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -135,7 +137,7 @@ export default function ImagingPanel({ onNext }) {
             </div>
           ))}
         </Card>
-        <Card title="AI Finding">
+        <Card title="{t('aiFinding')}">
           <p style={{ fontSize: 12, color: 'var(--text2)', lineHeight: 1.7 }}>
             Bilateral lung nodules detected. L1 shows regression response consistent with Erlotinib sensitivity. L2 warrants active monitoring — marginal growth trend.
           </p>
@@ -147,7 +149,7 @@ export default function ImagingPanel({ onNext }) {
       </div>
 
       {/* Timeline */}
-      <Card title="Scan Timeline">
+      <Card title="{t('scanTimeline')}">
         <div style={{ display: 'flex', gap: 8 }}>
           {PATIENT.scanTimeline.map((t, i) => (
             <button key={t} onClick={() => setActiveSlice(i)} style={{
@@ -163,7 +165,7 @@ export default function ImagingPanel({ onNext }) {
         </div>
       </Card>
 
-      <NextBtn onClick={onNext}>Continue to Symptom Check-in →</NextBtn>
+      <NextBtn onClick={onNext}>{t('continueCheckin')}</NextBtn>
     </div>
   )
 }

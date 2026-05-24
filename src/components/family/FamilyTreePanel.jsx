@@ -390,8 +390,7 @@ function MemberFormModal({ mode, initialForm, onSave, onClose, lang, isDark, c }
 
 // ─── Main Component ────────────────────────────────────────────────────────
 export default function FamilyTreePanel({ patientId, onNext, onViewRecord }) {
-  const { theme } = useApp()
-  const { lang }  = useApp()
+  const { theme, lang, t } = useApp()
   const isDark    = theme === 'dark'
 
   // Load from localStorage, fallback to DEFAULT_MEMBERS
@@ -494,12 +493,10 @@ export default function FamilyTreePanel({ patientId, onNext, onViewRecord }) {
       <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', flexWrap:'wrap', gap:12 }}>
         <div>
           <h2 style={{ fontSize:22, fontWeight:800, color:c.text, margin:0 }}>
-            {lang === 'vi' ? '🌳 Gia phả bệnh lý' : '🌳 Family Disease Tree'}
+            🌳 {t('familyTreeTitle')}
           </h2>
           <p style={{ color:c.text2, fontSize:12, marginTop:4 }}>
-            {lang === 'vi'
-              ? `${members.length} thành viên · Phân tích di truyền AI · Nhấn thẻ để xem hồ sơ`
-              : `${members.length} members · AI Hereditary Analysis · Click a card to view record`}
+            {`${members.length} ${t('membersCount')} · ${t('aiHereditary')} · ${lang === 'vi' ? 'Nhấn thẻ để xem hồ sơ' : 'Click a card to view record'}`}
           </p>
         </div>
         <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
@@ -514,7 +511,7 @@ export default function FamilyTreePanel({ patientId, onNext, onViewRecord }) {
           }}
             onMouseEnter={e => { e.currentTarget.style.background='rgba(0,180,200,0.15)' }}
             onMouseLeave={e => { e.currentTarget.style.background='linear-gradient(135deg,#00b8cc22,#6b3fd422)' }}
-          >+ {lang === 'vi' ? 'Thêm thành viên' : 'Add Member'}</button>
+          >+ {t('addMember')}</button>
         </div>
       </div>
 
@@ -565,7 +562,7 @@ export default function FamilyTreePanel({ patientId, onNext, onViewRecord }) {
       <div style={{ background:c.surface, border:`1px solid ${c.border}`, borderRadius:14, overflow:'hidden' }}>
         <div style={{ padding:'14px 18px', borderBottom:`1px solid ${c.border}`, display:'flex', alignItems:'center', gap:8 }}>
           <span style={{ fontSize:10, letterSpacing:'.12em', textTransform:'uppercase', color:c.text3, fontFamily:'monospace', flex:1 }}>
-            {lang === 'vi' ? 'Danh sách thành viên' : 'Member List'} ({members.length})
+            {t('memberList')} ({members.length})
           </span>
         </div>
         <div style={{ overflowX:'auto' }}>
@@ -651,7 +648,7 @@ export default function FamilyTreePanel({ patientId, onNext, onViewRecord }) {
       {/* ── AI Risk panel ───────────────────────────────────────────────────── */}
       <div style={{ background:c.surface, border:`1px solid ${c.border}`, borderRadius:14, padding:16 }}>
         <div style={{ fontSize:10, letterSpacing:'.12em', color:c.text3, marginBottom:12, textTransform:'uppercase', fontFamily:'monospace' }}>
-          🤖 {lang === 'vi' ? 'Phân tích nguy cơ di truyền AI' : 'AI Hereditary Risk Analysis'}
+          🤖 {t('aiHereditary')}
         </div>
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
           <div style={{ background:'rgba(255,82,82,0.06)', border:'1px solid rgba(255,82,82,0.2)', borderRadius:10, padding:'12px 14px' }}>
@@ -663,7 +660,7 @@ export default function FamilyTreePanel({ patientId, onNext, onViewRecord }) {
             </div>
           </div>
           <div style={{ background:'rgba(255,183,77,0.06)', border:'1px solid rgba(255,183,77,0.2)', borderRadius:10, padding:'12px 14px' }}>
-            <div style={{ fontSize:12, fontWeight:700, color:'#ffb74d', marginBottom:6 }}>📋 {lang === 'vi' ? 'Khuyến nghị tầm soát' : 'Screening Recommendations'}</div>
+            <div style={{ fontSize:12, fontWeight:700, color:'#ffb74d', marginBottom:6 }}>📋 {t('screeningRec')}</div>
             <div style={{ fontSize:11, color:c.text2, lineHeight:1.6 }}>
               {lang === 'vi'
                 ? 'Con cái: CT ngực low-dose hàng năm từ 40 tuổi. Anh/em: xét nghiệm gen. Toàn gia đình: cai thuốc lá, giảm phơi nhiễm AQI.'
@@ -676,7 +673,7 @@ export default function FamilyTreePanel({ patientId, onNext, onViewRecord }) {
       {/* ── Next button ─────────────────────────────────────────────────────── */}
       {onNext && (
         <button onClick={onNext} style={{ padding:'12px 24px', borderRadius:10, cursor:'pointer', background:'linear-gradient(135deg,#00b8cc,#6b3fd4)', color:'#fff', fontSize:13, fontWeight:700, border:'none', alignSelf:'flex-start', fontFamily:'inherit' }}>
-          {lang === 'vi' ? 'Tiếp theo' : 'Next'} →
+          {t('next')} →
         </button>
       )}
 
@@ -696,7 +693,7 @@ export default function FamilyTreePanel({ patientId, onNext, onViewRecord }) {
           <div style={{ background: isDark ? '#080c1a' : '#fff', border:`1px solid rgba(255,82,82,0.3)`, borderRadius:16, padding:28, maxWidth:380, width:'90%', textAlign:'center' }}>
             <div style={{ fontSize:36, marginBottom:12 }}>🗑️</div>
             <h3 style={{ fontSize:16, fontWeight:800, color:c.text, marginBottom:8 }}>
-              {lang === 'vi' ? 'Xác nhận xoá?' : 'Confirm Delete?'}
+              {t('confirmDelete')}
             </h3>
             <p style={{ fontSize:12, color:c.text2, marginBottom:24 }}>
               {lang === 'vi'

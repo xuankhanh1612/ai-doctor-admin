@@ -128,7 +128,7 @@ export default function UploadPanel({ patientId, onNext }) {
           >
             <div style={{ fontSize: 36, marginBottom: 10 }}>{uploading ? '⏳' : '📂'}</div>
             <div style={{ fontSize: 14, fontWeight: 600, color: c.text, marginBottom: 6 }}>
-              {uploading ? (lang === 'vi' ? 'Đang tải lên...' : 'Uploading...') : t('uploadFile')}
+              {uploading ? (t('uploading')) : t('uploadFile')}
             </div>
             <div style={{ fontSize: 11, color: c.text3 }}>{t('uploadTypes')}</div>
             <input ref={fileRef} type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.dcm,.docx" style={{ display: 'none' }}
@@ -137,7 +137,7 @@ export default function UploadPanel({ patientId, onNext }) {
 
           {/* Notes */}
           <textarea
-            placeholder={lang === 'vi' ? 'Ghi chú (tuỳ chọn)...' : 'Notes (optional)...'}
+            placeholder={t('notesPlaceholder')}
             value={notes} onChange={e => setNotes(e.target.value)}
             style={{
               width: '100%', padding: '10px 12px', borderRadius: 10, resize: 'vertical', minHeight: 72,
@@ -156,7 +156,7 @@ export default function UploadPanel({ patientId, onNext }) {
           {uploads.length > 0 && (
             <div>
               <div style={{ fontSize: 10, letterSpacing: '0.12em', color: c.text3, marginBottom: 8, textTransform: 'uppercase' }}>
-                {lang === 'vi' ? `${uploads.length} hồ sơ đã tải` : `${uploads.length} records uploaded`}
+                {`${uploads.length} ${t('recordsUploaded')}`}
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {uploads.slice(-5).reverse().map(u => (

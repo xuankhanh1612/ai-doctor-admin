@@ -1,5 +1,6 @@
 import React from 'react'
 import { PATIENT } from '../data/mockData.js'
+import { useApp } from '../context/AppContext'
 
 const Tag = ({ children, color = 'cyan' }) => {
   const colors = {
@@ -37,36 +38,37 @@ const Card = ({ title, children }) => (
 )
 
 export default function CheckinPanel({ onNext }) {
+  const { t } = useApp()
   return (
     <div className="animate-fade" style={{ padding: 28, display: 'flex', flexDirection: 'column', gap: 20 }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
         <div>
-          <h2 style={{ fontSize: 22, fontWeight: 800, color: '#fff' }}>Symptom &amp; History Check-in</h2>
+          <h2 style={{ fontSize: 22, fontWeight: 800, color: '#fff' }}>{t('checkinTitle')}</h2>
           <p style={{ color: 'var(--text2)', fontSize: 12, marginTop: 4 }}>Seed data extraction for digital twin construction</p>
         </div>
-        <Tag color="violet">SEED COLLECTION</Tag>
+        <Tag color="violet">{t('seedCollection')}</Tag>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-        <Card title="Personal History">
-          <Row k="Name"     v={PATIENT.name} />
-          <Row k="Age"      v={PATIENT.age} />
-          <Row k="Location" v={PATIENT.location} />
-          <Row k="Smoker"   v={PATIENT.smoker} vColor="var(--amber)" />
-          <Row k="Exercise" v={PATIENT.exercise} vColor="var(--green)" />
-          <Row k="BMI"      v={PATIENT.bmi} />
+        <Card title={t('personalHistory')}>
+          <Row k={t('name')}     v={PATIENT.name} />
+          <Row k="Age"           v={PATIENT.age} />
+          <Row k="Location"      v={PATIENT.location} />
+          <Row k="Smoker"        v={PATIENT.smoker} vColor="var(--amber)" />
+          <Row k="Exercise"      v={PATIENT.exercise} vColor="var(--green)" />
+          <Row k="BMI"           v={PATIENT.bmi} />
         </Card>
-        <Card title="Family Medical History">
-          <Row k="Father"  v={PATIENT.familyHistory.father}  vColor="var(--red)" />
-          <Row k="Mother"  v={PATIENT.familyHistory.mother}  vColor="var(--amber)" />
-          <Row k="Sibling" v={PATIENT.familyHistory.sibling} vColor="var(--green)" />
+        <Card title={t('familyHistory')}>
+          <Row k={t('relation_father')}  v={PATIENT.familyHistory.father}  vColor="var(--red)" />
+          <Row k={t('relation_mother')}  v={PATIENT.familyHistory.mother}  vColor="var(--amber)" />
+          <Row k={t('relation_sibling')} v={PATIENT.familyHistory.sibling} vColor="var(--green)" />
           <Row k="BRCA"    v={PATIENT.genomics.brca}         vColor="var(--green)" />
           <Row k="EGFR"    v={PATIENT.genomics.egfr}         vColor="var(--red)" />
           <Row k="T790M"   v={PATIENT.genomics.t790m}        vColor="var(--amber)" />
         </Card>
       </div>
 
-      <Card title="Current Symptoms">
+      <Card title={t('currentSymptoms')}>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
           {PATIENT.symptoms.map(s => (
             <Tag key={s} color={s.includes('cough') ? 'red' : 'amber'}>{s}</Tag>
@@ -77,7 +79,7 @@ export default function CheckinPanel({ onNext }) {
         </div>
       </Card>
 
-      <Card title="Environmental Seed Signals">
+      <Card title={t('envSignals')}>
         {[
           { icon: '📍', text: `HCMC Air Quality Index: ${PATIENT.aqi} · Unhealthy for Sensitive Groups`, color: 'var(--amber)' },
           { icon: '📰', text: 'New EGFR inhibitor trial results — Nature Medicine, May 2026', color: 'var(--cyan)' },
@@ -101,7 +103,7 @@ export default function CheckinPanel({ onNext }) {
         background: 'linear-gradient(135deg, var(--cyan2), var(--violet2))',
         color: '#fff', fontSize: 13, fontWeight: 600,
         border: 'none', fontFamily: 'var(--font-display)', alignSelf: 'flex-start',
-      }}>Build Digital Twin →</button>
+      }}>{t('buildTwin')}</button>
     </div>
   )
 }

@@ -111,15 +111,15 @@ export default function LoginPage({ onSuccess }) {
         {/* Google — profile auto-filled from OAuth */}
         <button style={s.socialBtn()} onClick={() => handle(() => loginWithGoogle())}>
           <GoogleIcon />
-          {lang === 'vi' ? 'Tiếp tục với Google' : 'Continue with Google'}
+          {t('continueGoogle')}
           <span style={{ marginLeft: 'auto', fontSize: 10, opacity: 0.5 }}>
-            {lang === 'vi' ? '· Avatar tự động' : '· Auto avatar'}
+            {t('autoAvatar')}
           </span>
         </button>
 
         <button style={s.socialBtn()} onClick={() => handle(loginWithApple)}>
           <AppleIcon isDark={isDark} />
-          {lang === 'vi' ? 'Tiếp tục với Apple' : 'Continue with Apple'}
+          {t('continueApple')}
         </button>
 
         <div style={s.divider}><div style={s.line}/>{t('orEmail')}<div style={s.line}/></div>
@@ -151,7 +151,7 @@ export default function LoginPage({ onSuccess }) {
             style={{ ...s.switchBtn, fontSize: 11, color: '#9c6fff' }}
             onClick={() => handle(() => loginWithGoogle('khanhlegood1@gmail.com'))}
           >
-            🔑 {lang === 'vi' ? 'Đăng nhập Admin (Google)' : 'Admin login (Google)'}
+            🔑 {t('adminLoginGoogle')}
           </button>
         </div>
 

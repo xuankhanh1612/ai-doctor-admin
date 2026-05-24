@@ -40,7 +40,7 @@ export default function Sidebar({ active, onNavigate }) {
     { id: 'checkin',   label: t('checkin'),         step: '02' },
     { id: 'upload',    label: t('uploadRecords'),   step: '03' },
     { id: 'family',    label: t('familyTree'),      step: '04' },
-    { id: 'record',    label: 'Patient Record',     step: '05' },
+    { id: 'record',    label: t('patientRecord'),   step: '05' },
     { id: 'twin',      label: t('twin'),            step: '06' },
     { id: 'simulation',label: t('simulation'),      step: '07' },
     { id: 'consensus', label: t('consensus'),       step: '08' },
@@ -71,7 +71,7 @@ export default function Sidebar({ active, onNavigate }) {
         </div>
       )}
 
-      <SectionLabel color={text3}>Patient Journey</SectionLabel>
+      <SectionLabel color={text3}>{t('patients')} Journey</SectionLabel>
       {STEPS.map(s => (
         <NavItem key={s.id} active={active === s.id} onClick={() => handleNavigate(s.id)} text={text} text2={text2} isDark={isDark}>
           <div style={{ width: 6, height: 6, borderRadius: '50%', background: active === s.id ? '#00e5ff' : text3, flexShrink: 0, transition: 'background 0.2s' }} />

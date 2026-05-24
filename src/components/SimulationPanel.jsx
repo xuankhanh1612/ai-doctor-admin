@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { useApp } from '../context/AppContext'
 import { SCENARIOS } from '../data/mockData.js'
 
 const Card = ({ title, children }) => (
@@ -16,6 +17,7 @@ const ROADMAP = [
 ]
 
 export default function SimulationPanel({ onNext }) {
+  const { t } = useApp()
   const [scenario, setScenario] = useState('B')
   const [months, setMonths] = useState(6)
 
@@ -26,13 +28,13 @@ export default function SimulationPanel({ onNext }) {
     <div className="animate-fade" style={{ padding: 28, display: 'flex', flexDirection: 'column', gap: 20 }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
         <div>
-          <h2 style={{ fontSize: 22, fontWeight: 800, color: '#fff' }}>Treatment Simulation</h2>
+          <h2 style={{ fontSize: 22, fontWeight: 800, color: '#fff' }}>{t('simulationTitle')}</h2>
           <p style={{ color: 'var(--text2)', fontSize: 12, marginTop: 4 }}>Rehearsing futures in a digital sandbox — god's-eye trajectory projection</p>
         </div>
         <span style={{
           padding: '4px 12px', borderRadius: 5, fontSize: 10, fontFamily: 'var(--font-mono)',
           background: 'rgba(255,183,77,0.1)', color: 'var(--amber)', border: '1px solid rgba(255,183,77,0.25)',
-        }}>SIMULATION MODE</span>
+        }}>{t('simulationMode')}</span>
       </div>
 
       <Card title="Select Treatment Scenario">
@@ -54,7 +56,7 @@ export default function SimulationPanel({ onNext }) {
 
         {/* Month slider */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16 }}>
-          <span style={{ fontSize: 11, color: 'var(--text3)', whiteSpace: 'nowrap' }}>Projection horizon</span>
+          <span style={{ fontSize: 11, color: 'var(--text3)', whiteSpace: 'nowrap' }}>{t('projectionHorizon')}</span>
           <input type="range" min={3} max={12} step={3} value={months}
             onChange={e => setMonths(Number(e.target.value))}
             style={{ flex: 1, accentColor: sc.color }} />
@@ -91,7 +93,7 @@ export default function SimulationPanel({ onNext }) {
       </div>
 
       {/* Treatment roadmap */}
-      <Card title="Treatment Roadmap · Scenario B">
+      <Card title="{t('treatmentRoadmap')} · Scenario B">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
           {ROADMAP.map((step, i) => (
             <div key={i} style={{ display: 'flex', gap: 12, paddingBottom: i < ROADMAP.length - 1 ? 0 : 0 }}>
@@ -113,7 +115,7 @@ export default function SimulationPanel({ onNext }) {
         background: 'linear-gradient(135deg, var(--cyan2), var(--violet2))',
         color: '#fff', fontSize: 13, fontWeight: 600,
         border: 'none', fontFamily: 'var(--font-display)', alignSelf: 'flex-start',
-      }}>Submit to Agent Consensus →</button>
+      }}>{t('submitConsensus')}</button>
     </div>
   )
 }

@@ -11,6 +11,7 @@
  */
 
 import React, { useState } from 'react'
+import { useApp } from '../context/AppContext'
 import { AGENTS } from '../data/mockData.js'
 import { useConsensus } from '../hooks/useConsensus.js'
 
@@ -209,6 +210,7 @@ function CompareGrid({ allResults }) {
 // ── Main panel ────────────────────────────────────────────────────────────
 
 export default function ConsensusPanel({ onReset }) {
+  const { t } = useApp()
   const {
     phase, agentStates, consensusResult, run, reset,
     apiStatus, apiError,
@@ -236,7 +238,7 @@ export default function ConsensusPanel({ onReset }) {
       {/* ── Header ─────────────────────────────────────────────────────── */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
         <div>
-          <h2 style={{ fontSize: 22, fontWeight: 800, color: '#fff' }}>Agent Consensus</h2>
+          <h2 style={{ fontSize: 22, fontWeight: 800, color: '#fff' }}>{t('consensusTitle')}</h2>
           <p style={{ color: 'var(--text2)', fontSize: 12, marginTop: 4 }}>
             4 specialist agents deliberate in parallel · Meta-agent synthesizes unified recommendation
           </p>
@@ -246,7 +248,7 @@ export default function ConsensusPanel({ onReset }) {
             <span style={{
               padding: '4px 12px', borderRadius: 5, fontSize: 10, fontFamily: 'var(--font-mono)',
               background: 'rgba(0,230,118,0.1)', color: 'var(--green)', border: '1px solid rgba(0,230,118,0.25)',
-            }}>CONSENSUS REACHED</span>
+            }}>{t('consensusReached')}</span>
           )}
           <ApiStatusBadge status={apiStatus} error={apiError} />
         </div>
@@ -266,7 +268,7 @@ export default function ConsensusPanel({ onReset }) {
             background: 'linear-gradient(135deg, var(--cyan2), var(--violet2))',
             color: '#fff', fontSize: 15, fontWeight: 700,
             border: 'none', fontFamily: 'var(--font-display)', letterSpacing: '0.03em',
-          }}>▶ Run Agent Consensus · {METHOD_LABELS[fusionMethod]?.label}</button>
+          }}>▶ {t('runConsensus')} · {METHOD_LABELS[fusionMethod]?.label}</button>
         </div>
       )}
 
@@ -410,7 +412,7 @@ export default function ConsensusPanel({ onReset }) {
                     fontFamily: 'var(--font-display)', opacity: comparing ? 0.6 : 1,
                   }}
                 >
-                  {comparing ? '⟳ Running all methods…' : '⊞ Compare all 4 fusion methods'}
+                  {comparing ? '⟳ Running all methods…' : t('compareAllMethods')}
                 </button>
               )}
 
@@ -427,13 +429,13 @@ export default function ConsensusPanel({ onReset }) {
                   background: 'transparent', border: '1px solid var(--border2)',
                   color: 'var(--cyan)', fontSize: 13, fontWeight: 600,
                   fontFamily: 'var(--font-display)',
-                }}>← New Scan</button>
+                }}>{t('newScan')}</button>
                 <button onClick={run} style={{
                   flex: 1, padding: '11px 20px', borderRadius: 10, cursor: 'pointer',
                   background: 'var(--surface2)', border: '1px solid var(--border)',
                   color: 'var(--text2)', fontSize: 13, fontWeight: 600,
                   fontFamily: 'var(--font-display)',
-                }}>↺ Re-run Consensus</button>
+                }}>{t('rerunConsensus')}</button>
               </div>
             </div>
           )}
