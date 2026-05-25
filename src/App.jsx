@@ -8,45 +8,42 @@ import CheckinPanel from './components/CheckinPanel.jsx'
 import TwinPanel from './components/TwinPanel.jsx'
 import SimulationPanel from './components/SimulationPanel.jsx'
 import ConsensusPanel from './components/ConsensusPanel.jsx'
+import SwarmConsensusPanel from './components/SwarmConsensusPanel.jsx'
 import UploadPanel from './components/upload/UploadPanel.jsx'
 import FamilyTreePanel from './components/family/FamilyTreePanel.jsx'
 import AdminPanel from './components/admin/AdminPanel.jsx'
 import PatientRecordPanel from './components/PatientRecordPanel.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 
-const PANELS = ['upload', 'imaging', 'checkin', 'family', 'record', 'twin', 'simulation', 'consensus']
+// Swarm panel replaces simulation; keep consensus as classic fallback
+const PANELS = ['upload', 'imaging', 'checkin', 'family', 'record', 'twin', 'swarm', 'consensus']
+
+const PANEL_LABELS = {
+  upload:     'Tải lên hồ sơ',
+  imaging:    'Chẩn đoán hình ảnh',
+  checkin:    'Kiểm tra triệu chứng',
+  family:     'Gia phả bệnh lý',
+  record:     'Hồ sơ bệnh nhân',
+  twin:       'Digital Twin',
+  swarm:      'Hội đồng Y khoa AI',
+  consensus:  'Đồng thuận AI (Classic)',
+}
 
 export default function App() {
   const { user, loading } = useAuth()
   const { theme } = useApp()
-  const [active, setActive] = useState('upload')
+  const [active, setActive]               = useState('upload')
   const [selectedMember, setSelectedMember] = useState(null)
 
-  const navigateToRecord = (member) => {
-    setSelectedMember(member)
-    setActive('record')
-  }
+  const navigateToRecord = (member) => { setSelectedMember(member); setActive('record') }
 
   const goNext = () => {
     const idx = PANELS.indexOf(active)
     if (idx < PANELS.length - 1) setActive(PANELS[idx + 1])
   }
-
   const goPrev = () => {
     const idx = PANELS.indexOf(active)
     if (idx > 0) setActive(PANELS[idx - 1])
-  }
-
-  // Label of the previous panel for the back button
-  const PANEL_LABELS = {
-    upload:     'Tải lên hồ sơ',
-    imaging:    'Chẩn đoán hình ảnh',
-    checkin:    'Kiểm tra triệu chứng',
-    family:     'Gia phả bệnh lý',
-    record:     'Hồ sơ bệnh nhân',
-    twin:       'Digital Twin',
-    simulation: 'Mô phỏng điều trị',
-    consensus:  'Đồng thuận AI',
   }
 
   const prevPanel = PANELS[PANELS.indexOf(active) - 1]
@@ -78,12 +75,12 @@ export default function App() {
         <Sidebar active={active} onNavigate={setActive} />
         <main style={{ flex: 1, overflowY: 'auto', background: mainBg }}>
           {active === 'upload'    && <UploadPanel        patientId="LXK-2024" onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
-          {active === 'imaging'    && <ImagingPanel       onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
+          {active === 'imaging'   && <ImagingPanel       onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
           {active === 'checkin'   && <CheckinPanel       onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
           {active === 'family'    && <FamilyTreePanel    patientId="LXK-2024" onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} onViewRecord={navigateToRecord} />}
           {active === 'record'    && <PatientRecordPanel onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} selectedMember={selectedMember} />}
           {active === 'twin'      && <TwinPanel          onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
-          {active === 'simulation'&& <SimulationPanel    onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
+          {active === 'swarm'     && <SwarmConsensusPanel onReset={() => setActive('upload')} onPrev={goPrev} prevLabel={prevLabel} />}
           {active === 'consensus' && <ConsensusPanel     onReset={() => setActive('upload')} onPrev={goPrev} prevLabel={prevLabel} />}
           {active === 'admin'     && user?.isAdmin && <AdminPanel />}
           {active === 'admin'     && !user?.isAdmin && (
