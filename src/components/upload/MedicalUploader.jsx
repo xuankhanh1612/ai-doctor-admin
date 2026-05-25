@@ -12,6 +12,7 @@ import {
   fileTypeLabel,
   fileTypeIcon,
 } from '../../lib/medicalStorage.js'
+import { notifyUpload } from '../../hooks/useMedicalData.js'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const TYPE_COLORS = {
@@ -188,6 +189,7 @@ export default function MedicalUploader({ patientId, onSelectImage }) {
         }
 
         await saveRecord(record)
+        notifyUpload()
         await loadRecords()
 
         setTimeout(() => {

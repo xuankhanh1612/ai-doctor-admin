@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useApp } from '../context/AppContext'
 import NavButtons from './NavButtons.jsx'
+import { useMedicalData, recordsToPatient } from '../hooks/useMedicalData.js'
 
 // ─── API — Consensus Engine (https://ai-doctor-engine.vercel.app) ──────────
 const API_BASE =
@@ -508,7 +509,22 @@ export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selected
   const { theme, t, lang } = useApp()
   const isDark = theme === 'dark'
 
-  const [patient, setPatient]             = useState(selectedMember || DEMO_PATIENT)
+  // ── Sync từ IndexedDB (MedicalUploader) ────────────────────────────────
+  const { records, patient: uploadPatient, loading: uploadLoading } = useMedicalData({ lang })
+
+  // Merge: ưu tiên selectedMember (gia phả) > upload records > DEMO_PATIENT
+  const basePatient = selectedMember
+    ? selectedMember
+    : (uploadPatient || DEMO_PATIENT)
+
+  const [patient, setPatient] = useState(basePatient)
+
+  // Cập nhật khi upload records thay đổi (real-time sync)
+  useEffect(() => {
+    if (!selectedMember) {
+      setPatient(uploadPatient || DEMO_PATIENT)
+    }
+  }, [uploadPatient, selectedMember])
 
   // When a family member is passed in, switch to their data
   useEffect(() => {
@@ -553,6 +569,7 @@ export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selected
   const [activeMethod, setActiveMethod]   = useState('bayesian')
   const [showConsensus, setShowConsensus] = useState(false)
   const isFromFamily = !!(selectedMember)
+  const isFromUpload = !!(patient?._fromUpload)
 
   const surfaceBg = isDark ? 'var(--bg2)' : '#ffffff'
   const borderCol = isDark ? 'var(--border)' : 'rgba(0,0,0,0.08)'
@@ -637,6 +654,33 @@ export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selected
               fontFamily: 'var(--font-mono)', cursor: 'pointer',
             }}
           >← Quay lại Lê Xuân Khánh</button>
+        </div>
+      )}
+
+      {/* Upload data banner */}
+      {isFromUpload && !isFromFamily && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px',
+          background: 'rgba(0,230,118,0.06)', border: '1px solid rgba(0,230,118,0.2)',
+          borderRadius: 10,
+        }}>
+          <span style={{ fontSize: 16 }}>📁</span>
+          <div style={{ flex: 1 }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--green)' }}>
+              Dữ liệu từ Hồ Sơ Upload
+            </span>
+            <span style={{ fontSize: 12, color: text2, marginLeft: 8 }}>
+              {patient._records?.length || 0} file · {patient.imaging?.length || 0} ảnh có AI phân tích
+            </span>
+          </div>
+          <button
+            onClick={() => { setPatient(DEMO_PATIENT); setConsensusData(null); setShowConsensus(false) }}
+            style={{
+              padding: '4px 12px', borderRadius: 6, border: '1px solid rgba(0,230,118,0.3)',
+              background: 'transparent', color: 'var(--green)', fontSize: 11,
+              fontFamily: 'var(--font-mono)', cursor: 'pointer',
+            }}
+          >← Demo Patient</button>
         </div>
       )}
 

@@ -1,190 +1,458 @@
-import React, { useState, useEffect } from 'react'
-import { useAuth } from '/src/context/AuthContext'
-import { useApp } from '/src/context/AppContext'
+import React, { useState } from 'react'
+import { useAuth } from '../../context/AuthContext'
+import { useApp } from '../../context/AppContext'
+import { useMedicalData } from '../../hooks/useMedicalData.js'
+import { fileTypeLabel, fileTypeIcon, formatBytes } from '../../lib/medicalStorage.js'
 
-export default function AdminPanel() {
-  const { getAllUsers, getMedicalRecords } = useAuth()
-  const { t, lang, theme } = useApp()
-  const isDark = theme === 'dark'
-  const [tab, setTab] = useState('users')
-  const [users, setUsers] = useState([])
-  const [records, setRecords] = useState([])
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+function formatDate(iso, lang) {
+  if (!iso) return '—'
+  return new Date(iso).toLocaleDateString(lang === 'vi' ? 'vi-VN' : 'en-US', {
+    year: 'numeric', month: 'short', day: 'numeric',
+  })
+}
+function formatDateTime(iso, lang) {
+  if (!iso) return '—'
+  return new Date(iso).toLocaleString(lang === 'vi' ? 'vi-VN' : 'en-US', {
+    year: 'numeric', month: 'short', day: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  })
+}
 
-  useEffect(() => {
-    setUsers(getAllUsers())
-    setRecords(getMedicalRecords())
-  }, [])
+const TYPE_COLOR = { upload: '#00b8cc', view: '#9c6fff', edit: '#ffb74d', auth: '#00e676' }
+const TYPE_ICON  = { upload: '📤', view: '👁️', edit: '✏️', auth: '🔐' }
+const FILE_COLOR = { xray: '#00e5ff', ct: '#9c6fff', mri: '#f48fb1', pdf: '#ffb74d', photo: '#00e676' }
 
-  const c = isDark ? {
-    border: 'rgba(255,255,255,0.08)', text: '#e8f0f8',
-    text2: 'rgba(232,240,248,0.55)', text3: 'rgba(232,240,248,0.28)',
-    surface: 'rgba(255,255,255,0.03)', bg: 'rgba(255,255,255,0.04)',
-  } : {
-    border: 'rgba(0,0,0,0.1)', text: '#1a2035',
-    text2: '#555', text3: '#999',
-    surface: 'rgba(0,0,0,0.02)', bg: '#fff',
-  }
+// ─── Sub-components ───────────────────────────────────────────────────────────
+function StatCard({ label, value, icon, color, sub }) {
+  return (
+    <div style={{
+      background: `${color}10`, border: `1px solid ${color}30`,
+      borderRadius: 14, padding: '18px 20px',
+      display: 'flex', alignItems: 'center', gap: 14,
+    }}>
+      <div style={{
+        width: 44, height: 44, borderRadius: 12, flexShrink: 0,
+        background: `${color}20`, border: `1px solid ${color}35`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20,
+      }}>{icon}</div>
+      <div>
+        <div style={{ fontSize: 26, fontWeight: 800, color, fontFamily: 'monospace', lineHeight: 1 }}>
+          {value}
+        </div>
+        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginTop: 3 }}>{label}</div>
+        {sub && <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', marginTop: 1 }}>{sub}</div>}
+      </div>
+    </div>
+  )
+}
 
-  const formatDate = (iso) => {
-    if (!iso) return '-'
-    return new Date(iso).toLocaleDateString(lang === 'vi' ? 'vi-VN' : 'en-US', { year: 'numeric', month: 'short', day: 'numeric' })
-  }
-
-  // Mock activity log
-  const activities = [
-    { time: '2 phút trước', user: 'demo.google@gmail.com', action: lang === 'vi' ? 'Tải lên X-ray ngực' : 'Uploaded chest X-ray', type: 'upload' },
-    { time: '15 phút trước', user: 'khanhlegood1@gmail.com', action: lang === 'vi' ? 'Xem consensus AI bệnh nhân P-003' : 'Viewed AI consensus for patient P-003', type: 'view' },
-    { time: '1 giờ trước', user: 'demo.apple@icloud.com', action: lang === 'vi' ? 'Thêm thành viên gia đình' : 'Added family member', type: 'edit' },
-    { time: '3 giờ trước', user: 'khanhlegood1@gmail.com', action: lang === 'vi' ? 'Cập nhật hồ sơ bệnh nhân' : 'Updated patient record', type: 'edit' },
-    { time: 'Hôm qua', user: 'demo.google@gmail.com', action: lang === 'vi' ? 'Đăng ký tài khoản mới' : 'Registered new account', type: 'auth' },
-  ]
-  const typeColor = { upload: '#00b8cc', view: '#9c6fff', edit: '#ffb74d', auth: '#00e676' }
-  const typeIcon = { upload: '📤', view: '👁️', edit: '✏️', auth: '🔐' }
-
-  // Stats
-  const stats = [
-    { label: t('totalUsers'), value: users.length, icon: '👥', color: '#00b8cc' },
-    { label: t('medicalRecords'), value: records.length, icon: '📋', color: '#9c6fff' },
-    { label: t('analysesToday'), value: 7, icon: '🤖', color: '#00e676' },
-    { label: t('activePatients'), value: 3, icon: '🏥', color: '#ffb74d' },
-  ]
-
-  const TABS = [
-    { id: 'users', label: lang === 'vi' ? '👥 ' + t('patients') : '👥 Users' },
-    { id: 'records', label: lang === 'vi' ? '📋 Hồ sơ' : '📋 ' + t('records') },
-    { id: 'activity', label: lang === 'vi' ? '📊 Nhật ký' : '📊 Activity' },
-  ]
+function RecordRow({ record, onDelete, lang }) {
+  const [expanded, setExpanded] = useState(false)
+  const color = FILE_COLOR[record.fileType] || '#aaa'
+  const hasAI = !!record.aiAnalysis
 
   return (
-    <div style={{ padding: 28, display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <div style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+      {/* Row header */}
+      <div
+        onClick={() => setExpanded(e => !e)}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px',
+          cursor: 'pointer', transition: 'background 0.15s',
+        }}
+        onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
+        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+      >
+        {/* Thumb */}
+        <div style={{
+          width: 44, height: 44, borderRadius: 8, overflow: 'hidden', flexShrink: 0,
+          background: '#0a0e1a', border: `1px solid ${color}30`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          {record.mimeType?.startsWith('image/')
+            ? <img src={record.dataUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            : <span style={{ fontSize: 20 }}>{fileTypeIcon(record.fileType)}</span>
+          }
+        </div>
+
+        {/* Info */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: '#e8f0f8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {record.filename || record.name}
+          </div>
+          <div style={{ display: 'flex', gap: 8, marginTop: 3, alignItems: 'center', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 10, padding: '1px 7px', borderRadius: 4, background: `${color}18`, color, border: `1px solid ${color}35`, fontFamily: 'monospace' }}>
+              {fileTypeLabel(record.fileType)}
+            </span>
+            <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>{formatBytes(record.size || 0)}</span>
+            <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>{formatDateTime(record.uploadedAt, lang)}</span>
+            {hasAI && <span style={{ fontSize: 10, color: '#00e676' }}>✓ AI</span>}
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
+          <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>{expanded ? '▲' : '▼'}</span>
+          <button
+            onClick={e => { e.stopPropagation(); onDelete(record.id) }}
+            style={{
+              padding: '4px 10px', borderRadius: 6, cursor: 'pointer', fontSize: 11,
+              background: 'rgba(255,82,82,0.1)', border: '1px solid rgba(255,82,82,0.25)',
+              color: 'rgba(255,82,82,0.8)',
+            }}
+          >🗑</button>
+        </div>
+      </div>
+
+      {/* Expanded AI analysis */}
+      {expanded && (
+        <div style={{ padding: '0 16px 16px 72px' }}>
+          {hasAI ? (
+            <div style={{
+              background: 'rgba(0,229,255,0.04)', border: '1px solid rgba(0,229,255,0.15)',
+              borderRadius: 10, padding: 14,
+            }}>
+              <div style={{ fontSize: 10, color: '#00e5ff', fontFamily: 'monospace', letterSpacing: '0.1em', marginBottom: 8 }}>
+                AI ANALYSIS · {Math.round((record.aiAnalysis.confidence || 0.85) * 100)}% confidence
+              </div>
+              <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', lineHeight: 1.8, margin: 0, whiteSpace: 'pre-wrap' }}>
+                {record.aiAnalysis.summary?.slice(0, 400)}{record.aiAnalysis.summary?.length > 400 ? '…' : ''}
+              </p>
+              {record.aiAnalysis.recommendation && (
+                <div style={{ marginTop: 10, padding: '8px 12px', background: 'rgba(255,183,77,0.08)', border: '1px solid rgba(255,183,77,0.2)', borderRadius: 8, fontSize: 11, color: 'rgba(255,183,77,0.8)' }}>
+                  💡 {record.aiAnalysis.recommendation}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', padding: '8px 0', fontStyle: 'italic' }}>
+              {lang === 'vi' ? 'Chưa có phân tích AI. Mở Hồ Sơ Y Tế để phân tích.' : 'No AI analysis yet. Open Medical Records to analyze.'}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Main AdminPanel ──────────────────────────────────────────────────────────
+export default function AdminPanel() {
+  const { getAllUsers } = useAuth()
+  const { t, lang, theme } = useApp()
+  const isDark = theme === 'dark'
+
+  const {
+    records, loading, lastUpdated,
+    activities, totalFiles, aiAnalyzed, byType, totalSizeMB,
+    remove, refresh,
+  } = useMedicalData({ lang })
+
+  const users = getAllUsers()
+
+  const [tab, setTab] = useState('records')
+
+  const c = {
+    border: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.1)',
+    text:   isDark ? '#e8f0f8' : '#1a2035',
+    text2:  isDark ? 'rgba(232,240,248,0.55)' : '#555',
+    text3:  isDark ? 'rgba(232,240,248,0.28)' : '#aaa',
+    surface:isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+    bg:     isDark ? 'rgba(8,12,26,0.9)' : '#fff',
+  }
+
+  const TABS = [
+    { id: 'records',  label: lang === 'vi' ? '📋 Hồ Sơ Upload'  : '📋 Records'  },
+    { id: 'patients', label: lang === 'vi' ? '👥 Bệnh Nhân'     : '👥 Patients' },
+    { id: 'activity', label: lang === 'vi' ? '📊 Nhật Ký'       : '📊 Activity' },
+    { id: 'users',    label: lang === 'vi' ? '🔐 Tài Khoản'     : '🔐 Accounts' },
+  ]
+
+  // Stats row
+  const stats = [
+    { label: lang === 'vi' ? 'Hồ sơ đã upload'  : 'Total Records',  value: totalFiles,              icon: '📁', color: '#00b8cc' },
+    { label: lang === 'vi' ? 'Đã phân tích AI'  : 'AI Analyzed',    value: aiAnalyzed,              icon: '🤖', color: '#9c6fff', sub: `${totalFiles ? Math.round(aiAnalyzed/totalFiles*100) : 0}%` },
+    { label: lang === 'vi' ? 'Dung lượng'        : 'Storage Used',   value: `${totalSizeMB}MB`,      icon: '💾', color: '#00e676' },
+    { label: lang === 'vi' ? 'Tài khoản'         : 'User Accounts',  value: users.length,            icon: '👥', color: '#ffb74d' },
+  ]
+
+  // Patient synthesized from upload records
+  const patientFromUpload = records.length > 0 ? {
+    id:     readMetaId(),
+    name:   lang === 'vi' ? 'Bệnh Nhân Upload' : 'Upload Patient',
+    files:  totalFiles,
+    aiDone: aiAnalyzed,
+    last:   records[0]?.uploadedAt,
+    types:  byType,
+  } : null
+
+  return (
+    <div style={{ padding: 28, display: 'flex', flexDirection: 'column', gap: 20, color: c.text }}>
+
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-            <div style={{ background: 'rgba(255,82,82,0.12)', border: '1px solid rgba(255,82,82,0.3)', borderRadius: 6, padding: '2px 10px', fontSize: 10, color: '#ff5252', fontWeight: 700, letterSpacing: '0.1em' }}>
-              ADMIN
-            </div>
-            <h2 style={{ fontSize: 22, fontWeight: 800, color: c.text }}>{t('adminPanel')}</h2>
+            <span style={{ background: 'rgba(255,82,82,0.12)', border: '1px solid rgba(255,82,82,0.3)', borderRadius: 6, padding: '2px 10px', fontSize: 10, color: '#ff5252', fontWeight: 700, letterSpacing: '0.1em' }}>ADMIN</span>
+            <h2 style={{ fontSize: 22, fontWeight: 800, margin: 0 }}>{t('adminPanel')}</h2>
           </div>
-          <p style={{ color: c.text2, fontSize: 12 }}>Lê Xuân Khánh · khanhlegood1@gmail.com</p>
+          <p style={{ color: c.text2, fontSize: 12, margin: 0 }}>
+            {lang === 'vi' ? 'Dữ liệu đồng bộ từ Hồ Sơ Y Tế (IndexedDB)' : 'Data synced from Medical Records (IndexedDB)'}
+            {lastUpdated && (
+              <span style={{ marginLeft: 8, color: c.text3 }}>
+                · {lang === 'vi' ? 'Cập nhật' : 'Updated'}: {lastUpdated.toLocaleTimeString()}
+              </span>
+            )}
+          </p>
         </div>
-        <div style={{ fontSize: 10, color: c.text3, fontFamily: 'monospace', textAlign: 'right' }}>
-          {t('session')}<br />
-          {new Date().toLocaleString(lang === 'vi' ? 'vi-VN' : 'en-US')}
-        </div>
+        <button onClick={refresh} style={{
+          padding: '8px 16px', borderRadius: 8, cursor: 'pointer', fontSize: 12,
+          background: 'rgba(0,184,204,0.1)', border: '1px solid rgba(0,184,204,0.3)',
+          color: '#00b8cc', fontWeight: 600,
+        }}>
+          {loading ? '⟳ …' : '↺ ' + (lang === 'vi' ? 'Làm mới' : 'Refresh')}
+        </button>
       </div>
 
       {/* Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
-        {stats.map((s, i) => (
-          <div key={i} style={{ background: c.surface, border: `1px solid ${c.border}`, borderRadius: 12, padding: '16px' }}>
-            <div style={{ fontSize: 24, marginBottom: 8 }}>{s.icon}</div>
-            <div style={{ fontSize: 28, fontWeight: 800, color: s.color, fontFamily: 'monospace', lineHeight: 1 }}>{s.value}</div>
-            <div style={{ fontSize: 11, color: c.text3, marginTop: 6 }}>{s.label}</div>
-          </div>
-        ))}
+        {stats.map((s, i) => <StatCard key={i} {...s} />)}
       </div>
+
+      {/* File type breakdown */}
+      {Object.keys(byType).length > 0 && (
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {Object.entries(byType).map(([type, count]) => {
+            const color = FILE_COLOR[type] || '#aaa'
+            return (
+              <div key={type} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: 20, background: `${color}12`, border: `1px solid ${color}30`, color }}>
+                <span style={{ fontSize: 14 }}>{fileTypeIcon(type)}</span>
+                <span style={{ fontSize: 12, fontWeight: 600 }}>{fileTypeLabel(type)}</span>
+                <span style={{ fontSize: 12, fontFamily: 'monospace' }}>× {count}</span>
+              </div>
+            )
+          })}
+        </div>
+      )}
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: 6 }}>
-        {TABS.map(tab_ => (
-          <button key={tab_.id} onClick={() => setTab(tab_.id)} style={{
-            padding: '8px 16px', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600,
-            border: `1px solid ${tab === tab_.id ? 'rgba(0,180,200,0.4)' : c.border}`,
-            background: tab === tab_.id ? 'rgba(0,180,200,0.1)' : 'none',
-            color: tab === tab_.id ? '#00b8cc' : c.text2,
-          }}>{tab_.label}</button>
+      <div style={{ display: 'flex', gap: 2, background: c.surface, borderRadius: 12, padding: 4, border: `1px solid ${c.border}` }}>
+        {TABS.map(tb => (
+          <button key={tb.id} onClick={() => setTab(tb.id)} style={{
+            flex: 1, padding: '10px 8px', borderRadius: 9, cursor: 'pointer',
+            border: 'none', fontSize: 12, fontWeight: tab === tb.id ? 700 : 400,
+            background: tab === tb.id ? 'rgba(0,184,204,0.12)' : 'transparent',
+            color: tab === tb.id ? '#00b8cc' : c.text2,
+            transition: 'all 0.15s',
+          }}>{tb.label}</button>
         ))}
       </div>
 
-      {/* Users tab */}
-      {tab === 'users' && (
-        <div style={{ background: c.surface, border: `1px solid ${c.border}`, borderRadius: 14, overflow: 'hidden' }}>
-          <div style={{ padding: '12px 16px', borderBottom: `1px solid ${c.border}`, fontSize: 10, letterSpacing: '0.12em', color: c.text3, textTransform: 'uppercase' }}>
-            {t('allUsers')} · {users.length} {t('accounts')}
-          </div>
-          {users.length === 0 ? (
-            <div style={{ padding: 32, textAlign: 'center', color: c.text3 }}>
-              {t('noUsers')}
+      {/* ── TAB: Hồ Sơ Upload ─────────────────────────────────────────────── */}
+      {tab === 'records' && (
+        <div style={{ background: c.bg, border: `1px solid ${c.border}`, borderRadius: 14, overflow: 'hidden' }}>
+          {loading ? (
+            <div style={{ padding: 40, textAlign: 'center', color: c.text3 }}>
+              ⟳ {lang === 'vi' ? 'Đang tải từ IndexedDB…' : 'Loading from IndexedDB…'}
             </div>
-          ) : users.map((u, i) => (
+          ) : records.length === 0 ? (
+            <div style={{ padding: 48, textAlign: 'center' }}>
+              <div style={{ fontSize: 40, marginBottom: 12 }}>📂</div>
+              <div style={{ color: c.text3, fontSize: 13 }}>
+                {lang === 'vi' ? 'Chưa có hồ sơ nào. Hãy upload file trong tab Hồ Sơ Y Tế.' : 'No records yet. Upload files in the Medical Records tab.'}
+              </div>
+            </div>
+          ) : (
+            <div>
+              <div style={{ padding: '12px 16px', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: 12, color: c.text2, fontFamily: 'monospace' }}>
+                  {totalFiles} {lang === 'vi' ? 'hồ sơ' : 'records'} · {totalSizeMB} MB
+                </span>
+                <span style={{ fontSize: 11, color: c.text3 }}>
+                  {lang === 'vi' ? 'Nhấn để xem AI analysis' : 'Click to expand AI analysis'}
+                </span>
+              </div>
+              {records.map(r => (
+                <RecordRow key={r.id} record={r} onDelete={remove} lang={lang} />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── TAB: Bệnh Nhân ────────────────────────────────────────────────── */}
+      {tab === 'patients' && (
+        <div style={{ background: c.bg, border: `1px solid ${c.border}`, borderRadius: 14, overflow: 'hidden' }}>
+          {records.length === 0 ? (
+            <div style={{ padding: 48, textAlign: 'center', color: c.text3, fontSize: 13 }}>
+              <div style={{ fontSize: 40, marginBottom: 12 }}>👥</div>
+              {lang === 'vi' ? 'Upload hồ sơ để tự động tạo bệnh nhân.' : 'Upload records to auto-create patients.'}
+            </div>
+          ) : (
+            <div style={{ padding: 20 }}>
+              {/* Auto-generated patient from uploads */}
+              {patientFromUpload && (
+                <div style={{
+                  background: 'rgba(0,184,204,0.06)', border: '1px solid rgba(0,184,204,0.2)',
+                  borderRadius: 14, padding: '18px 20px', marginBottom: 16,
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 14 }}>
+                    <div style={{
+                      width: 52, height: 52, borderRadius: '50%', flexShrink: 0,
+                      background: 'rgba(0,184,204,0.15)', border: '2px solid #00b8cc',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 20,
+                    }}>📁</div>
+                    <div>
+                      <div style={{ fontSize: 16, fontWeight: 800, color: '#e8f0f8', marginBottom: 3 }}>
+                        {patientFromUpload.name}
+                      </div>
+                      <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', fontFamily: 'monospace' }}>
+                        ID: {patientFromUpload.id}
+                      </div>
+                    </div>
+                    <div style={{ marginLeft: 'auto' }}>
+                      <span style={{ fontSize: 10, padding: '3px 10px', borderRadius: 6, background: 'rgba(0,230,118,0.1)', border: '1px solid rgba(0,230,118,0.3)', color: '#00e676' }}>
+                        AUTO-GENERATED
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Stats */}
+                  <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
+                    {[
+                      [lang === 'vi' ? 'Hồ sơ' : 'Records', patientFromUpload.files, '#00b8cc'],
+                      [lang === 'vi' ? 'AI phân tích' : 'AI Analyzed', patientFromUpload.aiDone, '#9c6fff'],
+                      [lang === 'vi' ? 'Cập nhật' : 'Updated', formatDate(patientFromUpload.last, lang), '#ffb74d'],
+                    ].map(([label, val, color]) => (
+                      <div key={label}>
+                        <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', marginBottom: 2 }}>{label}</div>
+                        <div style={{ fontSize: 18, fontWeight: 700, color, fontFamily: 'monospace' }}>{val}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* File type chips */}
+                  <div style={{ display: 'flex', gap: 6, marginTop: 12, flexWrap: 'wrap' }}>
+                    {Object.entries(patientFromUpload.types).map(([type, count]) => {
+                      const color = FILE_COLOR[type] || '#aaa'
+                      return (
+                        <span key={type} style={{ fontSize: 11, padding: '3px 10px', borderRadius: 20, background: `${color}15`, border: `1px solid ${color}30`, color }}>
+                          {fileTypeIcon(type)} {fileTypeLabel(type)} ×{count}
+                        </span>
+                      )
+                    })}
+                  </div>
+
+                  <div style={{ marginTop: 12, fontSize: 11, color: 'rgba(255,255,255,0.3)', fontStyle: 'italic' }}>
+                    ℹ️ {lang === 'vi'
+                      ? 'Bệnh nhân này được tự động tạo từ các hồ sơ upload. Xem chi tiết tại tab Hồ Sơ.'
+                      : 'This patient is auto-generated from uploaded records. View details in Records tab.'}
+                  </div>
+                </div>
+              )}
+
+              {/* System users as patients */}
+              <div style={{ fontSize: 11, color: c.text3, fontFamily: 'monospace', letterSpacing: '0.08em', marginBottom: 10 }}>
+                {lang === 'vi' ? 'NGƯỜI DÙNG HỆ THỐNG' : 'SYSTEM USERS'}
+              </div>
+              {users.map(u => (
+                <div key={u.email} style={{
+                  display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0',
+                  borderBottom: `1px solid ${c.border}`,
+                }}>
+                  <img src={u.avatar} alt="" style={{ width: 38, height: 38, borderRadius: '50%', border: `2px solid ${u.isAdmin ? '#ff5252' : '#00b8cc'}` }} />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: c.text }}>{u.name}</div>
+                    <div style={{ fontSize: 11, color: c.text3 }}>{u.email}</div>
+                  </div>
+                  {u.isAdmin && (
+                    <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 4, background: 'rgba(255,82,82,0.1)', border: '1px solid rgba(255,82,82,0.3)', color: '#ff5252' }}>ADMIN</span>
+                  )}
+                  <span style={{ fontSize: 11, color: c.text3 }}>{formatDate(u.createdAt, lang)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── TAB: Nhật Ký ─────────────────────────────────────────────────── */}
+      {tab === 'activity' && (
+        <div style={{ background: c.bg, border: `1px solid ${c.border}`, borderRadius: 14, overflow: 'hidden' }}>
+          {activities.length === 0 ? (
+            <div style={{ padding: 48, textAlign: 'center', color: c.text3, fontSize: 13 }}>
+              <div style={{ fontSize: 40, marginBottom: 12 }}>📊</div>
+              {lang === 'vi' ? 'Chưa có hoạt động nào. Upload hồ sơ để bắt đầu.' : 'No activity yet. Upload records to get started.'}
+            </div>
+          ) : (
+            <div>
+              <div style={{ padding: '12px 16px', borderBottom: `1px solid ${c.border}`, fontSize: 12, color: c.text2, fontFamily: 'monospace' }}>
+                {activities.length} {lang === 'vi' ? 'hoạt động upload' : 'upload events'}
+              </div>
+              {activities.map((a, i) => (
+                <div key={a.id || i} style={{
+                  display: 'flex', alignItems: 'flex-start', gap: 12, padding: '13px 16px',
+                  borderBottom: `1px solid ${c.border}`,
+                }}>
+                  <div style={{ width: 32, height: 32, borderRadius: 8, flexShrink: 0, background: `${TYPE_COLOR[a.type] || '#555'}15`, border: `1px solid ${TYPE_COLOR[a.type] || '#555'}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>
+                    {TYPE_ICON[a.type] || '📌'}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, color: c.text, lineHeight: 1.5 }}>{a.action}</div>
+                    <div style={{ display: 'flex', gap: 10, marginTop: 4, alignItems: 'center' }}>
+                      <span style={{ fontSize: 10, color: c.text3, fontFamily: 'monospace' }}>{a.time}</span>
+                      {a.hasAI && <span style={{ fontSize: 10, color: '#00e676' }}>✓ AI</span>}
+                      {a.fileType && (
+                        <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 4, background: `${FILE_COLOR[a.fileType] || '#aaa'}15`, color: FILE_COLOR[a.fileType] || '#aaa', border: `1px solid ${FILE_COLOR[a.fileType] || '#aaa'}30` }}>
+                          {fileTypeLabel(a.fileType)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── TAB: Tài Khoản ────────────────────────────────────────────────── */}
+      {tab === 'users' && (
+        <div style={{ background: c.bg, border: `1px solid ${c.border}`, borderRadius: 14, overflow: 'hidden' }}>
+          <div style={{ padding: '12px 16px', borderBottom: `1px solid ${c.border}`, fontSize: 12, color: c.text2, fontFamily: 'monospace' }}>
+            {users.length} {lang === 'vi' ? 'tài khoản' : 'accounts'}
+          </div>
+          {users.map((u, i) => (
             <div key={u.email} style={{
               display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px',
               borderBottom: i < users.length - 1 ? `1px solid ${c.border}` : 'none',
             }}>
-              <img src={u.avatar} alt="" style={{ width: 40, height: 40, borderRadius: '50%', background: '#080c1a' }} />
-              <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 14, fontWeight: 600, color: c.text }}>{u.name}</span>
-                  {u.isAdmin && <span style={{ fontSize: 9, padding: '1px 6px', background: 'rgba(255,82,82,0.12)', color: '#ff5252', border: '1px solid rgba(255,82,82,0.3)', borderRadius: 4, fontWeight: 700 }}>ADMIN</span>}
-                </div>
-                <div style={{ fontSize: 11, color: c.text3 }}>{u.email} · {u.provider}</div>
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: 11, color: c.text2 }}>{formatDate(u.createdAt)}</div>
-                <div style={{ fontSize: 10, color: c.text3 }}>{(u.patients || []).length} {t('patients')}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Records tab */}
-      {tab === 'records' && (
-        <div style={{ background: c.surface, border: `1px solid ${c.border}`, borderRadius: 14, overflow: 'hidden' }}>
-          <div style={{ padding: '12px 16px', borderBottom: `1px solid ${c.border}`, fontSize: 10, letterSpacing: '0.12em', color: c.text3, textTransform: 'uppercase' }}>
-            {t('allRecords')} · {records.length} {t('records')}
-          </div>
-          {records.length === 0 ? (
-            <div style={{ padding: 32, textAlign: 'center', color: c.text3 }}>
-              {t('noRecords')}
-            </div>
-          ) : records.map((r, i) => (
-            <div key={r.id} style={{
-              display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px',
-              borderBottom: i < records.length - 1 ? `1px solid ${c.border}` : 'none',
-            }}>
-              <span style={{ fontSize: 20 }}>
-                {r.fileType?.startsWith('image/') ? '🖼️' : r.fileType === 'application/pdf' ? '📄' : '📎'}
-              </span>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: c.text }}>{r.fileName}</div>
-                <div style={{ fontSize: 10, color: c.text3 }}>
-                  {t('patients')}: {r.patientId || '-'} · {r.uploadedBy} · {formatDate(r.createdAt)}
+              <img src={u.avatar} alt="" style={{ width: 42, height: 42, borderRadius: '50%', border: `2px solid ${u.isAdmin ? '#ff5252' : '#6b3fd4'}`, flexShrink: 0 }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: c.text }}>{u.name}</div>
+                <div style={{ fontSize: 11, color: c.text3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.email}</div>
+                <div style={{ fontSize: 10, color: c.text3, marginTop: 2 }}>
+                  {lang === 'vi' ? 'Đăng ký:' : 'Joined:'} {formatDate(u.createdAt, lang)} · {u.provider}
                 </div>
               </div>
-              <span style={{ fontSize: 10, padding: '3px 8px', borderRadius: 6, background: 'rgba(0,180,200,0.1)', color: '#00b8cc', border: '1px solid rgba(0,180,200,0.2)' }}>
-                {r.type}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Activity tab */}
-      {tab === 'activity' && (
-        <div style={{ background: c.surface, border: `1px solid ${c.border}`, borderRadius: 14, overflow: 'hidden' }}>
-          <div style={{ padding: '12px 16px', borderBottom: `1px solid ${c.border}`, fontSize: 10, letterSpacing: '0.12em', color: c.text3, textTransform: 'uppercase' }}>
-            {t('activityLog')}
-          </div>
-          {activities.map((a, i) => (
-            <div key={i} style={{
-              display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px',
-              borderBottom: i < activities.length - 1 ? `1px solid ${c.border}` : 'none',
-            }}>
-              <div style={{
-                width: 32, height: 32, borderRadius: 8, flexShrink: 0,
-                background: `${typeColor[a.type]}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16,
-              }}>{typeIcon[a.type]}</div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 13, color: c.text }}>{a.action}</div>
-                <div style={{ fontSize: 10, color: c.text3 }}>{a.user}</div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                {u.isAdmin && (
+                  <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 4, background: 'rgba(255,82,82,0.1)', border: '1px solid rgba(255,82,82,0.25)', color: '#ff5252', fontWeight: 700 }}>ADMIN</span>
+                )}
+                <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 4, background: 'rgba(107,63,212,0.1)', border: '1px solid rgba(107,63,212,0.25)', color: '#9c6fff' }}>
+                  {u.provider}
+                </span>
               </div>
-              <div style={{ fontSize: 10, color: c.text3, whiteSpace: 'nowrap' }}>{a.time}</div>
             </div>
           ))}
         </div>
       )}
     </div>
   )
+}
+
+// helper
+function readMetaId() {
+  try { return JSON.parse(localStorage.getItem('ai-clinic-patient-meta') || '{}').patientId || 'P-unknown' } catch { return 'P-unknown' }
 }
