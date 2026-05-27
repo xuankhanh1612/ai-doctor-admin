@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react'
+import { Document, Page, pdfjs } from 'react-pdf'
 import { getAllRecords } from '../lib/medicalStorage.js'
 import { useApp } from '../context/AppContext'
 import { PATIENT } from '../data/mockData.js'
 import NavButtons from './NavButtons.jsx'
+
+pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`
 
 const Tag = ({ children, color = 'cyan' }) => {
   const colors = {
@@ -25,21 +28,33 @@ const Tag = ({ children, color = 'cyan' }) => {
 export default function ImagingPanel({ onNext, onPrev, prevLabel, compareImage, uploadedImages = [], onSelectCompareImage }) {
   const { t } = useApp()
   const [activeSlice, setActiveSlice] = useState(4)
-  const [galleryImages, setGalleryImages] = useState(uploadedImages)
+  const [galleryImages, setGalleryImages] = useState([])
+  const [selectedPdf, setSelectedPdf] = useState(null)
 
   useEffect(() => {
-    setGalleryImages(uploadedImages)
-  }, [uploadedImages])
+  async function syncGallery() {
+    const records = await getAllRecords()
 
-  useEffect(() => {
-    async function loadImages() {
-      if (uploadedImages?.length) return
-      const records = await getAllRecords()
-      const imageRecords = records.filter(r => r?.mimeType?.startsWith('image/'))
-      setGalleryImages(imageRecords)
-    }
-    loadImages()
-  }, [])
+    const merged = [...records, ...(uploadedImages || [])]
+
+    const map = new Map()
+
+    merged.forEach(item => {
+      const key =
+        item.id ||
+        item.filename ||
+        item.dataUrl
+
+      if (!map.has(key)) {
+        map.set(key, item)
+      }
+    })
+
+    setGalleryImages(Array.from(map.values()))
+  }
+
+  syncGallery()
+}, [uploadedImages])
 
   return (
     <div className="animate-fade" style={{ padding: 28, display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -75,6 +90,14 @@ export default function ImagingPanel({ onNext, onPrev, prevLabel, compareImage, 
               filter: 'grayscale(100%) contrast(1.1) brightness(0.9)',
             }}
           />
+        )}
+
+        {selectedPdf && (
+          <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', overflow:'hidden' }}>
+            <Document file={selectedPdf.dataUrl}>
+              <Page pageNumber={1} width={1000} renderTextLayer={false} renderAnnotationLayer={false} />
+            </Document>
+          </div>
         )}
 
         {/* Grid overlay */}
@@ -153,65 +176,129 @@ export default function ImagingPanel({ onNext, onPrev, prevLabel, compareImage, 
 
 
       {/* Uploaded thumbnails */}
-      {galleryImages.length > 0 && (
-        <Card title="Uploaded Scan Library">
-          <div style={{
-            display: 'flex',
-            gap: 12,
-            overflowX: 'auto',
-            paddingBottom: 4,
-          }}>
-            {galleryImages.map((img, index) => {
-              const active = compareImage === img.dataUrl
+{galleryImages.length > 0 && (
+  <Card title="Uploaded Scan Library">
+    <div
+      style={{
+        display: 'flex',
+        gap: 12,
+        overflowX: 'auto',
+        paddingBottom: 4,
+      }}
+    >
+      {galleryImages.map((img, index) => {
+        const isPdf =
+          img?.mimeType?.includes('pdf') ||
+          img?.filename?.toLowerCase()?.endsWith('.pdf')
 
-              return (
-                <button
-                  key={img.id || index}
-                  onClick={() => onSelectCompareImage?.(img.dataUrl)}
+        const active =
+          (!isPdf && compareImage === img.dataUrl) ||
+          (isPdf && selectedPdf?.id === img.id)
+
+        return (
+          <button
+            key={img.id || index}
+            onClick={() => {
+              if (isPdf) {
+                setSelectedPdf(img)
+                onSelectCompareImage?.(null)
+              } else {
+                setSelectedPdf(null)
+                onSelectCompareImage?.(img.dataUrl)
+
+// giữ thumbnail library
+setGalleryImages(prev => [...prev])
+              }
+            }}
+            style={{
+              minWidth: 110,
+              borderRadius: 12,
+              overflow: 'hidden',
+              border: active
+                ? '2px solid var(--cyan)'
+                : '1px solid var(--border)',
+              background: 'var(--bg3)',
+              cursor: 'pointer',
+              padding: 0,
+              transition: 'all 0.2s ease',
+              flexShrink: 0,
+            }}
+          >
+            {isPdf ? (
+              <div
+                style={{
+                  width: '100%',
+                  height: 80,
+                  background:
+                    'linear-gradient(180deg,#1b2235,#101522)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  position: 'relative',
+                }}
+              >
+                <div
                   style={{
-                    minWidth: 110,
-                    borderRadius: 12,
-                    overflow: 'hidden',
-                    border: active
-                      ? '2px solid var(--cyan)'
-                      : '1px solid var(--border)',
-                    background: 'var(--bg3)',
-                    cursor: 'pointer',
-                    padding: 0,
-                    transition: 'all 0.2s ease',
+                    fontSize: 34,
+                    opacity: 0.95,
                   }}
                 >
-                  <img
-                    src={img.dataUrl}
-                    alt={img.filename || `scan-${index}`}
-                    style={{
-                      width: '100%',
-                      height: 80,
-                      objectFit: 'cover',
-                      display: 'block',
-                      filter: active
-                        ? 'grayscale(0%)'
-                        : 'grayscale(100%) contrast(1.05)',
-                    }}
-                  />
+                  📄
+                </div>
 
-                  <div style={{
-                    padding: '6px 8px',
-                    fontSize: 9,
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: 6,
+                    right: 6,
+                    fontSize: 8,
+                    padding: '2px 5px',
+                    borderRadius: 4,
+                    background: 'rgba(255,255,255,.08)',
+                    color: '#cfe8ff',
                     fontFamily: 'var(--font-mono)',
-                    color: active ? 'var(--cyan)' : 'var(--text3)',
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                  }}>
-                    {img.filename || 'Medical Scan'}
-                  </div>
-                </button>
-              )
-            })}
-          </div>
-        </Card>
-      )}
+                  }}
+                >
+                  PDF
+                </div>
+              </div>
+            ) : (
+              <img
+                src={img.dataUrl}
+                alt={img.filename || `scan-${index}`}
+                style={{
+                  width: '100%',
+                  height: 80,
+                  objectFit: 'cover',
+                  display: 'block',
+                  filter: active
+                    ? 'grayscale(0%)'
+                    : 'grayscale(100%) contrast(1.05)',
+                }}
+              />
+            )}
+
+            <div
+              style={{
+                padding: '6px 8px',
+                fontSize: 9,
+                fontFamily: 'var(--font-mono)',
+                color: active
+                  ? 'var(--cyan)'
+                  : 'var(--text3)',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
+              {img.filename || 'Medical Scan'}
+            </div>
+          </button>
+        )
+      })}
+    </div>
+  </Card>
+)}
 
       {/* Lesion cards + finding */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
