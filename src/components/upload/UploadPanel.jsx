@@ -21,7 +21,7 @@ const AI_SUGGESTIONS = {
   ],
 }
 
-export default function UploadPanel({ patientId, onNext, onPrev, prevLabel }) {
+export default function UploadPanel({ patientId, onNext, onPrev, prevLabel, onSelectImage }) {
   const { t, lang, theme } = useApp()
   const isDark = theme === 'dark'
 
@@ -71,7 +71,7 @@ export default function UploadPanel({ patientId, onNext, onPrev, prevLabel }) {
       {activeTab === 'upload' && (
         <MedicalUploader
           patientId={patientId}
-          onSelectImage={null}  // truyền callback nếu muốn kết nối với imaging panel
+          onSelectImage={onSelectImage}
         />
       )}
 

@@ -21,7 +21,7 @@ const Tag = ({ children, color = 'cyan' }) => {
   )
 }
 
-export default function ImagingPanel({ onNext, onPrev, prevLabel }) {
+export default function ImagingPanel({ onNext, onPrev, prevLabel, compareImage }) {
   const { t } = useApp()
   const [activeSlice, setActiveSlice] = useState(4)
 
@@ -44,6 +44,23 @@ export default function ImagingPanel({ onNext, onPrev, prevLabel }) {
         background: '#000', borderRadius: 14, overflow: 'hidden', position: 'relative',
         aspectRatio: '16/8', border: '1px solid var(--border2)',
       }}>
+        {/* Uploaded compare image */}
+        {compareImage && (
+          <img
+            src={compareImage}
+            alt="Compare"
+            style={{
+              position: 'absolute',
+              inset: 0,
+              width: '100%',
+              height: '100%',
+              objectFit: 'contain',
+              opacity: 0.92,
+              filter: 'grayscale(100%) contrast(1.1) brightness(0.9)',
+            }}
+          />
+        )}
+
         {/* Grid overlay */}
         <div style={{
           position: 'absolute', inset: 0,
