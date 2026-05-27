@@ -507,7 +507,7 @@ Trả lời bằng ${lang === 'en' ? 'English' : 'tiếng Việt'}, ngắn gọn
                     <div style={{ fontSize: 48, marginBottom: 12 }}>📄</div>
                     <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', marginBottom: 16 }}>{selected.filename}</div>
                     <button
-                      onClick={() => onSelectImage?.(selected.dataUrl)}
+                      onClick={() => onSelectImage?.(selected.dataUrl, records.filter(r => r?.mimeType?.startsWith('image/')))}
                       style={{
                         padding: '10px 22px', background: 'linear-gradient(135deg,#00b8cc,#6b3fd4)',
                         border: 'none', borderRadius: 10, color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer',
@@ -519,10 +519,10 @@ Trả lời bằng ${lang === 'en' ? 'English' : 'tiếng Việt'}, ngắn gọn
                     <img
                       src={selected.dataUrl} alt={selected.filename}
                       style={{ maxWidth: '100%', maxHeight: 320, objectFit: 'contain', borderRadius: 8, cursor: 'pointer' }}
-                      onClick={() => onSelectImage?.(selected.dataUrl)}
+                      onClick={() => onSelectImage?.(selected.dataUrl, records.filter(r => r?.mimeType?.startsWith('image/')))}
                     />
                     <button
-                      onClick={() => onSelectImage?.(selected.dataUrl)}
+                      onClick={() => onSelectImage?.(selected.dataUrl, records.filter(r => r?.mimeType?.startsWith('image/')))}
                       style={{
                         padding: '10px 22px', background: 'linear-gradient(135deg,#00b8cc,#6b3fd4)',
                         border: 'none', borderRadius: 10, color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer',

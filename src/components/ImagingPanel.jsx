@@ -1,4 +1,5 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import { getAllRecords } from '../lib/medicalStorage.js'
 import { useApp } from '../context/AppContext'
 import { PATIENT } from '../data/mockData.js'
 import NavButtons from './NavButtons.jsx'
@@ -21,9 +22,24 @@ const Tag = ({ children, color = 'cyan' }) => {
   )
 }
 
-export default function ImagingPanel({ onNext, onPrev, prevLabel, compareImage }) {
+export default function ImagingPanel({ onNext, onPrev, prevLabel, compareImage, uploadedImages = [], onSelectCompareImage }) {
   const { t } = useApp()
   const [activeSlice, setActiveSlice] = useState(4)
+  const [galleryImages, setGalleryImages] = useState(uploadedImages)
+
+  useEffect(() => {
+    setGalleryImages(uploadedImages)
+  }, [uploadedImages])
+
+  useEffect(() => {
+    async function loadImages() {
+      if (uploadedImages?.length) return
+      const records = await getAllRecords()
+      const imageRecords = records.filter(r => r?.mimeType?.startsWith('image/'))
+      setGalleryImages(imageRecords)
+    }
+    loadImages()
+  }, [])
 
   return (
     <div className="animate-fade" style={{ padding: 28, display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -133,6 +149,69 @@ export default function ImagingPanel({ onNext, onPrev, prevLabel, compareImage }
           background: 'rgba(0,0,0,0.6)', padding: '3px 8px', borderRadius: 4,
         }}>Chest X-ray · {PATIENT.diagnosis}</div>
       </div>
+
+
+
+      {/* Uploaded thumbnails */}
+      {galleryImages.length > 0 && (
+        <Card title="Uploaded Scan Library">
+          <div style={{
+            display: 'flex',
+            gap: 12,
+            overflowX: 'auto',
+            paddingBottom: 4,
+          }}>
+            {galleryImages.map((img, index) => {
+              const active = compareImage === img.dataUrl
+
+              return (
+                <button
+                  key={img.id || index}
+                  onClick={() => onSelectCompareImage?.(img.dataUrl)}
+                  style={{
+                    minWidth: 110,
+                    borderRadius: 12,
+                    overflow: 'hidden',
+                    border: active
+                      ? '2px solid var(--cyan)'
+                      : '1px solid var(--border)',
+                    background: 'var(--bg3)',
+                    cursor: 'pointer',
+                    padding: 0,
+                    transition: 'all 0.2s ease',
+                  }}
+                >
+                  <img
+                    src={img.dataUrl}
+                    alt={img.filename || `scan-${index}`}
+                    style={{
+                      width: '100%',
+                      height: 80,
+                      objectFit: 'cover',
+                      display: 'block',
+                      filter: active
+                        ? 'grayscale(0%)'
+                        : 'grayscale(100%) contrast(1.05)',
+                    }}
+                  />
+
+                  <div style={{
+                    padding: '6px 8px',
+                    fontSize: 9,
+                    fontFamily: 'var(--font-mono)',
+                    color: active ? 'var(--cyan)' : 'var(--text3)',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}>
+                    {img.filename || 'Medical Scan'}
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        </Card>
+      )}
 
       {/* Lesion cards + finding */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
