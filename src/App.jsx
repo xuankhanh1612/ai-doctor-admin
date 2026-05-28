@@ -36,6 +36,7 @@ export default function App() {
   const [selectedMember, setSelectedMember] = useState(null)
   const [compareImage, setCompareImage] = useState(null)
   const [uploadedImages, setUploadedImages] = useState([])
+  const [imagingScrollTarget, setImagingScrollTarget] = useState(null)
 
   const navigateToRecord = (member) => { setSelectedMember(member); setActive('record') }
 
@@ -46,6 +47,23 @@ export default function App() {
   const goPrev = () => {
     const idx = PANELS.indexOf(active)
     if (idx > 0) setActive(PANELS[idx - 1])
+  }
+
+  const handleSelectCompareFile = (dataUrl, records = [], options = {}) => {
+    const selectedFile = options.selectedRecord
+    const isPdf =
+      selectedFile?.mimeType?.includes('pdf') ||
+      selectedFile?.fileType === 'pdf' ||
+      selectedFile?.type === 'pdf' ||
+      selectedFile?.filename?.toLowerCase()?.endsWith('.pdf')
+
+    setCompareImage(isPdf ? null : dataUrl)
+    setUploadedImages(records)
+    setImagingScrollTarget({
+      target: isPdf ? 'end' : 'top',
+      requestedAt: Date.now(),
+    })
+    setActive('imaging')
   }
 
   const prevPanel = PANELS[PANELS.indexOf(active) - 1]
@@ -76,8 +94,8 @@ export default function App() {
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         <Sidebar active={active} onNavigate={setActive} />
         <main style={{ flex: 1, overflowY: 'auto', background: mainBg }}>
-          {active === 'upload'    && <UploadPanel        patientId="LXK-2024" onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} onSelectImage={(img, records=[])=>{setCompareImage(img);setUploadedImages(records);setActive('imaging')}} />}
-          {active === 'imaging'   && <ImagingPanel       onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} compareImage={compareImage} uploadedImages={uploadedImages} onSelectCompareImage={setCompareImage} />}
+          {active === 'upload'    && <UploadPanel        patientId="LXK-2024" onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} onSelectImage={handleSelectCompareFile} />}
+          {active === 'imaging'   && <ImagingPanel       onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} compareImage={compareImage} uploadedImages={uploadedImages} onSelectCompareImage={setCompareImage} scrollTarget={imagingScrollTarget} onScrollTargetHandled={() => setImagingScrollTarget(null)} />}
           {active === 'checkin'   && <CheckinPanel       onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
           {active === 'family'    && <FamilyTreePanel    patientId="LXK-2024" onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} onViewRecord={navigateToRecord} />}
           {active === 'record'    && <PatientRecordPanel onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} selectedMember={selectedMember} />}

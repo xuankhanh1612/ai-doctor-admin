@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Document, Page, pdfjs } from 'react-pdf'
 import { getAllRecords } from '../lib/medicalStorage.js'
 import { useApp } from '../context/AppContext'
@@ -31,10 +31,12 @@ const isPdfRecord = (file) =>
   file?.type === 'pdf' ||
   file?.filename?.toLowerCase()?.endsWith('.pdf')
 
-export default function ImagingPanel({ onNext, onPrev, prevLabel, compareImage, uploadedImages = [], onSelectCompareImage }) {
+export default function ImagingPanel({ onNext, onPrev, prevLabel, compareImage, uploadedImages = [], onSelectCompareImage, scrollTarget, onScrollTargetHandled }) {
   const { t } = useApp()
   const [activeSlice, setActiveSlice] = useState(4)
   const [galleryImages, setGalleryImages] = useState([])
+  const topRef = useRef(null)
+  const endRef = useRef(null)
 
   useEffect(() => {
     async function syncGallery() {
@@ -64,8 +66,32 @@ export default function ImagingPanel({ onNext, onPrev, prevLabel, compareImage, 
   const uploadedPdfFiles = galleryImages.filter(isPdfRecord)
   const uploadedScanImages = galleryImages.filter(item => !isPdfRecord(item))
 
+  const scrollToTop = (behavior = 'smooth') => {
+    topRef.current?.scrollIntoView({ behavior, block: 'start' })
+  }
+
+  const scrollToEnd = (behavior = 'smooth') => {
+    endRef.current?.scrollIntoView({ behavior, block: 'end' })
+  }
+
+  useEffect(() => {
+    if (!scrollTarget?.target) return undefined
+
+    const timer = window.setTimeout(() => {
+      if (scrollTarget.target === 'end') {
+        scrollToEnd('smooth')
+      } else {
+        scrollToTop('smooth')
+      }
+      onScrollTargetHandled?.()
+    }, 150)
+
+    return () => window.clearTimeout(timer)
+  }, [scrollTarget?.requestedAt, scrollTarget?.target, uploadedPdfFiles.length, onScrollTargetHandled])
+
   return (
-    <div className="animate-fade" style={{ padding: 28, display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <div ref={topRef} className="animate-fade" style={{ padding: 28, display: 'flex', flexDirection: 'column', gap: 20, position: 'relative' }}>
+      <PageJumpButtons onGoTop={scrollToTop} onGoEnd={scrollToEnd} />
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
         <div>
@@ -292,7 +318,33 @@ export default function ImagingPanel({ onNext, onPrev, prevLabel, compareImage, 
 
       {uploadedPdfFiles.length > 0 && <UploadedPdfPlayer files={uploadedPdfFiles} />}
 
+      <div ref={endRef} />
+
       <NavButtons onNext={onNext} nextLabel={t('continueCheckin')} onPrev={onPrev} prevLabel={prevLabel} />
+    </div>
+  )
+}
+
+
+function PageJumpButtons({ onGoTop, onGoEnd }) {
+  const buttonStyle = {
+    minWidth: 92,
+    height: 44,
+    borderRadius: 999,
+    border: '1px solid rgba(0,229,255,0.35)',
+    background: 'rgba(3, 7, 18, 0.82)',
+    color: 'var(--cyan)',
+    cursor: 'pointer',
+    fontSize: 13,
+    fontWeight: 800,
+    boxShadow: '0 10px 28px rgba(0,0,0,0.35)',
+    backdropFilter: 'blur(10px)',
+  }
+
+  return (
+    <div style={{ position: 'fixed', right: 24, bottom: 24, display: 'flex', flexDirection: 'column', gap: 10, zIndex: 20 }}>
+      <button type="button" aria-label="Go to top" title="Go to Top" onClick={() => onGoTop()} style={buttonStyle}>↑ Top</button>
+      <button type="button" aria-label="Go to end" title="Go to End" onClick={() => onGoEnd()} style={buttonStyle}>↓ End</button>
     </div>
   )
 }
