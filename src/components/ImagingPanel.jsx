@@ -91,7 +91,6 @@ export default function ImagingPanel({ onNext, onPrev, prevLabel, compareImage, 
 
   return (
     <div ref={topRef} className="animate-fade" style={{ padding: 28, display: 'flex', flexDirection: 'column', gap: 20, position: 'relative' }}>
-      <PageJumpButtons onGoTop={scrollToTop} onGoEnd={scrollToEnd} />
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
         <div>
@@ -325,29 +324,6 @@ export default function ImagingPanel({ onNext, onPrev, prevLabel, compareImage, 
   )
 }
 
-
-function PageJumpButtons({ onGoTop, onGoEnd }) {
-  const buttonStyle = {
-    minWidth: 92,
-    height: 44,
-    borderRadius: 999,
-    border: '1px solid rgba(0,229,255,0.35)',
-    background: 'rgba(3, 7, 18, 0.82)',
-    color: 'var(--cyan)',
-    cursor: 'pointer',
-    fontSize: 13,
-    fontWeight: 800,
-    boxShadow: '0 10px 28px rgba(0,0,0,0.35)',
-    backdropFilter: 'blur(10px)',
-  }
-
-  return (
-    <div style={{ position: 'fixed', right: 24, bottom: 24, display: 'flex', flexDirection: 'column', gap: 10, zIndex: 20 }}>
-      <button type="button" aria-label="Go to top" title="Go to Top" onClick={() => onGoTop()} style={buttonStyle}>↑ Top</button>
-      <button type="button" aria-label="Go to end" title="Go to End" onClick={() => onGoEnd()} style={buttonStyle}>↓ End</button>
-    </div>
-  )
-}
 
 function UploadedPdfPlayer({ files }) {
   return (

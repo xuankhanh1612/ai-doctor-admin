@@ -96,3 +96,78 @@ html, body, #root {
   background: #f0f4f8;
   color: #1a2035;
 }
+
+/* Global top/end jump controls for long panels */
+.scroll-jump-controls {
+  position: fixed;
+  right: clamp(14px, 2.5vw, 28px);
+  bottom: calc(18px + env(safe-area-inset-bottom));
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.scroll-jump-button {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 92px;
+  min-height: 44px;
+  padding: 0 15px;
+  border: 1px solid rgba(0,229,255,0.36);
+  border-radius: 999px;
+  background: rgba(3,7,18,0.84);
+  color: var(--cyan);
+  box-shadow: 0 14px 34px rgba(0,0,0,0.36);
+  backdrop-filter: blur(12px);
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+  pointer-events: auto;
+  transition: transform 0.18s ease, opacity 0.18s ease, border-color 0.18s ease;
+}
+
+.scroll-jump-button.is-visible {
+  display: inline-flex;
+  animation: fade-in 0.18s ease both;
+}
+
+.scroll-jump-button:hover {
+  border-color: rgba(0,229,255,0.74);
+  transform: translateY(-2px);
+}
+
+.scroll-jump-button:active {
+  transform: translateY(0) scale(0.98);
+}
+
+[data-theme="light"] .scroll-jump-button {
+  background: rgba(255,255,255,0.88);
+  box-shadow: 0 14px 30px rgba(20,40,70,0.18);
+}
+
+@media (max-width: 640px) {
+  .scroll-jump-controls {
+    right: 12px;
+    bottom: calc(12px + env(safe-area-inset-bottom));
+    gap: 8px;
+  }
+
+  .scroll-jump-button {
+    min-width: 44px;
+    width: 44px;
+    min-height: 44px;
+    padding: 0;
+    border-radius: 50%;
+    font-size: 18px;
+  }
+
+  .scroll-jump-label {
+    display: none;
+  }
+}

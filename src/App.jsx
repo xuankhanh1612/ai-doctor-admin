@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useAuth } from './context/AuthContext'
 import { useApp } from './context/AppContext'
 import Topbar from './components/Topbar.jsx'
@@ -37,6 +37,12 @@ export default function App() {
   const [compareImage, setCompareImage] = useState(null)
   const [uploadedImages, setUploadedImages] = useState([])
   const [imagingScrollTarget, setImagingScrollTarget] = useState(null)
+  const mainRef = useRef(null)
+  const [scrollState, setScrollState] = useState({
+    canScroll: false,
+    showTop: false,
+    showEnd: false,
+  })
 
   const navigateToRecord = (member) => { setSelectedMember(member); setActive('record') }
 
@@ -66,6 +72,60 @@ export default function App() {
     setActive('imaging')
   }
 
+  const updateScrollControls = useCallback(() => {
+    const el = mainRef.current
+    if (!el) return
+
+    const maxScroll = el.scrollHeight - el.clientHeight
+    const canScroll = maxScroll > 12
+    const showTop = canScroll && el.scrollTop > 120
+    const showEnd = canScroll && maxScroll - el.scrollTop > 120
+
+    setScrollState(prev => (
+      prev.canScroll === canScroll &&
+      prev.showTop === showTop &&
+      prev.showEnd === showEnd
+        ? prev
+        : { canScroll, showTop, showEnd }
+    ))
+  }, [])
+
+  const scrollMainTo = useCallback((target) => {
+    const el = mainRef.current
+    if (!el) return
+
+    el.scrollTo({
+      top: target === 'end' ? el.scrollHeight : 0,
+      behavior: 'smooth',
+    })
+  }, [])
+
+  useEffect(() => {
+    const el = mainRef.current
+    if (!el) return undefined
+
+    updateScrollControls()
+    const timer = window.setTimeout(updateScrollControls, 250)
+
+    const resizeObserver = typeof ResizeObserver !== 'undefined'
+      ? new ResizeObserver(updateScrollControls)
+      : null
+
+    if (resizeObserver) {
+      resizeObserver.observe(el)
+      if (el.firstElementChild) resizeObserver.observe(el.firstElementChild)
+    }
+    el.addEventListener('scroll', updateScrollControls, { passive: true })
+    window.addEventListener('resize', updateScrollControls)
+
+    return () => {
+      window.clearTimeout(timer)
+      resizeObserver?.disconnect()
+      el.removeEventListener('scroll', updateScrollControls)
+      window.removeEventListener('resize', updateScrollControls)
+    }
+  }, [active, updateScrollControls])
+
   const prevPanel = PANELS[PANELS.indexOf(active) - 1]
   const prevLabel = prevPanel ? PANEL_LABELS[prevPanel] : null
 
@@ -93,7 +153,7 @@ export default function App() {
       <Topbar activePanel={active} />
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         <Sidebar active={active} onNavigate={setActive} />
-        <main style={{ flex: 1, overflowY: 'auto', background: mainBg }}>
+        <main ref={mainRef} style={{ flex: 1, overflowY: 'auto', background: mainBg }}>
           {active === 'upload'    && <UploadPanel        patientId="LXK-2024" onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} onSelectImage={handleSelectCompareFile} />}
           {active === 'imaging'   && <ImagingPanel       onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} compareImage={compareImage} uploadedImages={uploadedImages} onSelectCompareImage={setCompareImage} scrollTarget={imagingScrollTarget} onScrollTargetHandled={() => setImagingScrollTarget(null)} />}
           {active === 'checkin'   && <CheckinPanel       onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
@@ -106,8 +166,44 @@ export default function App() {
           {active === 'admin'     && !user?.isAdmin && (
             <div style={{ padding: 40, textAlign: 'center', color: '#ff5252' }}>🔒 Admin only</div>
           )}
+          <GlobalScrollButtons
+            showTop={scrollState.showTop}
+            showEnd={scrollState.showEnd}
+            onGoTop={() => scrollMainTo('top')}
+            onGoEnd={() => scrollMainTo('end')}
+          />
         </main>
       </div>
+    </div>
+  )
+}
+
+
+function GlobalScrollButtons({ showTop, showEnd, onGoTop, onGoEnd }) {
+  if (!showTop && !showEnd) return null
+
+  return (
+    <div className="scroll-jump-controls" aria-label="Page scroll controls">
+      <button
+        type="button"
+        className={`scroll-jump-button ${showTop ? 'is-visible' : ''}`}
+        aria-label="Go to top"
+        title="Go to Top"
+        onClick={onGoTop}
+      >
+        <span aria-hidden="true">↑</span>
+        <span className="scroll-jump-label">Top</span>
+      </button>
+      <button
+        type="button"
+        className={`scroll-jump-button ${showEnd ? 'is-visible' : ''}`}
+        aria-label="Go to end"
+        title="Go to End"
+        onClick={onGoEnd}
+      >
+        <span aria-hidden="true">↓</span>
+        <span className="scroll-jump-label">End</span>
+      </button>
     </div>
   )
 }
