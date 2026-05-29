@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { PATIENT } from '../data/mockData.js'
 import { useApp } from '../context/AppContext'
 import NavButtons from './NavButtons.jsx'
@@ -51,6 +51,45 @@ const QUICK_PROMPTS = {
   ],
 }
 
+const PSYCH_CHAT_STORAGE_KEY = 'cdoc_psych_chat_history'
+
+const createChatMessage = (role, text) => ({
+  id: `psych_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+  role,
+  text,
+  createdAt: new Date().toISOString(),
+})
+
+const createInitialAgentMessage = (lang) => createChatMessage(
+  'agent',
+  lang === 'en'
+    ? 'Hello, I am your virtual psychiatry check-in agent. Tell me what you are feeling, when it started, and how it affects your sleep, appetite, mood, thoughts, or relationships.'
+    : 'Xin chào, tôi là AI Agent bác sĩ ảo chuyên khoa tâm thần. Bạn hãy mô tả triệu chứng đang gặp, bắt đầu từ khi nào, và ảnh hưởng tới giấc ngủ, ăn uống, cảm xúc, suy nghĩ hoặc các mối quan hệ ra sao.'
+)
+
+function loadStoredChatMessages(lang) {
+  if (typeof window === 'undefined') return [createInitialAgentMessage(lang)]
+
+  try {
+    const raw = localStorage.getItem(PSYCH_CHAT_STORAGE_KEY)
+    if (!raw) return [createInitialAgentMessage(lang)]
+
+    const parsed = JSON.parse(raw)
+    if (!Array.isArray(parsed) || parsed.length === 0) return [createInitialAgentMessage(lang)]
+
+    return parsed
+      .filter(message => message?.role && message?.text)
+      .map((message, index) => ({
+        id: message.id || `psych_saved_${index}_${Date.now()}`,
+        role: message.role,
+        text: message.text,
+        createdAt: message.createdAt || new Date().toISOString(),
+      }))
+  } catch {
+    return [createInitialAgentMessage(lang)]
+  }
+}
+
 function buildPsychiatryAgentReply(prompt, lang) {
   const text = prompt.toLowerCase()
   const crisisKeywords = ['tự tử', 'tự sát', 'muốn chết', 'hại bản thân', 'suicide', 'kill myself', 'self harm', 'self-harm']
@@ -84,14 +123,18 @@ function buildPsychiatryAgentReply(prompt, lang) {
 export default function CheckinPanel({ onNext, onPrev, prevLabel }) {
   const { t, lang } = useApp()
   const [symptomPrompt, setSymptomPrompt] = useState('')
-  const [chatMessages, setChatMessages] = useState([
-    {
-      role: 'agent',
-      text: lang === 'en'
-        ? 'Hello, I am your virtual psychiatry check-in agent. Tell me what you are feeling, when it started, and how it affects your sleep, appetite, mood, thoughts, or relationships.'
-        : 'Xin chào, tôi là AI Agent bác sĩ ảo chuyên khoa tâm thần. Bạn hãy mô tả triệu chứng đang gặp, bắt đầu từ khi nào, và ảnh hưởng tới giấc ngủ, ăn uống, cảm xúc, suy nghĩ hoặc các mối quan hệ ra sao.',
-    },
-  ])
+  const [chatMessages, setChatMessages] = useState(() => loadStoredChatMessages(lang))
+  const [selectedMessageIds, setSelectedMessageIds] = useState([])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    try {
+      localStorage.setItem(PSYCH_CHAT_STORAGE_KEY, JSON.stringify(chatMessages))
+    } catch {
+      // Ignore storage failures so the clinical check-in UI remains usable.
+    }
+  }, [chatMessages])
 
   const submitSymptomPrompt = () => {
     const prompt = symptomPrompt.trim()
@@ -99,10 +142,35 @@ export default function CheckinPanel({ onNext, onPrev, prevLabel }) {
 
     setChatMessages(prev => [
       ...prev,
-      { role: 'user', text: prompt },
-      { role: 'agent', text: buildPsychiatryAgentReply(prompt, lang) },
+      createChatMessage('user', prompt),
+      createChatMessage('agent', buildPsychiatryAgentReply(prompt, lang)),
     ])
     setSymptomPrompt('')
+  }
+
+  const toggleMessageSelection = (id) => {
+    setSelectedMessageIds(prev => (
+      prev.includes(id)
+        ? prev.filter(messageId => messageId !== id)
+        : [...prev, id]
+    ))
+  }
+
+  const deleteMessage = (id) => {
+    setChatMessages(prev => prev.filter(message => message.id !== id))
+    setSelectedMessageIds(prev => prev.filter(messageId => messageId !== id))
+  }
+
+  const deleteSelectedMessages = () => {
+    if (selectedMessageIds.length === 0) return
+
+    setChatMessages(prev => prev.filter(message => !selectedMessageIds.includes(message.id)))
+    setSelectedMessageIds([])
+  }
+
+  const resetChatHistory = () => {
+    setChatMessages([createInitialAgentMessage(lang)])
+    setSelectedMessageIds([])
   }
 
   return (
@@ -132,28 +200,124 @@ export default function CheckinPanel({ onNext, onPrev, prevLabel }) {
               <Tag color="green">PSYCHIATRY AI</Tag>
             </div>
 
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+              <div style={{ color: 'var(--text3)', fontSize: 10, fontFamily: 'var(--font-mono)' }}>
+                {lang === 'en'
+                  ? `${chatMessages.length} saved messages · local history`
+                  : `${chatMessages.length} tin nhắn đã lưu · local history`}
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={deleteSelectedMessages}
+                  disabled={selectedMessageIds.length === 0}
+                  style={{
+                    padding: '7px 10px',
+                    borderRadius: 8,
+                    border: '1px solid var(--border)',
+                    background: selectedMessageIds.length ? 'rgba(255,82,82,0.12)' : 'rgba(255,255,255,0.03)',
+                    color: selectedMessageIds.length ? 'var(--red)' : 'var(--text3)',
+                    cursor: selectedMessageIds.length ? 'pointer' : 'not-allowed',
+                    fontSize: 10,
+                    fontWeight: 700,
+                  }}
+                >
+                  {lang === 'en' ? `Delete selected (${selectedMessageIds.length})` : `Xóa đã chọn (${selectedMessageIds.length})`}
+                </button>
+                <button
+                  type="button"
+                  onClick={resetChatHistory}
+                  style={{
+                    padding: '7px 10px',
+                    borderRadius: 8,
+                    border: '1px solid var(--border)',
+                    background: 'rgba(255,255,255,0.03)',
+                    color: 'var(--text2)',
+                    cursor: 'pointer',
+                    fontSize: 10,
+                    fontWeight: 700,
+                  }}
+                >
+                  {lang === 'en' ? 'Reset history' : 'Tạo lại lịch sử'}
+                </button>
+              </div>
+            </div>
+
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 320, overflowY: 'auto', paddingRight: 4 }}>
               {chatMessages.map((message, index) => {
                 const isUser = message.role === 'user'
+                const selected = selectedMessageIds.includes(message.id)
                 return (
                   <div
-                    key={`${message.role}-${index}`}
+                    key={message.id || `${message.role}-${index}`}
                     style={{
                       alignSelf: isUser ? 'flex-end' : 'flex-start',
-                      maxWidth: '88%',
-                      padding: '10px 12px',
-                      borderRadius: isUser ? '14px 14px 3px 14px' : '14px 14px 14px 3px',
-                      background: isUser ? 'rgba(0,229,255,0.12)' : 'rgba(156,111,255,0.12)',
-                      border: `1px solid ${isUser ? 'rgba(0,229,255,0.24)' : 'rgba(156,111,255,0.24)'}`,
-                      color: 'var(--text)',
-                      fontSize: 12,
-                      lineHeight: 1.65,
+                      width: 'min(100%, 88%)',
+                      display: 'flex',
+                      gap: 8,
+                      alignItems: 'flex-start',
+                      flexDirection: isUser ? 'row-reverse' : 'row',
                     }}
                   >
-                    <div style={{ fontSize: 9, fontFamily: 'var(--font-mono)', color: isUser ? 'var(--cyan)' : 'var(--violet)', marginBottom: 4 }}>
-                      {isUser ? (lang === 'en' ? 'YOU' : 'BẠN') : 'AI PSYCHIATRIST'}
+                    <button
+                      type="button"
+                      aria-label={selected ? 'Uncheck chat message' : 'Check chat message'}
+                      title={selected ? (lang === 'en' ? 'Uncheck' : 'Bỏ chọn') : (lang === 'en' ? 'Check to delete' : 'Chọn để xóa')}
+                      onClick={() => toggleMessageSelection(message.id)}
+                      style={{
+                        width: 24,
+                        height: 24,
+                        borderRadius: 999,
+                        border: `1px solid ${selected ? 'var(--green)' : 'var(--border2)'}`,
+                        background: selected ? 'rgba(0,230,118,0.16)' : 'rgba(255,255,255,0.04)',
+                        color: selected ? 'var(--green)' : 'var(--text3)',
+                        cursor: 'pointer',
+                        flexShrink: 0,
+                        fontSize: 13,
+                        fontWeight: 900,
+                        lineHeight: 1,
+                      }}
+                    >
+                      {selected ? '✓' : ''}
+                    </button>
+
+                    <div
+                      style={{
+                        flex: 1,
+                        padding: '10px 12px',
+                        borderRadius: isUser ? '14px 14px 3px 14px' : '14px 14px 14px 3px',
+                        background: selected
+                          ? 'rgba(0,230,118,0.08)'
+                          : isUser ? 'rgba(0,229,255,0.12)' : 'rgba(156,111,255,0.12)',
+                        border: `1px solid ${selected ? 'rgba(0,230,118,0.28)' : isUser ? 'rgba(0,229,255,0.24)' : 'rgba(156,111,255,0.24)'}`,
+                        color: 'var(--text)',
+                        fontSize: 12,
+                        lineHeight: 1.65,
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center', marginBottom: 4 }}>
+                        <div style={{ fontSize: 9, fontFamily: 'var(--font-mono)', color: isUser ? 'var(--cyan)' : 'var(--violet)' }}>
+                          {isUser ? (lang === 'en' ? 'YOU' : 'BẠN') : 'AI PSYCHIATRIST'}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => deleteMessage(message.id)}
+                          title={lang === 'en' ? 'Delete this message' : 'Xóa tin nhắn này'}
+                          style={{
+                            border: 'none',
+                            background: 'transparent',
+                            color: 'var(--text3)',
+                            cursor: 'pointer',
+                            fontSize: 12,
+                            fontWeight: 800,
+                            lineHeight: 1,
+                          }}
+                        >
+                          ×
+                        </button>
+                      </div>
+                      {message.text}
                     </div>
-                    {message.text}
                   </div>
                 )
               })}
