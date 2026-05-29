@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Document, Page, pdfjs } from 'react-pdf'
 import { getAllRecords } from '../lib/medicalStorage.js'
 import { useApp } from '../context/AppContext'
@@ -25,39 +25,72 @@ const Tag = ({ children, color = 'cyan' }) => {
   )
 }
 
-export default function ImagingPanel({ onNext, onPrev, prevLabel, compareImage, uploadedImages = [], onSelectCompareImage }) {
+const isPdfRecord = (file) =>
+  file?.mimeType?.includes('pdf') ||
+  file?.fileType === 'pdf' ||
+  file?.type === 'pdf' ||
+  file?.filename?.toLowerCase()?.endsWith('.pdf')
+
+export default function ImagingPanel({ onNext, onPrev, prevLabel, compareImage, uploadedImages = [], onSelectCompareImage, scrollTarget, onScrollTargetHandled }) {
   const { t } = useApp()
   const [activeSlice, setActiveSlice] = useState(4)
   const [galleryImages, setGalleryImages] = useState([])
-  const [selectedPdf, setSelectedPdf] = useState(null)
+  const topRef = useRef(null)
+  const endRef = useRef(null)
 
   useEffect(() => {
-  async function syncGallery() {
-    const records = await getAllRecords()
+    async function syncGallery() {
+      const records = await getAllRecords()
 
-    const merged = [...records, ...(uploadedImages || [])]
+      const merged = [...records, ...(uploadedImages || [])]
 
-    const map = new Map()
+      const map = new Map()
 
-    merged.forEach(item => {
-      const key =
-        item.id ||
-        item.filename ||
-        item.dataUrl
+      merged.forEach(item => {
+        const key =
+          item.id ||
+          item.filename ||
+          item.dataUrl
 
-      if (!map.has(key)) {
-        map.set(key, item)
-      }
-    })
+        if (!map.has(key)) {
+          map.set(key, item)
+        }
+      })
 
-    setGalleryImages(Array.from(map.values()))
+      setGalleryImages(Array.from(map.values()))
+    }
+
+    syncGallery()
+  }, [uploadedImages])
+
+  const uploadedPdfFiles = galleryImages.filter(isPdfRecord)
+  const uploadedScanImages = galleryImages.filter(item => !isPdfRecord(item))
+
+  const scrollToTop = (behavior = 'smooth') => {
+    topRef.current?.scrollIntoView({ behavior, block: 'start' })
   }
 
-  syncGallery()
-}, [uploadedImages])
+  const scrollToEnd = (behavior = 'smooth') => {
+    endRef.current?.scrollIntoView({ behavior, block: 'end' })
+  }
+
+  useEffect(() => {
+    if (!scrollTarget?.target) return undefined
+
+    const timer = window.setTimeout(() => {
+      if (scrollTarget.target === 'end') {
+        scrollToEnd('smooth')
+      } else {
+        scrollToTop('smooth')
+      }
+      onScrollTargetHandled?.()
+    }, 150)
+
+    return () => window.clearTimeout(timer)
+  }, [scrollTarget?.requestedAt, scrollTarget?.target, uploadedPdfFiles.length, onScrollTargetHandled])
 
   return (
-    <div className="animate-fade" style={{ padding: 28, display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <div ref={topRef} className="animate-fade" style={{ padding: 28, display: 'flex', flexDirection: 'column', gap: 20, position: 'relative' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
         <div>
@@ -90,14 +123,6 @@ export default function ImagingPanel({ onNext, onPrev, prevLabel, compareImage, 
               filter: 'grayscale(100%) contrast(1.1) brightness(0.9)',
             }}
           />
-        )}
-
-        {selectedPdf && (
-          <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', overflow:'hidden' }}>
-            <Document file={selectedPdf.dataUrl}>
-              <Page pageNumber={1} width={1000} renderTextLayer={false} renderAnnotationLayer={false} />
-            </Document>
-          </div>
         )}
 
         {/* Grid overlay */}
@@ -173,136 +198,77 @@ export default function ImagingPanel({ onNext, onPrev, prevLabel, compareImage, 
         }}>Chest X-ray · {PATIENT.diagnosis}</div>
       </div>
 
-
-
       {/* Uploaded thumbnails */}
-{galleryImages.length > 0 && (
-  <Card title="Uploaded Scan Library">
-    <div
-      style={{
-        display: 'flex',
-        gap: 12,
-        overflowX: 'auto',
-        paddingBottom: 4,
-      }}
-    >
-      {galleryImages.map((img, index) => {
-        const isPdf =
-          img?.mimeType?.includes('pdf') ||
-          img?.filename?.toLowerCase()?.endsWith('.pdf')
-
-        const active =
-          (!isPdf && compareImage === img.dataUrl) ||
-          (isPdf && selectedPdf?.id === img.id)
-
-        return (
-          <button
-            key={img.id || index}
-            onClick={() => {
-              if (isPdf) {
-                setSelectedPdf(img)
-                onSelectCompareImage?.(null)
-              } else {
-                setSelectedPdf(null)
-                onSelectCompareImage?.(img.dataUrl)
-
-// giữ thumbnail library
-setGalleryImages(prev => [...prev])
-              }
-            }}
+      {uploadedScanImages.length > 0 && (
+        <Card title="Uploaded Scan Library">
+          <div
             style={{
-              minWidth: 110,
-              borderRadius: 12,
-              overflow: 'hidden',
-              border: active
-                ? '2px solid var(--cyan)'
-                : '1px solid var(--border)',
-              background: 'var(--bg3)',
-              cursor: 'pointer',
-              padding: 0,
-              transition: 'all 0.2s ease',
-              flexShrink: 0,
+              display: 'flex',
+              gap: 12,
+              overflowX: 'auto',
+              paddingBottom: 4,
             }}
           >
-            {isPdf ? (
-              <div
-                style={{
-                  width: '100%',
-                  height: 80,
-                  background:
-                    'linear-gradient(180deg,#1b2235,#101522)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  position: 'relative',
-                }}
-              >
-                <div
+            {uploadedScanImages.map((img, index) => {
+              const active = compareImage === img.dataUrl
+
+              return (
+                <button
+                  key={img.id || index}
+                  onClick={() => onSelectCompareImage?.(img.dataUrl)}
                   style={{
-                    fontSize: 34,
-                    opacity: 0.95,
+                    minWidth: 110,
+                    borderRadius: 12,
+                    overflow: 'hidden',
+                    border: active
+                      ? '2px solid var(--cyan)'
+                      : '1px solid var(--border)',
+                    background: 'var(--bg3)',
+                    cursor: 'pointer',
+                    padding: 0,
+                    transition: 'all 0.2s ease',
+                    flexShrink: 0,
                   }}
                 >
-                  📄
-                </div>
+                  <img
+                    src={img.dataUrl}
+                    alt={img.filename || `scan-${index}`}
+                    style={{
+                      width: '100%',
+                      height: 80,
+                      objectFit: 'cover',
+                      display: 'block',
+                      filter: active
+                        ? 'grayscale(0%)'
+                        : 'grayscale(100%) contrast(1.05)',
+                    }}
+                  />
 
-                <div
-                  style={{
-                    position: 'absolute',
-                    top: 6,
-                    right: 6,
-                    fontSize: 8,
-                    padding: '2px 5px',
-                    borderRadius: 4,
-                    background: 'rgba(255,255,255,.08)',
-                    color: '#cfe8ff',
-                    fontFamily: 'var(--font-mono)',
-                  }}
-                >
-                  PDF
-                </div>
-              </div>
-            ) : (
-              <img
-                src={img.dataUrl}
-                alt={img.filename || `scan-${index}`}
-                style={{
-                  width: '100%',
-                  height: 80,
-                  objectFit: 'cover',
-                  display: 'block',
-                  filter: active
-                    ? 'grayscale(0%)'
-                    : 'grayscale(100%) contrast(1.05)',
-                }}
-              />
-            )}
-
-            <div
-              style={{
-                padding: '6px 8px',
-                fontSize: 9,
-                fontFamily: 'var(--font-mono)',
-                color: active
-                  ? 'var(--cyan)'
-                  : 'var(--text3)',
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-              }}
-            >
-              {img.filename || 'Medical Scan'}
-            </div>
-          </button>
-        )
-      })}
-    </div>
-  </Card>
-)}
+                  <div
+                    style={{
+                      padding: '6px 8px',
+                      fontSize: 9,
+                      fontFamily: 'var(--font-mono)',
+                      color: active
+                        ? 'var(--cyan)'
+                        : 'var(--text3)',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                    }}
+                  >
+                    {img.filename || 'Medical Scan'}
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        </Card>
+      )}
 
       {/* Lesion cards + finding */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-        <Card title="{t('lesionTracking')}">
+        <Card title={t('lesionTracking')}>
           {PATIENT.lesions.map(l => (
             <div key={l.id} style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -321,7 +287,7 @@ setGalleryImages(prev => [...prev])
             </div>
           ))}
         </Card>
-        <Card title="{t('aiFinding')}">
+        <Card title={t('aiFinding')}>
           <p style={{ fontSize: 12, color: 'var(--text2)', lineHeight: 1.7 }}>
             Bilateral lung nodules detected. L1 shows regression response consistent with Erlotinib sensitivity. L2 warrants active monitoring — marginal growth trend.
           </p>
@@ -333,7 +299,7 @@ setGalleryImages(prev => [...prev])
       </div>
 
       {/* Timeline */}
-      <Card title="{t('scanTimeline')}">
+      <Card title={t('scanTimeline')}>
         <div style={{ display: 'flex', gap: 8 }}>
           {PATIENT.scanTimeline.map((t, i) => (
             <button key={t} onClick={() => setActiveSlice(i)} style={{
@@ -349,8 +315,188 @@ setGalleryImages(prev => [...prev])
         </div>
       </Card>
 
+      {uploadedPdfFiles.length > 0 && <UploadedPdfPlayer files={uploadedPdfFiles} />}
+
+      <div ref={endRef} />
+
       <NavButtons onNext={onNext} nextLabel={t('continueCheckin')} onPrev={onPrev} prevLabel={prevLabel} />
     </div>
+  )
+}
+
+
+function UploadedPdfPlayer({ files }) {
+  return (
+    <Card title="Uploaded PDF Documents">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+          <div>
+            <div style={{ color: '#fff', fontSize: 15, fontWeight: 700 }}>PDF Playback Center</div>
+            <p style={{ margin: '4px 0 0', color: 'var(--text3)', fontSize: 11, lineHeight: 1.5 }}>
+              Các file PDF đã upload được tách riêng tại đây. Bấm Play để tự động chạy qua toàn bộ trang trong từng hồ sơ.
+            </p>
+          </div>
+          <Tag color="violet">{files.length} PDF</Tag>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14 }}>
+          {files.map((file, index) => (
+            <PdfDocumentPlayer key={file.id || file.filename || index} file={file} />
+          ))}
+        </div>
+      </div>
+    </Card>
+  )
+}
+
+function PdfDocumentPlayer({ file }) {
+  const [numPages, setNumPages] = useState(null)
+  const [pageNumber, setPageNumber] = useState(1)
+  const [isPlaying, setIsPlaying] = useState(false)
+  const safeNumPages = numPages || 1
+
+  useEffect(() => {
+    if (!isPlaying || !numPages) return undefined
+
+    const timer = setInterval(() => {
+      setPageNumber(current => current >= numPages ? 1 : current + 1)
+    }, 1800)
+
+    return () => clearInterval(timer)
+  }, [isPlaying, numPages])
+
+  useEffect(() => {
+    setPageNumber(1)
+    setIsPlaying(false)
+    setNumPages(null)
+  }, [file?.id, file?.dataUrl])
+
+  const goToPage = nextPage => {
+    setIsPlaying(false)
+    setPageNumber(Math.min(Math.max(nextPage, 1), safeNumPages))
+  }
+
+  return (
+    <div style={{
+      border: '1px solid var(--border)',
+      borderRadius: 14,
+      overflow: 'hidden',
+      background: 'rgba(3, 7, 18, 0.65)',
+      boxShadow: '0 18px 50px rgba(0,0,0,0.25)',
+    }}>
+      <div style={{ padding: 12, borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ color: '#fff', fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{file.filename || file.name || 'PDF document'}</div>
+          <div style={{ color: 'var(--text3)', fontSize: 10, fontFamily: 'var(--font-mono)', marginTop: 3 }}>
+            Page {pageNumber}/{numPages || '...'}
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => setIsPlaying(value => !value)}
+          disabled={!numPages}
+          style={{
+            border: '1px solid rgba(0,229,255,0.35)',
+            background: isPlaying ? 'rgba(255,82,82,0.16)' : 'rgba(0,229,255,0.12)',
+            color: isPlaying ? 'var(--red)' : 'var(--cyan)',
+            borderRadius: 999,
+            padding: '7px 12px',
+            cursor: numPages ? 'pointer' : 'not-allowed',
+            fontSize: 11,
+            fontWeight: 700,
+          }}
+        >
+          {isPlaying ? 'Pause' : '▶ Play'}
+        </button>
+      </div>
+
+      <div style={{ background: '#05070c', minHeight: 360, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 12, overflow: 'auto' }}>
+        <Document
+          file={file.dataUrl}
+          loading={<PdfStatus message="Loading PDF..." />}
+          error={<PdfStatus message="Không thể hiển thị PDF này." tone="red" />}
+          onLoadSuccess={({ numPages: loadedPages }) => {
+            setNumPages(loadedPages)
+            setPageNumber(1)
+          }}
+        >
+          <Page
+            pageNumber={pageNumber}
+            width={320}
+            renderTextLayer={false}
+            renderAnnotationLayer={false}
+            loading={<PdfStatus message="Loading page..." />}
+          />
+        </Document>
+      </div>
+
+      <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+          <ControlButton onClick={() => goToPage(pageNumber - 1)} disabled={pageNumber <= 1}>← Previous</ControlButton>
+          <ControlButton onClick={() => goToPage(pageNumber + 1)} disabled={!numPages || pageNumber >= safeNumPages}>Next →</ControlButton>
+        </div>
+
+        {numPages > 1 && (
+          <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 2 }}>
+            {Array.from({ length: numPages }, (_, index) => {
+              const page = index + 1
+              const active = page === pageNumber
+              return (
+                <button
+                  key={page}
+                  type="button"
+                  onClick={() => goToPage(page)}
+                  style={{
+                    minWidth: 30,
+                    height: 30,
+                    borderRadius: 8,
+                    border: active ? '1px solid var(--cyan)' : '1px solid var(--border)',
+                    background: active ? 'rgba(0,229,255,0.14)' : 'var(--bg3)',
+                    color: active ? 'var(--cyan)' : 'var(--text3)',
+                    cursor: 'pointer',
+                    fontSize: 10,
+                    fontFamily: 'var(--font-mono)',
+                  }}
+                >
+                  {page}
+                </button>
+              )
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function PdfStatus({ message, tone = 'cyan' }) {
+  return (
+    <div style={{ color: tone === 'red' ? 'var(--red)' : 'var(--cyan)', fontSize: 11, fontFamily: 'var(--font-mono)', padding: 18 }}>
+      {message}
+    </div>
+  )
+}
+
+function ControlButton({ children, disabled, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        flex: 1,
+        padding: '8px 10px',
+        borderRadius: 9,
+        border: '1px solid var(--border)',
+        background: disabled ? 'rgba(255,255,255,0.03)' : 'var(--bg3)',
+        color: disabled ? 'rgba(255,255,255,0.22)' : 'var(--text2)',
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        fontSize: 11,
+        fontWeight: 600,
+      }}
+    >
+      {children}
+    </button>
   )
 }
 
@@ -363,20 +509,5 @@ function Card({ title, children }) {
       <div style={{ fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text3)', fontFamily: 'var(--font-mono)', marginBottom: 12 }}>{title}</div>
       {children}
     </div>
-  )
-}
-
-function NextBtn({ onClick, children }) {
-  return (
-    <button onClick={onClick} style={{
-      padding: '12px 22px', borderRadius: 10, cursor: 'pointer',
-      background: 'linear-gradient(135deg, var(--cyan2), var(--violet2))',
-      color: '#fff', fontSize: 13, fontWeight: 600,
-      border: 'none', fontFamily: 'var(--font-display)',
-      alignSelf: 'flex-start', transition: 'opacity 0.2s',
-    }}
-    onMouseEnter={e => e.target.style.opacity = '0.82'}
-    onMouseLeave={e => e.target.style.opacity = '1'}
-    >{children}</button>
   )
 }
