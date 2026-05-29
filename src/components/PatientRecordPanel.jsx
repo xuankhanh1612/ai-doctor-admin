@@ -34,9 +34,9 @@ const API_BASE =
 const DEMO_PATIENT = {
   id: 'LXK-2024',
   name: 'Lê Xuân Khánh',
-  age: 47,
+  age: 43,
   gender: 'M',
-  dob: '1977-04-10',
+  dob: '1982-12-12',
   blood_type: 'O+',
   avatar_initials: 'LK',
 
