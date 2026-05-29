@@ -26,6 +26,26 @@ function createEmptyPatient(t) {
   }
 }
 
+
+const EMPTY_PATIENT = {
+  id: 'NO-UPLOADS',
+  name: 'Chưa có hồ sơ upload',
+  age: '—',
+  gender: '—',
+  dob: '—',
+  blood_type: '—',
+  avatar_initials: 'UP',
+  diseases: [{ id: 'empty', name: 'Upload hồ sơ để tạo bệnh án cá nhân', icd10: 'Z00.0', onset: '—', severity: 'mild' }],
+  symptoms: [],
+  labs: [],
+  imaging: [],
+  medications: [],
+  allergies: [],
+  genomics: [],
+  risk_factors: [],
+  timeline: [],
+}
+
 // ─── API — Consensus Engine (https://ai-doctor-engine.vercel.app) ──────────
 const API_BASE =
   import.meta.env.VITE_CONSENSUS_API_URL || 'https://ai-doctor-engine.vercel.app'
