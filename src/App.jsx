@@ -18,20 +18,9 @@ import LoginPage from './pages/LoginPage.jsx'
 // Swarm panel replaces simulation; keep consensus as classic fallback
 const PANELS = ['upload', 'imaging', 'checkin', 'family', 'record', 'twin', 'swarm', 'consensus']
 
-const PANEL_LABELS = {
-  upload:     'Tải lên hồ sơ',
-  imaging:    'Chẩn đoán hình ảnh',
-  checkin:    'Kiểm tra triệu chứng',
-  family:     'Gia phả bệnh lý',
-  record:     'Hồ sơ bệnh nhân',
-  twin:       'Digital Twin',
-  swarm:      'Hội đồng Y khoa AI',
-  consensus:  'Đồng thuận AI (Classic)',
-}
-
 export default function App() {
   const { user, loading } = useAuth()
-  const { theme } = useApp()
+  const { theme, t } = useApp()
   const [active, setActive]               = useState('upload')
   const [selectedMember, setSelectedMember] = useState(null)
   const [compareImage, setCompareImage] = useState(null)
@@ -43,6 +32,23 @@ export default function App() {
     showTop: false,
     showEnd: false,
   })
+
+  useEffect(() => {
+    setCompareImage(null)
+    setUploadedImages([])
+    setImagingScrollTarget(null)
+  }, [user?.email])
+
+  const panelLabels = {
+    upload: t('uploadRecords'),
+    imaging: t('imaging'),
+    checkin: t('checkin'),
+    family: t('familyTree'),
+    record: t('patientRecord'),
+    twin: t('twin'),
+    swarm: t('swarmCouncil'),
+    consensus: `${t('consensus')} (Classic)`,
+  }
 
   const navigateToRecord = (member) => { setSelectedMember(member); setActive('record') }
 
@@ -127,7 +133,7 @@ export default function App() {
   }, [active, updateScrollControls])
 
   const prevPanel = PANELS[PANELS.indexOf(active) - 1]
-  const prevLabel = prevPanel ? PANEL_LABELS[prevPanel] : null
+  const prevLabel = prevPanel ? panelLabels[prevPanel] : null
 
   if (loading) {
     return (

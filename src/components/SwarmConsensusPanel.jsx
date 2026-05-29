@@ -26,41 +26,206 @@ const SWARM_AGENTS = [
 ]
 
 const METHODS = {
-  bayesian: { label: 'Bayesian',  short: 'BAY', desc: 'Log-odds by specialty prior'      },
-  weighted: { label: 'Weighted',  short: 'WGT', desc: 'Confidence × reliability'         },
-  majority: { label: 'Majority',  short: 'VOT', desc: 'Quorum vote + tie-breaking'       },
-  graph:    { label: 'Graph GNN', short: 'GNN', desc: 'Evidence propagation across graph' },
+  bayesian: { label: 'Bayesian',  short: 'BAY' },
+  weighted: { label: 'Weighted',  short: 'WGT' },
+  majority: { label: 'Majority',  short: 'VOT' },
+  graph:    { label: 'Graph GNN', short: 'GNN' },
+}
+
+const SWARM_TEXT = {
+  vi: {
+    title: 'Hội đồng Y khoa AI · Mô phỏng Swarm',
+    subtitle: 'MiroFish boid engine · {count} chuyên gia AI · Đồng thuận đa tác nhân',
+    apiLive: '✓ API HOẠT ĐỘNG',
+    apiOffline: '⚠ API OFFLINE · MOCK',
+    phaseReady: 'SẴN SÀNG',
+    fusionMethod: 'Phương pháp hợp nhất',
+    methodHint: 'Nhấn Bayesian, Weighted, Majority hoặc Graph để xem ý nghĩa và đổi cách tổng hợp ý kiến.',
+    idlePrompt: 'Nhấn “Triệu tập hội đồng” để bắt đầu',
+    cohesion: 'Độ kết dính',
+    boids: 'Boids',
+    summon: 'Triệu tập hội đồng',
+    reset: 'Reset',
+    agents: 'Chuyên gia',
+    agree: 'Đồng ý',
+    flag: 'Cờ cảnh báo',
+    avgConf: 'Tin cậy TB',
+    debateTranscript: 'Biên bản thảo luận',
+    speaking: 'ĐANG PHÁT BIỂU',
+    consensusReached: 'ĐÃ ĐẠT ĐỒNG THUẬN',
+    plan: 'Kế hoạch',
+    drug: 'Thuốc chính',
+    checkpoint: 'Mốc kiểm tra',
+    gate: 'Điều kiện',
+    planValue: 'Kịch bản B · Điều trị nhắm trúng đích',
+    drugValue: 'Erlotinib 150mg/ngày',
+    checkpointValue: 'PET-CT tuần 6',
+    gateValue: 'Sinh thiết L2 tuần 8',
+    dissentNote: 'Pathology AI: bảo lưu bất đồng về T790M → cần sinh thiết L2 trước khi tăng liều',
+    newSession: 'Phiên họp mới',
+    rerun: 'Chạy lại',
+    waiting: 'đang chờ…',
+    agreeVote: 'ĐỒNG Ý',
+    flagVote: 'CỜ BÁO',
+    confidenceShort: 'tin cậy',
+    broadcastLog: '📡 Đang gửi bối cảnh bệnh nhân tới tất cả agent…',
+    voteLog: '🗳 Các agent đang bỏ phiếu…',
+    synthesizeLog: '🧠 Meta-agent đang tổng hợp kết quả có trọng số…',
+    doneLog: '✅ Đạt đồng thuận: Kịch bản B · Erlotinib 150mg/ngày · Sinh thiết L2 tuần 8',
+    methodDesc: {
+      bayesian: 'Dùng xác suất tiên nghiệm theo chuyên khoa rồi cập nhật bằng bằng chứng mới. Phù hợp khi cần cân bằng dữ liệu nền, độ hiếm bệnh và phát hiện mới.',
+      weighted: 'Mỗi agent được nhân trọng số theo độ tin cậy và mức liên quan chuyên môn. Agent có bằng chứng mạnh hơn sẽ ảnh hưởng nhiều hơn.',
+      majority: 'Quyết định theo số phiếu đa số, có xử lý hòa phiếu và cờ cảnh báo. Dễ hiểu, minh bạch, phù hợp khi các chuyên gia có quyền biểu quyết gần như ngang nhau.',
+      graph: 'Mô hình hóa quan hệ giữa chuyên khoa và bằng chứng như một đồ thị. Kết luận lan truyền qua các nút liên quan để phát hiện xung đột hoặc liên kết gián tiếp.',
+    },
+    methodUse: {
+      bayesian: 'Nên dùng khi có dữ liệu tiền sử hoặc xác suất nền quan trọng.',
+      weighted: 'Nên dùng khi độ tin cậy của từng agent khác nhau rõ rệt.',
+      majority: 'Nên dùng khi cần quyết định nhanh, dễ giải thích cho hội đồng.',
+      graph: 'Nên dùng khi bệnh án phức tạp, nhiều chuyên khoa và bằng chứng phụ thuộc lẫn nhau.',
+    },
+    methodFormula: {
+      bayesian: 'posterior = prior × likelihood',
+      weighted: 'score = Σ(confidence × reliability)',
+      majority: 'decision = quorum vote + tie-break',
+      graph: 'decision = evidence propagation over graph',
+    },
+  },
+  en: {
+    title: 'AI Medical Board · Swarm Simulation',
+    subtitle: 'MiroFish boid engine · {count} specialist AI agents · Multi-agent consensus',
+    apiLive: '✓ API LIVE',
+    apiOffline: '⚠ API OFFLINE · MOCK',
+    phaseReady: 'READY',
+    fusionMethod: 'Fusion method',
+    methodHint: 'Click Bayesian, Weighted, Majority, or Graph to see what it means and switch the fusion logic.',
+    idlePrompt: 'Click “Summon board” to begin',
+    cohesion: 'Cohesion',
+    boids: 'Boids',
+    summon: 'Summon board',
+    reset: 'Reset',
+    agents: 'Agents',
+    agree: 'Agree',
+    flag: 'Flag',
+    avgConf: 'Avg Conf',
+    debateTranscript: 'Debate Transcript',
+    speaking: 'SPEAKING',
+    consensusReached: 'CONSENSUS REACHED',
+    plan: 'Plan',
+    drug: 'Drug',
+    checkpoint: 'Checkpoint',
+    gate: 'Gate',
+    planValue: 'Scenario B · Targeted',
+    drugValue: 'Erlotinib 150mg/day',
+    checkpointValue: 'PET-CT Week 6',
+    gateValue: 'Biopsy L2 Week 8',
+    dissentNote: 'Pathology AI: T790M dissent preserved → biopsy L2 required before dose escalation',
+    newSession: 'New session',
+    rerun: 'Run again',
+    waiting: 'waiting…',
+    agreeVote: 'AGREE',
+    flagVote: 'FLAG',
+    confidenceShort: 'conf',
+    broadcastLog: '📡 Broadcasting patient context to all agents…',
+    voteLog: '🗳 Agents casting votes…',
+    synthesizeLog: '🧠 Meta-agent synthesizing weighted results…',
+    doneLog: '✅ Consensus reached: Scenario B · Erlotinib 150mg/day · Biopsy L2 @ Week 8',
+    methodDesc: {
+      bayesian: 'Uses specialty-specific prior probabilities and updates them with new evidence. Best when baseline risk, disease rarity, and fresh findings all matter.',
+      weighted: 'Multiplies each agent vote by confidence and specialty reliability. Agents with stronger evidence influence the final result more.',
+      majority: 'Chooses the option with quorum support, with tie-breaking and warning flags. Transparent and easy to explain when specialists have similar voting power.',
+      graph: 'Models specialties and evidence as a graph. Conclusions propagate through related nodes to reveal conflicts and indirect relationships.',
+    },
+    methodUse: {
+      bayesian: 'Use when history or baseline probability should strongly shape the answer.',
+      weighted: 'Use when agents differ meaningfully in reliability or evidence strength.',
+      majority: 'Use when the board needs a fast, explainable decision.',
+      graph: 'Use for complex cases with many specialties and interdependent evidence.',
+    },
+    methodFormula: {
+      bayesian: 'posterior = prior × likelihood',
+      weighted: 'score = Σ(confidence × reliability)',
+      majority: 'decision = quorum vote + tie-break',
+      graph: 'decision = evidence propagation over graph',
+    },
+  },
+}
+
+function sText(lang, key, vars = {}) {
+  const template = SWARM_TEXT[lang]?.[key] || SWARM_TEXT.vi[key] || key
+  if (typeof template !== 'string') return template
+  return Object.entries(vars).reduce((text, [name, value]) => text.replace(`{${name}}`, value), template)
+}
+
+function methodInfo(lang, method) {
+  const dict = SWARM_TEXT[lang] || SWARM_TEXT.vi
+  const fallback = SWARM_TEXT.vi
+  return {
+    ...METHODS[method],
+    desc: dict.methodDesc?.[method] || fallback.methodDesc[method],
+    use: dict.methodUse?.[method] || fallback.methodUse[method],
+    formula: dict.methodFormula?.[method] || fallback.methodFormula[method],
+  }
 }
 
 const PHASES = ['idle','broadcast','deliberate','vote','synthesize','done']
 
 // Debate script per agent
 const DEBATE_LINES = {
-  radiology: [
-    'CT scan: L1 lesion giảm 18% — đáp ứng tốt với Erlotinib',
-    'L2 lesion tăng 8% — cần sinh thiết xác nhận tại tuần 8',
-    'Khuyến nghị: tiếp tục Scenario B + theo dõi L2 sát sao',
-  ],
-  oncology: [
-    'EGFR Exon 19 del — phù hợp TKI generation 1',
-    'T790M hiện diện nguy cơ kháng thuốc — cần Osimertinib dự phòng',
-    'Staging IIA giữ nguyên — Erlotinib 150mg/day tối ưu',
-  ],
-  pathology: [
-    '⚠ T790M resistance variant phát hiện — VAF 8%',
-    'L2 growth pattern khác biệt — nghi clonal divergence',
-    'Phản đối: không nên commit maintenance dose trước biopsy L2',
-  ],
-  genomics: [
-    'ctDNA 0.8% — tín hiệu minimal residual disease',
-    'TERT C228T promoter: tăng aggressiveness HCC',
-    'TP53 R248W co-mutation — worst prognosis indicator',
-  ],
-  gp: [
-    'Stress index cao — cần can thiệp tâm lý hỗ trợ',
-    'QoL score 62/100 — Erlotinib side-effects chấp nhận được',
-    'Gia đình đã được tư vấn — đồng ý Scenario B',
-  ],
+  vi: {
+    radiology: [
+      'CT scan: L1 lesion giảm 18% — đáp ứng tốt với Erlotinib',
+      'L2 lesion tăng 8% — cần sinh thiết xác nhận tại tuần 8',
+      'Khuyến nghị: tiếp tục Scenario B + theo dõi L2 sát sao',
+    ],
+    oncology: [
+      'EGFR Exon 19 del — phù hợp TKI generation 1',
+      'T790M hiện diện nguy cơ kháng thuốc — cần Osimertinib dự phòng',
+      'Staging IIA giữ nguyên — Erlotinib 150mg/day tối ưu',
+    ],
+    pathology: [
+      '⚠ T790M resistance variant phát hiện — VAF 8%',
+      'L2 growth pattern khác biệt — nghi clonal divergence',
+      'Phản đối: không nên commit maintenance dose trước biopsy L2',
+    ],
+    genomics: [
+      'ctDNA 0.8% — tín hiệu minimal residual disease',
+      'TERT C228T promoter: tăng aggressiveness HCC',
+      'TP53 R248W co-mutation — worst prognosis indicator',
+    ],
+    gp: [
+      'Stress index cao — cần can thiệp tâm lý hỗ trợ',
+      'QoL score 62/100 — Erlotinib side-effects chấp nhận được',
+      'Gia đình đã được tư vấn — đồng ý Scenario B',
+    ],
+  },
+  en: {
+    radiology: [
+      'CT scan: L1 lesion decreased 18% — good response to Erlotinib',
+      'L2 lesion increased 8% — confirmatory biopsy needed at week 8',
+      'Recommendation: continue Scenario B + close L2 monitoring',
+    ],
+    oncology: [
+      'EGFR Exon 19 del — consistent with first-generation TKI therapy',
+      'T790M present with resistance risk — consider Osimertinib backup',
+      'Stage IIA unchanged — Erlotinib 150mg/day remains optimal',
+    ],
+    pathology: [
+      '⚠ T790M resistance variant detected — VAF 8%',
+      'L2 growth pattern differs — possible clonal divergence',
+      'Dissent: do not commit maintenance dose before L2 biopsy',
+    ],
+    genomics: [
+      'ctDNA 0.8% — minimal residual disease signal',
+      'TERT C228T promoter: increased HCC aggressiveness',
+      'TP53 R248W co-mutation — adverse prognosis indicator',
+    ],
+    gp: [
+      'High stress index — psychological support intervention needed',
+      'QoL score 62/100 — Erlotinib side effects are acceptable',
+      'Family has been counseled — agrees with Scenario B',
+    ],
+  },
 }
 
 const VOTE_OUTCOMES = {
@@ -316,7 +481,7 @@ function useSwarm(canvasRef, phase, cohesionVal, isDark) {
 }
 
 // ─── Debate log hook ──────────────────────────────────────────────────────────
-function useDebateLog(phase, agentPhase) {
+function useDebateLog(phase, agentPhase, lang) {
   const [log, setLog]     = useState([])
   const [bubble, setBubble] = useState(null)
   const tickRef = useRef(null)
@@ -324,14 +489,14 @@ function useDebateLog(phase, agentPhase) {
   useEffect(() => {
     clearInterval(tickRef.current)
     if (phase === 'broadcast') {
-      setLog([{ t: Date.now(), agent: 'SYSTEM', text: '📡 Broadcasting patient context to all agents…', type: 'system' }])
+      setLog([{ t: Date.now(), agent: 'SYSTEM', text: sText(lang, 'broadcastLog'), type: 'system' }])
       setBubble(null)
     }
     if (phase === 'deliberate') {
       let step = 0
       const allLines = []
       SWARM_AGENTS.forEach(a => {
-        DEBATE_LINES[a.id].forEach(line => allLines.push({ agent: a, text: line }))
+        ;(DEBATE_LINES[lang]?.[a.id] || DEBATE_LINES.vi[a.id]).forEach(line => allLines.push({ agent: a, text: line }))
       })
       allLines.sort(() => Math.random() - 0.5)
 
@@ -351,24 +516,24 @@ function useDebateLog(phase, agentPhase) {
       }, 900)
     }
     if (phase === 'vote') {
-      setLog(prev => [{ t: Date.now(), agent: 'SYSTEM', text: '🗳 Agents casting votes…', type: 'system' }, ...prev])
+      setLog(prev => [{ t: Date.now(), agent: 'SYSTEM', text: sText(lang, 'voteLog'), type: 'system' }, ...prev])
       setBubble(null)
     }
     if (phase === 'synthesize') {
       setLog(prev => [
-        { t: Date.now(), agent: 'META', text: '🧠 Meta-agent synthesizing weighted results…', type: 'system' },
+        { t: Date.now(), agent: 'META', text: sText(lang, 'synthesizeLog'), type: 'system' },
         ...prev,
       ])
     }
     if (phase === 'done') {
       setLog(prev => [
-        { t: Date.now(), agent: 'META', text: '✅ Consensus reached: Scenario B · Erlotinib 150mg/day · Biopsy L2 @ Week 8', type: 'result' },
+        { t: Date.now(), agent: 'META', text: sText(lang, 'doneLog'), type: 'result' },
         ...prev,
       ])
       setBubble(null)
     }
     return () => clearInterval(tickRef.current)
-  }, [phase]) // eslint-disable-line
+  }, [phase, lang]) // eslint-disable-line
 
   return { log, bubble }
 }
@@ -441,7 +606,7 @@ function Stat({ label, value, color = 'var(--cyan)', mono = true }) {
 }
 
 // ─── Agent row card ───────────────────────────────────────────────────────────
-function AgentRow({ agent, vote, debating }) {
+function AgentRow({ agent, vote, debating, lang }) {
   const conf = VOTE_OUTCOMES[agent.id].conf
   return (
     <div style={{
@@ -470,9 +635,9 @@ function AgentRow({ agent, vote, debating }) {
               fontSize: 10, fontFamily: 'var(--font-mono)', fontWeight: 700,
               color: vote === 'agree' ? 'var(--green)' : 'var(--amber)',
             }}>
-              {vote === 'agree' ? '✓ AGREE' : '⚠ FLAG'}
+              {vote === 'agree' ? `✓ ${sText(lang, 'agreeVote')}` : `⚠ ${sText(lang, 'flagVote')}`}
             </div>
-            <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'var(--font-mono)' }}>{conf}% conf</div>
+            <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'var(--font-mono)' }}>{conf}% {sText(lang, 'confidenceShort')}</div>
           </div>
           <div style={{ width: 40, height: 4, background: 'var(--surface2)', borderRadius: 2, overflow: 'hidden' }}>
             <div style={{ width: `${conf}%`, height: '100%', background: vote === 'agree' ? 'var(--green)' : 'var(--amber)', borderRadius: 2 }} />
@@ -484,7 +649,7 @@ function AgentRow({ agent, vote, debating }) {
           animation: 'pulse-dot 0.8s infinite', flexShrink: 0,
         }} />
       ) : (
-        <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--font-mono)' }}>waiting…</div>
+        <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--font-mono)' }}>{sText(lang, 'waiting')}</div>
       )}
     </div>
   )
@@ -492,7 +657,7 @@ function AgentRow({ agent, vote, debating }) {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function SwarmConsensusPanel({ onReset, onPrev, prevLabel }) {
-  const { t, theme } = useApp()
+  const { t, theme, lang } = useApp()
   const isDark = theme === 'dark'
   const canvasRef  = useRef(null)
   const wrapRef    = useRef(null)
@@ -504,8 +669,9 @@ export default function SwarmConsensusPanel({ onReset, onPrev, prevLabel }) {
 
   const { phase, progress, start, reset: resetPhase } = usePhase()
   const { initBoids, agentVotes } = useSwarm(canvasRef, phase, cohesionVal, isDark)
-  const { log, bubble } = useDebateLog(phase, debatingId)
+  const { log, bubble } = useDebateLog(phase, debatingId, lang)
   const consensus = useConsensus()
+  const selectedMethod = methodInfo(lang, method)
 
   // Resize canvas to wrapper
   useEffect(() => {
@@ -535,7 +701,7 @@ export default function SwarmConsensusPanel({ onReset, onPrev, prevLabel }) {
   // Fire real consensus API when phase reaches vote
   useEffect(() => {
     if (phase === 'vote') consensus.run()
-  }, [phase]) // eslint-disable-line
+  }, [phase, lang]) // eslint-disable-line
 
   const handleStart = () => {
     if (phase !== 'idle') return
@@ -566,22 +732,22 @@ export default function SwarmConsensusPanel({ onReset, onPrev, prevLabel }) {
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
         <div>
           <h2 style={{ fontSize: 20, fontWeight: 800, color: 'var(--text)', marginBottom: 4 }}>
-            🏛 Hội đồng Y khoa AI · Swarm Simulation
+            🏛 {sText(lang, 'title')}
           </h2>
           <p style={{ fontSize: 12, color: 'var(--text2)' }}>
-            MiroFish boid engine · {SWARM_AGENTS.length} specialist agents · Multi-agent consensus
+            {sText(lang, 'subtitle', { count: SWARM_AGENTS.length })}
           </p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {/* API status */}
           {consensus.apiStatus === 'success' && (
             <span style={{ padding: '3px 9px', borderRadius: 4, fontSize: 9, fontFamily: 'var(--font-mono)', background: 'rgba(0,230,118,0.1)', color: 'var(--green)', border: '1px solid rgba(0,230,118,0.25)' }}>
-              ✓ API LIVE
+              {sText(lang, 'apiLive')}
             </span>
           )}
           {consensus.apiStatus === 'error' && (
             <span style={{ padding: '3px 9px', borderRadius: 4, fontSize: 9, fontFamily: 'var(--font-mono)', background: 'rgba(255,82,82,0.08)', color: '#ff5252', border: '1px solid rgba(255,82,82,0.25)' }}>
-              ⚠ API OFFLINE · MOCK
+              {sText(lang, 'apiOffline')}
             </span>
           )}
           {/* Phase badge */}
@@ -592,7 +758,7 @@ export default function SwarmConsensusPanel({ onReset, onPrev, prevLabel }) {
             border: `1px solid ${isDone ? 'rgba(0,230,118,0.3)' : isActive ? 'rgba(0,229,255,0.25)' : 'var(--border)'}`,
             textTransform: 'uppercase',
           }}>
-            {phase === 'idle' ? 'READY' : phase.toUpperCase()}
+            {phase === 'idle' ? sText(lang, 'phaseReady') : phase.toUpperCase()}
           </span>
         </div>
       </div>
@@ -604,7 +770,11 @@ export default function SwarmConsensusPanel({ onReset, onPrev, prevLabel }) {
         borderRadius: 10, padding: '10px 14px',
       }}>
         {/* Fusion method */}
-        <div style={{ display: 'flex', gap: 5 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+          <span style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+            {sText(lang, 'fusionMethod')}
+          </span>
+          <div style={{ display: 'flex', gap: 5 }}>
           {Object.entries(METHODS).map(([k, m]) => (
             <button key={k} onClick={() => setMethod(k)}
               disabled={isActive}
@@ -616,13 +786,14 @@ export default function SwarmConsensusPanel({ onReset, onPrev, prevLabel }) {
                 border: `1px solid ${method === k ? 'rgba(0,229,255,0.4)' : 'var(--border)'}`,
                 opacity: isActive ? 0.5 : 1,
               }}
-              title={m.desc}
+              title={methodInfo(lang, k).desc}
             >{m.short}</button>
           ))}
+          </div>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, color: 'var(--text3)' }}>
-          <span>Cohesion</span>
+          <span>{sText(lang, 'cohesion')}</span>
           <input type="range" min={1} max={10} value={cohesionVal}
             onChange={e => setCohesionVal(+e.target.value)}
             style={{ width: 70, accentColor: 'var(--cyan)' }} />
@@ -630,7 +801,7 @@ export default function SwarmConsensusPanel({ onReset, onPrev, prevLabel }) {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, color: 'var(--text3)' }}>
-          <span>Boids</span>
+          <span>{sText(lang, 'boids')}</span>
           <input type="range" min={5} max={40} step={5} value={boidCount}
             onChange={e => { setBoidCount(+e.target.value); initBoids(+e.target.value) }}
             style={{ width: 70, accentColor: 'var(--violet)' }} />
@@ -643,14 +814,45 @@ export default function SwarmConsensusPanel({ onReset, onPrev, prevLabel }) {
               padding: '9px 20px', borderRadius: 10, cursor: 'pointer', border: 'none',
               background: 'linear-gradient(135deg, var(--cyan2), var(--violet2))',
               color: '#fff', fontSize: 13, fontWeight: 700,
-            }}>▶ Triệu tập hội đồng · {METHODS[method].short}</button>
+            }}>▶ {sText(lang, 'summon')} · {METHODS[method].short}</button>
           ) : (
             <button onClick={handleReset} style={{
               padding: '9px 18px', borderRadius: 10, cursor: 'pointer',
               background: 'transparent', border: '1px solid var(--border2)',
               color: 'var(--text2)', fontSize: 12, fontWeight: 600,
-            }}>↺ Reset</button>
+            }}>↺ {sText(lang, 'reset')}</button>
           )}
+        </div>
+      </div>
+
+
+      {/* ── Method explanation ───────────────────────────────────────────── */}
+      <div style={{
+        display: 'grid', gridTemplateColumns: '160px 1fr', gap: 12, alignItems: 'stretch',
+        background: 'rgba(0,229,255,0.04)', border: '1px solid rgba(0,229,255,0.16)',
+        borderRadius: 10, padding: '12px 14px',
+      }}>
+        <div style={{ borderRight: '1px solid var(--border)', paddingRight: 12 }}>
+          <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 5 }}>
+            {sText(lang, 'fusionMethod')}
+          </div>
+          <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--cyan)', lineHeight: 1 }}>
+            {selectedMethod.label}
+          </div>
+          <div style={{ marginTop: 7, fontSize: 10, color: 'var(--violet)', fontFamily: 'var(--font-mono)' }}>
+            {selectedMethod.formula}
+          </div>
+        </div>
+        <div>
+          <div style={{ fontSize: 12, color: 'var(--text)', lineHeight: 1.6, marginBottom: 6 }}>
+            {selectedMethod.desc}
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--text2)', lineHeight: 1.5 }}>
+            💡 {selectedMethod.use}
+          </div>
+          <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 7 }}>
+            {sText(lang, 'methodHint')}
+          </div>
         </div>
       </div>
 
@@ -759,7 +961,7 @@ export default function SwarmConsensusPanel({ onReset, onPrev, prevLabel }) {
             }}>
               <div style={{ fontSize: 28 }}>🏛</div>
               <div style={{ fontSize: 13, fontWeight: 700, color: 'rgba(255,255,255,0.6)' }}>
-                Nhấn "Triệu tập hội đồng" để bắt đầu
+                {sText(lang, 'idlePrompt')}
               </div>
             </div>
           )}
@@ -768,7 +970,7 @@ export default function SwarmConsensusPanel({ onReset, onPrev, prevLabel }) {
         {/* Agents panel */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <div style={{ fontSize: 9, letterSpacing: '0.12em', color: 'var(--text3)', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', marginBottom: 4 }}>
-            Specialist Agents · {SWARM_AGENTS.length}
+            {sText(lang, 'agents')} · {SWARM_AGENTS.length}
           </div>
           {SWARM_AGENTS.map(a => (
             <AgentRow
@@ -776,6 +978,7 @@ export default function SwarmConsensusPanel({ onReset, onPrev, prevLabel }) {
               agent={a}
               vote={agentVotes[a.id]}
               debating={debatingId === a.id}
+              lang={lang}
             />
           ))}
         </div>
@@ -784,10 +987,10 @@ export default function SwarmConsensusPanel({ onReset, onPrev, prevLabel }) {
       {/* ── Stats row ────────────────────────────────────────────────────── */}
       {(isActive || isDone) && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
-          <Stat label="Agents"      value={SWARM_AGENTS.length} color="var(--cyan)" />
-          <Stat label="Agree"       value={isDone ? agreeCount : '—'} color="var(--green)" />
-          <Stat label="Flag"        value={isDone ? flagCount  : '—'} color="var(--amber)" />
-          <Stat label="Avg Conf"    value={isDone ? `${avgConf}%` : '…'} color="var(--violet)" />
+          <Stat label={sText(lang, 'agents')} value={SWARM_AGENTS.length} color="var(--cyan)" />
+          <Stat label={sText(lang, 'agree')} value={isDone ? agreeCount : '—'} color="var(--green)" />
+          <Stat label={sText(lang, 'flag')} value={isDone ? flagCount  : '—'} color="var(--amber)" />
+          <Stat label={sText(lang, 'avgConf')} value={isDone ? `${avgConf}%` : '…'} color="var(--violet)" />
         </div>
       )}
 
@@ -797,7 +1000,7 @@ export default function SwarmConsensusPanel({ onReset, onPrev, prevLabel }) {
           {/* Live debate transcript */}
           <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
             <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--border)', fontSize: 9, color: 'var(--text3)', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-              Debate Transcript
+              {sText(lang, 'debateTranscript')}
             </div>
             <div style={{ height: 140, overflowY: 'auto', padding: '6px 10px', display: 'flex', flexDirection: 'column', gap: 3 }}>
               {log.map((entry, i) => (
@@ -828,7 +1031,7 @@ export default function SwarmConsensusPanel({ onReset, onPrev, prevLabel }) {
                 lineHeight: 1.6,
               }}>
                 <div style={{ fontSize: 9, fontFamily: 'var(--font-mono)', opacity: 0.6, marginBottom: 4 }}>
-                  {bubble.agent} SPEAKING
+                  {bubble.agent} {sText(lang, 'speaking')}
                 </div>
                 {bubble.text}
               </div>
@@ -842,14 +1045,14 @@ export default function SwarmConsensusPanel({ onReset, onPrev, prevLabel }) {
                 flex: 1,
               }}>
                 <div style={{ fontSize: 9, fontFamily: 'var(--font-mono)', color: 'var(--green)', marginBottom: 8 }}>
-                  ✅ CONSENSUS REACHED · {METHODS[method].label.toUpperCase()}
+                  ✅ {sText(lang, 'consensusReached')} · {METHODS[method].label.toUpperCase()}
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
                   {[
-                    ['Plan', 'Scenario B · Targeted'],
-                    ['Drug', 'Erlotinib 150mg/day'],
-                    ['Checkpoint', 'PET-CT Week 6'],
-                    ['Gate', 'Biopsy L2 Week 8'],
+                    [sText(lang, 'plan'), sText(lang, 'planValue')],
+                    [sText(lang, 'drug'), sText(lang, 'drugValue')],
+                    [sText(lang, 'checkpoint'), sText(lang, 'checkpointValue')],
+                    [sText(lang, 'gate'), sText(lang, 'gateValue')],
                   ].map(([k, v]) => (
                     <div key={k} style={{ background: 'var(--surface2)', borderRadius: 6, padding: '6px 9px' }}>
                       <div style={{ fontSize: 9, color: 'var(--text3)', marginBottom: 2 }}>{k}</div>
@@ -868,7 +1071,7 @@ export default function SwarmConsensusPanel({ onReset, onPrev, prevLabel }) {
                 </div>
                 {/* Dissent note */}
                 <div style={{ marginTop: 8, padding: '6px 10px', background: 'rgba(255,183,77,0.06)', borderRadius: 6, border: '1px solid rgba(255,183,77,0.18)', fontSize: 10, color: 'var(--amber)' }}>
-                  ⚠ Pathology AI: T790M dissent preserved → biopsy L2 required before dose escalation
+                  ⚠ {sText(lang, 'dissentNote')}
                 </div>
               </div>
             )}
@@ -883,14 +1086,14 @@ export default function SwarmConsensusPanel({ onReset, onPrev, prevLabel }) {
             padding: '10px 18px', borderRadius: 10, cursor: 'pointer',
             background: 'transparent', border: '1px solid var(--border2)',
             color: 'var(--cyan)', fontSize: 12, fontWeight: 600,
-          }}>🔄 Phiên họp mới</button>
+          }}>🔄 {sText(lang, 'newSession')}</button>
         )}
         {isDone && (
           <button onClick={handleStart} style={{
             padding: '10px 18px', borderRadius: 10, cursor: 'pointer',
             background: 'var(--surface2)', border: '1px solid var(--border)',
             color: 'var(--text2)', fontSize: 12, fontWeight: 600,
-          }}>↺ Chạy lại</button>
+          }}>↺ {sText(lang, 'rerun')}</button>
         )}
         {onPrev && prevLabel && (
           <button onClick={onPrev} style={{

@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { useApp } from '../../context/AppContext'
+import { useAuth } from '../../context/AuthContext'
 import {
   getAllRecords,
   saveRecord,
@@ -21,6 +22,27 @@ const TYPE_COLORS = {
 const ACCEPT  = 'image/jpeg,image/png,image/webp,image/gif,application/pdf'
 const MAX_MB  = 20
 
+
+const UPLOADER_TEXT = {
+  vi: {
+    delete: 'Xóa', deleteWithIcon: '🗑 Xóa', confirmDelete: 'Xóa hồ sơ này?',
+    fileTooLarge: 'File "{name}" quá lớn (tối đa {max}MB)', unsupportedType: 'Định dạng không hỗ trợ: {type}', readError: 'Lỗi khi đọc file. Vui lòng thử lại.', unknownError: 'Không xác định', errorPrefix: 'Lỗi',
+    title: 'Hồ Sơ Y Tế', subtitle: 'Upload X-Ray · CT · MRI · PDF · Ảnh hồ sơ · Lưu local vĩnh viễn', upload: 'Tải lên', library: 'Thư viện',
+    apiKeyPrompt: 'Nhập Anthropic API key để phân tích AI (lưu local, không gửi server):', save: 'Lưu', processing: 'Đang xử lý file…', dragDrop: 'Kéo thả file vào đây', clickSelect: 'hoặc nhấn để chọn file', pdfRecord: 'PDF hồ sơ', photoRecord: 'Ảnh chụp', maxHint: 'Tối đa 20MB · JPG, PNG, WebP, PDF', recentRecords: 'Hồ sơ gần đây', viewAll: 'Xem tất cả {count} hồ sơ →', noRecords: 'Chưa có hồ sơ nào. Upload file đầu tiên!', backToLibrary: 'Quay lại thư viện', useForCompare: 'So sánh bên Compare →', type: 'Loại', size: 'Kích thước', uploaded: 'Upload', notes: 'GHI CHÚ', notesPlaceholder: 'Thêm ghi chú về hồ sơ này…', saveNotes: 'Lưu ghi chú', aiAnalysis: 'PHÂN TÍCH AI', aiAnalyzeHelp: 'Để AI phân tích hồ sơ này', analyzeWithClaude: 'Phân tích với Claude AI', requiresKey: 'Cần Anthropic API key', enterKey: 'Nhập key', claudeAnalyzing: 'Claude đang phân tích…', aiConfidence: 'Độ tin cậy AI', aiDisclaimer: 'Phân tích AI chỉ mang tính hỗ trợ, không thay thế chẩn đoán của bác sĩ.', reAnalyze: 'Phân tích lại',
+  },
+  en: {
+    delete: 'Delete', deleteWithIcon: '🗑 Delete', confirmDelete: 'Delete this record?',
+    fileTooLarge: 'File "{name}" is too large (max {max}MB)', unsupportedType: 'Unsupported file type: {type}', readError: 'Could not read the file. Please try again.', unknownError: 'Unknown', errorPrefix: 'Error',
+    title: 'Medical Records', subtitle: 'Upload X-Ray · CT · MRI · PDF · Images · Stored locally', upload: 'Upload', library: 'Library',
+    apiKeyPrompt: 'Enter Anthropic API key for AI analysis (stored locally):', save: 'Save', processing: 'Processing file…', dragDrop: 'Drag & drop files here', clickSelect: 'or click to select', pdfRecord: 'PDF record', photoRecord: 'Photo', maxHint: 'Max 20MB · JPG, PNG, WebP, PDF', recentRecords: 'Recent records', viewAll: 'View all {count} records →', noRecords: 'No records yet. Upload your first file!', backToLibrary: 'Back to library', useForCompare: 'Use for Compare →', type: 'Type', size: 'Size', uploaded: 'Uploaded', notes: 'NOTES', notesPlaceholder: 'Add notes about this record…', saveNotes: 'Save notes', aiAnalysis: 'AI ANALYSIS', aiAnalyzeHelp: 'Let AI analyze this medical file', analyzeWithClaude: 'Analyze with Claude AI', requiresKey: 'Requires Anthropic API key', enterKey: 'Enter key', claudeAnalyzing: 'Claude analyzing…', aiConfidence: 'AI Confidence', aiDisclaimer: "AI analysis is for support only and does not replace a doctor\'s diagnosis.", reAnalyze: 'Re-analyze',
+  },
+}
+
+function uploadText(lang, key, vars = {}) {
+  const template = UPLOADER_TEXT[lang]?.[key] || UPLOADER_TEXT.vi[key] || key
+  return Object.entries(vars).reduce((text, [name, value]) => text.replace(`{${name}}`, value), template)
+}
+
 // ─── Sub-components ───────────────────────────────────────────────────────────
 function TabBtn({ active, onClick, children }) {
   return (
@@ -34,7 +56,7 @@ function TabBtn({ active, onClick, children }) {
   )
 }
 
-function RecordThumb({ record, onClick, onDelete }) {
+function RecordThumb({ record, onClick, onDelete, lang }) {
   const color = TYPE_COLORS[record.fileType] || '#aaa'
   return (
     <div style={{
@@ -59,12 +81,12 @@ function RecordThumb({ record, onClick, onDelete }) {
         margin: '0 8px 8px', padding: '5px 0', borderRadius: 6, cursor: 'pointer',
         background: 'rgba(255,82,82,0.08)', border: '1px solid rgba(255,82,82,0.2)',
         color: 'rgba(255,82,82,0.8)', fontSize: 11, width: 'calc(100% - 16px)',
-      }}>🗑 Xoá</button>
+      }}>{uploadText(lang, 'deleteWithIcon')}</button>
     </div>
   )
 }
 
-function RecordCard({ record, onClick, onDelete }) {
+function RecordCard({ record, onClick, onDelete, lang }) {
   const color = TYPE_COLORS[record.fileType] || '#aaa'
   return (
     <div style={{
@@ -99,7 +121,7 @@ function RecordCard({ record, onClick, onDelete }) {
           background: 'rgba(255,82,82,0.08)', border: '1px solid rgba(255,82,82,0.2)',
           borderRadius: 6, padding: '5px 12px', color: 'rgba(255,82,82,0.7)',
           fontSize: 11, cursor: 'pointer', width: '100%',
-        }}>Xóa</button>
+        }}>{uploadText(lang, 'delete')}</button>
       </div>
     </div>
   )
@@ -117,6 +139,8 @@ function MetaRow({ k, v, vColor }) {
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function MedicalUploader({ patientId, onSelectImage }) {
   const { lang } = useApp()
+  const { user } = useAuth()
+  const recordScope = { ownerEmail: user?.email, includeUnowned: !!user?.isAdmin }
 
   const [view, setView]                   = useState('upload')  // 'upload' | 'library' | 'detail'
   const [records, setRecords]             = useState([])
@@ -136,10 +160,10 @@ export default function MedicalUploader({ patientId, onSelectImage }) {
     loadRecords()
     const saved = localStorage.getItem('ai-clinic-api-key')
     if (saved) setApiKey(saved)
-  }, [])
+  }, [user?.email, user?.isAdmin])
 
   async function loadRecords() {
-    const recs = await getAllRecords()
+    const recs = await getAllRecords(recordScope)
     setRecords(recs)
   }
 
@@ -150,11 +174,11 @@ export default function MedicalUploader({ patientId, onSelectImage }) {
 
     for (const file of arr) {
       if (file.size > MAX_MB * 1024 * 1024) {
-        setError(`File "${file.name}" quá lớn (tối đa ${MAX_MB}MB)`)
+        setError(uploadText(lang, 'fileTooLarge', { name: file.name, max: MAX_MB }))
         continue
       }
       if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
-        setError(`Định dạng không hỗ trợ: ${file.type}`)
+        setError(uploadText(lang, 'unsupportedType', { type: file.type }))
         continue
       }
 
@@ -186,9 +210,10 @@ export default function MedicalUploader({ patientId, onSelectImage }) {
           dataUrl,
           base64Data,
           notes:      '',
+          ownerEmail:  user?.email || null,
         }
 
-        await saveRecord(record)
+        await saveRecord(record, { ownerEmail: user?.email })
         notifyUpload()
         await loadRecords()
 
@@ -201,12 +226,12 @@ export default function MedicalUploader({ patientId, onSelectImage }) {
         }, 400)
 
       } catch {
-        setError('Lỗi khi đọc file. Vui lòng thử lại.')
+        setError(uploadText(lang, 'readError'))
         setUploading(false)
         setUploadProgress(0)
       }
     }
-  }, [])
+  }, [user?.email])
 
   const onDragOver  = e => { e.preventDefault(); setDragging(true) }
   const onDragLeave = () => setDragging(false)
@@ -214,8 +239,8 @@ export default function MedicalUploader({ patientId, onSelectImage }) {
   const onFileChange = e => { if (e.target.files?.length) processFiles(e.target.files) }
 
   async function handleDelete(id) {
-    if (!confirm('Xóa hồ sơ này?')) return
-    await deleteRecord(id)
+    if (!confirm(uploadText(lang, 'confirmDelete'))) return
+    await deleteRecord(id, recordScope)
     await loadRecords()
     if (selected?.id === id) { setSelected(null); setView('upload') }
   }
@@ -223,7 +248,7 @@ export default function MedicalUploader({ patientId, onSelectImage }) {
   async function saveNotes() {
     if (!selected) return
     const updated = { ...selected, notes }
-    await saveRecord(updated)
+    await saveRecord(updated, { ownerEmail: user?.email })
     setSelected(updated)
     await loadRecords()
   }
@@ -236,7 +261,17 @@ export default function MedicalUploader({ patientId, onSelectImage }) {
     setAnalysisStream('')
 
     const typeLabel = fileTypeLabel(record.fileType)
-    const prompt = `Bạn là bác sĩ AI chuyên khoa chẩn đoán hình ảnh. Phân tích ${typeLabel} này và cung cấp:
+    const prompt = lang === 'en'
+      ? `You are an AI physician specializing in diagnostic imaging. Analyze this ${typeLabel} and provide:
+
+1. **General assessment** of image quality and modality
+2. **Abnormal findings** if any: location, estimated size, features
+3. **Priority level**: Normal / Monitor / See a doctor soon / Urgent care
+4. **Suggested** follow-up tests or consultations
+5. **Important notes**
+
+Answer in English, concisely and clearly. Remind the user this is AI support and does not replace a physician.`
+      : `Bạn là bác sĩ AI chuyên khoa chẩn đoán hình ảnh. Phân tích ${typeLabel} này và cung cấp:
 
 1. **Nhận xét tổng quát** về chất lượng và loại hình ảnh
 2. **Phát hiện bất thường** (nếu có): vị trí, kích thước ước tính, đặc điểm
@@ -244,7 +279,7 @@ export default function MedicalUploader({ patientId, onSelectImage }) {
 4. **Gợi ý** xét nghiệm hoặc khám bổ sung
 5. **Lưu ý quan trọng**
 
-Trả lời bằng ${lang === 'en' ? 'English' : 'tiếng Việt'}, ngắn gọn và rõ ràng. Nhắc nhở đây là hỗ trợ AI, không thay thế bác sĩ.`
+Trả lời bằng tiếng Việt, ngắn gọn và rõ ràng. Nhắc nhở đây là hỗ trợ AI, không thay thế bác sĩ.`
 
     try {
       const isPdf = record.mimeType === 'application/pdf'
@@ -298,12 +333,12 @@ Trả lời bằng ${lang === 'en' ? 'English' : 'tiếng Việt'}, ngắn gọn
         summary: fullText, findings: [], recommendation: '',
         confidence: 0.85, analyzedAt: new Date().toISOString(),
       }
-      await updateAnalysis(record.id, analysis)
+      await updateAnalysis(record.id, analysis, recordScope)
       setSelected(prev => prev ? { ...prev, aiAnalysis: analysis } : prev)
       await loadRecords()
 
     } catch (err) {
-      setAnalysisStream(`❌ Lỗi: ${err instanceof Error ? err.message : 'Không xác định'}`)
+      setAnalysisStream(`❌ ${uploadText(lang, 'errorPrefix')}: ${err instanceof Error ? err.message : uploadText(lang, 'unknownError')}`)
     } finally {
       setAnalyzing(false)
     }
@@ -324,20 +359,18 @@ Trả lời bằng ${lang === 'en' ? 'English' : 'tiếng Việt'}, ngắn gọn
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
         <div>
           <h2 style={{ fontSize: 20, fontWeight: 700, color: '#fff', margin: 0 }}>
-            📁 {lang === 'en' ? 'Medical Records' : 'Hồ Sơ Y Tế'}
+            📁 {uploadText(lang, 'title')}
           </h2>
           <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 4, fontFamily: 'monospace' }}>
-            {lang === 'en'
-              ? 'Upload X-Ray · CT · MRI · PDF · Images · Stored locally'
-              : 'Upload X-Ray · CT · MRI · PDF · Ảnh hồ sơ · Lưu local vĩnh viễn'}
+            {uploadText(lang, 'subtitle')}
           </p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <TabBtn active={view === 'upload'}  onClick={() => setView('upload')}>
-            + {lang === 'en' ? 'Upload' : 'Tải lên'}
+            + {uploadText(lang, 'upload')}
           </TabBtn>
           <TabBtn active={view === 'library'} onClick={() => setView('library')}>
-            {lang === 'en' ? 'Library' : 'Thư viện'}
+            {uploadText(lang, 'library')}
             {records.length > 0 && (
               <span style={{ background: 'rgba(0,229,255,0.2)', color: '#00e5ff', borderRadius: 10, padding: '1px 7px', fontSize: 10 }}>
                 {records.length}
@@ -355,9 +388,7 @@ Trả lời bằng ${lang === 'en' ? 'English' : 'tiếng Việt'}, ngắn gọn
           display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
         }}>
           <span style={{ fontSize: 12, color: '#ffb74d', flex: 1 }}>
-            {lang === 'en'
-              ? 'Enter Anthropic API key for AI analysis (stored locally):'
-              : 'Nhập Anthropic API key để phân tích AI (lưu local, không gửi server):'}
+            {uploadText(lang, 'apiKeyPrompt')}
           </span>
           <input
             type="password" placeholder="sk-ant-..."
@@ -372,7 +403,7 @@ Trả lời bằng ${lang === 'en' ? 'English' : 'tiếng Việt'}, ngắn gọn
           <button onClick={() => setShowApiInput(false)} style={{
             background: 'rgba(255,171,64,0.15)', border: '1px solid rgba(255,171,64,0.3)',
             borderRadius: 8, padding: '8px 16px', color: '#ffb74d', cursor: 'pointer', fontSize: 12,
-          }}>{lang === 'en' ? 'Save' : 'Lưu'}</button>
+          }}>{uploadText(lang, 'save')}</button>
         </div>
       )}
 
@@ -401,7 +432,7 @@ Trả lời bằng ${lang === 'en' ? 'English' : 'tiếng Việt'}, ngắn gọn
               <div>
                 <div style={{ fontSize: 32, marginBottom: 12 }}>⏳</div>
                 <div style={{ fontSize: 14, color: '#00e5ff', marginBottom: 16 }}>
-                  {lang === 'en' ? 'Processing file…' : 'Đang xử lý file…'}
+                  {uploadText(lang, 'processing')}
                 </div>
                 <div style={{ height: 4, background: 'rgba(255,255,255,0.08)', borderRadius: 2, maxWidth: 300, margin: '0 auto', overflow: 'hidden' }}>
                   <div style={{
@@ -414,13 +445,13 @@ Trả lời bằng ${lang === 'en' ? 'English' : 'tiếng Việt'}, ngắn gọn
               <>
                 <div style={{ fontSize: 40, marginBottom: 12 }}>🩻</div>
                 <div style={{ fontSize: 16, fontWeight: 600, color: '#fff', marginBottom: 8 }}>
-                  {lang === 'en' ? 'Drag & drop files here' : 'Kéo thả file vào đây'}
+                  {uploadText(lang, 'dragDrop')}
                 </div>
                 <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginBottom: 20 }}>
-                  {lang === 'en' ? 'or click to select' : 'hoặc nhấn để chọn file'}
+                  {uploadText(lang, 'clickSelect')}
                 </div>
                 <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
-                  {['X-Ray JPG/PNG', 'CT Scan', 'MRI', 'PDF hồ sơ', 'Ảnh chụp'].map(label => (
+                  {['X-Ray JPG/PNG', 'CT Scan', 'MRI', uploadText(lang, 'pdfRecord'), uploadText(lang, 'photoRecord')].map(label => (
                     <span key={label} style={{
                       padding: '4px 12px', borderRadius: 20, fontSize: 11,
                       background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
@@ -429,7 +460,7 @@ Trả lời bằng ${lang === 'en' ? 'English' : 'tiếng Việt'}, ngắn gọn
                   ))}
                 </div>
                 <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', marginTop: 14 }}>
-                  {lang === 'en' ? 'Max 20MB · JPG, PNG, WebP, PDF' : 'Tối đa 20MB · JPG, PNG, WebP, PDF'}
+                  {uploadText(lang, 'maxHint')}
                 </div>
               </>
             )}
@@ -440,13 +471,14 @@ Trả lời bằng ${lang === 'en' ? 'English' : 'tiếng Việt'}, ngắn gọn
           {records.length > 0 && (
             <div>
               <div style={{ fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', fontFamily: 'monospace', marginBottom: 12 }}>
-                {lang === 'en' ? 'Recent records' : 'Hồ sơ gần đây'}
+                {uploadText(lang, 'recentRecords')}
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(140px,1fr))', gap: 10 }}>
                 {records.slice(0, 6).map(r => (
                   <RecordThumb key={r.id} record={r}
                     onClick={() => { setSelected(r); setNotes(r.notes || ''); setView('detail') }}
                     onDelete={() => handleDelete(r.id)}
+                    lang={lang}
                   />
                 ))}
               </div>
@@ -456,7 +488,7 @@ Trả lời bằng ${lang === 'en' ? 'English' : 'tiếng Việt'}, ngắn gọn
                   background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
                   borderRadius: 10, color: 'rgba(255,255,255,0.4)', fontSize: 12, cursor: 'pointer',
                 }}>
-                  {lang === 'en' ? `View all ${records.length} records →` : `Xem tất cả ${records.length} hồ sơ →`}
+                  {uploadText(lang, 'viewAll', { count: records.length })}
                 </button>
               )}
             </div>
@@ -470,7 +502,7 @@ Trả lời bằng ${lang === 'en' ? 'English' : 'tiếng Việt'}, ngắn gọn
           {records.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '60px 0', color: 'rgba(255,255,255,0.3)' }}>
               <div style={{ fontSize: 40, marginBottom: 12 }}>📂</div>
-              <div>{lang === 'en' ? 'No records yet. Upload your first file!' : 'Chưa có hồ sơ nào. Upload file đầu tiên!'}</div>
+              <div>{uploadText(lang, 'noRecords')}</div>
             </div>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(200px,1fr))', gap: 14 }}>
@@ -478,6 +510,7 @@ Trả lời bằng ${lang === 'en' ? 'English' : 'tiếng Việt'}, ngắn gọn
                 <RecordCard key={r.id} record={r}
                   onClick={() => { setSelected(r); setNotes(r.notes || ''); setView('detail') }}
                   onDelete={() => handleDelete(r.id)}
+                  lang={lang}
                 />
               ))}
             </div>
@@ -492,7 +525,7 @@ Trả lời bằng ${lang === 'en' ? 'English' : 'tiếng Việt'}, ngắn gọn
             background: 'transparent', border: '1px solid rgba(255,255,255,0.1)',
             borderRadius: 8, padding: '7px 14px', color: 'rgba(255,255,255,0.5)',
             cursor: 'pointer', fontSize: 12, marginBottom: 20,
-          }}>← {lang === 'en' ? 'Back to library' : 'Quay lại thư viện'}</button>
+          }}>← {uploadText(lang, 'backToLibrary')}</button>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
             {/* Left: Preview */}
@@ -512,7 +545,7 @@ Trả lời bằng ${lang === 'en' ? 'English' : 'tiếng Việt'}, ngắn gọn
                         padding: '10px 22px', background: 'linear-gradient(135deg,#00b8cc,#6b3fd4)',
                         border: 'none', borderRadius: 10, color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer',
                       }}
-                    >🔬 {lang === 'en' ? 'Use for Compare →' : 'So sánh bên Compare →'}</button>
+                    >🔬 {uploadText(lang, 'useForCompare')}</button>
                   </div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: '12px 0' }}>
@@ -527,27 +560,27 @@ Trả lời bằng ${lang === 'en' ? 'English' : 'tiếng Việt'}, ngắn gọn
                         padding: '10px 22px', background: 'linear-gradient(135deg,#00b8cc,#6b3fd4)',
                         border: 'none', borderRadius: 10, color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer',
                       }}
-                    >🔬 {lang === 'en' ? 'Use for Compare →' : 'So sánh bên Compare →'}</button>
+                    >🔬 {uploadText(lang, 'useForCompare')}</button>
                   </div>
                 )}
               </div>
 
               {/* Meta */}
               <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, padding: 14 }}>
-                <MetaRow k={lang === 'en' ? 'Type' : 'Loại'}      v={fileTypeLabel(selected.fileType)} vColor={TYPE_COLORS[selected.fileType]} />
+                <MetaRow k={uploadText(lang, 'type')}      v={fileTypeLabel(selected.fileType)} vColor={TYPE_COLORS[selected.fileType]} />
                 <MetaRow k="File"                                   v={selected.filename} />
-                <MetaRow k={lang === 'en' ? 'Size' : 'Kích thước'} v={formatBytes(selected.size)} />
-                <MetaRow k={lang === 'en' ? 'Uploaded' : 'Upload'} v={new Date(selected.uploadedAt).toLocaleString('vi-VN')} />
+                <MetaRow k={uploadText(lang, 'size')} v={formatBytes(selected.size)} />
+                <MetaRow k={uploadText(lang, 'uploaded')} v={new Date(selected.uploadedAt).toLocaleString('vi-VN')} />
               </div>
 
               {/* Notes */}
               <div style={{ marginTop: 12 }}>
                 <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', marginBottom: 6, fontFamily: 'monospace', letterSpacing: '0.08em' }}>
-                  {lang === 'en' ? 'NOTES' : 'GHI CHÚ'}
+                  {uploadText(lang, 'notes')}
                 </div>
                 <textarea
                   value={notes} onChange={e => setNotes(e.target.value)}
-                  placeholder={lang === 'en' ? 'Add notes about this record…' : 'Thêm ghi chú về hồ sơ này…'}
+                  placeholder={uploadText(lang, 'notesPlaceholder')}
                   rows={3}
                   style={{
                     width: '100%', background: 'rgba(255,255,255,0.04)',
@@ -560,14 +593,14 @@ Trả lời bằng ${lang === 'en' ? 'English' : 'tiếng Việt'}, ngắn gọn
                   marginTop: 8, padding: '8px 18px', borderRadius: 8, cursor: 'pointer',
                   background: 'rgba(0,229,255,0.1)', border: '1px solid rgba(0,229,255,0.25)',
                   color: '#00e5ff', fontSize: 12,
-                }}>{lang === 'en' ? 'Save notes' : 'Lưu ghi chú'}</button>
+                }}>{uploadText(lang, 'saveNotes')}</button>
               </div>
             </div>
 
             {/* Right: AI Analysis */}
             <div>
               <div style={{ fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', fontFamily: 'monospace', marginBottom: 12 }}>
-                {lang === 'en' ? 'AI ANALYSIS' : 'PHÂN TÍCH AI'}
+                {uploadText(lang, 'aiAnalysis')}
               </div>
 
               {!selected.aiAnalysis && !analyzing && !analysisStream && (
@@ -577,20 +610,20 @@ Trả lời bằng ${lang === 'en' ? 'English' : 'tiếng Việt'}, ngắn gọn
                 }}>
                   <div style={{ fontSize: 32, marginBottom: 12 }}>🤖</div>
                   <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', marginBottom: 16 }}>
-                    {lang === 'en' ? 'Let AI analyze this medical file' : 'Để AI phân tích hồ sơ này'}
+                    {uploadText(lang, 'aiAnalyzeHelp')}
                   </div>
                   <button onClick={() => analyzeWithAI(selected)} style={{
                     padding: '12px 28px', borderRadius: 10, cursor: 'pointer',
                     background: 'linear-gradient(135deg,#00b8cc,#6b3fd4)',
                     color: '#fff', fontSize: 14, fontWeight: 600, border: 'none',
-                  }}>▶ {lang === 'en' ? 'Analyze with Claude AI' : 'Phân tích với Claude AI'}</button>
+                  }}>▶ {uploadText(lang, 'analyzeWithClaude')}</button>
                   {!apiKey && (
                     <div style={{ fontSize: 11, color: 'rgba(255,171,64,0.7)', marginTop: 10 }}>
-                      {lang === 'en' ? 'Requires Anthropic API key' : 'Cần Anthropic API key'}
+                      {uploadText(lang, 'requiresKey')}
                       <button onClick={() => setShowApiInput(true)} style={{
                         background: 'none', border: 'none', color: '#ffb74d',
                         cursor: 'pointer', textDecoration: 'underline', fontSize: 11, marginLeft: 4,
-                      }}>{lang === 'en' ? 'Enter key' : 'Nhập key'}</button>
+                      }}>{uploadText(lang, 'enterKey')}</button>
                     </div>
                   )}
                 </div>
@@ -605,7 +638,7 @@ Trả lời bằng ${lang === 'en' ? 'English' : 'tiếng Việt'}, ngắn gọn
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
                       <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#00e5ff', animation: 'pulse-dot 1s infinite' }} />
                       <span style={{ fontSize: 11, color: '#00e5ff', fontFamily: 'monospace' }}>
-                        {lang === 'en' ? 'Claude analyzing…' : 'Claude đang phân tích…'}
+                        {uploadText(lang, 'claudeAnalyzing')}
                       </span>
                     </div>
                   )}
@@ -625,7 +658,7 @@ Trả lời bằng ${lang === 'en' ? 'English' : 'tiếng Việt'}, ngắn gọn
                   {/* Confidence bar */}
                   <div style={{ marginTop: 4 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'rgba(255,255,255,0.4)', marginBottom: 4 }}>
-                      <span>{lang === 'en' ? 'AI Confidence' : 'Độ tin cậy AI'}</span>
+                      <span>{uploadText(lang, 'aiConfidence')}</span>
                       <span style={{ color: '#00e676', fontFamily: 'monospace' }}>{Math.round((selected.aiAnalysis.confidence || 0.85) * 100)}%</span>
                     </div>
                     <div style={{ height: 4, background: 'rgba(255,255,255,0.08)', borderRadius: 2, overflow: 'hidden' }}>
@@ -633,13 +666,13 @@ Trả lời bằng ${lang === 'en' ? 'English' : 'tiếng Việt'}, ngắn gọn
                     </div>
                   </div>
                   <div style={{ padding: '8px 12px', background: 'rgba(255,183,77,0.08)', border: '1px solid rgba(255,183,77,0.2)', borderRadius: 8, fontSize: 11, color: 'rgba(255,183,77,0.8)' }}>
-                    ⚠️ {lang === 'en' ? 'AI analysis is for support only and does not replace a doctor\'s diagnosis.' : 'Phân tích AI chỉ mang tính hỗ trợ, không thay thế chẩn đoán của bác sĩ.'}
+                    ⚠️ {uploadText(lang, 'aiDisclaimer')}
                   </div>
                   <button onClick={() => { setAnalysisStream(''); analyzeWithAI(selected) }} style={{
                     padding: '10px 20px', borderRadius: 10, cursor: 'pointer',
                     background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)',
                     color: 'rgba(255,255,255,0.5)', fontSize: 12, alignSelf: 'flex-start',
-                  }}>↺ {lang === 'en' ? 'Re-analyze' : 'Phân tích lại'}</button>
+                  }}>↺ {uploadText(lang, 'reAnalyze')}</button>
                 </div>
               )}
             </div>

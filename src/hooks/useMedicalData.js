@@ -4,19 +4,40 @@
 // Nhật ký hoạt động. Real-time sync qua storage event + polling fallback.
 // ─────────────────────────────────────────────────────────────────────────────
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { getAllRecords, deleteRecord } from '../lib/medicalStorage.js'
+import { useAuth } from '../context/AuthContext.jsx'
+import { getAllRecords, deleteRecord, getMetaKey } from '../lib/medicalStorage.js'
 
-const DB_NAME   = 'ai-clinic-medical-db'
 const LS_META   = 'ai-clinic-patient-meta'
 const LS_NOTIFY = 'ai-clinic-upload-notify'   // ping key để trigger cross-tab sync
 
 // ── Đọc metadata bệnh nhân từ localStorage (từ medicalStorage.js) ──────────
-function readMeta() {
-  try { return JSON.parse(localStorage.getItem(LS_META) || '{}') } catch { return {} }
+function readMeta(ownerEmail) {
+  try { return JSON.parse(localStorage.getItem(getMetaKey(ownerEmail)) || '{}') } catch { return {} }
 }
 
 // ── Tạo bệnh nhân từ hồ sơ upload ──────────────────────────────────────────
-export function recordsToPatient(records, base = {}) {
+function translateMedicalData(lang, key, vars = {}) {
+  const dict = {
+    vi: {
+      uploadedTimelineEvent: 'Upload {type}: {label}',
+      uploadedSummary: 'Tổng cộng {count} hồ sơ được tải lên',
+      uploadPatientName: 'Bệnh nhân Upload',
+      pendingAnalysis: 'Đang chờ phân tích',
+      aiDetailFallback: 'Xem chi tiết phân tích AI',
+    },
+    en: {
+      uploadedTimelineEvent: 'Uploaded {type}: {label}',
+      uploadedSummary: '{count} records uploaded in total',
+      uploadPatientName: 'Upload Patient',
+      pendingAnalysis: 'Pending analysis',
+      aiDetailFallback: 'View detailed AI analysis',
+    },
+  }
+  const template = dict[lang]?.[key] || dict.vi[key] || key
+  return Object.entries(vars).reduce((text, [name, value]) => text.replace(`{${name}}`, value), template)
+}
+
+export function recordsToPatient(records, base = {}, ownerEmail = null, lang = 'vi') {
   if (!records.length) return null
 
   // Gộp tất cả AI analysis thành diseases / imaging / timeline
@@ -34,7 +55,7 @@ export function recordsToPatient(records, base = {}) {
     timeline.push({
       id:   `tl_${r.id}`,
       date,
-      event: `Upload ${r.fileType?.toUpperCase() || 'FILE'}: ${label}`,
+      event: translateMedicalData(lang, 'uploadedTimelineEvent', { type: r.fileType?.toUpperCase() || 'FILE', label }),
       type:  r.fileType === 'pdf' ? 'lab' : 'imaging',
     })
 
@@ -47,7 +68,7 @@ export function recordsToPatient(records, base = {}) {
         modality:      fileTypeToModality(r.fileType),
         ai_confidence: Math.round((ai.confidence || 0.85) * 100),
         findings:      ai.summary.slice(0, 300),
-        impression:    ai.recommendation || ai.findings?.[0] || 'Xem chi tiết phân tích AI',
+        impression:    ai.recommendation || ai.findings?.[0] || translateMedicalData(lang, 'aiDetailFallback'),
         dataUrl:       r.dataUrl,
         raw:           r,
       })
@@ -88,20 +109,20 @@ export function recordsToPatient(records, base = {}) {
   timeline.push({
     id:    'tl_first',
     date:  records[records.length - 1]?.uploadedAt?.slice(0, 10) || '—',
-    event: `Tổng cộng ${records.length} hồ sơ được tải lên`,
+    event: translateMedicalData(lang, 'uploadedSummary', { count: records.length }),
     type:  'consult',
   })
 
-  const meta = readMeta()
+  const meta = readMeta(ownerEmail)
   return {
     id:               meta.patientId || `P-${Date.now()}`,
-    name:             base.name      || 'Bệnh nhân Upload',
+    name:             base.name      || translateMedicalData(lang, 'uploadPatientName'),
     age:              base.age       || '—',
     gender:           base.gender    || '—',
     dob:              base.dob       || '—',
     blood_type:       base.blood_type|| '—',
     avatar_initials:  base.name ? base.name.slice(0, 2).toUpperCase() : 'UP',
-    diseases:         diseases.length ? diseases : [{ id: 'd0', name: 'Đang chờ phân tích', icd10: 'Z00.0', onset: '—', severity: 'mild' }],
+    diseases:         diseases.length ? diseases : [{ id: 'd0', name: translateMedicalData(lang, 'pendingAnalysis'), icd10: 'Z00.0', onset: '—', severity: 'mild' }],
     symptoms:         base.symptoms  || [],
     labs:             labsArr,
     imaging:          imagingArr,
@@ -162,7 +183,10 @@ function elapsedTime(iso, lang = 'vi') {
 // ─────────────────────────────────────────────────────────────────────────────
 // Main hook
 // ─────────────────────────────────────────────────────────────────────────────
-export function useMedicalData({ lang = 'vi', autoRefresh = true } = {}) {
+export function useMedicalData({ lang = 'vi', autoRefresh = true, ownerEmail: ownerEmailOverride = null, includeUnowned: includeUnownedOverride = null } = {}) {
+  const { user } = useAuth()
+  const ownerEmail = ownerEmailOverride ?? user?.email ?? null
+  const includeUnowned = includeUnownedOverride ?? !!user?.isAdmin
   const [records, setRecords]         = useState([])
   const [loading, setLoading]         = useState(true)
   const [lastUpdated, setLastUpdated] = useState(null)
@@ -170,7 +194,7 @@ export function useMedicalData({ lang = 'vi', autoRefresh = true } = {}) {
 
   const load = useCallback(async () => {
     try {
-      const recs = await getAllRecords()
+      const recs = await getAllRecords({ ownerEmail, includeUnowned })
       setRecords(recs)
       setLastUpdated(new Date())
     } catch (e) {
@@ -178,7 +202,7 @@ export function useMedicalData({ lang = 'vi', autoRefresh = true } = {}) {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [ownerEmail, includeUnowned])
 
   useEffect(() => {
     load()
@@ -187,7 +211,7 @@ export function useMedicalData({ lang = 'vi', autoRefresh = true } = {}) {
 
     // Listen for cross-tab upload notifications
     const onStorage = (e) => {
-      if (e.key === LS_NOTIFY || e.key === LS_META) load()
+      if (e.key === LS_NOTIFY || e.key === LS_META || e.key === getMetaKey(ownerEmail)) load()
     }
     window.addEventListener('storage', onStorage)
 
@@ -201,7 +225,8 @@ export function useMedicalData({ lang = 'vi', autoRefresh = true } = {}) {
   }, [load, autoRefresh])
 
   // Derived data
-  const patient        = recordsToPatient(records)
+  const patientOwner   = records[0]?.ownerEmail || (records[0] ? null : ownerEmail)
+  const patient        = recordsToPatient(records, {}, patientOwner, lang)
   const activities     = recordsToActivity(records, lang)
   const totalFiles     = records.length
   const aiAnalyzed     = records.filter(r => r.aiAnalysis).length
@@ -209,11 +234,11 @@ export function useMedicalData({ lang = 'vi', autoRefresh = true } = {}) {
   const totalSizeMB    = (records.reduce((s, r) => s + (r.size || 0), 0) / 1048576).toFixed(1)
 
   const remove = useCallback(async (id) => {
-    await deleteRecord(id)
+    await deleteRecord(id, { ownerEmail, includeUnowned })
     await load()
     // Notify other tabs
     localStorage.setItem(LS_NOTIFY, Date.now().toString())
-  }, [load])
+  }, [load, ownerEmail, includeUnowned])
 
   const refresh = load
 

@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { useApp } from '../../context/AppContext'
 import { useMedicalData } from '../../hooks/useMedicalData.js'
-import { fileTypeLabel, fileTypeIcon, formatBytes } from '../../lib/medicalStorage.js'
+import { fileTypeLabel, fileTypeIcon, formatBytes, getMetaKey } from '../../lib/medicalStorage.js'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function formatDate(iso, lang) {
@@ -138,7 +138,7 @@ function RecordRow({ record, onDelete, lang }) {
 
 // ─── Main AdminPanel ──────────────────────────────────────────────────────────
 export default function AdminPanel() {
-  const { getAllUsers } = useAuth()
+  const { user, getAllUsers } = useAuth()
   const { t, lang, theme } = useApp()
   const isDark = theme === 'dark'
 
@@ -178,8 +178,8 @@ export default function AdminPanel() {
 
   // Patient synthesized from upload records
   const patientFromUpload = records.length > 0 ? {
-    id:     readMetaId(),
-    name:   lang === 'vi' ? 'Bệnh Nhân Upload' : 'Upload Patient',
+    id:     readMetaId(records[0]?.ownerEmail || (records[0] ? null : user?.email)),
+    name:   t('uploadPatientName'),
     files:  totalFiles,
     aiDone: aiAnalyzed,
     last:   records[0]?.uploadedAt,
@@ -453,6 +453,6 @@ export default function AdminPanel() {
 }
 
 // helper
-function readMetaId() {
-  try { return JSON.parse(localStorage.getItem('ai-clinic-patient-meta') || '{}').patientId || 'P-unknown' } catch { return 'P-unknown' }
+function readMetaId(ownerEmail) {
+  try { return JSON.parse(localStorage.getItem(getMetaKey(ownerEmail)) || '{}').patientId || 'P-unknown' } catch { return 'P-unknown' }
 }
