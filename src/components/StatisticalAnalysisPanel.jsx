@@ -10,9 +10,157 @@ const LONG_CHAU_OUTPUT = 'https://drive.google.com/file/d/1KhVVe3SVnSVXP1bBfEm5e
 const FDA_OUTPUT = 'https://drive.google.com/file/d/1VgU7QboNHPcLAS6E9U2_vjeGt5pBB9ja/view?usp=drive_link'
 const CLINICAL_OUTPUT = 'https://drive.google.com/file/d/1EUWk9GJFpX8yOaLyBBDnTClZShx0r9__/view?usp=drive_link'
 
-function getDrivePreviewUrl(url) {
-  const match = url?.match(/\/file\/d\/([^/]+)/)
-  return match ? `https://drive.google.com/file/d/${match[1]}/preview` : url
+const HTML_COLOR_MAP = {
+  'var(--cyan)': '#00e5ff',
+  'var(--green)': '#00e676',
+  'var(--amber)': '#ffb74d',
+  'var(--red)': '#ff5252',
+  'var(--violet)': '#9c6fff',
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
+}
+
+function buildOutputHtml(dataset) {
+  const safeDataset = {
+    ...dataset,
+    filters: dataset.filters.map(filter => ({
+      ...filter,
+      color: HTML_COLOR_MAP[filter.color] || filter.color,
+    })),
+  }
+  const serializedDataset = JSON.stringify(safeDataset).replace(/</g, '\\u003c')
+
+  return `<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>${escapeHtml(dataset.outputLabel)}</title>
+  <style>
+    :root { color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: radial-gradient(circle at 12% 10%, rgba(0,229,255,.20), transparent 28%), radial-gradient(circle at 90% 10%, rgba(156,111,255,.18), transparent 30%), #070b18; color: #e8f0f8; }
+    .wrap { padding: 22px; max-width: 1100px; margin: 0 auto; }
+    .eyebrow { color: #00e5ff; font: 800 11px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .14em; text-transform: uppercase; }
+    h1 { margin: 8px 0 6px; font-size: clamp(22px, 3vw, 34px); line-height: 1.1; }
+    p { margin: 0; color: rgba(232,240,248,.68); font-size: 13px; line-height: 1.65; }
+    .grid { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 14px; margin-top: 18px; }
+    .card { border: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.045); border-radius: 18px; padding: 14px; box-shadow: 0 18px 50px rgba(0,0,0,.22); }
+    svg { width: 100%; min-height: 430px; display: block; background: rgba(0,0,0,.18); border-radius: 16px; }
+    .filters { display: flex; flex-direction: column; gap: 10px; }
+    button { text-align: left; cursor: pointer; color: #e8f0f8; border: 1px solid rgba(255,255,255,.12); border-radius: 14px; padding: 12px; background: rgba(255,255,255,.04); font: inherit; transition: transform .18s ease, border-color .18s ease, background .18s ease; }
+    button:hover { transform: translateY(-2px); }
+    button.active { background: color-mix(in srgb, var(--filter-color) 16%, transparent); border-color: var(--filter-color); }
+    .filter-title { display: flex; justify-content: space-between; gap: 10px; align-items: center; font-weight: 900; font-size: 13px; }
+    .filter-desc { color: rgba(232,240,248,.48); font-size: 10px; line-height: 1.45; margin-top: 6px; }
+    .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
+    .stat { border: 1px solid rgba(255,255,255,.10); border-radius: 12px; padding: 10px; background: rgba(255,255,255,.04); }
+    .stat b { display: block; color: #00e5ff; font: 900 20px/1 ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .stat span { color: rgba(232,240,248,.45); font-size: 9px; }
+    .outcome { margin-top: 12px; padding: 12px; border: 1px solid rgba(255,183,77,.24); border-radius: 14px; background: rgba(255,183,77,.08); color: rgba(232,240,248,.76); font-size: 12px; line-height: 1.55; }
+    @media (max-width: 820px) { .grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <div class="eyebrow">Rendered OUTPUT HTML · interactive</div>
+    <h1>${escapeHtml(dataset.title)}</h1>
+    <p>${escapeHtml(dataset.subtitle)}</p>
+    <section class="grid">
+      <div class="card"><svg id="chart" viewBox="0 0 760 460" role="img" aria-label="interactive output chart"></svg></div>
+      <aside class="card">
+        <div class="eyebrow" style="margin-bottom:10px">Filters</div>
+        <div id="filters" class="filters"></div>
+        <div class="stats">
+          <div class="stat"><b id="count">0</b><span>điểm</span></div>
+          <div class="stat"><b id="avgX">0</b><span>X trung bình</span></div>
+          <div class="stat"><b id="avgY">0</b><span>Y trung bình</span></div>
+        </div>
+        <div class="outcome">${escapeHtml(dataset.outcome)}</div>
+      </aside>
+    </section>
+  </main>
+  <script>
+    const dataset = ${serializedDataset};
+    let activeFilter = dataset.filters[0]?.id;
+    const svg = document.getElementById('chart');
+    const filterBox = document.getElementById('filters');
+    const width = 760, height = 460;
+    const pad = { left: 70, right: 28, top: 34, bottom: 64 };
+    const chartW = width - pad.left - pad.right;
+    const chartH = height - pad.top - pad.bottom;
+    const sx = value => pad.left + ((value - dataset.xMin) / (dataset.xMax - dataset.xMin)) * chartW;
+    const sy = value => pad.top + (1 - (value - dataset.yMin) / (dataset.yMax - dataset.yMin)) * chartH;
+    const el = (name, attrs = {}, text = '') => {
+      const node = document.createElementNS('http://www.w3.org/2000/svg', name);
+      Object.entries(attrs).forEach(([key, value]) => node.setAttribute(key, value));
+      if (text) node.textContent = text;
+      return node;
+    };
+    function renderFilters() {
+      filterBox.innerHTML = '';
+      dataset.filters.forEach(filter => {
+        const count = dataset.points.filter(point => point.category === filter.id).length;
+        const button = document.createElement('button');
+        button.className = filter.id === activeFilter ? 'active' : '';
+        button.style.setProperty('--filter-color', filter.color);
+        button.innerHTML = '<div class="filter-title"><span>' + filter.label + '</span><span style="color:' + filter.color + '">' + count + '</span></div><div class="filter-desc">' + filter.description + '</div>';
+        button.onclick = () => { activeFilter = filter.id; render(); };
+        filterBox.appendChild(button);
+      });
+    }
+    function renderStats(activePoints) {
+      const avg = (key) => activePoints.length ? (activePoints.reduce((sum, point) => sum + point[key], 0) / activePoints.length).toFixed(key === 'y' ? 2 : 1) : '0';
+      document.getElementById('count').textContent = activePoints.length;
+      document.getElementById('avgX').textContent = avg('x');
+      document.getElementById('avgY').textContent = avg('y');
+    }
+    function renderChart() {
+      svg.innerHTML = '';
+      svg.appendChild(el('rect', { x: 0, y: 0, width, height, rx: 18, fill: 'rgba(0,0,0,.14)' }));
+      dataset.yTicks.forEach(tick => {
+        svg.appendChild(el('line', { x1: pad.left, x2: width - pad.right, y1: sy(tick), y2: sy(tick), stroke: 'rgba(255,255,255,.12)', 'stroke-dasharray': '4 8' }));
+        svg.appendChild(el('text', { x: pad.left - 12, y: sy(tick) + 4, 'text-anchor': 'end', fill: 'rgba(232,240,248,.44)', 'font-size': 11, 'font-family': 'monospace' }, tick));
+      });
+      dataset.xTicks.forEach(tick => {
+        svg.appendChild(el('line', { x1: sx(tick), x2: sx(tick), y1: pad.top, y2: height - pad.bottom, stroke: 'rgba(255,255,255,.10)', 'stroke-dasharray': '2 10' }));
+        svg.appendChild(el('text', { x: sx(tick), y: height - 28, 'text-anchor': 'middle', fill: 'rgba(232,240,248,.44)', 'font-size': 11, 'font-family': 'monospace' }, tick));
+      });
+      if (dataset.highlight) {
+        svg.appendChild(el('rect', { x: sx(dataset.highlight.x1), y: pad.top, width: sx(dataset.highlight.x2) - sx(dataset.highlight.x1), height: chartH, fill: 'rgba(255,183,77,.07)', stroke: 'rgba(255,183,77,.22)', 'stroke-dasharray': '6 8' }));
+        svg.appendChild(el('text', { x: (sx(dataset.highlight.x1) + sx(dataset.highlight.x2)) / 2, y: pad.top + 18, 'text-anchor': 'middle', fill: '#ffb74d', 'font-size': 11, 'font-family': 'monospace' }, dataset.highlight.label));
+      }
+      svg.appendChild(el('line', { x1: pad.left, x2: width - pad.right, y1: height - pad.bottom, y2: height - pad.bottom, stroke: 'rgba(255,255,255,.2)' }));
+      svg.appendChild(el('line', { x1: pad.left, x2: pad.left, y1: pad.top, y2: height - pad.bottom, stroke: 'rgba(255,255,255,.2)' }));
+      svg.appendChild(el('text', { x: width / 2, y: height - 9, 'text-anchor': 'middle', fill: 'rgba(232,240,248,.70)', 'font-size': 12 }, dataset.xLabel));
+      const yLabel = el('text', { x: 18, y: height / 2, transform: 'rotate(-90 18 ' + (height / 2) + ')', 'text-anchor': 'middle', fill: 'rgba(232,240,248,.70)', 'font-size': 12 }, dataset.yLabel);
+      svg.appendChild(yLabel);
+      dataset.points.forEach(point => {
+        const filter = dataset.filters.find(item => item.id === point.category);
+        const active = point.category === activeFilter;
+        const circle = el('circle', { cx: sx(point.x), cy: sy(point.y), r: active ? 7 : 4.6, fill: filter.color, opacity: active ? .96 : .18, stroke: active ? '#fff' : 'transparent', 'stroke-width': active ? 1.5 : 0 });
+        circle.style.cursor = 'pointer';
+        circle.addEventListener('click', () => { activeFilter = point.category; render(); });
+        svg.appendChild(circle);
+      });
+    }
+    function render() {
+      const activePoints = dataset.points.filter(point => point.category === activeFilter);
+      renderFilters();
+      renderStats(activePoints);
+      renderChart();
+    }
+    render();
+  </script>
+</body>
+</html>`
 }
 
 function clamp(value, min, max) {
@@ -265,7 +413,7 @@ function LongChauDataTab({ dataset }) {
 }
 
 function OutputHtmlTab({ dataset }) {
-  const previewUrl = getDrivePreviewUrl(dataset.outputUrl)
+  const renderedHtml = buildOutputHtml(dataset)
 
   if (!dataset.outputUrl) {
     return (
@@ -279,12 +427,12 @@ function OutputHtmlTab({ dataset }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div style={{ color: 'var(--text)', fontSize: 14, fontWeight: 900 }}>{dataset.outputLabel}</div>
       <div style={{ color: 'var(--text3)', fontSize: 10, lineHeight: 1.5 }}>
-        Preview file HTML từ OUTPUT link để user nhìn trực tiếp kết quả chart đã render.
+Preview bên dưới render HTML thật từ dữ liệu OUTPUT tương ứng, không hiển thị source code.
       </div>
       <iframe
         title={`${dataset.label} output html preview`}
-        src={previewUrl}
-        style={{ width: '100%', minHeight: 360, border: '1px solid var(--border2)', borderRadius: 14, background: '#fff' }}
+        srcDoc={renderedHtml}
+        style={{ width: '100%', minHeight: 460, border: '1px solid var(--border2)', borderRadius: 14, background: '#fff' }}
         allow="autoplay"
       />
       <a href={dataset.outputUrl} target="_blank" rel="noreferrer" style={{ color: 'var(--violet)', fontSize: 11, fontFamily: 'var(--font-mono)', textDecoration: 'none' }}>
