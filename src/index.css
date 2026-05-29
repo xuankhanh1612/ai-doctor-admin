@@ -183,3 +183,19 @@ html, body, #root {
     grid-template-columns: 1fr;
   }
 }
+
+@media (max-width: 980px) {
+  .telemedicine-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 680px) {
+  .telemedicine-hero {
+    flex-direction: column;
+  }
+
+  .telemedicine-doctor-row {
+    grid-template-columns: 1fr !important;
+  }
+}
