@@ -10,6 +10,11 @@ const LONG_CHAU_OUTPUT = 'https://drive.google.com/file/d/1KhVVe3SVnSVXP1bBfEm5e
 const FDA_OUTPUT = 'https://drive.google.com/file/d/1VgU7QboNHPcLAS6E9U2_vjeGt5pBB9ja/view?usp=drive_link'
 const CLINICAL_OUTPUT = 'https://drive.google.com/file/d/1EUWk9GJFpX8yOaLyBBDnTClZShx0r9__/view?usp=drive_link'
 
+function getDrivePreviewUrl(url) {
+  const match = url?.match(/\/file\/d\/([^/]+)/)
+  return match ? `https://drive.google.com/file/d/${match[1]}/preview` : url
+}
+
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value))
 }
@@ -165,7 +170,7 @@ function SourceMetric({ fact }) {
 
 function DatasetPicker({ datasets, selectedId, draftLink, onSelect, onDraftChange, onAddLink }) {
   return (
-    <Card style={{ padding: 14 }}>
+    <>
       <div style={{ color: 'var(--text)', fontSize: 15, fontWeight: 900 }}>INPUT list</div>
       <div style={{ color: 'var(--text3)', fontSize: 10, marginTop: 4 }}>Chọn link để load OUTPUT / OUTCOME tương ứng, hoặc dán thêm link mới.</div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
@@ -193,7 +198,118 @@ function DatasetPicker({ datasets, selectedId, draftLink, onSelect, onDraftChang
       <button type="button" onClick={onAddLink} style={{ marginTop: 9, width: '100%', border: '1px solid rgba(0,229,255,0.3)', background: 'rgba(0,229,255,0.08)', color: 'var(--cyan)', borderRadius: 12, padding: '10px 12px', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 900 }}>
         + Add INPUT links
       </button>
+    </>
+  )
+}
+
+function SourceOutputTabs({ children, activeTab, onTabChange }) {
+  const tabs = [
+    { id: 'input', label: 'INPUT list' },
+    { id: 'longChauData', label: 'Long Châu data' },
+    { id: 'outputHtml', label: 'OUTPUT HTML' },
+  ]
+
+  return (
+    <Card style={{ padding: 14 }}>
+      <div style={{ display: 'flex', gap: 7, marginBottom: 12, overflowX: 'auto' }}>
+        {tabs.map(tab => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => onTabChange(tab.id)}
+            style={{
+              flex: '0 0 auto', borderRadius: 999, padding: '8px 10px', cursor: 'pointer',
+              border: `1px solid ${activeTab === tab.id ? 'var(--cyan)' : 'var(--border)'}`,
+              background: activeTab === tab.id ? 'rgba(0,229,255,0.1)' : 'var(--surface2)',
+              color: activeTab === tab.id ? 'var(--cyan)' : 'var(--text2)',
+              fontSize: 10, fontFamily: 'var(--font-mono)', fontWeight: 900,
+            }}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+      {children}
     </Card>
+  )
+}
+
+function LongChauDataTab({ dataset }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div>
+        <div style={{ color: 'var(--text)', fontSize: 15, fontWeight: 900 }}>{dataset.title}</div>
+        <p style={{ color: 'var(--text2)', fontSize: 11, marginTop: 6, lineHeight: 1.55 }}>{dataset.subtitle}</p>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
+        {dataset.facts.map(fact => (
+          <div key={fact.label} style={{ padding: 10, borderRadius: 12, border: '1px solid var(--border)', background: 'var(--surface2)' }}>
+            <div style={{ color: 'var(--cyan)', fontFamily: 'var(--font-mono)', fontSize: 16, fontWeight: 900 }}>{fact.value}</div>
+            <div style={{ color: 'var(--text3)', fontSize: 9, lineHeight: 1.4 }}>{fact.label}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {dataset.filters.map(filter => (
+          <div key={filter.id} style={{ padding: 10, borderRadius: 12, border: `1px solid ${filter.color}`, background: `${filter.color}12` }}>
+            <div style={{ color: filter.color, fontSize: 11, fontWeight: 900 }}>{filter.label}</div>
+            <div style={{ color: 'var(--text3)', fontSize: 9, marginTop: 4, lineHeight: 1.45 }}>{filter.description}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{ color: 'var(--text3)', fontSize: 10, lineHeight: 1.5 }}>
+        Dataset mẫu: {dataset.points.length} điểm · X: {dataset.xLabel} · Y: {dataset.yLabel}
+      </div>
+    </div>
+  )
+}
+
+function OutputHtmlTab({ dataset }) {
+  const previewUrl = getDrivePreviewUrl(dataset.outputUrl)
+
+  if (!dataset.outputUrl) {
+    return (
+      <div style={{ border: '1px dashed var(--border2)', borderRadius: 14, padding: 18, color: 'var(--text3)', fontSize: 12, lineHeight: 1.6 }}>
+        Custom INPUT này chưa có OUTPUT HTML tương ứng. Khi có link Drive/file HTML, hệ thống có thể embed tại đây.
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ color: 'var(--text)', fontSize: 14, fontWeight: 900 }}>{dataset.outputLabel}</div>
+      <div style={{ color: 'var(--text3)', fontSize: 10, lineHeight: 1.5 }}>
+        Preview file HTML từ OUTPUT link để user nhìn trực tiếp kết quả chart đã render.
+      </div>
+      <iframe
+        title={`${dataset.label} output html preview`}
+        src={previewUrl}
+        style={{ width: '100%', minHeight: 360, border: '1px solid var(--border2)', borderRadius: 14, background: '#fff' }}
+        allow="autoplay"
+      />
+      <a href={dataset.outputUrl} target="_blank" rel="noreferrer" style={{ color: 'var(--violet)', fontSize: 11, fontFamily: 'var(--font-mono)', textDecoration: 'none' }}>
+        Open OUTPUT in new tab ↗
+      </a>
+    </div>
+  )
+}
+
+function InputWorkspaceTabs({ datasets, selectedId, draftLink, onSelect, onDraftChange, onAddLink, activeTab, onTabChange, longChauDataset, selectedDataset }) {
+  return (
+    <SourceOutputTabs activeTab={activeTab} onTabChange={onTabChange}>
+      {activeTab === 'input' && (
+        <DatasetPicker
+          datasets={datasets}
+          selectedId={selectedId}
+          draftLink={draftLink}
+          onSelect={onSelect}
+          onDraftChange={onDraftChange}
+          onAddLink={onAddLink}
+        />
+      )}
+      {activeTab === 'longChauData' && <LongChauDataTab dataset={longChauDataset} />}
+      {activeTab === 'outputHtml' && <OutputHtmlTab dataset={selectedDataset} />}
+    </SourceOutputTabs>
   )
 }
 
@@ -322,11 +438,13 @@ export default function StatisticalAnalysisPanel({ onNext, onPrev, prevLabel }) 
   const [activeFilters, setActiveFilters] = useState(() => Object.fromEntries(DATASETS.map(dataset => [dataset.id, dataset.filters[0].id])))
   const [draftLink, setDraftLink] = useState('')
   const [customLinks, setCustomLinks] = useState([])
+  const [activeSideTab, setActiveSideTab] = useState('input')
 
   const allDatasets = useMemo(() => [
     ...DATASETS,
     ...customLinks.map((link, index) => createCustomDataset(link, index)),
   ], [customLinks])
+  const longChauDataset = DATASETS[0]
   const selectedDataset = allDatasets.find(dataset => dataset.id === selectedDatasetId) || DATASETS[0]
   const activeFilter = activeFilters[selectedDataset.id] || selectedDataset.filters[0].id
 
@@ -369,13 +487,17 @@ export default function StatisticalAnalysisPanel({ onNext, onPrev, prevLabel }) 
       </Card>
 
       <div className="stat-analysis-workspace" style={{ display: 'grid', gridTemplateColumns: '330px minmax(0, 1fr)', gap: 16 }}>
-        <DatasetPicker
+        <InputWorkspaceTabs
           datasets={allDatasets}
           selectedId={selectedDataset.id}
           draftLink={draftLink}
           onSelect={setSelectedDatasetId}
           onDraftChange={setDraftLink}
           onAddLink={handleAddLink}
+          activeTab={activeSideTab}
+          onTabChange={setActiveSideTab}
+          longChauDataset={longChauDataset}
+          selectedDataset={selectedDataset}
         />
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
