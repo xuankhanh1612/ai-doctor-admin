@@ -40,21 +40,22 @@ const Card = ({ title, children }) => (
 
 const QUICK_PROMPTS = {
   vi: [
-    'Tôi mất ngủ nhiều ngày, hay lo lắng và tim đập nhanh.',
-    'Tôi buồn bã, mất động lực, không muốn giao tiếp.',
-    'Tôi hoảng sợ bất chợt, khó thở và sợ có chuyện xấu xảy ra.',
+    'Tôi sốt, ho, đau họng và mệt mỏi trong 3 ngày.',
+    'Tôi đau bụng, buồn nôn và ăn uống kém từ hôm qua.',
+    'Tôi mất ngủ, lo lắng và tim đập nhanh nhiều ngày.',
   ],
   en: [
-    'I have insomnia, anxiety, and a racing heart.',
-    'I feel sad, unmotivated, and socially withdrawn.',
-    'I have sudden panic, shortness of breath, and fear something bad will happen.',
+    'I have fever, cough, sore throat, and fatigue for 3 days.',
+    'I have stomach pain, nausea, and poor appetite since yesterday.',
+    'I have insomnia, anxiety, and a racing heart for several days.',
   ],
 }
 
-const PSYCH_CHAT_STORAGE_KEY = 'cdoc_psych_chat_history'
+const GP_CHAT_STORAGE_KEY = 'cdoc_gp_chat_history'
+const LEGACY_PSYCH_CHAT_STORAGE_KEY = 'cdoc_psych_chat_history'
 
 const createChatMessage = (role, text) => ({
-  id: `psych_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+  id: `gp_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
   role,
   text,
   createdAt: new Date().toISOString(),
@@ -63,15 +64,15 @@ const createChatMessage = (role, text) => ({
 const createInitialAgentMessage = (lang) => createChatMessage(
   'agent',
   lang === 'en'
-    ? 'Hello, I am your virtual psychiatry check-in agent. Tell me what you are feeling, when it started, and how it affects your sleep, appetite, mood, thoughts, or relationships.'
-    : 'Xin chào, tôi là AI Agent bác sĩ ảo chuyên khoa tâm thần. Bạn hãy mô tả triệu chứng đang gặp, bắt đầu từ khi nào, và ảnh hưởng tới giấc ngủ, ăn uống, cảm xúc, suy nghĩ hoặc các mối quan hệ ra sao.'
+    ? 'Hello, I am your virtual General Practitioner AI. Tell me your symptoms, when they started, severity, temperature/vitals if available, current medicines, allergies, and what makes symptoms better or worse.'
+    : 'Xin chào, tôi là AI Bác sĩ đa khoa ảo. Bạn hãy mô tả triệu chứng, bắt đầu từ khi nào, mức độ nặng, nhiệt độ/chỉ số nếu có, thuốc đang dùng, dị ứng và yếu tố làm triệu chứng tăng hoặc giảm.'
 )
 
 function loadStoredChatMessages(lang) {
   if (typeof window === 'undefined') return [createInitialAgentMessage(lang)]
 
   try {
-    const raw = localStorage.getItem(PSYCH_CHAT_STORAGE_KEY)
+    const raw = localStorage.getItem(GP_CHAT_STORAGE_KEY) || localStorage.getItem(LEGACY_PSYCH_CHAT_STORAGE_KEY)
     if (!raw) return [createInitialAgentMessage(lang)]
 
     const parsed = JSON.parse(raw)
@@ -80,7 +81,7 @@ function loadStoredChatMessages(lang) {
     return parsed
       .filter(message => message?.role && message?.text)
       .map((message, index) => ({
-        id: message.id || `psych_saved_${index}_${Date.now()}`,
+        id: message.id || `gp_saved_${index}_${Date.now()}`,
         role: message.role,
         text: message.text,
         createdAt: message.createdAt || new Date().toISOString(),
@@ -90,34 +91,43 @@ function loadStoredChatMessages(lang) {
   }
 }
 
-function buildPsychiatryAgentReply(prompt, lang) {
+function buildGeneralPractitionerReply(prompt, lang) {
   const text = prompt.toLowerCase()
+  const emergencyKeywords = [
+    'đau ngực', 'khó thở nặng', 'liệt', 'méo miệng', 'co giật', 'ngất', 'chảy máu', 'sốc phản vệ',
+    'chest pain', 'severe shortness of breath', 'stroke', 'seizure', 'fainting', 'uncontrolled bleeding', 'anaphylaxis',
+  ]
   const crisisKeywords = ['tự tử', 'tự sát', 'muốn chết', 'hại bản thân', 'suicide', 'kill myself', 'self harm', 'self-harm']
-  const anxietyKeywords = ['lo lắng', 'bồn chồn', 'hoảng', 'panic', 'anxiety', 'sợ', 'tim đập']
-  const sleepKeywords = ['mất ngủ', 'khó ngủ', 'insomnia', 'sleep']
-  const lowMoodKeywords = ['buồn', 'trầm', 'mất động lực', 'depress', 'sad', 'hopeless']
+  const feverKeywords = ['sốt', 'fever', 'ớn lạnh', 'chills']
+  const respiratoryKeywords = ['ho', 'khó thở', 'đau họng', 'sổ mũi', 'cough', 'shortness of breath', 'sore throat', 'runny nose']
+  const painKeywords = ['đau', 'nhức', 'pain', 'ache', 'headache', 'đau đầu']
+  const digestionKeywords = ['đau bụng', 'buồn nôn', 'nôn', 'tiêu chảy', 'táo bón', 'stomach', 'nausea', 'vomit', 'diarrhea', 'constipation']
+  const sleepMoodKeywords = ['mất ngủ', 'lo lắng', 'buồn', 'stress', 'insomnia', 'anxiety', 'sad', 'depress', 'panic']
 
+  const hasEmergency = emergencyKeywords.some(k => text.includes(k))
   const hasCrisis = crisisKeywords.some(k => text.includes(k))
   const topics = []
-  if (anxietyKeywords.some(k => text.includes(k))) topics.push(lang === 'en' ? 'anxiety/panic symptoms' : 'triệu chứng lo âu/hoảng sợ')
-  if (sleepKeywords.some(k => text.includes(k))) topics.push(lang === 'en' ? 'sleep disturbance' : 'rối loạn giấc ngủ')
-  if (lowMoodKeywords.some(k => text.includes(k))) topics.push(lang === 'en' ? 'low mood/depressive symptoms' : 'khí sắc buồn/triệu chứng trầm cảm')
+  if (feverKeywords.some(k => text.includes(k))) topics.push(lang === 'en' ? 'fever/infection symptoms' : 'sốt/dấu hiệu nhiễm trùng')
+  if (respiratoryKeywords.some(k => text.includes(k))) topics.push(lang === 'en' ? 'respiratory symptoms' : 'triệu chứng hô hấp')
+  if (painKeywords.some(k => text.includes(k))) topics.push(lang === 'en' ? 'pain symptoms' : 'triệu chứng đau')
+  if (digestionKeywords.some(k => text.includes(k))) topics.push(lang === 'en' ? 'digestive symptoms' : 'triệu chứng tiêu hóa')
+  if (sleepMoodKeywords.some(k => text.includes(k))) topics.push(lang === 'en' ? 'sleep/mood/stress symptoms' : 'giấc ngủ/tâm trạng/stress')
 
   if (lang === 'en') {
-    if (hasCrisis) {
-      return 'I am concerned about possible self-harm risk. Please contact local emergency services now or call/text 988 in the U.S. if you may hurt yourself. If possible, stay with someone you trust. After immediate safety is secured, a psychiatrist can help assess mood, anxiety, sleep, and treatment options.'
+    if (hasEmergency || hasCrisis) {
+      return 'Some symptoms you mentioned may need urgent support. Please contact emergency services now or seek urgent care if symptoms are severe, worsening, or involve chest pain, severe breathing difficulty, stroke signs, seizure, severe allergic reaction, uncontrolled bleeding, confusion, or self-harm risk.'
     }
 
-    const focus = topics.length ? topics.join(', ') : 'your current emotional and physical symptoms'
-    return `I hear you describing ${focus}. As a virtual psychiatry check-in agent, I recommend tracking: onset, duration, sleep/appetite changes, panic triggers, medication/substance use, and whether symptoms affect work or relationships. For now, try slow breathing for 3 minutes, reduce caffeine/alcohol, and write down the strongest trigger. If symptoms persist, worsen, or impair daily life, please book an evaluation with a licensed psychiatrist or mental health clinician.`
+    const focus = topics.length ? topics.join(', ') : 'your current symptoms'
+    return `I hear you describing ${focus}. As a virtual General Practitioner check-in agent, I recommend documenting: onset, duration, severity (0–10), temperature/vitals if available, medications taken, allergies, medical history, exposures, and what improves or worsens symptoms. Hydrate, rest, and avoid self-medicating with antibiotics or strong pain medicines unless prescribed. Please book a clinician visit if symptoms persist, worsen, recur, or affect daily activities.`
   }
 
-  if (hasCrisis) {
-    return 'Tôi lo ngại có dấu hiệu nguy cơ tự làm hại bản thân. Bạn hãy gọi cấp cứu tại địa phương ngay hoặc nhờ một người tin cậy ở cạnh bạn. Nếu bạn đang ở Hoa Kỳ, hãy gọi/nhắn 988. Sau khi đảm bảo an toàn tức thì, bác sĩ tâm thần có thể đánh giá khí sắc, lo âu, giấc ngủ và hướng điều trị phù hợp.'
+  if (hasEmergency || hasCrisis) {
+    return 'Một số triệu chứng bạn nêu có thể cần hỗ trợ khẩn cấp. Hãy gọi cấp cứu hoặc đi khám khẩn nếu triệu chứng nặng lên, đau ngực, khó thở nhiều, dấu hiệu đột quỵ, co giật, dị ứng nặng, chảy máu không cầm, lú lẫn hoặc có nguy cơ tự hại.'
   }
 
-  const focus = topics.length ? topics.join(', ') : 'các triệu chứng cảm xúc và cơ thể hiện tại'
-  return `Tôi ghi nhận bạn đang mô tả ${focus}. Với vai trò AI Agent check-in chuyên khoa tâm thần, tôi gợi ý bạn khai báo thêm: triệu chứng bắt đầu khi nào, kéo dài bao lâu, giấc ngủ/ăn uống thay đổi ra sao, yếu tố kích hoạt, thuốc/chất kích thích đang dùng, và mức ảnh hưởng tới công việc/gia đình. Trước mắt, hãy thử thở chậm 3 phút, giảm caffeine/rượu, và ghi lại tình huống làm triệu chứng nặng nhất. Nếu triệu chứng kéo dài, nặng lên hoặc ảnh hưởng sinh hoạt, bạn nên đặt lịch với bác sĩ tâm thần/chuyên viên sức khỏe tâm thần.`
+  const focus = topics.length ? topics.join(', ') : 'các triệu chứng hiện tại'
+  return `Tôi ghi nhận bạn đang mô tả ${focus}. Với vai trò AI Bác sĩ đa khoa check-in, tôi gợi ý bạn khai báo thêm: triệu chứng bắt đầu khi nào, kéo dài bao lâu, mức độ 0–10, nhiệt độ/chỉ số nếu có, thuốc đã dùng, dị ứng, bệnh nền, yếu tố tiếp xúc và điều gì làm triệu chứng tăng/giảm. Trước mắt hãy nghỉ ngơi, uống đủ nước, không tự dùng kháng sinh hoặc thuốc giảm đau mạnh nếu chưa được kê đơn. Nếu triệu chứng kéo dài, nặng lên, tái phát hoặc ảnh hưởng sinh hoạt, bạn nên đặt lịch khám bác sĩ.`
 }
 
 export default function CheckinPanel({ onNext, onPrev, prevLabel }) {
@@ -130,7 +140,7 @@ export default function CheckinPanel({ onNext, onPrev, prevLabel }) {
     if (typeof window === 'undefined') return
 
     try {
-      localStorage.setItem(PSYCH_CHAT_STORAGE_KEY, JSON.stringify(chatMessages))
+      localStorage.setItem(GP_CHAT_STORAGE_KEY, JSON.stringify(chatMessages))
     } catch {
       // Ignore storage failures so the clinical check-in UI remains usable.
     }
@@ -143,7 +153,7 @@ export default function CheckinPanel({ onNext, onPrev, prevLabel }) {
     setChatMessages(prev => [
       ...prev,
       createChatMessage('user', prompt),
-      createChatMessage('agent', buildPsychiatryAgentReply(prompt, lang)),
+      createChatMessage('agent', buildGeneralPractitionerReply(prompt, lang)),
     ])
     setSymptomPrompt('')
   }
@@ -183,21 +193,21 @@ export default function CheckinPanel({ onNext, onPrev, prevLabel }) {
         <Tag color="violet">{t('seedCollection')}</Tag>
       </div>
 
-      <Card title={lang === 'en' ? 'Virtual Psychiatry AI Agent' : 'AI Agent bác sĩ tâm thần ảo'}>
-        <div className="psych-agent-grid">
+      <Card title={lang === 'en' ? 'Virtual General Practitioner AI Agent' : 'AI Bác sĩ đa khoa ảo'}>
+        <div className="gp-agent-grid">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
               <div>
                 <div style={{ color: '#fff', fontSize: 15, fontWeight: 800 }}>
-                  {lang === 'en' ? 'Psychiatry symptom prompt' : 'Nhập prompt khai báo triệu chứng'}
+                  {lang === 'en' ? 'General symptom prompt' : 'Nhập prompt khai báo triệu chứng'}
                 </div>
                 <p style={{ color: 'var(--text2)', fontSize: 12, marginTop: 4, lineHeight: 1.6 }}>
                   {lang === 'en'
-                    ? 'Chat with a virtual psychiatry specialist to describe mood, sleep, anxiety, stress, behavior, or thought symptoms.'
-                    : 'Chat với bác sĩ ảo chuyên khoa tâm thần để mô tả khí sắc, giấc ngủ, lo âu, stress, hành vi hoặc suy nghĩ bất thường.'}
+                    ? 'Chat with a virtual General Practitioner to describe any symptom: fever, pain, cough, digestion, sleep, mood, medications, allergies, or medical history.'
+                    : 'Chat với AI Bác sĩ đa khoa để mô tả mọi triệu chứng: sốt, đau, ho, tiêu hóa, giấc ngủ, tâm trạng, thuốc, dị ứng hoặc tiền sử bệnh.'}
                 </p>
               </div>
-              <Tag color="green">PSYCHIATRY AI</Tag>
+              <Tag color="green">GENERAL PRACTITIONER AI</Tag>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -297,7 +307,7 @@ export default function CheckinPanel({ onNext, onPrev, prevLabel }) {
                     >
                       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center', marginBottom: 4 }}>
                         <div style={{ fontSize: 9, fontFamily: 'var(--font-mono)', color: isUser ? 'var(--cyan)' : 'var(--violet)' }}>
-                          {isUser ? (lang === 'en' ? 'YOU' : 'BẠN') : 'AI PSYCHIATRIST'}
+                          {isUser ? (lang === 'en' ? 'YOU' : 'BẠN') : 'AI GENERAL PRACTITIONER'}
                         </div>
                         <button
                           type="button"
@@ -331,8 +341,8 @@ export default function CheckinPanel({ onNext, onPrev, prevLabel }) {
                   if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') submitSymptomPrompt()
                 }}
                 placeholder={lang === 'en'
-                  ? 'Example: I feel anxious, cannot sleep, have panic attacks, and feel exhausted for 2 weeks...'
-                  : 'Ví dụ: Tôi lo lắng, mất ngủ, hay hoảng sợ, mệt mỏi kéo dài 2 tuần...'}
+                  ? 'Example: I have fever, cough, headache, stomach pain, insomnia, or anxiety. It started 3 days ago...'
+                  : 'Ví dụ: Tôi bị sốt, ho, đau đầu, đau bụng, mất ngủ hoặc lo lắng. Triệu chứng bắt đầu 3 ngày trước...'}
                 rows={4}
                 style={{
                   width: '100%',
@@ -370,7 +380,7 @@ export default function CheckinPanel({ onNext, onPrev, prevLabel }) {
                     fontWeight: 700,
                   }}
                 >
-                  {lang === 'en' ? 'Send to AI Doctor →' : 'Gửi cho bác sĩ AI →'}
+                  {lang === 'en' ? 'Send to GP AI Doctor →' : 'Gửi cho AI Bác sĩ đa khoa →'}
                 </button>
               </div>
             </div>
@@ -383,8 +393,8 @@ export default function CheckinPanel({ onNext, onPrev, prevLabel }) {
               </div>
               <p style={{ color: 'var(--text2)', fontSize: 11, lineHeight: 1.65 }}>
                 {lang === 'en'
-                  ? 'This check-in supports symptom collection and is not a diagnosis. If you may harm yourself or someone else, contact emergency services immediately.'
-                  : 'Phần check-in này hỗ trợ thu thập triệu chứng, không phải chẩn đoán. Nếu bạn có nguy cơ tự hại hoặc hại người khác, hãy liên hệ cấp cứu ngay.'}
+                  ? 'This check-in supports symptom collection and is not a diagnosis. Seek urgent care for chest pain, severe shortness of breath, stroke signs, severe allergic reaction, uncontrolled bleeding, confusion, or self-harm risk.'
+                  : 'Phần check-in này hỗ trợ thu thập triệu chứng, không phải chẩn đoán. Hãy đi cấp cứu nếu đau ngực, khó thở nặng, dấu hiệu đột quỵ, dị ứng nặng, chảy máu không cầm, lú lẫn hoặc nguy cơ tự hại.'}
               </p>
             </div>
 

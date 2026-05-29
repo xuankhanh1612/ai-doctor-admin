@@ -172,14 +172,14 @@ html, body, #root {
   }
 }
 
-.psych-agent-grid {
+.gp-agent-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 320px;
   gap: 14px;
 }
 
 @media (max-width: 860px) {
-  .psych-agent-grid {
+  .gp-agent-grid {
     grid-template-columns: 1fr;
   }
 }
