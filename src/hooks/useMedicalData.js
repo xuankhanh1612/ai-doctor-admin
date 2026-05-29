@@ -16,7 +16,28 @@ function readMeta(ownerEmail) {
 }
 
 // ── Tạo bệnh nhân từ hồ sơ upload ──────────────────────────────────────────
-export function recordsToPatient(records, base = {}, ownerEmail = null) {
+function translateMedicalData(lang, key, vars = {}) {
+  const dict = {
+    vi: {
+      uploadedTimelineEvent: 'Upload {type}: {label}',
+      uploadedSummary: 'Tổng cộng {count} hồ sơ được tải lên',
+      uploadPatientName: 'Bệnh nhân Upload',
+      pendingAnalysis: 'Đang chờ phân tích',
+      aiDetailFallback: 'Xem chi tiết phân tích AI',
+    },
+    en: {
+      uploadedTimelineEvent: 'Uploaded {type}: {label}',
+      uploadedSummary: '{count} records uploaded in total',
+      uploadPatientName: 'Upload Patient',
+      pendingAnalysis: 'Pending analysis',
+      aiDetailFallback: 'View detailed AI analysis',
+    },
+  }
+  const template = dict[lang]?.[key] || dict.vi[key] || key
+  return Object.entries(vars).reduce((text, [name, value]) => text.replace(`{${name}}`, value), template)
+}
+
+export function recordsToPatient(records, base = {}, ownerEmail = null, lang = 'vi') {
   if (!records.length) return null
 
   // Gộp tất cả AI analysis thành diseases / imaging / timeline
@@ -34,7 +55,7 @@ export function recordsToPatient(records, base = {}, ownerEmail = null) {
     timeline.push({
       id:   `tl_${r.id}`,
       date,
-      event: `Upload ${r.fileType?.toUpperCase() || 'FILE'}: ${label}`,
+      event: translateMedicalData(lang, 'uploadedTimelineEvent', { type: r.fileType?.toUpperCase() || 'FILE', label }),
       type:  r.fileType === 'pdf' ? 'lab' : 'imaging',
     })
 
@@ -47,7 +68,7 @@ export function recordsToPatient(records, base = {}, ownerEmail = null) {
         modality:      fileTypeToModality(r.fileType),
         ai_confidence: Math.round((ai.confidence || 0.85) * 100),
         findings:      ai.summary.slice(0, 300),
-        impression:    ai.recommendation || ai.findings?.[0] || 'Xem chi tiết phân tích AI',
+        impression:    ai.recommendation || ai.findings?.[0] || translateMedicalData(lang, 'aiDetailFallback'),
         dataUrl:       r.dataUrl,
         raw:           r,
       })
@@ -88,20 +109,20 @@ export function recordsToPatient(records, base = {}, ownerEmail = null) {
   timeline.push({
     id:    'tl_first',
     date:  records[records.length - 1]?.uploadedAt?.slice(0, 10) || '—',
-    event: `Tổng cộng ${records.length} hồ sơ được tải lên`,
+    event: translateMedicalData(lang, 'uploadedSummary', { count: records.length }),
     type:  'consult',
   })
 
   const meta = readMeta(ownerEmail)
   return {
     id:               meta.patientId || `P-${Date.now()}`,
-    name:             base.name      || 'Bệnh nhân Upload',
+    name:             base.name      || translateMedicalData(lang, 'uploadPatientName'),
     age:              base.age       || '—',
     gender:           base.gender    || '—',
     dob:              base.dob       || '—',
     blood_type:       base.blood_type|| '—',
     avatar_initials:  base.name ? base.name.slice(0, 2).toUpperCase() : 'UP',
-    diseases:         diseases.length ? diseases : [{ id: 'd0', name: 'Đang chờ phân tích', icd10: 'Z00.0', onset: '—', severity: 'mild' }],
+    diseases:         diseases.length ? diseases : [{ id: 'd0', name: translateMedicalData(lang, 'pendingAnalysis'), icd10: 'Z00.0', onset: '—', severity: 'mild' }],
     symptoms:         base.symptoms  || [],
     labs:             labsArr,
     imaging:          imagingArr,
@@ -205,7 +226,7 @@ export function useMedicalData({ lang = 'vi', autoRefresh = true, ownerEmail: ow
 
   // Derived data
   const patientOwner   = records[0]?.ownerEmail || (records[0] ? null : ownerEmail)
-  const patient        = recordsToPatient(records, {}, patientOwner)
+  const patient        = recordsToPatient(records, {}, patientOwner, lang)
   const activities     = recordsToActivity(records, lang)
   const totalFiles     = records.length
   const aiAnalyzed     = records.filter(r => r.aiAnalysis).length

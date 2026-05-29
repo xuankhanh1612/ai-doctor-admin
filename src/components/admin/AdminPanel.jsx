@@ -179,7 +179,7 @@ export default function AdminPanel() {
   // Patient synthesized from upload records
   const patientFromUpload = records.length > 0 ? {
     id:     readMetaId(records[0]?.ownerEmail || (records[0] ? null : user?.email)),
-    name:   lang === 'vi' ? 'Bệnh Nhân Upload' : 'Upload Patient',
+    name:   t('uploadPatientName'),
     files:  totalFiles,
     aiDone: aiAnalyzed,
     last:   records[0]?.uploadedAt,

@@ -1,8 +1,30 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useApp } from '../context/AppContext'
 import { useAuth } from '../context/AuthContext'
 import NavButtons from './NavButtons.jsx'
-import { useMedicalData, recordsToPatient } from '../hooks/useMedicalData.js'
+import { useMedicalData } from '../hooks/useMedicalData.js'
+
+
+function createEmptyPatient(t) {
+  return {
+    id: 'NO-UPLOADS',
+    name: t('noUploadPatientName'),
+    age: '—',
+    gender: '—',
+    dob: '—',
+    blood_type: '—',
+    avatar_initials: 'UP',
+    diseases: [{ id: 'empty', name: t('noUploadPatientDisease'), icd10: 'Z00.0', onset: '—', severity: 'mild' }],
+    symptoms: [],
+    labs: [],
+    imaging: [],
+    medications: [],
+    allergies: [],
+    genomics: [],
+    risk_factors: [],
+    timeline: [],
+  }
+}
 
 
 const EMPTY_PATIENT = {
@@ -535,7 +557,8 @@ export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selected
   const { records, patient: uploadPatient, loading: uploadLoading } = useMedicalData({ lang })
 
   // Merge: selectedMember (gia phả) > user upload records > admin-only demo data.
-  const fallbackPatient = user?.isAdmin ? DEMO_PATIENT : EMPTY_PATIENT
+  const emptyPatient = useMemo(() => createEmptyPatient(t), [t, lang])
+  const fallbackPatient = useMemo(() => user?.isAdmin ? DEMO_PATIENT : emptyPatient, [user?.isAdmin, emptyPatient])
   const basePatient = selectedMember
     ? selectedMember
     : (uploadPatient || fallbackPatient)
@@ -663,10 +686,10 @@ export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selected
           <span style={{ fontSize: 16 }}>🌳</span>
           <div style={{ flex: 1 }}>
             <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--cyan)' }}>
-              Từ Gia phả
+              {t('fromFamily')}
             </span>
             <span style={{ fontSize: 12, color: text2, marginLeft: 8 }}>
-              Đang xem hồ sơ thành viên gia đình: <b>{patient.name}</b>
+              {t('viewingMember')}: <b>{patient.name}</b>
             </span>
           </div>
           <button
@@ -676,7 +699,7 @@ export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selected
               background: 'transparent', color: 'var(--cyan)', fontSize: 11,
               fontFamily: 'var(--font-mono)', cursor: 'pointer',
             }}
-          >{user?.isAdmin ? '← Quay lại Demo' : '← Hồ sơ của tôi'}</button>
+          >{user?.isAdmin ? t('backToDemoRecord') : t('backToMyRecords')}</button>
         </div>
       )}
 
@@ -690,10 +713,12 @@ export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selected
           <span style={{ fontSize: 16 }}>📁</span>
           <div style={{ flex: 1 }}>
             <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--green)' }}>
-              Dữ liệu từ Hồ Sơ Upload
+              {t('uploadDataBanner')}
             </span>
             <span style={{ fontSize: 12, color: text2, marginLeft: 8 }}>
-              {patient._records?.length || 0} file · {patient.imaging?.length || 0} ảnh có AI phân tích
+              {t('uploadDataStats')
+                .replace('{files}', patient._records?.length || 0)
+                .replace('{images}', patient.imaging?.length || 0)}
             </span>
           </div>
           <button
@@ -703,7 +728,7 @@ export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selected
               background: 'transparent', color: 'var(--green)', fontSize: 11,
               fontFamily: 'var(--font-mono)', cursor: 'pointer',
             }}
-          >{user?.isAdmin ? '← Demo Patient' : '← Hồ sơ của tôi'}</button>
+          >{user?.isAdmin ? t('backToDemo') : t('backToMyRecords')}</button>
         </div>
       )}
 
