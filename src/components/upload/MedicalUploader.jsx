@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { useApp } from '../../context/AppContext'
+import { useAuth } from '../../context/AuthContext'
 import {
   getAllRecords,
   saveRecord,
@@ -117,6 +118,8 @@ function MetaRow({ k, v, vColor }) {
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function MedicalUploader({ patientId, onSelectImage }) {
   const { lang } = useApp()
+  const { user } = useAuth()
+  const recordScope = { ownerEmail: user?.email, includeUnowned: !!user?.isAdmin }
 
   const [view, setView]                   = useState('upload')  // 'upload' | 'library' | 'detail'
   const [records, setRecords]             = useState([])
@@ -136,10 +139,10 @@ export default function MedicalUploader({ patientId, onSelectImage }) {
     loadRecords()
     const saved = localStorage.getItem('ai-clinic-api-key')
     if (saved) setApiKey(saved)
-  }, [])
+  }, [user?.email, user?.isAdmin])
 
   async function loadRecords() {
-    const recs = await getAllRecords()
+    const recs = await getAllRecords(recordScope)
     setRecords(recs)
   }
 
@@ -186,9 +189,10 @@ export default function MedicalUploader({ patientId, onSelectImage }) {
           dataUrl,
           base64Data,
           notes:      '',
+          ownerEmail:  user?.email || null,
         }
 
-        await saveRecord(record)
+        await saveRecord(record, { ownerEmail: user?.email })
         notifyUpload()
         await loadRecords()
 
@@ -206,7 +210,7 @@ export default function MedicalUploader({ patientId, onSelectImage }) {
         setUploadProgress(0)
       }
     }
-  }, [])
+  }, [user?.email])
 
   const onDragOver  = e => { e.preventDefault(); setDragging(true) }
   const onDragLeave = () => setDragging(false)
@@ -215,7 +219,7 @@ export default function MedicalUploader({ patientId, onSelectImage }) {
 
   async function handleDelete(id) {
     if (!confirm('Xóa hồ sơ này?')) return
-    await deleteRecord(id)
+    await deleteRecord(id, recordScope)
     await loadRecords()
     if (selected?.id === id) { setSelected(null); setView('upload') }
   }
@@ -223,7 +227,7 @@ export default function MedicalUploader({ patientId, onSelectImage }) {
   async function saveNotes() {
     if (!selected) return
     const updated = { ...selected, notes }
-    await saveRecord(updated)
+    await saveRecord(updated, { ownerEmail: user?.email })
     setSelected(updated)
     await loadRecords()
   }
@@ -298,7 +302,7 @@ Trả lời bằng ${lang === 'en' ? 'English' : 'tiếng Việt'}, ngắn gọn
         summary: fullText, findings: [], recommendation: '',
         confidence: 0.85, analyzedAt: new Date().toISOString(),
       }
-      await updateAnalysis(record.id, analysis)
+      await updateAnalysis(record.id, analysis, recordScope)
       setSelected(prev => prev ? { ...prev, aiAnalysis: analysis } : prev)
       await loadRecords()
 

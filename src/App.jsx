@@ -44,6 +44,12 @@ export default function App() {
     showEnd: false,
   })
 
+  useEffect(() => {
+    setCompareImage(null)
+    setUploadedImages([])
+    setImagingScrollTarget(null)
+  }, [user?.email])
+
   const navigateToRecord = (member) => { setSelectedMember(member); setActive('record') }
 
   const goNext = () => {
