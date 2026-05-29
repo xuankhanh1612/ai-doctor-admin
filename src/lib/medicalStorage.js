@@ -8,6 +8,7 @@ const DB_VERSION = 1
 const STORE      = 'medical-files'
 const LS_META    = 'ai-clinic-patient-meta'
 
+
 function openDB() {
   return new Promise((resolve, reject) => {
     if (typeof window === 'undefined') { reject(new Error('SSR')); return }
@@ -56,9 +57,10 @@ async function idbDelete(id) {
 }
 
 // ─── Normalize record (support cả old field names lẫn new) ──────────────────
-function norm(partial) {
+function norm(partial, options = {}) {
   const filename = partial.filename || partial.name || 'unknown'
   const fileType = partial.fileType || partial.type || 'photo'
+  const ownerEmail = partial.ownerEmail || options.ownerEmail || null
   return {
     ...partial,
     filename,  name: filename,
@@ -66,52 +68,77 @@ function norm(partial) {
     mimeType:  partial.mimeType   || 'image/jpeg',
     size:      partial.size       || 0,
     uploadedAt:partial.uploadedAt || new Date().toISOString(),
+    ownerEmail,
+    isDemo:    partial.isDemo ?? (!ownerEmail && options.markAsDemo === true),
     dataUrl:   partial.dataUrl    || '',
     base64Data:partial.base64Data || '',
   }
 }
 
 // ─── localStorage metadata (không lưu base64 vào LS) ─────────────────────────
-function lsMeta() {
+function metaKey(ownerEmail) {
+  return ownerEmail ? `${LS_META}:${ownerEmail}` : LS_META
+}
+
+export function getMetaKey(ownerEmail) {
+  return metaKey(ownerEmail)
+}
+
+function lsMeta(ownerEmail) {
   try {
-    const raw = localStorage.getItem(LS_META)
+    const raw = localStorage.getItem(metaKey(ownerEmail))
     return raw ? JSON.parse(raw) : { patientId: `p_${Date.now()}`, fileIds: [], updatedAt: '' }
   } catch {
     return { patientId: `p_${Date.now()}`, fileIds: [], updatedAt: '' }
   }
 }
 
-function lsSetMeta(patientId, fileIds) {
-  localStorage.setItem(LS_META, JSON.stringify({ patientId, fileIds, updatedAt: new Date().toISOString() }))
+function lsSetMeta(patientId, fileIds, ownerEmail) {
+  localStorage.setItem(metaKey(ownerEmail), JSON.stringify({ patientId, fileIds, ownerEmail: ownerEmail || null, updatedAt: new Date().toISOString() }))
 }
 
 // ─── Async API (chính) ────────────────────────────────────────────────────────
 
-export async function getAllRecords() {
-  try { return await idbGetAll() } catch { return [] }
+function canSeeRecord(record, { ownerEmail, includeUnowned = false, includeAll = false } = {}) {
+  if (includeAll) return true
+  if (ownerEmail && record.ownerEmail === ownerEmail) return true
+  // Legacy/unowned records are treated as demo data. They are visible only when
+  // explicitly requested (admin demo view), never to ordinary users.
+  if (includeUnowned && !record.ownerEmail) return true
+  return false
 }
 
-export async function saveRecord(file) {
-  await idbPut(norm(file))
-  const meta = lsMeta()
-  const ids  = [file.id, ...meta.fileIds.filter(i => i !== file.id)]
-  lsSetMeta(meta.patientId, ids)
+export async function getAllRecords(options = {}) {
+  try {
+    const records = await idbGetAll()
+    return records.filter(record => canSeeRecord(record, options))
+  } catch { return [] }
 }
 
-export async function getRecord(id) {
-  const all = await getAllRecords()
+export async function saveRecord(file, options = {}) {
+  const normalized = norm(file, options)
+  await idbPut(normalized)
+  const meta = lsMeta(normalized.ownerEmail)
+  const ids  = [normalized.id, ...meta.fileIds.filter(i => i !== normalized.id)]
+  lsSetMeta(meta.patientId, ids, normalized.ownerEmail)
+}
+
+export async function getRecord(id, options = {}) {
+  const all = await getAllRecords(options)
   return all.find(f => f.id === id) || null
 }
 
-export async function updateAnalysis(id, analysis) {
-  const f = await getRecord(id)
+export async function updateAnalysis(id, analysis, options = {}) {
+  const f = await getRecord(id, options)
   if (f) await idbPut({ ...f, aiAnalysis: analysis })
 }
 
-export async function deleteRecord(id) {
+export async function deleteRecord(id, options = {}) {
+  const f = await getRecord(id, options)
+  if (!f) return
   await idbDelete(id)
-  const meta = lsMeta()
-  lsSetMeta(meta.patientId, meta.fileIds.filter(i => i !== id))
+  const meta = lsMeta(f.ownerEmail)
+  lsSetMeta(meta.patientId, meta.fileIds.filter(i => i !== id), f.ownerEmail)
 }
 
 // ─── Utilities ─────────────────────────────────────────────────────────────────

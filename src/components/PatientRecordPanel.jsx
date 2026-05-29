@@ -1,7 +1,30 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useApp } from '../context/AppContext'
+import { useAuth } from '../context/AuthContext'
 import NavButtons from './NavButtons.jsx'
-import { useMedicalData, recordsToPatient } from '../hooks/useMedicalData.js'
+import { useMedicalData } from '../hooks/useMedicalData.js'
+
+
+function createEmptyPatient(t) {
+  return {
+    id: 'NO-UPLOADS',
+    name: t('noUploadPatientName'),
+    age: '—',
+    gender: '—',
+    dob: '—',
+    blood_type: '—',
+    avatar_initials: 'UP',
+    diseases: [{ id: 'empty', name: t('noUploadPatientDisease'), icd10: 'Z00.0', onset: '—', severity: 'mild' }],
+    symptoms: [],
+    labs: [],
+    imaging: [],
+    medications: [],
+    allergies: [],
+    genomics: [],
+    risk_factors: [],
+    timeline: [],
+  }
+}
 
 // ─── API — Consensus Engine (https://ai-doctor-engine.vercel.app) ──────────
 const API_BASE =
@@ -507,24 +530,27 @@ const METHOD_COLORS = { bayesian: 'var(--cyan)', weighted: 'var(--violet)', majo
 
 export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selectedMember }) {
   const { theme, t, lang } = useApp()
+  const { user } = useAuth()
   const isDark = theme === 'dark'
 
   // ── Sync từ IndexedDB (MedicalUploader) ────────────────────────────────
   const { records, patient: uploadPatient, loading: uploadLoading } = useMedicalData({ lang })
 
-  // Merge: ưu tiên selectedMember (gia phả) > upload records > DEMO_PATIENT
+  // Merge: selectedMember (gia phả) > user upload records > admin-only demo data.
+  const emptyPatient = useMemo(() => createEmptyPatient(t), [t, lang])
+  const fallbackPatient = useMemo(() => user?.isAdmin ? DEMO_PATIENT : emptyPatient, [user?.isAdmin, emptyPatient])
   const basePatient = selectedMember
     ? selectedMember
-    : (uploadPatient || DEMO_PATIENT)
+    : (uploadPatient || fallbackPatient)
 
   const [patient, setPatient] = useState(basePatient)
 
   // Cập nhật khi upload records thay đổi (real-time sync)
   useEffect(() => {
     if (!selectedMember) {
-      setPatient(uploadPatient || DEMO_PATIENT)
+      setPatient(uploadPatient || fallbackPatient)
     }
-  }, [uploadPatient, selectedMember])
+  }, [uploadPatient, selectedMember, fallbackPatient])
 
   // When a family member is passed in, switch to their data
   useEffect(() => {
@@ -640,20 +666,20 @@ export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selected
           <span style={{ fontSize: 16 }}>🌳</span>
           <div style={{ flex: 1 }}>
             <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--cyan)' }}>
-              Từ Gia phả
+              {t('fromFamily')}
             </span>
             <span style={{ fontSize: 12, color: text2, marginLeft: 8 }}>
-              Đang xem hồ sơ thành viên gia đình: <b>{patient.name}</b>
+              {t('viewingMember')}: <b>{patient.name}</b>
             </span>
           </div>
           <button
-            onClick={() => { setPatient(DEMO_PATIENT); setConsensusData(null); setShowConsensus(false) }}
+            onClick={() => { setPatient(fallbackPatient); setConsensusData(null); setShowConsensus(false) }}
             style={{
               padding: '4px 12px', borderRadius: 6, border: '1px solid rgba(0,229,255,0.3)',
               background: 'transparent', color: 'var(--cyan)', fontSize: 11,
               fontFamily: 'var(--font-mono)', cursor: 'pointer',
             }}
-          >← Quay lại Lê Xuân Khánh</button>
+          >{user?.isAdmin ? t('backToDemoRecord') : t('backToMyRecords')}</button>
         </div>
       )}
 
@@ -667,20 +693,22 @@ export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selected
           <span style={{ fontSize: 16 }}>📁</span>
           <div style={{ flex: 1 }}>
             <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--green)' }}>
-              Dữ liệu từ Hồ Sơ Upload
+              {t('uploadDataBanner')}
             </span>
             <span style={{ fontSize: 12, color: text2, marginLeft: 8 }}>
-              {patient._records?.length || 0} file · {patient.imaging?.length || 0} ảnh có AI phân tích
+              {t('uploadDataStats')
+                .replace('{files}', patient._records?.length || 0)
+                .replace('{images}', patient.imaging?.length || 0)}
             </span>
           </div>
           <button
-            onClick={() => { setPatient(DEMO_PATIENT); setConsensusData(null); setShowConsensus(false) }}
+            onClick={() => { setPatient(fallbackPatient); setConsensusData(null); setShowConsensus(false) }}
             style={{
               padding: '4px 12px', borderRadius: 6, border: '1px solid rgba(0,230,118,0.3)',
               background: 'transparent', color: 'var(--green)', fontSize: 11,
               fontFamily: 'var(--font-mono)', cursor: 'pointer',
             }}
-          >← Demo Patient</button>
+          >{user?.isAdmin ? t('backToDemo') : t('backToMyRecords')}</button>
         </div>
       )}
 
