@@ -7,6 +7,7 @@ import ImagingPanel from './components/ImagingPanel.jsx'
 import CheckinPanel from './components/CheckinPanel.jsx'
 import TwinPanel from './components/TwinPanel.jsx'
 import TelemedicinePanel from './components/TelemedicinePanel.jsx'
+import StatisticalAnalysisPanel from './components/StatisticalAnalysisPanel.jsx'
 import SimulationPanel from './components/SimulationPanel.jsx'
 import ConsensusPanel from './components/ConsensusPanel.jsx'
 import SwarmConsensusPanel from './components/SwarmConsensusPanel.jsx'
@@ -17,7 +18,7 @@ import PatientRecordPanel from './components/PatientRecordPanel.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 
 // Swarm panel replaces simulation; keep consensus as classic fallback
-const PANELS = ['upload', 'imaging', 'checkin', 'family', 'record', 'twin', 'telemedicine', 'swarm', 'consensus']
+const PANELS = ['upload', 'imaging', 'checkin', 'family', 'record', 'twin', 'telemedicine', 'statAnalysis', 'swarm', 'consensus']
 
 export default function App() {
   const { user, loading } = useAuth()
@@ -48,6 +49,7 @@ export default function App() {
     record: t('patientRecord'),
     twin: t('twin'),
     telemedicine: t('telemedicine'),
+    statAnalysis: t('statAnalysis'),
     swarm: t('swarmCouncil'),
     consensus: `${t('consensus')} (Classic)`,
   }
@@ -169,6 +171,7 @@ export default function App() {
           {active === 'record'    && <PatientRecordPanel onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} selectedMember={selectedMember} />}
           {active === 'twin'      && <TwinPanel          onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
           {active === 'telemedicine' && <TelemedicinePanel onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
+          {active === 'statAnalysis' && <StatisticalAnalysisPanel onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
           {active === 'swarm'     && <SwarmConsensusPanel onReset={() => setActive('upload')} onPrev={goPrev} prevLabel={prevLabel} />}
           {active === 'consensus' && <ConsensusPanel     onReset={() => setActive('upload')} onPrev={goPrev} prevLabel={prevLabel} />}
           {active === 'admin'     && user?.isAdmin && <AdminPanel />}

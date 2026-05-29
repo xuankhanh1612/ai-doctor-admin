@@ -24,6 +24,7 @@ export const TRANSLATIONS = {
     checkin: 'Kiểm tra triệu chứng',
     twin: 'Digital Twin',
     telemedicine: 'Telemedicine',
+    statAnalysis: 'AI Agent phân tích thống kê',
     simulation: 'Mô phỏng điều trị',
     consensus: 'Đồng thuận AI',
     swarmCouncil: '🏛 Hội đồng AI',
@@ -100,6 +101,13 @@ export const TRANSLATIONS = {
     handoffTitle: 'Luồng hội chẩn song song',
     handoffCopy: 'Video từ bác sĩ thật được ghép với phân tích của AI agent theo thời gian thực, giúp hội đồng Digital Twin chuyển ca sang đồng thuận AI khi đủ dữ liệu.',
     continueAiCouncil: 'Tiếp tục tới Hội đồng AI →',
+    // Statistical analysis
+    statAnalysisTitle: 'AI Agent phân tích thống kê HPV',
+    statAnalysisSubtitle: 'Agent đọc dữ liệu từ bài báo Long Châu, chuẩn hoá các con số thực tế và tạo biểu đồ scatter HTML tương tác với trục Y là tín hiệu HPV (0–100).',
+    statFiltersTitle: '4 bộ lọc khám phá',
+    statFiltersHint: 'Chọn từng lớp dữ liệu để xem cụm tuổi và tín hiệu HPV mô phỏng.',
+    statOutcomeTitle: 'OUTPUT / OUTCOME',
+    statOutcomeCopy: 'Biểu đồ mới chuyển ngữ cảnh từ liều thuốc sang tín hiệu HPV, giúp nhận diện nhóm cần tầm soát, chủng nguy cơ cao và tác động của vắc xin.',
     // Simulation
     simulationTitle: 'Mô phỏng điều trị',
     simulationMode: 'CHẾ ĐỘ MÔ PHỎNG',
@@ -188,6 +196,7 @@ export const TRANSLATIONS = {
     checkin: 'Symptom Check-in',
     twin: 'Digital Twin',
     telemedicine: 'Telemedicine',
+    statAnalysis: 'AI Agent Stats',
     simulation: 'Treatment Simulation',
     consensus: 'AI Consensus',
     swarmCouncil: '🏛 AI Board',
@@ -264,6 +273,13 @@ export const TRANSLATIONS = {
     handoffTitle: 'Parallel consultation flow',
     handoffCopy: 'Real-doctor video is paired with real-time AI agent reasoning so the Digital Twin council can hand off to AI consensus when enough context is available.',
     continueAiCouncil: 'Continue to AI Board →',
+    // Statistical analysis
+    statAnalysisTitle: 'AI Agent HPV statistical analysis',
+    statAnalysisSubtitle: 'The agent reads Long Châu article signals, normalizes the real-world figures, and renders an interactive HTML scatter chart with the Y-axis as HPV signal (0–100).',
+    statFiltersTitle: '4 exploration filters',
+    statFiltersHint: 'Select each data layer to inspect age clusters and simulated HPV signal.',
+    statOutcomeTitle: 'OUTPUT / OUTCOME',
+    statOutcomeCopy: 'The new chart shifts the context from dosage to HPV signal, making screening gaps, high-risk strains, and vaccination impact easier to see.',
     // Simulation
     simulationTitle: 'Treatment Simulation',
     simulationMode: 'SIMULATION MODE',
