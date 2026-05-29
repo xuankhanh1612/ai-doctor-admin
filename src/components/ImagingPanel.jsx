@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { Document, Page, pdfjs } from 'react-pdf'
 import { getAllRecords } from '../lib/medicalStorage.js'
 import { useApp } from '../context/AppContext'
+import { useAuth } from '../context/AuthContext'
 import { PATIENT } from '../data/mockData.js'
 import NavButtons from './NavButtons.jsx'
 
@@ -33,6 +34,7 @@ const isPdfRecord = (file) =>
 
 export default function ImagingPanel({ onNext, onPrev, prevLabel, compareImage, uploadedImages = [], onSelectCompareImage, scrollTarget, onScrollTargetHandled }) {
   const { t } = useApp()
+  const { user } = useAuth()
   const [activeSlice, setActiveSlice] = useState(4)
   const [galleryImages, setGalleryImages] = useState([])
   const topRef = useRef(null)
@@ -40,9 +42,12 @@ export default function ImagingPanel({ onNext, onPrev, prevLabel, compareImage, 
 
   useEffect(() => {
     async function syncGallery() {
-      const records = await getAllRecords()
+      const records = await getAllRecords({ ownerEmail: user?.email, includeUnowned: !!user?.isAdmin })
 
-      const merged = [...records, ...(uploadedImages || [])]
+      const visibleUploadedImages = (uploadedImages || []).filter(item =>
+        item?.ownerEmail === user?.email || (!!user?.isAdmin && !item?.ownerEmail)
+      )
+      const merged = [...records, ...visibleUploadedImages]
 
       const map = new Map()
 
@@ -61,7 +66,7 @@ export default function ImagingPanel({ onNext, onPrev, prevLabel, compareImage, 
     }
 
     syncGallery()
-  }, [uploadedImages])
+  }, [uploadedImages, user?.email, user?.isAdmin])
 
   const uploadedPdfFiles = galleryImages.filter(isPdfRecord)
   const uploadedScanImages = galleryImages.filter(item => !isPdfRecord(item))

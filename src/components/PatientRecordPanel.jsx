@@ -1,7 +1,28 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useApp } from '../context/AppContext'
+import { useAuth } from '../context/AuthContext'
 import NavButtons from './NavButtons.jsx'
 import { useMedicalData, recordsToPatient } from '../hooks/useMedicalData.js'
+
+
+const EMPTY_PATIENT = {
+  id: 'NO-UPLOADS',
+  name: 'Chưa có hồ sơ upload',
+  age: '—',
+  gender: '—',
+  dob: '—',
+  blood_type: '—',
+  avatar_initials: 'UP',
+  diseases: [{ id: 'empty', name: 'Upload hồ sơ để tạo bệnh án cá nhân', icd10: 'Z00.0', onset: '—', severity: 'mild' }],
+  symptoms: [],
+  labs: [],
+  imaging: [],
+  medications: [],
+  allergies: [],
+  genomics: [],
+  risk_factors: [],
+  timeline: [],
+}
 
 // ─── API — Consensus Engine (https://ai-doctor-engine.vercel.app) ──────────
 const API_BASE =
@@ -507,24 +528,26 @@ const METHOD_COLORS = { bayesian: 'var(--cyan)', weighted: 'var(--violet)', majo
 
 export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selectedMember }) {
   const { theme, t, lang } = useApp()
+  const { user } = useAuth()
   const isDark = theme === 'dark'
 
   // ── Sync từ IndexedDB (MedicalUploader) ────────────────────────────────
   const { records, patient: uploadPatient, loading: uploadLoading } = useMedicalData({ lang })
 
-  // Merge: ưu tiên selectedMember (gia phả) > upload records > DEMO_PATIENT
+  // Merge: selectedMember (gia phả) > user upload records > admin-only demo data.
+  const fallbackPatient = user?.isAdmin ? DEMO_PATIENT : EMPTY_PATIENT
   const basePatient = selectedMember
     ? selectedMember
-    : (uploadPatient || DEMO_PATIENT)
+    : (uploadPatient || fallbackPatient)
 
   const [patient, setPatient] = useState(basePatient)
 
   // Cập nhật khi upload records thay đổi (real-time sync)
   useEffect(() => {
     if (!selectedMember) {
-      setPatient(uploadPatient || DEMO_PATIENT)
+      setPatient(uploadPatient || fallbackPatient)
     }
-  }, [uploadPatient, selectedMember])
+  }, [uploadPatient, selectedMember, fallbackPatient])
 
   // When a family member is passed in, switch to their data
   useEffect(() => {
@@ -647,13 +670,13 @@ export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selected
             </span>
           </div>
           <button
-            onClick={() => { setPatient(DEMO_PATIENT); setConsensusData(null); setShowConsensus(false) }}
+            onClick={() => { setPatient(fallbackPatient); setConsensusData(null); setShowConsensus(false) }}
             style={{
               padding: '4px 12px', borderRadius: 6, border: '1px solid rgba(0,229,255,0.3)',
               background: 'transparent', color: 'var(--cyan)', fontSize: 11,
               fontFamily: 'var(--font-mono)', cursor: 'pointer',
             }}
-          >← Quay lại Lê Xuân Khánh</button>
+          >{user?.isAdmin ? '← Quay lại Demo' : '← Hồ sơ của tôi'}</button>
         </div>
       )}
 
@@ -674,13 +697,13 @@ export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selected
             </span>
           </div>
           <button
-            onClick={() => { setPatient(DEMO_PATIENT); setConsensusData(null); setShowConsensus(false) }}
+            onClick={() => { setPatient(fallbackPatient); setConsensusData(null); setShowConsensus(false) }}
             style={{
               padding: '4px 12px', borderRadius: 6, border: '1px solid rgba(0,230,118,0.3)',
               background: 'transparent', color: 'var(--green)', fontSize: 11,
               fontFamily: 'var(--font-mono)', cursor: 'pointer',
             }}
-          >← Demo Patient</button>
+          >{user?.isAdmin ? '← Demo Patient' : '← Hồ sơ của tôi'}</button>
         </div>
       )}
 
