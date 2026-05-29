@@ -26,26 +26,6 @@ function createEmptyPatient(t) {
   }
 }
 
-
-const EMPTY_PATIENT = {
-  id: 'NO-UPLOADS',
-  name: 'Chưa có hồ sơ upload',
-  age: '—',
-  gender: '—',
-  dob: '—',
-  blood_type: '—',
-  avatar_initials: 'UP',
-  diseases: [{ id: 'empty', name: 'Upload hồ sơ để tạo bệnh án cá nhân', icd10: 'Z00.0', onset: '—', severity: 'mild' }],
-  symptoms: [],
-  labs: [],
-  imaging: [],
-  medications: [],
-  allergies: [],
-  genomics: [],
-  risk_factors: [],
-  timeline: [],
-}
-
 // ─── API — Consensus Engine (https://ai-doctor-engine.vercel.app) ──────────
 const API_BASE =
   import.meta.env.VITE_CONSENSUS_API_URL || 'https://ai-doctor-engine.vercel.app'
@@ -54,9 +34,9 @@ const API_BASE =
 const DEMO_PATIENT = {
   id: 'LXK-2024',
   name: 'Lê Xuân Khánh',
-  age: 47,
+  age: 43,
   gender: 'M',
-  dob: '1977-04-10',
+  dob: '1982-12-12',
   blood_type: 'O+',
   avatar_initials: 'LK',
 

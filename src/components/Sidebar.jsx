@@ -42,7 +42,7 @@ export default function Sidebar({ active, onNavigate }) {
     { id: 'family',    label: t('familyTree'),      step: '04' },
     { id: 'record',    label: t('patientRecord'),   step: '05' },
     { id: 'twin',      label: t('twin'),            step: '06' },
-    { id: 'swarm',      label: '🏛 Hội đồng AI',         step: '07' },
+    { id: 'swarm',      label: t('swarmCouncil'),    step: '07' },
     { id: 'consensus', label: t('consensus'),       step: '08' },
   ]
 
