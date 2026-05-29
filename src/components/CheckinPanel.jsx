@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { PATIENT } from '../data/mockData.js'
 import { useApp } from '../context/AppContext'
 import NavButtons from './NavButtons.jsx'
@@ -38,8 +38,73 @@ const Card = ({ title, children }) => (
   </div>
 )
 
+const QUICK_PROMPTS = {
+  vi: [
+    'Tôi mất ngủ nhiều ngày, hay lo lắng và tim đập nhanh.',
+    'Tôi buồn bã, mất động lực, không muốn giao tiếp.',
+    'Tôi hoảng sợ bất chợt, khó thở và sợ có chuyện xấu xảy ra.',
+  ],
+  en: [
+    'I have insomnia, anxiety, and a racing heart.',
+    'I feel sad, unmotivated, and socially withdrawn.',
+    'I have sudden panic, shortness of breath, and fear something bad will happen.',
+  ],
+}
+
+function buildPsychiatryAgentReply(prompt, lang) {
+  const text = prompt.toLowerCase()
+  const crisisKeywords = ['tự tử', 'tự sát', 'muốn chết', 'hại bản thân', 'suicide', 'kill myself', 'self harm', 'self-harm']
+  const anxietyKeywords = ['lo lắng', 'bồn chồn', 'hoảng', 'panic', 'anxiety', 'sợ', 'tim đập']
+  const sleepKeywords = ['mất ngủ', 'khó ngủ', 'insomnia', 'sleep']
+  const lowMoodKeywords = ['buồn', 'trầm', 'mất động lực', 'depress', 'sad', 'hopeless']
+
+  const hasCrisis = crisisKeywords.some(k => text.includes(k))
+  const topics = []
+  if (anxietyKeywords.some(k => text.includes(k))) topics.push(lang === 'en' ? 'anxiety/panic symptoms' : 'triệu chứng lo âu/hoảng sợ')
+  if (sleepKeywords.some(k => text.includes(k))) topics.push(lang === 'en' ? 'sleep disturbance' : 'rối loạn giấc ngủ')
+  if (lowMoodKeywords.some(k => text.includes(k))) topics.push(lang === 'en' ? 'low mood/depressive symptoms' : 'khí sắc buồn/triệu chứng trầm cảm')
+
+  if (lang === 'en') {
+    if (hasCrisis) {
+      return 'I am concerned about possible self-harm risk. Please contact local emergency services now or call/text 988 in the U.S. if you may hurt yourself. If possible, stay with someone you trust. After immediate safety is secured, a psychiatrist can help assess mood, anxiety, sleep, and treatment options.'
+    }
+
+    const focus = topics.length ? topics.join(', ') : 'your current emotional and physical symptoms'
+    return `I hear you describing ${focus}. As a virtual psychiatry check-in agent, I recommend tracking: onset, duration, sleep/appetite changes, panic triggers, medication/substance use, and whether symptoms affect work or relationships. For now, try slow breathing for 3 minutes, reduce caffeine/alcohol, and write down the strongest trigger. If symptoms persist, worsen, or impair daily life, please book an evaluation with a licensed psychiatrist or mental health clinician.`
+  }
+
+  if (hasCrisis) {
+    return 'Tôi lo ngại có dấu hiệu nguy cơ tự làm hại bản thân. Bạn hãy gọi cấp cứu tại địa phương ngay hoặc nhờ một người tin cậy ở cạnh bạn. Nếu bạn đang ở Hoa Kỳ, hãy gọi/nhắn 988. Sau khi đảm bảo an toàn tức thì, bác sĩ tâm thần có thể đánh giá khí sắc, lo âu, giấc ngủ và hướng điều trị phù hợp.'
+  }
+
+  const focus = topics.length ? topics.join(', ') : 'các triệu chứng cảm xúc và cơ thể hiện tại'
+  return `Tôi ghi nhận bạn đang mô tả ${focus}. Với vai trò AI Agent check-in chuyên khoa tâm thần, tôi gợi ý bạn khai báo thêm: triệu chứng bắt đầu khi nào, kéo dài bao lâu, giấc ngủ/ăn uống thay đổi ra sao, yếu tố kích hoạt, thuốc/chất kích thích đang dùng, và mức ảnh hưởng tới công việc/gia đình. Trước mắt, hãy thử thở chậm 3 phút, giảm caffeine/rượu, và ghi lại tình huống làm triệu chứng nặng nhất. Nếu triệu chứng kéo dài, nặng lên hoặc ảnh hưởng sinh hoạt, bạn nên đặt lịch với bác sĩ tâm thần/chuyên viên sức khỏe tâm thần.`
+}
+
 export default function CheckinPanel({ onNext, onPrev, prevLabel }) {
-  const { t } = useApp()
+  const { t, lang } = useApp()
+  const [symptomPrompt, setSymptomPrompt] = useState('')
+  const [chatMessages, setChatMessages] = useState([
+    {
+      role: 'agent',
+      text: lang === 'en'
+        ? 'Hello, I am your virtual psychiatry check-in agent. Tell me what you are feeling, when it started, and how it affects your sleep, appetite, mood, thoughts, or relationships.'
+        : 'Xin chào, tôi là AI Agent bác sĩ ảo chuyên khoa tâm thần. Bạn hãy mô tả triệu chứng đang gặp, bắt đầu từ khi nào, và ảnh hưởng tới giấc ngủ, ăn uống, cảm xúc, suy nghĩ hoặc các mối quan hệ ra sao.',
+    },
+  ])
+
+  const submitSymptomPrompt = () => {
+    const prompt = symptomPrompt.trim()
+    if (!prompt) return
+
+    setChatMessages(prev => [
+      ...prev,
+      { role: 'user', text: prompt },
+      { role: 'agent', text: buildPsychiatryAgentReply(prompt, lang) },
+    ])
+    setSymptomPrompt('')
+  }
+
   return (
     <div className="animate-fade" style={{ padding: 28, display: 'flex', flexDirection: 'column', gap: 20 }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
@@ -49,6 +114,146 @@ export default function CheckinPanel({ onNext, onPrev, prevLabel }) {
         </div>
         <Tag color="violet">{t('seedCollection')}</Tag>
       </div>
+
+      <Card title={lang === 'en' ? 'Virtual Psychiatry AI Agent' : 'AI Agent bác sĩ tâm thần ảo'}>
+        <div className="psych-agent-grid">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+              <div>
+                <div style={{ color: '#fff', fontSize: 15, fontWeight: 800 }}>
+                  {lang === 'en' ? 'Psychiatry symptom prompt' : 'Nhập prompt khai báo triệu chứng'}
+                </div>
+                <p style={{ color: 'var(--text2)', fontSize: 12, marginTop: 4, lineHeight: 1.6 }}>
+                  {lang === 'en'
+                    ? 'Chat with a virtual psychiatry specialist to describe mood, sleep, anxiety, stress, behavior, or thought symptoms.'
+                    : 'Chat với bác sĩ ảo chuyên khoa tâm thần để mô tả khí sắc, giấc ngủ, lo âu, stress, hành vi hoặc suy nghĩ bất thường.'}
+                </p>
+              </div>
+              <Tag color="green">PSYCHIATRY AI</Tag>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 320, overflowY: 'auto', paddingRight: 4 }}>
+              {chatMessages.map((message, index) => {
+                const isUser = message.role === 'user'
+                return (
+                  <div
+                    key={`${message.role}-${index}`}
+                    style={{
+                      alignSelf: isUser ? 'flex-end' : 'flex-start',
+                      maxWidth: '88%',
+                      padding: '10px 12px',
+                      borderRadius: isUser ? '14px 14px 3px 14px' : '14px 14px 14px 3px',
+                      background: isUser ? 'rgba(0,229,255,0.12)' : 'rgba(156,111,255,0.12)',
+                      border: `1px solid ${isUser ? 'rgba(0,229,255,0.24)' : 'rgba(156,111,255,0.24)'}`,
+                      color: 'var(--text)',
+                      fontSize: 12,
+                      lineHeight: 1.65,
+                    }}
+                  >
+                    <div style={{ fontSize: 9, fontFamily: 'var(--font-mono)', color: isUser ? 'var(--cyan)' : 'var(--violet)', marginBottom: 4 }}>
+                      {isUser ? (lang === 'en' ? 'YOU' : 'BẠN') : 'AI PSYCHIATRIST'}
+                    </div>
+                    {message.text}
+                  </div>
+                )
+              })}
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <textarea
+                value={symptomPrompt}
+                onChange={e => setSymptomPrompt(e.target.value)}
+                onKeyDown={e => {
+                  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') submitSymptomPrompt()
+                }}
+                placeholder={lang === 'en'
+                  ? 'Example: I feel anxious, cannot sleep, have panic attacks, and feel exhausted for 2 weeks...'
+                  : 'Ví dụ: Tôi lo lắng, mất ngủ, hay hoảng sợ, mệt mỏi kéo dài 2 tuần...'}
+                rows={4}
+                style={{
+                  width: '100%',
+                  resize: 'vertical',
+                  minHeight: 104,
+                  borderRadius: 12,
+                  border: '1px solid var(--border2)',
+                  background: 'rgba(0,0,0,0.22)',
+                  color: 'var(--text)',
+                  padding: 12,
+                  outline: 'none',
+                  fontFamily: 'var(--font-display)',
+                  fontSize: 13,
+                  lineHeight: 1.6,
+                }}
+              />
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                <div style={{ color: 'var(--text3)', fontSize: 10, fontFamily: 'var(--font-mono)' }}>
+                  {lang === 'en' ? 'Press Ctrl/⌘ + Enter to send' : 'Nhấn Ctrl/⌘ + Enter để gửi'}
+                </div>
+                <button
+                  type="button"
+                  onClick={submitSymptomPrompt}
+                  disabled={!symptomPrompt.trim()}
+                  style={{
+                    padding: '10px 18px',
+                    borderRadius: 10,
+                    border: 'none',
+                    background: symptomPrompt.trim()
+                      ? 'linear-gradient(135deg, var(--cyan2), var(--violet2))'
+                      : 'rgba(255,255,255,0.06)',
+                    color: symptomPrompt.trim() ? '#fff' : 'var(--text3)',
+                    cursor: symptomPrompt.trim() ? 'pointer' : 'not-allowed',
+                    fontSize: 13,
+                    fontWeight: 700,
+                  }}
+                >
+                  {lang === 'en' ? 'Send to AI Doctor →' : 'Gửi cho bác sĩ AI →'}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={{ padding: 12, borderRadius: 12, background: 'rgba(255,183,77,0.08)', border: '1px solid rgba(255,183,77,0.18)' }}>
+              <div style={{ color: 'var(--amber)', fontSize: 11, fontWeight: 800, marginBottom: 6 }}>
+                {lang === 'en' ? 'Safety note' : 'Lưu ý an toàn'}
+              </div>
+              <p style={{ color: 'var(--text2)', fontSize: 11, lineHeight: 1.65 }}>
+                {lang === 'en'
+                  ? 'This check-in supports symptom collection and is not a diagnosis. If you may harm yourself or someone else, contact emergency services immediately.'
+                  : 'Phần check-in này hỗ trợ thu thập triệu chứng, không phải chẩn đoán. Nếu bạn có nguy cơ tự hại hoặc hại người khác, hãy liên hệ cấp cứu ngay.'}
+              </p>
+            </div>
+
+            <div style={{ padding: 12, borderRadius: 12, background: 'var(--surface2)', border: '1px solid var(--border)' }}>
+              <div style={{ color: 'var(--cyan)', fontSize: 11, fontWeight: 800, marginBottom: 8 }}>
+                {lang === 'en' ? 'Quick prompts' : 'Prompt gợi ý'}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {(QUICK_PROMPTS[lang] || QUICK_PROMPTS.vi).map(prompt => (
+                  <button
+                    key={prompt}
+                    type="button"
+                    onClick={() => setSymptomPrompt(prompt)}
+                    style={{
+                      textAlign: 'left',
+                      padding: 9,
+                      borderRadius: 9,
+                      border: '1px solid var(--border)',
+                      background: 'rgba(255,255,255,0.03)',
+                      color: 'var(--text2)',
+                      cursor: 'pointer',
+                      fontSize: 11,
+                      lineHeight: 1.45,
+                    }}
+                  >
+                    {prompt}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </Card>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
         <Card title={t('personalHistory')}>
