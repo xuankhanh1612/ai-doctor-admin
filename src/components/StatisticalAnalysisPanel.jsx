@@ -487,7 +487,7 @@ function OutputHtmlContent({ dataset }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div style={{ color: 'var(--text)', fontSize: 14, fontWeight: 900 }}>{dataset.outputLabel}</div>
       <div style={{ color: 'var(--text3)', fontSize: 10, lineHeight: 1.5 }}>
-        OUTPUT HTML hiển thị mã HTML đã sinh cho INPUT đang chọn. Chuyển sang OUTPUT SCREEN để xem bản render trực quan.
+        OUTPUT SOURCE CODE hiển thị mã HTML đã sinh cho INPUT đang chọn. Chuyển sang OUTPUT HTML để xem bản render trực quan.
       </div>
       <pre style={{
         maxHeight: 560,
@@ -729,6 +729,7 @@ export default function StatisticalAnalysisPanel({ onNext, onPrev, prevLabel }) 
     setCustomPairs(nextPairs)
     saveStoredDatasetPairs(nextPairs)
     setSelectedDatasetId(savedDatasetId)
+    setActiveOutputTab('outputScreen')
     setActiveFilters(prev => ({ ...prev, [savedDatasetId]: `custom-${savedPairIndex}-pending` }))
     setPairSaveStatus({
       type: 'success',
@@ -737,6 +738,11 @@ export default function StatisticalAnalysisPanel({ onNext, onPrev, prevLabel }) 
     window.dispatchEvent(new CustomEvent('stat-analysis-pairs-updated', { detail: { savedDatasetId } }))
     setDraftInputUrl('')
     setDraftOutputUrl('')
+  }
+
+  const handleSelectDataset = (datasetId) => {
+    setSelectedDatasetId(datasetId)
+    setActiveOutputTab('outputScreen')
   }
 
   const handleSelectFilter = (filterId) => {
@@ -771,7 +777,7 @@ export default function StatisticalAnalysisPanel({ onNext, onPrev, prevLabel }) 
           draftOutputUrl={draftOutputUrl}
           canEdit={canEditInputPairs}
           pairSaveStatus={pairSaveStatus}
-          onSelect={setSelectedDatasetId}
+          onSelect={handleSelectDataset}
           onDraftInputChange={(value) => {
             setDraftInputUrl(value)
             setPairSaveStatus(null)
