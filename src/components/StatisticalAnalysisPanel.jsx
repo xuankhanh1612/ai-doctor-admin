@@ -333,7 +333,10 @@ function SourceMetric({ fact }) {
   )
 }
 
-function DatasetPicker({ datasets, selectedId, draftInputUrl, draftOutputUrl, canEdit, onSelect, onDraftInputChange, onDraftOutputChange, onAddPair }) {
+function DatasetPicker({ datasets, selectedId, draftInputUrl, draftOutputUrl, canEdit, pairSaveStatus, onSelect, onDraftInputChange, onDraftOutputChange, onAddPair }) {
+  const hasDraftValues = draftInputUrl.trim() || draftOutputUrl.trim()
+  const isDraftValid = /^https?:\/\//i.test(draftInputUrl.trim()) && /^https?:\/\//i.test(draftOutputUrl.trim())
+
   return (
     <>
       <div style={{ color: 'var(--text)', fontSize: 15, fontWeight: 900 }}>INPUT list</div>
@@ -368,9 +371,36 @@ function DatasetPicker({ datasets, selectedId, draftInputUrl, draftOutputUrl, ca
             placeholder="Admin nhập dataset.outputUrl / OUTPUT HTML URL..."
             style={{ width: '100%', marginTop: 8, borderRadius: 12, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text)', padding: 11, fontFamily: 'inherit', fontSize: 11 }}
           />
-          <button type="button" onClick={onAddPair} style={{ marginTop: 9, width: '100%', border: '1px solid rgba(0,229,255,0.3)', background: 'rgba(0,229,255,0.08)', color: 'var(--cyan)', borderRadius: 12, padding: '10px 12px', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 900 }}>
+          <button
+            type="button"
+            onClick={onAddPair}
+            disabled={!isDraftValid}
+            style={{
+              marginTop: 9,
+              width: '100%',
+              border: `1px solid ${isDraftValid ? 'rgba(0,229,255,0.3)' : 'var(--border)'}`,
+              background: isDraftValid ? 'rgba(0,229,255,0.08)' : 'var(--surface2)',
+              color: isDraftValid ? 'var(--cyan)' : 'var(--text3)',
+              borderRadius: 12,
+              padding: '10px 12px',
+              cursor: isDraftValid ? 'pointer' : 'not-allowed',
+              fontFamily: 'inherit',
+              fontWeight: 900,
+              opacity: isDraftValid ? 1 : 0.7,
+            }}
+          >
             + Save INPUT / OUTPUT pair
           </button>
+          {(pairSaveStatus || hasDraftValues) && (
+            <div style={{
+              marginTop: 8,
+              color: pairSaveStatus?.type === 'success' ? 'var(--green)' : isDraftValid ? 'var(--text3)' : 'var(--amber)',
+              fontSize: 10,
+              lineHeight: 1.45,
+            }}>
+              {pairSaveStatus?.message || (isDraftValid ? 'Sẵn sàng lưu cặp INPUT / OUTPUT.' : 'Vui lòng nhập đủ 2 URL bắt đầu bằng http:// hoặc https:// để bật nút lưu.')}
+            </div>
+          )}
         </>
       ) : (
         <div style={{ marginTop: 12, padding: 11, borderRadius: 12, border: '1px dashed var(--border2)', color: 'var(--text3)', fontSize: 10, lineHeight: 1.5 }}>
@@ -381,7 +411,7 @@ function DatasetPicker({ datasets, selectedId, draftInputUrl, draftOutputUrl, ca
   )
 }
 
-function InputListCard({ datasets, selectedId, draftInputUrl, draftOutputUrl, canEdit, onSelect, onDraftInputChange, onDraftOutputChange, onAddPair }) {
+function InputListCard({ datasets, selectedId, draftInputUrl, draftOutputUrl, canEdit, pairSaveStatus, onSelect, onDraftInputChange, onDraftOutputChange, onAddPair }) {
   return (
     <Card style={{ padding: 14 }}>
       <DatasetPicker
@@ -390,6 +420,7 @@ function InputListCard({ datasets, selectedId, draftInputUrl, draftOutputUrl, ca
         draftInputUrl={draftInputUrl}
         draftOutputUrl={draftOutputUrl}
         canEdit={canEdit}
+        pairSaveStatus={pairSaveStatus}
         onSelect={onSelect}
         onDraftInputChange={onDraftInputChange}
         onDraftOutputChange={onDraftOutputChange}
@@ -456,7 +487,7 @@ function OutputHtmlContent({ dataset }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div style={{ color: 'var(--text)', fontSize: 14, fontWeight: 900 }}>{dataset.outputLabel}</div>
       <div style={{ color: 'var(--text3)', fontSize: 10, lineHeight: 1.5 }}>
-        OUTPUT HTML hiển thị mã HTML đã sinh cho INPUT đang chọn. Chuyển sang OUTPUT SCREEN để xem bản render trực quan.
+        OUTPUT SOURCE CODE hiển thị mã HTML đã sinh cho INPUT đang chọn. Chuyển sang OUTPUT HTML để xem bản render trực quan.
       </div>
       <pre style={{
         maxHeight: 560,
@@ -605,7 +636,7 @@ function createCustomDataset(pair, index) {
     inputUrl,
     outputUrl,
     sourceLabel: `CUSTOM INPUT ${index + 1}`,
-    outputLabel: 'OUTPUT pending · AI extraction needed',
+    outputLabel: outputUrl ? 'OUTPUT HTML · saved mapping' : 'OUTPUT pending · AI extraction needed',
     title: 'Custom INPUT · pending AI extraction',
     subtitle: 'Link mới đã được thêm vào danh sách. Khi backend extraction được nối vào, OUTPUT / OUTCOME tương ứng có thể render chart thật từ nguồn này.',
     xLabel: 'Record index',
@@ -639,6 +670,7 @@ export default function StatisticalAnalysisPanel({ onNext, onPrev, prevLabel }) 
   const [activeFilters, setActiveFilters] = useState(() => Object.fromEntries(DATASETS.map(dataset => [dataset.id, dataset.filters[0].id])))
   const [draftInputUrl, setDraftInputUrl] = useState('')
   const [draftOutputUrl, setDraftOutputUrl] = useState('')
+  const [pairSaveStatus, setPairSaveStatus] = useState(null)
   const [customPairs, setCustomPairs] = useState(() => loadStoredDatasetPairs())
   const [activeOutputTab, setActiveOutputTab] = useState('outputScreen')
 
@@ -669,10 +701,17 @@ export default function StatisticalAnalysisPanel({ onNext, onPrev, prevLabel }) 
   }, [activeFilter, selectedDataset])
 
   const handleAddPair = () => {
-    if (!canEditInputPairs) return
+    if (!canEditInputPairs) {
+      setPairSaveStatus({ type: 'error', message: 'Chỉ admin mới có quyền lưu cặp INPUT / OUTPUT.' })
+      return
+    }
+
     const inputUrl = draftInputUrl.trim()
     const outputUrl = draftOutputUrl.trim()
-    if (!/^https?:\/\//i.test(inputUrl) || !/^https?:\/\//i.test(outputUrl)) return
+    if (!/^https?:\/\//i.test(inputUrl) || !/^https?:\/\//i.test(outputUrl)) {
+      setPairSaveStatus({ type: 'error', message: 'Vui lòng nhập đủ INPUT URL và OUTPUT URL hợp lệ trước khi lưu.' })
+      return
+    }
 
     const pair = {
       inputUrl,
@@ -680,12 +719,30 @@ export default function StatisticalAnalysisPanel({ onNext, onPrev, prevLabel }) 
       createdAt: new Date().toISOString(),
       createdBy: user?.email || 'admin',
     }
-    const nextPairs = [...customPairs, pair]
+    const existingPairIndex = customPairs.findIndex(item => item.inputUrl === inputUrl)
+    const nextPairs = existingPairIndex >= 0
+      ? customPairs.map((item, index) => index === existingPairIndex ? { ...item, ...pair, updatedAt: pair.createdAt } : item)
+      : [...customPairs, pair]
+    const savedPairIndex = existingPairIndex >= 0 ? existingPairIndex : nextPairs.length - 1
+    const savedDatasetId = `custom-${savedPairIndex}`
+
     setCustomPairs(nextPairs)
     saveStoredDatasetPairs(nextPairs)
-    window.dispatchEvent(new Event('stat-analysis-pairs-updated'))
+    setSelectedDatasetId(savedDatasetId)
+    setActiveOutputTab('outputScreen')
+    setActiveFilters(prev => ({ ...prev, [savedDatasetId]: `custom-${savedPairIndex}-pending` }))
+    setPairSaveStatus({
+      type: 'success',
+      message: existingPairIndex >= 0 ? 'Đã cập nhật cặp INPUT / OUTPUT và tự động chọn lại trong danh sách.' : 'Đã lưu cặp INPUT / OUTPUT và tự động chọn trong danh sách.',
+    })
+    window.dispatchEvent(new CustomEvent('stat-analysis-pairs-updated', { detail: { savedDatasetId } }))
     setDraftInputUrl('')
     setDraftOutputUrl('')
+  }
+
+  const handleSelectDataset = (datasetId) => {
+    setSelectedDatasetId(datasetId)
+    setActiveOutputTab('outputScreen')
   }
 
   const handleSelectFilter = (filterId) => {
@@ -719,9 +776,16 @@ export default function StatisticalAnalysisPanel({ onNext, onPrev, prevLabel }) 
           draftInputUrl={draftInputUrl}
           draftOutputUrl={draftOutputUrl}
           canEdit={canEditInputPairs}
-          onSelect={setSelectedDatasetId}
-          onDraftInputChange={setDraftInputUrl}
-          onDraftOutputChange={setDraftOutputUrl}
+          pairSaveStatus={pairSaveStatus}
+          onSelect={handleSelectDataset}
+          onDraftInputChange={(value) => {
+            setDraftInputUrl(value)
+            setPairSaveStatus(null)
+          }}
+          onDraftOutputChange={(value) => {
+            setDraftOutputUrl(value)
+            setPairSaveStatus(null)
+          }}
           onAddPair={handleAddPair}
         />
 
