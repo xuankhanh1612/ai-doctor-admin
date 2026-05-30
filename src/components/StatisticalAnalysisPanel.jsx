@@ -394,10 +394,10 @@ function OutputScreenPanel({ dataset, activeTab, onTabChange }) {
     <Card style={{ padding: 14 }}>
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginBottom: 12, position: 'relative' }}>
         <AnalysisTabButton active={activeTab === 'outputHtml'} onClick={() => onTabChange('outputHtml')}>
-          OUTPUT HTML
+          OUTPUT SOURCE CODE
         </AnalysisTabButton>
         <AnalysisTabButton active={activeTab === 'outputScreen'} onClick={() => onTabChange('outputScreen')}>
-          OUTPUT SCREEN
+          OUTPUT HTML
         </AnalysisTabButton>
       </div>
       {activeTab === 'outputHtml'
@@ -413,7 +413,7 @@ function OutputHtmlContent({ dataset }) {
   if (!dataset.outputUrl) {
     return (
       <div style={{ border: '1px dashed var(--border2)', borderRadius: 14, padding: 18, color: 'var(--text3)', fontSize: 12, lineHeight: 1.6 }}>
-        Custom INPUT này chưa có OUTPUT HTML tương ứng. Khi có link Drive/file HTML, hệ thống sẽ render source HTML tại đây.
+        Custom INPUT này chưa có OUTPUT SOURCE CODE tương ứng. Khi có link Drive/file HTML, hệ thống sẽ render source HTML tại đây.
       </div>
     )
   }
@@ -453,7 +453,7 @@ function OutputScreenContent({ dataset }) {
   if (!dataset.outputUrl) {
     return (
       <div style={{ border: '1px dashed var(--border2)', borderRadius: 14, padding: 18, color: 'var(--text3)', fontSize: 12, lineHeight: 1.6 }}>
-        Custom INPUT này chưa có OUTPUT tương ứng. Khi có link Drive/file HTML, hệ thống có thể render OUTPUT SCREEN tại đây.
+        Custom INPUT này chưa có OUTPUT SOURCE CODE tương ứng. Khi có link Drive/file HTML, hệ thống có thể render OUTPUT HTML tại đây.
       </div>
     )
   }
@@ -661,42 +661,7 @@ export default function StatisticalAnalysisPanel({ onNext, onPrev, prevLabel }) 
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <OutputScreenPanel dataset={selectedDataset} activeTab={activeOutputTab} onTabChange={setActiveOutputTab} />
-          <Card>
-            <div style={{ color: 'var(--text)', fontSize: 17, fontWeight: 900 }}>{selectedDataset.title}</div>
-            <p style={{ color: 'var(--text2)', fontSize: 12, marginTop: 7, lineHeight: 1.6 }}>{selectedDataset.subtitle}</p>
-          </Card>
-
-          <div className="stat-analysis-metrics" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: 12 }}>
-            {selectedDataset.facts.map(fact => <SourceMetric key={fact.label} fact={fact} />)}
-          </div>
-
-          <div className="stat-analysis-layout" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 310px', gap: 16 }}>
-            <Card style={{ padding: 12 }}>
-              <DynamicScatterChart dataset={selectedDataset} activeFilter={activeFilter} onSelectFilter={handleSelectFilter} />
-            </Card>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <Card>
-                <div style={{ color: 'var(--text)', fontSize: 15, fontWeight: 900 }}>{t('statFiltersTitle')}</div>
-                <div style={{ color: 'var(--text3)', fontSize: 10, marginTop: 4 }}>{t('statFiltersHint')}</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 9, marginTop: 13 }}>
-                  {selectedDataset.filters.map(filter => (
-                    <FilterButton key={filter.id} filter={filter} active={activeFilter === filter.id} count={selectedDataset.points.filter(point => point.category === filter.id).length} onClick={() => handleSelectFilter(filter.id)} />
-                  ))}
-                </div>
-              </Card>
-
-              <Card style={{ background: 'linear-gradient(135deg, rgba(0,229,255,0.08), rgba(255,183,77,0.08))' }}>
-                <div style={{ color: 'var(--text)', fontSize: 15, fontWeight: 900 }}>{t('statOutcomeTitle')}</div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginTop: 12 }}>
-                  <div><div style={{ color: 'var(--cyan)', fontFamily: 'var(--font-mono)', fontSize: 20, fontWeight: 900 }}>{filteredStats.count}</div><div style={{ color: 'var(--text3)', fontSize: 9 }}>điểm</div></div>
-                  <div><div style={{ color: 'var(--green)', fontFamily: 'var(--font-mono)', fontSize: 20, fontWeight: 900 }}>{filteredStats.avgX}</div><div style={{ color: 'var(--text3)', fontSize: 9 }}>X trung bình</div></div>
-                  <div><div style={{ color: 'var(--amber)', fontFamily: 'var(--font-mono)', fontSize: 20, fontWeight: 900 }}>{filteredStats.avgY}</div><div style={{ color: 'var(--text3)', fontSize: 9 }}>Y trung bình</div></div>
-                </div>
-                <p style={{ color: 'var(--text2)', fontSize: 12, marginTop: 12, lineHeight: 1.55 }}>{selectedDataset.outcome}</p>
-              </Card>
-            </div>
-          </div>
+          
         </div>
       </div>
 
