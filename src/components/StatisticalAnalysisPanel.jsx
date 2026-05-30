@@ -365,22 +365,15 @@ function InputListCard({ datasets, selectedId, draftLink, onSelect, onDraftChang
   )
 }
 
-function AnalysisTabButton({ active, children, onClick, hidden = false }) {
+function AnalysisTabButton({ active, children, onClick }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      aria-hidden={hidden}
-      tabIndex={hidden ? -1 : 0}
       style={{
-        position: hidden ? 'absolute' : 'static',
-        width: hidden ? 1 : 'auto',
-        height: hidden ? 1 : 'auto',
-        overflow: hidden ? 'hidden' : 'visible',
-        clip: hidden ? 'rect(0 0 0 0)' : 'auto',
         flex: '0 0 auto',
         borderRadius: 999,
-        padding: hidden ? 0 : '8px 12px',
+        padding: '8px 12px',
         cursor: 'pointer',
         border: `1px solid ${active ? 'var(--cyan)' : 'var(--border)'}`,
         background: active ? 'rgba(0,229,255,0.1)' : 'var(--surface2)',
@@ -400,15 +393,57 @@ function OutputScreenPanel({ dataset, activeTab, onTabChange }) {
   return (
     <Card style={{ padding: 14 }}>
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginBottom: 12, position: 'relative' }}>
-        <AnalysisTabButton hidden active={activeTab === 'outputHtml'} onClick={() => onTabChange('outputHtml')}>
+        <AnalysisTabButton active={activeTab === 'outputHtml'} onClick={() => onTabChange('outputHtml')}>
           OUTPUT HTML
         </AnalysisTabButton>
         <AnalysisTabButton active={activeTab === 'outputScreen'} onClick={() => onTabChange('outputScreen')}>
           OUTPUT SCREEN
         </AnalysisTabButton>
       </div>
-      <OutputScreenContent dataset={dataset} />
+      {activeTab === 'outputHtml'
+        ? <OutputHtmlContent dataset={dataset} />
+        : <OutputScreenContent dataset={dataset} />}
     </Card>
+  )
+}
+
+function OutputHtmlContent({ dataset }) {
+  const renderedHtml = buildOutputHtml(dataset)
+
+  if (!dataset.outputUrl) {
+    return (
+      <div style={{ border: '1px dashed var(--border2)', borderRadius: 14, padding: 18, color: 'var(--text3)', fontSize: 12, lineHeight: 1.6 }}>
+        Custom INPUT này chưa có OUTPUT HTML tương ứng. Khi có link Drive/file HTML, hệ thống sẽ render source HTML tại đây.
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ color: 'var(--text)', fontSize: 14, fontWeight: 900 }}>{dataset.outputLabel}</div>
+      <div style={{ color: 'var(--text3)', fontSize: 10, lineHeight: 1.5 }}>
+        OUTPUT HTML hiển thị mã HTML đã sinh cho INPUT đang chọn. Chuyển sang OUTPUT SCREEN để xem bản render trực quan.
+      </div>
+      <pre style={{
+        maxHeight: 560,
+        overflow: 'auto',
+        border: '1px solid var(--border2)',
+        borderRadius: 14,
+        background: 'rgba(0,0,0,0.36)',
+        color: 'var(--text2)',
+        padding: 14,
+        fontSize: 11,
+        lineHeight: 1.55,
+        whiteSpace: 'pre-wrap',
+        overflowWrap: 'anywhere',
+        fontFamily: 'var(--font-mono)',
+      }}>
+        {renderedHtml}
+      </pre>
+      <a href={dataset.outputUrl} target="_blank" rel="noreferrer" style={{ color: 'var(--violet)', fontSize: 11, fontFamily: 'var(--font-mono)', textDecoration: 'none' }}>
+        Open OUTPUT HTML in new tab ↗
+      </a>
+    </div>
   )
 }
 
