@@ -42,8 +42,10 @@ export default function Sidebar({ active, onNavigate }) {
     { id: 'family',    label: t('familyTree'),      step: '04' },
     { id: 'record',    label: t('patientRecord'),   step: '05' },
     { id: 'twin',      label: t('twin'),            step: '06' },
-    { id: 'swarm',      label: t('swarmCouncil'),    step: '07' },
-    { id: 'consensus', label: t('consensus'),       step: '08' },
+    { id: 'telemedicine', label: t('telemedicine'), step: '07' },
+    { id: 'statAnalysis', label: t('statAnalysis'), step: '08' },
+    { id: 'swarm',      label: t('swarmCouncil'),    step: '09' },
+    { id: 'consensus', label: t('consensus'),       step: '10' },
   ]
 
   const ADMIN_STEPS = user?.isAdmin ? [
