@@ -333,29 +333,70 @@ function SourceMetric({ fact }) {
   )
 }
 
-function DatasetPicker({ datasets, selectedId, draftInputUrl, draftOutputUrl, canEdit, pairSaveStatus, onSelect, onDraftInputChange, onDraftOutputChange, onAddPair }) {
+function DatasetPicker({ datasets, selectedId, draftInputUrl, draftOutputUrl, canEdit, pairSaveStatus, editingPairIndex, onSelect, onDraftInputChange, onDraftOutputChange, onAddPair, onEditPair, onDeletePair, onCancelEdit }) {
   const hasDraftValues = draftInputUrl.trim() || draftOutputUrl.trim()
   const isDraftValid = /^https?:\/\//i.test(draftInputUrl.trim()) && /^https?:\/\//i.test(draftOutputUrl.trim())
+  const isEditing = editingPairIndex !== null
 
   return (
     <>
       <div style={{ color: 'var(--text)', fontSize: 15, fontWeight: 900 }}>INPUT list</div>
       <div style={{ color: 'var(--text3)', fontSize: 10, marginTop: 4 }}>Chọn cặp INPUT/OUTPUT để load OUTPUT SOURCE CODE và OUTPUT HTML tương ứng.</div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
-        {datasets.map((dataset, index) => (
-          <button key={dataset.id} type="button" onClick={() => onSelect(dataset.id)} style={{
-            textAlign: 'left', borderRadius: 12, padding: 11, cursor: 'pointer', fontFamily: 'inherit',
-            border: `1px solid ${selectedId === dataset.id ? 'var(--cyan)' : 'var(--border)'}`,
-            background: selectedId === dataset.id ? 'rgba(0,229,255,0.08)' : 'var(--surface2)',
-            color: 'var(--text)',
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-              <span style={{ fontSize: 11, color: selectedId === dataset.id ? 'var(--cyan)' : 'var(--text2)', fontWeight: 900 }}>{String(index + 1).padStart(2, '0')} · {dataset.label}</span>
-              <span style={{ color: dataset.outputUrl ? 'var(--green)' : 'var(--amber)', fontSize: 10, fontFamily: 'var(--font-mono)' }}>{dataset.outputUrl ? 'OUTPUT' : 'PENDING'}</span>
+        {datasets.map((dataset, index) => {
+          const canManageDataset = canEdit && typeof dataset.customPairIndex === 'number'
+          const isSelected = selectedId === dataset.id
+
+          return (
+            <div
+              key={dataset.id}
+              role="button"
+              tabIndex={0}
+              onClick={() => onSelect(dataset.id)}
+              onKeyDown={event => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault()
+                  onSelect(dataset.id)
+                }
+              }}
+              style={{
+                textAlign: 'left',
+                borderRadius: 12,
+                padding: 11,
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                border: `1px solid ${isSelected ? 'var(--cyan)' : 'var(--border)'}`,
+                background: isSelected ? 'rgba(0,229,255,0.08)' : 'var(--surface2)',
+                color: 'var(--text)',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'flex-start' }}>
+                <div style={{ minWidth: 0, flex: '1 1 auto' }}>
+                  <div style={{ fontSize: 11, color: isSelected ? 'var(--cyan)' : 'var(--text2)', fontWeight: 900 }}>{String(index + 1).padStart(2, '0')} · {dataset.label}</div>
+                  <div style={{ color: 'var(--text3)', fontSize: 9, marginTop: 5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{dataset.inputUrl}</div>
+                </div>
+                {canManageDataset && (
+                  <div style={{ display: 'flex', gap: 6, flex: '0 0 auto' }} onClick={event => event.stopPropagation()}>
+                    <button
+                      type="button"
+                      onClick={() => onEditPair(dataset.customPairIndex)}
+                      style={{ border: '1px solid rgba(0,229,255,0.28)', background: 'rgba(0,229,255,0.08)', color: 'var(--cyan)', borderRadius: 9, padding: '6px 7px', cursor: 'pointer', fontFamily: 'inherit', fontSize: 10, fontWeight: 900 }}
+                    >
+                      Sửa
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onDeletePair(dataset.customPairIndex)}
+                      style={{ border: '1px solid rgba(255,82,82,0.3)', background: 'rgba(255,82,82,0.08)', color: 'var(--red)', borderRadius: 9, padding: '6px 7px', cursor: 'pointer', fontFamily: 'inherit', fontSize: 10, fontWeight: 900 }}
+                    >
+                      Xoá
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
-            <div style={{ color: 'var(--text3)', fontSize: 9, marginTop: 5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{dataset.inputUrl}</div>
-          </button>
-        ))}
+          )
+        })}
       </div>
       {canEdit ? (
         <>
@@ -389,8 +430,17 @@ function DatasetPicker({ datasets, selectedId, draftInputUrl, draftOutputUrl, ca
               opacity: isDraftValid ? 1 : 0.7,
             }}
           >
-            + Save INPUT / OUTPUT pair
+            {isEditing ? 'Update INPUT / OUTPUT pair' : '+ Save INPUT / OUTPUT pair'}
           </button>
+          {isEditing && (
+            <button
+              type="button"
+              onClick={onCancelEdit}
+              style={{ marginTop: 8, width: '100%', border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text2)', borderRadius: 12, padding: '9px 12px', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 900 }}
+            >
+              Huỷ sửa
+            </button>
+          )}
           {(pairSaveStatus || hasDraftValues) && (
             <div style={{
               marginTop: 8,
@@ -411,7 +461,7 @@ function DatasetPicker({ datasets, selectedId, draftInputUrl, draftOutputUrl, ca
   )
 }
 
-function InputListCard({ datasets, selectedId, draftInputUrl, draftOutputUrl, canEdit, pairSaveStatus, onSelect, onDraftInputChange, onDraftOutputChange, onAddPair }) {
+function InputListCard({ datasets, selectedId, draftInputUrl, draftOutputUrl, canEdit, pairSaveStatus, editingPairIndex, onSelect, onDraftInputChange, onDraftOutputChange, onAddPair, onEditPair, onDeletePair, onCancelEdit }) {
   return (
     <Card style={{ padding: 14 }}>
       <DatasetPicker
@@ -421,10 +471,14 @@ function InputListCard({ datasets, selectedId, draftInputUrl, draftOutputUrl, ca
         draftOutputUrl={draftOutputUrl}
         canEdit={canEdit}
         pairSaveStatus={pairSaveStatus}
+        editingPairIndex={editingPairIndex}
         onSelect={onSelect}
         onDraftInputChange={onDraftInputChange}
         onDraftOutputChange={onDraftOutputChange}
         onAddPair={onAddPair}
+        onEditPair={onEditPair}
+        onDeletePair={onDeletePair}
+        onCancelEdit={onCancelEdit}
       />
     </Card>
   )
@@ -632,6 +686,7 @@ function createCustomDataset(pair, index) {
   const filterId = `custom-${index}-pending`
   return {
     id: `custom-${index}`,
+    customPairIndex: index,
     label: `Custom INPUT ${index + 1}`,
     inputUrl,
     outputUrl,
@@ -671,6 +726,7 @@ export default function StatisticalAnalysisPanel({ onNext, onPrev, prevLabel }) 
   const [draftInputUrl, setDraftInputUrl] = useState('')
   const [draftOutputUrl, setDraftOutputUrl] = useState('')
   const [pairSaveStatus, setPairSaveStatus] = useState(null)
+  const [editingPairIndex, setEditingPairIndex] = useState(null)
   const [customPairs, setCustomPairs] = useState(() => loadStoredDatasetPairs())
   const [activeOutputTab, setActiveOutputTab] = useState('outputScreen')
 
@@ -713,31 +769,82 @@ export default function StatisticalAnalysisPanel({ onNext, onPrev, prevLabel }) 
       return
     }
 
+    const now = new Date().toISOString()
+    const editingExistingPair = editingPairIndex !== null && customPairs[editingPairIndex]
     const pair = {
+      ...(editingExistingPair || {}),
       inputUrl,
       outputUrl,
-      createdAt: new Date().toISOString(),
-      createdBy: user?.email || 'admin',
+      createdAt: editingExistingPair?.createdAt || now,
+      createdBy: editingExistingPair?.createdBy || user?.email || 'admin',
+      updatedAt: now,
+      updatedBy: user?.email || 'admin',
     }
-    const existingPairIndex = customPairs.findIndex(item => item.inputUrl === inputUrl)
-    const nextPairs = existingPairIndex >= 0
-      ? customPairs.map((item, index) => index === existingPairIndex ? { ...item, ...pair, updatedAt: pair.createdAt } : item)
+    const duplicatePairIndex = customPairs.findIndex((item, index) => item.inputUrl === inputUrl && index !== editingPairIndex)
+    const targetPairIndex = editingExistingPair ? editingPairIndex : duplicatePairIndex
+    const nextPairs = targetPairIndex >= 0
+      ? customPairs.map((item, index) => index === targetPairIndex ? pair : item)
       : [...customPairs, pair]
-    const savedPairIndex = existingPairIndex >= 0 ? existingPairIndex : nextPairs.length - 1
+    const savedPairIndex = targetPairIndex >= 0 ? targetPairIndex : nextPairs.length - 1
     const savedDatasetId = `custom-${savedPairIndex}`
 
     setCustomPairs(nextPairs)
     saveStoredDatasetPairs(nextPairs)
     setSelectedDatasetId(savedDatasetId)
-    setActiveOutputTab('outputScreen')
     setActiveFilters(prev => ({ ...prev, [savedDatasetId]: `custom-${savedPairIndex}-pending` }))
     setPairSaveStatus({
       type: 'success',
-      message: existingPairIndex >= 0 ? 'Đã cập nhật cặp INPUT / OUTPUT và tự động chọn lại trong danh sách.' : 'Đã lưu cặp INPUT / OUTPUT và tự động chọn trong danh sách.',
+      message: targetPairIndex >= 0 ? 'Đã cập nhật cặp INPUT / OUTPUT.' : 'Đã lưu cặp INPUT / OUTPUT.',
     })
     window.dispatchEvent(new CustomEvent('stat-analysis-pairs-updated', { detail: { savedDatasetId } }))
     setDraftInputUrl('')
     setDraftOutputUrl('')
+    setEditingPairIndex(null)
+  }
+
+  const handleEditPair = (pairIndex) => {
+    const pair = customPairs[pairIndex]
+    if (!pair) return
+
+    setDraftInputUrl(pair.inputUrl)
+    setDraftOutputUrl(pair.outputUrl)
+    setEditingPairIndex(pairIndex)
+    setSelectedDatasetId(`custom-${pairIndex}`)
+    setPairSaveStatus({ type: 'success', message: `Đang sửa Custom INPUT ${pairIndex + 1}.` })
+  }
+
+  const handleDeletePair = (pairIndex) => {
+    if (!canEditInputPairs) return
+    const pair = customPairs[pairIndex]
+    if (!pair) return
+
+    const shouldDelete = window.confirm('Xoá cặp INPUT / OUTPUT này khỏi danh sách?')
+    if (!shouldDelete) return
+
+    const nextPairs = customPairs.filter((_, index) => index !== pairIndex)
+    setCustomPairs(nextPairs)
+    saveStoredDatasetPairs(nextPairs)
+    if (selectedDatasetId.startsWith('custom-')) setSelectedDatasetId(DATASETS[0].id)
+    if (editingPairIndex === pairIndex) {
+      setDraftInputUrl('')
+      setDraftOutputUrl('')
+      setEditingPairIndex(null)
+    } else if (editingPairIndex !== null && editingPairIndex > pairIndex) {
+      setEditingPairIndex(editingPairIndex - 1)
+    }
+    setPairSaveStatus({ type: 'success', message: 'Đã xoá cặp INPUT / OUTPUT khỏi danh sách.' })
+    window.dispatchEvent(new CustomEvent('stat-analysis-pairs-updated'))
+  }
+
+  const handleCancelEditPair = () => {
+    setDraftInputUrl('')
+    setDraftOutputUrl('')
+    setEditingPairIndex(null)
+    setPairSaveStatus(null)
+  }
+
+  const handleSelectDataset = (datasetId) => {
+    setSelectedDatasetId(datasetId)
   }
 
   const handleSelectDataset = (datasetId) => {
@@ -777,6 +884,7 @@ export default function StatisticalAnalysisPanel({ onNext, onPrev, prevLabel }) 
           draftOutputUrl={draftOutputUrl}
           canEdit={canEditInputPairs}
           pairSaveStatus={pairSaveStatus}
+          editingPairIndex={editingPairIndex}
           onSelect={handleSelectDataset}
           onDraftInputChange={(value) => {
             setDraftInputUrl(value)
@@ -787,6 +895,9 @@ export default function StatisticalAnalysisPanel({ onNext, onPrev, prevLabel }) 
             setPairSaveStatus(null)
           }}
           onAddPair={handleAddPair}
+          onEditPair={handleEditPair}
+          onDeletePair={handleDeletePair}
+          onCancelEdit={handleCancelEditPair}
         />
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
