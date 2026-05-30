@@ -847,6 +847,11 @@ export default function StatisticalAnalysisPanel({ onNext, onPrev, prevLabel }) 
     setSelectedDatasetId(datasetId)
   }
 
+  const handleSelectDataset = (datasetId) => {
+    setSelectedDatasetId(datasetId)
+    setActiveOutputTab('outputScreen')
+  }
+
   const handleSelectFilter = (filterId) => {
     setActiveFilters(prev => ({ ...prev, [selectedDataset.id]: filterId }))
   }
