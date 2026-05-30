@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useApp } from '../context/AppContext'
+import { useAuth } from '../context/AuthContext'
 import NavButtons from './NavButtons.jsx'
 
 const SOURCE_URL = 'https://suckhoedoisong.vn/long-chau-tam-soat-hpv-mien-phi-cho-hang-tram-khach-hang-ra-mat-giai-phap-nhan-dien-som-nguy-co-ung-thu-co-tu-cung-169260313102804621.htm?utm_source=chatgpt.com'
@@ -9,6 +10,22 @@ const CLINICAL_TRIALS_URL = 'https://cdn.clinicaltrials.gov/large-docs/30/NCT030
 const LONG_CHAU_OUTPUT = 'https://drive.google.com/file/d/1KhVVe3SVnSVXP1bBfEm5ePQB-z9bo3zG/view?usp=drive_link'
 const FDA_OUTPUT = 'https://drive.google.com/file/d/1VgU7QboNHPcLAS6E9U2_vjeGt5pBB9ja/view?usp=drive_link'
 const CLINICAL_OUTPUT = 'https://drive.google.com/file/d/1EUWk9GJFpX8yOaLyBBDnTClZShx0r9__/view?usp=drive_link'
+
+const CUSTOM_DATASET_STORAGE_KEY = 'cdoc_stat_analysis_pairs'
+
+function loadStoredDatasetPairs() {
+  try {
+    const raw = localStorage.getItem(CUSTOM_DATASET_STORAGE_KEY)
+    const parsed = raw ? JSON.parse(raw) : []
+    return Array.isArray(parsed) ? parsed.filter(pair => pair?.inputUrl && pair?.outputUrl) : []
+  } catch {
+    return []
+  }
+}
+
+function saveStoredDatasetPairs(pairs) {
+  localStorage.setItem(CUSTOM_DATASET_STORAGE_KEY, JSON.stringify(pairs))
+}
 
 const HTML_COLOR_MAP = {
   'var(--cyan)': '#00e5ff',
@@ -316,11 +333,11 @@ function SourceMetric({ fact }) {
   )
 }
 
-function DatasetPicker({ datasets, selectedId, draftLink, onSelect, onDraftChange, onAddLink }) {
+function DatasetPicker({ datasets, selectedId, draftInputUrl, draftOutputUrl, canEdit, onSelect, onDraftInputChange, onDraftOutputChange, onAddPair }) {
   return (
     <>
       <div style={{ color: 'var(--text)', fontSize: 15, fontWeight: 900 }}>INPUT list</div>
-      <div style={{ color: 'var(--text3)', fontSize: 10, marginTop: 4 }}>Chọn link để load OUTPUT / OUTCOME tương ứng, hoặc dán thêm link mới.</div>
+      <div style={{ color: 'var(--text3)', fontSize: 10, marginTop: 4 }}>Chọn cặp INPUT/OUTPUT để load OUTPUT SOURCE CODE và OUTPUT HTML tương ứng.</div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
         {datasets.map((dataset, index) => (
           <button key={dataset.id} type="button" onClick={() => onSelect(dataset.id)} style={{
@@ -337,29 +354,46 @@ function DatasetPicker({ datasets, selectedId, draftLink, onSelect, onDraftChang
           </button>
         ))}
       </div>
-      <textarea
-        value={draftLink}
-        onChange={e => onDraftChange(e.target.value)}
-        placeholder="Dán thêm một hoặc nhiều link INPUT, mỗi link một dòng..."
-        style={{ width: '100%', minHeight: 78, marginTop: 12, resize: 'vertical', borderRadius: 12, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text)', padding: 11, fontFamily: 'inherit', fontSize: 11 }}
-      />
-      <button type="button" onClick={onAddLink} style={{ marginTop: 9, width: '100%', border: '1px solid rgba(0,229,255,0.3)', background: 'rgba(0,229,255,0.08)', color: 'var(--cyan)', borderRadius: 12, padding: '10px 12px', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 900 }}>
-        + Add INPUT links
-      </button>
+      {canEdit ? (
+        <>
+          <input
+            value={draftInputUrl}
+            onChange={e => onDraftInputChange(e.target.value)}
+            placeholder="Admin nhập INPUT URL..."
+            style={{ width: '100%', marginTop: 12, borderRadius: 12, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text)', padding: 11, fontFamily: 'inherit', fontSize: 11 }}
+          />
+          <input
+            value={draftOutputUrl}
+            onChange={e => onDraftOutputChange(e.target.value)}
+            placeholder="Admin nhập dataset.outputUrl / OUTPUT HTML URL..."
+            style={{ width: '100%', marginTop: 8, borderRadius: 12, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text)', padding: 11, fontFamily: 'inherit', fontSize: 11 }}
+          />
+          <button type="button" onClick={onAddPair} style={{ marginTop: 9, width: '100%', border: '1px solid rgba(0,229,255,0.3)', background: 'rgba(0,229,255,0.08)', color: 'var(--cyan)', borderRadius: 12, padding: '10px 12px', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 900 }}>
+            + Save INPUT / OUTPUT pair
+          </button>
+        </>
+      ) : (
+        <div style={{ marginTop: 12, padding: 11, borderRadius: 12, border: '1px dashed var(--border2)', color: 'var(--text3)', fontSize: 10, lineHeight: 1.5 }}>
+          INPUT list được chia sẻ cho tất cả mọi người xem. Chỉ admin mới có quyền nhập và lưu cặp INPUT / dataset.outputUrl mới.
+        </div>
+      )}
     </>
   )
 }
 
-function InputListCard({ datasets, selectedId, draftLink, onSelect, onDraftChange, onAddLink }) {
+function InputListCard({ datasets, selectedId, draftInputUrl, draftOutputUrl, canEdit, onSelect, onDraftInputChange, onDraftOutputChange, onAddPair }) {
   return (
     <Card style={{ padding: 14 }}>
       <DatasetPicker
         datasets={datasets}
         selectedId={selectedId}
-        draftLink={draftLink}
+        draftInputUrl={draftInputUrl}
+        draftOutputUrl={draftOutputUrl}
+        canEdit={canEdit}
         onSelect={onSelect}
-        onDraftChange={onDraftChange}
-        onAddLink={onAddLink}
+        onDraftInputChange={onDraftInputChange}
+        onDraftOutputChange={onDraftOutputChange}
+        onAddPair={onAddPair}
       />
     </Card>
   )
@@ -462,7 +496,7 @@ function OutputScreenContent({ dataset }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div style={{ color: 'var(--text)', fontSize: 14, fontWeight: 900 }}>{dataset.title}</div>
       <div style={{ color: 'var(--text3)', fontSize: 10, lineHeight: 1.5 }}>
-        OUTPUT SCREEN hiển thị nội dung tương ứng với INPUT đang chọn: chart HTML tương tác, filters, stats và outcome.
+        OUTPUT HTML hiển thị nội dung tương ứng với INPUT đang chọn: chart HTML tương tác, filters, stats và outcome.
       </div>
       <iframe
         title={`${dataset.label} output screen`}
@@ -561,13 +595,15 @@ function DynamicScatterChart({ dataset, activeFilter, onSelectFilter }) {
   )
 }
 
-function createCustomDataset(link, index) {
+function createCustomDataset(pair, index) {
+  const inputUrl = typeof pair === 'string' ? pair : pair.inputUrl
+  const outputUrl = typeof pair === 'string' ? '' : pair.outputUrl
   const filterId = `custom-${index}-pending`
   return {
     id: `custom-${index}`,
     label: `Custom INPUT ${index + 1}`,
-    inputUrl: link,
-    outputUrl: '',
+    inputUrl,
+    outputUrl,
     sourceLabel: `CUSTOM INPUT ${index + 1}`,
     outputLabel: 'OUTPUT pending · AI extraction needed',
     title: 'Custom INPUT · pending AI extraction',
@@ -585,31 +621,45 @@ function createCustomDataset(link, index) {
       { value: 'NEW', label: 'INPUT vừa được user thêm vào danh sách' },
       { value: 'WAIT', label: 'đang chờ mapping OUTPUT tương ứng' },
       { value: 'AI', label: 'sẵn sàng cho bước trích xuất dữ liệu' },
-      { value: 'URL', label: link.replace(/^https?:\/\//, '').slice(0, 36) },
+      { value: 'URL', label: inputUrl.replace(/^https?:\/\//, '').slice(0, 36) },
       { value: '0', label: 'chart thật chưa được sinh cho custom link' },
     ],
     filters: [
       { id: filterId, label: 'Pending extraction', color: 'var(--amber)', description: 'Custom link đã được lưu trong phiên UI; cần pipeline AI để tạo OUTPUT chart riêng.' },
     ],
     points: Array.from({ length: 8 }, (_, i) => ({ id: `${filterId}-${i}`, x: i + 1, y: 18 + i * 8, category: filterId })),
-    outcome: 'Custom INPUT chưa có OUTPUT Drive tương ứng. UI đã chọn được link này và hiển thị trạng thái chờ phân tích.',
+    outcome: outputUrl ? 'Custom INPUT đã có dataset.outputUrl tương ứng và có thể render OUTPUT SOURCE CODE / OUTPUT HTML.' : 'Custom INPUT chưa có OUTPUT Drive tương ứng. UI đã chọn được link này và hiển thị trạng thái chờ phân tích.',
   }
 }
 
 export default function StatisticalAnalysisPanel({ onNext, onPrev, prevLabel }) {
   const { t } = useApp()
+  const { user } = useAuth()
   const [selectedDatasetId, setSelectedDatasetId] = useState(DATASETS[0].id)
   const [activeFilters, setActiveFilters] = useState(() => Object.fromEntries(DATASETS.map(dataset => [dataset.id, dataset.filters[0].id])))
-  const [draftLink, setDraftLink] = useState('')
-  const [customLinks, setCustomLinks] = useState([])
+  const [draftInputUrl, setDraftInputUrl] = useState('')
+  const [draftOutputUrl, setDraftOutputUrl] = useState('')
+  const [customPairs, setCustomPairs] = useState(() => loadStoredDatasetPairs())
   const [activeOutputTab, setActiveOutputTab] = useState('outputScreen')
 
   const allDatasets = useMemo(() => [
     ...DATASETS,
-    ...customLinks.map((link, index) => createCustomDataset(link, index)),
-  ], [customLinks])
+    ...customPairs.map((pair, index) => createCustomDataset(pair, index)),
+  ], [customPairs])
   const selectedDataset = allDatasets.find(dataset => dataset.id === selectedDatasetId) || DATASETS[0]
   const activeFilter = activeFilters[selectedDataset.id] || selectedDataset.filters[0].id
+
+  const canEditInputPairs = Boolean(user?.isAdmin)
+
+  useEffect(() => {
+    const syncStoredPairs = () => setCustomPairs(loadStoredDatasetPairs())
+    window.addEventListener('storage', syncStoredPairs)
+    window.addEventListener('stat-analysis-pairs-updated', syncStoredPairs)
+    return () => {
+      window.removeEventListener('storage', syncStoredPairs)
+      window.removeEventListener('stat-analysis-pairs-updated', syncStoredPairs)
+    }
+  }, [])
 
   const filteredStats = useMemo(() => {
     const activePoints = selectedDataset.points.filter(point => point.category === activeFilter)
@@ -618,11 +668,24 @@ export default function StatisticalAnalysisPanel({ onNext, onPrev, prevLabel }) 
     return { count: activePoints.length, avgX, avgY }
   }, [activeFilter, selectedDataset])
 
-  const handleAddLink = () => {
-    const links = draftLink.split(/\n|,|\s+/).map(link => link.trim()).filter(link => /^https?:\/\//i.test(link))
-    if (!links.length) return
-    setCustomLinks(prev => [...prev, ...links])
-    setDraftLink('')
+  const handleAddPair = () => {
+    if (!canEditInputPairs) return
+    const inputUrl = draftInputUrl.trim()
+    const outputUrl = draftOutputUrl.trim()
+    if (!/^https?:\/\//i.test(inputUrl) || !/^https?:\/\//i.test(outputUrl)) return
+
+    const pair = {
+      inputUrl,
+      outputUrl,
+      createdAt: new Date().toISOString(),
+      createdBy: user?.email || 'admin',
+    }
+    const nextPairs = [...customPairs, pair]
+    setCustomPairs(nextPairs)
+    saveStoredDatasetPairs(nextPairs)
+    window.dispatchEvent(new Event('stat-analysis-pairs-updated'))
+    setDraftInputUrl('')
+    setDraftOutputUrl('')
   }
 
   const handleSelectFilter = (filterId) => {
@@ -653,10 +716,13 @@ export default function StatisticalAnalysisPanel({ onNext, onPrev, prevLabel }) 
         <InputListCard
           datasets={allDatasets}
           selectedId={selectedDataset.id}
-          draftLink={draftLink}
+          draftInputUrl={draftInputUrl}
+          draftOutputUrl={draftOutputUrl}
+          canEdit={canEditInputPairs}
           onSelect={setSelectedDatasetId}
-          onDraftChange={setDraftLink}
-          onAddLink={handleAddLink}
+          onDraftInputChange={setDraftInputUrl}
+          onDraftOutputChange={setDraftOutputUrl}
+          onAddPair={handleAddPair}
         />
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
