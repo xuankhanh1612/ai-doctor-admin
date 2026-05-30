@@ -353,20 +353,19 @@ function DatasetPicker({ datasets, selectedId, draftLink, onSelect, onDraftChang
 function SourceOutputTabs({ children, activeTab, onTabChange }) {
   const tabs = [
     { id: 'input', label: 'INPUT list' },
-    { id: 'longChauData', label: 'Long Châu data' },
     { id: 'outputHtml', label: 'OUTPUT HTML' },
   ]
 
   return (
     <Card style={{ padding: 14 }}>
-      <div style={{ display: 'flex', gap: 7, marginBottom: 12, overflowX: 'auto' }}>
+      <div style={{ display: 'flex', gap: 7, marginBottom: 12, overflowX: 'auto', justifyContent: 'space-between' }}>
         {tabs.map(tab => (
           <button
             key={tab.id}
             type="button"
             onClick={() => onTabChange(tab.id)}
             style={{
-              flex: '0 0 auto', borderRadius: 999, padding: '8px 10px', cursor: 'pointer',
+              flex: '0 0 auto', marginLeft: tab.id === 'outputHtml' ? 'auto' : 0, borderRadius: 999, padding: '8px 10px', cursor: 'pointer',
               border: `1px solid ${activeTab === tab.id ? 'var(--cyan)' : 'var(--border)'}`,
               background: activeTab === tab.id ? 'rgba(0,229,255,0.1)' : 'var(--surface2)',
               color: activeTab === tab.id ? 'var(--cyan)' : 'var(--text2)',
@@ -379,36 +378,6 @@ function SourceOutputTabs({ children, activeTab, onTabChange }) {
       </div>
       {children}
     </Card>
-  )
-}
-
-function LongChauDataTab({ dataset }) {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <div>
-        <div style={{ color: 'var(--text)', fontSize: 15, fontWeight: 900 }}>{dataset.title}</div>
-        <p style={{ color: 'var(--text2)', fontSize: 11, marginTop: 6, lineHeight: 1.55 }}>{dataset.subtitle}</p>
-      </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
-        {dataset.facts.map(fact => (
-          <div key={fact.label} style={{ padding: 10, borderRadius: 12, border: '1px solid var(--border)', background: 'var(--surface2)' }}>
-            <div style={{ color: 'var(--cyan)', fontFamily: 'var(--font-mono)', fontSize: 16, fontWeight: 900 }}>{fact.value}</div>
-            <div style={{ color: 'var(--text3)', fontSize: 9, lineHeight: 1.4 }}>{fact.label}</div>
-          </div>
-        ))}
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {dataset.filters.map(filter => (
-          <div key={filter.id} style={{ padding: 10, borderRadius: 12, border: `1px solid ${filter.color}`, background: `${filter.color}12` }}>
-            <div style={{ color: filter.color, fontSize: 11, fontWeight: 900 }}>{filter.label}</div>
-            <div style={{ color: 'var(--text3)', fontSize: 9, marginTop: 4, lineHeight: 1.45 }}>{filter.description}</div>
-          </div>
-        ))}
-      </div>
-      <div style={{ color: 'var(--text3)', fontSize: 10, lineHeight: 1.5 }}>
-        Dataset mẫu: {dataset.points.length} điểm · X: {dataset.xLabel} · Y: {dataset.yLabel}
-      </div>
-    </div>
   )
 }
 
@@ -442,7 +411,7 @@ Preview bên dưới render HTML thật từ dữ liệu OUTPUT tương ứng, k
   )
 }
 
-function InputWorkspaceTabs({ datasets, selectedId, draftLink, onSelect, onDraftChange, onAddLink, activeTab, onTabChange, longChauDataset, selectedDataset }) {
+function InputWorkspaceTabs({ datasets, selectedId, draftLink, onSelect, onDraftChange, onAddLink, activeTab, onTabChange, selectedDataset }) {
   return (
     <SourceOutputTabs activeTab={activeTab} onTabChange={onTabChange}>
       {activeTab === 'input' && (
@@ -455,7 +424,6 @@ function InputWorkspaceTabs({ datasets, selectedId, draftLink, onSelect, onDraft
           onAddLink={onAddLink}
         />
       )}
-      {activeTab === 'longChauData' && <LongChauDataTab dataset={longChauDataset} />}
       {activeTab === 'outputHtml' && <OutputHtmlTab dataset={selectedDataset} />}
     </SourceOutputTabs>
   )
@@ -592,7 +560,6 @@ export default function StatisticalAnalysisPanel({ onNext, onPrev, prevLabel }) 
     ...DATASETS,
     ...customLinks.map((link, index) => createCustomDataset(link, index)),
   ], [customLinks])
-  const longChauDataset = DATASETS[0]
   const selectedDataset = allDatasets.find(dataset => dataset.id === selectedDatasetId) || DATASETS[0]
   const activeFilter = activeFilters[selectedDataset.id] || selectedDataset.filters[0].id
 
@@ -644,7 +611,6 @@ export default function StatisticalAnalysisPanel({ onNext, onPrev, prevLabel }) 
           onAddLink={handleAddLink}
           activeTab={activeSideTab}
           onTabChange={setActiveSideTab}
-          longChauDataset={longChauDataset}
           selectedDataset={selectedDataset}
         />
 
