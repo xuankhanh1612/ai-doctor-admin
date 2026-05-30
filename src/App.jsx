@@ -6,6 +6,7 @@ import Sidebar from './components/Sidebar.jsx'
 import ImagingPanel from './components/ImagingPanel.jsx'
 import CheckinPanel from './components/CheckinPanel.jsx'
 import TwinPanel from './components/TwinPanel.jsx'
+import Matrix3DBodyPanel from './components/Matrix3DBodyPanel.jsx'
 import TelemedicinePanel from './components/TelemedicinePanel.jsx'
 import StatisticalAnalysisPanel from './components/StatisticalAnalysisPanel.jsx'
 import SimulationPanel from './components/SimulationPanel.jsx'
@@ -18,7 +19,7 @@ import PatientRecordPanel from './components/PatientRecordPanel.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 
 // Swarm panel replaces simulation; keep consensus as classic fallback
-const PANELS = ['upload', 'imaging', 'checkin', 'family', 'record', 'twin', 'telemedicine', 'statAnalysis', 'swarm', 'consensus']
+const PANELS = ['upload', 'imaging', 'checkin', 'family', 'record', 'matrix3dBody', 'twin', 'telemedicine', 'statAnalysis', 'swarm', 'consensus']
 
 export default function App() {
   const { user, loading } = useAuth()
@@ -47,6 +48,7 @@ export default function App() {
     checkin: t('checkin'),
     family: t('familyTree'),
     record: t('patientRecord'),
+    matrix3dBody: t('matrix3dBody'),
     twin: t('twin'),
     telemedicine: t('telemedicine'),
     statAnalysis: t('statAnalysis'),
@@ -169,6 +171,7 @@ export default function App() {
           {active === 'checkin'   && <CheckinPanel       onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
           {active === 'family'    && <FamilyTreePanel    patientId="LXK-2024" onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} onViewRecord={navigateToRecord} />}
           {active === 'record'    && <PatientRecordPanel onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} selectedMember={selectedMember} />}
+          {active === 'matrix3dBody' && <Matrix3DBodyPanel onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
           {active === 'twin'      && <TwinPanel          onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
           {active === 'telemedicine' && <TelemedicinePanel onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
           {active === 'statAnalysis' && <StatisticalAnalysisPanel onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
