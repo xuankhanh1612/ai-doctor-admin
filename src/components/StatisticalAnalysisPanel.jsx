@@ -843,15 +843,6 @@ export default function StatisticalAnalysisPanel({ onNext, onPrev, prevLabel }) 
     setPairSaveStatus(null)
   }
 
-  const handleSelectDataset = (datasetId) => {
-    setSelectedDatasetId(datasetId)
-  }
-
-  const handleSelectDataset = (datasetId) => {
-    setSelectedDatasetId(datasetId)
-    setActiveOutputTab('outputScreen')
-  }
-
   const handleSelectFilter = (filterId) => {
     setActiveFilters(prev => ({ ...prev, [selectedDataset.id]: filterId }))
   }
@@ -885,7 +876,7 @@ export default function StatisticalAnalysisPanel({ onNext, onPrev, prevLabel }) 
           canEdit={canEditInputPairs}
           pairSaveStatus={pairSaveStatus}
           editingPairIndex={editingPairIndex}
-          onSelect={handleSelectDataset}
+          onSelect={setSelectedDatasetId}
           onDraftInputChange={(value) => {
             setDraftInputUrl(value)
             setPairSaveStatus(null)
