@@ -350,82 +350,95 @@ function DatasetPicker({ datasets, selectedId, draftLink, onSelect, onDraftChang
   )
 }
 
-function SourceOutputTabs({ children, activeTab, onTabChange }) {
-  const tabs = [
-    { id: 'input', label: 'INPUT list' },
-    { id: 'outputHtml', label: 'OUTPUT HTML' },
-  ]
-
+function InputListCard({ datasets, selectedId, draftLink, onSelect, onDraftChange, onAddLink }) {
   return (
     <Card style={{ padding: 14 }}>
-      <div style={{ display: 'flex', gap: 7, marginBottom: 12, overflowX: 'auto', justifyContent: 'space-between' }}>
-        {tabs.map(tab => (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => onTabChange(tab.id)}
-            style={{
-              flex: '0 0 auto', marginLeft: tab.id === 'outputHtml' ? 'auto' : 0, borderRadius: 999, padding: '8px 10px', cursor: 'pointer',
-              border: `1px solid ${activeTab === tab.id ? 'var(--cyan)' : 'var(--border)'}`,
-              background: activeTab === tab.id ? 'rgba(0,229,255,0.1)' : 'var(--surface2)',
-              color: activeTab === tab.id ? 'var(--cyan)' : 'var(--text2)',
-              fontSize: 10, fontFamily: 'var(--font-mono)', fontWeight: 900,
-            }}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-      {children}
+      <DatasetPicker
+        datasets={datasets}
+        selectedId={selectedId}
+        draftLink={draftLink}
+        onSelect={onSelect}
+        onDraftChange={onDraftChange}
+        onAddLink={onAddLink}
+      />
     </Card>
   )
 }
 
-function OutputHtmlTab({ dataset }) {
+function AnalysisTabButton({ active, children, onClick, hidden = false }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-hidden={hidden}
+      tabIndex={hidden ? -1 : 0}
+      style={{
+        position: hidden ? 'absolute' : 'static',
+        width: hidden ? 1 : 'auto',
+        height: hidden ? 1 : 'auto',
+        overflow: hidden ? 'hidden' : 'visible',
+        clip: hidden ? 'rect(0 0 0 0)' : 'auto',
+        flex: '0 0 auto',
+        borderRadius: 999,
+        padding: hidden ? 0 : '8px 12px',
+        cursor: 'pointer',
+        border: `1px solid ${active ? 'var(--cyan)' : 'var(--border)'}`,
+        background: active ? 'rgba(0,229,255,0.1)' : 'var(--surface2)',
+        color: active ? 'var(--cyan)' : 'var(--text2)',
+        fontSize: 10,
+        fontFamily: 'var(--font-mono)',
+        fontWeight: 900,
+        whiteSpace: 'nowrap',
+      }}
+    >
+      {children}
+    </button>
+  )
+}
+
+function OutputScreenPanel({ dataset, activeTab, onTabChange }) {
+  return (
+    <Card style={{ padding: 14 }}>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginBottom: 12, position: 'relative' }}>
+        <AnalysisTabButton hidden active={activeTab === 'outputHtml'} onClick={() => onTabChange('outputHtml')}>
+          OUTPUT HTML
+        </AnalysisTabButton>
+        <AnalysisTabButton active={activeTab === 'outputScreen'} onClick={() => onTabChange('outputScreen')}>
+          OUTPUT SCREEN
+        </AnalysisTabButton>
+      </div>
+      <OutputScreenContent dataset={dataset} />
+    </Card>
+  )
+}
+
+function OutputScreenContent({ dataset }) {
   const renderedHtml = buildOutputHtml(dataset)
 
   if (!dataset.outputUrl) {
     return (
       <div style={{ border: '1px dashed var(--border2)', borderRadius: 14, padding: 18, color: 'var(--text3)', fontSize: 12, lineHeight: 1.6 }}>
-        Custom INPUT này chưa có OUTPUT HTML tương ứng. Khi có link Drive/file HTML, hệ thống có thể embed tại đây.
+        Custom INPUT này chưa có OUTPUT tương ứng. Khi có link Drive/file HTML, hệ thống có thể render OUTPUT SCREEN tại đây.
       </div>
     )
   }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <div style={{ color: 'var(--text)', fontSize: 14, fontWeight: 900 }}>{dataset.outputLabel}</div>
+      <div style={{ color: 'var(--text)', fontSize: 14, fontWeight: 900 }}>{dataset.title}</div>
       <div style={{ color: 'var(--text3)', fontSize: 10, lineHeight: 1.5 }}>
-Preview bên dưới render HTML thật từ dữ liệu OUTPUT tương ứng, không hiển thị source code.
+        OUTPUT SCREEN hiển thị nội dung tương ứng với INPUT đang chọn: chart HTML tương tác, filters, stats và outcome.
       </div>
       <iframe
-        title={`${dataset.label} output html preview`}
+        title={`${dataset.label} output screen`}
         srcDoc={renderedHtml}
-        style={{ width: '100%', minHeight: 460, border: '1px solid var(--border2)', borderRadius: 14, background: '#fff' }}
+        style={{ width: '100%', minHeight: 560, border: '1px solid var(--border2)', borderRadius: 14, background: '#fff' }}
         allow="autoplay"
       />
       <a href={dataset.outputUrl} target="_blank" rel="noreferrer" style={{ color: 'var(--violet)', fontSize: 11, fontFamily: 'var(--font-mono)', textDecoration: 'none' }}>
-        Open OUTPUT in new tab ↗
+        Open OUTPUT HTML in new tab ↗
       </a>
     </div>
-  )
-}
-
-function InputWorkspaceTabs({ datasets, selectedId, draftLink, onSelect, onDraftChange, onAddLink, activeTab, onTabChange, selectedDataset }) {
-  return (
-    <SourceOutputTabs activeTab={activeTab} onTabChange={onTabChange}>
-      {activeTab === 'input' && (
-        <DatasetPicker
-          datasets={datasets}
-          selectedId={selectedId}
-          draftLink={draftLink}
-          onSelect={onSelect}
-          onDraftChange={onDraftChange}
-          onAddLink={onAddLink}
-        />
-      )}
-      {activeTab === 'outputHtml' && <OutputHtmlTab dataset={selectedDataset} />}
-    </SourceOutputTabs>
   )
 }
 
@@ -554,7 +567,7 @@ export default function StatisticalAnalysisPanel({ onNext, onPrev, prevLabel }) 
   const [activeFilters, setActiveFilters] = useState(() => Object.fromEntries(DATASETS.map(dataset => [dataset.id, dataset.filters[0].id])))
   const [draftLink, setDraftLink] = useState('')
   const [customLinks, setCustomLinks] = useState([])
-  const [activeSideTab, setActiveSideTab] = useState('input')
+  const [activeOutputTab, setActiveOutputTab] = useState('outputScreen')
 
   const allDatasets = useMemo(() => [
     ...DATASETS,
@@ -602,19 +615,17 @@ export default function StatisticalAnalysisPanel({ onNext, onPrev, prevLabel }) 
       </Card>
 
       <div className="stat-analysis-workspace" style={{ display: 'grid', gridTemplateColumns: '330px minmax(0, 1fr)', gap: 16 }}>
-        <InputWorkspaceTabs
+        <InputListCard
           datasets={allDatasets}
           selectedId={selectedDataset.id}
           draftLink={draftLink}
           onSelect={setSelectedDatasetId}
           onDraftChange={setDraftLink}
           onAddLink={handleAddLink}
-          activeTab={activeSideTab}
-          onTabChange={setActiveSideTab}
-          selectedDataset={selectedDataset}
         />
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <OutputScreenPanel dataset={selectedDataset} activeTab={activeOutputTab} onTabChange={setActiveOutputTab} />
           <Card>
             <div style={{ color: 'var(--text)', fontSize: 17, fontWeight: 900 }}>{selectedDataset.title}</div>
             <p style={{ color: 'var(--text2)', fontSize: 12, marginTop: 7, lineHeight: 1.6 }}>{selectedDataset.subtitle}</p>
