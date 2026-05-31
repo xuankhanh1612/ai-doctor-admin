@@ -41,11 +41,13 @@ export default function Sidebar({ active, onNavigate }) {
     { id: 'checkin',   label: t('checkin'),         step: '03' },
     { id: 'family',    label: t('familyTree'),      step: '04' },
     { id: 'record',    label: t('patientRecord'),   step: '05' },
-    { id: 'twin',      label: t('twin'),            step: '06' },
-    { id: 'telemedicine', label: t('telemedicine'), step: '07' },
-    { id: 'statAnalysis', label: t('statAnalysis'), step: '08' },
-    { id: 'swarm',      label: t('swarmCouncil'),    step: '09' },
-    { id: 'consensus', label: t('consensus'),       step: '10' },
+    { id: 'matrix3dBody', label: t('matrix3dBody'), step: '06' },
+    { id: 'omni3dBody', label: t('omni3dBody'), step: '07' },
+    { id: 'twin',      label: t('twin'),            step: '08' },
+    { id: 'telemedicine', label: t('telemedicine'), step: '09' },
+    { id: 'statAnalysis', label: t('statAnalysis'), step: '10' },
+    { id: 'swarm',      label: t('swarmCouncil'),    step: '11' },
+    { id: 'consensus', label: t('consensus'),       step: '12' },
   ]
 
   const ADMIN_STEPS = user?.isAdmin ? [
