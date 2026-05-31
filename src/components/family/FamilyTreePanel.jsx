@@ -6,7 +6,7 @@ import NavButtons from '../NavButtons.jsx'
 // ─── Constants ──────────────────────────────────────────────────────────────
 const RELATIONS = ['self','father','mother','spouse','sibling','child','grandparent','grandchild','uncle_aunt','cousin']
 
-const RELATION_META = {
+export const FAMILY_RELATION_META = {
   grandparent: { row: 1, color: '#9c6fff', label: { vi: 'Ông/Bà',    en: 'Grandparent' } },
   father:      { row: 2, color: '#00b8cc', label: { vi: 'Cha',        en: 'Father'      } },
   mother:      { row: 2, color: '#f48fb1', label: { vi: 'Mẹ',         en: 'Mother'      } },
@@ -19,7 +19,7 @@ const RELATION_META = {
   grandchild:  { row: 5, color: '#a5d6a7', label: { vi: 'Cháu',        en: 'Grandchild'  } },
 }
 
-const CONDITION_COLORS = {
+export const FAMILY_CONDITION_COLORS = {
   'Ung thư phổi':'#ff5252','Lung Cancer':'#ff5252',
   'Ung thư gan':'#ff5252','Liver Cancer':'#ff5252',
   'Ung thư vú':'#f48fb1','Breast Cancer':'#f48fb1',
@@ -33,26 +33,26 @@ const CONDITION_COLORS = {
   'Khỏe mạnh':'#00e676','Healthy':'#00e676',
 }
 
-const STORAGE_KEY = 'cdoc_family_members'
+export const FAMILY_STORAGE_KEY = 'cdoc_family_members'
 
 // ─── Persistence helpers ───────────────────────────────────────────────────
-const loadMembers = (patientId) => {
+export const loadFamilyMembers = (patientId) => {
   try {
-    const all = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}')
+    const all = JSON.parse(localStorage.getItem(FAMILY_STORAGE_KEY) || '{}')
     return all[patientId] || null
   } catch { return null }
 }
 
-const saveMembers = (patientId, members) => {
+export const saveFamilyMembers = (patientId, members) => {
   try {
-    const all = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}')
+    const all = JSON.parse(localStorage.getItem(FAMILY_STORAGE_KEY) || '{}')
     all[patientId] = members
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(all))
+    localStorage.setItem(FAMILY_STORAGE_KEY, JSON.stringify(all))
   } catch (e) { console.error('FamilyTree save error:', e) }
 }
 
 // ─── Default demo data ─────────────────────────────────────────────────────
-const DEFAULT_MEMBERS = [
+export const DEFAULT_FAMILY_MEMBERS = [
   // ── Thế hệ ông bà ─────────────────────────────────────────────────────────
   { id:'fm-0', relation:'grandparent', name:'Lê Văn Tấn',     age:94, gender:'M', conditions:['Ung thư phổi'],          alive:false, note:'Ông nội · mất 1992' },
   { id:'fm-9', relation:'grandparent', name:'Trần Thị Ngọc',  age:88, gender:'F', conditions:['Tăng huyết áp'],         alive:false, note:'Bà nội · mất 2005' },
@@ -132,7 +132,7 @@ const buildMemberRecord = (member) => ({
     : [],
 
   timeline: [
-    { id:'t1', date:'—', event:`Thành viên gia đình · ${RELATION_META[member.relation]?.label?.vi || member.relation}`, type:'diagnosis' },
+    { id:'t1', date:'—', event:`Thành viên gia đình · ${FAMILY_RELATION_META[member.relation]?.label?.vi || member.relation}`, type:'diagnosis' },
     ...(member.medicalRecord?.diagnoses?.map((d,i) => ({ id:'td'+i, date:'—', event:d, type:'diagnosis', severity: /ung thư|cancer|hcc|nsclc/i.test(d)?'critical':'moderate' })) || []),
     ...(member.note ? [{ id:'t2', date:'—', event: member.note, type:'consult' }] : []),
     ...(member.alive === false ? [{ id:'t3', date:'—', event:'Đã mất', type:'consult' }] : []),
@@ -152,7 +152,7 @@ const EMPTY_FORM = { name:'', age:'', gender:'M', relation:'child', conditions:'
 
 // ─── Member Card ───────────────────────────────────────────────────────────
 function MemberCard({ member, lang, isDark, c, onViewRecord, onEdit, onDelete }) {
-  const meta     = RELATION_META[member.relation] || { color:'#888', label:{ vi:'Khác', en:'Other' } }
+  const meta     = FAMILY_RELATION_META[member.relation] || { color:'#888', label:{ vi:'Khác', en:'Other' } }
   const relColor = meta.color
   const hasDisease = member.conditions.some(cd => cd !== 'Khỏe mạnh' && cd !== 'Healthy')
 
@@ -207,7 +207,7 @@ function MemberCard({ member, lang, isDark, c, onViewRecord, onEdit, onDelete })
         </div>
 
         {member.conditions.map((cond, i) => {
-          const cc = CONDITION_COLORS[cond] || (hasDisease && cond !== 'Khỏe mạnh' ? '#ff8a65' : '#888')
+          const cc = FAMILY_CONDITION_COLORS[cond] || (hasDisease && cond !== 'Khỏe mạnh' ? '#ff8a65' : '#888')
           return (
             <div key={i} style={{
               fontSize:9, padding:'2px 5px', borderRadius:4, marginBottom:2,
@@ -323,7 +323,7 @@ function MemberFormModal({ mode, initialForm, onSave, onClose, lang, isDark, c }
         <Field label={lang === 'vi' ? 'Quan hệ với bệnh nhân' : 'Relation to Patient'}>
           <select value={localForm.relation} onChange={e => setLocalForm(p => ({ ...p, relation:e.target.value }))} style={selectStyle}>
             {RELATIONS.map(r => (
-              <option key={r} value={r}>{RELATION_META[r]?.label?.[lang] || RELATION_META[r]?.label?.vi || r}</option>
+              <option key={r} value={r}>{FAMILY_RELATION_META[r]?.label?.[lang] || FAMILY_RELATION_META[r]?.label?.vi || r}</option>
             ))}
           </select>
         </Field>
@@ -394,14 +394,14 @@ export default function FamilyTreePanel({ patientId, onNext, onPrev, prevLabel, 
   const { theme, lang, t } = useApp()
   const isDark    = theme === 'dark'
 
-  // Load from localStorage, fallback to DEFAULT_MEMBERS
-  const [members, setMembersState] = useState(() => loadMembers(patientId) || DEFAULT_MEMBERS)
+  // Load from localStorage, fallback to DEFAULT_FAMILY_MEMBERS
+  const [members, setMembersState] = useState(() => loadFamilyMembers(patientId) || DEFAULT_FAMILY_MEMBERS)
 
   // Persist every change
   const setMembers = useCallback((updater) => {
     setMembersState(prev => {
       const next = typeof updater === 'function' ? updater(prev) : updater
-      saveMembers(patientId, next)
+      saveFamilyMembers(patientId, next)
       return next
     })
   }, [patientId])
@@ -471,7 +471,7 @@ export default function FamilyTreePanel({ patientId, onNext, onPrev, prevLabel, 
   // ── Group by row ──────────────────────────────────────────────────────────
   const rows = [1,2,3,4,5]
   const byRow = members.reduce((acc, m) => {
-    const row = RELATION_META[m.relation]?.row || 3
+    const row = FAMILY_RELATION_META[m.relation]?.row || 3
     if (!acc[row]) acc[row] = []
     acc[row].push(m)
     return acc
@@ -585,7 +585,7 @@ export default function FamilyTreePanel({ patientId, onNext, onPrev, prevLabel, 
             </thead>
             <tbody>
               {members.map((member, i) => {
-                const meta = RELATION_META[member.relation]
+                const meta = FAMILY_RELATION_META[member.relation]
                 const relColor = meta?.color || '#888'
                 const hasDisease = member.conditions.some(cd => cd !== 'Khỏe mạnh' && cd !== 'Healthy')
                 return (
@@ -610,7 +610,7 @@ export default function FamilyTreePanel({ patientId, onNext, onPrev, prevLabel, 
                     <td style={{ padding:'10px 14px' }}>
                       <div style={{ display:'flex', gap:4, flexWrap:'wrap' }}>
                         {member.conditions.map((cd, ci) => {
-                          const cc = CONDITION_COLORS[cd] || (cd !== 'Khỏe mạnh' && cd !== 'Healthy' ? '#ff8a65' : '#00e676')
+                          const cc = FAMILY_CONDITION_COLORS[cd] || (cd !== 'Khỏe mạnh' && cd !== 'Healthy' ? '#ff8a65' : '#00e676')
                           return (
                             <span key={ci} style={{ padding:'1px 6px', borderRadius:3, fontSize:9, background:`${cc}15`, color:cc, border:`1px solid ${cc}30` }}>{cd}</span>
                           )
