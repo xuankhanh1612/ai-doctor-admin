@@ -1,91 +1,18 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react'
-import { useAuth } from '../../context/AuthContext'
+import React, { useState, useCallback, useEffect } from 'react'
 import { useApp } from '../../context/AppContext'
 import NavButtons from '../NavButtons.jsx'
 
-// ─── Constants ──────────────────────────────────────────────────────────────
-const RELATIONS = ['self','father','mother','spouse','sibling','child','grandparent','grandchild','uncle_aunt','cousin']
+import { CONDITION_COLORS, DEFAULT_FAMILY_MEMBERS, RELATIONS, RELATION_META, isNonDiseaseCondition, loadFamilyMembers, saveFamilyMembers } from './familyData.js'
 
-const RELATION_META = {
-  grandparent: { row: 1, color: '#9c6fff', label: { vi: 'Ông/Bà',    en: 'Grandparent' } },
-  father:      { row: 2, color: '#00b8cc', label: { vi: 'Cha',        en: 'Father'      } },
-  mother:      { row: 2, color: '#f48fb1', label: { vi: 'Mẹ',         en: 'Mother'      } },
-  uncle_aunt:  { row: 2, color: '#ce93d8', label: { vi: 'Chú/Cô',     en: 'Uncle/Aunt'  } },
-  self:        { row: 3, color: '#00e5ff', label: { vi: 'Bệnh nhân',  en: 'Patient'     } },
-  spouse:      { row: 3, color: '#ffb74d', label: { vi: 'Vợ/Chồng',   en: 'Spouse'      } },
-  sibling:     { row: 3, color: '#00e676', label: { vi: 'Anh/Chị/Em', en: 'Sibling'     } },
-  cousin:      { row: 3, color: '#80cbc4', label: { vi: 'Anh em họ',  en: 'Cousin'      } },
-  child:       { row: 4, color: '#ff8a65', label: { vi: 'Con',         en: 'Child'       } },
-  grandchild:  { row: 5, color: '#a5d6a7', label: { vi: 'Cháu',        en: 'Grandchild'  } },
+// Backward-compatible alias for deployed/minified code paths that referenced the previous constant name.
+const FAMILY_RELATION_META = RELATION_META
+
+
+const formatDob = (dob) => {
+  if (!dob || typeof dob !== 'string') return ''
+  const [year, month, day] = dob.split('-')
+  return year && month && day ? `${day}/${month}/${year}` : dob
 }
-
-const CONDITION_COLORS = {
-  'Ung thư phổi':'#ff5252','Lung Cancer':'#ff5252',
-  'Ung thư gan':'#ff5252','Liver Cancer':'#ff5252',
-  'Ung thư vú':'#f48fb1','Breast Cancer':'#f48fb1',
-  'Ung thư dạ dày':'#ff7043','Stomach Cancer':'#ff7043',
-  'Ung thư đại tràng':'#ff5252','Colon Cancer':'#ff5252',
-  'Tiểu đường':'#ffb74d','Diabetes':'#ffb74d',
-  'Tăng huyết áp':'#ffd54f','Hypertension':'#ffd54f',
-  'Tim mạch':'#f48fb1','Heart Disease':'#f48fb1',
-  'Đột quỵ':'#ef9a9a','Stroke':'#ef9a9a',
-  'Xơ gan':'#ffcc80','Cirrhosis':'#ffcc80',
-  'Khỏe mạnh':'#00e676','Healthy':'#00e676',
-}
-
-const STORAGE_KEY = 'cdoc_family_members'
-
-// ─── Persistence helpers ───────────────────────────────────────────────────
-const loadMembers = (patientId) => {
-  try {
-    const all = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}')
-    return all[patientId] || null
-  } catch { return null }
-}
-
-const saveMembers = (patientId, members) => {
-  try {
-    const all = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}')
-    all[patientId] = members
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(all))
-  } catch (e) { console.error('FamilyTree save error:', e) }
-}
-
-// ─── Default demo data ─────────────────────────────────────────────────────
-const DEFAULT_MEMBERS = [
-  // ── Thế hệ ông bà ─────────────────────────────────────────────────────────
-  { id:'fm-0', relation:'grandparent', name:'Lê Văn Tấn',     age:94, gender:'M', conditions:['Ung thư phổi'],          alive:false, note:'Ông nội · mất 1992' },
-  { id:'fm-9', relation:'grandparent', name:'Trần Thị Ngọc',  age:88, gender:'F', conditions:['Tăng huyết áp'],         alive:false, note:'Bà nội · mất 2005' },
-  // ── Thế hệ cha mẹ ─────────────────────────────────────────────────────────
-  { id:'fm-1', relation:'father',      name:'Lê Văn Bình',    age:72, gender:'M', conditions:['Ung thư phổi','Tăng huyết áp'], alive:false, note:'Mất 2018 — ung thư phổi' },
-  { id:'fm-2', relation:'mother',      name:'Nguyễn Thị Lan', age:68, gender:'F', conditions:['Tăng huyết áp'],         alive:true,  note:'' },
-  { id:'fm-7', relation:'uncle_aunt',  name:'Lê Văn Hùng',    age:65, gender:'M', conditions:['Xơ gan'],               alive:true,  note:'Bác ruột · viêm gan B' },
-  // ── Bệnh nhân chính + gia đình trực tiếp ──────────────────────────────────
-  {
-    id:'fm-3', relation:'self',
-    name:'Lê Xuân Khánh',
-    age:47, gender:'M',
-    conditions:['NSCLC · Stage IIA','Ung thư gan di căn (HCC)','Xơ gan Child-Pugh A'],
-    alive:true,
-    note:'Bệnh nhân chính · EGFR Exon19del · T790M · Erlotinib Cycle 4',
-    // Full merged medical record — synced from PatientRecordPanel
-    medicalRecord: {
-      blood_type: 'O+',
-      dob: '1977-04-10',
-      diagnoses: ['NSCLC Stage IIA (C34.1)','HCC T3N0M0 di căn (C22.0)','Xơ gan Child-Pugh A (K74.6)','Viêm gan B mãn tính (B18.1)'],
-      key_labs: { AFP: '1840 ng/mL ↑↑↑', CEA: '28 ng/mL ↑', 'CA19-9': '980 U/mL ↑↑↑', ALT: '142 U/L ↑', ctDNA: '0.8%' },
-      genomics: ['EGFR Exon 19 del (Pathogenic)', 'T790M (Pathogenic · resistance risk)', 'TP53 R248W (Pathogenic)', 'TERT C228T (Pathogenic)', 'CTNNB1 S45F (Likely Pathogenic)'],
-      medications: ['Erlotinib 150mg/day (active)', 'Sorafenib 400mg 2×/day (active)', 'Entecavir 0.5mg (active)', 'Furosemide 40mg (active)'],
-      allergies: ['Penicillin — mề đay (severe)', 'Ibuprofen — xuất huyết tiêu hoá (moderate)'],
-    },
-  },
-  { id:'fm-4', relation:'spouse',   name:'Trần Thị Hoa',   age:44, gender:'F', conditions:['Khỏe mạnh'],            alive:true, note:'' },
-  { id:'fm-5', relation:'sibling',  name:'Lê Xuân Nam',    age:44, gender:'M', conditions:['Viêm gan B mãn tính'], alive:true, note:'Anh trai · cần tầm soát AFP' },
-  { id:'fm-8', relation:'sibling',  name:'Lê Thị Mai',     age:50, gender:'F', conditions:['Khỏe mạnh'],           alive:true, note:'Chị gái' },
-  // ── Thế hệ con ────────────────────────────────────────────────────────────
-  { id:'fm-6', relation:'child',    name:'Lê Minh Tú',     age:19, gender:'M', conditions:['Khỏe mạnh'],           alive:true, note:'Con trai · cần tầm soát EGFR từ 40 tuổi + xét nghiệm HBsAg' },
-  { id:'fm-10',relation:'child',    name:'Lê Thị Bảo Nhi', age:15, gender:'F', conditions:['Khỏe mạnh'],           alive:true, note:'Con gái · theo dõi HBsAg định kỳ' },
-]
 
 // ─── Build patient record for Patient Record Visualizer ───────────────────
 const buildMemberRecord = (member) => ({
@@ -93,12 +20,12 @@ const buildMemberRecord = (member) => ({
   name: member.name,
   age: member.age,
   gender: member.gender || (member.relation === 'mother' || member.relation === 'spouse' ? 'F' : 'M'),
-  blood_type: '—',
-  dob: member.age ? `${new Date().getFullYear() - member.age}-01-01` : '—',
+  blood_type: member.blood_type || member.medicalRecord?.blood_type || '—',
+  dob: member.dob || member.medicalRecord?.dob || (member.age ? `${new Date().getFullYear() - member.age}-01-01` : '—'),
   avatar_initials: member.name.split(' ').slice(-2).map(w => w[0]).join('').toUpperCase(),
 
-  diseases: member.conditions
-    .filter(c => c !== 'Khỏe mạnh' && c !== 'Healthy')
+  diseases: (member.conditions || [])
+    .filter(c => !isNonDiseaseCondition(c))
     .map((c, i) => ({
       id: 'd'+i, name: c,
       icd10: /ung thư|cancer/i.test(c) ? 'C80.1' : /tiểu đường|diabetes/i.test(c) ? 'E11' : /huyết áp|hypertension/i.test(c) ? 'I10' : 'Z00.0',
@@ -106,19 +33,19 @@ const buildMemberRecord = (member) => ({
       severity: /ung thư|cancer/i.test(c) ? 'critical' : /tiểu đường|diabetes|huyết áp|hypertension/i.test(c) ? 'moderate' : 'mild',
     })),
 
-  symptoms: /ung thư|cancer/i.test(member.conditions.join(' '))
+  symptoms: /ung thư|cancer/i.test((member.conditions || []).join(' '))
     ? [
         { id:'s1', name:'Mệt mỏi kéo dài',             severity:6, onset:'—', active: member.alive !== false },
         { id:'s2', name:'Sụt cân không rõ nguyên nhân', severity:5, onset:'—', active: member.alive !== false },
       ]
     : [],
 
-  labs: /ung thư|cancer/i.test(member.conditions.join(' '))
+  labs: /ung thư|cancer/i.test((member.conditions || []).join(' '))
     ? [
         { id:'l1', name:'CEA',    value:18,  unit:'ng/mL', ref_high:5,  date:'—', trend:'up', critical:true  },
         { id:'l2', name:'CA19-9', value:120, unit:'U/mL',  ref_high:37, date:'—', trend:'up', critical:true  },
       ]
-    : /tiểu đường|diabetes/i.test(member.conditions.join(' '))
+    : /tiểu đường|diabetes/i.test((member.conditions || []).join(' '))
     ? [
         { id:'l1', name:'HbA1c',  value:8.2, unit:'%',     ref_high:5.7, date:'—', trend:'up', critical:true  },
         { id:'l2', name:'Glucose',value:210,  unit:'mg/dL', ref_high:100, date:'—', trend:'up', critical:false },
@@ -127,19 +54,19 @@ const buildMemberRecord = (member) => ({
 
   imaging: [], medications: [], allergies: [],
 
-  genomics: /ung thư|cancer/i.test(member.conditions.join(' '))
+  genomics: /ung thư|cancer/i.test((member.conditions || []).join(' '))
     ? [{ id:'g1', gene:'TP53', variant:'Suspected', effect:'Unknown', clinical_sig:'VUS', vaf:null, assoc:'Liên quan ung thư gia đình' }]
     : [],
 
   timeline: [
-    { id:'t1', date:'—', event:`Thành viên gia đình · ${RELATION_META[member.relation]?.label?.vi || member.relation}`, type:'diagnosis' },
+    { id:'t1', date:'—', event:`Thành viên gia đình · ${FAMILY_RELATION_META[member.relation]?.label?.vi || member.relation}`, type:'diagnosis' },
     ...(member.medicalRecord?.diagnoses?.map((d,i) => ({ id:'td'+i, date:'—', event:d, type:'diagnosis', severity: /ung thư|cancer|hcc|nsclc/i.test(d)?'critical':'moderate' })) || []),
     ...(member.note ? [{ id:'t2', date:'—', event: member.note, type:'consult' }] : []),
     ...(member.alive === false ? [{ id:'t3', date:'—', event:'Đã mất', type:'consult' }] : []),
   ],
 
-  risk_factors: member.conditions
-    .filter(c => c !== 'Khỏe mạnh' && c !== 'Healthy')
+  risk_factors: (member.conditions || [])
+    .filter(c => !isNonDiseaseCondition(c))
     .map((c, i) => ({
       id: 'r'+i, name: c,
       weight: /ung thư|cancer/i.test(c) ? 85 : /tiểu đường|diabetes|huyết áp|hypertension/i.test(c) ? 55 : 40,
@@ -152,9 +79,9 @@ const EMPTY_FORM = { name:'', age:'', gender:'M', relation:'child', conditions:'
 
 // ─── Member Card ───────────────────────────────────────────────────────────
 function MemberCard({ member, lang, isDark, c, onViewRecord, onEdit, onDelete }) {
-  const meta     = RELATION_META[member.relation] || { color:'#888', label:{ vi:'Khác', en:'Other' } }
+  const meta     = FAMILY_RELATION_META[member.relation] || { color:'#888', label:{ vi:'Khác', en:'Other' } }
   const relColor = meta.color
-  const hasDisease = member.conditions.some(cd => cd !== 'Khỏe mạnh' && cd !== 'Healthy')
+  const hasDisease = (member.conditions || []).some(cd => !isNonDiseaseCondition(cd))
 
   return (
     <div style={{ position:'relative', flexShrink:0, width:148 }}>
@@ -206,8 +133,14 @@ function MemberCard({ member, lang, isDark, c, onViewRecord, onEdit, onDelete })
           {meta.label[lang] || meta.label.vi}{member.age ? ` · ${member.age}t` : ''}
         </div>
 
-        {member.conditions.map((cond, i) => {
-          const cc = CONDITION_COLORS[cond] || (hasDisease && cond !== 'Khỏe mạnh' ? '#ff8a65' : '#888')
+        {(member.dob || member.blood_type) && (
+          <div style={{ fontSize:9, color:c.text3, marginBottom:6, lineHeight:1.35 }}>
+            {member.dob ? `🎂 ${formatDob(member.dob)}` : ''}{member.dob && member.blood_type ? ' · ' : ''}{member.blood_type ? `🩸 ${member.blood_type}` : ''}
+          </div>
+        )}
+
+        {(member.conditions || []).map((cond, i) => {
+          const cc = CONDITION_COLORS[cond] || (hasDisease && !isNonDiseaseCondition(cond) ? '#ff8a65' : '#888')
           return (
             <div key={i} style={{
               fontSize:9, padding:'2px 5px', borderRadius:4, marginBottom:2,
@@ -323,7 +256,7 @@ function MemberFormModal({ mode, initialForm, onSave, onClose, lang, isDark, c }
         <Field label={lang === 'vi' ? 'Quan hệ với bệnh nhân' : 'Relation to Patient'}>
           <select value={localForm.relation} onChange={e => setLocalForm(p => ({ ...p, relation:e.target.value }))} style={selectStyle}>
             {RELATIONS.map(r => (
-              <option key={r} value={r}>{RELATION_META[r]?.label?.[lang] || RELATION_META[r]?.label?.vi || r}</option>
+              <option key={r} value={r}>{FAMILY_RELATION_META[r]?.label?.[lang] || FAMILY_RELATION_META[r]?.label?.vi || r}</option>
             ))}
           </select>
         </Field>
@@ -390,28 +323,33 @@ function MemberFormModal({ mode, initialForm, onSave, onClose, lang, isDark, c }
 }
 
 // ─── Main Component ────────────────────────────────────────────────────────
-export default function FamilyTreePanel({ patientId, onNext, onPrev, prevLabel, onViewRecord }) {
+export default function FamilyTreePanel({ patientId, storageOwnerId = 'guest', onNext, onPrev, prevLabel, onViewRecord }) {
   const { theme, lang, t } = useApp()
   const isDark    = theme === 'dark'
 
   // Load from localStorage, fallback to DEFAULT_MEMBERS
-  const [members, setMembersState] = useState(() => loadMembers(patientId) || DEFAULT_MEMBERS)
-
-  // Persist every change
-  const setMembers = useCallback((updater) => {
-    setMembersState(prev => {
-      const next = typeof updater === 'function' ? updater(prev) : updater
-      saveMembers(patientId, next)
-      return next
-    })
-  }, [patientId])
-
+  const [members, setMembersState] = useState(() => loadFamilyMembers(patientId, storageOwnerId) || DEFAULT_FAMILY_MEMBERS)
   const [modal, setModal]   = useState(null)   // null | 'add' | 'edit'
   const [form, setForm]     = useState(EMPTY_FORM)
   const [editId, setEditId] = useState(null)
   const [deleteConfirm, setDeleteConfirm] = useState(null)
 
-  const isDark2 = isDark
+  useEffect(() => {
+    setMembersState(loadFamilyMembers(patientId, storageOwnerId) || DEFAULT_FAMILY_MEMBERS)
+    setModal(null)
+    setEditId(null)
+    setDeleteConfirm(null)
+  }, [patientId, storageOwnerId])
+
+  // Persist every change
+  const setMembers = useCallback((updater) => {
+    setMembersState(prev => {
+      const next = typeof updater === 'function' ? updater(prev) : updater
+      saveFamilyMembers(patientId, next, storageOwnerId)
+      return next
+    })
+  }, [patientId, storageOwnerId])
+
   const c = isDark ? {
     bg:'transparent', border:'rgba(255,255,255,0.08)',
     text:'#e8f0f8', text2:'rgba(232,240,248,0.55)', text3:'rgba(232,240,248,0.28)',
@@ -435,7 +373,7 @@ export default function FamilyTreePanel({ patientId, onNext, onPrev, prevLabel, 
       age:        member.age?.toString() || '',
       gender:     member.gender || 'M',
       relation:   member.relation,
-      conditions: member.conditions.join(', '),
+      conditions: (member.conditions || []).join(', '),
       alive:      member.alive !== false,
       note:       member.note || '',
     })
@@ -449,7 +387,7 @@ export default function FamilyTreePanel({ patientId, onNext, onPrev, prevLabel, 
       age:        parseInt(localForm.age) || 0,
       gender:     localForm.gender,
       relation:   localForm.relation,
-      conditions: localForm.conditions.split(',').map(s => s.trim()).filter(Boolean),
+      conditions: localForm.conditions.split(',').map(s => s.trim()).filter(Boolean).length ? localForm.conditions.split(',').map(s => s.trim()).filter(Boolean) : ['Chưa rõ tiền sử'],
       alive:      localForm.alive,
       note:       localForm.note.trim(),
     }
@@ -471,7 +409,7 @@ export default function FamilyTreePanel({ patientId, onNext, onPrev, prevLabel, 
   // ── Group by row ──────────────────────────────────────────────────────────
   const rows = [1,2,3,4,5]
   const byRow = members.reduce((acc, m) => {
-    const row = RELATION_META[m.relation]?.row || 3
+    const row = FAMILY_RELATION_META[m.relation]?.row || 3
     if (!acc[row]) acc[row] = []
     acc[row].push(m)
     return acc
@@ -479,7 +417,7 @@ export default function FamilyTreePanel({ patientId, onNext, onPrev, prevLabel, 
 
   // ── Risk calc ─────────────────────────────────────────────────────────────
   const cancerCount = members.filter(m =>
-    m.conditions.some(cd => /ung thư|cancer/i.test(cd))
+    (m.conditions || []).some(cd => /ung thư|cancer/i.test(cd))
   ).length
   const riskLevel  = cancerCount >= 3 ? 'high' : cancerCount >= 1 ? 'medium' : 'low'
   const riskColor  = { high:'#ff5252', medium:'#ffb74d', low:'#00e676' }[riskLevel]
@@ -585,9 +523,9 @@ export default function FamilyTreePanel({ patientId, onNext, onPrev, prevLabel, 
             </thead>
             <tbody>
               {members.map((member, i) => {
-                const meta = RELATION_META[member.relation]
+                const meta = FAMILY_RELATION_META[member.relation]
                 const relColor = meta?.color || '#888'
-                const hasDisease = member.conditions.some(cd => cd !== 'Khỏe mạnh' && cd !== 'Healthy')
+                const hasDisease = (member.conditions || []).some(cd => !isNonDiseaseCondition(cd))
                 return (
                   <tr key={member.id} style={{ borderTop:`1px solid ${c.border}`, transition:'background .15s' }}
                     onMouseEnter={e => { e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)' }}
@@ -609,8 +547,8 @@ export default function FamilyTreePanel({ patientId, onNext, onPrev, prevLabel, 
                     <td style={{ padding:'10px 14px', color:c.text2 }}>{member.age ? `${member.age}t` : '—'}</td>
                     <td style={{ padding:'10px 14px' }}>
                       <div style={{ display:'flex', gap:4, flexWrap:'wrap' }}>
-                        {member.conditions.map((cd, ci) => {
-                          const cc = CONDITION_COLORS[cd] || (cd !== 'Khỏe mạnh' && cd !== 'Healthy' ? '#ff8a65' : '#00e676')
+                        {(member.conditions || []).map((cd, ci) => {
+                          const cc = CONDITION_COLORS[cd] || (!isNonDiseaseCondition(cd) ? '#ff8a65' : '#00e676')
                           return (
                             <span key={ci} style={{ padding:'1px 6px', borderRadius:3, fontSize:9, background:`${cc}15`, color:cc, border:`1px solid ${cc}30` }}>{cd}</span>
                           )
