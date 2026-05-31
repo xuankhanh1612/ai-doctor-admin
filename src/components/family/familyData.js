@@ -176,13 +176,13 @@ export const clearFamilyMembers = (patientId, ownerId = 'guest') => {
 // ─── Default demo data ─────────────────────────────────────────────────────
 export const DEFAULT_FAMILY_MEMBERS = applyLxkPatientProfile([
   // ── Thế hệ ông bà ─────────────────────────────────────────────────────────
-  { id:'fm-0', relation:'grandparent', name:'Lê Văn Tấn',     age:0, gender:'M', conditions:['Chưa rõ tiền sử'], alive:false, note:'Ông nội · chưa nhập năm sinh / tiền sử bệnh' },
-  { id:'fm-9', relation:'grandparent', name:'Trần Thị Ngọc',  age:0, gender:'F', conditions:['Chưa rõ tiền sử'], alive:false, note:'Bà nội · chưa nhập năm sinh / tiền sử bệnh' },
-  { id:'fm-11',relation:'grandparent', name:'Nguyễn Văn Phúc', age:0, gender:'M', conditions:['Chưa rõ tiền sử'], alive:false, note:'Ông ngoại · chưa nhập năm sinh / tiền sử bệnh' },
-  { id:'fm-12',relation:'grandparent', name:'Phạm Thị Hạnh',   age:0, gender:'F', conditions:['Chưa rõ tiền sử'], alive:false, note:'Bà ngoại · chưa nhập năm sinh / tiền sử bệnh' },
+  { id:'fm-0', relation:'grandparent', name:'Chưa nhập tên ông nội',  age:0, gender:'M', conditions:['Chưa rõ tiền sử'], alive:true, note:'Ông nội · cần cập nhật họ tên, ngày sinh, nhóm máu và tiền sử bệnh' },
+  { id:'fm-9', relation:'grandparent', name:'Chưa nhập tên bà nội',   age:0, gender:'F', conditions:['Chưa rõ tiền sử'], alive:true, note:'Bà nội · cần cập nhật họ tên, ngày sinh, nhóm máu và tiền sử bệnh' },
+  { id:'fm-11',relation:'grandparent', name:'Chưa nhập tên ông ngoại', age:0, gender:'M', conditions:['Chưa rõ tiền sử'], alive:true, note:'Ông ngoại · cần cập nhật họ tên, ngày sinh, nhóm máu và tiền sử bệnh' },
+  { id:'fm-12',relation:'grandparent', name:'Chưa nhập tên bà ngoại',  age:0, gender:'F', conditions:['Chưa rõ tiền sử'], alive:true, note:'Bà ngoại · cần cập nhật họ tên, ngày sinh, nhóm máu và tiền sử bệnh' },
   // ── Thế hệ cha mẹ ─────────────────────────────────────────────────────────
-  { id:'fm-1', relation:'father',      name:'Lê Văn Bình',    age:0, gender:'M', conditions:['Chưa rõ tiền sử'], alive:true, note:'Cha · cần cập nhật ngày sinh, nhóm máu và tiền sử bệnh' },
-  { id:'fm-2', relation:'mother',      name:'Nguyễn Thị Lan', age:0, gender:'F', conditions:['Chưa rõ tiền sử'], alive:true, note:'Mẹ · cần cập nhật ngày sinh, nhóm máu và tiền sử bệnh' },
+  { id:'fm-1', relation:'father',      name:'Chưa nhập tên cha',       age:0, gender:'M', conditions:['Chưa rõ tiền sử'], alive:true, note:'Cha · cần cập nhật họ tên, ngày sinh, nhóm máu và tiền sử bệnh' },
+  { id:'fm-2', relation:'mother',      name:'Chưa nhập tên mẹ',        age:0, gender:'F', conditions:['Chưa rõ tiền sử'], alive:true, note:'Mẹ · cần cập nhật họ tên, ngày sinh, nhóm máu và tiền sử bệnh' },
   // ── Bệnh nhân chính + gia đình trực tiếp ──────────────────────────────────
   {
     id: LXK_PATIENT_PROFILE.id,
@@ -205,8 +205,8 @@ export const DEFAULT_FAMILY_MEMBERS = applyLxkPatientProfile([
       allergies: [],
     },
   },
-  { id:'fm-4', relation:'spouse',   name:'Chưa nhập vợ/chồng', age:0, gender:'F', conditions:['Chưa rõ tiền sử'], alive:true, note:'Có thể sửa hoặc xoá placeholder này' },
-  { id:'fm-5', relation:'sibling',  name:'Chưa nhập anh/chị/em', age:0, gender:'M', conditions:['Chưa rõ tiền sử'], alive:true, note:'Có thể sửa hoặc xoá placeholder này' },
+  { id:'fm-4', relation:'spouse',   name:'Chưa nhập tên vợ/chồng',     age:0, gender:'F', conditions:['Chưa rõ tiền sử'], alive:true, note:'Vợ/chồng · cần cập nhật họ tên, ngày sinh, nhóm máu và tiền sử bệnh' },
+  { id:'fm-5', relation:'sibling',  name:'Chưa nhập tên anh/chị/em',   age:0, gender:'M', conditions:['Chưa rõ tiền sử'], alive:true, note:'Anh/chị/em · cần cập nhật họ tên, ngày sinh, nhóm máu và tiền sử bệnh' },
   // ── Thế hệ con ────────────────────────────────────────────────────────────
-  { id:'fm-6', relation:'child',    name:'Chưa nhập con', age:0, gender:'M', conditions:['Chưa rõ tiền sử'], alive:true, note:'Có thể sửa hoặc xoá placeholder này' },
+  { id:'fm-6', relation:'child',    name:'Chưa nhập tên con',          age:0, gender:'M', conditions:['Chưa rõ tiền sử'], alive:true, note:'Con · cần cập nhật họ tên, ngày sinh, nhóm máu và tiền sử bệnh' },
 ])
