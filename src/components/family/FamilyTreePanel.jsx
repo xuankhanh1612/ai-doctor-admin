@@ -6,7 +6,7 @@ import NavButtons from '../NavButtons.jsx'
 // ─── Constants ──────────────────────────────────────────────────────────────
 const RELATIONS = ['self','father','mother','spouse','sibling','child','grandparent','grandchild','uncle_aunt','cousin']
 
-export const FAMILY_RELATION_META = {
+export const RELATION_META = {
   grandparent: { row: 1, color: '#9c6fff', label: { vi: 'Ông/Bà',    en: 'Grandparent' } },
   father:      { row: 2, color: '#00b8cc', label: { vi: 'Cha',        en: 'Father'      } },
   mother:      { row: 2, color: '#f48fb1', label: { vi: 'Mẹ',         en: 'Mother'      } },
@@ -19,7 +19,7 @@ export const FAMILY_RELATION_META = {
   grandchild:  { row: 5, color: '#a5d6a7', label: { vi: 'Cháu',        en: 'Grandchild'  } },
 }
 
-export const FAMILY_CONDITION_COLORS = {
+export const CONDITION_COLORS = {
   'Ung thư phổi':'#ff5252','Lung Cancer':'#ff5252',
   'Ung thư gan':'#ff5252','Liver Cancer':'#ff5252',
   'Ung thư vú':'#f48fb1','Breast Cancer':'#f48fb1',
@@ -394,7 +394,7 @@ export default function FamilyTreePanel({ patientId, onNext, onPrev, prevLabel, 
   const { theme, lang, t } = useApp()
   const isDark    = theme === 'dark'
 
-  // Load from localStorage, fallback to DEFAULT_FAMILY_MEMBERS
+  // Load from localStorage, fallback to DEFAULT_MEMBERS
   const [members, setMembersState] = useState(() => loadFamilyMembers(patientId) || DEFAULT_FAMILY_MEMBERS)
 
   // Persist every change

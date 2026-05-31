@@ -32,7 +32,7 @@ export const TRANSLATIONS = {
     swarmCouncil: '🏛 Hội đồng AI',
     adminPanel: 'Quản trị hệ thống',
     familyTree: 'Gia phả bệnh lý',
-    familyRelationshipTitle: 'Family Medical Relationship',
+    familyRelationship: 'Family Medical Relationship',
     uploadRecords: 'Tải lên hồ sơ',
     patientRecord: 'Hồ sơ bệnh nhân',
     addPatient: 'Thêm bệnh nhân',
@@ -154,6 +154,7 @@ export const TRANSLATIONS = {
     noRecords: 'Chưa có hồ sơ nào được tải lên',
     // Family
     familyTreeTitle: 'Gia phả bệnh lý',
+    familyRelationshipTitle: 'Family Medical Relationship',
     membersCount: 'thành viên',
     aiHereditary: 'Phân tích nguy cơ di truyền AI',
     memberList: 'Danh sách thành viên',
@@ -207,7 +208,7 @@ export const TRANSLATIONS = {
     swarmCouncil: '🏛 AI Board',
     adminPanel: 'Admin Panel',
     familyTree: 'Family Medical Tree',
-    familyRelationshipTitle: 'Family Medical Relationship',
+    familyRelationship: 'Family Medical Relationship',
     uploadRecords: 'Upload Records',
     patientRecord: 'Patient Record',
     addPatient: 'Add Patient',
@@ -329,6 +330,7 @@ export const TRANSLATIONS = {
     noRecords: 'No records uploaded yet',
     // Family
     familyTreeTitle: 'Family Disease Tree',
+    familyRelationshipTitle: 'Family Medical Relationship',
     membersCount: 'members',
     aiHereditary: 'AI Hereditary Risk Analysis',
     memberList: 'Member List',

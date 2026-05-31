@@ -15,7 +15,7 @@ import ConsensusPanel from './components/ConsensusPanel.jsx'
 import SwarmConsensusPanel from './components/SwarmConsensusPanel.jsx'
 import UploadPanel from './components/upload/UploadPanel.jsx'
 import FamilyTreePanel from './components/family/FamilyTreePanel.jsx'
-import FamilyRelationshipPanel from './components/family/FamilyRelationshipPanel.jsx'
+import FamilyMedicalRelationshipPanel from './components/family/FamilyMedicalRelationshipPanel.jsx'
 import AdminPanel from './components/admin/AdminPanel.jsx'
 import PatientRecordPanel from './components/PatientRecordPanel.jsx'
 import LoginPage from './pages/LoginPage.jsx'
@@ -49,7 +49,7 @@ export default function App() {
     imaging: t('imaging'),
     checkin: t('checkin'),
     family: t('familyTree'),
-    familyRelationship: t('familyRelationshipTitle'),
+    familyRelationship: t('familyRelationship'),
     record: t('patientRecord'),
     matrix3dBody: t('matrix3dBody'),
     omnidirectional3dBody: t('omnidirectional3dBody'),
@@ -174,7 +174,7 @@ export default function App() {
           {active === 'imaging'   && <ImagingPanel       onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} compareImage={compareImage} uploadedImages={uploadedImages} onSelectCompareImage={setCompareImage} scrollTarget={imagingScrollTarget} onScrollTargetHandled={() => setImagingScrollTarget(null)} />}
           {active === 'checkin'   && <CheckinPanel       onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
           {active === 'family'    && <FamilyTreePanel    patientId="LXK-2024" onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} onViewRecord={navigateToRecord} />}
-          {active === 'familyRelationship' && <FamilyRelationshipPanel patientId="LXK-2024" onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
+          {active === 'familyRelationship' && <FamilyMedicalRelationshipPanel patientId="LXK-2024" onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
           {active === 'record'    && <PatientRecordPanel onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} selectedMember={selectedMember} />}
           {active === 'matrix3dBody' && <Matrix3DBodyPanel onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
           {active === 'omnidirectional3dBody' && <Omnidirectional3DBodyPanel onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
