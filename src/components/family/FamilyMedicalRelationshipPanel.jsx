@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react'
 import { useApp } from '../../context/AppContext'
 import NavButtons from '../NavButtons.jsx'
-import { CONDITION_COLORS, DEFAULT_FAMILY_MEMBERS, RELATION_META, loadFamilyMembers } from './FamilyTreePanel.jsx'
+import { CONDITION_COLORS, DEFAULT_FAMILY_MEMBERS, RELATION_META, loadFamilyMembers } from './familyData.js'
 
 const PATIENT_ID = 'LXK-2024'
 
