@@ -158,7 +158,7 @@ export default function Matrix3DBodyPanel({ onNext, onPrev, prevLabel }) {
         </MatrixCard>
       </div>
 
-      <NavButtons onNext={onNext} nextLabel="Tiếp tục tới Digital Twin →" onPrev={onPrev} prevLabel={prevLabel} />
+      <NavButtons onNext={onNext} nextLabel="Tiếp tục tới Omnidirectional 3D Body →" onPrev={onPrev} prevLabel={prevLabel} />
     </div>
   )
 }
