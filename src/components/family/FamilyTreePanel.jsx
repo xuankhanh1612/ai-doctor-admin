@@ -6,7 +6,7 @@ import NavButtons from '../NavButtons.jsx'
 // ─── Constants ──────────────────────────────────────────────────────────────
 const RELATIONS = ['self','father','mother','spouse','sibling','child','grandparent','grandchild','uncle_aunt','cousin']
 
-const RELATION_META = {
+export const RELATION_META = {
   grandparent: { row: 1, color: '#9c6fff', label: { vi: 'Ông/Bà',    en: 'Grandparent' } },
   father:      { row: 2, color: '#00b8cc', label: { vi: 'Cha',        en: 'Father'      } },
   mother:      { row: 2, color: '#f48fb1', label: { vi: 'Mẹ',         en: 'Mother'      } },
@@ -19,7 +19,7 @@ const RELATION_META = {
   grandchild:  { row: 5, color: '#a5d6a7', label: { vi: 'Cháu',        en: 'Grandchild'  } },
 }
 
-const CONDITION_COLORS = {
+export const CONDITION_COLORS = {
   'Ung thư phổi':'#ff5252','Lung Cancer':'#ff5252',
   'Ung thư gan':'#ff5252','Liver Cancer':'#ff5252',
   'Ung thư vú':'#f48fb1','Breast Cancer':'#f48fb1',
@@ -33,26 +33,26 @@ const CONDITION_COLORS = {
   'Khỏe mạnh':'#00e676','Healthy':'#00e676',
 }
 
-const STORAGE_KEY = 'cdoc_family_members'
+export const FAMILY_STORAGE_KEY = 'cdoc_family_members'
 
 // ─── Persistence helpers ───────────────────────────────────────────────────
-const loadMembers = (patientId) => {
+export const loadFamilyMembers = (patientId) => {
   try {
-    const all = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}')
+    const all = JSON.parse(localStorage.getItem(FAMILY_STORAGE_KEY) || '{}')
     return all[patientId] || null
   } catch { return null }
 }
 
-const saveMembers = (patientId, members) => {
+export const saveFamilyMembers = (patientId, members) => {
   try {
-    const all = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}')
+    const all = JSON.parse(localStorage.getItem(FAMILY_STORAGE_KEY) || '{}')
     all[patientId] = members
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(all))
+    localStorage.setItem(FAMILY_STORAGE_KEY, JSON.stringify(all))
   } catch (e) { console.error('FamilyTree save error:', e) }
 }
 
 // ─── Default demo data ─────────────────────────────────────────────────────
-const DEFAULT_MEMBERS = [
+export const DEFAULT_FAMILY_MEMBERS = [
   // ── Thế hệ ông bà ─────────────────────────────────────────────────────────
   { id:'fm-0', relation:'grandparent', name:'Lê Văn Tấn',     age:94, gender:'M', conditions:['Ung thư phổi'],          alive:false, note:'Ông nội · mất 1992' },
   { id:'fm-9', relation:'grandparent', name:'Trần Thị Ngọc',  age:88, gender:'F', conditions:['Tăng huyết áp'],         alive:false, note:'Bà nội · mất 2005' },
@@ -395,13 +395,13 @@ export default function FamilyTreePanel({ patientId, onNext, onPrev, prevLabel, 
   const isDark    = theme === 'dark'
 
   // Load from localStorage, fallback to DEFAULT_MEMBERS
-  const [members, setMembersState] = useState(() => loadMembers(patientId) || DEFAULT_MEMBERS)
+  const [members, setMembersState] = useState(() => loadFamilyMembers(patientId) || DEFAULT_FAMILY_MEMBERS)
 
   // Persist every change
   const setMembers = useCallback((updater) => {
     setMembersState(prev => {
       const next = typeof updater === 'function' ? updater(prev) : updater
-      saveMembers(patientId, next)
+      saveFamilyMembers(patientId, next)
       return next
     })
   }, [patientId])
