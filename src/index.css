@@ -521,420 +521,254 @@ html, body, #root {
 }
 
 /* Omnidirectional Explorable 3D Body Generation panel */
-.omni-page {
+.omni3d-page {
   min-height: 100%;
   padding: 28px;
   display: flex;
   flex-direction: column;
   gap: 18px;
   background:
-    radial-gradient(circle at 18% 8%, rgba(0,230,118,0.1), transparent 24%),
-    radial-gradient(circle at 82% 12%, rgba(244,143,177,0.12), transparent 30%),
-    linear-gradient(180deg, rgba(8,12,26,0.2), transparent 42%);
+    radial-gradient(circle at 12% 8%, rgba(0,230,118,0.1), transparent 28%),
+    radial-gradient(circle at 82% 14%, rgba(156,111,255,0.16), transparent 30%),
+    linear-gradient(180deg, rgba(0,229,255,0.025), transparent 40%);
 }
 
-.omni-hero {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 360px;
-  gap: 18px;
-  align-items: stretch;
+.omni3d-hero,
+.omni3d-card {
   border: 1px solid var(--border);
-  border-radius: 22px;
-  padding: clamp(22px, 4vw, 38px);
-  background: linear-gradient(145deg, rgba(255,255,255,0.075), rgba(255,255,255,0.025));
-  box-shadow: 0 24px 80px rgba(0,0,0,0.22);
+  border-radius: 20px;
+  background: linear-gradient(145deg, rgba(255,255,255,0.075), rgba(255,255,255,0.026));
+  box-shadow: 0 24px 80px rgba(0,0,0,0.2);
+}
+
+.omni3d-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 390px;
+  gap: 20px;
+  align-items: center;
+  padding: clamp(22px, 4vw, 36px);
   overflow: hidden;
 }
 
-.omni-kicker {
-  color: var(--green);
+.omni3d-kicker,
+.omni3d-eyebrow {
+  color: var(--cyan);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 900;
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
 
-.omni-hero h2 {
-  max-width: 900px;
+.omni3d-hero h2 {
+  max-width: 920px;
   margin-top: 12px;
   color: var(--text);
-  font-size: clamp(30px, 5vw, 62px);
-  line-height: 0.96;
+  font-size: clamp(30px, 5.5vw, 62px);
+  line-height: 0.98;
   letter-spacing: -0.055em;
 }
 
-.omni-hero p {
-  max-width: 860px;
-  margin-top: 18px;
+.omni3d-hero p {
+  max-width: 760px;
+  margin-top: 16px;
   color: var(--text2);
   font-size: 14px;
 }
 
-.omni-world-preview {
-  min-height: 280px;
+.omni3d-world-preview {
+  min-height: 330px;
   position: relative;
   display: grid;
   place-items: center;
-  align-content: center;
-  gap: 8px;
-  border: 1px solid rgba(0,229,255,0.12);
-  border-radius: 18px;
+  border: 1px solid rgba(0,229,255,0.14);
+  border-radius: 22px;
   background:
-    linear-gradient(rgba(0,229,255,0.045) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0,229,255,0.045) 1px, transparent 1px),
+    linear-gradient(rgba(0,229,255,0.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,229,255,0.055) 1px, transparent 1px),
     rgba(0,0,0,0.22);
-  background-size: 24px 24px;
+  background-size: 28px 28px;
   overflow: hidden;
 }
 
-.omni-world-preview strong {
-  color: var(--cyan);
-  font-family: var(--font-mono);
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-
-.omni-world-preview small {
-  color: var(--text3);
-  font-size: 11px;
-}
-
-.omni-orbit {
+.omni3d-orbit {
   position: absolute;
-  border: 1px dashed rgba(0,229,255,0.3);
+  border: 1px dashed rgba(0,229,255,0.32);
   border-radius: 50%;
   animation: spin 18s linear infinite;
 }
 
-.omni-orbit.orbit-a { width: 250px; height: 250px; }
-.omni-orbit.orbit-b { width: 310px; height: 150px; animation-duration: 12s; animation-direction: reverse; }
+.omni3d-orbit.orbit-a { width: 285px; height: 285px; }
+.omni3d-orbit.orbit-b { width: 340px; height: 165px; animation-duration: 12s; animation-direction: reverse; }
 
-.omni-avatar-core {
-  width: 112px;
-  height: 196px;
+.omni3d-avatar-core {
+  width: 138px;
+  height: 255px;
   position: relative;
-  display: grid;
-  place-items: center;
-  filter: drop-shadow(0 0 22px rgba(0,229,255,0.18));
+  border: 1px solid rgba(0,230,118,0.34);
+  border-radius: 52% 52% 44% 44%;
+  background: linear-gradient(180deg, rgba(0,229,255,0.14), rgba(0,230,118,0.08));
+  box-shadow: inset 0 0 34px rgba(0,229,255,0.16), 0 0 46px rgba(0,230,118,0.16);
 }
 
-.omni-avatar-head,
-.omni-avatar-body {
+.omni3d-avatar-core span {
   position: absolute;
-  border: 1px solid rgba(0,229,255,0.5);
-  background: linear-gradient(180deg, rgba(0,229,255,0.15), rgba(156,111,255,0.12));
+  display: block;
+  border: 1px solid currentColor;
+  box-shadow: 0 0 16px currentColor;
+  opacity: 0.82;
 }
 
-.omni-avatar-head {
-  top: 0;
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-}
+.omni3d-avatar-core .brain { width: 54px; height: 38px; top: -34px; left: 41px; color: var(--violet); border-radius: 50%; background: rgba(156,111,255,0.18); }
+.omni3d-avatar-core .lung { width: 42px; height: 62px; top: 45px; color: var(--cyan); border-radius: 48% 48% 42% 42%; background: rgba(0,229,255,0.13); }
+.omni3d-avatar-core .lung.left { left: 24px; }
+.omni3d-avatar-core .lung.right { right: 24px; }
+.omni3d-avatar-core .heart { width: 34px; height: 34px; top: 88px; left: 52px; color: var(--red); border-radius: 50% 50% 45% 45%; background: rgba(255,82,82,0.18); }
+.omni3d-avatar-core .liver { width: 62px; height: 34px; top: 134px; left: 28px; color: var(--amber); border-radius: 48%; background: rgba(255,183,77,0.18); }
+.omni3d-avatar-core .kidney { width: 28px; height: 42px; top: 174px; color: var(--green); border-radius: 50%; background: rgba(0,230,118,0.16); }
+.omni3d-avatar-core .kidney.left { left: 32px; }
+.omni3d-avatar-core .kidney.right { right: 32px; }
 
-.omni-avatar-body {
-  top: 58px;
-  width: 98px;
-  height: 136px;
-  border-radius: 48% 48% 42% 42%;
-}
-
-.omni-avatar-core i {
+.omni3d-map-pin {
   position: absolute;
-  left: var(--dot-x);
-  top: var(--dot-y);
-  width: 11px;
-  height: 11px;
-  border-radius: 50%;
-  background: var(--dot-color);
-  box-shadow: 0 0 16px var(--dot-color);
-  transform: translate(-50%, -50%);
-  z-index: 2;
+  padding: 5px 9px;
+  border: 1px solid rgba(0,229,255,0.28);
+  border-radius: 999px;
+  background: rgba(4,6,15,0.78);
+  color: var(--cyan);
+  font-family: var(--font-mono);
+  font-size: 10px;
 }
 
-.omni-level-grid,
-.omni-architecture-grid {
+.omni3d-map-pin.pin-one { top: 18%; left: 12%; }
+.omni3d-map-pin.pin-two { right: 12%; top: 44%; color: var(--red); border-color: rgba(255,82,82,0.32); }
+.omni3d-map-pin.pin-three { bottom: 16%; left: 18%; color: var(--green); border-color: rgba(0,230,118,0.32); }
+
+.omni3d-layout,
+.omni3d-lower-grid {
   display: grid;
   gap: 16px;
 }
 
-.omni-level-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
+.omni3d-layout { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.omni3d-lower-grid { grid-template-columns: minmax(320px, 0.9fr) minmax(320px, 1.1fr); }
 
-.omni-architecture-grid {
-  grid-template-columns: minmax(280px, 1fr) minmax(280px, 1fr) minmax(280px, 1fr);
-}
-
-.omni-card {
+.omni3d-card {
   position: relative;
   overflow: hidden;
-  padding: 16px;
-  border: 1px solid var(--border);
-  border-radius: 18px;
-  background: linear-gradient(145deg, rgba(255,255,255,0.068), rgba(255,255,255,0.025));
-  box-shadow: 0 18px 56px rgba(0,0,0,0.18);
+  padding: 18px;
 }
 
-.omni-card::before {
+.omni3d-card::before {
   content: '';
   position: absolute;
   inset: 0 auto 0 0;
   width: 3px;
   background: var(--omni-accent);
-  opacity: 0.75;
 }
 
-.omni-card-heading {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
+.omni3d-eyebrow { color: var(--omni-accent); }
+.omni3d-card h3 { margin: 6px 0 14px; color: var(--text); font-size: 20px; }
+
+.omni3d-io-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
   margin-bottom: 14px;
 }
 
-.omni-card-heading span {
-  color: var(--omni-accent);
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.omni-card-heading small {
-  color: var(--text3);
-  font-size: 10px;
-  text-align: right;
-}
-
-.omni-two-column {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.omni-two-column h3 {
-  color: var(--text3);
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  margin-bottom: 8px;
-}
-
-.omni-chip-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.omni-chip-list span,
-.omni-dicom-box,
-.omni-output-box,
-.omni-stack-item,
-.omni-layer-list div {
+.omni3d-io-grid div,
+.omni3d-flow-node,
+.omni3d-tree-root,
+.omni3d-tree-node,
+.omni3d-stack-chip {
   border: 1px solid var(--border);
   border-radius: 12px;
   background: var(--surface2);
 }
 
-.omni-chip-list span {
-  padding: 9px 11px;
-  color: var(--text);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.omni-dicom-box,
-.omni-output-box {
-  min-height: 74px;
-  padding: 13px;
-  display: grid;
-  align-content: center;
-  gap: 4px;
-}
-
-.omni-dicom-box {
-  color: var(--violet);
-  font-family: var(--font-mono);
-  font-weight: 900;
-}
-
-.omni-output-box strong {
-  color: var(--text);
-  font-size: 13px;
-}
-
-.omni-output-box small {
-  color: var(--text3);
-  font-size: 11px;
-}
-
-.omni-pipeline {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  align-items: center;
-  gap: 8px;
-}
-
-.omni-pipeline.is-compact {
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-}
-
-.omni-pipeline-node {
-  min-height: 78px;
-  padding: 10px;
-  display: grid;
-  align-content: center;
-  gap: 6px;
-  border: 1px solid color-mix(in srgb, var(--omni-accent), transparent 72%);
-  border-radius: 12px;
-  background: rgba(0,0,0,0.14);
-}
-
-.omni-pipeline-node b {
-  color: var(--omni-accent);
-  font-family: var(--font-mono);
-  font-size: 10px;
-}
-
-.omni-pipeline-node span {
-  color: var(--text2);
-  font-size: 11px;
-  line-height: 1.3;
-}
-
-.omni-pipeline-arrow {
-  display: none;
-  color: var(--omni-accent);
-  font-family: var(--font-mono);
-  text-align: center;
-}
-
-.omni-body-tree {
-  display: grid;
-  grid-template-columns: 130px 1fr;
-  gap: 12px;
-  align-items: stretch;
-}
-
-.omni-tree-root {
-  display: grid;
-  place-items: center;
-  min-height: 230px;
-  border: 1px solid rgba(0,229,255,0.26);
-  border-radius: 16px;
-  color: var(--cyan);
-  font-family: var(--font-mono);
-  font-weight: 900;
-  text-align: center;
-  background: rgba(0,229,255,0.06);
-}
-
-.omni-tree-branches {
+.omni3d-io-grid div {
+  padding: 12px;
   display: grid;
   gap: 7px;
 }
 
-.omni-tree-branches div {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  color: var(--text2);
-  background: var(--surface2);
-  font-size: 12px;
+.omni3d-io-grid strong { color: var(--omni-accent); font-size: 12px; }
+.omni3d-io-grid span { color: var(--text2); font-size: 12px; }
+
+.omni3d-flow {
+  display: grid;
+  gap: 7px;
 }
 
-.omni-tree-branches span {
+.omni3d-flow-node {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+}
+
+.omni3d-flow-node b { color: var(--omni-accent); font-family: var(--font-mono); }
+.omni3d-flow-node span { color: var(--text); font-size: 12px; }
+.omni3d-flow-arrow { color: var(--text3); font-family: var(--font-mono); text-align: center; line-height: 1; }
+
+.omni3d-tree {
+  display: grid;
+  gap: 9px;
+}
+
+.omni3d-tree-root {
+  padding: 12px;
+  color: var(--cyan);
+  font-family: var(--font-mono);
+  font-weight: 900;
+}
+
+.omni3d-tree-node {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  margin-left: 22px;
+  color: var(--text2);
+}
+
+.omni3d-tree-node i {
   width: 7px;
   height: 7px;
   border-radius: 50%;
   background: var(--cyan);
+  box-shadow: 0 0 10px var(--cyan);
 }
 
-.omni-tree-branches .is-alert span {
-  background: var(--red);
-  box-shadow: 0 0 12px var(--red);
-}
+.omni3d-tree-node.is-alert { color: var(--red); }
+.omni3d-tree-node.is-alert i { background: var(--red); box-shadow: 0 0 10px var(--red); }
 
-.omni-stack-grid {
+.omni3d-stack {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
 }
 
-.omni-stack-item {
-  min-height: 76px;
-  padding: 12px;
-  display: grid;
-  align-content: center;
-  gap: 5px;
-}
-
-.omni-stack-item b {
-  color: var(--text);
-  font-size: 13px;
-}
-
-.omni-stack-item small {
-  color: var(--amber);
-  font-family: var(--font-mono);
-  font-size: 10px;
-}
-
-.omni-layer-list {
-  display: grid;
-  gap: 10px;
-}
-
-.omni-layer-list div {
+.omni3d-stack-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   padding: 12px;
 }
 
-.omni-layer-list strong,
-.omni-layer-list span {
-  display: block;
+.omni3d-stack-chip b { color: var(--amber); font-family: var(--font-mono); }
+.omni3d-stack-chip span { color: var(--text); font-size: 12px; font-weight: 700; }
+.omni3d-note { margin-top: 14px; color: var(--text2); font-size: 12px; }
+
+@media (max-width: 1120px) {
+  .omni3d-hero,
+  .omni3d-layout,
+  .omni3d-lower-grid { grid-template-columns: 1fr; }
 }
 
-.omni-layer-list strong {
-  color: var(--text);
-  font-size: 12px;
-  margin-bottom: 4px;
-}
-
-.omni-layer-list span {
-  color: var(--text3);
-  font-size: 11px;
-}
-
-@media (max-width: 1180px) {
-  .omni-hero,
-  .omni-level-grid,
-  .omni-architecture-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .omni-pipeline,
-  .omni-pipeline.is-compact {
-    grid-template-columns: 1fr;
-  }
-
-  .omni-pipeline-arrow {
-    display: block;
-  }
-}
-
-@media (max-width: 640px) {
-  .omni-page { padding: 18px; }
-  .omni-two-column,
-  .omni-body-tree,
-  .omni-stack-grid { grid-template-columns: 1fr; }
-  .omni-tree-root { min-height: 92px; }
+@media (max-width: 680px) {
+  .omni3d-page { padding: 18px; }
+  .omni3d-io-grid,
+  .omni3d-stack { grid-template-columns: 1fr; }
 }
