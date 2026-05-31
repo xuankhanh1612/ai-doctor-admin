@@ -40,14 +40,15 @@ export default function Sidebar({ active, onNavigate }) {
     { id: 'imaging',    label: t('imaging'),        step: '02' },
     { id: 'checkin',   label: t('checkin'),         step: '03' },
     { id: 'family',    label: t('familyTree'),      step: '04' },
-    { id: 'record',    label: t('patientRecord'),   step: '05' },
-    { id: 'matrix3dBody', label: t('matrix3dBody'), step: '06' },
-    { id: 'omnidirectional3dBody', label: t('omnidirectional3dBody'), step: '07' },
-    { id: 'twin',      label: t('twin'),            step: '08' },
-    { id: 'telemedicine', label: t('telemedicine'), step: '09' },
-    { id: 'statAnalysis', label: t('statAnalysis'), step: '10' },
-    { id: 'swarm',      label: t('swarmCouncil'),    step: '11' },
-    { id: 'consensus', label: t('consensus'),       step: '12' },
+    { id: 'familyRelationship', label: t('familyRelationship'), step: '05' },
+    { id: 'record',    label: t('patientRecord'),   step: '06' },
+    { id: 'matrix3dBody', label: t('matrix3dBody'), step: '07' },
+    { id: 'omnidirectional3dBody', label: t('omnidirectional3dBody'), step: '08' },
+    { id: 'twin',      label: t('twin'),            step: '09' },
+    { id: 'telemedicine', label: t('telemedicine'), step: '10' },
+    { id: 'statAnalysis', label: t('statAnalysis'), step: '11' },
+    { id: 'swarm',      label: t('swarmCouncil'),    step: '12' },
+    { id: 'consensus', label: t('consensus'),       step: '13' },
   ]
 
   const ADMIN_STEPS = user?.isAdmin ? [
