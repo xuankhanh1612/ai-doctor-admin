@@ -213,3 +213,615 @@ html, body, #root {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
 }
+
+/* Matrix-3D Body panel */
+.matrix3d-page {
+  min-height: 100%;
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  background:
+    radial-gradient(circle at 20% 10%, rgba(0,229,255,0.12), transparent 28%),
+    radial-gradient(circle at 78% 18%, rgba(156,111,255,0.14), transparent 32%);
+}
+
+.matrix3d-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 480px);
+  gap: 18px;
+  align-items: stretch;
+}
+
+.matrix3d-hero-copy,
+.matrix3d-card,
+.matrix3d-upload {
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: linear-gradient(145deg, rgba(255,255,255,0.075), rgba(255,255,255,0.025));
+  box-shadow: 0 24px 80px rgba(0,0,0,0.22);
+}
+
+.matrix3d-hero-copy {
+  padding: clamp(22px, 4vw, 38px);
+  position: relative;
+  overflow: hidden;
+}
+
+.matrix3d-hero-copy::after {
+  content: '';
+  position: absolute;
+  inset: auto -20% -46% 30%;
+  height: 220px;
+  background: conic-gradient(from 180deg, rgba(0,229,255,0.2), rgba(156,111,255,0.18), transparent, rgba(0,229,255,0.2));
+  filter: blur(32px);
+  opacity: 0.9;
+}
+
+.matrix3d-kicker {
+  color: var(--cyan);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.matrix3d-hero h2 {
+  margin-top: 12px;
+  font-size: clamp(32px, 7vw, 72px);
+  line-height: 0.92;
+  letter-spacing: -0.06em;
+  color: var(--text);
+}
+
+.matrix3d-hero p {
+  max-width: 720px;
+  margin-top: 18px;
+  color: var(--text2);
+  font-size: 14px;
+}
+
+.matrix3d-hero-actions {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.matrix3d-hero-actions button,
+.matrix3d-hero-actions a {
+  border-radius: 999px;
+  padding: 11px 16px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.matrix3d-hero-actions button {
+  border: 0;
+  color: #fff;
+  cursor: pointer;
+  background: linear-gradient(135deg, var(--cyan2), var(--violet2));
+}
+
+.matrix3d-hero-actions a {
+  color: var(--cyan);
+  border: 1px solid rgba(0,229,255,0.3);
+  background: rgba(0,229,255,0.06);
+}
+
+.matrix3d-upload {
+  min-height: 330px;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.matrix3d-upload.is-dragging {
+  border-color: rgba(0,229,255,0.8);
+  box-shadow: 0 0 0 3px rgba(0,229,255,0.12), 0 24px 80px rgba(0,0,0,0.24);
+}
+
+.matrix3d-upload img {
+  width: 100%;
+  height: 100%;
+  min-height: 330px;
+  object-fit: cover;
+  filter: contrast(1.05) saturate(0.8);
+}
+
+.matrix3d-upload-overlay {
+  position: absolute;
+  inset: auto 14px 14px 14px;
+  display: grid;
+  gap: 4px;
+  padding: 14px;
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 14px;
+  background: rgba(4,6,15,0.78);
+  backdrop-filter: blur(12px);
+}
+
+.matrix3d-upload-overlay span,
+.matrix3d-card-title,
+.matrix3d-upload-overlay small {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.matrix3d-upload-overlay span { color: var(--green); }
+.matrix3d-upload-overlay strong { color: #fff; font-size: 13px; }
+.matrix3d-upload-overlay small { color: rgba(232,240,248,0.58); text-transform: none; letter-spacing: 0; }
+
+.matrix3d-grid {
+  display: grid;
+  grid-template-columns: minmax(320px, 1.05fr) minmax(280px, 0.95fr) minmax(260px, 0.8fr);
+  gap: 16px;
+}
+
+.matrix3d-card {
+  padding: 16px;
+  position: relative;
+  overflow: hidden;
+}
+
+.matrix3d-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--matrix-accent);
+  opacity: 0.72;
+}
+
+.matrix3d-card-title {
+  color: var(--matrix-accent);
+  font-weight: 900;
+  margin-bottom: 14px;
+}
+
+.matrix3d-body-stage {
+  height: 360px;
+  position: relative;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background:
+    linear-gradient(rgba(0,229,255,0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,229,255,0.05) 1px, transparent 1px),
+    rgba(0,0,0,0.24);
+  background-size: 26px 26px;
+  overflow: hidden;
+}
+
+.matrix3d-body-silhouette {
+  width: 150px;
+  height: 300px;
+  position: relative;
+  border: 1px solid rgba(0,229,255,0.38);
+  border-radius: 52% 52% 44% 44%;
+  background: linear-gradient(180deg, rgba(0,229,255,0.12), rgba(156,111,255,0.1));
+  box-shadow: inset 0 0 38px rgba(0,229,255,0.18), 0 0 48px rgba(0,229,255,0.14);
+}
+
+.matrix3d-body-silhouette::before {
+  content: '';
+  position: absolute;
+  width: 72px;
+  height: 72px;
+  left: 50%;
+  top: -42px;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  border: 1px solid rgba(0,229,255,0.34);
+  background: rgba(0,229,255,0.08);
+}
+
+.matrix3d-spine {
+  position: absolute;
+  top: 8%;
+  bottom: 10%;
+  left: 50%;
+  width: 2px;
+  transform: translateX(-50%);
+  background: linear-gradient(var(--cyan), transparent);
+  opacity: 0.7;
+}
+
+.matrix3d-organ-node {
+  position: absolute;
+  transform: translate(-50%, -50%);
+}
+
+.matrix3d-organ-node span {
+  display: block;
+  width: 36px;
+  height: 28px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--organ-color), transparent 62%);
+  border: 1px solid var(--organ-color);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--organ-color), transparent 35%);
+}
+
+.matrix3d-scan-ring {
+  position: absolute;
+  border: 1px dashed rgba(0,229,255,0.36);
+  border-radius: 50%;
+  animation: spin 16s linear infinite;
+}
+
+.matrix3d-scan-ring.ring-one { width: 280px; height: 280px; }
+.matrix3d-scan-ring.ring-two { width: 330px; height: 170px; animation-duration: 11s; animation-direction: reverse; }
+
+.matrix3d-trajectory {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  color: var(--cyan);
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+.matrix3d-score-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.matrix3d-score-row div,
+.matrix3d-pipeline-step {
+  padding: 13px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface2);
+}
+
+.matrix3d-score-row span,
+.matrix3d-organ-row span {
+  display: block;
+  color: var(--text3);
+  font-size: 10px;
+}
+
+.matrix3d-score-row strong {
+  display: block;
+  margin-top: 5px;
+  color: var(--green);
+  font-family: var(--font-mono);
+  font-size: 24px;
+}
+
+.matrix3d-organ-list { display: grid; gap: 10px; }
+.matrix3d-organ-row { display: grid; grid-template-columns: 100px 1fr 42px; align-items: center; gap: 10px; }
+.matrix3d-organ-row strong { display: block; color: var(--text); font-size: 12px; }
+.matrix3d-organ-row em { color: var(--text2); font-family: var(--font-mono); font-size: 11px; font-style: normal; text-align: right; }
+.matrix3d-risk-bar { height: 6px; border-radius: 999px; background: var(--surface2); overflow: hidden; }
+.matrix3d-risk-bar i { display: block; height: 100%; border-radius: inherit; animation: grow-bar 1.1s ease both; }
+
+.matrix3d-pipeline { display: grid; gap: 10px; }
+.matrix3d-pipeline-step { display: flex; align-items: center; gap: 12px; }
+.matrix3d-pipeline-step b { color: var(--violet); font-family: var(--font-mono); }
+.matrix3d-pipeline-step span { color: var(--text2); font-size: 12px; }
+
+@media (max-width: 1120px) {
+  .matrix3d-hero,
+  .matrix3d-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 640px) {
+  .matrix3d-page { padding: 18px; }
+  .matrix3d-organ-row { grid-template-columns: 1fr; }
+}
+
+/* Omnidirectional Explorable 3D Body Generation panel */
+.omni-page {
+  min-height: 100%;
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  background:
+    radial-gradient(circle at 12% 12%, rgba(0,230,118,0.11), transparent 26%),
+    radial-gradient(circle at 82% 18%, rgba(156,111,255,0.16), transparent 30%),
+    linear-gradient(180deg, transparent, rgba(0,229,255,0.035));
+}
+
+.omni-hero,
+.omni-card {
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: linear-gradient(145deg, rgba(255,255,255,0.072), rgba(255,255,255,0.024));
+  box-shadow: 0 24px 80px rgba(0,0,0,0.2);
+}
+
+.omni-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 20px;
+  align-items: center;
+  padding: clamp(22px, 4vw, 36px);
+  overflow: hidden;
+}
+
+.omni-kicker,
+.omni-eyebrow {
+  color: var(--cyan);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.omni-hero h2 {
+  max-width: 980px;
+  margin-top: 12px;
+  color: var(--text);
+  font-size: clamp(30px, 5.6vw, 64px);
+  line-height: 0.94;
+  letter-spacing: -0.06em;
+}
+
+.omni-hero p {
+  max-width: 780px;
+  margin-top: 16px;
+  color: var(--text2);
+  font-size: 14px;
+}
+
+.omni-world-preview {
+  min-height: 300px;
+  position: relative;
+  display: grid;
+  place-items: center;
+  border-radius: 18px;
+  background:
+    linear-gradient(rgba(0,229,255,0.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,229,255,0.055) 1px, transparent 1px),
+    rgba(0,0,0,0.24);
+  background-size: 24px 24px;
+  overflow: hidden;
+}
+
+.omni-orbit {
+  position: absolute;
+  border: 1px dashed rgba(0,229,255,0.42);
+  border-radius: 50%;
+  animation: spin 14s linear infinite;
+}
+
+.omni-orbit-a { width: 250px; height: 250px; }
+.omni-orbit-b { width: 300px; height: 150px; animation-duration: 9s; animation-direction: reverse; }
+
+.omni-avatar {
+  width: 116px;
+  height: 226px;
+  position: relative;
+  border: 1px solid rgba(0,229,255,0.42);
+  border-radius: 48% 48% 42% 42%;
+  background: linear-gradient(180deg, rgba(0,229,255,0.12), rgba(0,230,118,0.08));
+  box-shadow: inset 0 0 34px rgba(0,229,255,0.18), 0 0 44px rgba(0,229,255,0.14);
+}
+
+.omni-avatar::before {
+  content: '';
+  position: absolute;
+  width: 58px;
+  height: 58px;
+  top: -36px;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 1px solid rgba(0,229,255,0.34);
+  border-radius: 50%;
+  background: rgba(156,111,255,0.09);
+}
+
+.omni-avatar i {
+  position: absolute;
+  display: block;
+  border: 1px solid currentColor;
+  box-shadow: 0 0 16px currentColor;
+  opacity: 0.78;
+}
+
+.omni-brain { width: 30px; height: 18px; top: -16px; left: 43px; color: var(--violet); border-radius: 50%; }
+.omni-lung { width: 30px; height: 48px; top: 46px; color: var(--cyan); border-radius: 50% 50% 42% 42%; }
+.omni-lung.left { left: 24px; }
+.omni-lung.right { right: 24px; }
+.omni-heart { width: 24px; height: 24px; top: 82px; left: 46px; color: var(--red); border-radius: 50%; }
+.omni-liver { width: 46px; height: 24px; top: 122px; left: 24px; color: var(--amber); border-radius: 48%; }
+.omni-kidney { width: 18px; height: 28px; top: 150px; color: var(--green); border-radius: 50%; }
+.omni-kidney.left { left: 32px; }
+.omni-kidney.right { right: 32px; }
+
+.omni-preview-label {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  color: var(--cyan);
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+.omni-level-grid,
+.omni-bottom-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.omni-level-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.omni-bottom-grid { grid-template-columns: minmax(280px, 0.8fr) minmax(0, 1.2fr); }
+
+.omni-card {
+  padding: 18px;
+  position: relative;
+  overflow: hidden;
+}
+
+.omni-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--cyan);
+  opacity: 0.8;
+}
+
+.omni-card-violet::before { background: var(--violet); }
+.omni-card-green::before { background: var(--green); }
+.omni-card-amber::before { background: var(--amber); }
+.omni-card-violet .omni-eyebrow { color: var(--violet); }
+.omni-card-green .omni-eyebrow { color: var(--green); }
+.omni-card-amber .omni-eyebrow { color: var(--amber); }
+
+.omni-card h3 {
+  margin-top: 8px;
+  margin-bottom: 16px;
+  color: var(--text);
+  font-size: 20px;
+  line-height: 1.15;
+}
+
+.omni-two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.omni-two-col h4,
+.omni-example-title {
+  margin-bottom: 8px;
+  color: var(--text2);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.omni-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  list-style: none;
+}
+
+.omni-chip-list li,
+.omni-stack-tool {
+  border: 1px solid rgba(0,229,255,0.26);
+  border-radius: 999px;
+  padding: 8px 11px;
+  background: rgba(0,229,255,0.07);
+  color: var(--cyan);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.omni-chip-list-green li {
+  border-color: rgba(0,230,118,0.28);
+  background: rgba(0,230,118,0.08);
+  color: var(--green);
+}
+
+.omni-example,
+.omni-output-banner,
+.omni-note {
+  margin-top: 14px;
+}
+
+.omni-output-banner {
+  display: grid;
+  gap: 4px;
+  padding: 13px;
+  border: 1px solid rgba(156,111,255,0.28);
+  border-radius: 14px;
+  background: rgba(156,111,255,0.08);
+}
+
+.omni-output-banner span {
+  color: var(--text3);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.omni-output-banner strong { color: var(--violet); font-size: 16px; }
+
+.omni-flow {
+  display: grid;
+  gap: 7px;
+}
+
+.omni-flow-compact {
+  grid-template-columns: repeat(6, minmax(96px, 1fr));
+  align-items: center;
+}
+
+.omni-flow-compact .omni-flow-arrow { transform: rotate(-90deg); }
+
+.omni-flow-node {
+  min-height: 58px;
+  display: grid;
+  align-content: center;
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface2);
+}
+
+.omni-flow-node b {
+  color: var(--cyan);
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+.omni-flow-node span { color: var(--text); font-size: 12px; font-weight: 700; }
+.omni-flow-arrow { color: var(--text3); text-align: center; font-family: var(--font-mono); }
+
+.omni-tree {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border-radius: 14px;
+  background: rgba(0,0,0,0.18);
+  font-family: var(--font-mono);
+}
+
+.omni-tree-root { color: var(--green); font-weight: 900; }
+.omni-tree-node { display: flex; gap: 8px; color: var(--text2); }
+.omni-tree-node strong { color: var(--text); font-weight: 700; }
+
+.omni-stack {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.omni-stack-tool {
+  border-color: rgba(255,183,77,0.28);
+  background: rgba(255,183,77,0.08);
+  color: var(--amber);
+}
+
+.omni-stack-plus { color: var(--text3); font-family: var(--font-mono); font-weight: 900; }
+.omni-note { color: var(--text2); font-size: 12px; }
+
+@media (max-width: 1120px) {
+  .omni-hero,
+  .omni-level-grid,
+  .omni-bottom-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 760px) {
+  .omni-page { padding: 18px; }
+  .omni-two-col,
+  .omni-flow-compact { grid-template-columns: 1fr; }
+  .omni-flow-compact .omni-flow-arrow { transform: none; }
+}
