@@ -147,12 +147,12 @@ function getStageStatus(index, activeStage) {
   return 'pending'
 }
 
-export default function FamilyMedicalRelationshipPanel({ patientId = PATIENT_ID, onNext, onPrev, prevLabel }) {
+export default function FamilyMedicalRelationshipPanel({ patientId = PATIENT_ID, storageOwnerId = 'guest', onNext, onPrev, prevLabel }) {
   const { theme, lang, t } = useApp()
   const isDark = theme === 'dark'
   const [activeStage, setActiveStage] = useState(0)
   const [selectedAgent, setSelectedAgent] = useState(AGENT_ROLES[0].id)
-  const members = useMemo(() => loadFamilyMembers(patientId) || DEFAULT_FAMILY_MEMBERS, [patientId])
+  const members = useMemo(() => loadFamilyMembers(patientId, storageOwnerId) || DEFAULT_FAMILY_MEMBERS, [patientId, storageOwnerId])
   const model = useMemo(() => createSimulationModel(members), [members])
   const selectedAgentProfile = AGENT_ROLES.find(agent => agent.id === selectedAgent) || AGENT_ROLES[0]
 

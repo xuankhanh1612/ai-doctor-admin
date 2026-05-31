@@ -163,6 +163,7 @@ export default function App() {
 
   const isDark = theme === 'dark'
   const mainBg = isDark ? 'var(--bg2)' : '#f4f7fb'
+  const familyStorageOwnerId = user?.email || 'guest'
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
@@ -175,12 +176,13 @@ export default function App() {
             isDark={isDark}
             panelLabel={panelLabels[active] || active}
             onReset={() => setActive('upload')}
+            familyStorageOwnerId={familyStorageOwnerId}
           >
             {active === 'upload'    && <UploadPanel        patientId="LXK-2024" onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} onSelectImage={handleSelectCompareFile} />}
             {active === 'imaging'   && <ImagingPanel       onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} compareImage={compareImage} uploadedImages={uploadedImages} onSelectCompareImage={setCompareImage} scrollTarget={imagingScrollTarget} onScrollTargetHandled={() => setImagingScrollTarget(null)} />}
             {active === 'checkin'   && <CheckinPanel       onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
-            {active === 'family'    && <FamilyTreePanel    patientId="LXK-2024" onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} onViewRecord={navigateToRecord} />}
-            {active === 'familyRelationship' && <FamilyMedicalRelationshipPanel patientId="LXK-2024" onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
+            {active === 'family'    && <FamilyTreePanel    patientId="LXK-2024" storageOwnerId={familyStorageOwnerId} onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} onViewRecord={navigateToRecord} />}
+            {active === 'familyRelationship' && <FamilyMedicalRelationshipPanel patientId="LXK-2024" storageOwnerId={familyStorageOwnerId} onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'record'    && <PatientRecordPanel onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} selectedMember={selectedMember} />}
             {active === 'matrix3dBody' && <Matrix3DBodyPanel onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'omnidirectional3dBody' && <Omnidirectional3DBodyPanel onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
@@ -228,6 +230,13 @@ class PanelErrorBoundary extends React.Component {
 
   handleClearFamilyData = () => {
     try {
+      const ownerKey = String(this.props.familyStorageOwnerId || 'guest').trim().toLowerCase() || 'guest'
+      const byUser = JSON.parse(localStorage.getItem('cdoc_family_members_by_user') || '{}')
+
+      if (byUser?.[ownerKey]) {
+        delete byUser[ownerKey]['LXK-2024']
+        localStorage.setItem('cdoc_family_members_by_user', JSON.stringify(byUser))
+      }
       localStorage.removeItem('cdoc_family_members')
     } catch (error) {
       console.error('Unable to clear family data:', error)

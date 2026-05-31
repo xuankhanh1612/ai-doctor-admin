@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useEffect } from 'react'
 import { useApp } from '../../context/AppContext'
 import NavButtons from '../NavButtons.jsx'
 
@@ -323,26 +323,32 @@ function MemberFormModal({ mode, initialForm, onSave, onClose, lang, isDark, c }
 }
 
 // ─── Main Component ────────────────────────────────────────────────────────
-export default function FamilyTreePanel({ patientId, onNext, onPrev, prevLabel, onViewRecord }) {
+export default function FamilyTreePanel({ patientId, storageOwnerId = 'guest', onNext, onPrev, prevLabel, onViewRecord }) {
   const { theme, lang, t } = useApp()
   const isDark    = theme === 'dark'
 
   // Load from localStorage, fallback to DEFAULT_MEMBERS
-  const [members, setMembersState] = useState(() => loadFamilyMembers(patientId) || DEFAULT_FAMILY_MEMBERS)
+  const [members, setMembersState] = useState(() => loadFamilyMembers(patientId, storageOwnerId) || DEFAULT_FAMILY_MEMBERS)
+  const [modal, setModal]   = useState(null)   // null | 'add' | 'edit'
+  const [form, setForm]     = useState(EMPTY_FORM)
+  const [editId, setEditId] = useState(null)
+  const [deleteConfirm, setDeleteConfirm] = useState(null)
+
+  useEffect(() => {
+    setMembersState(loadFamilyMembers(patientId, storageOwnerId) || DEFAULT_FAMILY_MEMBERS)
+    setModal(null)
+    setEditId(null)
+    setDeleteConfirm(null)
+  }, [patientId, storageOwnerId])
 
   // Persist every change
   const setMembers = useCallback((updater) => {
     setMembersState(prev => {
       const next = typeof updater === 'function' ? updater(prev) : updater
-      saveFamilyMembers(patientId, next)
+      saveFamilyMembers(patientId, next, storageOwnerId)
       return next
     })
-  }, [patientId])
-
-  const [modal, setModal]   = useState(null)   // null | 'add' | 'edit'
-  const [form, setForm]     = useState(EMPTY_FORM)
-  const [editId, setEditId] = useState(null)
-  const [deleteConfirm, setDeleteConfirm] = useState(null)
+  }, [patientId, storageOwnerId])
 
   const c = isDark ? {
     bg:'transparent', border:'rgba(255,255,255,0.08)',

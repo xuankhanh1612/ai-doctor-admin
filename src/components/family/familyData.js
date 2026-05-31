@@ -55,6 +55,7 @@ export const isNonDiseaseCondition = (condition) => /^(khỏe mạnh|healthy|ch�
 
 
 export const FAMILY_STORAGE_KEY = 'cdoc_family_members'
+export const FAMILY_USER_STORAGE_KEY = 'cdoc_family_members_by_user'
 
 // ─── Persistence helpers ───────────────────────────────────────────────────
 export const normalizeConditions = (conditions) => {
@@ -119,23 +120,57 @@ export const applyLxkPatientProfile = (members) => {
   })
 }
 
-export const loadFamilyMembers = (patientId) => {
+export const getFamilyOwnerKey = (ownerId) => {
+  const key = String(ownerId || 'guest').trim().toLowerCase()
+  return key || 'guest'
+}
+
+const readJsonObject = (key) => {
   try {
-    const all = JSON.parse(localStorage.getItem(FAMILY_STORAGE_KEY) || '{}')
-    const normalized = normalizeFamilyMembers(all[patientId])
-    if (!normalized) return null
-    if (patientId === 'LXK-2024' && isLegacyLxkDemoTree(normalized)) return null
-    return patientId === 'LXK-2024' ? applyLxkPatientProfile(normalized) : normalized
+    const parsed = JSON.parse(localStorage.getItem(key) || '{}')
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {}
+  } catch { return {} }
+}
+
+const prepareFamilyMembersForPatient = (patientId, members) => {
+  const normalized = normalizeFamilyMembers(members)
+  if (!normalized) return null
+  if (patientId === 'LXK-2024' && isLegacyLxkDemoTree(normalized)) return null
+  return patientId === 'LXK-2024' ? applyLxkPatientProfile(normalized) : normalized
+}
+
+export const loadFamilyMembers = (patientId, ownerId = 'guest') => {
+  try {
+    const ownerKey = getFamilyOwnerKey(ownerId)
+    const byUser = readJsonObject(FAMILY_USER_STORAGE_KEY)
+    const userPatients = byUser[ownerKey] && typeof byUser[ownerKey] === 'object' ? byUser[ownerKey] : {}
+
+    // Only load the current user's local database. If no saved row exists, callers show DEFAULT_FAMILY_MEMBERS.
+    return prepareFamilyMembersForPatient(patientId, userPatients[patientId])
   } catch { return null }
 }
 
-export const saveFamilyMembers = (patientId, members) => {
+export const saveFamilyMembers = (patientId, members, ownerId = 'guest') => {
   try {
-    const all = JSON.parse(localStorage.getItem(FAMILY_STORAGE_KEY) || '{}')
+    const ownerKey = getFamilyOwnerKey(ownerId)
+    const byUser = readJsonObject(FAMILY_USER_STORAGE_KEY)
     const normalized = patientId === 'LXK-2024' ? applyLxkPatientProfile(members) : normalizeFamilyMembers(members)
-    all[patientId] = normalized || []
-    localStorage.setItem(FAMILY_STORAGE_KEY, JSON.stringify(all))
+
+    byUser[ownerKey] = byUser[ownerKey] && typeof byUser[ownerKey] === 'object' ? byUser[ownerKey] : {}
+    byUser[ownerKey][patientId] = normalized || []
+    localStorage.setItem(FAMILY_USER_STORAGE_KEY, JSON.stringify(byUser))
   } catch (e) { console.error('FamilyTree save error:', e) }
+}
+
+export const clearFamilyMembers = (patientId, ownerId = 'guest') => {
+  try {
+    const ownerKey = getFamilyOwnerKey(ownerId)
+    const byUser = readJsonObject(FAMILY_USER_STORAGE_KEY)
+    if (byUser[ownerKey]) {
+      delete byUser[ownerKey][patientId]
+      localStorage.setItem(FAMILY_USER_STORAGE_KEY, JSON.stringify(byUser))
+    }
+  } catch (e) { console.error('FamilyTree clear error:', e) }
 }
 
 // ─── Default demo data ─────────────────────────────────────────────────────
