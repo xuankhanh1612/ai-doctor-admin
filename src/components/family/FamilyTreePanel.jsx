@@ -56,7 +56,7 @@ const buildMemberRecord = (member) => ({
     : [],
 
   timeline: [
-    { id:'t1', date:'—', event:`Thành viên gia đình · ${RELATION_META[member.relation]?.label?.vi || member.relation}`, type:'diagnosis' },
+    { id:'t1', date:'—', event:`Thành viên gia đình · ${FAMILY_RELATION_META[member.relation]?.label?.vi || member.relation}`, type:'diagnosis' },
     ...(member.medicalRecord?.diagnoses?.map((d,i) => ({ id:'td'+i, date:'—', event:d, type:'diagnosis', severity: /ung thư|cancer|hcc|nsclc/i.test(d)?'critical':'moderate' })) || []),
     ...(member.note ? [{ id:'t2', date:'—', event: member.note, type:'consult' }] : []),
     ...(member.alive === false ? [{ id:'t3', date:'—', event:'Đã mất', type:'consult' }] : []),
@@ -76,7 +76,7 @@ const EMPTY_FORM = { name:'', age:'', gender:'M', relation:'child', conditions:'
 
 // ─── Member Card ───────────────────────────────────────────────────────────
 function MemberCard({ member, lang, isDark, c, onViewRecord, onEdit, onDelete }) {
-  const meta     = RELATION_META[member.relation] || { color:'#888', label:{ vi:'Khác', en:'Other' } }
+  const meta     = FAMILY_RELATION_META[member.relation] || { color:'#888', label:{ vi:'Khác', en:'Other' } }
   const relColor = meta.color
   const hasDisease = (member.conditions || []).some(cd => !isNonDiseaseCondition(cd))
 
@@ -253,7 +253,7 @@ function MemberFormModal({ mode, initialForm, onSave, onClose, lang, isDark, c }
         <Field label={lang === 'vi' ? 'Quan hệ với bệnh nhân' : 'Relation to Patient'}>
           <select value={localForm.relation} onChange={e => setLocalForm(p => ({ ...p, relation:e.target.value }))} style={selectStyle}>
             {RELATIONS.map(r => (
-              <option key={r} value={r}>{RELATION_META[r]?.label?.[lang] || RELATION_META[r]?.label?.vi || r}</option>
+              <option key={r} value={r}>{FAMILY_RELATION_META[r]?.label?.[lang] || FAMILY_RELATION_META[r]?.label?.vi || r}</option>
             ))}
           </select>
         </Field>
@@ -400,7 +400,7 @@ export default function FamilyTreePanel({ patientId, onNext, onPrev, prevLabel, 
   // ── Group by row ──────────────────────────────────────────────────────────
   const rows = [1,2,3,4,5]
   const byRow = members.reduce((acc, m) => {
-    const row = RELATION_META[m.relation]?.row || 3
+    const row = FAMILY_RELATION_META[m.relation]?.row || 3
     if (!acc[row]) acc[row] = []
     acc[row].push(m)
     return acc
@@ -514,7 +514,7 @@ export default function FamilyTreePanel({ patientId, onNext, onPrev, prevLabel, 
             </thead>
             <tbody>
               {members.map((member, i) => {
-                const meta = RELATION_META[member.relation]
+                const meta = FAMILY_RELATION_META[member.relation]
                 const relColor = meta?.color || '#888'
                 const hasDisease = (member.conditions || []).some(cd => !isNonDiseaseCondition(cd))
                 return (
