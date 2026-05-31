@@ -26,7 +26,31 @@ export const CONDITION_COLORS = {
   'Đột quỵ':'#ef9a9a','Stroke':'#ef9a9a',
   'Xơ gan':'#ffcc80','Cirrhosis':'#ffcc80',
   'Khỏe mạnh':'#00e676','Healthy':'#00e676',
+  'Chưa rõ tiền sử':'#80cbc4','Unknown history':'#80cbc4',
 }
+
+export const LXK_PATIENT_PROFILE = {
+  id: 'fm-3',
+  relation: 'self',
+  name: 'Lê Xuân Khánh',
+  dob: '1982-12-16',
+  displayDob: '16/12/1982',
+  blood_type: 'OH-',
+  gender: 'M',
+}
+
+export const calculateAgeFromDob = (dob, now = new Date()) => {
+  const birthDate = new Date(`${dob}T00:00:00`)
+  if (Number.isNaN(birthDate.getTime())) return 0
+
+  let age = now.getFullYear() - birthDate.getFullYear()
+  const monthDelta = now.getMonth() - birthDate.getMonth()
+  if (monthDelta < 0 || (monthDelta === 0 && now.getDate() < birthDate.getDate())) age -= 1
+  return age
+}
+
+export const isNonDiseaseCondition = (condition) => /^(khỏe mạnh|healthy|chưa rõ tiền sử|unknown history)$/i.test(String(condition || '').trim())
+
 
 export const FAMILY_STORAGE_KEY = 'cdoc_family_members'
 
@@ -53,7 +77,9 @@ export const normalizeFamilyMember = (member, index = 0) => {
     name: String(safeMember.name || `Family Member ${index + 1}`).trim(),
     age: Number.parseInt(safeMember.age, 10) || 0,
     gender: safeMember.gender === 'F' ? 'F' : 'M',
-    conditions: conditions.length ? conditions : ['Khỏe mạnh'],
+    dob: typeof safeMember.dob === 'string' ? safeMember.dob : safeMember.medicalRecord?.dob,
+    blood_type: typeof safeMember.blood_type === 'string' ? safeMember.blood_type : safeMember.medicalRecord?.blood_type,
+    conditions: conditions.length ? conditions : ['Chưa rõ tiền sử'],
     alive: safeMember.alive !== false,
     note: String(safeMember.note || '').trim(),
   }
@@ -63,54 +89,87 @@ export const normalizeFamilyMembers = (members) => (
   Array.isArray(members) ? members.map(normalizeFamilyMember) : null
 )
 
+const isLegacyLxkDemoTree = (members) => {
+  const self = members?.find(member => member.relation === 'self' || member.id === LXK_PATIENT_PROFILE.id)
+  return self?.medicalRecord?.dob === '1977-04-10' || self?.dob === '1977-04-10' || /Erlotinib|T790M|Cycle 4/i.test(self?.note || '')
+}
+
+export const applyLxkPatientProfile = (members) => {
+  const normalized = normalizeFamilyMembers(members)
+  if (!normalized) return null
+
+  const profileAge = calculateAgeFromDob(LXK_PATIENT_PROFILE.dob)
+  return normalized.map(member => {
+    if (member.relation !== 'self' && member.id !== LXK_PATIENT_PROFILE.id && member.name !== LXK_PATIENT_PROFILE.name) return member
+
+    return {
+      ...member,
+      ...LXK_PATIENT_PROFILE,
+      age: profileAge,
+      alive: true,
+      note: `Bệnh nhân chính · sinh ${LXK_PATIENT_PROFILE.displayDob} · nhóm máu ${LXK_PATIENT_PROFILE.blood_type}`,
+      medicalRecord: {
+        ...(member.medicalRecord || {}),
+        dob: LXK_PATIENT_PROFILE.dob,
+        blood_type: LXK_PATIENT_PROFILE.blood_type,
+      },
+    }
+  })
+}
+
 export const loadFamilyMembers = (patientId) => {
   try {
     const all = JSON.parse(localStorage.getItem(FAMILY_STORAGE_KEY) || '{}')
-    return normalizeFamilyMembers(all[patientId])
+    const normalized = normalizeFamilyMembers(all[patientId])
+    if (!normalized) return null
+    if (patientId === 'LXK-2024' && isLegacyLxkDemoTree(normalized)) return null
+    return patientId === 'LXK-2024' ? applyLxkPatientProfile(normalized) : normalized
   } catch { return null }
 }
 
 export const saveFamilyMembers = (patientId, members) => {
   try {
     const all = JSON.parse(localStorage.getItem(FAMILY_STORAGE_KEY) || '{}')
-    all[patientId] = normalizeFamilyMembers(members) || []
+    const normalized = patientId === 'LXK-2024' ? applyLxkPatientProfile(members) : normalizeFamilyMembers(members)
+    all[patientId] = normalized || []
     localStorage.setItem(FAMILY_STORAGE_KEY, JSON.stringify(all))
   } catch (e) { console.error('FamilyTree save error:', e) }
 }
 
 // ─── Default demo data ─────────────────────────────────────────────────────
-export const DEFAULT_FAMILY_MEMBERS = [
+export const DEFAULT_FAMILY_MEMBERS = applyLxkPatientProfile([
   // ── Thế hệ ông bà ─────────────────────────────────────────────────────────
-  { id:'fm-0', relation:'grandparent', name:'Lê Văn Tấn',     age:94, gender:'M', conditions:['Ung thư phổi'],          alive:false, note:'Ông nội · mất 1992' },
-  { id:'fm-9', relation:'grandparent', name:'Trần Thị Ngọc',  age:88, gender:'F', conditions:['Tăng huyết áp'],         alive:false, note:'Bà nội · mất 2005' },
+  { id:'fm-0', relation:'grandparent', name:'Lê Văn Tấn',     age:0, gender:'M', conditions:['Chưa rõ tiền sử'], alive:false, note:'Ông nội · chưa nhập năm sinh / tiền sử bệnh' },
+  { id:'fm-9', relation:'grandparent', name:'Trần Thị Ngọc',  age:0, gender:'F', conditions:['Chưa rõ tiền sử'], alive:false, note:'Bà nội · chưa nhập năm sinh / tiền sử bệnh' },
+  { id:'fm-11',relation:'grandparent', name:'Nguyễn Văn Phúc', age:0, gender:'M', conditions:['Chưa rõ tiền sử'], alive:false, note:'Ông ngoại · chưa nhập năm sinh / tiền sử bệnh' },
+  { id:'fm-12',relation:'grandparent', name:'Phạm Thị Hạnh',   age:0, gender:'F', conditions:['Chưa rõ tiền sử'], alive:false, note:'Bà ngoại · chưa nhập năm sinh / tiền sử bệnh' },
   // ── Thế hệ cha mẹ ─────────────────────────────────────────────────────────
-  { id:'fm-1', relation:'father',      name:'Lê Văn Bình',    age:72, gender:'M', conditions:['Ung thư phổi','Tăng huyết áp'], alive:false, note:'Mất 2018 — ung thư phổi' },
-  { id:'fm-2', relation:'mother',      name:'Nguyễn Thị Lan', age:68, gender:'F', conditions:['Tăng huyết áp'],         alive:true,  note:'' },
-  { id:'fm-7', relation:'uncle_aunt',  name:'Lê Văn Hùng',    age:65, gender:'M', conditions:['Xơ gan'],               alive:true,  note:'Bác ruột · viêm gan B' },
+  { id:'fm-1', relation:'father',      name:'Lê Văn Bình',    age:0, gender:'M', conditions:['Chưa rõ tiền sử'], alive:true, note:'Cha · cần cập nhật ngày sinh, nhóm máu và tiền sử bệnh' },
+  { id:'fm-2', relation:'mother',      name:'Nguyễn Thị Lan', age:0, gender:'F', conditions:['Chưa rõ tiền sử'], alive:true, note:'Mẹ · cần cập nhật ngày sinh, nhóm máu và tiền sử bệnh' },
   // ── Bệnh nhân chính + gia đình trực tiếp ──────────────────────────────────
   {
-    id:'fm-3', relation:'self',
-    name:'Lê Xuân Khánh',
-    age:47, gender:'M',
-    conditions:['NSCLC · Stage IIA','Ung thư gan di căn (HCC)','Xơ gan Child-Pugh A'],
-    alive:true,
-    note:'Bệnh nhân chính · EGFR Exon19del · T790M · Erlotinib Cycle 4',
-    // Full merged medical record — synced from PatientRecordPanel
+    id: LXK_PATIENT_PROFILE.id,
+    relation: 'self',
+    name: LXK_PATIENT_PROFILE.name,
+    age: calculateAgeFromDob(LXK_PATIENT_PROFILE.dob),
+    gender: LXK_PATIENT_PROFILE.gender,
+    dob: LXK_PATIENT_PROFILE.dob,
+    blood_type: LXK_PATIENT_PROFILE.blood_type,
+    conditions: ['Chưa rõ tiền sử'],
+    alive: true,
+    note: `Bệnh nhân chính · sinh ${LXK_PATIENT_PROFILE.displayDob} · nhóm máu ${LXK_PATIENT_PROFILE.blood_type}`,
     medicalRecord: {
-      blood_type: 'O+',
-      dob: '1977-04-10',
-      diagnoses: ['NSCLC Stage IIA (C34.1)','HCC T3N0M0 di căn (C22.0)','Xơ gan Child-Pugh A (K74.6)','Viêm gan B mãn tính (B18.1)'],
-      key_labs: { AFP: '1840 ng/mL ↑↑↑', CEA: '28 ng/mL ↑', 'CA19-9': '980 U/mL ↑↑↑', ALT: '142 U/L ↑', ctDNA: '0.8%' },
-      genomics: ['EGFR Exon 19 del (Pathogenic)', 'T790M (Pathogenic · resistance risk)', 'TP53 R248W (Pathogenic)', 'TERT C228T (Pathogenic)', 'CTNNB1 S45F (Likely Pathogenic)'],
-      medications: ['Erlotinib 150mg/day (active)', 'Sorafenib 400mg 2×/day (active)', 'Entecavir 0.5mg (active)', 'Furosemide 40mg (active)'],
-      allergies: ['Penicillin — mề đay (severe)', 'Ibuprofen — xuất huyết tiêu hoá (moderate)'],
+      blood_type: LXK_PATIENT_PROFILE.blood_type,
+      dob: LXK_PATIENT_PROFILE.dob,
+      diagnoses: [],
+      key_labs: {},
+      genomics: [],
+      medications: [],
+      allergies: [],
     },
   },
-  { id:'fm-4', relation:'spouse',   name:'Trần Thị Hoa',   age:44, gender:'F', conditions:['Khỏe mạnh'],            alive:true, note:'' },
-  { id:'fm-5', relation:'sibling',  name:'Lê Xuân Nam',    age:44, gender:'M', conditions:['Viêm gan B mãn tính'], alive:true, note:'Anh trai · cần tầm soát AFP' },
-  { id:'fm-8', relation:'sibling',  name:'Lê Thị Mai',     age:50, gender:'F', conditions:['Khỏe mạnh'],           alive:true, note:'Chị gái' },
+  { id:'fm-4', relation:'spouse',   name:'Chưa nhập vợ/chồng', age:0, gender:'F', conditions:['Chưa rõ tiền sử'], alive:true, note:'Có thể sửa hoặc xoá placeholder này' },
+  { id:'fm-5', relation:'sibling',  name:'Chưa nhập anh/chị/em', age:0, gender:'M', conditions:['Chưa rõ tiền sử'], alive:true, note:'Có thể sửa hoặc xoá placeholder này' },
   // ── Thế hệ con ────────────────────────────────────────────────────────────
-  { id:'fm-6', relation:'child',    name:'Lê Minh Tú',     age:19, gender:'M', conditions:['Khỏe mạnh'],           alive:true, note:'Con trai · cần tầm soát EGFR từ 40 tuổi + xét nghiệm HBsAg' },
-  { id:'fm-10',relation:'child',    name:'Lê Thị Bảo Nhi', age:15, gender:'F', conditions:['Khỏe mạnh'],           alive:true, note:'Con gái · theo dõi HBsAg định kỳ' },
-]
-
+  { id:'fm-6', relation:'child',    name:'Chưa nhập con', age:0, gender:'M', conditions:['Chưa rõ tiền sử'], alive:true, note:'Có thể sửa hoặc xoá placeholder này' },
+])

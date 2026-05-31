@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react'
 import { useApp } from '../../context/AppContext'
 import NavButtons from '../NavButtons.jsx'
-import { CONDITION_COLORS, DEFAULT_FAMILY_MEMBERS, RELATION_META, loadFamilyMembers } from './familyData.js'
+import { CONDITION_COLORS, DEFAULT_FAMILY_MEMBERS, RELATION_META, isNonDiseaseCondition, loadFamilyMembers } from './familyData.js'
 
 const PATIENT_ID = 'LXK-2024'
 
@@ -60,7 +60,7 @@ const AGENT_ROLES = [
   { id: 'report', name: 'ReportAgent', color: '#ffb74d', task: { vi: 'viết báo cáo dự đoán', en: 'writes predictive report' } },
 ]
 
-const isHealthyCondition = (condition) => /^(khỏe mạnh|healthy)$/i.test(condition.trim())
+const isHealthyCondition = isNonDiseaseCondition
 const isCancerCondition = (condition) => /ung thư|cancer|nsclc|hcc/i.test(condition)
 const isCardioCondition = (condition) => /huyết áp|hypertension|tim mạch|heart|đột quỵ|stroke/i.test(condition)
 const isMetabolicCondition = (condition) => /tiểu đường|diabetes|xơ gan|cirrhosis|viêm gan|hepatitis|gan|liver/i.test(condition)

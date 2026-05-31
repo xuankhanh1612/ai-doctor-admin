@@ -2,7 +2,14 @@ import React, { useState, useCallback } from 'react'
 import { useApp } from '../../context/AppContext'
 import NavButtons from '../NavButtons.jsx'
 
-import { CONDITION_COLORS, DEFAULT_FAMILY_MEMBERS, RELATIONS, RELATION_META, loadFamilyMembers, saveFamilyMembers } from './familyData.js'
+import { CONDITION_COLORS, DEFAULT_FAMILY_MEMBERS, RELATIONS, RELATION_META, isNonDiseaseCondition, loadFamilyMembers, saveFamilyMembers } from './familyData.js'
+
+
+const formatDob = (dob) => {
+  if (!dob || typeof dob !== 'string') return ''
+  const [year, month, day] = dob.split('-')
+  return year && month && day ? `${day}/${month}/${year}` : dob
+}
 
 // ─── Build patient record for Patient Record Visualizer ───────────────────
 const buildMemberRecord = (member) => ({
@@ -10,12 +17,12 @@ const buildMemberRecord = (member) => ({
   name: member.name,
   age: member.age,
   gender: member.gender || (member.relation === 'mother' || member.relation === 'spouse' ? 'F' : 'M'),
-  blood_type: '—',
-  dob: member.age ? `${new Date().getFullYear() - member.age}-01-01` : '—',
+  blood_type: member.blood_type || member.medicalRecord?.blood_type || '—',
+  dob: member.dob || member.medicalRecord?.dob || (member.age ? `${new Date().getFullYear() - member.age}-01-01` : '—'),
   avatar_initials: member.name.split(' ').slice(-2).map(w => w[0]).join('').toUpperCase(),
 
   diseases: (member.conditions || [])
-    .filter(c => c !== 'Khỏe mạnh' && c !== 'Healthy')
+    .filter(c => !isNonDiseaseCondition(c))
     .map((c, i) => ({
       id: 'd'+i, name: c,
       icd10: /ung thư|cancer/i.test(c) ? 'C80.1' : /tiểu đường|diabetes/i.test(c) ? 'E11' : /huyết áp|hypertension/i.test(c) ? 'I10' : 'Z00.0',
@@ -56,7 +63,7 @@ const buildMemberRecord = (member) => ({
   ],
 
   risk_factors: (member.conditions || [])
-    .filter(c => c !== 'Khỏe mạnh' && c !== 'Healthy')
+    .filter(c => !isNonDiseaseCondition(c))
     .map((c, i) => ({
       id: 'r'+i, name: c,
       weight: /ung thư|cancer/i.test(c) ? 85 : /tiểu đường|diabetes|huyết áp|hypertension/i.test(c) ? 55 : 40,
@@ -71,7 +78,7 @@ const EMPTY_FORM = { name:'', age:'', gender:'M', relation:'child', conditions:'
 function MemberCard({ member, lang, isDark, c, onViewRecord, onEdit, onDelete }) {
   const meta     = FAMILY_RELATION_META[member.relation] || { color:'#888', label:{ vi:'Khác', en:'Other' } }
   const relColor = meta.color
-  const hasDisease = (member.conditions || []).some(cd => cd !== 'Khỏe mạnh' && cd !== 'Healthy')
+  const hasDisease = (member.conditions || []).some(cd => !isNonDiseaseCondition(cd))
 
   return (
     <div style={{ position:'relative', flexShrink:0, width:148 }}>
@@ -123,8 +130,14 @@ function MemberCard({ member, lang, isDark, c, onViewRecord, onEdit, onDelete })
           {meta.label[lang] || meta.label.vi}{member.age ? ` · ${member.age}t` : ''}
         </div>
 
+        {(member.dob || member.blood_type) && (
+          <div style={{ fontSize:9, color:c.text3, marginBottom:6, lineHeight:1.35 }}>
+            {member.dob ? `🎂 ${formatDob(member.dob)}` : ''}{member.dob && member.blood_type ? ' · ' : ''}{member.blood_type ? `🩸 ${member.blood_type}` : ''}
+          </div>
+        )}
+
         {(member.conditions || []).map((cond, i) => {
-          const cc = CONDITION_COLORS[cond] || (hasDisease && cond !== 'Khỏe mạnh' ? '#ff8a65' : '#888')
+          const cc = CONDITION_COLORS[cond] || (hasDisease && !isNonDiseaseCondition(cond) ? '#ff8a65' : '#888')
           return (
             <div key={i} style={{
               fontSize:9, padding:'2px 5px', borderRadius:4, marginBottom:2,
@@ -365,7 +378,7 @@ export default function FamilyTreePanel({ patientId, onNext, onPrev, prevLabel, 
       age:        parseInt(localForm.age) || 0,
       gender:     localForm.gender,
       relation:   localForm.relation,
-      conditions: localForm.conditions.split(',').map(s => s.trim()).filter(Boolean).length ? localForm.conditions.split(',').map(s => s.trim()).filter(Boolean) : ['Khỏe mạnh'],
+      conditions: localForm.conditions.split(',').map(s => s.trim()).filter(Boolean).length ? localForm.conditions.split(',').map(s => s.trim()).filter(Boolean) : ['Chưa rõ tiền sử'],
       alive:      localForm.alive,
       note:       localForm.note.trim(),
     }
@@ -503,7 +516,7 @@ export default function FamilyTreePanel({ patientId, onNext, onPrev, prevLabel, 
               {members.map((member, i) => {
                 const meta = FAMILY_RELATION_META[member.relation]
                 const relColor = meta?.color || '#888'
-                const hasDisease = (member.conditions || []).some(cd => cd !== 'Khỏe mạnh' && cd !== 'Healthy')
+                const hasDisease = (member.conditions || []).some(cd => !isNonDiseaseCondition(cd))
                 return (
                   <tr key={member.id} style={{ borderTop:`1px solid ${c.border}`, transition:'background .15s' }}
                     onMouseEnter={e => { e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)' }}
@@ -526,7 +539,7 @@ export default function FamilyTreePanel({ patientId, onNext, onPrev, prevLabel, 
                     <td style={{ padding:'10px 14px' }}>
                       <div style={{ display:'flex', gap:4, flexWrap:'wrap' }}>
                         {(member.conditions || []).map((cd, ci) => {
-                          const cc = CONDITION_COLORS[cd] || (cd !== 'Khỏe mạnh' && cd !== 'Healthy' ? '#ff8a65' : '#00e676')
+                          const cc = CONDITION_COLORS[cd] || (!isNonDiseaseCondition(cd) ? '#ff8a65' : '#00e676')
                           return (
                             <span key={ci} style={{ padding:'1px 6px', borderRadius:3, fontSize:9, background:`${cc}15`, color:cc, border:`1px solid ${cc}30` }}>{cd}</span>
                           )
