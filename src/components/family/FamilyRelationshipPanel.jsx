@@ -1,339 +1,300 @@
 import React, { useMemo, useState } from 'react'
 import { useApp } from '../../context/AppContext'
 import NavButtons from '../NavButtons.jsx'
-import {
-  DEFAULT_FAMILY_MEMBERS,
-  FAMILY_RELATION_META,
-  loadFamilyMembers,
-} from './FamilyTreePanel.jsx'
 
-const STAGES = [
-  { id: 'graph', icon: '🧬', title: 'Graph Building', accent: '#00e5ff' },
-  { id: 'environment', icon: '🧑‍⚕️', title: 'Environment Setup', accent: '#9c6fff' },
-  { id: 'simulation', icon: '⚡', title: 'Simulation Execution', accent: '#00e676' },
-  { id: 'report', icon: '📊', title: 'Report Generation', accent: '#ffb74d' },
-  { id: 'interaction', icon: '💬', title: 'Deep Interaction', accent: '#f48fb1' },
+const STORAGE_KEY = 'cdoc_family_members'
+
+const RELATION_META = {
+  grandparent: { row: 1, color: '#9c6fff', label: { vi: 'Ông/Bà', en: 'Grandparent' }, influence: 0.42 },
+  father: { row: 2, color: '#00b8cc', label: { vi: 'Cha', en: 'Father' }, influence: 0.82 },
+  mother: { row: 2, color: '#f48fb1', label: { vi: 'Mẹ', en: 'Mother' }, influence: 0.82 },
+  uncle_aunt: { row: 2, color: '#ce93d8', label: { vi: 'Chú/Cô', en: 'Uncle/Aunt' }, influence: 0.38 },
+  self: { row: 3, color: '#00e5ff', label: { vi: 'Bệnh nhân', en: 'Patient' }, influence: 1 },
+  spouse: { row: 3, color: '#ffb74d', label: { vi: 'Vợ/Chồng', en: 'Spouse' }, influence: 0.12 },
+  sibling: { row: 3, color: '#00e676', label: { vi: 'Anh/Chị/Em', en: 'Sibling' }, influence: 0.62 },
+  cousin: { row: 3, color: '#80cbc4', label: { vi: 'Anh em họ', en: 'Cousin' }, influence: 0.28 },
+  child: { row: 4, color: '#ff8a65', label: { vi: 'Con', en: 'Child' }, influence: 0.5 },
+  grandchild: { row: 5, color: '#a5d6a7', label: { vi: 'Cháu', en: 'Grandchild' }, influence: 0.25 },
+}
+
+const DEFAULT_MEMBERS = [
+  { id:'fm-0', relation:'grandparent', name:'Lê Văn Tấn', age:94, gender:'M', conditions:['Ung thư phổi'], alive:false, note:'Ông nội · mất 1992' },
+  { id:'fm-9', relation:'grandparent', name:'Trần Thị Ngọc', age:88, gender:'F', conditions:['Tăng huyết áp'], alive:false, note:'Bà nội · mất 2005' },
+  { id:'fm-1', relation:'father', name:'Lê Văn Bình', age:72, gender:'M', conditions:['Ung thư phổi','Tăng huyết áp'], alive:false, note:'Mất 2018 — ung thư phổi' },
+  { id:'fm-2', relation:'mother', name:'Nguyễn Thị Lan', age:68, gender:'F', conditions:['Tăng huyết áp'], alive:true, note:'' },
+  { id:'fm-7', relation:'uncle_aunt', name:'Lê Văn Hùng', age:65, gender:'M', conditions:['Xơ gan'], alive:true, note:'Bác ruột · viêm gan B' },
+  { id:'fm-3', relation:'self', name:'Lê Xuân Khánh', age:47, gender:'M', conditions:['NSCLC · Stage IIA','Ung thư gan di căn (HCC)','Xơ gan Child-Pugh A'], alive:true, note:'Bệnh nhân chính · EGFR Exon19del · T790M · Erlotinib Cycle 4' },
+  { id:'fm-4', relation:'spouse', name:'Phạm Thị Mai', age:45, gender:'F', conditions:['Khỏe mạnh'], alive:true, note:'' },
+  { id:'fm-5', relation:'sibling', name:'Lê Thị Hoa', age:50, gender:'F', conditions:['Ung thư vú'], alive:true, note:'Chị gái · đang theo dõi' },
+  { id:'fm-6', relation:'child', name:'Lê Minh Anh', age:18, gender:'F', conditions:['Khỏe mạnh'], alive:true, note:'Con gái · chưa xét nghiệm gen' },
+  { id:'fm-8', relation:'child', name:'Lê Minh Đức', age:15, gender:'M', conditions:['Khỏe mạnh'], alive:true, note:'Con trai' },
 ]
 
-const RELATION_WEIGHT = {
-  self: 1,
-  father: 0.9,
-  mother: 0.9,
-  sibling: 0.74,
-  child: 0.72,
-  grandparent: 0.58,
-  grandchild: 0.5,
-  uncle_aunt: 0.46,
-  cousin: 0.34,
-  spouse: 0.18,
-}
-
-const AGENT_TEMPLATES = [
-  { id: 'geneticist', name: 'Genetic Counselor Agent', abbr: 'GC', focus: 'heritability + cascade screening', color: '#00e5ff' },
-  { id: 'oncologist', name: 'Oncology Risk Agent', abbr: 'ONC', focus: 'cancer clustering + red flags', color: '#ff5252' },
-  { id: 'hepatology', name: 'Hepatology Agent', abbr: 'HEP', focus: 'HBV / HCC familial exposure', color: '#ffb74d' },
-  { id: 'cardiometabolic', name: 'Cardiometabolic Agent', abbr: 'CM', focus: 'hypertension / diabetes trajectory', color: '#00e676' },
-  { id: 'report', name: 'ReportAgent', abbr: 'RPT', focus: 'predictive summary + questions', color: '#9c6fff' },
+const LIFECYCLE = [
+  { id: 'graph', icon: '🧠', title: 'Graph Building', copy: 'Trích xuất entity bệnh, quan hệ huyết thống, thời gian khởi phát và biến cố để dựng GraphRAG + collective memory.' },
+  { id: 'setup', icon: '🧬', title: 'Environment Setup', copy: 'Sinh persona agent theo ontology gia đình: genetics, oncology, hepatology, preventive care, report agent.' },
+  { id: 'execute', icon: '⚡', title: 'Simulation Execution', copy: 'Chạy tương tác song song giữa agent theo lát cắt thế hệ, cập nhật temporal memory và độ lan truyền nguy cơ.' },
+  { id: 'report', icon: '📊', title: 'Report Generation', copy: 'ReportAgent tổng hợp log thành dự báo ưu tiên tầm soát, xét nghiệm gen và kịch bản phòng ngừa.' },
+  { id: 'deep', icon: '💬', title: 'Deep Interaction', copy: 'Cho phép hỏi sâu từng agent hoặc ReportAgent để khám phá giả thuyết và điểm bất định.' },
 ]
 
-const hasMeaningfulCondition = condition => !/^(khỏe mạnh|healthy)$/i.test(condition)
+const PERSONAS = [
+  { id: 'geneticist', name: 'GeneticsAgent', color: '#9c6fff', role: 'Phả hệ gen & variant inheritance' },
+  { id: 'oncology', name: 'OncologyAgent', color: '#ff5252', role: 'Ung thư gia đình & tầm soát' },
+  { id: 'hepatic', name: 'HepatoAgent', color: '#ffb74d', role: 'Viêm gan, xơ gan, HCC clustering' },
+  { id: 'preventive', name: 'PreventionAgent', color: '#00e676', role: 'Lịch xét nghiệm cho thế hệ sau' },
+  { id: 'report', name: 'ReportAgent', color: '#00e5ff', role: 'Tổng hợp log và dự báo hành động' },
+]
 
-function normalizeCondition(condition) {
-  return condition
-    .toLowerCase()
-    .replace(/nsclc|lung cancer|ung thư phổi/g, 'lung-oncology')
-    .replace(/hcc|ung thư gan|liver cancer|xơ gan|cirrhosis|viêm gan b|hbv/g, 'hepatic')
-    .replace(/tăng huyết áp|hypertension|tim mạch|heart disease|đột quỵ|stroke/g, 'cardiovascular')
-    .replace(/tiểu đường|diabetes/g, 'metabolic')
-    .replace(/ung thư vú|breast cancer|ung thư đại tràng|colon cancer|ung thư dạ dày|stomach cancer|ung thư|cancer/g, 'oncology')
+const CONDITION_RULES = [
+  { key: 'cancer', regex: /ung thư|cancer|nsclc|hcc|tumou?r|carcinoma/i, label: 'Cancer cluster', color: '#ff5252', base: 31 },
+  { key: 'hepatic', regex: /gan|hcc|xơ gan|cirrhosis|hepatitis|viêm gan/i, label: 'Hepatic lineage', color: '#ffb74d', base: 24 },
+  { key: 'metabolic', regex: /tiểu đường|diabetes|huyết áp|hypertension|tim mạch|heart|stroke|đột quỵ/i, label: 'Cardio-metabolic', color: '#ffd54f', base: 18 },
+]
+
+function loadMembers(patientId) {
+  try {
+    const all = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}')
+    return Array.isArray(all[patientId]) ? all[patientId] : DEFAULT_MEMBERS
+  } catch {
+    return DEFAULT_MEMBERS
+  }
 }
 
-function conditionCategory(condition) {
-  const normalized = normalizeCondition(condition)
-  if (normalized.includes('lung-oncology')) return { key: 'lung-oncology', label: 'Lung oncology', color: '#ff5252', base: 28 }
-  if (normalized.includes('hepatic')) return { key: 'hepatic', label: 'Hepatic / HBV-HCC', color: '#ffb74d', base: 24 }
-  if (normalized.includes('cardiovascular')) return { key: 'cardiovascular', label: 'Cardiovascular', color: '#ffd54f', base: 18 }
-  if (normalized.includes('metabolic')) return { key: 'metabolic', label: 'Metabolic', color: '#00e676', base: 16 }
-  if (normalized.includes('oncology')) return { key: 'oncology', label: 'Other oncology', color: '#f48fb1', base: 22 }
-  return { key: normalized.slice(0, 24) || 'other', label: condition, color: '#80cbc4', base: 10 }
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value))
 }
 
-function buildSimulation(members) {
-  const activeMembers = members.filter(member => member.conditions?.some(hasMeaningfulCondition))
-  const entities = members.map(member => ({
+function normalizeConditions(member) {
+  return (member.conditions || [])
+    .filter(Boolean)
+    .filter(condition => !/khỏe mạnh|healthy/i.test(condition))
+}
+
+function calculateSimulation(members) {
+  const self = members.find(member => member.relation === 'self') || members[0]
+  const affected = members.filter(member => normalizeConditions(member).length > 0)
+  const conditionHits = CONDITION_RULES.map(rule => {
+    const carriers = members.filter(member => normalizeConditions(member).some(condition => rule.regex.test(condition)))
+    const weighted = carriers.reduce((sum, member) => sum + (RELATION_META[member.relation]?.influence || 0.2), 0)
+    const generations = new Set(carriers.map(member => RELATION_META[member.relation]?.row || 3)).size
+    const score = clamp(Math.round(rule.base + weighted * 22 + generations * 8 + Math.max(0, carriers.length - 1) * 6), 0, 99)
+    return { ...rule, carriers, weighted, generations, score }
+  }).sort((a, b) => b.score - a.score)
+
+  const nodes = members.map(member => ({
     id: member.id,
-    name: member.name,
+    label: member.name,
     relation: member.relation,
-    age: member.age,
-    alive: member.alive !== false,
-    conditions: member.conditions || [],
-    row: FAMILY_RELATION_META[member.relation]?.row || 3,
+    row: RELATION_META[member.relation]?.row || 3,
+    color: RELATION_META[member.relation]?.color || '#8aa0b8',
+    conditions: normalizeConditions(member),
   }))
 
-  const conditionMap = new Map()
   const edges = []
-
-  activeMembers.forEach(member => {
-    member.conditions.filter(hasMeaningfulCondition).forEach(condition => {
-      const category = conditionCategory(condition)
-      const prev = conditionMap.get(category.key) || { ...category, count: 0, weighted: 0, members: [], raw: [] }
-      const relationWeight = RELATION_WEIGHT[member.relation] || 0.3
-      const mortalityBoost = member.alive === false ? 1.14 : 1
-      const ageBoost = member.age >= 65 ? 1.08 : member.age <= 35 ? 0.9 : 1
-      prev.count += 1
-      prev.weighted += category.base * relationWeight * mortalityBoost * ageBoost
-      prev.members.push(member.name)
-      prev.raw.push(condition)
-      conditionMap.set(category.key, prev)
-
-      if (member.relation !== 'self') {
-        edges.push({
-          from: member.id,
-          to: 'fm-3',
-          label: category.label,
-          strength: Math.round(relationWeight * 100),
-          color: category.color,
-        })
-      }
+  const target = self?.id
+  members.forEach(member => {
+    if (!target || member.id === target) return
+    const meta = RELATION_META[member.relation] || RELATION_META.cousin
+    const shared = normalizeConditions(member).filter(condition => normalizeConditions(self || {}).some(selfCondition => (
+      condition.toLowerCase().includes(selfCondition.toLowerCase()) || selfCondition.toLowerCase().includes(condition.toLowerCase())
+    )))
+    edges.push({
+      from: member.id,
+      to: target,
+      label: meta.label.vi,
+      strength: clamp(Math.round((meta.influence || 0.2) * 100 + shared.length * 12), 8, 96),
+      color: meta.color,
     })
   })
 
-  const riskClusters = Array.from(conditionMap.values())
-    .map(cluster => ({
-      ...cluster,
-      score: Math.min(98, Math.round(cluster.weighted + (cluster.count > 1 ? cluster.count * 8 : 0))),
-      confidence: Math.min(96, Math.round(58 + cluster.count * 9 + cluster.members.length * 2)),
-      members: Array.from(new Set(cluster.members)),
-      raw: Array.from(new Set(cluster.raw)),
-    }))
-    .sort((a, b) => b.score - a.score)
+  const riskScore = clamp(Math.round(
+    conditionHits.reduce((sum, hit) => sum + hit.score, 0) / Math.max(1, conditionHits.length) +
+    affected.length * 2 +
+    (conditionHits[0]?.generations || 0) * 3
+  ), 5, 98)
 
-  const interactions = riskClusters.flatMap((cluster, index) => [
-    {
-      agent: AGENT_TEMPLATES[index % AGENT_TEMPLATES.length].abbr,
-      text: `${cluster.label}: ${cluster.members.length} related node(s), score ${cluster.score}/100`,
-      color: cluster.color,
-    },
-    {
-      agent: 'RPT',
-      text: `Temporal memory update: ${cluster.raw.slice(0, 2).join(' + ')} co-occurs across ${cluster.members.join(', ')}`,
-      color: '#9c6fff',
-    },
-  ]).slice(0, 8)
+  const logs = [
+    `GraphRAG memory indexed ${members.length} family nodes, ${edges.length} kinship edges, ${affected.length} affected histories.`,
+    `Temporal context: ${conditionHits[0]?.label || 'No dominant cluster'} appears across ${conditionHits[0]?.generations || 0} generation layer(s).`,
+    `Agent swarm consensus assigns ${riskScore}% simulated familial-history signal; confidence rises with genetic testing evidence.`,
+    `ReportAgent recommends targeted screening for first-degree relatives and watchlist updates after every new diagnosis input.`,
+  ]
 
-  const topCluster = riskClusters[0]
-  const report = topCluster
-    ? `Predictive signal strongest for ${topCluster.label}. Prioritize structured family-history verification, targeted screening, and follow-up questions for ${topCluster.members.slice(0, 3).join(', ')}.`
-    : 'No inherited disease signal was detected from the current family tree. Add family members or diagnoses to run a richer simulation.'
-
-  return { entities, edges, riskClusters, interactions, report, activeMembers }
-}
-
-function StageCard({ stage, index, active, complete, onClick }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      style={{
-        minWidth: 160,
-        flex: 1,
-        padding: 14,
-        borderRadius: 14,
-        textAlign: 'left',
-        cursor: 'pointer',
-        background: active ? `${stage.accent}18` : 'var(--surface, rgba(255,255,255,0.03))',
-        border: `1px solid ${active ? stage.accent : complete ? `${stage.accent}70` : 'var(--border, rgba(255,255,255,0.08))'}`,
-        color: 'var(--text, #e8f0f8)',
-        fontFamily: 'inherit',
-        transition: 'all .18s ease',
-      }}
-    >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-        <span style={{ fontSize: 20 }}>{stage.icon}</span>
-        <span style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: stage.accent }}>0{index + 1}</span>
-      </div>
-      <div style={{ marginTop: 10, fontWeight: 800, fontSize: 13 }}>{stage.title}</div>
-      <div style={{ marginTop: 7, height: 4, borderRadius: 99, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
-        <div style={{ width: complete ? '100%' : active ? '68%' : '18%', height: '100%', background: stage.accent, borderRadius: 99 }} />
-      </div>
-    </button>
-  )
-}
-
-function SectionTitle({ children, kicker }) {
-  return (
-    <div style={{ marginBottom: 14 }}>
-      {kicker && <div style={{ fontSize: 10, letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--text3)', fontFamily: 'var(--font-mono)', marginBottom: 6 }}>{kicker}</div>}
-      <h3 style={{ margin: 0, fontSize: 18, color: 'var(--text)' }}>{children}</h3>
-    </div>
-  )
-}
-
-function RiskBar({ cluster }) {
-  return (
-    <div style={{ padding: 14, borderRadius: 13, border: '1px solid var(--border)', background: 'var(--surface)' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center' }}>
-        <div>
-          <div style={{ fontWeight: 800, color: cluster.color }}>{cluster.label}</div>
-          <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 4 }}>{cluster.members.join(' · ')}</div>
-        </div>
-        <div style={{ fontSize: 22, fontWeight: 900, color: cluster.color, fontFamily: 'var(--font-mono)' }}>{cluster.score}</div>
-      </div>
-      <div style={{ marginTop: 12, height: 9, borderRadius: 999, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
-        <div style={{ width: `${cluster.score}%`, height: '100%', borderRadius: 999, background: `linear-gradient(90deg, ${cluster.color}, #ffffff66)` }} />
-      </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, color: 'var(--text3)', fontSize: 10, fontFamily: 'var(--font-mono)' }}>
-        <span>{cluster.count} evidence node(s)</span>
-        <span>{cluster.confidence}% confidence</span>
-      </div>
-    </div>
-  )
+  return { self, affected, nodes, edges, conditionHits, riskScore, logs }
 }
 
 export default function FamilyRelationshipPanel({ patientId = 'LXK-2024', onNext, onPrev, prevLabel }) {
-  const { theme, lang } = useApp()
+  const { theme, lang, t } = useApp()
   const isDark = theme === 'dark'
-  const [activeStage, setActiveStage] = useState(0)
-  const [selectedAgent, setSelectedAgent] = useState('report')
-  const [question, setQuestion] = useState('Which family branch creates the strongest predictive signal?')
+  const [activeStage, setActiveStage] = useState('graph')
+  const [chatAgent, setChatAgent] = useState('ReportAgent')
+  const [prompt, setPrompt] = useState(lang === 'vi' ? 'Vì sao con cái cần tầm soát sớm?' : 'Why should children screen early?')
+  const [messages, setMessages] = useState([
+    { role: 'agent', agent: 'ReportAgent', text: 'Simulation ready. Ask about inheritance paths, hidden risk clusters, or screening priority.' },
+  ])
 
-  const members = useMemo(() => loadFamilyMembers(patientId) || DEFAULT_FAMILY_MEMBERS, [patientId])
-  const simulation = useMemo(() => buildSimulation(members), [members])
-  const activeAgent = AGENT_TEMPLATES.find(agent => agent.id === selectedAgent) || AGENT_TEMPLATES.at(-1)
-  const topCluster = simulation.riskClusters[0]
-
-  const c = isDark ? {
-    bg: '#04060f', panel: 'rgba(255,255,255,0.035)', panel2: 'rgba(255,255,255,0.055)', border: 'rgba(255,255,255,0.08)', text: '#e8f0f8', text2: 'rgba(232,240,248,0.62)', text3: 'rgba(232,240,248,0.34)',
-  } : {
-    bg: '#f4f7fb', panel: 'rgba(255,255,255,0.92)', panel2: 'rgba(0,0,0,0.035)', border: 'rgba(0,0,0,0.09)', text: '#1a2035', text2: '#556', text3: '#9aa',
+  const members = useMemo(() => loadMembers(patientId), [patientId])
+  const simulation = useMemo(() => calculateSimulation(members), [members])
+  const palette = {
+    bg: isDark ? 'var(--bg2,#050816)' : '#f4f7fb',
+    surface: isDark ? 'rgba(255,255,255,0.035)' : '#fff',
+    surface2: isDark ? 'rgba(0,229,255,0.055)' : 'rgba(0,184,204,0.06)',
+    border: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
+    text: isDark ? '#e8f0f8' : '#172033',
+    text2: isDark ? 'rgba(232,240,248,0.68)' : '#586174',
+    text3: isDark ? 'rgba(232,240,248,0.45)' : '#8a93a6',
   }
 
-  const stageCopy = [
-    lang === 'vi'
-      ? 'Trích xuất thành viên, bệnh lý, độ gần huyết thống và trạng thái thời gian để dựng Knowledge Graph / GraphRAG mô phỏng theo bộ nhớ ngữ cảnh kiểu Zep.'
-      : 'Extract family members, conditions, kinship distance, and temporal state into a Knowledge Graph / GraphRAG memory inspired by Zep-style context graphs.',
-    lang === 'vi'
-      ? 'Sinh persona agent chuyên khoa và cấu hình môi trường giả lập: nhánh nội/ngoại, bệnh ung thư, gan mật, tim mạch và chuyển hoá.'
-      : 'Generate specialist agent personas and environment configuration for paternal/maternal branches, oncology, hepatic, cardiovascular, and metabolic signals.',
-    lang === 'vi'
-      ? 'Chạy tương tác đa agent song song trên đồ thị gia đình, cập nhật trí nhớ theo thời gian khi các node bệnh lý cùng xuất hiện.'
-      : 'Run parallel multi-agent interaction on the family graph, updating temporal memory when disease nodes co-occur.',
-    lang === 'vi'
-      ? 'ReportAgent tổng hợp log mô phỏng thành dự báo nguy cơ, mức tin cậy và khuyến nghị xác minh tiền sử.'
-      : 'ReportAgent transforms simulation logs into predictive risk, confidence, and family-history verification recommendations.',
-    lang === 'vi'
-      ? 'Người dùng có thể chat giả lập với từng agent hoặc ReportAgent để đào sâu câu hỏi lâm sàng cụ thể.'
-      : 'Users can simulate a chat with any specialist agent or ReportAgent to explore clinical nuances.',
-  ]
+  const dominant = simulation.conditionHits[0]
+  const activeStageData = LIFECYCLE.find(stage => stage.id === activeStage) || LIFECYCLE[0]
 
-  const answer = topCluster
-    ? `${activeAgent.name}: ${question} → ${topCluster.label} is currently the strongest graph signal (${topCluster.score}/100) because ${topCluster.members.join(', ')} share related evidence. Next step: validate diagnosis age, exposure history, and screening status.`
-    : `${activeAgent.name}: Add more family disease history in Family Medical Tree to generate a meaningful relationship simulation.`
+  const sendMessage = () => {
+    const clean = prompt.trim()
+    if (!clean) return
+    const top = dominant?.label || 'family history'
+    const answer = `${chatAgent}: dựa trên temporal knowledge graph, ${top} có tín hiệu ${dominant?.score || simulation.riskScore}%. Ưu tiên kiểm tra người thân bậc một, đối chiếu tuổi khởi phát, sau đó cập nhật memory khi có xét nghiệm gen hoặc chẩn đoán mới.`
+    setMessages(prev => [...prev, { role: 'user', agent: 'You', text: clean }, { role: 'agent', agent: chatAgent, text: answer }])
+    setPrompt('')
+  }
 
   return (
-    <div style={{ minHeight: '100%', background: c.bg, color: c.text, padding: 24, '--surface': c.panel, '--surface2': c.panel2, '--border': c.border, '--text': c.text, '--text2': c.text2, '--text3': c.text3 }}>
-      <div style={{ maxWidth: 1280, margin: '0 auto' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.3fr) minmax(320px, .7fr)', gap: 18, alignItems: 'stretch' }}>
-          <div style={{ padding: 22, borderRadius: 22, border: `1px solid ${c.border}`, background: `linear-gradient(135deg, ${c.panel}, rgba(0,229,255,0.08))`, overflow: 'hidden', position: 'relative' }}>
-            <div style={{ position: 'absolute', width: 280, height: 280, borderRadius: '50%', right: -80, top: -100, background: 'radial-gradient(circle, rgba(0,229,255,0.22), transparent 65%)' }} />
-            <div style={{ fontSize: 10, color: '#00e5ff', fontFamily: 'var(--font-mono)', letterSpacing: '.16em', textTransform: 'uppercase', marginBottom: 10 }}>GraphRAG · Zep-style memory · MiroFish lifecycle</div>
-            <h1 style={{ margin: 0, fontSize: 34, lineHeight: 1.05, letterSpacing: '-.04em' }}>Family Medical Relationship</h1>
-            <p style={{ margin: '14px 0 0', maxWidth: 780, color: c.text2, lineHeight: 1.7, fontSize: 14 }}>
-              {lang === 'vi'
-                ? 'Trang giả lập các mối quan hệ tiền sử bệnh án gia đình đã input tại Family Medical Tree. Hệ thống biến dữ liệu thân nhân thành graph y khoa, sinh AI agents chuyên khoa và tạo báo cáo dự đoán theo vòng đời 5 giai đoạn.'
-                : 'Simulates the family medical-history relationships entered in Family Medical Tree. The page converts relatives into a medical graph, generates specialist AI agents, and creates a predictive report through the five-stage lifecycle.'}
-            </p>
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 18 }}>
-              {['https://app.getzep.com/playground', 'https://deepwiki.com/666ghj/MiroFish'].map(url => (
-                <a key={url} href={url} target="_blank" rel="noreferrer" style={{ color: '#00e5ff', textDecoration: 'none', border: '1px solid rgba(0,229,255,.25)', background: 'rgba(0,229,255,.08)', borderRadius: 999, padding: '8px 12px', fontSize: 11, fontFamily: 'var(--font-mono)' }}>{url.replace('https://', '')} ↗</a>
-              ))}
-            </div>
-          </div>
-
-          <div style={{ padding: 20, borderRadius: 22, border: `1px solid ${c.border}`, background: c.panel }}>
-            <SectionTitle kicker="Simulation state">Input from Family Medical Tree</SectionTitle>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
-              <Stat value={members.length} label="members" color="#00e5ff" />
-              <Stat value={simulation.activeMembers.length} label="disease nodes" color="#ffb74d" />
-              <Stat value={simulation.edges.length} label="risk edges" color="#9c6fff" />
-            </div>
-            <div style={{ marginTop: 16, padding: 13, borderRadius: 14, background: c.panel2, border: `1px solid ${c.border}`, color: c.text2, fontSize: 12, lineHeight: 1.55 }}>
-              {simulation.report}
-            </div>
-          </div>
+    <div style={{ padding: '24px clamp(16px,3vw,32px)', background: palette.bg, minHeight: '100%', color: palette.text }}>
+      <header style={{ marginBottom: 20 }}>
+        <div style={{ fontSize: 11, letterSpacing: '.18em', color: '#00e5ff', fontWeight: 800, textTransform: 'uppercase', fontFamily: 'monospace' }}>
+          Zep-style temporal GraphRAG · MiroFish-inspired AI Agents
         </div>
+        <h1 style={{ margin: '8px 0 8px', fontSize: 'clamp(24px,3vw,36px)', lineHeight: 1.1 }}>
+          🧬 {t('familyRelationshipTitle')}
+        </h1>
+        <p style={{ margin: 0, maxWidth: 980, color: palette.text2, lineHeight: 1.7, fontSize: 14 }}>
+          {lang === 'vi'
+            ? 'Trang mô phỏng các mối quan hệ tiền sử bệnh án gia đình đã nhập ở Family Medical Tree, dựng graph ký ức theo thời gian rồi cho hội đồng agent suy đoán kịch bản di truyền, môi trường và tầm soát.'
+            : 'This page simulates medical-history relationships entered in Family Medical Tree, builds temporal graph memory, and lets agent personas infer hereditary, environmental, and screening scenarios.'}
+        </p>
+      </header>
 
-        <div style={{ display: 'flex', gap: 12, marginTop: 18, overflowX: 'auto', paddingBottom: 4 }}>
-          {STAGES.map((stage, index) => (
-            <StageCard key={stage.id} stage={stage} index={index} active={activeStage === index} complete={activeStage > index} onClick={() => setActiveStage(index)} />
-          ))}
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, .95fr) minmax(0, 1.05fr)', gap: 18, marginTop: 18 }}>
-          <div style={{ border: `1px solid ${c.border}`, borderRadius: 18, background: c.panel, padding: 18 }}>
-            <SectionTitle kicker={STAGES[activeStage].title}>Lifecycle output</SectionTitle>
-            <p style={{ margin: '0 0 16px', color: c.text2, lineHeight: 1.65, fontSize: 13 }}>{stageCopy[activeStage]}</p>
-            {activeStage === 0 && <GraphView entities={simulation.entities} edges={simulation.edges} c={c} />}
-            {activeStage === 1 && <AgentGrid agents={AGENT_TEMPLATES} selectedAgent={selectedAgent} setSelectedAgent={setSelectedAgent} />}
-            {activeStage === 2 && <InteractionLog interactions={simulation.interactions} c={c} />}
-            {activeStage === 3 && <ReportPanel riskClusters={simulation.riskClusters} report={simulation.report} />}
-            {activeStage === 4 && <DeepInteraction agents={AGENT_TEMPLATES} selectedAgent={selectedAgent} setSelectedAgent={setSelectedAgent} question={question} setQuestion={setQuestion} answer={answer} c={c} />}
-          </div>
-
-          <div style={{ border: `1px solid ${c.border}`, borderRadius: 18, background: c.panel, padding: 18 }}>
-            <SectionTitle kicker="Predictive clusters">Family relationship inference</SectionTitle>
-            <div style={{ display: 'grid', gap: 12 }}>
-              {simulation.riskClusters.length ? simulation.riskClusters.map(cluster => <RiskBar key={cluster.key} cluster={cluster} />) : (
-                <div style={{ padding: 28, textAlign: 'center', color: c.text3, border: `1px dashed ${c.border}`, borderRadius: 14 }}>No disease relationship signals yet.</div>
-              )}
+      <section style={{ display: 'grid', gridTemplateColumns: 'minmax(260px, .75fr) 1.25fr', gap: 16, marginBottom: 16 }}>
+        <MetricCard c={palette} icon="🧠" label="Family Graph Signal" value={`${simulation.riskScore}%`} accent="#00e5ff" note={`${simulation.nodes.length} nodes · ${simulation.edges.length} edges`} />
+        <div style={{ background: `linear-gradient(135deg, ${palette.surface}, ${palette.surface2})`, border: `1px solid ${palette.border}`, borderRadius: 18, padding: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, marginBottom: 14, flexWrap: 'wrap' }}>
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 800, color: palette.text, marginBottom: 4 }}>The Five-Stage Simulation Lifecycle</div>
+              <div style={{ fontSize: 11, color: palette.text3 }}>Graph Building → Environment Setup → Simulation Execution → Report Generation → Deep Interaction</div>
             </div>
-          </div>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12, marginTop: 18 }}>
-          {AGENT_TEMPLATES.map(agent => (
-            <button key={agent.id} type="button" onClick={() => { setSelectedAgent(agent.id); setActiveStage(4) }} style={{ cursor: 'pointer', textAlign: 'left', border: `1px solid ${selectedAgent === agent.id ? agent.color : c.border}`, borderRadius: 16, background: selectedAgent === agent.id ? `${agent.color}14` : c.panel, padding: 14, color: c.text, fontFamily: 'inherit' }}>
-              <div style={{ width: 34, height: 34, borderRadius: 10, display: 'grid', placeItems: 'center', background: `${agent.color}20`, color: agent.color, fontWeight: 900, fontSize: 11, fontFamily: 'var(--font-mono)' }}>{agent.abbr}</div>
-              <div style={{ marginTop: 10, fontWeight: 800, fontSize: 12 }}>{agent.name}</div>
-              <div style={{ marginTop: 5, color: c.text3, fontSize: 10 }}>{agent.focus}</div>
+            <button type="button" onClick={() => setActiveStage(LIFECYCLE[(LIFECYCLE.findIndex(s => s.id === activeStage) + 1) % LIFECYCLE.length].id)} style={{ border: '1px solid rgba(0,229,255,.35)', background: 'rgba(0,229,255,.08)', color: '#00e5ff', borderRadius: 999, padding: '8px 12px', cursor: 'pointer', fontWeight: 800 }}>
+              Run next stage →
             </button>
-          ))}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,minmax(110px,1fr))', gap: 8 }}>
+            {LIFECYCLE.map((stage, index) => (
+              <button key={stage.id} type="button" onClick={() => setActiveStage(stage.id)} style={{ textAlign: 'left', border: `1px solid ${activeStage === stage.id ? '#00e5ff' : palette.border}`, background: activeStage === stage.id ? 'rgba(0,229,255,.11)' : 'rgba(255,255,255,.025)', borderRadius: 12, padding: 10, color: palette.text, cursor: 'pointer' }}>
+                <div style={{ fontSize: 18 }}>{stage.icon}</div>
+                <div style={{ fontSize: 9, color: palette.text3, fontFamily: 'monospace' }}>STAGE 0{index + 1}</div>
+                <div style={{ fontSize: 11, fontWeight: 800 }}>{stage.title}</div>
+              </button>
+            ))}
+          </div>
+          <div style={{ marginTop: 12, padding: 12, borderRadius: 12, background: 'rgba(0,0,0,.16)', border: `1px solid ${palette.border}`, color: palette.text2, fontSize: 12, lineHeight: 1.6 }}>
+            <b style={{ color: '#00e5ff' }}>{activeStageData.icon} {activeStageData.title}:</b> {activeStageData.copy}
+          </div>
         </div>
+      </section>
 
-        <NavButtons onNext={onNext} nextLabel={lang === 'vi' ? 'Tiếp tục tới Hồ sơ bệnh nhân →' : 'Continue to Patient Record →'} onPrev={onPrev} prevLabel={prevLabel} style={{ marginTop: 22 }} />
+      <section style={{ display: 'grid', gridTemplateColumns: '1.15fr .85fr', gap: 16, marginBottom: 16 }}>
+        <GraphPanel c={palette} simulation={simulation} />
+        <ReportPanel c={palette} simulation={simulation} dominant={dominant} lang={lang} />
+      </section>
+
+      <section style={{ display: 'grid', gridTemplateColumns: '.95fr 1.05fr', gap: 16, marginBottom: 20 }}>
+        <AgentPanel c={palette} personas={PERSONAS} />
+        <DeepInteraction c={palette} personas={PERSONAS} chatAgent={chatAgent} setChatAgent={setChatAgent} prompt={prompt} setPrompt={setPrompt} messages={messages} onSend={sendMessage} />
+      </section>
+
+      <NavButtons onNext={onNext} nextLabel={`${t('next')} →`} onPrev={onPrev} prevLabel={prevLabel} />
+    </div>
+  )
+}
+
+function MetricCard({ c, icon, label, value, note, accent }) {
+  return (
+    <div style={{ background: c.surface, border: `1px solid ${c.border}`, borderRadius: 18, padding: 18, minHeight: 156, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
+        <div style={{ fontSize: 32 }}>{icon}</div>
+        <div style={{ height: 8, width: 52, borderRadius: 999, background: `linear-gradient(90deg, ${accent}, transparent)` }} />
+      </div>
+      <div>
+        <div style={{ fontSize: 34, fontWeight: 900, color: accent, fontFamily: 'monospace' }}>{value}</div>
+        <div style={{ fontSize: 13, fontWeight: 800, color: c.text }}>{label}</div>
+        <div style={{ fontSize: 11, color: c.text3, marginTop: 4 }}>{note}</div>
       </div>
     </div>
   )
 }
 
-function Stat({ value, label, color }) {
+function GraphPanel({ c, simulation }) {
   return (
-    <div style={{ padding: 12, borderRadius: 14, background: `${color}12`, border: `1px solid ${color}32` }}>
-      <div style={{ color, fontSize: 24, fontWeight: 900, fontFamily: 'var(--font-mono)', lineHeight: 1 }}>{value}</div>
-      <div style={{ marginTop: 6, fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--font-mono)', textTransform: 'uppercase' }}>{label}</div>
-    </div>
-  )
-}
-
-function GraphView({ entities, edges, c }) {
-  return (
-    <div>
-      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-        {entities.slice(0, 12).map(entity => {
-          const meta = FAMILY_RELATION_META[entity.relation]
+    <div style={{ background: c.surface, border: `1px solid ${c.border}`, borderRadius: 18, padding: 16 }}>
+      <PanelTitle eyebrow="GraphRAG Memory" title="Family Medical Relationship Map" c={c} />
+      <div style={{ position: 'relative', minHeight: 360, borderRadius: 14, border: `1px solid ${c.border}`, background: 'radial-gradient(circle at 50% 42%, rgba(0,229,255,.16), transparent 28%), rgba(0,0,0,.14)', overflow: 'hidden' }}>
+        {simulation.edges.map((edge, index) => (
+          <div key={edge.from} style={{ position: 'absolute', left: `${14 + (index % 4) * 18}%`, top: `${18 + (index % 5) * 12}%`, width: `${34 + edge.strength / 3}%`, height: 1, background: `linear-gradient(90deg, ${edge.color}, transparent)`, opacity: .55, transform: `rotate(${index % 2 ? -12 : 10}deg)`, transformOrigin: 'left center' }} />
+        ))}
+        {simulation.nodes.map((node, index) => {
+          const left = 10 + ((index * 17) % 78)
+          const top = 12 + (node.row - 1) * 17 + ((index % 2) * 4)
           return (
-            <div key={entity.id} style={{ padding: '9px 11px', borderRadius: 999, background: `${meta?.color || '#00e5ff'}18`, border: `1px solid ${meta?.color || '#00e5ff'}45`, color: c.text, fontSize: 11 }}>
-              <span style={{ color: meta?.color || '#00e5ff', fontWeight: 800 }}>{entity.name}</span> · {meta?.label?.vi || entity.relation}
+            <div key={node.id} title={node.conditions.join(', ')} style={{ position: 'absolute', left: `${left}%`, top: `${top}%`, transform: 'translate(-50%,-50%)', width: node.relation === 'self' ? 112 : 94, padding: '8px 9px', borderRadius: 12, background: 'rgba(5,8,18,.86)', border: `1px solid ${node.color}`, boxShadow: `0 0 24px ${node.color}25` }}>
+              <div style={{ fontSize: 10, color: node.color, fontWeight: 900, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{node.label}</div>
+              <div style={{ fontSize: 8, color: c.text3, textTransform: 'uppercase', marginTop: 2 }}>{node.relation}</div>
+              {node.conditions.length > 0 && <div style={{ marginTop: 5, fontSize: 8, color: '#ff8a65' }}>{node.conditions.length} risk item(s)</div>}
             </div>
           )
         })}
       </div>
-      <div style={{ marginTop: 16, display: 'grid', gap: 8 }}>
-        {edges.slice(0, 6).map((edge, index) => (
-          <div key={`${edge.from}-${index}`} style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 10, alignItems: 'center', color: c.text2, fontSize: 11 }}>
-            <span>{entities.find(e => e.id === edge.from)?.name}</span>
-            <span style={{ color: edge.color, fontFamily: 'var(--font-mono)' }}>─ {edge.label} / {edge.strength}% →</span>
-            <span>Patient</span>
+    </div>
+  )
+}
+
+function ReportPanel({ c, simulation, dominant, lang }) {
+  return (
+    <div style={{ background: c.surface, border: `1px solid ${c.border}`, borderRadius: 18, padding: 16 }}>
+      <PanelTitle eyebrow="ReportAgent Output" title="Predictive Relationship Report" c={c} />
+      <div style={{ display: 'grid', gap: 10 }}>
+        {simulation.conditionHits.map(hit => (
+          <div key={hit.key} style={{ border: `1px solid ${hit.color}35`, background: `${hit.color}10`, borderRadius: 12, padding: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, marginBottom: 7 }}>
+              <b style={{ color: hit.color, fontSize: 12 }}>{hit.label}</b>
+              <span style={{ color: hit.color, fontFamily: 'monospace', fontWeight: 900 }}>{hit.score}%</span>
+            </div>
+            <div style={{ height: 6, borderRadius: 999, background: 'rgba(255,255,255,.08)', overflow: 'hidden', marginBottom: 7 }}>
+              <div style={{ height: '100%', width: `${hit.score}%`, background: hit.color }} />
+            </div>
+            <div style={{ fontSize: 11, color: c.text2, lineHeight: 1.5 }}>
+              {hit.carriers.length ? hit.carriers.map(member => member.name).join(' · ') : (lang === 'vi' ? 'Chưa có carrier rõ ràng' : 'No clear carrier yet')}
+            </div>
+          </div>
+        ))}
+      </div>
+      <div style={{ marginTop: 12, padding: 12, borderRadius: 12, border: '1px solid rgba(0,229,255,.2)', background: 'rgba(0,229,255,.06)', fontSize: 12, color: c.text2, lineHeight: 1.6 }}>
+        <b style={{ color: '#00e5ff' }}>Prediction:</b> {dominant?.label || 'Family history'} là cụm ưu tiên. Khuyến nghị mô phỏng lại khi Family Medical Tree được cập nhật và xác nhận bằng xét nghiệm lâm sàng.
+      </div>
+      <div style={{ marginTop: 12, fontSize: 10, color: c.text3, lineHeight: 1.55 }}>
+        Đây là mô phỏng hỗ trợ quyết định, không thay thế tư vấn di truyền hoặc chẩn đoán của bác sĩ.
+      </div>
+    </div>
+  )
+}
+
+function AgentPanel({ c, personas }) {
+  return (
+    <div style={{ background: c.surface, border: `1px solid ${c.border}`, borderRadius: 18, padding: 16 }}>
+      <PanelTitle eyebrow="Environment Setup" title="Generated Agent Personas" c={c} />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: 10 }}>
+        {personas.map(agent => (
+          <div key={agent.id} style={{ border: `1px solid ${agent.color}35`, background: `${agent.color}10`, borderRadius: 12, padding: 12 }}>
+            <div style={{ color: agent.color, fontWeight: 900, fontSize: 12 }}>{agent.name}</div>
+            <div style={{ color: c.text2, fontSize: 11, marginTop: 4, lineHeight: 1.45 }}>{agent.role}</div>
           </div>
         ))}
       </div>
@@ -341,54 +302,39 @@ function GraphView({ entities, edges, c }) {
   )
 }
 
-function AgentGrid({ agents, selectedAgent, setSelectedAgent }) {
+function DeepInteraction({ c, personas, chatAgent, setChatAgent, prompt, setPrompt, messages, onSend }) {
   return (
-    <div style={{ display: 'grid', gap: 10 }}>
-      {agents.map(agent => (
-        <button key={agent.id} type="button" onClick={() => setSelectedAgent(agent.id)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 12, borderRadius: 12, border: `1px solid ${selectedAgent === agent.id ? agent.color : 'var(--border)'}`, background: selectedAgent === agent.id ? `${agent.color}14` : 'var(--surface2)', color: 'var(--text)', fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' }}>
-          <span style={{ width: 32, height: 32, borderRadius: 9, background: `${agent.color}20`, color: agent.color, display: 'grid', placeItems: 'center', fontWeight: 900, fontSize: 11 }}>{agent.abbr}</span>
-          <span><strong>{agent.name}</strong><br /><small style={{ color: 'var(--text3)' }}>{agent.focus}</small></span>
-        </button>
-      ))}
+    <div style={{ background: c.surface, border: `1px solid ${c.border}`, borderRadius: 18, padding: 16 }}>
+      <PanelTitle eyebrow="Deep Interaction" title="Chat with Simulation Agents" c={c} />
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
+        {personas.map(agent => (
+          <button key={agent.id} type="button" onClick={() => setChatAgent(agent.name)} style={{ border: `1px solid ${chatAgent === agent.name ? agent.color : c.border}`, background: chatAgent === agent.name ? `${agent.color}18` : 'transparent', color: chatAgent === agent.name ? agent.color : c.text2, borderRadius: 999, padding: '6px 10px', fontSize: 11, fontWeight: 800, cursor: 'pointer' }}>
+            {agent.name}
+          </button>
+        ))}
+      </div>
+      <div style={{ height: 170, overflowY: 'auto', border: `1px solid ${c.border}`, borderRadius: 12, padding: 10, background: 'rgba(0,0,0,.14)', marginBottom: 10 }}>
+        {messages.map((message, index) => (
+          <div key={index} style={{ marginBottom: 9, textAlign: message.role === 'user' ? 'right' : 'left' }}>
+            <div style={{ display: 'inline-block', maxWidth: '86%', borderRadius: 12, padding: '8px 10px', background: message.role === 'user' ? 'rgba(0,229,255,.16)' : 'rgba(255,255,255,.055)', color: c.text2, fontSize: 11, lineHeight: 1.5 }}>
+              <b style={{ color: message.role === 'user' ? '#00e5ff' : '#9c6fff' }}>{message.agent}</b><br />{message.text}
+            </div>
+          </div>
+        ))}
+      </div>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <input value={prompt} onChange={event => setPrompt(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') onSend() }} placeholder="Ask the ReportAgent..." style={{ flex: 1, border: `1px solid ${c.border}`, borderRadius: 10, padding: '10px 12px', background: 'rgba(255,255,255,.04)', color: c.text, outline: 'none' }} />
+        <button type="button" onClick={onSend} style={{ border: 'none', borderRadius: 10, padding: '0 14px', background: '#00b8cc', color: '#fff', fontWeight: 900, cursor: 'pointer' }}>Send</button>
+      </div>
     </div>
   )
 }
 
-function InteractionLog({ interactions, c }) {
+function PanelTitle({ eyebrow, title, c }) {
   return (
-    <div style={{ display: 'grid', gap: 10 }}>
-      {interactions.map((item, index) => (
-        <div key={index} style={{ padding: 12, borderRadius: 12, border: `1px solid ${c.border}`, background: c.panel2 }}>
-          <span style={{ color: item.color, fontWeight: 900, fontFamily: 'var(--font-mono)', fontSize: 11 }}>{item.agent}</span>
-          <span style={{ color: c.text2, marginLeft: 8, fontSize: 12 }}>{item.text}</span>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-function ReportPanel({ riskClusters, report }) {
-  return (
-    <div style={{ display: 'grid', gap: 12 }}>
-      <div style={{ padding: 14, borderRadius: 14, background: 'rgba(156,111,255,.12)', border: '1px solid rgba(156,111,255,.28)', color: 'var(--text2)', lineHeight: 1.65, fontSize: 13 }}>{report}</div>
-      {riskClusters.slice(0, 3).map((cluster, index) => (
-        <div key={cluster.key} style={{ display: 'flex', gap: 10, alignItems: 'center', color: 'var(--text2)', fontSize: 12 }}>
-          <span style={{ width: 26, height: 26, borderRadius: 8, background: `${cluster.color}20`, color: cluster.color, display: 'grid', placeItems: 'center', fontWeight: 900 }}>{index + 1}</span>
-          <span><strong style={{ color: cluster.color }}>{cluster.label}</strong> · verify {cluster.raw.slice(0, 2).join(', ')}</span>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-function DeepInteraction({ agents, selectedAgent, setSelectedAgent, question, setQuestion, answer, c }) {
-  return (
-    <div>
-      <select value={selectedAgent} onChange={e => setSelectedAgent(e.target.value)} style={{ width: '100%', padding: 12, borderRadius: 10, border: `1px solid ${c.border}`, background: c.panel2, color: c.text, marginBottom: 10 }}>
-        {agents.map(agent => <option key={agent.id} value={agent.id}>{agent.name}</option>)}
-      </select>
-      <textarea value={question} onChange={e => setQuestion(e.target.value)} rows={3} style={{ width: '100%', boxSizing: 'border-box', padding: 12, borderRadius: 12, border: `1px solid ${c.border}`, background: c.panel2, color: c.text, resize: 'vertical', fontFamily: 'inherit' }} />
-      <div style={{ marginTop: 12, padding: 14, borderRadius: 14, border: `1px solid ${c.border}`, background: 'rgba(0,229,255,.08)', color: c.text2, lineHeight: 1.65, fontSize: 13 }}>{answer}</div>
+    <div style={{ marginBottom: 12 }}>
+      <div style={{ fontSize: 10, color: c.text3, textTransform: 'uppercase', letterSpacing: '.14em', fontFamily: 'monospace', marginBottom: 4 }}>{eyebrow}</div>
+      <div style={{ fontSize: 15, fontWeight: 900, color: c.text }}>{title}</div>
     </div>
   )
 }

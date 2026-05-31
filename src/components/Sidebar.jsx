@@ -40,7 +40,7 @@ export default function Sidebar({ active, onNavigate }) {
     { id: 'imaging',    label: t('imaging'),        step: '02' },
     { id: 'checkin',   label: t('checkin'),         step: '03' },
     { id: 'family',    label: t('familyTree'),      step: '04' },
-    { id: 'familyRelationship', label: t('familyRelationship'), step: '05' },
+    { id: 'familyRelationship', label: t('familyRelationshipTitle'), step: '05' },
     { id: 'record',    label: t('patientRecord'),   step: '06' },
     { id: 'matrix3dBody', label: t('matrix3dBody'), step: '07' },
     { id: 'omnidirectional3dBody', label: t('omnidirectional3dBody'), step: '08' },
