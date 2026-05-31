@@ -14,6 +14,8 @@ export const RELATION_META = {
   grandchild:  { row: 5, color: '#a5d6a7', label: { vi: 'Cháu',        en: 'Grandchild'  } },
 }
 
+export const FAMILY_RELATION_META = RELATION_META
+
 export const CONDITION_COLORS = {
   'Ung thư phổi':'#ff5252','Lung Cancer':'#ff5252',
   'Ung thư gan':'#ff5252','Liver Cancer':'#ff5252',

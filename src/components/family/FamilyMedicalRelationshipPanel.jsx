@@ -3,6 +3,9 @@ import { useApp } from '../../context/AppContext'
 import NavButtons from '../NavButtons.jsx'
 import { CONDITION_COLORS, DEFAULT_FAMILY_MEMBERS, RELATION_META, isNonDiseaseCondition, loadFamilyMembers } from './familyData.js'
 
+// Backward-compatible alias for deployed/minified code paths that referenced the previous constant name.
+const FAMILY_RELATION_META = RELATION_META
+
 const PATIENT_ID = 'LXK-2024'
 
 const LIFECYCLE_STAGES = [
@@ -113,7 +116,7 @@ function createSimulationModel(members) {
 
   const cancerMembers = membersWithConditions.filter(member => member.conditions.some(isCancerCondition))
   const firstDegreeCancer = cancerMembers.filter(member => ['father', 'mother', 'sibling', 'child', 'self'].includes(member.relation)).length
-  const multiGenerationCancer = new Set(cancerMembers.map(member => RELATION_META[member.relation]?.row || 3)).size
+  const multiGenerationCancer = new Set(cancerMembers.map(member => FAMILY_RELATION_META[member.relation]?.row || 3)).size
   const metabolicMembers = membersWithConditions.filter(member => member.conditions.some(isMetabolicCondition))
   const cardioMembers = membersWithConditions.filter(member => member.conditions.some(isCardioCondition))
   const totalRiskEvents = edges.length || 1
@@ -165,8 +168,8 @@ export default function FamilyMedicalRelationshipPanel({ patientId = PATIENT_ID,
       ? `ReportAgent dự đoán điểm nguy cơ quan hệ gia đình ${model.hereditaryScore}/100 dựa trên ${model.edges.length} cạnh bệnh án.`
       : `ReportAgent estimates a family-relationship risk score of ${model.hereditaryScore}/100 from ${model.edges.length} clinical graph edges.`,
     lang === 'vi'
-      ? `${model.cancerMembers.length} thành viên có tín hiệu ung thư; ${new Set(model.cancerMembers.map(m => RELATION_META[m.relation]?.row || 3)).size} thế hệ được ghi nhận.`
-      : `${model.cancerMembers.length} members carry oncology signals across ${new Set(model.cancerMembers.map(m => RELATION_META[m.relation]?.row || 3)).size} recorded generation(s).`,
+      ? `${model.cancerMembers.length} thành viên có tín hiệu ung thư; ${new Set(model.cancerMembers.map(m => FAMILY_RELATION_META[m.relation]?.row || 3)).size} thế hệ được ghi nhận.`
+      : `${model.cancerMembers.length} members carry oncology signals across ${new Set(model.cancerMembers.map(m => FAMILY_RELATION_META[m.relation]?.row || 3)).size} recorded generation(s).`,
     lang === 'vi'
       ? `Khuyến nghị: ưu tiên tư vấn gen, CT ngực liều thấp, marker gan/AFP và cập nhật episode mới vào memory graph sau mỗi lần khám.`
       : `Recommendation: prioritize genetic counseling, low-dose chest CT, liver/AFP markers, and append new episodes to the memory graph after each visit.`,

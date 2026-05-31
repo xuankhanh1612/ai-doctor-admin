@@ -4,6 +4,9 @@ import NavButtons from '../NavButtons.jsx'
 
 import { CONDITION_COLORS, DEFAULT_FAMILY_MEMBERS, RELATIONS, RELATION_META, isNonDiseaseCondition, loadFamilyMembers, saveFamilyMembers } from './familyData.js'
 
+// Backward-compatible alias for deployed/minified code paths that referenced the previous constant name.
+const FAMILY_RELATION_META = RELATION_META
+
 
 const formatDob = (dob) => {
   if (!dob || typeof dob !== 'string') return ''
