@@ -42,7 +42,7 @@ export default function Sidebar({ active, onNavigate }) {
     { id: 'family',    label: t('familyTree'),      step: '04' },
     { id: 'record',    label: t('patientRecord'),   step: '05' },
     { id: 'matrix3dBody', label: t('matrix3dBody'), step: '06' },
-    { id: 'omnidirectionalBody', label: t('omnidirectionalBody'), step: '07' },
+    { id: 'omni3dBody', label: t('omni3dBody'), step: '07' },
     { id: 'twin',      label: t('twin'),            step: '08' },
     { id: 'telemedicine', label: t('telemedicine'), step: '09' },
     { id: 'statAnalysis', label: t('statAnalysis'), step: '10' },
