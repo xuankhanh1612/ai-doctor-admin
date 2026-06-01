@@ -1,19 +1,23 @@
 import React, { useMemo, useState } from 'react'
 import { useApp } from '../../context/AppContext'
 import NavButtons from '../NavButtons.jsx'
-import {
-  DEFAULT_FAMILY_MEMBERS,
-  FAMILY_RELATION_META,
-  loadFamilyMembers,
-} from './FamilyTreePanel.jsx'
+import { DEFAULT_FAMILY_MEMBERS, RELATION_META, isNonDiseaseCondition, loadFamilyMembers } from './familyData.js'
 
-const STAGES = [
-  { id: 'graph', icon: '🧬', title: 'Graph Building', accent: '#00e5ff' },
-  { id: 'environment', icon: '🧑‍⚕️', title: 'Environment Setup', accent: '#9c6fff' },
-  { id: 'simulation', icon: '⚡', title: 'Simulation Execution', accent: '#00e676' },
-  { id: 'report', icon: '📊', title: 'Report Generation', accent: '#ffb74d' },
-  { id: 'interaction', icon: '💬', title: 'Deep Interaction', accent: '#f48fb1' },
-]
+const RELATION_INFLUENCE = {
+  grandparent: 0.42,
+  father: 0.82,
+  mother: 0.82,
+  uncle_aunt: 0.38,
+  self: 1,
+  spouse: 0.12,
+  sibling: 0.62,
+  cousin: 0.28,
+  child: 0.5,
+  grandchild: 0.25,
+}
+
+const getRelationMeta = (relation) => RELATION_META[relation] || RELATION_META.cousin
+const getRelationInfluence = (relation) => RELATION_INFLUENCE[relation] ?? 0.2
 
 const RELATION_WEIGHT = {
   self: 1,
@@ -36,7 +40,9 @@ const AGENT_TEMPLATES = [
   { id: 'report', name: 'ReportAgent', abbr: 'RPT', focus: 'predictive summary + questions', color: '#9c6fff' },
 ]
 
-const hasMeaningfulCondition = condition => !/^(khỏe mạnh|healthy)$/i.test(condition)
+function loadMembers(patientId, storageOwnerId = 'guest') {
+  return loadFamilyMembers(patientId, storageOwnerId) || DEFAULT_FAMILY_MEMBERS
+}
 
 function normalizeCondition(condition) {
   return condition
@@ -48,53 +54,49 @@ function normalizeCondition(condition) {
     .replace(/ung thư vú|breast cancer|ung thư đại tràng|colon cancer|ung thư dạ dày|stomach cancer|ung thư|cancer/g, 'oncology')
 }
 
-function conditionCategory(condition) {
-  const normalized = normalizeCondition(condition)
-  if (normalized.includes('lung-oncology')) return { key: 'lung-oncology', label: 'Lung oncology', color: '#ff5252', base: 28 }
-  if (normalized.includes('hepatic')) return { key: 'hepatic', label: 'Hepatic / HBV-HCC', color: '#ffb74d', base: 24 }
-  if (normalized.includes('cardiovascular')) return { key: 'cardiovascular', label: 'Cardiovascular', color: '#ffd54f', base: 18 }
-  if (normalized.includes('metabolic')) return { key: 'metabolic', label: 'Metabolic', color: '#00e676', base: 16 }
-  if (normalized.includes('oncology')) return { key: 'oncology', label: 'Other oncology', color: '#f48fb1', base: 22 }
-  return { key: normalized.slice(0, 24) || 'other', label: condition, color: '#80cbc4', base: 10 }
+function normalizeConditions(member) {
+  return (member.conditions || [])
+    .filter(Boolean)
+    .filter(condition => !isNonDiseaseCondition(condition))
 }
 
-function buildSimulation(members) {
-  const activeMembers = members.filter(member => member.conditions?.some(hasMeaningfulCondition))
-  const entities = members.map(member => ({
+function calculateSimulation(members) {
+  const self = members.find(member => member.relation === 'self') || members[0]
+  const affected = members.filter(member => normalizeConditions(member).length > 0)
+  const conditionHits = CONDITION_RULES.map(rule => {
+    const carriers = members.filter(member => normalizeConditions(member).some(condition => rule.regex.test(condition)))
+    const weighted = carriers.reduce((sum, member) => sum + (getRelationInfluence(member.relation)), 0)
+    const generations = new Set(carriers.map(member => getRelationMeta(member.relation).row || 3)).size
+    const score = carriers.length
+      ? clamp(Math.round(rule.base + weighted * 22 + generations * 8 + Math.max(0, carriers.length - 1) * 6), 0, 99)
+      : 0
+    return { ...rule, carriers, weighted, generations, score }
+  }).sort((a, b) => b.score - a.score)
+
+  const nodes = members.map(member => ({
     id: member.id,
     name: member.name,
     relation: member.relation,
-    age: member.age,
-    alive: member.alive !== false,
-    conditions: member.conditions || [],
-    row: FAMILY_RELATION_META[member.relation]?.row || 3,
+    row: getRelationMeta(member.relation).row || 3,
+    color: getRelationMeta(member.relation).color || '#8aa0b8',
+    conditions: normalizeConditions(member),
   }))
 
   const conditionMap = new Map()
   const edges = []
-
-  activeMembers.forEach(member => {
-    member.conditions.filter(hasMeaningfulCondition).forEach(condition => {
-      const category = conditionCategory(condition)
-      const prev = conditionMap.get(category.key) || { ...category, count: 0, weighted: 0, members: [], raw: [] }
-      const relationWeight = RELATION_WEIGHT[member.relation] || 0.3
-      const mortalityBoost = member.alive === false ? 1.14 : 1
-      const ageBoost = member.age >= 65 ? 1.08 : member.age <= 35 ? 0.9 : 1
-      prev.count += 1
-      prev.weighted += category.base * relationWeight * mortalityBoost * ageBoost
-      prev.members.push(member.name)
-      prev.raw.push(condition)
-      conditionMap.set(category.key, prev)
-
-      if (member.relation !== 'self') {
-        edges.push({
-          from: member.id,
-          to: 'fm-3',
-          label: category.label,
-          strength: Math.round(relationWeight * 100),
-          color: category.color,
-        })
-      }
+  const target = self?.id
+  members.forEach(member => {
+    if (!target || member.id === target) return
+    const meta = getRelationMeta(member.relation)
+    const shared = normalizeConditions(member).filter(condition => normalizeConditions(self || {}).some(selfCondition => (
+      condition.toLowerCase().includes(selfCondition.toLowerCase()) || selfCondition.toLowerCase().includes(condition.toLowerCase())
+    )))
+    edges.push({
+      from: member.id,
+      to: target,
+      label: meta.label.vi,
+      strength: clamp(Math.round(getRelationInfluence(member.relation) * 100 + shared.length * 12), 8, 96),
+      color: meta.color,
     })
   })
 
@@ -190,12 +192,27 @@ function RiskBar({ cluster }) {
   )
 }
 
-export default function FamilyRelationshipPanel({ patientId = 'LXK-2024', onNext, onPrev, prevLabel }) {
-  const { theme, lang } = useApp()
+export default function FamilyRelationshipPanel({ patientId = 'LXK-2024', storageOwnerId = 'guest', onNext, onPrev, prevLabel, embedded = false, title = null }) {
+  const { theme, lang, t } = useApp()
   const isDark = theme === 'dark'
-  const [activeStage, setActiveStage] = useState(0)
-  const [selectedAgent, setSelectedAgent] = useState('report')
-  const [question, setQuestion] = useState('Which family branch creates the strongest predictive signal?')
+  const [activeStage, setActiveStage] = useState('graph')
+  const [chatAgent, setChatAgent] = useState('ReportAgent')
+  const [prompt, setPrompt] = useState(lang === 'vi' ? 'Vì sao con cái cần tầm soát sớm?' : 'Why should children screen early?')
+  const [messages, setMessages] = useState([
+    { role: 'agent', agent: 'ReportAgent', text: 'Simulation ready. Ask about inheritance paths, hidden risk clusters, or screening priority.' },
+  ])
+
+  const members = useMemo(() => loadMembers(patientId, storageOwnerId), [patientId, storageOwnerId])
+  const simulation = useMemo(() => calculateSimulation(members), [members])
+  const palette = {
+    bg: isDark ? 'var(--bg2,#050816)' : '#f4f7fb',
+    surface: isDark ? 'rgba(255,255,255,0.035)' : '#fff',
+    surface2: isDark ? 'rgba(0,229,255,0.055)' : 'rgba(0,184,204,0.06)',
+    border: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
+    text: isDark ? '#e8f0f8' : '#172033',
+    text2: isDark ? 'rgba(232,240,248,0.68)' : '#586174',
+    text3: isDark ? 'rgba(232,240,248,0.45)' : '#8a93a6',
+  }
 
   const members = useMemo(() => loadFamilyMembers(patientId) || DEFAULT_FAMILY_MEMBERS, [patientId])
   const simulation = useMemo(() => buildSimulation(members), [members])
@@ -231,22 +248,28 @@ export default function FamilyRelationshipPanel({ patientId = 'LXK-2024', onNext
     : `${activeAgent.name}: Add more family disease history in Family Medical Tree to generate a meaningful relationship simulation.`
 
   return (
-    <div style={{ minHeight: '100%', background: c.bg, color: c.text, padding: 24, '--surface': c.panel, '--surface2': c.panel2, '--border': c.border, '--text': c.text, '--text2': c.text2, '--text3': c.text3 }}>
-      <div style={{ maxWidth: 1280, margin: '0 auto' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.3fr) minmax(320px, .7fr)', gap: 18, alignItems: 'stretch' }}>
-          <div style={{ padding: 22, borderRadius: 22, border: `1px solid ${c.border}`, background: `linear-gradient(135deg, ${c.panel}, rgba(0,229,255,0.08))`, overflow: 'hidden', position: 'relative' }}>
-            <div style={{ position: 'absolute', width: 280, height: 280, borderRadius: '50%', right: -80, top: -100, background: 'radial-gradient(circle, rgba(0,229,255,0.22), transparent 65%)' }} />
-            <div style={{ fontSize: 10, color: '#00e5ff', fontFamily: 'var(--font-mono)', letterSpacing: '.16em', textTransform: 'uppercase', marginBottom: 10 }}>GraphRAG · Zep-style memory · MiroFish lifecycle</div>
-            <h1 style={{ margin: 0, fontSize: 34, lineHeight: 1.05, letterSpacing: '-.04em' }}>Family Medical Relationship</h1>
-            <p style={{ margin: '14px 0 0', maxWidth: 780, color: c.text2, lineHeight: 1.7, fontSize: 14 }}>
-              {lang === 'vi'
-                ? 'Trang giả lập các mối quan hệ tiền sử bệnh án gia đình đã input tại Family Medical Tree. Hệ thống biến dữ liệu thân nhân thành graph y khoa, sinh AI agents chuyên khoa và tạo báo cáo dự đoán theo vòng đời 5 giai đoạn.'
-                : 'Simulates the family medical-history relationships entered in Family Medical Tree. The page converts relatives into a medical graph, generates specialist AI agents, and creates a predictive report through the five-stage lifecycle.'}
-            </p>
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 18 }}>
-              {['https://app.getzep.com/playground', 'https://deepwiki.com/666ghj/MiroFish'].map(url => (
-                <a key={url} href={url} target="_blank" rel="noreferrer" style={{ color: '#00e5ff', textDecoration: 'none', border: '1px solid rgba(0,229,255,.25)', background: 'rgba(0,229,255,.08)', borderRadius: 999, padding: '8px 12px', fontSize: 11, fontFamily: 'var(--font-mono)' }}>{url.replace('https://', '')} ↗</a>
-              ))}
+    <div style={{ padding: embedded ? 0 : '24px clamp(16px,3vw,32px)', background: embedded ? 'transparent' : palette.bg, minHeight: '100%', color: palette.text }}>
+      <header style={{ marginBottom: 20 }}>
+        <div style={{ fontSize: 11, letterSpacing: '.18em', color: '#00e5ff', fontWeight: 800, textTransform: 'uppercase', fontFamily: 'monospace' }}>
+          Zep-style temporal GraphRAG · MiroFish-inspired AI Agents
+        </div>
+        <h1 style={{ margin: '8px 0 8px', fontSize: 'clamp(24px,3vw,36px)', lineHeight: 1.1 }}>
+          🧬 {title || t('familyRelationshipTitle')}
+        </h1>
+        <p style={{ margin: 0, maxWidth: 980, color: palette.text2, lineHeight: 1.7, fontSize: 14 }}>
+          {lang === 'vi'
+            ? 'Trang mô phỏng các mối quan hệ tiền sử bệnh án gia đình đã nhập ở Family Medical Tree, dựng graph ký ức theo thời gian rồi cho hội đồng agent suy đoán kịch bản di truyền, môi trường và tầm soát.'
+            : 'This page simulates medical-history relationships entered in Family Medical Tree, builds temporal graph memory, and lets agent personas infer hereditary, environmental, and screening scenarios.'}
+        </p>
+      </header>
+
+      <section style={{ display: 'grid', gridTemplateColumns: 'minmax(260px, .75fr) 1.25fr', gap: 16, marginBottom: 16 }}>
+        <MetricCard c={palette} icon="🧠" label="Family Graph Signal" value={`${simulation.riskScore}%`} accent="#00e5ff" note={`${simulation.nodes.length} nodes · ${simulation.edges.length} edges`} />
+        <div style={{ background: `linear-gradient(135deg, ${palette.surface}, ${palette.surface2})`, border: `1px solid ${palette.border}`, borderRadius: 18, padding: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, marginBottom: 14, flexWrap: 'wrap' }}>
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 800, color: palette.text, marginBottom: 4 }}>The Five-Stage Simulation Lifecycle</div>
+              <div style={{ fontSize: 11, color: palette.text3 }}>Graph Building → Environment Setup → Simulation Execution → Report Generation → Deep Interaction</div>
             </div>
           </div>
 
@@ -300,8 +323,7 @@ export default function FamilyRelationshipPanel({ patientId = 'LXK-2024', onNext
           ))}
         </div>
 
-        <NavButtons onNext={onNext} nextLabel={lang === 'vi' ? 'Tiếp tục tới Hồ sơ bệnh nhân →' : 'Continue to Patient Record →'} onPrev={onPrev} prevLabel={prevLabel} style={{ marginTop: 22 }} />
-      </div>
+      {!embedded && <NavButtons onNext={onNext} nextLabel={`${t('next')} →`} onPrev={onPrev} prevLabel={prevLabel} />}
     </div>
   )
 }
