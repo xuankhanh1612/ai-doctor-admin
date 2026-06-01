@@ -51,27 +51,6 @@ const syncPatientRecordToFamily = (patientId, ownerId, patient) => {
   saveFamilyMembers(patientId, nextMembers, ownerId)
 }
 
-function createEmptyPatient(t) {
-  return {
-    id: 'NO-UPLOADS',
-    name: t('noUploadPatientName'),
-    age: '—',
-    gender: '—',
-    dob: '—',
-    blood_type: '—',
-    avatar_initials: 'UP',
-    diseases: [{ id: 'empty', name: t('noUploadPatientDisease'), icd10: 'Z00.0', onset: '—', severity: 'mild' }],
-    symptoms: [],
-    labs: [],
-    imaging: [],
-    medications: [],
-    allergies: [],
-    genomics: [],
-    risk_factors: [],
-    timeline: [],
-  }
-}
-
 // ─── API — Consensus Engine (https://ai-doctor-engine.vercel.app) ──────────
 const API_BASE =
   import.meta.env.VITE_CONSENSUS_API_URL || 'https://ai-doctor-engine.vercel.app'
@@ -596,25 +575,6 @@ export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selected
     } else {
       savePatientRecordForUser(ownerId, nextPatient)
     }
-    setConsensusData(null)
-    setShowConsensus(false)
-    setIsEditingRecord(false)
-  }
-
-  const startEditRecord = () => {
-    setEditForm(serializePatientForEdit(patient))
-    setIsEditingRecord(true)
-  }
-
-  const cancelEditRecord = () => {
-    setEditForm(serializePatientForEdit(patient))
-    setIsEditingRecord(false)
-  }
-
-  const saveEditedRecord = () => {
-    const nextPatient = buildEditedPatient(patient, editForm)
-    setPatient(nextPatient)
-    setEditForm(serializePatientForEdit(nextPatient))
     setConsensusData(null)
     setShowConsensus(false)
     setIsEditingRecord(false)
