@@ -56,6 +56,7 @@ export const isNonDiseaseCondition = (condition) => /^(khỏe mạnh|healthy|ch�
 
 export const FAMILY_STORAGE_KEY = 'cdoc_family_members'
 export const FAMILY_USER_STORAGE_KEY = 'cdoc_family_members_by_user'
+export const FAMILY_MEMBERS_CHANGED_EVENT = 'cdoc_family_members_changed'
 
 // ─── Persistence helpers ───────────────────────────────────────────────────
 export const normalizeConditions = (conditions) => {
@@ -125,6 +126,13 @@ export const getFamilyOwnerKey = (ownerId) => {
   return key || 'guest'
 }
 
+const emitFamilyMembersChanged = (patientId, ownerId) => {
+  if (typeof window === 'undefined') return
+  window.dispatchEvent(new CustomEvent(FAMILY_MEMBERS_CHANGED_EVENT, {
+    detail: { patientId, ownerId: getFamilyOwnerKey(ownerId) },
+  }))
+}
+
 const readJsonObject = (key) => {
   try {
     const parsed = JSON.parse(localStorage.getItem(key) || '{}')
@@ -159,6 +167,7 @@ export const saveFamilyMembers = (patientId, members, ownerId = 'guest') => {
     byUser[ownerKey] = byUser[ownerKey] && typeof byUser[ownerKey] === 'object' ? byUser[ownerKey] : {}
     byUser[ownerKey][patientId] = normalized || []
     localStorage.setItem(FAMILY_USER_STORAGE_KEY, JSON.stringify(byUser))
+    emitFamilyMembersChanged(patientId, ownerId)
   } catch (e) { console.error('FamilyTree save error:', e) }
 }
 
@@ -169,6 +178,7 @@ export const clearFamilyMembers = (patientId, ownerId = 'guest') => {
     if (byUser[ownerKey]) {
       delete byUser[ownerKey][patientId]
       localStorage.setItem(FAMILY_USER_STORAGE_KEY, JSON.stringify(byUser))
+      emitFamilyMembersChanged(patientId, ownerId)
     }
   } catch (e) { console.error('FamilyTree clear error:', e) }
 }

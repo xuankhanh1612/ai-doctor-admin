@@ -1,11 +1,13 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useApp } from '../../context/AppContext'
 import NavButtons from '../NavButtons.jsx'
 import {
   DEFAULT_FAMILY_MEMBERS,
+  FAMILY_MEMBERS_CHANGED_EVENT,
   FAMILY_RELATION_META,
+  getFamilyOwnerKey,
   loadFamilyMembers,
-} from './FamilyTreePanel.jsx'
+} from './familyData.js'
 
 const STAGES = [
   { id: 'graph', icon: '🧬', title: 'Graph Building', accent: '#00e5ff' },
@@ -190,14 +192,33 @@ function RiskBar({ cluster }) {
   )
 }
 
-export default function FamilyRelationshipPanel({ patientId = 'LXK-2024', onNext, onPrev, prevLabel }) {
+export default function FamilyRelationInferencePanel({ patientId = 'LXK-2024', storageOwnerId = 'guest', onNext, onPrev, prevLabel, embedded = false, title = null }) {
   const { theme, lang } = useApp()
   const isDark = theme === 'dark'
   const [activeStage, setActiveStage] = useState(0)
   const [selectedAgent, setSelectedAgent] = useState('report')
   const [question, setQuestion] = useState('Which family branch creates the strongest predictive signal?')
 
-  const members = useMemo(() => loadFamilyMembers(patientId) || DEFAULT_FAMILY_MEMBERS, [patientId])
+  const [members, setMembers] = useState(() => loadFamilyMembers(patientId, storageOwnerId) || DEFAULT_FAMILY_MEMBERS)
+
+  useEffect(() => {
+    const refreshMembers = () => setMembers(loadFamilyMembers(patientId, storageOwnerId) || DEFAULT_FAMILY_MEMBERS)
+    const handleFamilyChange = event => {
+      const detail = event.detail || {}
+      if (detail.patientId && detail.patientId !== patientId) return
+      if (detail.ownerId && detail.ownerId !== getFamilyOwnerKey(storageOwnerId)) return
+      refreshMembers()
+    }
+
+    refreshMembers()
+    window.addEventListener(FAMILY_MEMBERS_CHANGED_EVENT, handleFamilyChange)
+    window.addEventListener('storage', refreshMembers)
+    return () => {
+      window.removeEventListener(FAMILY_MEMBERS_CHANGED_EVENT, handleFamilyChange)
+      window.removeEventListener('storage', refreshMembers)
+    }
+  }, [patientId, storageOwnerId])
+
   const simulation = useMemo(() => buildSimulation(members), [members])
   const activeAgent = AGENT_TEMPLATES.find(agent => agent.id === selectedAgent) || AGENT_TEMPLATES.at(-1)
   const topCluster = simulation.riskClusters[0]
@@ -231,13 +252,13 @@ export default function FamilyRelationshipPanel({ patientId = 'LXK-2024', onNext
     : `${activeAgent.name}: Add more family disease history in Family Medical Tree to generate a meaningful relationship simulation.`
 
   return (
-    <div style={{ minHeight: '100%', background: c.bg, color: c.text, padding: 24, '--surface': c.panel, '--surface2': c.panel2, '--border': c.border, '--text': c.text, '--text2': c.text2, '--text3': c.text3 }}>
+    <div style={{ minHeight: embedded ? 'auto' : '100%', background: embedded ? 'transparent' : c.bg, color: c.text, padding: embedded ? 0 : 24, '--surface': c.panel, '--surface2': c.panel2, '--border': c.border, '--text': c.text, '--text2': c.text2, '--text3': c.text3 }}>
       <div style={{ maxWidth: 1280, margin: '0 auto' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.3fr) minmax(320px, .7fr)', gap: 18, alignItems: 'stretch' }}>
           <div style={{ padding: 22, borderRadius: 22, border: `1px solid ${c.border}`, background: `linear-gradient(135deg, ${c.panel}, rgba(0,229,255,0.08))`, overflow: 'hidden', position: 'relative' }}>
             <div style={{ position: 'absolute', width: 280, height: 280, borderRadius: '50%', right: -80, top: -100, background: 'radial-gradient(circle, rgba(0,229,255,0.22), transparent 65%)' }} />
             <div style={{ fontSize: 10, color: '#00e5ff', fontFamily: 'var(--font-mono)', letterSpacing: '.16em', textTransform: 'uppercase', marginBottom: 10 }}>GraphRAG · Zep-style memory · MiroFish lifecycle</div>
-            <h1 style={{ margin: 0, fontSize: 34, lineHeight: 1.05, letterSpacing: '-.04em' }}>Family Medical Relationship</h1>
+            <h1 style={{ margin: 0, fontSize: 34, lineHeight: 1.05, letterSpacing: '-.04em' }}>{title || 'Family Relationship Inference'}</h1>
             <p style={{ margin: '14px 0 0', maxWidth: 780, color: c.text2, lineHeight: 1.7, fontSize: 14 }}>
               {lang === 'vi'
                 ? 'Trang giả lập các mối quan hệ tiền sử bệnh án gia đình đã input tại Family Medical Tree. Hệ thống biến dữ liệu thân nhân thành graph y khoa, sinh AI agents chuyên khoa và tạo báo cáo dự đoán theo vòng đời 5 giai đoạn.'
@@ -300,7 +321,7 @@ export default function FamilyRelationshipPanel({ patientId = 'LXK-2024', onNext
           ))}
         </div>
 
-        <NavButtons onNext={onNext} nextLabel={lang === 'vi' ? 'Tiếp tục tới Hồ sơ bệnh nhân →' : 'Continue to Patient Record →'} onPrev={onPrev} prevLabel={prevLabel} style={{ marginTop: 22 }} />
+        {!embedded && <NavButtons onNext={onNext} nextLabel={lang === 'vi' ? 'Tiếp tục tới Hồ sơ bệnh nhân →' : 'Continue to Patient Record →'} onPrev={onPrev} prevLabel={prevLabel} style={{ marginTop: 22 }} />}
       </div>
     </div>
   )
