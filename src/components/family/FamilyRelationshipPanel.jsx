@@ -19,14 +19,6 @@ const RELATION_INFLUENCE = {
 const getRelationMeta = (relation) => RELATION_META[relation] || RELATION_META.cousin
 const getRelationInfluence = (relation) => RELATION_INFLUENCE[relation] ?? 0.2
 
-const LIFECYCLE = [
-  { id: 'graph', icon: '🧠', title: 'Graph Building', copy: 'Trích xuất entity bệnh, quan hệ huyết thống, thời gian khởi phát và biến cố để dựng GraphRAG + collective memory.' },
-  { id: 'setup', icon: '🧬', title: 'Environment Setup', copy: 'Sinh persona agent theo ontology gia đình: genetics, oncology, hepatology, preventive care, report agent.' },
-  { id: 'execute', icon: '⚡', title: 'Simulation Execution', copy: 'Chạy tương tác song song giữa agent theo lát cắt thế hệ, cập nhật temporal memory và độ lan truyền nguy cơ.' },
-  { id: 'report', icon: '📊', title: 'Report Generation', copy: 'ReportAgent tổng hợp log thành dự báo ưu tiên tầm soát, xét nghiệm gen và kịch bản phòng ngừa.' },
-  { id: 'deep', icon: '💬', title: 'Deep Interaction', copy: 'Cho phép hỏi sâu từng agent hoặc ReportAgent để khám phá giả thuyết và điểm bất định.' },
-]
-
 const RELATION_WEIGHT = {
   self: 1,
   father: 0.9,
@@ -48,8 +40,18 @@ const AGENT_TEMPLATES = [
   { id: 'report', name: 'ReportAgent', abbr: 'RPT', focus: 'predictive summary + questions', color: '#9c6fff' },
 ]
 
-function clamp(value, min, max) {
-  return Math.max(min, Math.min(max, value))
+function loadMembers(patientId, storageOwnerId = 'guest') {
+  return loadFamilyMembers(patientId, storageOwnerId) || DEFAULT_FAMILY_MEMBERS
+}
+
+function normalizeCondition(condition) {
+  return condition
+    .toLowerCase()
+    .replace(/nsclc|lung cancer|ung thư phổi/g, 'lung-oncology')
+    .replace(/hcc|ung thư gan|liver cancer|xơ gan|cirrhosis|viêm gan b|hbv/g, 'hepatic')
+    .replace(/tăng huyết áp|hypertension|tim mạch|heart disease|đột quỵ|stroke/g, 'cardiovascular')
+    .replace(/tiểu đường|diabetes/g, 'metabolic')
+    .replace(/ung thư vú|breast cancer|ung thư đại tràng|colon cancer|ung thư dạ dày|stomach cancer|ung thư|cancer/g, 'oncology')
 }
 
 function normalizeConditions(member) {
@@ -200,8 +202,7 @@ export default function FamilyRelationshipPanel({ patientId = 'LXK-2024', storag
     { role: 'agent', agent: 'ReportAgent', text: 'Simulation ready. Ask about inheritance paths, hidden risk clusters, or screening priority.' },
   ])
 
-  // Keep a single source of truth for the inference tab data: logged-in user's local family DB first, default mẫu second.
-  const members = useMemo(() => loadFamilyMembers(patientId, storageOwnerId) || DEFAULT_FAMILY_MEMBERS, [patientId, storageOwnerId])
+  const members = useMemo(() => loadMembers(patientId, storageOwnerId), [patientId, storageOwnerId])
   const simulation = useMemo(() => calculateSimulation(members), [members])
   const palette = {
     bg: isDark ? 'var(--bg2,#050816)' : '#f4f7fb',
