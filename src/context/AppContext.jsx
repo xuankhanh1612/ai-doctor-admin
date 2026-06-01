@@ -142,9 +142,9 @@ export const TRANSLATIONS = {
     noUploadPatientDisease: 'Upload hồ sơ để tạo bệnh án cá nhân',
     uploadDataBanner: 'Dữ liệu từ Hồ Sơ Upload',
     uploadDataStats: '{files} file · {images} ảnh có AI phân tích',
-    backToDemo: '← Demo Patient',
+    backToDemo: '← Back to Patient',
     backToMyRecords: '← Hồ sơ của tôi',
-    backToDemoRecord: '← Quay lại Demo',
+    backToDemoRecord: '← Back to Patient',
     // Admin
     totalUsers: 'Tổng người dùng',
     medicalRecords: 'Hồ sơ y tế',
@@ -321,9 +321,9 @@ export const TRANSLATIONS = {
     noUploadPatientDisease: 'Upload records to create your personal medical chart',
     uploadDataBanner: 'Data from Uploaded Records',
     uploadDataStats: '{files} file(s) · {images} AI-analyzed image(s)',
-    backToDemo: '← Demo Patient',
+    backToDemo: '← Back to Patient',
     backToMyRecords: '← My records',
-    backToDemoRecord: '← Back to Demo',
+    backToDemoRecord: '← Back to Patient',
     // Admin
     totalUsers: 'Total Users',
     medicalRecords: 'Medical Records',

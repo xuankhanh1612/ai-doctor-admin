@@ -22,7 +22,7 @@ import Protein3DPanel from './components/Protein3DPanel.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 
 // Swarm panel replaces simulation; keep consensus as classic fallback
-const PANELS = ['upload', 'imaging', 'checkin', 'family', 'familyRelationship', 'record', 'matrix3dBody', 'omnidirectional3dBody', 'twin', 'telemedicine', 'statAnalysis', 'swarm', 'consensus', 'protein3d']
+const PANELS = ['upload', 'imaging', 'checkin', 'family', 'record', 'familyRelationship', 'matrix3dBody', 'omnidirectional3dBody', 'twin', 'telemedicine', 'statAnalysis', 'swarm', 'consensus', 'protein3d']
 
 export default function App() {
   const { user, loading } = useAuth()
@@ -171,7 +171,7 @@ export default function App() {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
       <Topbar activePanel={active} />
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-        <Sidebar active={active} onNavigate={setActive} />
+        <Sidebar active={active} onNavigate={(id) => { if (id === 'record') setSelectedMember(null); setActive(id) }} />
         <main ref={mainRef} style={{ flex: 1, overflowY: 'auto', background: mainBg }}>
           <PanelErrorBoundary
             resetKey={active}
@@ -185,7 +185,7 @@ export default function App() {
             {active === 'checkin'   && <CheckinPanel       onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'family'    && <FamilyTreePanel    patientId="LXK-2024" storageOwnerId={familyStorageOwnerId} onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} onViewRecord={navigateToRecord} />}
             {active === 'familyRelationship' && <FamilyMedicalRelationshipPanel patientId="LXK-2024" storageOwnerId={familyStorageOwnerId} onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
-            {active === 'record'    && <PatientRecordPanel onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} selectedMember={selectedMember} />}
+            {active === 'record'    && <PatientRecordPanel onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} selectedMember={selectedMember} storageOwnerId={familyStorageOwnerId} onBackToPatient={() => setSelectedMember(null)} />}
             {active === 'matrix3dBody' && <Matrix3DBodyPanel onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'omnidirectional3dBody' && <Omnidirectional3DBodyPanel onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'twin'      && <TwinPanel          onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}

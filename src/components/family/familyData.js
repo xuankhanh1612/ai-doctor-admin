@@ -1,4 +1,5 @@
 // Shared Family Medical Tree data, metadata, and persistence helpers.
+import { LXK_PATIENT_RECORD } from '../../data/lxkPatientRecord.js'
 export const RELATIONS = ['self','father','mother','spouse','sibling','child','grandparent','grandchild','uncle_aunt','cousin']
 
 export const RELATION_META = {
@@ -35,9 +36,9 @@ export const LXK_PATIENT_PROFILE = {
   id: 'fm-3',
   relation: 'self',
   name: 'Lê Xuân Khánh',
-  dob: '1982-12-16',
-  displayDob: '16/12/1982',
-  blood_type: 'OH-',
+  dob: LXK_PATIENT_RECORD.dob,
+  displayDob: LXK_PATIENT_RECORD.dob.split('-').reverse().join('/'),
+  blood_type: LXK_PATIENT_RECORD.blood_type,
   gender: 'M',
 }
 
@@ -68,6 +69,29 @@ export const normalizeConditions = (conditions) => {
   }
   return []
 }
+
+const listNames = (items, key = 'name') => (
+  Array.isArray(items) ? items.map(item => item?.[key] || item?.name || item).filter(Boolean) : []
+)
+
+export const patientRecordToFamilyMedicalRecord = (patient = LXK_PATIENT_RECORD) => ({
+  ...patient,
+  diagnoses: listNames(patient.diseases),
+})
+
+export const createLxkFamilyMember = () => ({
+  id: LXK_PATIENT_PROFILE.id,
+  relation: 'self',
+  name: LXK_PATIENT_RECORD.name,
+  age: LXK_PATIENT_RECORD.age,
+  gender: LXK_PATIENT_RECORD.gender,
+  dob: LXK_PATIENT_RECORD.dob,
+  blood_type: LXK_PATIENT_RECORD.blood_type,
+  conditions: listNames(LXK_PATIENT_RECORD.diseases),
+  alive: true,
+  note: `Bệnh nhân chính · hồ sơ chuẩn Patient Record · ${listNames(LXK_PATIENT_RECORD.diseases).join(', ')}`,
+  medicalRecord: patientRecordToFamilyMedicalRecord(LXK_PATIENT_RECORD),
+})
 
 export const normalizeFamilyMember = (member, index = 0) => {
   const safeMember = member && typeof member === 'object' ? member : {}
@@ -102,21 +126,17 @@ export const applyLxkPatientProfile = (members) => {
   const normalized = normalizeFamilyMembers(members)
   if (!normalized) return null
 
-  const profileAge = calculateAgeFromDob(LXK_PATIENT_PROFILE.dob)
   return normalized.map(member => {
     if (member.relation !== 'self' && member.id !== LXK_PATIENT_PROFILE.id && member.name !== LXK_PATIENT_PROFILE.name) return member
 
+    const hasFullPatientRecord = Array.isArray(member.medicalRecord?.diseases) || Array.isArray(member.medicalRecord?.diagnoses)
+    if (hasFullPatientRecord && !isLegacyLxkDemoTree([member])) return member
+
     return {
       ...member,
-      ...LXK_PATIENT_PROFILE,
-      age: profileAge,
-      alive: true,
-      note: `Bệnh nhân chính · sinh ${LXK_PATIENT_PROFILE.displayDob} · nhóm máu ${LXK_PATIENT_PROFILE.blood_type}`,
-      medicalRecord: {
-        ...(member.medicalRecord || {}),
-        dob: LXK_PATIENT_PROFILE.dob,
-        blood_type: LXK_PATIENT_PROFILE.blood_type,
-      },
+      ...createLxkFamilyMember(),
+      id: member.id || LXK_PATIENT_PROFILE.id,
+      relation: member.relation || 'self',
     }
   })
 }
@@ -194,27 +214,7 @@ export const DEFAULT_FAMILY_MEMBERS = applyLxkPatientProfile([
   { id:'fm-1', relation:'father',      name:'Chưa nhập tên cha',       age:0, gender:'M', conditions:['Chưa rõ tiền sử'], alive:true, note:'Cha · cần cập nhật họ tên, ngày sinh, nhóm máu và tiền sử bệnh' },
   { id:'fm-2', relation:'mother',      name:'Chưa nhập tên mẹ',        age:0, gender:'F', conditions:['Chưa rõ tiền sử'], alive:true, note:'Mẹ · cần cập nhật họ tên, ngày sinh, nhóm máu và tiền sử bệnh' },
   // ── Bệnh nhân chính + gia đình trực tiếp ──────────────────────────────────
-  {
-    id: LXK_PATIENT_PROFILE.id,
-    relation: 'self',
-    name: LXK_PATIENT_PROFILE.name,
-    age: calculateAgeFromDob(LXK_PATIENT_PROFILE.dob),
-    gender: LXK_PATIENT_PROFILE.gender,
-    dob: LXK_PATIENT_PROFILE.dob,
-    blood_type: LXK_PATIENT_PROFILE.blood_type,
-    conditions: ['Chưa rõ tiền sử'],
-    alive: true,
-    note: `Bệnh nhân chính · sinh ${LXK_PATIENT_PROFILE.displayDob} · nhóm máu ${LXK_PATIENT_PROFILE.blood_type}`,
-    medicalRecord: {
-      blood_type: LXK_PATIENT_PROFILE.blood_type,
-      dob: LXK_PATIENT_PROFILE.dob,
-      diagnoses: [],
-      key_labs: {},
-      genomics: [],
-      medications: [],
-      allergies: [],
-    },
-  },
+  createLxkFamilyMember(),
   { id:'fm-4', relation:'spouse',   name:'Chưa nhập tên vợ/chồng',     age:0, gender:'F', conditions:['Chưa rõ tiền sử'], alive:true, note:'Vợ/chồng · cần cập nhật họ tên, ngày sinh, nhóm máu và tiền sử bệnh' },
   { id:'fm-5', relation:'sibling',  name:'Chưa nhập tên anh/chị/em',   age:0, gender:'M', conditions:['Chưa rõ tiền sử'], alive:true, note:'Anh/chị/em · cần cập nhật họ tên, ngày sinh, nhóm máu và tiền sử bệnh' },
   // ── Thế hệ con ────────────────────────────────────────────────────────────
