@@ -93,11 +93,11 @@ function MemberCard({ member, lang, isDark, c, onViewRecord, onEdit, onDelete })
         fontSize:8, fontWeight:700, fontFamily:'monospace',
         padding:'2px 8px', borderRadius:20, letterSpacing:'.06em', whiteSpace:'nowrap',
         opacity:0, transition:'opacity 0.18s', pointerEvents:'none', zIndex:10,
-      }}>Xem hồ sơ →</div>
+      }}>Sửa thành viên →</div>
 
       {/* Main card */}
       <div
-        onClick={() => onViewRecord(buildMemberRecord(member))}
+        onClick={() => onEdit(member)}
         onMouseEnter={e => {
           e.currentTarget.style.transform = 'translateY(-4px)'
           e.currentTarget.style.boxShadow = `0 10px 28px ${relColor}30`
@@ -162,7 +162,7 @@ function MemberCard({ member, lang, isDark, c, onViewRecord, onEdit, onDelete })
       {/* Edit / Delete buttons */}
       <div style={{ display:'flex', gap:4, marginTop:6, justifyContent:'center' }}>
         <button
-          onClick={e => { e.stopPropagation(); onEdit(member) }}
+          onClick={e => { e.stopPropagation(); onViewRecord(buildMemberRecord(member)) }}
           style={{
             flex:1, padding:'4px 0', borderRadius:6, border:`1px solid ${c.border}`,
             background: isDark ? 'rgba(255,255,255,0.05)' : '#f0f4f8',
@@ -170,7 +170,7 @@ function MemberCard({ member, lang, isDark, c, onViewRecord, onEdit, onDelete })
           }}
           onMouseEnter={e => { e.currentTarget.style.borderColor='#00b8cc'; e.currentTarget.style.color='#00b8cc' }}
           onMouseLeave={e => { e.currentTarget.style.borderColor=c.border; e.currentTarget.style.color=c.text2 }}
-        >✏️ Sửa</button>
+        >📋 Hồ sơ</button>
         <button
           onClick={e => { e.stopPropagation(); onDelete(member.id) }}
           style={{
@@ -436,7 +436,7 @@ export default function FamilyTreePanel({ patientId, storageOwnerId = 'guest', o
             🌳 {t('familyTreeTitle')}
           </h2>
           <p style={{ color:c.text2, fontSize:12, marginTop:4 }}>
-            {`${members.length} ${t('membersCount')} · ${t('aiHereditary')} · ${lang === 'vi' ? 'Nhấn thẻ để xem hồ sơ' : 'Click a card to view record'}`}
+            {`${members.length} ${t('membersCount')} · ${t('aiHereditary')} · ${lang === 'vi' ? 'Nhấn thẻ để sửa thành viên' : 'Click a card to edit member'}`}
           </p>
         </div>
         <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>

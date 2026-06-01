@@ -22,7 +22,7 @@ import Protein3DPanel from './components/Protein3DPanel.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 
 // Swarm panel replaces simulation; keep consensus as classic fallback
-const PANELS = ['upload', 'imaging', 'checkin', 'family', 'familyRelationship', 'record', 'matrix3dBody', 'omnidirectional3dBody', 'twin', 'telemedicine', 'statAnalysis', 'swarm', 'consensus', 'protein3d']
+const PANELS = ['upload', 'imaging', 'checkin', 'family', 'record', 'familyRelationship', 'matrix3dBody', 'omnidirectional3dBody', 'twin', 'telemedicine', 'statAnalysis', 'swarm', 'consensus', 'protein3d']
 
 export default function App() {
   const { user, loading } = useAuth()
