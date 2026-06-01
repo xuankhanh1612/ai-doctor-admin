@@ -1,34 +1,23 @@
 import React, { useMemo, useState } from 'react'
 import { useApp } from '../../context/AppContext'
 import NavButtons from '../NavButtons.jsx'
+import { DEFAULT_FAMILY_MEMBERS, RELATION_META, isNonDiseaseCondition, loadFamilyMembers } from './familyData.js'
 
-const STORAGE_KEY = 'cdoc_family_members'
-
-const RELATION_META = {
-  grandparent: { row: 1, color: '#9c6fff', label: { vi: 'Ông/Bà', en: 'Grandparent' }, influence: 0.42 },
-  father: { row: 2, color: '#00b8cc', label: { vi: 'Cha', en: 'Father' }, influence: 0.82 },
-  mother: { row: 2, color: '#f48fb1', label: { vi: 'Mẹ', en: 'Mother' }, influence: 0.82 },
-  uncle_aunt: { row: 2, color: '#ce93d8', label: { vi: 'Chú/Cô', en: 'Uncle/Aunt' }, influence: 0.38 },
-  self: { row: 3, color: '#00e5ff', label: { vi: 'Bệnh nhân', en: 'Patient' }, influence: 1 },
-  spouse: { row: 3, color: '#ffb74d', label: { vi: 'Vợ/Chồng', en: 'Spouse' }, influence: 0.12 },
-  sibling: { row: 3, color: '#00e676', label: { vi: 'Anh/Chị/Em', en: 'Sibling' }, influence: 0.62 },
-  cousin: { row: 3, color: '#80cbc4', label: { vi: 'Anh em họ', en: 'Cousin' }, influence: 0.28 },
-  child: { row: 4, color: '#ff8a65', label: { vi: 'Con', en: 'Child' }, influence: 0.5 },
-  grandchild: { row: 5, color: '#a5d6a7', label: { vi: 'Cháu', en: 'Grandchild' }, influence: 0.25 },
+const RELATION_INFLUENCE = {
+  grandparent: 0.42,
+  father: 0.82,
+  mother: 0.82,
+  uncle_aunt: 0.38,
+  self: 1,
+  spouse: 0.12,
+  sibling: 0.62,
+  cousin: 0.28,
+  child: 0.5,
+  grandchild: 0.25,
 }
 
-const DEFAULT_MEMBERS = [
-  { id:'fm-0', relation:'grandparent', name:'Lê Văn Tấn', age:94, gender:'M', conditions:['Ung thư phổi'], alive:false, note:'Ông nội · mất 1992' },
-  { id:'fm-9', relation:'grandparent', name:'Trần Thị Ngọc', age:88, gender:'F', conditions:['Tăng huyết áp'], alive:false, note:'Bà nội · mất 2005' },
-  { id:'fm-1', relation:'father', name:'Lê Văn Bình', age:72, gender:'M', conditions:['Ung thư phổi','Tăng huyết áp'], alive:false, note:'Mất 2018 — ung thư phổi' },
-  { id:'fm-2', relation:'mother', name:'Nguyễn Thị Lan', age:68, gender:'F', conditions:['Tăng huyết áp'], alive:true, note:'' },
-  { id:'fm-7', relation:'uncle_aunt', name:'Lê Văn Hùng', age:65, gender:'M', conditions:['Xơ gan'], alive:true, note:'Bác ruột · viêm gan B' },
-  { id:'fm-3', relation:'self', name:'Lê Xuân Khánh', age:47, gender:'M', conditions:['NSCLC · Stage IIA','Ung thư gan di căn (HCC)','Xơ gan Child-Pugh A'], alive:true, note:'Bệnh nhân chính · EGFR Exon19del · T790M · Erlotinib Cycle 4' },
-  { id:'fm-4', relation:'spouse', name:'Phạm Thị Mai', age:45, gender:'F', conditions:['Khỏe mạnh'], alive:true, note:'' },
-  { id:'fm-5', relation:'sibling', name:'Lê Thị Hoa', age:50, gender:'F', conditions:['Ung thư vú'], alive:true, note:'Chị gái · đang theo dõi' },
-  { id:'fm-6', relation:'child', name:'Lê Minh Anh', age:18, gender:'F', conditions:['Khỏe mạnh'], alive:true, note:'Con gái · chưa xét nghiệm gen' },
-  { id:'fm-8', relation:'child', name:'Lê Minh Đức', age:15, gender:'M', conditions:['Khỏe mạnh'], alive:true, note:'Con trai' },
-]
+const getRelationMeta = (relation) => RELATION_META[relation] || RELATION_META.cousin
+const getRelationInfluence = (relation) => RELATION_INFLUENCE[relation] ?? 0.2
 
 const LIFECYCLE = [
   { id: 'graph', icon: '🧠', title: 'Graph Building', copy: 'Trích xuất entity bệnh, quan hệ huyết thống, thời gian khởi phát và biến cố để dựng GraphRAG + collective memory.' },
@@ -52,13 +41,8 @@ const CONDITION_RULES = [
   { key: 'metabolic', regex: /tiểu đường|diabetes|huyết áp|hypertension|tim mạch|heart|stroke|đột quỵ/i, label: 'Cardio-metabolic', color: '#ffd54f', base: 18 },
 ]
 
-function loadMembers(patientId) {
-  try {
-    const all = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}')
-    return Array.isArray(all[patientId]) ? all[patientId] : DEFAULT_MEMBERS
-  } catch {
-    return DEFAULT_MEMBERS
-  }
+function loadMembers(patientId, storageOwnerId = 'guest') {
+  return loadFamilyMembers(patientId, storageOwnerId) || DEFAULT_FAMILY_MEMBERS
 }
 
 function clamp(value, min, max) {
@@ -68,7 +52,7 @@ function clamp(value, min, max) {
 function normalizeConditions(member) {
   return (member.conditions || [])
     .filter(Boolean)
-    .filter(condition => !/khỏe mạnh|healthy/i.test(condition))
+    .filter(condition => !isNonDiseaseCondition(condition))
 }
 
 function calculateSimulation(members) {
@@ -76,9 +60,11 @@ function calculateSimulation(members) {
   const affected = members.filter(member => normalizeConditions(member).length > 0)
   const conditionHits = CONDITION_RULES.map(rule => {
     const carriers = members.filter(member => normalizeConditions(member).some(condition => rule.regex.test(condition)))
-    const weighted = carriers.reduce((sum, member) => sum + (RELATION_META[member.relation]?.influence || 0.2), 0)
-    const generations = new Set(carriers.map(member => RELATION_META[member.relation]?.row || 3)).size
-    const score = clamp(Math.round(rule.base + weighted * 22 + generations * 8 + Math.max(0, carriers.length - 1) * 6), 0, 99)
+    const weighted = carriers.reduce((sum, member) => sum + (getRelationInfluence(member.relation)), 0)
+    const generations = new Set(carriers.map(member => getRelationMeta(member.relation).row || 3)).size
+    const score = carriers.length
+      ? clamp(Math.round(rule.base + weighted * 22 + generations * 8 + Math.max(0, carriers.length - 1) * 6), 0, 99)
+      : 0
     return { ...rule, carriers, weighted, generations, score }
   }).sort((a, b) => b.score - a.score)
 
@@ -86,8 +72,8 @@ function calculateSimulation(members) {
     id: member.id,
     label: member.name,
     relation: member.relation,
-    row: RELATION_META[member.relation]?.row || 3,
-    color: RELATION_META[member.relation]?.color || '#8aa0b8',
+    row: getRelationMeta(member.relation).row || 3,
+    color: getRelationMeta(member.relation).color || '#8aa0b8',
     conditions: normalizeConditions(member),
   }))
 
@@ -95,7 +81,7 @@ function calculateSimulation(members) {
   const target = self?.id
   members.forEach(member => {
     if (!target || member.id === target) return
-    const meta = RELATION_META[member.relation] || RELATION_META.cousin
+    const meta = getRelationMeta(member.relation)
     const shared = normalizeConditions(member).filter(condition => normalizeConditions(self || {}).some(selfCondition => (
       condition.toLowerCase().includes(selfCondition.toLowerCase()) || selfCondition.toLowerCase().includes(condition.toLowerCase())
     )))
@@ -103,7 +89,7 @@ function calculateSimulation(members) {
       from: member.id,
       to: target,
       label: meta.label.vi,
-      strength: clamp(Math.round((meta.influence || 0.2) * 100 + shared.length * 12), 8, 96),
+      strength: clamp(Math.round(getRelationInfluence(member.relation) * 100 + shared.length * 12), 8, 96),
       color: meta.color,
     })
   })
@@ -124,7 +110,7 @@ function calculateSimulation(members) {
   return { self, affected, nodes, edges, conditionHits, riskScore, logs }
 }
 
-export default function FamilyRelationshipPanel({ patientId = 'LXK-2024', onNext, onPrev, prevLabel }) {
+export default function FamilyRelationshipPanel({ patientId = 'LXK-2024', storageOwnerId = 'guest', onNext, onPrev, prevLabel, embedded = false, title = null }) {
   const { theme, lang, t } = useApp()
   const isDark = theme === 'dark'
   const [activeStage, setActiveStage] = useState('graph')
@@ -134,7 +120,7 @@ export default function FamilyRelationshipPanel({ patientId = 'LXK-2024', onNext
     { role: 'agent', agent: 'ReportAgent', text: 'Simulation ready. Ask about inheritance paths, hidden risk clusters, or screening priority.' },
   ])
 
-  const members = useMemo(() => loadMembers(patientId), [patientId])
+  const members = useMemo(() => loadMembers(patientId, storageOwnerId), [patientId, storageOwnerId])
   const simulation = useMemo(() => calculateSimulation(members), [members])
   const palette = {
     bg: isDark ? 'var(--bg2,#050816)' : '#f4f7fb',
@@ -159,13 +145,13 @@ export default function FamilyRelationshipPanel({ patientId = 'LXK-2024', onNext
   }
 
   return (
-    <div style={{ padding: '24px clamp(16px,3vw,32px)', background: palette.bg, minHeight: '100%', color: palette.text }}>
+    <div style={{ padding: embedded ? 0 : '24px clamp(16px,3vw,32px)', background: embedded ? 'transparent' : palette.bg, minHeight: '100%', color: palette.text }}>
       <header style={{ marginBottom: 20 }}>
         <div style={{ fontSize: 11, letterSpacing: '.18em', color: '#00e5ff', fontWeight: 800, textTransform: 'uppercase', fontFamily: 'monospace' }}>
           Zep-style temporal GraphRAG · MiroFish-inspired AI Agents
         </div>
         <h1 style={{ margin: '8px 0 8px', fontSize: 'clamp(24px,3vw,36px)', lineHeight: 1.1 }}>
-          🧬 {t('familyRelationshipTitle')}
+          🧬 {title || t('familyRelationshipTitle')}
         </h1>
         <p style={{ margin: 0, maxWidth: 980, color: palette.text2, lineHeight: 1.7, fontSize: 14 }}>
           {lang === 'vi'
@@ -211,7 +197,7 @@ export default function FamilyRelationshipPanel({ patientId = 'LXK-2024', onNext
         <DeepInteraction c={palette} personas={PERSONAS} chatAgent={chatAgent} setChatAgent={setChatAgent} prompt={prompt} setPrompt={setPrompt} messages={messages} onSend={sendMessage} />
       </section>
 
-      <NavButtons onNext={onNext} nextLabel={`${t('next')} →`} onPrev={onPrev} prevLabel={prevLabel} />
+      {!embedded && <NavButtons onNext={onNext} nextLabel={`${t('next')} →`} onPrev={onPrev} prevLabel={prevLabel} />}
     </div>
   )
 }
