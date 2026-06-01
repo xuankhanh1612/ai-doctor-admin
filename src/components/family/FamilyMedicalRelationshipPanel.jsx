@@ -1,8 +1,9 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useApp } from '../../context/AppContext'
 import NavButtons from '../NavButtons.jsx'
 import FamilyRelationshipPanel from './FamilyRelationshipPanel.jsx'
-import { CONDITION_COLORS, DEFAULT_FAMILY_MEMBERS, RELATION_META, isNonDiseaseCondition, loadFamilyMembers } from './familyData.js'
+import FamilyRelationInferencePanel from './FamilyRelationInferencePanel.jsx'
+import { CONDITION_COLORS, DEFAULT_FAMILY_MEMBERS, FAMILY_MEMBERS_CHANGED_EVENT, RELATION_META, getFamilyOwnerKey, isNonDiseaseCondition, loadFamilyMembers } from './familyData.js'
 
 // Backward-compatible alias for deployed/minified code paths that referenced the previous constant name.
 const FAMILY_RELATION_META = RELATION_META
@@ -154,7 +155,26 @@ export default function FamilyMedicalRelationshipPanel({ patientId = PATIENT_ID,
   const [activeStage, setActiveStage] = useState(0)
   const [selectedAgent, setSelectedAgent] = useState(AGENT_ROLES[0].id)
   const [activeTab, setActiveTab] = useState('medical')
-  const members = useMemo(() => loadFamilyMembers(patientId, storageOwnerId) || DEFAULT_FAMILY_MEMBERS, [patientId, storageOwnerId])
+  const [members, setMembers] = useState(() => loadFamilyMembers(patientId, storageOwnerId) || DEFAULT_FAMILY_MEMBERS)
+
+  useEffect(() => {
+    const refreshMembers = () => setMembers(loadFamilyMembers(patientId, storageOwnerId) || DEFAULT_FAMILY_MEMBERS)
+    const handleFamilyChange = event => {
+      const detail = event.detail || {}
+      if (detail.patientId && detail.patientId !== patientId) return
+      if (detail.ownerId && detail.ownerId !== getFamilyOwnerKey(storageOwnerId)) return
+      refreshMembers()
+    }
+
+    refreshMembers()
+    window.addEventListener(FAMILY_MEMBERS_CHANGED_EVENT, handleFamilyChange)
+    window.addEventListener('storage', refreshMembers)
+    return () => {
+      window.removeEventListener(FAMILY_MEMBERS_CHANGED_EVENT, handleFamilyChange)
+      window.removeEventListener('storage', refreshMembers)
+    }
+  }, [patientId, storageOwnerId])
+
   const model = useMemo(() => createSimulationModel(members), [members])
   const selectedAgentProfile = AGENT_ROLES.find(agent => agent.id === selectedAgent) || AGENT_ROLES[0]
 
@@ -179,6 +199,7 @@ export default function FamilyMedicalRelationshipPanel({ patientId = PATIENT_ID,
 
   const relationshipTabs = [
     { id: 'medical', label: t('familyRelationshipTitle') },
+    { id: 'map', label: t('familyRelationshipMap') },
     { id: 'inference', label: t('familyRelationshipInference') },
   ]
 
@@ -187,16 +208,20 @@ export default function FamilyMedicalRelationshipPanel({ patientId = PATIENT_ID,
       <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', flexWrap:'wrap', gap:14 }}>
         <div>
           <h2 style={{ fontSize:22, fontWeight:800, color:c.text, margin:0 }}>
-            🧬 {activeTab === 'medical' ? t('familyRelationshipTitle') : t('familyRelationshipInference')}
+            🧬 {activeTab === 'medical' ? t('familyRelationshipTitle') : relationshipTabs.find(tab => tab.id === activeTab)?.label}
           </h2>
           <p style={{ color:c.text2, fontSize:12, marginTop:6, maxWidth:820, lineHeight:1.6 }}>
             {activeTab === 'medical'
               ? (lang === 'vi'
                 ? 'Trang mô phỏng mối quan hệ tiền sử bệnh án gia đình từ dữ liệu đã nhập ở Family Medical Tree, lấy cảm hứng từ Zep temporal context graph và vòng đời mô phỏng 5 giai đoạn của MiroFish.'
                 : 'Simulates family medical-history relationships from Family Medical Tree inputs, inspired by Zep temporal context graphs and MiroFish’s five-stage simulation lifecycle.')
-              : (lang === 'vi'
-                ? 'Tab suy luận dùng giao diện FamilyRelationshipPanel để phân tích graph, agent personas và kịch bản tầm soát dựa trên dữ liệu gia đình hiện có.'
-                : 'This inference tab uses the FamilyRelationshipPanel view to analyze the graph, agent personas, and screening scenarios from the current family data.')}
+              : activeTab === 'map'
+                ? (lang === 'vi'
+                  ? 'Tab bản đồ đọc database gia đình local của user để vẽ graph quan hệ, agent personas và kịch bản tầm soát.'
+                  : 'The map tab reads the user local family database to visualize the relationship graph, agent personas, and screening scenarios.')
+                : (lang === 'vi'
+                  ? 'Tab suy luận mới dùng chung default data và tự cập nhật từ local database khi user chỉnh sửa Family Medical Tree.'
+                  : 'The new inference tab shares the default data source and automatically updates from the local database when the user edits Family Medical Tree.')}
           </p>
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap', justifyContent:'flex-end' }}>
@@ -229,8 +254,15 @@ export default function FamilyMedicalRelationshipPanel({ patientId = PATIENT_ID,
         </div>
       </div>
 
-      {activeTab === 'inference' ? (
+      {activeTab === 'map' ? (
         <FamilyRelationshipPanel
+          patientId={patientId}
+          storageOwnerId={storageOwnerId}
+          embedded
+          title={t('familyRelationshipMap')}
+        />
+      ) : activeTab === 'inference' ? (
+        <FamilyRelationInferencePanel
           patientId={patientId}
           storageOwnerId={storageOwnerId}
           embedded

@@ -1,7 +1,7 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useApp } from '../../context/AppContext'
 import NavButtons from '../NavButtons.jsx'
-import { DEFAULT_FAMILY_MEMBERS, RELATION_META, isNonDiseaseCondition, loadFamilyMembers } from './familyData.js'
+import { DEFAULT_FAMILY_MEMBERS, FAMILY_MEMBERS_CHANGED_EVENT, RELATION_META, getFamilyOwnerKey, isNonDiseaseCondition, loadFamilyMembers } from './familyData.js'
 
 const RELATION_INFLUENCE = {
   grandparent: 0.42,
@@ -122,7 +122,26 @@ export default function FamilyRelationshipPanel({ patientId = 'LXK-2024', storag
   const [selectedAgent, setSelectedAgent] = useState('report')
 
   // Single source of truth: logged-in user's local family DB first, canonical default mẫu second.
-  const members = useMemo(() => loadFamilyMembers(patientId, storageOwnerId) || DEFAULT_FAMILY_MEMBERS, [patientId, storageOwnerId])
+  const [members, setMembers] = useState(() => loadFamilyMembers(patientId, storageOwnerId) || DEFAULT_FAMILY_MEMBERS)
+
+  useEffect(() => {
+    const refreshMembers = () => setMembers(loadFamilyMembers(patientId, storageOwnerId) || DEFAULT_FAMILY_MEMBERS)
+    const handleFamilyChange = event => {
+      const detail = event.detail || {}
+      if (detail.patientId && detail.patientId !== patientId) return
+      if (detail.ownerId && detail.ownerId !== getFamilyOwnerKey(storageOwnerId)) return
+      refreshMembers()
+    }
+
+    refreshMembers()
+    window.addEventListener(FAMILY_MEMBERS_CHANGED_EVENT, handleFamilyChange)
+    window.addEventListener('storage', refreshMembers)
+    return () => {
+      window.removeEventListener(FAMILY_MEMBERS_CHANGED_EVENT, handleFamilyChange)
+      window.removeEventListener('storage', refreshMembers)
+    }
+  }, [patientId, storageOwnerId])
+
   const simulation = useMemo(() => buildSimulation(members), [members])
   const activeAgent = AGENT_TEMPLATES.find(agent => agent.id === selectedAgent) || AGENT_TEMPLATES[AGENT_TEMPLATES.length - 1]
   const activeStageData = STAGES.find(stage => stage.id === activeStage) || STAGES[0]
@@ -142,7 +161,7 @@ export default function FamilyRelationshipPanel({ patientId = 'LXK-2024', storag
     <div style={{ padding: embedded ? 0 : '24px clamp(16px,3vw,32px)', background: embedded ? 'transparent' : c.bg, minHeight: '100%', color: c.text }}>
       <header style={{ marginBottom: 20 }}>
         <div style={{ fontSize: 11, letterSpacing: '.18em', color: '#00e5ff', fontWeight: 800, textTransform: 'uppercase', fontFamily: 'monospace' }}>
-          Family relationship inference · Local user database
+          Family relationship map · Local user database
         </div>
         <h1 style={{ margin: '8px 0 8px', fontSize: 'clamp(24px,3vw,36px)', lineHeight: 1.1 }}>
           🧬 {title || t('familyRelationshipTitle')}
