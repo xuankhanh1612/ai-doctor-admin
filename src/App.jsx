@@ -18,10 +18,11 @@ import FamilyTreePanel from './components/family/FamilyTreePanel.jsx'
 import FamilyMedicalRelationshipPanel from './components/family/FamilyMedicalRelationshipPanel.jsx'
 import AdminPanel from './components/admin/AdminPanel.jsx'
 import PatientRecordPanel from './components/PatientRecordPanel.jsx'
+import Protein3DPanel from './components/Protein3DPanel.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 
 // Swarm panel replaces simulation; keep consensus as classic fallback
-const PANELS = ['upload', 'imaging', 'checkin', 'family', 'familyRelationship', 'record', 'matrix3dBody', 'omnidirectional3dBody', 'twin', 'telemedicine', 'statAnalysis', 'swarm', 'consensus']
+const PANELS = ['upload', 'imaging', 'checkin', 'family', 'familyRelationship', 'record', 'matrix3dBody', 'omnidirectional3dBody', 'twin', 'telemedicine', 'statAnalysis', 'swarm', 'consensus', 'protein3d']
 
 export default function App() {
   const { user, loading } = useAuth()
@@ -58,6 +59,7 @@ export default function App() {
     statAnalysis: t('statAnalysis'),
     swarm: t('swarmCouncil'),
     consensus: `${t('consensus')} (Classic)`,
+    protein3d: t('protein3d'),
   }
 
   const navigateToRecord = (member) => { setSelectedMember(member); setActive('record') }
@@ -191,6 +193,7 @@ export default function App() {
             {active === 'statAnalysis' && <StatisticalAnalysisPanel onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'swarm'     && <SwarmConsensusPanel onReset={() => setActive('upload')} onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'consensus' && <ConsensusPanel     onReset={() => setActive('upload')} onPrev={goPrev} prevLabel={prevLabel} />}
+            {active === 'protein3d' && <Protein3DPanel     onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'admin'     && user?.isAdmin && <AdminPanel />}
             {active === 'admin'     && !user?.isAdmin && (
               <div style={{ padding: 40, textAlign: 'center', color: '#ff5252' }}>🔒 Admin only</div>
