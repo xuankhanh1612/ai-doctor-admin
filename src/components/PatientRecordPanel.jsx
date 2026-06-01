@@ -208,6 +208,49 @@ const BarLine = ({ value, max = 100, color = 'var(--cyan)', height = 3 }) => (
   </div>
 )
 
+const splitLines = value => (value || '').split('\n').map(v => v.trim()).filter(Boolean)
+const patientInitials = name => (name || 'Patient')
+  .split(' ')
+  .filter(Boolean)
+  .slice(-2)
+  .map(w => w[0])
+  .join('')
+  .toUpperCase() || 'PT'
+
+const serializePatientForEdit = patient => ({
+  name: patient?.name || '',
+  age: patient?.age === '—' ? '' : String(patient?.age ?? ''),
+  gender: patient?.gender || 'M',
+  dob: patient?.dob === '—' ? '' : String(patient?.dob ?? ''),
+  blood_type: patient?.blood_type === '—' ? '' : String(patient?.blood_type ?? ''),
+  diseases: (patient?.diseases || []).map(d => d.name || d).join('\n'),
+  symptoms: (patient?.symptoms || []).map(s => s.name || s).join('\n'),
+  labs: (patient?.labs || []).map(l => l.name || l).join('\n'),
+  medications: (patient?.medications || []).map(m => m.name || m).join('\n'),
+  allergies: (patient?.allergies || []).map(a => a.name || a).join('\n'),
+  genomics: (patient?.genomics || []).map(g => g.gene ? `${g.gene}${g.variant ? ` · ${g.variant}` : ''}` : (g.name || g)).join('\n'),
+  timeline: (patient?.timeline || []).map(t => t.event || t.name || t).join('\n'),
+  risk_factors: (patient?.risk_factors || []).map(r => r.name || r).join('\n'),
+})
+
+const buildEditedPatient = (current, form) => ({
+  ...current,
+  name: form.name.trim() || current.name,
+  age: form.age.trim() || '—',
+  gender: form.gender || '—',
+  dob: form.dob.trim() || '—',
+  blood_type: form.blood_type.trim() || '—',
+  avatar_initials: patientInitials(form.name.trim() || current.name),
+  diseases: splitLines(form.diseases).map((name, i) => ({ id: `ed-d-${i}`, name, icd10: current.diseases?.[i]?.icd10 || 'Z00.0', onset: current.diseases?.[i]?.onset || '—', severity: current.diseases?.[i]?.severity || 'moderate' })),
+  symptoms: splitLines(form.symptoms).map((name, i) => ({ id: `ed-s-${i}`, name, severity: current.symptoms?.[i]?.severity || 5, onset: current.symptoms?.[i]?.onset || '—', active: current.symptoms?.[i]?.active ?? true })),
+  labs: splitLines(form.labs).map((name, i) => ({ id: `ed-l-${i}`, name, value: current.labs?.[i]?.value ?? '—', unit: current.labs?.[i]?.unit || '', ref_high: current.labs?.[i]?.ref_high, date: current.labs?.[i]?.date || '—', trend: current.labs?.[i]?.trend || 'stable', critical: current.labs?.[i]?.critical || false })),
+  medications: splitLines(form.medications).map((name, i) => ({ id: `ed-m-${i}`, name, dose: current.medications?.[i]?.dose || '—', class: current.medications?.[i]?.class || 'other', adherence: current.medications?.[i]?.adherence ?? 100 })),
+  allergies: splitLines(form.allergies).map((name, i) => ({ id: `ed-a-${i}`, name, severity: current.allergies?.[i]?.severity || 'moderate' })),
+  genomics: splitLines(form.genomics).map((name, i) => ({ id: `ed-g-${i}`, gene: name.split('·')[0].trim(), variant: name.split('·')[1]?.trim() || current.genomics?.[i]?.variant || '—', effect: current.genomics?.[i]?.effect || '—', clinical_sig: current.genomics?.[i]?.clinical_sig || '—', assoc: current.genomics?.[i]?.assoc || '' })),
+  timeline: splitLines(form.timeline).map((event, i) => ({ id: `ed-t-${i}`, date: current.timeline?.[i]?.date || '—', event, type: current.timeline?.[i]?.type || 'consult', severity: current.timeline?.[i]?.severity })),
+  risk_factors: splitLines(form.risk_factors).map((name, i) => ({ id: `ed-r-${i}`, name, weight: current.risk_factors?.[i]?.weight || 50, category: current.risk_factors?.[i]?.category || 'clinical' })),
+})
+
 // ─── Section renderers ────────────────────────────────────────────────────
 const SECTIONS = [
   { id: 'diseases',     label: 'Diseases',     labelVi: 'Bệnh',        icon: '🦠', color: 'var(--red)'    },
@@ -544,11 +587,16 @@ export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selected
     : (uploadPatient || fallbackPatient)
 
   const [patient, setPatient] = useState(basePatient)
+  const [isEditingRecord, setIsEditingRecord] = useState(false)
+  const [editForm, setEditForm] = useState(() => serializePatientForEdit(basePatient))
 
   // Cập nhật khi upload records thay đổi (real-time sync)
   useEffect(() => {
     if (!selectedMember) {
-      setPatient(uploadPatient || fallbackPatient)
+      const nextPatient = uploadPatient || fallbackPatient
+      setPatient(nextPatient)
+      setEditForm(serializePatientForEdit(nextPatient))
+      setIsEditingRecord(false)
     }
   }, [uploadPatient, selectedMember, fallbackPatient])
 
@@ -556,6 +604,8 @@ export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selected
   useEffect(() => {
     if (selectedMember) {
       setPatient(selectedMember)
+      setEditForm(serializePatientForEdit(selectedMember))
+      setIsEditingRecord(false)
       setSection('diseases')
       setConsensusData(null)
       setCError('')
@@ -597,10 +647,36 @@ export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selected
   const isFromFamily = !!(selectedMember)
   const isFromUpload = !!(patient?._fromUpload)
 
+  const startEditRecord = () => {
+    setEditForm(serializePatientForEdit(patient))
+    setIsEditingRecord(true)
+  }
+
+  const cancelEditRecord = () => {
+    setEditForm(serializePatientForEdit(patient))
+    setIsEditingRecord(false)
+  }
+
+  const saveEditedRecord = () => {
+    const nextPatient = buildEditedPatient(patient, editForm)
+    setPatient(nextPatient)
+    setEditForm(serializePatientForEdit(nextPatient))
+    setConsensusData(null)
+    setShowConsensus(false)
+    setIsEditingRecord(false)
+  }
+
   const surfaceBg = isDark ? 'var(--bg2)' : '#ffffff'
   const borderCol = isDark ? 'var(--border)' : 'rgba(0,0,0,0.08)'
   const text2     = isDark ? 'var(--text2)' : '#555'
   const text3     = isDark ? 'var(--text3)' : '#aaa'
+  const recordInputStyle = {
+    width: '100%', padding: '9px 10px', borderRadius: 8,
+    border: `1px solid ${borderCol}`, background: isDark ? 'rgba(255,255,255,0.04)' : '#fff',
+    color: 'var(--text)', fontFamily: 'inherit', fontSize: 12, boxSizing: 'border-box',
+  }
+  const recordTextareaStyle = { ...recordInputStyle, minHeight: 76, resize: 'vertical', lineHeight: 1.45 }
+
 
   // Run consensus analysis
   async function runConsensus() {
@@ -643,7 +719,19 @@ export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selected
           <h2 style={{ fontSize: 22, fontWeight: 800, marginBottom: 4 }}>Patient Record Visualizer</h2>
           <p style={{ color: text2, fontSize: 12 }}>AI Consensus Engine · {API_BASE}</p>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          <button
+            onClick={isEditingRecord ? cancelEditRecord : startEditRecord}
+            style={{
+              padding: '8px 18px', borderRadius: 8, border: '1px solid rgba(0,229,255,0.28)',
+              cursor: 'pointer', fontSize: 12, fontWeight: 700,
+              background: isEditingRecord ? 'rgba(255,82,82,0.08)' : 'rgba(0,229,255,0.08)',
+              color: isEditingRecord ? 'var(--red)' : 'var(--cyan)',
+              fontFamily: 'inherit',
+            }}
+          >
+            {isEditingRecord ? (lang === 'vi' ? 'Huỷ sửa' : 'Cancel edit') : '📋 Sửa Hồ sơ'}
+          </button>
           <button onClick={runConsensus} disabled={consensusLoading} style={{
             padding: '8px 18px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700,
             background: 'linear-gradient(135deg,var(--cyan2),var(--violet2))', color: '#fff', opacity: consensusLoading ? 0.7 : 1,
@@ -776,6 +864,92 @@ export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selected
           })}
         </div>
       </div>
+
+      {/* Inline edit form */}
+      {isEditingRecord && (
+        <div style={{ background: surfaceBg, border: '1px solid rgba(0,229,255,0.25)', borderRadius: 16, padding: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+            <div>
+              <div style={{ fontSize: 12, fontFamily: 'var(--font-mono)', letterSpacing: '.14em', color: 'var(--cyan)', fontWeight: 700 }}>
+                📋 SỬA HỒ SƠ BỆNH NHÂN
+              </div>
+              <div style={{ fontSize: 11, color: text3, marginTop: 4 }}>
+                {lang === 'vi' ? 'Nhập mỗi mục lâm sàng trên một dòng.' : 'Enter each clinical item on a separate line.'}
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                onClick={saveEditedRecord}
+                disabled={!editForm.name.trim()}
+                style={{
+                  padding: '9px 16px', borderRadius: 8, border: 'none',
+                  background: 'linear-gradient(135deg,var(--cyan2),var(--violet2))',
+                  color: '#fff', fontWeight: 700, fontSize: 12, cursor: editForm.name.trim() ? 'pointer' : 'not-allowed',
+                  opacity: editForm.name.trim() ? 1 : 0.55, fontFamily: 'inherit',
+                }}
+              >💾 Lưu hồ sơ</button>
+              <button
+                onClick={cancelEditRecord}
+                style={{ padding: '9px 16px', borderRadius: 8, border: `1px solid ${borderCol}`, background: 'transparent', color: text2, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}
+              >Huỷ</button>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 14 }}>
+            {[
+              ['name', 'Họ tên'],
+              ['age', 'Tuổi'],
+              ['dob', 'Ngày sinh'],
+              ['blood_type', 'Nhóm máu'],
+            ].map(([key, label]) => (
+              <label key={key} style={{ display: 'flex', flexDirection: 'column', gap: 5, fontSize: 11, color: text3, fontWeight: 600 }}>
+                {label}
+                <input
+                  value={editForm[key]}
+                  onChange={e => setEditForm(prev => ({ ...prev, [key]: e.target.value }))}
+                  placeholder={label}
+                  style={recordInputStyle}
+                />
+              </label>
+            ))}
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 5, fontSize: 11, color: text3, fontWeight: 600 }}>
+              Giới tính
+              <select
+                value={editForm.gender}
+                onChange={e => setEditForm(prev => ({ ...prev, gender: e.target.value }))}
+                style={recordInputStyle}
+              >
+                <option value="M">Nam</option>
+                <option value="F">Nữ</option>
+                <option value="—">Khác / Chưa rõ</option>
+              </select>
+            </label>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12 }}>
+            {[
+              ['diseases', 'Bệnh / chẩn đoán'],
+              ['symptoms', 'Triệu chứng'],
+              ['labs', 'Xét nghiệm'],
+              ['medications', 'Thuốc'],
+              ['allergies', 'Dị ứng'],
+              ['genomics', 'Genomics'],
+              ['timeline', 'Lịch sử điều trị'],
+              ['risk_factors', 'Yếu tố rủi ro'],
+            ].map(([key, label]) => (
+              <label key={key} style={{ display: 'flex', flexDirection: 'column', gap: 5, fontSize: 11, color: text3, fontWeight: 600 }}>
+                {label}
+                <textarea
+                  value={editForm[key]}
+                  onChange={e => setEditForm(prev => ({ ...prev, [key]: e.target.value }))}
+                  placeholder={`${label} — mỗi dòng một mục`}
+                  style={recordTextareaStyle}
+                />
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Consensus result panel */}
       {showConsensus && (
