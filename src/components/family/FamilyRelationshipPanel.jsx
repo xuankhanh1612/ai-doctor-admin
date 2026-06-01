@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react'
 import { useApp } from '../../context/AppContext'
 import NavButtons from '../NavButtons.jsx'
+import { DEFAULT_FAMILY_MEMBERS as SHARED_DEFAULT_FAMILY_MEMBERS, loadFamilyMembers as loadSharedFamilyMembers } from './familyData.js'
 
 const STORAGE_KEY = 'cdoc_family_members'
 
@@ -52,7 +53,10 @@ const CONDITION_RULES = [
   { key: 'metabolic', regex: /tiểu đường|diabetes|huyết áp|hypertension|tim mạch|heart|stroke|đột quỵ/i, label: 'Cardio-metabolic', color: '#ffd54f', base: 18 },
 ]
 
-function loadMembers(patientId) {
+function loadMembers(patientId, storageOwnerId = 'guest') {
+  const sharedMembers = loadSharedFamilyMembers(patientId, storageOwnerId)
+  if (Array.isArray(sharedMembers) && sharedMembers.length > 0 && sharedMembers !== SHARED_DEFAULT_FAMILY_MEMBERS) return sharedMembers
+
   try {
     const all = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}')
     return Array.isArray(all[patientId]) ? all[patientId] : DEFAULT_MEMBERS
@@ -124,7 +128,7 @@ function calculateSimulation(members) {
   return { self, affected, nodes, edges, conditionHits, riskScore, logs }
 }
 
-export default function FamilyRelationshipPanel({ patientId = 'LXK-2024', onNext, onPrev, prevLabel }) {
+export default function FamilyRelationshipPanel({ patientId = 'LXK-2024', storageOwnerId = 'guest', onNext, onPrev, prevLabel, embedded = false, title = null }) {
   const { theme, lang, t } = useApp()
   const isDark = theme === 'dark'
   const [activeStage, setActiveStage] = useState('graph')
@@ -134,7 +138,7 @@ export default function FamilyRelationshipPanel({ patientId = 'LXK-2024', onNext
     { role: 'agent', agent: 'ReportAgent', text: 'Simulation ready. Ask about inheritance paths, hidden risk clusters, or screening priority.' },
   ])
 
-  const members = useMemo(() => loadMembers(patientId), [patientId])
+  const members = useMemo(() => loadMembers(patientId, storageOwnerId), [patientId, storageOwnerId])
   const simulation = useMemo(() => calculateSimulation(members), [members])
   const palette = {
     bg: isDark ? 'var(--bg2,#050816)' : '#f4f7fb',
@@ -159,13 +163,13 @@ export default function FamilyRelationshipPanel({ patientId = 'LXK-2024', onNext
   }
 
   return (
-    <div style={{ padding: '24px clamp(16px,3vw,32px)', background: palette.bg, minHeight: '100%', color: palette.text }}>
+    <div style={{ padding: embedded ? 0 : '24px clamp(16px,3vw,32px)', background: embedded ? 'transparent' : palette.bg, minHeight: '100%', color: palette.text }}>
       <header style={{ marginBottom: 20 }}>
         <div style={{ fontSize: 11, letterSpacing: '.18em', color: '#00e5ff', fontWeight: 800, textTransform: 'uppercase', fontFamily: 'monospace' }}>
           Zep-style temporal GraphRAG · MiroFish-inspired AI Agents
         </div>
         <h1 style={{ margin: '8px 0 8px', fontSize: 'clamp(24px,3vw,36px)', lineHeight: 1.1 }}>
-          🧬 {t('familyRelationshipTitle')}
+          🧬 {title || t('familyRelationshipTitle')}
         </h1>
         <p style={{ margin: 0, maxWidth: 980, color: palette.text2, lineHeight: 1.7, fontSize: 14 }}>
           {lang === 'vi'
@@ -211,7 +215,7 @@ export default function FamilyRelationshipPanel({ patientId = 'LXK-2024', onNext
         <DeepInteraction c={palette} personas={PERSONAS} chatAgent={chatAgent} setChatAgent={setChatAgent} prompt={prompt} setPrompt={setPrompt} messages={messages} onSend={sendMessage} />
       </section>
 
-      <NavButtons onNext={onNext} nextLabel={`${t('next')} →`} onPrev={onPrev} prevLabel={prevLabel} />
+      {!embedded && <NavButtons onNext={onNext} nextLabel={`${t('next')} →`} onPrev={onPrev} prevLabel={prevLabel} />}
     </div>
   )
 }
