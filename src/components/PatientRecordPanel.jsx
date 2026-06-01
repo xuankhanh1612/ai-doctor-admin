@@ -601,6 +601,25 @@ export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selected
     setIsEditingRecord(false)
   }
 
+  const startEditRecord = () => {
+    setEditForm(serializePatientForEdit(patient))
+    setIsEditingRecord(true)
+  }
+
+  const cancelEditRecord = () => {
+    setEditForm(serializePatientForEdit(patient))
+    setIsEditingRecord(false)
+  }
+
+  const saveEditedRecord = () => {
+    const nextPatient = buildEditedPatient(patient, editForm)
+    setPatient(nextPatient)
+    setEditForm(serializePatientForEdit(nextPatient))
+    setConsensusData(null)
+    setShowConsensus(false)
+    setIsEditingRecord(false)
+  }
+
   const surfaceBg = isDark ? 'var(--bg2)' : '#ffffff'
   const borderCol = isDark ? 'var(--border)' : 'rgba(0,0,0,0.08)'
   const text2     = isDark ? 'var(--text2)' : '#555'
