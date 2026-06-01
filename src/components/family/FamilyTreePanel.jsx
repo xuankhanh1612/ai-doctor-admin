@@ -16,67 +16,86 @@ const formatDob = (dob) => {
 }
 
 // ─── Build patient record for Patient Record Visualizer ───────────────────
-const buildMemberRecord = (member) => ({
-  id: 'FM-' + member.id,
-  name: member.name,
-  age: member.age,
-  gender: member.gender || (member.relation === 'mother' || member.relation === 'spouse' ? 'F' : 'M'),
-  blood_type: member.blood_type || member.medicalRecord?.blood_type || '—',
-  dob: member.dob || member.medicalRecord?.dob || (member.age ? `${new Date().getFullYear() - member.age}-01-01` : '—'),
-  avatar_initials: member.name.split(' ').slice(-2).map(w => w[0]).join('').toUpperCase(),
-
-  diseases: (member.conditions || [])
-    .filter(c => !isNonDiseaseCondition(c))
-    .map((c, i) => ({
-      id: 'd'+i, name: c,
-      icd10: /ung thư|cancer/i.test(c) ? 'C80.1' : /tiểu đường|diabetes/i.test(c) ? 'E11' : /huyết áp|hypertension/i.test(c) ? 'I10' : 'Z00.0',
+const buildMemberRecord = (member) => {
+  const derivedDiseases = (member.conditions || [])
+    .filter(condition => !isNonDiseaseCondition(condition))
+    .map((condition, i) => ({
+      id: 'd' + i,
+      name: condition,
+      icd10: /ung thư|cancer/i.test(condition) ? 'C80.1' : /tiểu đường|diabetes/i.test(condition) ? 'E11' : /huyết áp|hypertension/i.test(condition) ? 'I10' : 'Z00.0',
       onset: '—',
-      severity: /ung thư|cancer/i.test(c) ? 'critical' : /tiểu đường|diabetes|huyết áp|hypertension/i.test(c) ? 'moderate' : 'mild',
+      severity: /ung thư|cancer/i.test(condition) ? 'critical' : /tiểu đường|diabetes|huyết áp|hypertension/i.test(condition) ? 'moderate' : 'mild',
+    }))
+
+  const derivedRecord = {
+    id: 'FM-' + member.id,
+    familyMemberId: member.id,
+    name: member.name,
+    age: member.age,
+    gender: member.gender || (member.relation === 'mother' || member.relation === 'spouse' ? 'F' : 'M'),
+    blood_type: member.blood_type || member.medicalRecord?.blood_type || '—',
+    dob: member.dob || member.medicalRecord?.dob || (member.age ? `${new Date().getFullYear() - member.age}-01-01` : '—'),
+    avatar_initials: member.name.split(' ').slice(-2).map(w => w[0]).join('').toUpperCase(),
+    diseases: derivedDiseases,
+    symptoms: [],
+    labs: [],
+    imaging: [],
+    medications: [],
+    allergies: [],
+    genomics: [],
+    timeline: [
+      { id:'t1', date:'—', event:`Thành viên gia đình · ${FAMILY_RELATION_META[member.relation]?.label?.vi || member.relation}`, type:'diagnosis' },
+      ...(member.note ? [{ id:'t2', date:'—', event: member.note, type:'consult' }] : []),
+      ...(member.alive === false ? [{ id:'t3', date:'—', event:'Đã mất', type:'consult' }] : []),
+    ],
+    risk_factors: derivedDiseases.map((d, i) => ({
+      id: 'r' + i,
+      name: d.name,
+      weight: /ung thư|cancer/i.test(d.name) ? 85 : /tiểu đường|diabetes|huyết áp|hypertension/i.test(d.name) ? 55 : 40,
+      category: /ung thư|cancer/i.test(d.name) ? 'genetic' : 'chronic',
     })),
+  }
 
-  symptoms: /ung thư|cancer/i.test((member.conditions || []).join(' '))
-    ? [
-        { id:'s1', name:'Mệt mỏi kéo dài',             severity:6, onset:'—', active: member.alive !== false },
-        { id:'s2', name:'Sụt cân không rõ nguyên nhân', severity:5, onset:'—', active: member.alive !== false },
-      ]
-    : [],
-
-  labs: /ung thư|cancer/i.test((member.conditions || []).join(' '))
-    ? [
-        { id:'l1', name:'CEA',    value:18,  unit:'ng/mL', ref_high:5,  date:'—', trend:'up', critical:true  },
-        { id:'l2', name:'CA19-9', value:120, unit:'U/mL',  ref_high:37, date:'—', trend:'up', critical:true  },
-      ]
-    : /tiểu đường|diabetes/i.test((member.conditions || []).join(' '))
-    ? [
-        { id:'l1', name:'HbA1c',  value:8.2, unit:'%',     ref_high:5.7, date:'—', trend:'up', critical:true  },
-        { id:'l2', name:'Glucose',value:210,  unit:'mg/dL', ref_high:100, date:'—', trend:'up', critical:false },
-      ]
-    : [],
-
-  imaging: [], medications: [], allergies: [],
-
-  genomics: /ung thư|cancer/i.test((member.conditions || []).join(' '))
-    ? [{ id:'g1', gene:'TP53', variant:'Suspected', effect:'Unknown', clinical_sig:'VUS', vaf:null, assoc:'Liên quan ung thư gia đình' }]
-    : [],
-
-  timeline: [
-    { id:'t1', date:'—', event:`Thành viên gia đình · ${FAMILY_RELATION_META[member.relation]?.label?.vi || member.relation}`, type:'diagnosis' },
-    ...(member.medicalRecord?.diagnoses?.map((d,i) => ({ id:'td'+i, date:'—', event:d, type:'diagnosis', severity: /ung thư|cancer|hcc|nsclc/i.test(d)?'critical':'moderate' })) || []),
-    ...(member.note ? [{ id:'t2', date:'—', event: member.note, type:'consult' }] : []),
-    ...(member.alive === false ? [{ id:'t3', date:'—', event:'Đã mất', type:'consult' }] : []),
-  ],
-
-  risk_factors: (member.conditions || [])
-    .filter(c => !isNonDiseaseCondition(c))
-    .map((c, i) => ({
-      id: 'r'+i, name: c,
-      weight: /ung thư|cancer/i.test(c) ? 85 : /tiểu đường|diabetes|huyết áp|hypertension/i.test(c) ? 55 : 40,
-      category: /ung thư|cancer/i.test(c) ? 'genetic' : 'chronic',
-    })),
-})
+  return {
+    ...derivedRecord,
+    ...(member.medicalRecord || {}),
+    id: member.medicalRecord?.id || derivedRecord.id,
+    familyMemberId: member.id,
+    name: member.name,
+    age: member.age,
+    gender: derivedRecord.gender,
+    blood_type: derivedRecord.blood_type,
+    dob: derivedRecord.dob,
+    avatar_initials: member.medicalRecord?.avatar_initials || derivedRecord.avatar_initials,
+  }
+}
 
 // ─── Empty form state ──────────────────────────────────────────────────────
-const EMPTY_FORM = { name:'', age:'', gender:'M', relation:'child', conditions:'', alive:true, note:'' }
+const EMPTY_FORM = { name:'', age:'', gender:'M', relation:'child', dob:'', blood_type:'', conditions:'', symptoms:'', labs:'', imaging:'', medications:'', allergies:'', genomics:'', timeline:'', risk_factors:'', alive:true, note:'' }
+const splitCommaItems = value => String(value || '').split(',').map(item => item.trim()).filter(Boolean)
+const joinMedicalItems = (items, key = 'name') => (
+  Array.isArray(items) ? items.map(item => item?.[key] || item?.name || item).filter(Boolean).join(', ') : ''
+)
+const buildFamilyMedicalRecord = (memberId, form, conditions) => ({
+  id: `FM-${memberId}`,
+  familyMemberId: memberId,
+  name: form.name.trim(),
+  age: parseInt(form.age, 10) || 0,
+  gender: form.gender,
+  dob: form.dob.trim() || '—',
+  blood_type: form.blood_type.trim() || '—',
+  avatar_initials: form.name.split(' ').slice(-2).map(w => w[0]).join('').toUpperCase(),
+  diseases: conditions.filter(condition => !isNonDiseaseCondition(condition)).map((name, i) => ({ id: `fd-${i}`, name, icd10: 'Z00.0', onset: '—', severity: /ung thư|cancer|hcc|nsclc/i.test(name) ? 'critical' : 'moderate' })),
+  symptoms: splitCommaItems(form.symptoms).map((name, i) => ({ id: `fs-${i}`, name, severity: 5, onset: '—', active: true })),
+  labs: splitCommaItems(form.labs).map((name, i) => ({ id: `fl-${i}`, name, value: '—', unit: '', date: '—', trend: 'stable', critical: false })),
+  imaging: splitCommaItems(form.imaging).map((type, i) => ({ id: `fi-${i}`, type, date: '—', modality: '—', ai_confidence: 0, findings: '', impression: '' })),
+  medications: splitCommaItems(form.medications).map((name, i) => ({ id: `fm-${i}`, name, dose: '—', status: 'active', category: 'other' })),
+  allergies: splitCommaItems(form.allergies).map((substance, i) => ({ id: `fa-${i}`, substance, reaction: '—', severity: 'moderate', verified: false })),
+  genomics: splitCommaItems(form.genomics).map((name, i) => ({ id: `fg-${i}`, gene: name.split('·')[0].trim(), variant: name.split('·')[1]?.trim() || '—', effect: '—', clinical_sig: '—' })),
+  timeline: splitCommaItems(form.timeline).map((event, i) => ({ id: `ft-${i}`, date: '—', event, type: 'consult' })),
+  risk_factors: splitCommaItems(form.risk_factors).map((name, i) => ({ id: `fr-${i}`, name, weight: 50, category: 'clinical' })),
+  diagnoses: conditions,
+})
 
 // ─── Member Card ───────────────────────────────────────────────────────────
 function MemberCard({ member, lang, isDark, c, onViewRecord, onEdit, onDelete }) {
@@ -252,6 +271,18 @@ function MemberFormModal({ mode, initialForm, onSave, onClose, lang, isDark, c }
               <option value="F">{lang === 'vi' ? 'Nữ' : 'Female'}</option>
             </select>
           </Field>
+          <Field label={lang === 'vi' ? 'Ngày sinh' : 'Date of birth'}>
+            <input
+              type="date" value={localForm.dob} onChange={e => setLocalForm(p => ({ ...p, dob:e.target.value }))}
+              style={inputStyle}
+            />
+          </Field>
+          <Field label={lang === 'vi' ? 'Nhóm máu' : 'Blood type'}>
+            <input
+              value={localForm.blood_type} onChange={e => setLocalForm(p => ({ ...p, blood_type:e.target.value }))}
+              placeholder="O+" style={inputStyle}
+            />
+          </Field>
         </div>
 
         <Field label={lang === 'vi' ? 'Quan hệ với bệnh nhân' : 'Relation to Patient'}>
@@ -273,6 +304,28 @@ function MemberFormModal({ mode, initialForm, onSave, onClose, lang, isDark, c }
             {lang === 'vi' ? 'VD: Ung thư phổi, Tiểu đường, Khỏe mạnh' : 'E.g: Lung Cancer, Diabetes, Healthy'}
           </div>
         </Field>
+
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+          {[
+            ['symptoms', lang === 'vi' ? 'Triệu chứng' : 'Symptoms'],
+            ['labs', lang === 'vi' ? 'Xét nghiệm' : 'Labs'],
+            ['imaging', lang === 'vi' ? 'Hình ảnh' : 'Imaging'],
+            ['medications', lang === 'vi' ? 'Thuốc' : 'Medications'],
+            ['allergies', lang === 'vi' ? 'Dị ứng' : 'Allergies'],
+            ['genomics', lang === 'vi' ? 'Genomics' : 'Genomics'],
+            ['timeline', lang === 'vi' ? 'Lịch sử' : 'Timeline'],
+            ['risk_factors', lang === 'vi' ? 'Yếu tố rủi ro' : 'Risk factors'],
+          ].map(([key, label]) => (
+            <Field key={key} label={`${label} (${lang === 'vi' ? 'phân cách bằng dấu phẩy' : 'comma-separated'})`}>
+              <textarea
+                value={localForm[key]}
+                onChange={e => setLocalForm(p => ({ ...p, [key]: e.target.value }))}
+                placeholder={lang === 'vi' ? `${label} 1, ${label} 2` : `${label} 1, ${label} 2`}
+                style={{ ...inputStyle, minHeight:64, resize:'vertical', lineHeight:1.45 }}
+              />
+            </Field>
+          ))}
+        </div>
 
         <Field label={lang === 'vi' ? 'Ghi chú thêm' : 'Additional Notes'}>
           <input
@@ -369,12 +422,23 @@ export default function FamilyTreePanel({ patientId, storageOwnerId = 'guest', o
   }
 
   const openEdit = (member) => {
+    const medicalRecord = member.medicalRecord || {}
     setForm({
       name:       member.name,
       age:        member.age?.toString() || '',
       gender:     member.gender || 'M',
       relation:   member.relation,
+      dob:        member.dob || medicalRecord.dob || '',
+      blood_type: member.blood_type || medicalRecord.blood_type || '',
       conditions: (member.conditions || []).join(', '),
+      symptoms:   joinMedicalItems(medicalRecord.symptoms),
+      labs:       joinMedicalItems(medicalRecord.labs),
+      imaging:    joinMedicalItems(medicalRecord.imaging, 'type'),
+      medications:joinMedicalItems(medicalRecord.medications),
+      allergies:  Array.isArray(medicalRecord.allergies) ? medicalRecord.allergies.map(a => a.substance || a.name || a).filter(Boolean).join(', ') : '',
+      genomics:   Array.isArray(medicalRecord.genomics) ? medicalRecord.genomics.map(g => g.gene ? `${g.gene}${g.variant ? ` · ${g.variant}` : ''}` : (g.name || g)).filter(Boolean).join(', ') : '',
+      timeline:   joinMedicalItems(medicalRecord.timeline, 'event'),
+      risk_factors: joinMedicalItems(medicalRecord.risk_factors),
       alive:      member.alive !== false,
       note:       member.note || '',
     })
@@ -383,19 +447,24 @@ export default function FamilyTreePanel({ patientId, storageOwnerId = 'guest', o
   }
 
   const handleSave = (localForm) => {
+    const memberId = modal === 'add' ? `fm-${Date.now()}` : editId
+    const conditions = splitCommaItems(localForm.conditions).length ? splitCommaItems(localForm.conditions) : ['Chưa rõ tiền sử']
     const parsed = {
       name:       localForm.name.trim(),
-      age:        parseInt(localForm.age) || 0,
+      age:        parseInt(localForm.age, 10) || 0,
       gender:     localForm.gender,
       relation:   localForm.relation,
-      conditions: localForm.conditions.split(',').map(s => s.trim()).filter(Boolean).length ? localForm.conditions.split(',').map(s => s.trim()).filter(Boolean) : ['Chưa rõ tiền sử'],
+      dob:        localForm.dob.trim(),
+      blood_type: localForm.blood_type.trim(),
+      conditions,
+      medicalRecord: buildFamilyMedicalRecord(memberId, localForm, conditions),
       alive:      localForm.alive,
       note:       localForm.note.trim(),
     }
     if (!parsed.name) return
 
     if (modal === 'add') {
-      setMembers(prev => [...prev, { id:`fm-${Date.now()}`, ...parsed }])
+      setMembers(prev => [...prev, { id: memberId, ...parsed }])
     } else {
       setMembers(prev => prev.map(m => m.id === editId ? { ...m, ...parsed } : m))
     }
