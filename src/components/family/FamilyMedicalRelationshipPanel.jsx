@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react'
 import { useApp } from '../../context/AppContext'
 import NavButtons from '../NavButtons.jsx'
+import FamilyRelationshipPanel from './FamilyRelationshipPanel.jsx'
 import { CONDITION_COLORS, DEFAULT_FAMILY_MEMBERS, RELATION_META, isNonDiseaseCondition, loadFamilyMembers } from './familyData.js'
 
 // Backward-compatible alias for deployed/minified code paths that referenced the previous constant name.
@@ -152,6 +153,7 @@ export default function FamilyMedicalRelationshipPanel({ patientId = PATIENT_ID,
   const isDark = theme === 'dark'
   const [activeStage, setActiveStage] = useState(0)
   const [selectedAgent, setSelectedAgent] = useState(AGENT_ROLES[0].id)
+  const [activeTab, setActiveTab] = useState('medical')
   const members = useMemo(() => loadFamilyMembers(patientId, storageOwnerId) || DEFAULT_FAMILY_MEMBERS, [patientId, storageOwnerId])
   const model = useMemo(() => createSimulationModel(members), [members])
   const selectedAgentProfile = AGENT_ROLES.find(agent => agent.id === selectedAgent) || AGENT_ROLES[0]
@@ -175,29 +177,68 @@ export default function FamilyMedicalRelationshipPanel({ patientId = PATIENT_ID,
       : `Recommendation: prioritize genetic counseling, low-dose chest CT, liver/AFP markers, and append new episodes to the memory graph after each visit.`,
   ]
 
+  const relationshipTabs = [
+    { id: 'medical', label: t('familyRelationshipTitle') },
+    { id: 'inference', label: t('familyRelationshipInference') },
+  ]
+
   return (
     <div style={{ padding:28, display:'flex', flexDirection:'column', gap:20 }}>
       <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', flexWrap:'wrap', gap:14 }}>
         <div>
           <h2 style={{ fontSize:22, fontWeight:800, color:c.text, margin:0 }}>
-            🧬 {t('familyRelationshipTitle')}
+            🧬 {activeTab === 'medical' ? t('familyRelationshipTitle') : t('familyRelationshipInference')}
           </h2>
           <p style={{ color:c.text2, fontSize:12, marginTop:6, maxWidth:820, lineHeight:1.6 }}>
-            {lang === 'vi'
-              ? 'Trang mô phỏng mối quan hệ tiền sử bệnh án gia đình từ dữ liệu đã nhập ở Family Medical Tree, lấy cảm hứng từ Zep temporal context graph và vòng đời mô phỏng 5 giai đoạn của MiroFish.'
-              : 'Simulates family medical-history relationships from Family Medical Tree inputs, inspired by Zep temporal context graphs and MiroFish’s five-stage simulation lifecycle.'}
+            {activeTab === 'medical'
+              ? (lang === 'vi'
+                ? 'Trang mô phỏng mối quan hệ tiền sử bệnh án gia đình từ dữ liệu đã nhập ở Family Medical Tree, lấy cảm hứng từ Zep temporal context graph và vòng đời mô phỏng 5 giai đoạn của MiroFish.'
+                : 'Simulates family medical-history relationships from Family Medical Tree inputs, inspired by Zep temporal context graphs and MiroFish’s five-stage simulation lifecycle.')
+              : (lang === 'vi'
+                ? 'Tab suy luận dùng giao diện FamilyRelationshipPanel để phân tích graph, agent personas và kịch bản tầm soát dựa trên dữ liệu gia đình hiện có.'
+                : 'This inference tab uses the FamilyRelationshipPanel view to analyze the graph, agent personas, and screening scenarios from the current family data.')}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => setActiveStage(stage => (stage + 1) % LIFECYCLE_STAGES.length)}
-          style={{ padding:'10px 16px', borderRadius:10, border:'1px solid rgba(0,229,255,0.3)', background:'linear-gradient(135deg,rgba(0,229,255,.12),rgba(156,111,255,.14))', color:'#00e5ff', fontWeight:800, cursor:'pointer', fontFamily:'inherit', fontSize:12 }}
-        >
-          ▶ {lang === 'vi' ? 'Chạy bước mô phỏng' : 'Run simulation step'}
-        </button>
+        <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap', justifyContent:'flex-end' }}>
+          <div role="tablist" aria-label="Family relationship views" style={{ display:'flex', gap:6, padding:4, border:`1px solid ${c.border}`, borderRadius:999, background:c.surface }}>
+            {relationshipTabs.map(tab => {
+              const isActive = activeTab === tab.id
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={isActive}
+                  onClick={() => setActiveTab(tab.id)}
+                  style={{ padding:'9px 13px', borderRadius:999, border:`1px solid ${isActive ? 'rgba(0,229,255,.42)' : 'transparent'}`, background:isActive ? 'rgba(0,229,255,.12)' : 'transparent', color:isActive ? '#00e5ff' : c.text2, fontWeight:800, cursor:'pointer', fontFamily:'inherit', fontSize:12, whiteSpace:'nowrap' }}
+                >
+                  {tab.label}
+                </button>
+              )
+            })}
+          </div>
+          {activeTab === 'medical' && (
+            <button
+              type="button"
+              onClick={() => setActiveStage(stage => (stage + 1) % LIFECYCLE_STAGES.length)}
+              style={{ padding:'10px 16px', borderRadius:10, border:'1px solid rgba(0,229,255,0.3)', background:'linear-gradient(135deg,rgba(0,229,255,.12),rgba(156,111,255,.14))', color:'#00e5ff', fontWeight:800, cursor:'pointer', fontFamily:'inherit', fontSize:12 }}
+            >
+              ▶ {lang === 'vi' ? 'Chạy bước mô phỏng' : 'Run simulation step'}
+            </button>
+          )}
+        </div>
       </div>
 
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(4,minmax(150px,1fr))', gap:12 }}>
+      {activeTab === 'inference' ? (
+        <FamilyRelationshipPanel
+          patientId={patientId}
+          storageOwnerId={storageOwnerId}
+          embedded
+          title={t('familyRelationshipInference')}
+        />
+      ) : (
+        <>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(4,minmax(150px,1fr))', gap:12 }}>
         {[
           { label: lang === 'vi' ? 'Memory graph' : 'Memory graph', value: `${model.edges.length} edges`, color:'#00e5ff' },
           { label: lang === 'vi' ? 'Điểm di truyền' : 'Hereditary score', value: `${model.hereditaryScore}/100`, color:'#ff5252' },
@@ -332,6 +373,9 @@ export default function FamilyMedicalRelationshipPanel({ patientId = PATIENT_ID,
           </div>
         </div>
       </div>
+
+        </>
+      )}
 
       <NavButtons onNext={onNext} nextLabel={`${t('next')} →`} onPrev={onPrev} prevLabel={prevLabel} />
     </div>

@@ -49,6 +49,7 @@ export default function Sidebar({ active, onNavigate }) {
     { id: 'statAnalysis', label: t('statAnalysis'), step: '11' },
     { id: 'swarm',      label: t('swarmCouncil'),    step: '12' },
     { id: 'consensus', label: t('consensus'),       step: '13' },
+    { id: 'protein3d', label: t('protein3d'),       step: '14' },
   ]
 
   const ADMIN_STEPS = user?.isAdmin ? [
