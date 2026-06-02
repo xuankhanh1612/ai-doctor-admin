@@ -119,23 +119,35 @@ const API_BASE =
   import.meta.env.VITE_CONSENSUS_API_URL || 'https://ai-doctor-engine.vercel.app'
 
 // ─── Build consensus payload from patient data ────────────────────────────
+const finiteNumber = (value, fallback = 0) => {
+  const number = Number(value)
+  return Number.isFinite(number) ? number : fallback
+}
+
+const clampConfidence = (value, fallback = 0.55) => {
+  const number = finiteNumber(value, fallback)
+  return Math.min(Math.max(number, 0.01), 0.99)
+}
+
 function buildConsensusPayload(patient) {
   const labConfidence = () => {
     const criticals = (patient.labs || []).filter(l => l.critical).length
-    return Math.min(0.60 + criticals * 0.06, 0.97)
+    return clampConfidence(0.60 + criticals * 0.06, 0.60)
   }
   const imagingConfidence = () => {
-    const avg = (patient.imaging || []).reduce((s, i) => s + i.ai_confidence, 0) / ((patient.imaging || []).length || 1)
-    return avg / 100
+    const imaging = patient.imaging || []
+    const total = imaging.reduce((sum, item) => sum + finiteNumber(item?.ai_confidence, 82), 0)
+    const avg = total / (imaging.length || 1)
+    return clampConfidence(avg / 100, 0.82)
   }
   const genomicsConfidence = () => {
     const pathogenic = (patient.genomics || []).filter(g => g.clinical_sig?.includes('Pathogenic')).length
-    return Math.min(0.55 + pathogenic * 0.1, 0.95)
+    return clampConfidence(0.55 + pathogenic * 0.1, 0.55)
   }
   const symptomsConfidence = () => {
     const active = (patient.symptoms || []).filter(s => s.active)
-    const avgSev = active.reduce((s, x) => s + x.severity, 0) / (active.length || 1)
-    return Math.min(0.4 + avgSev * 0.05, 0.90)
+    const avgSev = active.reduce((sum, item) => sum + finiteNumber(item?.severity, 5), 0) / (active.length || 1)
+    return clampConfidence(0.4 + avgSev * 0.05, 0.65)
   }
   const criticalDisease = (patient.diseases || []).find(d => d.severity === 'critical')
   const mainDiagnosis = criticalDisease?.name || (patient.diseases?.[0]?.name) || 'Unknown'
@@ -153,6 +165,38 @@ function buildConsensusPayload(patient) {
       { agent_id: 'pathology-agent-v1',specialty: 'pathology', diagnosis: mainDiagnosis, confidence: symptomsConfidence(),  icd10_code: mainICD },
     ],
   }
+}
+
+const buildLocalConsensusResponse = (payload, error) => {
+  const predictions = payload.predictions || []
+  const avgConfidence = predictions.reduce((sum, prediction) => sum + clampConfidence(prediction.confidence), 0) / (predictions.length || 1)
+  const diagnosis = predictions[0]?.diagnosis || 'Sample patient review'
+  const recommendation = error
+    ? `Local sample analysis is shown because the Consensus Engine is unavailable: ${error.message || error}`
+    : 'Local sample analysis generated for temporary demo editing.'
+
+  const resultFor = (method, multiplier, riskLevel = 'high') => ({
+    method,
+    diagnosis,
+    fused_confidence: clampConfidence(avgConfidence * multiplier, avgConfidence),
+    agreement_score: clampConfidence(0.82 + predictions.length * 0.02, 0.88),
+    risk_level: riskLevel,
+    recommendation,
+    requires_doctor_review: true,
+    agent_weights: predictions.map(prediction => ({
+      agent_id: prediction.agent_id,
+      confidence: clampConfidence(prediction.confidence),
+    })),
+  })
+
+  const all_results = {
+    bayesian: resultFor('bayesian', 1, 'high'),
+    weighted: resultFor('weighted', 0.97, 'high'),
+    majority: resultFor('majority', 0.93, 'moderate'),
+    graph: resultFor('graph', 0.95, 'high'),
+  }
+
+  return { result: all_results.bayesian, all_results, local_fallback: true }
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
@@ -632,12 +676,15 @@ export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selected
 
   const copyEditFieldValue = async (key) => {
     const value = String(editForm?.[key] ?? '')
-    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(value).catch(() => copyWithFallback(value))
-    } else {
-      copyWithFallback(value)
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(value).catch(() => copyWithFallback(value))
+      } else {
+        copyWithFallback(value)
+      }
+    } finally {
+      window.requestAnimationFrame(() => focusEditField(key))
     }
-    window.requestAnimationFrame(() => focusEditField(key))
   }
 
   useEffect(() => {
@@ -744,7 +791,8 @@ export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selected
   async function runConsensus() {
     setCLoading(true); setCError(''); setShowConsensus(true)
     try {
-      const payload = buildConsensusPayload(patient)
+      const patientForConsensus = isEditingRecord ? buildEditedPatient(patient, editForm) : patient
+      const payload = buildConsensusPayload(patientForConsensus)
       const res = await fetch(`${API_BASE}/api/v1/consensus/compare`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
@@ -758,7 +806,13 @@ export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selected
       setConsensusData(data)
       setActiveMethod('bayesian')
     } catch (e) {
-      setCError(e.message)
+      const patientForConsensus = isEditingRecord ? buildEditedPatient(patient, editForm) : patient
+      const fallbackData = buildLocalConsensusResponse(buildConsensusPayload(patientForConsensus), e)
+      setConsensusData(fallbackData)
+      setActiveMethod('bayesian')
+      setCError(lang === 'vi'
+        ? 'Consensus Engine đang không phản hồi nên hệ thống hiển thị kết quả phân tích mẫu cục bộ để bạn vẫn có thể học thao tác.'
+        : 'Consensus Engine is unavailable, so a local sample analysis is shown for the guided workflow.')
     } finally {
       setCLoading(false)
     }
@@ -944,8 +998,8 @@ export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selected
               color: 'var(--amber)', fontSize: 12, lineHeight: 1.6, fontWeight: 600,
             }}>
               ⚠️ <b>{SAMPLE_PATIENT_DISPLAY_NAME}</b> — {lang === 'vi'
-                ? 'tài khoản Sample này chỉ dùng để copy/sao chép nhanh dữ liệu và chỉnh sửa tạm, giúp user học cách thao tác sửa dữ liệu tạm. Nút Lưu hồ sơ đã được khóa để không ghi đè dữ liệu sample gốc.'
-                : 'this Sample account is only for quickly copying data and temporary edits so users can learn temporary record editing. Save is disabled to protect the original sample data.'}
+                ? 'tài khoản Demo này chỉ dùng để copy/sao chép nhanh dữ liệu và chỉnh sửa tạm, giúp user học cách thao tác sửa dữ liệu tạm. Nút Lưu hồ sơ đã được khóa để không ghi đè dữ liệu Sample gốc.'
+                : 'this Demo/Sample account is only for quickly copying data and temporary edits so users can learn temporary record editing. Save is disabled to protect the original Sample data.'}
             </div>
           )}
 
@@ -963,7 +1017,7 @@ export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selected
                   <input
                     ref={setEditFieldRef(key)}
                     type="date"
-                    value={editForm[key]}
+                    value={/^\d{4}-\d{2}-\d{2}$/.test(editForm[key] || '') ? editForm[key] : ''}
                     onChange={e => setEditForm(prev => ({ ...prev, [key]: e.target.value }))}
                     className="record-guideline-input"
                     style={guidelineInputStyle}
