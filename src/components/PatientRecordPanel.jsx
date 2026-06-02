@@ -11,12 +11,14 @@ import { DEFAULT_FAMILY_MEMBERS, loadFamilyMembers, saveFamilyMembers } from './
 const PATIENT_RECORD_STORAGE_KEY = 'cdoc_patient_record_by_user'
 const patientRecordOwnerKey = ownerId => String(ownerId || 'guest').trim().toLowerCase() || 'guest'
 const clonePatientRecord = patient => JSON.parse(JSON.stringify(patient || LXK_PATIENT_RECORD))
+const SAMPLE_PATIENT_DISPLAY_NAME = 'Lê Xuân Khánh Sample'
 const isLxkDemoRecord = patient => patient?.id === LXK_PATIENT_RECORD.id && !patient?.familyMemberId
+const isDemoTemplatePatientRecord = patient => isLxkDemoRecord(patient) || patient?._isDemoTemplate
 const isPrimaryPatientRecord = patient => isLxkDemoRecord(patient) || patient?.familyMemberId === 'fm-3'
 const patientAvatarUrl = (patient, user) => isPrimaryPatientRecord(patient) ? (user?.avatar || patient?.avatar_url || '') : (patient?.avatar_url || '')
 const displayPatientName = patient => {
   const name = String(patient?.name || '').trim()
-  if (isLxkDemoRecord(patient) && !/\bDemo$/i.test(name)) return `${name} Demo`
+  if (isLxkDemoRecord(patient) && !/\bDemo$/i.test(name)) return SAMPLE_PATIENT_DISPLAY_NAME
   return name
 }
 
@@ -29,9 +31,11 @@ const patientInitialsFromName = name => String(name || 'Patient')
   .join('')
   .toUpperCase() || 'PT'
 
-const buildPrimaryPatientRecord = (patient, user, ownerId) => {
+const buildPrimaryPatientRecord = (patient, user, ownerId, { asSample = false } = {}) => {
   const ownerKey = patientRecordOwnerKey(ownerId).replace(/[^a-z0-9]+/gi, '-').toUpperCase()
-  const primaryName = String(user?.name || patient?.name || 'Patient').trim()
+  const primaryName = asSample
+    ? SAMPLE_PATIENT_DISPLAY_NAME
+    : String(user?.name || patient?.name || 'Patient').trim().replace(/\s+Sample$/i, '')
   return {
     ...patient,
     id: `PRIMARY-${ownerKey}`,
@@ -41,7 +45,7 @@ const buildPrimaryPatientRecord = (patient, user, ownerId) => {
     avatar_url: user?.avatar || patient?.avatar_url,
     avatar_initials: patientInitialsFromName(primaryName),
     _isPrimaryPatient: true,
-    _isDemoTemplate: patient?.id === LXK_PATIENT_RECORD.id,
+    _isDemoTemplate: asSample && patient?.id === LXK_PATIENT_RECORD.id,
   }
 }
 
@@ -117,23 +121,35 @@ const API_BASE =
   import.meta.env.VITE_CONSENSUS_API_URL || 'https://ai-doctor-engine.vercel.app'
 
 // ─── Build consensus payload from patient data ────────────────────────────
+const finiteNumber = (value, fallback = 0) => {
+  const number = Number(value)
+  return Number.isFinite(number) ? number : fallback
+}
+
+const clampConfidence = (value, fallback = 0.55) => {
+  const number = finiteNumber(value, fallback)
+  return Math.min(Math.max(number, 0.01), 0.99)
+}
+
 function buildConsensusPayload(patient) {
   const labConfidence = () => {
     const criticals = (patient.labs || []).filter(l => l.critical).length
-    return Math.min(0.60 + criticals * 0.06, 0.97)
+    return clampConfidence(0.60 + criticals * 0.06, 0.60)
   }
   const imagingConfidence = () => {
-    const avg = (patient.imaging || []).reduce((s, i) => s + i.ai_confidence, 0) / ((patient.imaging || []).length || 1)
-    return avg / 100
+    const imaging = patient.imaging || []
+    const total = imaging.reduce((sum, item) => sum + finiteNumber(item?.ai_confidence, 82), 0)
+    const avg = total / (imaging.length || 1)
+    return clampConfidence(avg / 100, 0.82)
   }
   const genomicsConfidence = () => {
     const pathogenic = (patient.genomics || []).filter(g => g.clinical_sig?.includes('Pathogenic')).length
-    return Math.min(0.55 + pathogenic * 0.1, 0.95)
+    return clampConfidence(0.55 + pathogenic * 0.1, 0.55)
   }
   const symptomsConfidence = () => {
     const active = (patient.symptoms || []).filter(s => s.active)
-    const avgSev = active.reduce((s, x) => s + x.severity, 0) / (active.length || 1)
-    return Math.min(0.4 + avgSev * 0.05, 0.90)
+    const avgSev = active.reduce((sum, item) => sum + finiteNumber(item?.severity, 5), 0) / (active.length || 1)
+    return clampConfidence(0.4 + avgSev * 0.05, 0.65)
   }
   const criticalDisease = (patient.diseases || []).find(d => d.severity === 'critical')
   const mainDiagnosis = criticalDisease?.name || (patient.diseases?.[0]?.name) || 'Unknown'
@@ -151,6 +167,38 @@ function buildConsensusPayload(patient) {
       { agent_id: 'pathology-agent-v1',specialty: 'pathology', diagnosis: mainDiagnosis, confidence: symptomsConfidence(),  icd10_code: mainICD },
     ],
   }
+}
+
+const buildLocalConsensusResponse = (payload, error) => {
+  const predictions = payload.predictions || []
+  const avgConfidence = predictions.reduce((sum, prediction) => sum + clampConfidence(prediction.confidence), 0) / (predictions.length || 1)
+  const diagnosis = predictions[0]?.diagnosis || 'Sample patient review'
+  const recommendation = error
+    ? `Local sample analysis is shown because the Consensus Engine is unavailable: ${error.message || error}`
+    : 'Local sample analysis generated for temporary demo editing.'
+
+  const resultFor = (method, multiplier, riskLevel = 'high') => ({
+    method,
+    diagnosis,
+    fused_confidence: clampConfidence(avgConfidence * multiplier, avgConfidence),
+    agreement_score: clampConfidence(0.82 + predictions.length * 0.02, 0.88),
+    risk_level: riskLevel,
+    recommendation,
+    requires_doctor_review: true,
+    agent_weights: predictions.map(prediction => ({
+      agent_id: prediction.agent_id,
+      confidence: clampConfidence(prediction.confidence),
+    })),
+  })
+
+  const all_results = {
+    bayesian: resultFor('bayesian', 1, 'high'),
+    weighted: resultFor('weighted', 0.97, 'high'),
+    majority: resultFor('majority', 0.93, 'moderate'),
+    graph: resultFor('graph', 0.95, 'high'),
+  }
+
+  return { result: all_results.bayesian, all_results, local_fallback: true }
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
@@ -267,6 +315,37 @@ const SECTION_STYLE = `
   }
   .section-content-panel {
     animation: sec-fade-in 0.22s ease;
+  }
+  .record-guideline-field {
+    position: relative;
+    padding: 9px;
+    border: 1px solid rgba(255,183,77,0.32);
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(255,183,77,0.13), rgba(0,229,255,0.045));
+    box-shadow: 0 0 0 1px rgba(255,183,77,0.08), 0 0 18px rgba(255,183,77,0.12);
+  }
+  .record-guideline-field::before {
+    content: '';
+    display: none;
+  }
+  .record-copy-button {
+    position: absolute; top: -10px; right: 10px;
+    padding: 3px 9px; border-radius: 999px; border: 1px solid rgba(255,183,77,0.92);
+    background: rgba(255,183,77,0.95); color: #1b1200;
+    font-size: 9px; font-family: var(--font-mono); font-weight: 900;
+    letter-spacing: .08em; cursor: pointer; line-height: 1;
+    box-shadow: 0 5px 14px rgba(255,183,77,0.22);
+  }
+  .record-copy-button:hover { transform: translateY(-1px); filter: brightness(1.05); }
+  .record-copy-button:active { transform: translateY(0); }
+  .record-guideline-input {
+    border-color: rgba(255,183,77,0.82) !important;
+    box-shadow: 0 0 0 2px rgba(255,183,77,0.14), 0 0 16px rgba(255,183,77,0.18) !important;
+    animation: record-guide-pulse 1.9s ease-in-out infinite;
+  }
+  @keyframes record-guide-pulse {
+    0%, 100% { box-shadow: 0 0 0 2px rgba(255,183,77,0.12), 0 0 14px rgba(255,183,77,0.14); }
+    50% { box-shadow: 0 0 0 3px rgba(255,183,77,0.26), 0 0 24px rgba(255,183,77,0.28); }
   }
   @keyframes sec-fade-in {
     from { opacity: 0; transform: translateY(6px); }
@@ -558,13 +637,16 @@ export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selected
   const { user } = useAuth()
   const isDark = theme === 'dark'
 
-  // Keep uploader hook subscribed and merge each user's uploaded images into Patient Record > Imaging.
+  // Keep uploader hook subscribed and merge uploads into the real primary patient, not the Sample demo record.
   const { patient: uploadedPatient } = useMedicalData({ lang })
 
   const ownerId = storageOwnerId || user?.email || 'guest'
   const mainPatient = useMemo(() => {
-    const savedOrTemplate = clonePatientRecord(loadSavedPatientRecord(ownerId) || LXK_PATIENT_RECORD)
-    const primaryPatient = buildPrimaryPatientRecord(savedOrTemplate, user, ownerId)
+    const savedRecord = loadSavedPatientRecord(ownerId)
+    const savedOrTemplate = clonePatientRecord(savedRecord || LXK_PATIENT_RECORD)
+    const hasUploadedRecords = !!uploadedPatient?._fromUpload
+    const shouldShowSample = !savedRecord && !hasUploadedRecords && savedOrTemplate.id === LXK_PATIENT_RECORD.id
+    const primaryPatient = buildPrimaryPatientRecord(savedOrTemplate, user, ownerId, { asSample: shouldShowSample })
     return mergeUploadedRecords(primaryPatient, uploadedPatient)
   }, [ownerId, uploadedPatient, user?.name, user?.avatar])
   const basePatient = selectedMember ? selectedMember : mainPatient
@@ -572,17 +654,53 @@ export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selected
   const [patient, setPatient] = useState(basePatient)
   const [isEditingRecord, setIsEditingRecord] = useState(false)
   const [editForm, setEditForm] = useState(() => serializePatientForEdit(basePatient))
+  const editFieldRefs = useRef({})
+
+  const setEditFieldRef = (key) => (node) => {
+    if (node) editFieldRefs.current[key] = node
+  }
+
+  const focusEditField = (key) => {
+    const el = editFieldRefs.current[key]
+    el?.focus?.()
+    el?.select?.()
+  }
+
+  const copyWithFallback = (value) => {
+    const textarea = document.createElement('textarea')
+    textarea.value = value
+    textarea.setAttribute('readonly', '')
+    textarea.style.position = 'fixed'
+    textarea.style.opacity = '0'
+    textarea.style.pointerEvents = 'none'
+    document.body.appendChild(textarea)
+    textarea.select()
+    document.execCommand('copy')
+    document.body.removeChild(textarea)
+  }
+
+  const copyEditFieldValue = async (key) => {
+    const value = String(editForm?.[key] ?? '')
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(value).catch(() => copyWithFallback(value))
+      } else {
+        copyWithFallback(value)
+      }
+    } finally {
+      window.requestAnimationFrame(() => focusEditField(key))
+    }
+  }
 
   useEffect(() => {
-    if (!selectedMember) {
+    if (!selectedMember && !isEditingRecord) {
       setPatient(mainPatient)
       setEditForm(serializePatientForEdit(mainPatient))
-      setIsEditingRecord(false)
       setConsensusData(null)
       setCError('')
       setShowConsensus(false)
     }
-  }, [mainPatient, selectedMember])
+  }, [isEditingRecord, mainPatient, selectedMember])
 
   // When a family member is passed in, switch to their data.
   useEffect(() => {
@@ -629,7 +747,7 @@ export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selected
   const [activeMethod, setActiveMethod]   = useState('bayesian')
   const [showConsensus, setShowConsensus] = useState(false)
   const isFromFamily = !!(selectedMember)
-  const isDemoRecord = isLxkDemoRecord(patient)
+  const isDemoRecord = isDemoTemplatePatientRecord(patient)
   const displayedPatientAvatar = patientAvatarUrl(patient, user)
   const canSaveEditedRecord = editForm.name.trim() && !isDemoRecord
 
@@ -665,16 +783,26 @@ export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selected
   const recordInputStyle = {
     width: '100%', padding: '9px 10px', borderRadius: 8,
     border: `1px solid ${borderCol}`, background: isDark ? 'rgba(255,255,255,0.04)' : '#fff',
-    color: 'var(--text)', fontFamily: 'inherit', fontSize: 12, boxSizing: 'border-box',
+    color: 'var(--text)', fontFamily: 'inherit', fontSize: 12, boxSizing: 'border-box', transition: 'border-color 0.18s, box-shadow 0.18s',
   }
   const recordTextareaStyle = { ...recordInputStyle, minHeight: 76, resize: 'vertical', lineHeight: 1.45 }
+  const guidelineInputStyle = { ...recordInputStyle, borderColor: 'rgba(255,183,77,0.82)', background: isDark ? 'rgba(255,183,77,0.08)' : '#fff8e1' }
+  const guidelineTextareaStyle = { ...recordTextareaStyle, borderColor: 'rgba(255,183,77,0.82)', background: isDark ? 'rgba(255,183,77,0.08)' : '#fff8e1' }
+  const guidelineLabelStyle = { display: 'flex', flexDirection: 'column', gap: 6, fontSize: 11, color: 'var(--amber)', fontWeight: 800 }
 
 
   // Run consensus analysis
   async function runConsensus() {
     setCLoading(true); setCError(''); setShowConsensus(true)
+    const patientForConsensus = isEditingRecord ? buildEditedPatient(patient, editForm) : patient
+    const payload = buildConsensusPayload(patientForConsensus)
     try {
-      const payload = buildConsensusPayload(patient)
+      if (isDemoRecord) {
+        setConsensusData(buildLocalConsensusResponse(payload))
+        setActiveMethod('bayesian')
+        return
+      }
+
       const res = await fetch(`${API_BASE}/api/v1/consensus/compare`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
@@ -688,7 +816,12 @@ export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selected
       setConsensusData(data)
       setActiveMethod('bayesian')
     } catch (e) {
-      setCError(e.message)
+      const fallbackData = buildLocalConsensusResponse(payload, e)
+      setConsensusData(fallbackData)
+      setActiveMethod('bayesian')
+      setCError(lang === 'vi'
+        ? 'Consensus Engine đang không phản hồi nên hệ thống hiển thị kết quả phân tích mẫu cục bộ để bạn vẫn có thể học thao tác.'
+        : 'Consensus Engine is unavailable, so a local sample analysis is shown for the guided workflow.')
     } finally {
       setCLoading(false)
     }
@@ -766,7 +899,7 @@ export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selected
               background: 'transparent', color: 'var(--cyan)', fontSize: 11,
               fontFamily: 'var(--font-mono)', cursor: 'pointer',
             }}
-          >← Back to Patient</button>
+          >{lang === 'vi' ? `← Back to Patient Guidelines: ${SAMPLE_PATIENT_DISPLAY_NAME}` : `← Back to Patient Guidelines: ${SAMPLE_PATIENT_DISPLAY_NAME}`}</button>
         </div>
       )}
 
@@ -846,7 +979,7 @@ export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selected
                 📋 SỬA HỒ SƠ BỆNH NHÂN
               </div>
               <div style={{ fontSize: 11, color: text3, marginTop: 4 }}>
-                {lang === 'vi' ? 'Nhập các mục lâm sàng, phân cách bằng dấu phẩy.' : 'Enter clinical items separated by commas.'}
+                {lang === 'vi' ? 'Guideline: các ô đang được viền vàng là nơi user có thể copy dữ liệu sample và thử chỉnh sửa tạm.' : 'Guideline: yellow-highlighted fields are where users can copy sample data and try temporary edits.'}
               </div>
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
@@ -873,9 +1006,9 @@ export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selected
               border: '1px solid rgba(255,183,77,0.35)', background: 'rgba(255,183,77,0.12)',
               color: 'var(--amber)', fontSize: 12, lineHeight: 1.6, fontWeight: 600,
             }}>
-              ⚠️ {lang === 'vi'
-                ? 'Tài khoản Demo này chỉ dùng để copy/sao chép nhanh dữ liệu và chỉnh sửa tạm, giúp user học cách thao tác sửa dữ liệu. Nút Lưu hồ sơ đã được khóa để không ghi đè dữ liệu demo gốc.'
-                : 'This Demo account is only for quickly copying data and temporary edits so users can learn record editing. Save is disabled to protect the original demo data.'}
+              ⚠️ <b>{SAMPLE_PATIENT_DISPLAY_NAME}</b> — {lang === 'vi'
+                ? 'tài khoản Demo này chỉ dùng để copy/sao chép nhanh dữ liệu và chỉnh sửa tạm, giúp user học cách thao tác sửa dữ liệu tạm. Nút Lưu hồ sơ đã được khóa để không ghi đè dữ liệu Sample gốc.'
+                : 'this Demo/Sample account is only for quickly copying data and temporary edits so users can learn temporary record editing. Save is disabled to protect the original Sample data.'}
             </div>
           )}
 
@@ -886,22 +1019,39 @@ export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selected
               ['dob', 'Ngày sinh'],
               ['blood_type', 'Nhóm máu'],
             ].map(([key, label]) => (
-              <label key={key} style={{ display: 'flex', flexDirection: 'column', gap: 5, fontSize: 11, color: text3, fontWeight: 600 }}>
+              <label key={key} className="record-guideline-field" style={guidelineLabelStyle}>
                 {label}
-                <input
-                  value={editForm[key]}
-                  onChange={e => setEditForm(prev => ({ ...prev, [key]: e.target.value }))}
-                  placeholder={label}
-                  style={recordInputStyle}
-                />
+                <button type="button" className="record-copy-button" onClick={() => copyEditFieldValue(key)}>Copy</button>
+                {key === 'dob' ? (
+                  <input
+                    ref={setEditFieldRef(key)}
+                    type="date"
+                    value={/^\d{4}-\d{2}-\d{2}$/.test(editForm[key] || '') ? editForm[key] : ''}
+                    onChange={e => setEditForm(prev => ({ ...prev, [key]: e.target.value }))}
+                    className="record-guideline-input"
+                    style={guidelineInputStyle}
+                  />
+                ) : (
+                  <input
+                    ref={setEditFieldRef(key)}
+                    value={editForm[key]}
+                    onChange={e => setEditForm(prev => ({ ...prev, [key]: e.target.value }))}
+                    placeholder={label}
+                    className="record-guideline-input"
+                    style={guidelineInputStyle}
+                  />
+                )}
               </label>
             ))}
-            <label style={{ display: 'flex', flexDirection: 'column', gap: 5, fontSize: 11, color: text3, fontWeight: 600 }}>
+            <label className="record-guideline-field" style={guidelineLabelStyle}>
               Giới tính
+              <button type="button" className="record-copy-button" onClick={() => copyEditFieldValue('gender')}>Copy</button>
               <select
+                ref={setEditFieldRef('gender')}
                 value={editForm.gender}
                 onChange={e => setEditForm(prev => ({ ...prev, gender: e.target.value }))}
-                style={recordInputStyle}
+                className="record-guideline-input"
+                style={guidelineInputStyle}
               >
                 <option value="M">Nam</option>
                 <option value="F">Nữ</option>
@@ -922,13 +1072,16 @@ export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selected
               ['timeline', 'Lịch sử điều trị'],
               ['risk_factors', 'Yếu tố rủi ro'],
             ].map(([key, label]) => (
-              <label key={key} style={{ display: 'flex', flexDirection: 'column', gap: 5, fontSize: 11, color: text3, fontWeight: 600 }}>
+              <label key={key} className="record-guideline-field" style={guidelineLabelStyle}>
                 {label}
+                <button type="button" className="record-copy-button" onClick={() => copyEditFieldValue(key)}>Copy</button>
                 <textarea
+                  ref={setEditFieldRef(key)}
                   value={editForm[key]}
                   onChange={e => setEditForm(prev => ({ ...prev, [key]: e.target.value }))}
                   placeholder={`${label} — phân cách bằng dấu phẩy`}
-                  style={recordTextareaStyle}
+                  className="record-guideline-input"
+                  style={guidelineTextareaStyle}
                 />
               </label>
             ))}
