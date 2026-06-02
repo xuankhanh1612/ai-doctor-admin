@@ -11,14 +11,15 @@ import { DEFAULT_FAMILY_MEMBERS, loadFamilyMembers, saveFamilyMembers } from './
 const PATIENT_RECORD_STORAGE_KEY = 'cdoc_patient_record_by_user'
 const patientRecordOwnerKey = ownerId => String(ownerId || 'guest').trim().toLowerCase() || 'guest'
 const clonePatientRecord = patient => JSON.parse(JSON.stringify(patient || LXK_PATIENT_RECORD))
+const SAMPLE_PATIENT_ID = 'LXK-SAMPLE-2024'
 const SAMPLE_PATIENT_DISPLAY_NAME = 'Lê Xuân Khánh Sample'
-const isLxkDemoRecord = patient => patient?.id === LXK_PATIENT_RECORD.id && !patient?.familyMemberId
+const isLxkDemoRecord = patient => patient?.id === SAMPLE_PATIENT_ID || (patient?.id === LXK_PATIENT_RECORD.id && !patient?.familyMemberId)
 const isDemoTemplatePatientRecord = patient => isLxkDemoRecord(patient) || patient?._isDemoTemplate
-const isPrimaryPatientRecord = patient => isLxkDemoRecord(patient) || patient?.familyMemberId === 'fm-3'
+const isPrimaryPatientRecord = patient => patient?.familyMemberId === 'fm-3' || patient?._isPrimaryPatient
 const patientAvatarUrl = (patient, user) => isPrimaryPatientRecord(patient) ? (user?.avatar || patient?.avatar_url || '') : (patient?.avatar_url || '')
 const displayPatientName = patient => {
   const name = String(patient?.name || '').trim()
-  if (isLxkDemoRecord(patient) && !/\bDemo$/i.test(name)) return SAMPLE_PATIENT_DISPLAY_NAME
+  if (isDemoTemplatePatientRecord(patient)) return SAMPLE_PATIENT_DISPLAY_NAME
   return name
 }
 
@@ -31,11 +32,19 @@ const patientInitialsFromName = name => String(name || 'Patient')
   .join('')
   .toUpperCase() || 'PT'
 
-const buildPrimaryPatientRecord = (patient, user, ownerId, { asSample = false } = {}) => {
+const buildSamplePatientRecord = () => ({
+  ...clonePatientRecord(LXK_PATIENT_RECORD),
+  id: SAMPLE_PATIENT_ID,
+  sourceDemoId: LXK_PATIENT_RECORD.id,
+  name: SAMPLE_PATIENT_DISPLAY_NAME,
+  avatar_initials: patientInitialsFromName(SAMPLE_PATIENT_DISPLAY_NAME),
+  _isDemoTemplate: true,
+  _isPrimaryPatient: false,
+})
+
+const buildPrimaryPatientRecord = (patient, user, ownerId) => {
   const ownerKey = patientRecordOwnerKey(ownerId).replace(/[^a-z0-9]+/gi, '-').toUpperCase()
-  const primaryName = asSample
-    ? SAMPLE_PATIENT_DISPLAY_NAME
-    : String(user?.name || patient?.name || 'Patient').trim().replace(/\s+Sample$/i, '')
+  const primaryName = String(user?.name || patient?.name || 'Patient').trim().replace(/\s+Sample$/i, '')
   return {
     ...patient,
     id: `PRIMARY-${ownerKey}`,
@@ -45,7 +54,7 @@ const buildPrimaryPatientRecord = (patient, user, ownerId, { asSample = false } 
     avatar_url: user?.avatar || patient?.avatar_url,
     avatar_initials: patientInitialsFromName(primaryName),
     _isPrimaryPatient: true,
-    _isDemoTemplate: asSample && patient?.id === LXK_PATIENT_RECORD.id,
+    _isDemoTemplate: false,
   }
 }
 
@@ -641,6 +650,7 @@ export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selected
   const { patient: uploadedPatient } = useMedicalData({ lang })
 
   const ownerId = storageOwnerId || user?.email || 'guest'
+  const samplePatient = useMemo(() => buildSamplePatientRecord(), [])
   const mainPatient = useMemo(() => {
     const savedRecord = loadSavedPatientRecord(ownerId)
     const savedOrTemplate = clonePatientRecord(savedRecord || LXK_PATIENT_RECORD)
@@ -649,7 +659,7 @@ export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selected
     const primaryPatient = buildPrimaryPatientRecord(savedOrTemplate, user, ownerId, { asSample: shouldShowSample })
     return mergeUploadedRecords(primaryPatient, uploadedPatient)
   }, [ownerId, uploadedPatient, user?.name, user?.avatar])
-  const basePatient = selectedMember ? selectedMember : mainPatient
+  const basePatient = selectedMember ? selectedMember : samplePatient
 
   const [patient, setPatient] = useState(basePatient)
   const [isEditingRecord, setIsEditingRecord] = useState(false)
@@ -694,13 +704,13 @@ export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selected
 
   useEffect(() => {
     if (!selectedMember && !isEditingRecord) {
-      setPatient(mainPatient)
-      setEditForm(serializePatientForEdit(mainPatient))
+      setPatient(samplePatient)
+      setEditForm(serializePatientForEdit(samplePatient))
       setConsensusData(null)
       setCError('')
       setShowConsensus(false)
     }
-  }, [isEditingRecord, mainPatient, selectedMember])
+  }, [isEditingRecord, samplePatient, selectedMember])
 
   // When a family member is passed in, switch to their data.
   useEffect(() => {
@@ -714,6 +724,13 @@ export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selected
       setShowConsensus(false)
     }
   }, [selectedMember])
+
+  useEffect(() => {
+    if (mainPatient?._records?.length || mainPatient?._hasUploadedImaging || mainPatient?._hasUploadedLabs) {
+      syncPatientRecordToFamily('LXK-2024', ownerId, mainPatient)
+    }
+  }, [mainPatient, ownerId])
+
   const [activeSection, setSection]       = useState('diseases')
   const [rippleId, setRippleId]           = useState(null)
   const [sectionKey, setSectionKey]       = useState(0)
@@ -887,8 +904,8 @@ export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selected
           </div>
           <button
             onClick={() => {
-              setPatient(mainPatient)
-              setEditForm(serializePatientForEdit(mainPatient))
+              setPatient(samplePatient)
+              setEditForm(serializePatientForEdit(samplePatient))
               setConsensusData(null)
               setShowConsensus(false)
               setIsEditingRecord(false)
