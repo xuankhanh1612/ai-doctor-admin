@@ -21,23 +21,55 @@ const displayPatientName = patient => {
 }
 
 
-const mergeUploadedImaging = (basePatient, uploadedPatient) => {
-  if (!uploadedPatient?.imaging?.length) return basePatient
-  const existing = basePatient.imaging || []
-  const existingIds = new Set(existing.map(item => item.id))
-  const uploadedImaging = uploadedPatient.imaging.filter(item => !existingIds.has(item.id))
-  if (!uploadedImaging.length) return basePatient
+const patientInitialsFromName = name => String(name || 'Patient')
+  .split(' ')
+  .filter(Boolean)
+  .slice(-2)
+  .map(w => w[0])
+  .join('')
+  .toUpperCase() || 'PT'
+
+const buildPrimaryPatientRecord = (patient, user, ownerId) => {
+  const ownerKey = patientRecordOwnerKey(ownerId).replace(/[^a-z0-9]+/gi, '-').toUpperCase()
+  const primaryName = String(user?.name || patient?.name || 'Patient').trim()
+  return {
+    ...patient,
+    id: `PRIMARY-${ownerKey}`,
+    sourceDemoId: patient?.id,
+    familyMemberId: 'fm-3',
+    name: primaryName,
+    avatar_url: user?.avatar || patient?.avatar_url,
+    avatar_initials: patientInitialsFromName(primaryName),
+    _isPrimaryPatient: true,
+    _isDemoTemplate: patient?.id === LXK_PATIENT_RECORD.id,
+  }
+}
+
+const mergeUploadedRecords = (basePatient, uploadedPatient) => {
+  if (!uploadedPatient) return basePatient
+
+  const existingImaging = basePatient.imaging || []
+  const existingImageIds = new Set(existingImaging.map(item => item.id))
+  const uploadedImaging = (uploadedPatient.imaging || []).filter(item => !existingImageIds.has(item.id))
+
+  const existingLabs = basePatient.labs || []
+  const existingLabIds = new Set(existingLabs.map(item => item.id))
+  const uploadedLabs = (uploadedPatient.labs || []).filter(item => !existingLabIds.has(item.id))
 
   const existingTimeline = basePatient.timeline || []
   const timelineIds = new Set(existingTimeline.map(item => item.id))
   const uploadedTimeline = (uploadedPatient.timeline || []).filter(item => !timelineIds.has(item.id))
 
+  if (!uploadedImaging.length && !uploadedLabs.length && !uploadedTimeline.length) return basePatient
+
   return {
     ...basePatient,
-    imaging: [...uploadedImaging, ...existing],
+    imaging: [...uploadedImaging, ...existingImaging],
+    labs: [...uploadedLabs, ...existingLabs],
     timeline: [...uploadedTimeline, ...existingTimeline],
     _records: uploadedPatient._records || [],
-    _hasUploadedImaging: true,
+    _hasUploadedImaging: uploadedImaging.length > 0,
+    _hasUploadedLabs: uploadedLabs.length > 0,
   }
 }
 
@@ -530,7 +562,11 @@ export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selected
   const { patient: uploadedPatient } = useMedicalData({ lang })
 
   const ownerId = storageOwnerId || user?.email || 'guest'
-  const mainPatient = useMemo(() => mergeUploadedImaging(clonePatientRecord(loadSavedPatientRecord(ownerId) || LXK_PATIENT_RECORD), uploadedPatient), [ownerId, uploadedPatient])
+  const mainPatient = useMemo(() => {
+    const savedOrTemplate = clonePatientRecord(loadSavedPatientRecord(ownerId) || LXK_PATIENT_RECORD)
+    const primaryPatient = buildPrimaryPatientRecord(savedOrTemplate, user, ownerId)
+    return mergeUploadedRecords(primaryPatient, uploadedPatient)
+  }, [ownerId, uploadedPatient, user?.name, user?.avatar])
   const basePatient = selectedMember ? selectedMember : mainPatient
 
   const [patient, setPatient] = useState(basePatient)
@@ -718,9 +754,8 @@ export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selected
           </div>
           <button
             onClick={() => {
-              const nextPatient = clonePatientRecord(loadSavedPatientRecord(ownerId) || LXK_PATIENT_RECORD)
-              setPatient(nextPatient)
-              setEditForm(serializePatientForEdit(nextPatient))
+              setPatient(mainPatient)
+              setEditForm(serializePatientForEdit(mainPatient))
               setConsensusData(null)
               setShowConsensus(false)
               setIsEditingRecord(false)

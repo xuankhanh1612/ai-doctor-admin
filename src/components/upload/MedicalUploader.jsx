@@ -27,13 +27,13 @@ const UPLOADER_TEXT = {
   vi: {
     delete: 'Xóa', deleteWithIcon: '🗑 Xóa', confirmDelete: 'Xóa hồ sơ này?',
     fileTooLarge: 'File "{name}" quá lớn (tối đa {max}MB)', unsupportedType: 'Định dạng không hỗ trợ: {type}', readError: 'Lỗi khi đọc file. Vui lòng thử lại.', unknownError: 'Không xác định', errorPrefix: 'Lỗi',
-    title: 'Hồ Sơ Y Tế', subtitle: 'Upload X-Ray · CT · MRI · PDF · Ảnh hồ sơ · Lưu local vĩnh viễn', upload: 'Tải lên', camera: 'Camera', library: 'Thư viện',
+    title: 'Hồ Sơ Y Tế', subtitle: 'Upload X-Ray · CT · MRI · PDF · Ảnh hồ sơ · Lưu local vĩnh viễn', upload: 'Tải lên', camera: 'Camera', cameraStarting: 'Đang mở camera…', capturePhoto: 'Chụp ảnh', closeCamera: 'Đóng camera', cameraHelp: 'Camera thật đang mở. Canh khung hồ sơ rồi nhấn Chụp ảnh.', library: 'Thư viện',
     apiKeyPrompt: 'Nhập Anthropic API key để phân tích AI (lưu local, không gửi server):', save: 'Lưu', processing: 'Đang xử lý file…', dragDrop: 'Kéo thả file vào đây', clickSelect: 'hoặc nhấn để chọn file', pdfRecord: 'PDF hồ sơ', photoRecord: 'Ảnh chụp', maxHint: 'Tối đa 20MB · JPG, PNG, WebP, PDF', recentRecords: 'Hồ sơ gần đây', viewAll: 'Xem tất cả {count} hồ sơ →', noRecords: 'Chưa có hồ sơ nào. Upload file đầu tiên!', backToLibrary: 'Quay lại thư viện', useForCompare: 'So sánh bên Compare →', type: 'Loại', size: 'Kích thước', uploaded: 'Upload', notes: 'GHI CHÚ', notesPlaceholder: 'Thêm ghi chú về hồ sơ này…', saveNotes: 'Lưu ghi chú', aiAnalysis: 'PHÂN TÍCH AI', aiAnalyzeHelp: 'Để AI phân tích hồ sơ này', analyzeWithClaude: 'Phân tích với Claude AI', requiresKey: 'Cần Anthropic API key', enterKey: 'Nhập key', claudeAnalyzing: 'Claude đang phân tích…', aiConfidence: 'Độ tin cậy AI', aiDisclaimer: 'Phân tích AI chỉ mang tính hỗ trợ, không thay thế chẩn đoán của bác sĩ.', reAnalyze: 'Phân tích lại',
   },
   en: {
     delete: 'Delete', deleteWithIcon: '🗑 Delete', confirmDelete: 'Delete this record?',
     fileTooLarge: 'File "{name}" is too large (max {max}MB)', unsupportedType: 'Unsupported file type: {type}', readError: 'Could not read the file. Please try again.', unknownError: 'Unknown', errorPrefix: 'Error',
-    title: 'Medical Records', subtitle: 'Upload X-Ray · CT · MRI · PDF · Images · Stored locally', upload: 'Upload', camera: 'Camera', library: 'Library',
+    title: 'Medical Records', subtitle: 'Upload X-Ray · CT · MRI · PDF · Images · Stored locally', upload: 'Upload', camera: 'Camera', cameraStarting: 'Opening camera…', capturePhoto: 'Capture photo', closeCamera: 'Close camera', cameraHelp: 'Live camera is open. Frame the record, then capture.', library: 'Library',
     apiKeyPrompt: 'Enter Anthropic API key for AI analysis (stored locally):', save: 'Save', processing: 'Processing file…', dragDrop: 'Drag & drop files here', clickSelect: 'or click to select', pdfRecord: 'PDF record', photoRecord: 'Photo', maxHint: 'Max 20MB · JPG, PNG, WebP, PDF', recentRecords: 'Recent records', viewAll: 'View all {count} records →', noRecords: 'No records yet. Upload your first file!', backToLibrary: 'Back to library', useForCompare: 'Use for Compare →', type: 'Type', size: 'Size', uploaded: 'Uploaded', notes: 'NOTES', notesPlaceholder: 'Add notes about this record…', saveNotes: 'Save notes', aiAnalysis: 'AI ANALYSIS', aiAnalyzeHelp: 'Let AI analyze this medical file', analyzeWithClaude: 'Analyze with Claude AI', requiresKey: 'Requires Anthropic API key', enterKey: 'Enter key', claudeAnalyzing: 'Claude analyzing…', aiConfidence: 'AI Confidence', aiDisclaimer: "AI analysis is for support only and does not replace a doctor\'s diagnosis.", reAnalyze: 'Re-analyze',
   },
 }
@@ -154,8 +154,22 @@ export default function MedicalUploader({ patientId, onSelectImage }) {
   const [apiKey, setApiKey]               = useState('')
   const [showApiInput, setShowApiInput]   = useState(false)
   const [notes, setNotes]                 = useState('')
+  const [cameraOpen, setCameraOpen]       = useState(false)
+  const [cameraStarting, setCameraStarting] = useState(false)
+  const [cameraError, setCameraError]     = useState('')
   const fileInputRef = useRef(null)
-  const cameraInputRef = useRef(null)
+  const videoRef = useRef(null)
+  const streamRef = useRef(null)
+
+  const stopCamera = useCallback(() => {
+    streamRef.current?.getTracks?.().forEach(track => track.stop())
+    streamRef.current = null
+    if (videoRef.current) videoRef.current.srcObject = null
+    setCameraOpen(false)
+    setCameraStarting(false)
+  }, [])
+
+  useEffect(() => () => stopCamera(), [stopCamera])
 
   useEffect(() => {
     loadRecords()
@@ -237,11 +251,54 @@ export default function MedicalUploader({ patientId, onSelectImage }) {
     }
   }, [user?.email, user?.name, user?.avatar, user?.provider, lang])
 
+  const openCamera = useCallback(async () => {
+    setCameraError('')
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setCameraError(lang === 'vi' ? 'Trình duyệt không hỗ trợ mở camera thật.' : 'This browser does not support live camera capture.')
+      return
+    }
+    setCameraStarting(true)
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1600 }, height: { ideal: 1200 } },
+        audio: false,
+      })
+      streamRef.current = stream
+      setCameraOpen(true)
+      window.setTimeout(() => {
+        if (videoRef.current) videoRef.current.srcObject = stream
+      }, 0)
+    } catch (e) {
+      setCameraError(lang === 'vi' ? 'Không thể mở camera. Vui lòng cấp quyền camera cho trình duyệt.' : 'Cannot open camera. Please allow camera access in the browser.')
+      stopCamera()
+    } finally {
+      setCameraStarting(false)
+    }
+  }, [lang, stopCamera])
+
+  const captureCameraPhoto = useCallback(() => {
+    const video = videoRef.current
+    if (!video) return
+    const canvas = document.createElement('canvas')
+    canvas.width = video.videoWidth || 1280
+    canvas.height = video.videoHeight || 720
+    const ctx = canvas.getContext('2d')
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+    canvas.toBlob(blob => {
+      if (!blob) {
+        setCameraError(lang === 'vi' ? 'Không chụp được ảnh từ camera.' : 'Could not capture a camera photo.')
+        return
+      }
+      const file = new File([blob], `camera_${new Date().toISOString().replace(/[:.]/g, '-')}.jpg`, { type: 'image/jpeg' })
+      stopCamera()
+      processFiles([file])
+    }, 'image/jpeg', 0.92)
+  }, [lang, processFiles, stopCamera])
+
   const onDragOver  = e => { e.preventDefault(); setDragging(true) }
   const onDragLeave = () => setDragging(false)
   const onDrop      = e => { e.preventDefault(); setDragging(false); processFiles(e.dataTransfer.files) }
   const onFileChange = e => { if (e.target.files?.length) processFiles(e.target.files); e.target.value = '' }
-  const onCameraChange = e => { if (e.target.files?.length) processFiles(e.target.files); e.target.value = '' }
 
   async function handleDelete(id) {
     if (!confirm(uploadText(lang, 'confirmDelete'))) return
@@ -377,8 +434,8 @@ Trả lời bằng tiếng Việt, ngắn gọn và rõ ràng. Nhắc nhở đâ
           <TabBtn active={view === 'upload'}  onClick={() => setView('upload')}>
             + {uploadText(lang, 'upload')}
           </TabBtn>
-          <TabBtn active={false} onClick={() => !uploading && cameraInputRef.current?.click()}>
-            📷 {uploadText(lang, 'camera')}
+          <TabBtn active={cameraOpen} onClick={() => !uploading && openCamera()}>
+            📷 {cameraStarting ? uploadText(lang, 'cameraStarting') : uploadText(lang, 'camera')}
           </TabBtn>
           <TabBtn active={view === 'library'} onClick={() => setView('library')}>
             {uploadText(lang, 'library')}
@@ -478,6 +535,30 @@ Trả lời bằng tiếng Việt, ngắn gọn và rõ ràng. Nhắc nhở đâ
           </div>
           <input ref={fileInputRef} type="file" multiple accept={ACCEPT} onChange={onFileChange} style={{ display: 'none' }} />
           <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={onCameraChange} style={{ display: 'none' }} />
+
+          {cameraError && (
+            <div style={{ marginBottom: 16, padding: '10px 14px', borderRadius: 10, border: '1px solid rgba(255,82,82,0.25)', background: 'rgba(255,82,82,0.08)', color: '#ff5252', fontSize: 12 }}>
+              ⚠️ {cameraError}
+            </div>
+          )}
+
+          {cameraOpen && (
+            <div className="uploader-fade" style={{ marginBottom: 20, border: '1px solid rgba(0,229,255,0.22)', borderRadius: 16, padding: 14, background: 'rgba(0,229,255,0.05)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 10 }}>
+                <div style={{ color: '#00e5ff', fontSize: 12, fontWeight: 700 }}>📷 {uploadText(lang, 'camera')}</div>
+                <button type="button" onClick={stopCamera} style={{ border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.75)', borderRadius: 8, padding: '6px 10px', cursor: 'pointer', fontSize: 12 }}>
+                  {uploadText(lang, 'closeCamera')}
+                </button>
+              </div>
+              <video ref={videoRef} autoPlay playsInline muted style={{ width: '100%', maxHeight: 420, objectFit: 'contain', borderRadius: 12, background: '#000', border: '1px solid rgba(255,255,255,0.08)' }} />
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginTop: 10 }}>
+                <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11 }}>{uploadText(lang, 'cameraHelp')}</div>
+                <button type="button" onClick={captureCameraPhoto} style={{ border: 'none', background: 'linear-gradient(135deg,#00b8cc,#6b3fd4)', color: '#fff', borderRadius: 10, padding: '10px 16px', cursor: 'pointer', fontWeight: 800, fontSize: 13 }}>
+                  📸 {uploadText(lang, 'capturePhoto')}
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Recent records */}
           {records.length > 0 && (

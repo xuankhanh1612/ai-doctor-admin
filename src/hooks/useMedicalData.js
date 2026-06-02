@@ -77,6 +77,25 @@ export function recordsToPatient(records, base = {}, ownerEmail = null, lang = '
       })
     }
 
+    // PDF uploads from the primary patient become Labs / Documents immediately.
+    if (r.fileType === 'pdf' || r.mimeType === 'application/pdf') {
+      labsArr.push({
+        id:       `labfile_${r.id}`,
+        name:     label,
+        value:    ai?.summary ? (lang === 'vi' ? 'Đã phân tích AI' : 'AI analyzed') : 'PDF',
+        unit:     '',
+        ref_high: null,
+        date,
+        trend:    'stable',
+        critical: false,
+        documentUrl: r.dataUrl,
+        uploadedBy: r.ownerEmail,
+        uploadedByName: r.ownerName,
+        uploadedAt: r.uploadedAt,
+        raw: r,
+      })
+    }
+
     // Nếu có AI analysis → parse thành disease / lab evidence
     if (ai?.summary) {
       // Nếu AI phát hiện bệnh → thêm vào diseases
