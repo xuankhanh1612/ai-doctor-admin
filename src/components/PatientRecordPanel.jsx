@@ -688,15 +688,14 @@ export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selected
   }
 
   useEffect(() => {
-    if (!selectedMember) {
+    if (!selectedMember && !isEditingRecord) {
       setPatient(mainPatient)
       setEditForm(serializePatientForEdit(mainPatient))
-      setIsEditingRecord(false)
       setConsensusData(null)
       setCError('')
       setShowConsensus(false)
     }
-  }, [mainPatient, selectedMember])
+  }, [isEditingRecord, mainPatient, selectedMember])
 
   // When a family member is passed in, switch to their data.
   useEffect(() => {
@@ -790,9 +789,15 @@ export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selected
   // Run consensus analysis
   async function runConsensus() {
     setCLoading(true); setCError(''); setShowConsensus(true)
+    const patientForConsensus = isEditingRecord ? buildEditedPatient(patient, editForm) : patient
+    const payload = buildConsensusPayload(patientForConsensus)
     try {
-      const patientForConsensus = isEditingRecord ? buildEditedPatient(patient, editForm) : patient
-      const payload = buildConsensusPayload(patientForConsensus)
+      if (isDemoRecord) {
+        setConsensusData(buildLocalConsensusResponse(payload))
+        setActiveMethod('bayesian')
+        return
+      }
+
       const res = await fetch(`${API_BASE}/api/v1/consensus/compare`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
@@ -806,8 +811,7 @@ export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selected
       setConsensusData(data)
       setActiveMethod('bayesian')
     } catch (e) {
-      const patientForConsensus = isEditingRecord ? buildEditedPatient(patient, editForm) : patient
-      const fallbackData = buildLocalConsensusResponse(buildConsensusPayload(patientForConsensus), e)
+      const fallbackData = buildLocalConsensusResponse(payload, e)
       setConsensusData(fallbackData)
       setActiveMethod('bayesian')
       setCError(lang === 'vi'
