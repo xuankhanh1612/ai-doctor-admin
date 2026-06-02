@@ -27,13 +27,13 @@ const UPLOADER_TEXT = {
   vi: {
     delete: 'Xóa', deleteWithIcon: '🗑 Xóa', confirmDelete: 'Xóa hồ sơ này?',
     fileTooLarge: 'File "{name}" quá lớn (tối đa {max}MB)', unsupportedType: 'Định dạng không hỗ trợ: {type}', readError: 'Lỗi khi đọc file. Vui lòng thử lại.', unknownError: 'Không xác định', errorPrefix: 'Lỗi',
-    title: 'Hồ Sơ Y Tế', subtitle: 'Upload X-Ray · CT · MRI · PDF · Ảnh hồ sơ · Lưu local vĩnh viễn', upload: 'Tải lên', library: 'Thư viện',
+    title: 'Hồ Sơ Y Tế', subtitle: 'Upload X-Ray · CT · MRI · PDF · Ảnh hồ sơ · Lưu local vĩnh viễn', upload: 'Tải lên', camera: 'Camera', library: 'Thư viện',
     apiKeyPrompt: 'Nhập Anthropic API key để phân tích AI (lưu local, không gửi server):', save: 'Lưu', processing: 'Đang xử lý file…', dragDrop: 'Kéo thả file vào đây', clickSelect: 'hoặc nhấn để chọn file', pdfRecord: 'PDF hồ sơ', photoRecord: 'Ảnh chụp', maxHint: 'Tối đa 20MB · JPG, PNG, WebP, PDF', recentRecords: 'Hồ sơ gần đây', viewAll: 'Xem tất cả {count} hồ sơ →', noRecords: 'Chưa có hồ sơ nào. Upload file đầu tiên!', backToLibrary: 'Quay lại thư viện', useForCompare: 'So sánh bên Compare →', type: 'Loại', size: 'Kích thước', uploaded: 'Upload', notes: 'GHI CHÚ', notesPlaceholder: 'Thêm ghi chú về hồ sơ này…', saveNotes: 'Lưu ghi chú', aiAnalysis: 'PHÂN TÍCH AI', aiAnalyzeHelp: 'Để AI phân tích hồ sơ này', analyzeWithClaude: 'Phân tích với Claude AI', requiresKey: 'Cần Anthropic API key', enterKey: 'Nhập key', claudeAnalyzing: 'Claude đang phân tích…', aiConfidence: 'Độ tin cậy AI', aiDisclaimer: 'Phân tích AI chỉ mang tính hỗ trợ, không thay thế chẩn đoán của bác sĩ.', reAnalyze: 'Phân tích lại',
   },
   en: {
     delete: 'Delete', deleteWithIcon: '🗑 Delete', confirmDelete: 'Delete this record?',
     fileTooLarge: 'File "{name}" is too large (max {max}MB)', unsupportedType: 'Unsupported file type: {type}', readError: 'Could not read the file. Please try again.', unknownError: 'Unknown', errorPrefix: 'Error',
-    title: 'Medical Records', subtitle: 'Upload X-Ray · CT · MRI · PDF · Images · Stored locally', upload: 'Upload', library: 'Library',
+    title: 'Medical Records', subtitle: 'Upload X-Ray · CT · MRI · PDF · Images · Stored locally', upload: 'Upload', camera: 'Camera', library: 'Library',
     apiKeyPrompt: 'Enter Anthropic API key for AI analysis (stored locally):', save: 'Save', processing: 'Processing file…', dragDrop: 'Drag & drop files here', clickSelect: 'or click to select', pdfRecord: 'PDF record', photoRecord: 'Photo', maxHint: 'Max 20MB · JPG, PNG, WebP, PDF', recentRecords: 'Recent records', viewAll: 'View all {count} records →', noRecords: 'No records yet. Upload your first file!', backToLibrary: 'Back to library', useForCompare: 'Use for Compare →', type: 'Type', size: 'Size', uploaded: 'Uploaded', notes: 'NOTES', notesPlaceholder: 'Add notes about this record…', saveNotes: 'Save notes', aiAnalysis: 'AI ANALYSIS', aiAnalyzeHelp: 'Let AI analyze this medical file', analyzeWithClaude: 'Analyze with Claude AI', requiresKey: 'Requires Anthropic API key', enterKey: 'Enter key', claudeAnalyzing: 'Claude analyzing…', aiConfidence: 'AI Confidence', aiDisclaimer: "AI analysis is for support only and does not replace a doctor\'s diagnosis.", reAnalyze: 'Re-analyze',
   },
 }
@@ -155,6 +155,7 @@ export default function MedicalUploader({ patientId, onSelectImage }) {
   const [showApiInput, setShowApiInput]   = useState(false)
   const [notes, setNotes]                 = useState('')
   const fileInputRef = useRef(null)
+  const cameraInputRef = useRef(null)
 
   useEffect(() => {
     loadRecords()
@@ -211,6 +212,9 @@ export default function MedicalUploader({ patientId, onSelectImage }) {
           base64Data,
           notes:      '',
           ownerEmail:  user?.email || null,
+          ownerName:   user?.name || '',
+          ownerAvatar: user?.avatar || '',
+          ownerProvider: user?.provider || '',
         }
 
         await saveRecord(record, { ownerEmail: user?.email })
@@ -231,16 +235,18 @@ export default function MedicalUploader({ patientId, onSelectImage }) {
         setUploadProgress(0)
       }
     }
-  }, [user?.email])
+  }, [user?.email, user?.name, user?.avatar, user?.provider, lang])
 
   const onDragOver  = e => { e.preventDefault(); setDragging(true) }
   const onDragLeave = () => setDragging(false)
   const onDrop      = e => { e.preventDefault(); setDragging(false); processFiles(e.dataTransfer.files) }
-  const onFileChange = e => { if (e.target.files?.length) processFiles(e.target.files) }
+  const onFileChange = e => { if (e.target.files?.length) processFiles(e.target.files); e.target.value = '' }
+  const onCameraChange = e => { if (e.target.files?.length) processFiles(e.target.files); e.target.value = '' }
 
   async function handleDelete(id) {
     if (!confirm(uploadText(lang, 'confirmDelete'))) return
     await deleteRecord(id, recordScope)
+    notifyUpload()
     await loadRecords()
     if (selected?.id === id) { setSelected(null); setView('upload') }
   }
@@ -249,6 +255,7 @@ export default function MedicalUploader({ patientId, onSelectImage }) {
     if (!selected) return
     const updated = { ...selected, notes }
     await saveRecord(updated, { ownerEmail: user?.email })
+    notifyUpload()
     setSelected(updated)
     await loadRecords()
   }
@@ -334,6 +341,7 @@ Trả lời bằng tiếng Việt, ngắn gọn và rõ ràng. Nhắc nhở đâ
         confidence: 0.85, analyzedAt: new Date().toISOString(),
       }
       await updateAnalysis(record.id, analysis, recordScope)
+      notifyUpload()
       setSelected(prev => prev ? { ...prev, aiAnalysis: analysis } : prev)
       await loadRecords()
 
@@ -368,6 +376,9 @@ Trả lời bằng tiếng Việt, ngắn gọn và rõ ràng. Nhắc nhở đâ
         <div style={{ display: 'flex', gap: 8 }}>
           <TabBtn active={view === 'upload'}  onClick={() => setView('upload')}>
             + {uploadText(lang, 'upload')}
+          </TabBtn>
+          <TabBtn active={false} onClick={() => !uploading && cameraInputRef.current?.click()}>
+            📷 {uploadText(lang, 'camera')}
           </TabBtn>
           <TabBtn active={view === 'library'} onClick={() => setView('library')}>
             {uploadText(lang, 'library')}
@@ -466,6 +477,7 @@ Trả lời bằng tiếng Việt, ngắn gọn và rõ ràng. Nhắc nhở đâ
             )}
           </div>
           <input ref={fileInputRef} type="file" multiple accept={ACCEPT} onChange={onFileChange} style={{ display: 'none' }} />
+          <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={onCameraChange} style={{ display: 'none' }} />
 
           {/* Recent records */}
           {records.length > 0 && (

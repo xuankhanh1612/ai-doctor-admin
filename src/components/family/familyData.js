@@ -70,6 +70,8 @@ export const normalizeConditions = (conditions) => {
   return []
 }
 
+export const stripMissingNamePrefix = name => String(name || '').trim().replace(/^Chưa nhập tên\s+/i, '')
+
 const listNames = (items, key = 'name') => (
   Array.isArray(items) ? items.map(item => item?.[key] || item?.name || item).filter(Boolean) : []
 )
@@ -102,7 +104,7 @@ export const normalizeFamilyMember = (member, index = 0) => {
     ...safeMember,
     id: safeMember.id || `fm-import-${index}`,
     relation,
-    name: String(safeMember.name || `Family Member ${index + 1}`).trim(),
+    name: stripMissingNamePrefix(safeMember.name || `Family Member ${index + 1}`),
     age: Number.parseInt(safeMember.age, 10) || 0,
     gender: safeMember.gender === 'F' ? 'F' : 'M',
     dob: typeof safeMember.dob === 'string' ? safeMember.dob : safeMember.medicalRecord?.dob,
@@ -206,17 +208,17 @@ export const clearFamilyMembers = (patientId, ownerId = 'guest') => {
 // ─── Default demo data ─────────────────────────────────────────────────────
 export const DEFAULT_FAMILY_MEMBERS = applyLxkPatientProfile([
   // ── Thế hệ ông bà ─────────────────────────────────────────────────────────
-  { id:'fm-0', relation:'grandparent', name:'Chưa nhập tên ông nội',  age:0, gender:'M', conditions:['Chưa rõ tiền sử'], alive:true, note:'Ông nội · cần cập nhật họ tên, ngày sinh, nhóm máu và tiền sử bệnh' },
-  { id:'fm-9', relation:'grandparent', name:'Chưa nhập tên bà nội',   age:0, gender:'F', conditions:['Chưa rõ tiền sử'], alive:true, note:'Bà nội · cần cập nhật họ tên, ngày sinh, nhóm máu và tiền sử bệnh' },
-  { id:'fm-11',relation:'grandparent', name:'Chưa nhập tên ông ngoại', age:0, gender:'M', conditions:['Chưa rõ tiền sử'], alive:true, note:'Ông ngoại · cần cập nhật họ tên, ngày sinh, nhóm máu và tiền sử bệnh' },
-  { id:'fm-12',relation:'grandparent', name:'Chưa nhập tên bà ngoại',  age:0, gender:'F', conditions:['Chưa rõ tiền sử'], alive:true, note:'Bà ngoại · cần cập nhật họ tên, ngày sinh, nhóm máu và tiền sử bệnh' },
+  { id:'fm-0', relation:'grandparent', name:'ông nội',  age:0, gender:'M', conditions:['Chưa rõ tiền sử'], alive:true, note:'Ông nội · cần cập nhật họ tên, ngày sinh, nhóm máu và tiền sử bệnh' },
+  { id:'fm-9', relation:'grandparent', name:'bà nội',   age:0, gender:'F', conditions:['Chưa rõ tiền sử'], alive:true, note:'Bà nội · cần cập nhật họ tên, ngày sinh, nhóm máu và tiền sử bệnh' },
+  { id:'fm-11',relation:'grandparent', name:'ông ngoại', age:0, gender:'M', conditions:['Chưa rõ tiền sử'], alive:true, note:'Ông ngoại · cần cập nhật họ tên, ngày sinh, nhóm máu và tiền sử bệnh' },
+  { id:'fm-12',relation:'grandparent', name:'bà ngoại',  age:0, gender:'F', conditions:['Chưa rõ tiền sử'], alive:true, note:'Bà ngoại · cần cập nhật họ tên, ngày sinh, nhóm máu và tiền sử bệnh' },
   // ── Thế hệ cha mẹ ─────────────────────────────────────────────────────────
-  { id:'fm-1', relation:'father',      name:'Chưa nhập tên cha',       age:0, gender:'M', conditions:['Chưa rõ tiền sử'], alive:true, note:'Cha · cần cập nhật họ tên, ngày sinh, nhóm máu và tiền sử bệnh' },
-  { id:'fm-2', relation:'mother',      name:'Chưa nhập tên mẹ',        age:0, gender:'F', conditions:['Chưa rõ tiền sử'], alive:true, note:'Mẹ · cần cập nhật họ tên, ngày sinh, nhóm máu và tiền sử bệnh' },
+  { id:'fm-1', relation:'father',      name:'cha',       age:0, gender:'M', conditions:['Chưa rõ tiền sử'], alive:true, note:'Cha · cần cập nhật họ tên, ngày sinh, nhóm máu và tiền sử bệnh' },
+  { id:'fm-2', relation:'mother',      name:'mẹ',        age:0, gender:'F', conditions:['Chưa rõ tiền sử'], alive:true, note:'Mẹ · cần cập nhật họ tên, ngày sinh, nhóm máu và tiền sử bệnh' },
   // ── Bệnh nhân chính + gia đình trực tiếp ──────────────────────────────────
   createLxkFamilyMember(),
-  { id:'fm-4', relation:'spouse',   name:'Chưa nhập tên vợ/chồng',     age:0, gender:'F', conditions:['Chưa rõ tiền sử'], alive:true, note:'Vợ/chồng · cần cập nhật họ tên, ngày sinh, nhóm máu và tiền sử bệnh' },
-  { id:'fm-5', relation:'sibling',  name:'Chưa nhập tên anh/chị/em',   age:0, gender:'M', conditions:['Chưa rõ tiền sử'], alive:true, note:'Anh/chị/em · cần cập nhật họ tên, ngày sinh, nhóm máu và tiền sử bệnh' },
+  { id:'fm-4', relation:'spouse',   name:'vợ/chồng',     age:0, gender:'F', conditions:['Chưa rõ tiền sử'], alive:true, note:'Vợ/chồng · cần cập nhật họ tên, ngày sinh, nhóm máu và tiền sử bệnh' },
+  { id:'fm-5', relation:'sibling',  name:'anh/chị/em',   age:0, gender:'M', conditions:['Chưa rõ tiền sử'], alive:true, note:'Anh/chị/em · cần cập nhật họ tên, ngày sinh, nhóm máu và tiền sử bệnh' },
   // ── Thế hệ con ────────────────────────────────────────────────────────────
-  { id:'fm-6', relation:'child',    name:'Chưa nhập tên con',          age:0, gender:'M', conditions:['Chưa rõ tiền sử'], alive:true, note:'Con · cần cập nhật họ tên, ngày sinh, nhóm máu và tiền sử bệnh' },
+  { id:'fm-6', relation:'child',    name:'con',          age:0, gender:'M', conditions:['Chưa rõ tiền sử'], alive:true, note:'Con · cần cập nhật họ tên, ngày sinh, nhóm máu và tiền sử bệnh' },
 ])
