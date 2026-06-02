@@ -59,20 +59,45 @@ export function recordsToPatient(records, base = {}, ownerEmail = null, lang = '
       type:  r.fileType === 'pdf' ? 'lab' : 'imaging',
     })
 
-    // Nếu có AI analysis → parse thành imaging entry
-    if (ai?.summary) {
+    // Image uploads are always reflected in Patient Record > Imaging, even before AI analysis.
+    if (r.fileType !== 'pdf' && r.mimeType?.startsWith?.('image/')) {
       imagingArr.push({
         id:            `img_${r.id}`,
         type:          label,
         date,
         modality:      fileTypeToModality(r.fileType),
-        ai_confidence: Math.round((ai.confidence || 0.85) * 100),
-        findings:      ai.summary.slice(0, 300),
-        impression:    ai.recommendation || ai.findings?.[0] || translateMedicalData(lang, 'aiDetailFallback'),
+        ai_confidence: ai?.summary ? Math.round((ai.confidence || 0.85) * 100) : 0,
+        findings:      ai?.summary?.slice(0, 300) || (lang === 'vi' ? `Ảnh do ${r.ownerName || r.ownerEmail || 'user'} upload, đang chờ AI phân tích.` : `Image uploaded by ${r.ownerName || r.ownerEmail || 'user'}, pending AI analysis.`),
+        impression:    ai?.recommendation || ai?.findings?.[0] || (lang === 'vi' ? 'Đồng bộ từ Medical Upload Records.' : 'Synced from Medical Upload Records.'),
         dataUrl:       r.dataUrl,
+        uploadedBy:    r.ownerEmail,
+        uploadedByName:r.ownerName,
+        uploadedAt:    r.uploadedAt,
         raw:           r,
       })
+    }
 
+    // PDF uploads from the primary patient become Labs / Documents immediately.
+    if (r.fileType === 'pdf' || r.mimeType === 'application/pdf') {
+      labsArr.push({
+        id:       `labfile_${r.id}`,
+        name:     label,
+        value:    ai?.summary ? (lang === 'vi' ? 'Đã phân tích AI' : 'AI analyzed') : 'PDF',
+        unit:     '',
+        ref_high: null,
+        date,
+        trend:    'stable',
+        critical: false,
+        documentUrl: r.dataUrl,
+        uploadedBy: r.ownerEmail,
+        uploadedByName: r.ownerName,
+        uploadedAt: r.uploadedAt,
+        raw: r,
+      })
+    }
+
+    // Nếu có AI analysis → parse thành disease / lab evidence
+    if (ai?.summary) {
       // Nếu AI phát hiện bệnh → thêm vào diseases
       const severityKeywords = { critical: ['ung thư', 'cancer', 'tumor', 'khối u', 'malignant', 'metastasis', 'di căn'], moderate: ['viêm', 'inflammation', 'infiltrate', 'fibrosis'], mild: ['nhẹ', 'mild', 'minor'] }
       const summaryLower = ai.summary.toLowerCase()
@@ -149,10 +174,12 @@ export function recordsToActivity(records, lang = 'vi') {
     return {
       id:     r.id,
       time:   elapsed,
-      user:   'upload',
+      user:   r.ownerName || r.ownerEmail || 'upload',
+      ownerEmail: r.ownerEmail || null,
+      ownerName: r.ownerName || '',
       action: lang === 'vi'
-        ? `Tải lên ${r.fileType?.toUpperCase() || 'FILE'}: ${r.filename || r.name}${hasAI ? ' · ✓ AI phân tích' : ''}`
-        : `Uploaded ${r.fileType?.toUpperCase() || 'FILE'}: ${r.filename || r.name}${hasAI ? ' · ✓ AI analyzed' : ''}`,
+        ? `${r.ownerName || r.ownerEmail || 'User'} tải lên ${r.fileType?.toUpperCase() || 'FILE'}: ${r.filename || r.name}${hasAI ? ' · ✓ AI phân tích' : ''}`
+        : `${r.ownerName || r.ownerEmail || 'User'} uploaded ${r.fileType?.toUpperCase() || 'FILE'}: ${r.filename || r.name}${hasAI ? ' · ✓ AI analyzed' : ''}`,
       type:   'upload',
       fileType: r.fileType,
       hasAI,
@@ -183,7 +210,7 @@ function elapsedTime(iso, lang = 'vi') {
 // ─────────────────────────────────────────────────────────────────────────────
 // Main hook
 // ─────────────────────────────────────────────────────────────────────────────
-export function useMedicalData({ lang = 'vi', autoRefresh = true, ownerEmail: ownerEmailOverride = null, includeUnowned: includeUnownedOverride = null } = {}) {
+export function useMedicalData({ lang = 'vi', autoRefresh = true, ownerEmail: ownerEmailOverride = null, includeUnowned: includeUnownedOverride = null, includeAll = false } = {}) {
   const { user } = useAuth()
   const ownerEmail = ownerEmailOverride ?? user?.email ?? null
   const includeUnowned = includeUnownedOverride ?? !!user?.isAdmin
@@ -194,7 +221,7 @@ export function useMedicalData({ lang = 'vi', autoRefresh = true, ownerEmail: ow
 
   const load = useCallback(async () => {
     try {
-      const recs = await getAllRecords({ ownerEmail, includeUnowned })
+      const recs = await getAllRecords({ ownerEmail, includeUnowned, includeAll })
       setRecords(recs)
       setLastUpdated(new Date())
     } catch (e) {
@@ -202,7 +229,7 @@ export function useMedicalData({ lang = 'vi', autoRefresh = true, ownerEmail: ow
     } finally {
       setLoading(false)
     }
-  }, [ownerEmail, includeUnowned])
+  }, [ownerEmail, includeUnowned, includeAll])
 
   useEffect(() => {
     load()
@@ -213,16 +240,19 @@ export function useMedicalData({ lang = 'vi', autoRefresh = true, ownerEmail: ow
     const onStorage = (e) => {
       if (e.key === LS_NOTIFY || e.key === LS_META || e.key === getMetaKey(ownerEmail)) load()
     }
+    const onUploadNotify = () => load()
     window.addEventListener('storage', onStorage)
+    window.addEventListener('cdoc_medical_records_changed', onUploadNotify)
 
     // Polling fallback every 8s (catches same-tab updates)
-    pollRef.current = setInterval(load, 8000)
+    pollRef.current = setInterval(load, includeAll ? 2500 : 8000)
 
     return () => {
       window.removeEventListener('storage', onStorage)
+      window.removeEventListener('cdoc_medical_records_changed', onUploadNotify)
       clearInterval(pollRef.current)
     }
-  }, [load, autoRefresh])
+  }, [load, autoRefresh, includeAll, ownerEmail])
 
   // Derived data
   const patientOwner   = records[0]?.ownerEmail || (records[0] ? null : ownerEmail)
@@ -234,11 +264,11 @@ export function useMedicalData({ lang = 'vi', autoRefresh = true, ownerEmail: ow
   const totalSizeMB    = (records.reduce((s, r) => s + (r.size || 0), 0) / 1048576).toFixed(1)
 
   const remove = useCallback(async (id) => {
-    await deleteRecord(id, { ownerEmail, includeUnowned })
+    await deleteRecord(id, { ownerEmail, includeUnowned, includeAll })
     await load()
     // Notify other tabs
     localStorage.setItem(LS_NOTIFY, Date.now().toString())
-  }, [load, ownerEmail, includeUnowned])
+  }, [load, ownerEmail, includeUnowned, includeAll])
 
   const refresh = load
 
@@ -263,4 +293,5 @@ export function useMedicalData({ lang = 'vi', autoRefresh = true, ownerEmail: ow
 // ── Notify hook: gọi từ MedicalUploader sau khi upload xong ─────────────────
 export function notifyUpload() {
   localStorage.setItem(LS_NOTIFY, Date.now().toString())
+  window.dispatchEvent(new CustomEvent('cdoc_medical_records_changed'))
 }

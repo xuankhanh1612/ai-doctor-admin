@@ -11,6 +11,67 @@ import { DEFAULT_FAMILY_MEMBERS, loadFamilyMembers, saveFamilyMembers } from './
 const PATIENT_RECORD_STORAGE_KEY = 'cdoc_patient_record_by_user'
 const patientRecordOwnerKey = ownerId => String(ownerId || 'guest').trim().toLowerCase() || 'guest'
 const clonePatientRecord = patient => JSON.parse(JSON.stringify(patient || LXK_PATIENT_RECORD))
+const isLxkDemoRecord = patient => patient?.id === LXK_PATIENT_RECORD.id && !patient?.familyMemberId
+const isPrimaryPatientRecord = patient => isLxkDemoRecord(patient) || patient?.familyMemberId === 'fm-3'
+const patientAvatarUrl = (patient, user) => isPrimaryPatientRecord(patient) ? (user?.avatar || patient?.avatar_url || '') : (patient?.avatar_url || '')
+const displayPatientName = patient => {
+  const name = String(patient?.name || '').trim()
+  if (isLxkDemoRecord(patient) && !/\bDemo$/i.test(name)) return `${name} Demo`
+  return name
+}
+
+
+const patientInitialsFromName = name => String(name || 'Patient')
+  .split(' ')
+  .filter(Boolean)
+  .slice(-2)
+  .map(w => w[0])
+  .join('')
+  .toUpperCase() || 'PT'
+
+const buildPrimaryPatientRecord = (patient, user, ownerId) => {
+  const ownerKey = patientRecordOwnerKey(ownerId).replace(/[^a-z0-9]+/gi, '-').toUpperCase()
+  const primaryName = String(user?.name || patient?.name || 'Patient').trim()
+  return {
+    ...patient,
+    id: `PRIMARY-${ownerKey}`,
+    sourceDemoId: patient?.id,
+    familyMemberId: 'fm-3',
+    name: primaryName,
+    avatar_url: user?.avatar || patient?.avatar_url,
+    avatar_initials: patientInitialsFromName(primaryName),
+    _isPrimaryPatient: true,
+    _isDemoTemplate: patient?.id === LXK_PATIENT_RECORD.id,
+  }
+}
+
+const mergeUploadedRecords = (basePatient, uploadedPatient) => {
+  if (!uploadedPatient) return basePatient
+
+  const existingImaging = basePatient.imaging || []
+  const existingImageIds = new Set(existingImaging.map(item => item.id))
+  const uploadedImaging = (uploadedPatient.imaging || []).filter(item => !existingImageIds.has(item.id))
+
+  const existingLabs = basePatient.labs || []
+  const existingLabIds = new Set(existingLabs.map(item => item.id))
+  const uploadedLabs = (uploadedPatient.labs || []).filter(item => !existingLabIds.has(item.id))
+
+  const existingTimeline = basePatient.timeline || []
+  const timelineIds = new Set(existingTimeline.map(item => item.id))
+  const uploadedTimeline = (uploadedPatient.timeline || []).filter(item => !timelineIds.has(item.id))
+
+  if (!uploadedImaging.length && !uploadedLabs.length && !uploadedTimeline.length) return basePatient
+
+  return {
+    ...basePatient,
+    imaging: [...uploadedImaging, ...existingImaging],
+    labs: [...uploadedLabs, ...existingLabs],
+    timeline: [...uploadedTimeline, ...existingTimeline],
+    _records: uploadedPatient._records || [],
+    _hasUploadedImaging: uploadedImaging.length > 0,
+    _hasUploadedLabs: uploadedLabs.length > 0,
+  }
+}
 
 const loadSavedPatientRecord = (ownerId) => {
   if (typeof localStorage === 'undefined') return null
@@ -376,7 +437,16 @@ function ImagingView({ data }) {
         </div>
         {isOpen && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <ScanSVG modality={img.modality} color={mc} />
+            {img.dataUrl ? (
+              <img src={img.dataUrl} alt={img.type} style={{ width: '100%', maxHeight: 260, objectFit: 'contain', borderRadius: 8, background: '#050912', border: `1px solid ${mc}30` }} />
+            ) : (
+              <ScanSVG modality={img.modality} color={mc} />
+            )}
+            {img.uploadedBy && (
+              <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--font-mono)' }}>
+                UPLOADED BY: {img.uploadedByName || img.uploadedBy} · {img.uploadedAt ? new Date(img.uploadedAt).toLocaleString('vi-VN') : img.date}
+              </div>
+            )}
             <div style={{ fontSize: 12, color: 'var(--text2)', lineHeight: 1.7 }}>
               <span style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'var(--font-mono)', display: 'block', marginBottom: 2 }}>FINDINGS</span>
               {img.findings}
@@ -488,11 +558,15 @@ export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selected
   const { user } = useAuth()
   const isDark = theme === 'dark'
 
-  // Keep uploader hook subscribed for cross-panel record changes, while Patient Record defaults to the real LXK chart.
-  useMedicalData({ lang })
+  // Keep uploader hook subscribed and merge each user's uploaded images into Patient Record > Imaging.
+  const { patient: uploadedPatient } = useMedicalData({ lang })
 
   const ownerId = storageOwnerId || user?.email || 'guest'
-  const mainPatient = useMemo(() => clonePatientRecord(loadSavedPatientRecord(ownerId) || LXK_PATIENT_RECORD), [ownerId])
+  const mainPatient = useMemo(() => {
+    const savedOrTemplate = clonePatientRecord(loadSavedPatientRecord(ownerId) || LXK_PATIENT_RECORD)
+    const primaryPatient = buildPrimaryPatientRecord(savedOrTemplate, user, ownerId)
+    return mergeUploadedRecords(primaryPatient, uploadedPatient)
+  }, [ownerId, uploadedPatient, user?.name, user?.avatar])
   const basePatient = selectedMember ? selectedMember : mainPatient
 
   const [patient, setPatient] = useState(basePatient)
@@ -555,6 +629,9 @@ export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selected
   const [activeMethod, setActiveMethod]   = useState('bayesian')
   const [showConsensus, setShowConsensus] = useState(false)
   const isFromFamily = !!(selectedMember)
+  const isDemoRecord = isLxkDemoRecord(patient)
+  const displayedPatientAvatar = patientAvatarUrl(patient, user)
+  const canSaveEditedRecord = editForm.name.trim() && !isDemoRecord
 
   const startEditRecord = () => {
     setEditForm(serializePatientForEdit(patient))
@@ -567,6 +644,7 @@ export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selected
   }
 
   const saveEditedRecord = () => {
+    if (isDemoRecord) return
     const nextPatient = buildEditedPatient(patient, editForm)
     setPatient(nextPatient)
     setEditForm(serializePatientForEdit(nextPatient))
@@ -671,14 +749,13 @@ export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selected
               {t('fromFamily')}
             </span>
             <span style={{ fontSize: 12, color: text2, marginLeft: 8 }}>
-              {t('viewingMember')}: <b>{patient.name}</b>
+              {t('viewingMember')}: <b>{displayPatientName(patient)}</b>
             </span>
           </div>
           <button
             onClick={() => {
-              const nextPatient = clonePatientRecord(loadSavedPatientRecord(ownerId) || LXK_PATIENT_RECORD)
-              setPatient(nextPatient)
-              setEditForm(serializePatientForEdit(nextPatient))
+              setPatient(mainPatient)
+              setEditForm(serializePatientForEdit(mainPatient))
               setConsensusData(null)
               setShowConsensus(false)
               setIsEditingRecord(false)
@@ -696,12 +773,14 @@ export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selected
       {/* Patient card */}
       <div style={{ background: surfaceBg, border: '1px solid rgba(255,82,82,0.25)', borderRadius: 16, padding: '18px 20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-          <div style={{ width: 56, height: 56, borderRadius: '50%', flexShrink: 0, background: 'rgba(255,82,82,0.12)', border: '2px solid var(--red)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 800, color: 'var(--red)' }}>
-            {patient.avatar_initials}
+          <div style={{ width: 56, height: 56, borderRadius: '50%', flexShrink: 0, background: 'rgba(255,82,82,0.12)', border: '2px solid var(--red)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 800, color: 'var(--red)', overflow: 'hidden' }}>
+            {displayedPatientAvatar ? (
+              <img src={displayedPatientAvatar} alt={displayPatientName(patient)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            ) : patient.avatar_initials}
           </div>
           <div style={{ flex: 1 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 6 }}>
-              <h3 style={{ fontSize: 18, fontWeight: 800, margin: 0 }}>{patient.name}</h3>
+              <h3 style={{ fontSize: 18, fontWeight: 800, margin: 0 }}>{displayPatientName(patient)}</h3>
               <Tag color="var(--red)">CRITICAL CASE</Tag>
             </div>
             <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
@@ -773,12 +852,12 @@ export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selected
             <div style={{ display: 'flex', gap: 8 }}>
               <button
                 onClick={saveEditedRecord}
-                disabled={!editForm.name.trim()}
+                disabled={!canSaveEditedRecord}
                 style={{
                   padding: '9px 16px', borderRadius: 8, border: 'none',
                   background: 'linear-gradient(135deg,var(--cyan2),var(--violet2))',
-                  color: '#fff', fontWeight: 700, fontSize: 12, cursor: editForm.name.trim() ? 'pointer' : 'not-allowed',
-                  opacity: editForm.name.trim() ? 1 : 0.55, fontFamily: 'inherit',
+                  color: '#fff', fontWeight: 700, fontSize: 12, cursor: canSaveEditedRecord ? 'pointer' : 'not-allowed',
+                  opacity: canSaveEditedRecord ? 1 : 0.55, fontFamily: 'inherit',
                 }}
               >💾 Lưu hồ sơ</button>
               <button
@@ -787,6 +866,18 @@ export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selected
               >Huỷ</button>
             </div>
           </div>
+
+          {isDemoRecord && (
+            <div style={{
+              marginBottom: 16, padding: '12px 14px', borderRadius: 12,
+              border: '1px solid rgba(255,183,77,0.35)', background: 'rgba(255,183,77,0.12)',
+              color: 'var(--amber)', fontSize: 12, lineHeight: 1.6, fontWeight: 600,
+            }}>
+              ⚠️ {lang === 'vi'
+                ? 'Tài khoản Demo này chỉ dùng để copy/sao chép nhanh dữ liệu và chỉnh sửa tạm, giúp user học cách thao tác sửa dữ liệu. Nút Lưu hồ sơ đã được khóa để không ghi đè dữ liệu demo gốc.'
+                : 'This Demo account is only for quickly copying data and temporary edits so users can learn record editing. Save is disabled to protect the original demo data.'}
+            </div>
+          )}
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 14 }}>
             {[

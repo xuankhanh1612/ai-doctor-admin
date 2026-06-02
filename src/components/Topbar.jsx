@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useApp } from '../context/AppContext'
 
-export default function Topbar({ activePanel }) {
+export default function Topbar({ activePanel, onNavigateProfile }) {
   const { user, logout } = useAuth()
   const { t, theme, toggleTheme, lang, setLang } = useApp()
   const [showMenu, setShowMenu] = useState(false)
@@ -149,12 +149,20 @@ export default function Topbar({ activePanel }) {
                   </div>
                 )}
 
-                {/* Google photo note */}
-                {user.googleAvatar && user.provider === 'google' && (
+                {/* Google/Apple photo note */}
+                {user.googleAvatar && (user.provider === 'google' || user.provider === 'apple') && (
                   <div style={{ padding: '4px 12px 8px', fontSize: 10, color: text3, borderBottom: `1px solid ${borderColor}`, marginBottom: 6 }}>
-                    📷 {lang === 'vi' ? 'Ảnh từ Google Account' : 'Photo from Google Account'}
+                    📷 {lang === 'vi' ? `Ảnh từ ${providerLabel[user.provider]} Account` : `Photo from ${providerLabel[user.provider]} Account`}
                   </div>
                 )}
+
+                <button onClick={() => { onNavigateProfile?.(); setShowMenu(false) }} style={{
+                  width: '100%', padding: '9px 12px', textAlign: 'left', cursor: 'pointer',
+                  border: 'none', background: 'none', color: textColor, fontSize: 13,
+                  borderRadius: 8, display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4,
+                }}>
+                  👤 {t('profile')}
+                </button>
 
                 <button onClick={() => { logout(); setShowMenu(false) }} style={{
                   width: '100%', padding: '9px 12px', textAlign: 'left', cursor: 'pointer',
