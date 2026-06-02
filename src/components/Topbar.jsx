@@ -1,11 +1,14 @@
 import React, { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useApp } from '../context/AppContext'
+import { useNotifications } from '../lib/notifications.js'
 
-export default function Topbar({ activePanel, onNavigateProfile }) {
+export default function Topbar({ activePanel, onNavigateProfile, onNavigateAdmin }) {
   const { user, logout } = useAuth()
   const { t, theme, toggleTheme, lang, setLang } = useApp()
   const [showMenu, setShowMenu] = useState(false)
+  const [showNotifications, setShowNotifications] = useState(false)
+  const { notifications, unreadCount, markAllRead } = useNotifications(user)
   const isDark = theme === 'dark'
 
   const headerBg = isDark ? 'rgba(4,6,15,0.92)' : 'rgba(255,255,255,0.92)'
@@ -59,6 +62,83 @@ export default function Topbar({ activePanel, onNavigateProfile }) {
         }}>
           {lang === 'vi' ? '🇻🇳 VI' : '🇬🇧 EN'}
         </button>
+
+
+        {/* Notification center */}
+        {user && (
+          <div style={{ position: 'relative' }}>
+            <button
+              type="button"
+              onClick={() => { setShowNotifications(v => !v); if (!showNotifications) markAllRead() }}
+              title={lang === 'vi' ? 'Thông báo' : 'Notifications'}
+              style={{
+                width: 38, height: 38, borderRadius: 19, cursor: 'pointer', position: 'relative',
+                border: `1px solid ${borderColor}`,
+                background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(246,247,249,0.95)',
+                color: textColor, boxShadow: isDark ? 'inset 0 1px rgba(255,255,255,0.08)' : '0 2px 10px rgba(0,0,0,0.06)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17,
+              }}
+              aria-label={lang === 'vi' ? `Thông báo, ${unreadCount} chưa đọc` : `Notifications, ${unreadCount} unread`}
+            >
+              🔔
+              {unreadCount > 0 && (
+                <span style={{
+                  position: 'absolute', top: -4, right: -4, minWidth: 18, height: 18, padding: '0 5px', borderRadius: 999,
+                  background: '#ff3b30', color: '#fff', border: `2px solid ${headerBg}`,
+                  fontSize: 10, fontWeight: 800, lineHeight: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>{unreadCount > 9 ? '9+' : unreadCount}</span>
+              )}
+            </button>
+
+            {showNotifications && (
+              <div
+                onMouseLeave={() => setShowNotifications(false)}
+                style={{
+                  position: 'absolute', top: 46, right: 0, width: 340, maxWidth: 'calc(100vw - 24px)',
+                  background: menuBg, border: `1px solid ${borderColor}`, borderRadius: 18, padding: 10,
+                  boxShadow: isDark ? '0 18px 54px rgba(0,0,0,0.55)' : '0 16px 48px rgba(0,0,0,0.16)', zIndex: 220,
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 8px 10px' }}>
+                  <div>
+                    <div style={{ color: textColor, fontSize: 14, fontWeight: 900 }}>{lang === 'vi' ? 'Thông báo' : 'Notifications'}</div>
+                    <div style={{ color: text3, fontSize: 10 }}>{lang === 'vi' ? 'Trung tâm theo dõi hệ thống' : 'System tracking center'}</div>
+                  </div>
+                  {user.isAdmin && (
+                    <button type="button" onClick={() => { onNavigateAdmin?.(); setShowNotifications(false) }} style={{ border: 'none', background: 'rgba(0,184,204,0.12)', color: '#00b8cc', borderRadius: 999, padding: '6px 10px', fontSize: 11, fontWeight: 800, cursor: 'pointer' }}>
+                      Dashboard
+                    </button>
+                  )}
+                </div>
+                {notifications.length === 0 ? (
+                  <div style={{ padding: 24, textAlign: 'center', color: text3, fontSize: 12 }}>
+                    {lang === 'vi' ? 'Chưa có thông báo mới.' : 'No notifications yet.'}
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 360, overflow: 'auto' }}>
+                    {notifications.slice(0, 8).map(item => (
+                      <div key={item.id} style={{
+                        padding: 12, borderRadius: 14, border: `1px solid ${borderColor}`,
+                        background: item.type === 'system-error' ? 'rgba(255,183,77,0.10)' : (isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.025)'),
+                      }}>
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                          <span style={{ fontSize: 17 }}>{item.type === 'system-error' ? '🚨' : '🔔'}</span>
+                          <div style={{ minWidth: 0, flex: 1 }}>
+                            <div style={{ color: textColor, fontSize: 12, fontWeight: 800, lineHeight: 1.35 }}>{item.title || (lang === 'vi' ? 'Thông báo hệ thống' : 'System notification')}</div>
+                            <div style={{ color: text2, fontSize: 11, lineHeight: 1.45, marginTop: 3 }}>{item.message}</div>
+                            <div style={{ color: text3, fontSize: 10, marginTop: 6, fontFamily: 'monospace' }}>
+                              {new Date(item.createdAt).toLocaleString(lang === 'vi' ? 'vi-VN' : 'en-US')}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Theme toggle */}
         <button onClick={toggleTheme} style={{

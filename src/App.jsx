@@ -21,6 +21,7 @@ import PatientRecordPanel from './components/PatientRecordPanel.jsx'
 import Protein3DPanel from './components/Protein3DPanel.jsx'
 import UserProfilePanel from './components/UserProfilePanel.jsx'
 import LoginPage from './pages/LoginPage.jsx'
+import { addNotification } from './lib/notifications.js'
 
 // Swarm panel replaces simulation; keep consensus as classic fallback
 const PANELS = ['upload', 'imaging', 'checkin', 'family', 'record', 'familyRelationship', 'matrix3dBody', 'omnidirectional3dBody', 'twin', 'telemedicine', 'statAnalysis', 'swarm', 'consensus', 'protein3d']
@@ -171,7 +172,7 @@ export default function App() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
-      <Topbar activePanel={active} onNavigateProfile={() => setActive('profile')} />
+      <Topbar activePanel={active} onNavigateProfile={() => setActive('profile')} onNavigateAdmin={() => setActive('admin')} />
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         <Sidebar active={active} onNavigate={(id) => { if (id === 'record') setSelectedMember(null); setActive(id) }} />
         <main ref={mainRef} style={{ flex: 1, overflowY: 'auto', background: mainBg }}>
@@ -181,6 +182,7 @@ export default function App() {
             panelLabel={panelLabels[active] || active}
             onReset={() => setActive('upload')}
             familyStorageOwnerId={familyStorageOwnerId}
+            user={user}
           >
             {active === 'upload'    && <UploadPanel        patientId="LXK-2024" onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} onSelectImage={handleSelectCompareFile} />}
             {active === 'imaging'   && <ImagingPanel       onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} compareImage={compareImage} uploadedImages={uploadedImages} onSelectCompareImage={setCompareImage} scrollTarget={imagingScrollTarget} onScrollTargetHandled={() => setImagingScrollTarget(null)} />}
@@ -217,7 +219,7 @@ export default function App() {
 class PanelErrorBoundary extends React.Component {
   constructor(props) {
     super(props)
-    this.state = { error: null }
+    this.state = { error: null, reportSent: false }
   }
 
   static getDerivedStateFromError(error) {
@@ -230,7 +232,7 @@ class PanelErrorBoundary extends React.Component {
 
   componentDidUpdate(prevProps) {
     if (prevProps.resetKey !== this.props.resetKey && this.state.error) {
-      this.setState({ error: null })
+      this.setState({ error: null, reportSent: false })
     }
   }
 
@@ -247,7 +249,26 @@ class PanelErrorBoundary extends React.Component {
     } catch (error) {
       console.error('Unable to clear family data:', error)
     }
-    this.setState({ error: null })
+    this.setState({ error: null, reportSent: false })
+  }
+
+  handleSendToAdmin = () => {
+    const { error } = this.state
+    const { panelLabel, user } = this.props
+    addNotification({
+      type: 'system-error',
+      title: 'Lỗi render cần admin kiểm tra',
+      message: `User ${user?.email || 'unknown'} báo lỗi tại ${panelLabel}: ${error?.message || 'Unknown panel error'}`,
+      audience: 'admin',
+      userEmail: user?.email || '',
+      userName: user?.name || '',
+      panelLabel,
+      screenMessage: `Không thể tải trang ${panelLabel}`,
+      errorMessage: error?.message || 'Unknown panel error',
+      errorStack: error?.stack || '',
+      status: 'new',
+    })
+    this.setState({ reportSent: true })
   }
 
   render() {
@@ -275,6 +296,9 @@ class PanelErrorBoundary extends React.Component {
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 18 }}>
             <button type="button" onClick={this.handleClearFamilyData} style={{ padding: '10px 14px', borderRadius: 9, border: '1px solid rgba(0,229,255,.35)', background: 'rgba(0,229,255,.1)', color: '#00e5ff', fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>
               Xoá dữ liệu gia đình trên máy
+            </button>
+            <button type="button" onClick={this.handleSendToAdmin} disabled={this.state.reportSent} style={{ padding: '10px 14px', borderRadius: 9, border: '1px solid rgba(255,183,77,.38)', background: this.state.reportSent ? 'rgba(0,230,118,.1)' : 'rgba(255,183,77,.12)', color: this.state.reportSent ? '#00e676' : '#ffb74d', fontWeight: 800, cursor: this.state.reportSent ? 'default' : 'pointer', fontFamily: 'inherit' }}>
+              {this.state.reportSent ? 'Đã gửi admin' : 'Gửi admin'}
             </button>
             <button type="button" onClick={onReset} style={{ padding: '10px 14px', borderRadius: 9, border: `1px solid ${border}`, background: 'transparent', color: text2, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
               Về trang tải hồ sơ

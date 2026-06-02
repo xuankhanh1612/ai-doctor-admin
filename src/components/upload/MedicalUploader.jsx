@@ -158,6 +158,7 @@ export default function MedicalUploader({ patientId, onSelectImage }) {
   const [cameraStarting, setCameraStarting] = useState(false)
   const [cameraError, setCameraError]     = useState('')
   const fileInputRef = useRef(null)
+  const cameraInputRef = useRef(null)
   const videoRef = useRef(null)
   const streamRef = useRef(null)
 
@@ -254,7 +255,8 @@ export default function MedicalUploader({ patientId, onSelectImage }) {
   const openCamera = useCallback(async () => {
     setCameraError('')
     if (!navigator.mediaDevices?.getUserMedia) {
-      setCameraError(lang === 'vi' ? 'Trình duyệt không hỗ trợ mở camera thật.' : 'This browser does not support live camera capture.')
+      setCameraError(lang === 'vi' ? 'Trình duyệt không hỗ trợ mở camera thật. Đang mở camera hệ thống của thiết bị.' : 'This browser does not support live camera capture. Opening the device camera picker instead.')
+      cameraInputRef.current?.click()
       return
     }
     setCameraStarting(true)
@@ -269,8 +271,9 @@ export default function MedicalUploader({ patientId, onSelectImage }) {
         if (videoRef.current) videoRef.current.srcObject = stream
       }, 0)
     } catch (e) {
-      setCameraError(lang === 'vi' ? 'Không thể mở camera. Vui lòng cấp quyền camera cho trình duyệt.' : 'Cannot open camera. Please allow camera access in the browser.')
+      setCameraError(lang === 'vi' ? 'Không thể mở camera live. Bạn có thể chọn/chụp ảnh bằng camera hệ thống.' : 'Cannot open live camera. You can choose or capture an image with the device camera picker.')
       stopCamera()
+      cameraInputRef.current?.click()
     } finally {
       setCameraStarting(false)
     }
@@ -299,6 +302,7 @@ export default function MedicalUploader({ patientId, onSelectImage }) {
   const onDragLeave = () => setDragging(false)
   const onDrop      = e => { e.preventDefault(); setDragging(false); processFiles(e.dataTransfer.files) }
   const onFileChange = e => { if (e.target.files?.length) processFiles(e.target.files); e.target.value = '' }
+  const onCameraChange = e => { if (e.target.files?.length) processFiles(e.target.files); e.target.value = '' }
 
   async function handleDelete(id) {
     if (!confirm(uploadText(lang, 'confirmDelete'))) return
@@ -412,6 +416,7 @@ Trả lời bằng tiếng Việt, ngắn gọn và rõ ràng. Nhắc nhở đâ
   // ─── Render ─────────────────────────────────────────────────────────────
   return (
     <div style={{ minHeight: '100%', background: '#04060f', fontFamily: "'DM Sans', sans-serif", color: '#e8f0f8', padding: 24 }}>
+      <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={onCameraChange} style={{ display: 'none' }} />
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes fade-in { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
@@ -534,7 +539,6 @@ Trả lời bằng tiếng Việt, ngắn gọn và rõ ràng. Nhắc nhở đâ
             )}
           </div>
           <input ref={fileInputRef} type="file" multiple accept={ACCEPT} onChange={onFileChange} style={{ display: 'none' }} />
-          <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={onCameraChange} style={{ display: 'none' }} />
 
           {cameraError && (
             <div style={{ marginBottom: 16, padding: '10px 14px', borderRadius: 10, border: '1px solid rgba(255,82,82,0.25)', background: 'rgba(255,82,82,0.08)', color: '#ff5252', fontSize: 12 }}>
