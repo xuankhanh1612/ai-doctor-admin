@@ -73,6 +73,9 @@ function norm(partial, options = {}) {
     ownerAvatar: partial.ownerAvatar || options.ownerAvatar || '',
     ownerProvider: partial.ownerProvider || options.ownerProvider || '',
     isDemo:    partial.isDemo ?? (!ownerEmail && options.markAsDemo === true),
+    sourceModule: partial.sourceModule || options.sourceModule || '',
+    uploadFolder: partial.uploadFolder || options.uploadFolder || '',
+    uploadPath: partial.uploadPath || options.uploadPath || '',
     dataUrl:   partial.dataUrl    || '',
     base64Data:partial.base64Data || '',
   }
