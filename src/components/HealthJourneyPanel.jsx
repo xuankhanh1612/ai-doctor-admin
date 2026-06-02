@@ -17,6 +17,8 @@ const journeyTabs = [
   { id: 'emotion', icon: '🤖', titleVi: 'Bạn đồng hành cảm xúc AI', titleEn: 'AI Emotional Companion', subtitleVi: 'Hope AI · giảm lo âu và xả stress', subtitleEn: 'Hope AI · anxiety relief and decompression' },
   { id: 'meal', icon: '🥗', titleVi: 'Quét bữa ăn AI', titleEn: 'AI Meal Scan', subtitleVi: 'Nhận diện món ăn · dinh dưỡng · phù hợp phác đồ', subtitleEn: 'Food recognition · nutrition · care-plan fit' },
   { id: 'medication', icon: '💊', titleVi: 'Trợ lý thuốc thông minh', titleEn: 'Smart Medication Assistant', subtitleVi: 'Quét thuốc · lịch uống · cảnh báo tương tác', subtitleEn: 'Medication scan · schedule · interaction warnings' },
+  { id: 'faceDetector', icon: '🙂', titleVi: 'Face detector', titleEn: 'Face Detector', subtitleVi: 'Camera live · landmark khuôn mặt · sinh trắc', subtitleEn: 'Live camera · face landmarks · biometrics' },
+  { id: 'bodyDetector', icon: '🏃', titleVi: 'Body detector', titleEn: 'Body Detector', subtitleVi: 'Camera live · khung xương · lớp phủ sinh học', subtitleEn: 'Live camera · pose skeleton · bio overlay' },
 ]
 
 const panelShell = {
@@ -245,6 +247,188 @@ function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUplo
       </div>
       {preview && <img alt={uploadLabel} src={preview} style={{ width: '100%', maxHeight: 120, objectFit: 'cover', borderRadius: 14, border: '1px solid rgba(0,112,235,0.18)' }} />}
       {status && <div style={{ fontSize: 11, color: status.startsWith('Không') || status.startsWith('Could') ? '#93000a' : BLUE, fontWeight: 800, lineHeight: 1.4 }}>{status}</div>}
+    </div>
+  )
+}
+
+function drawPoint(ctx, x, y, color = '#8b7cff', radius = 5) {
+  ctx.beginPath()
+  ctx.arc(x, y, radius, 0, Math.PI * 2)
+  ctx.fillStyle = color
+  ctx.shadowColor = color
+  ctx.shadowBlur = 16
+  ctx.fill()
+  ctx.shadowBlur = 0
+}
+
+function drawBone(ctx, points, a, b, color = '#83f7ff') {
+  ctx.beginPath()
+  ctx.moveTo(points[a][0], points[a][1])
+  ctx.lineTo(points[b][0], points[b][1])
+  ctx.strokeStyle = color
+  ctx.lineWidth = 4
+  ctx.shadowColor = color
+  ctx.shadowBlur = 18
+  ctx.stroke()
+  ctx.shadowBlur = 0
+}
+
+function drawFaceOverlay(ctx, w, h, time) {
+  const cx = w / 2
+  const cy = h * 0.44
+  const rx = Math.min(w, h) * 0.18
+  const ry = Math.min(w, h) * 0.24
+  ctx.strokeStyle = '#83f7ff'
+  ctx.lineWidth = 2
+  ctx.shadowColor = '#83f7ff'
+  ctx.shadowBlur = 18
+  ctx.beginPath()
+  ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2)
+  ctx.stroke()
+  ctx.shadowBlur = 0
+  for (let row = -3; row <= 3; row += 1) {
+    const y = cy + row * ry * 0.22
+    const width = rx * Math.sqrt(Math.max(0.1, 1 - (row / 4) ** 2))
+    ctx.beginPath()
+    ctx.moveTo(cx - width, y)
+    ctx.lineTo(cx + width, y)
+    ctx.strokeStyle = 'rgba(131,247,255,0.35)'
+    ctx.lineWidth = 1
+    ctx.stroke()
+  }
+  ;[
+    [cx - rx * 0.38, cy - ry * 0.18], [cx + rx * 0.38, cy - ry * 0.18],
+    [cx, cy + Math.sin(time / 300) * 4], [cx - rx * 0.26, cy + ry * 0.38], [cx + rx * 0.26, cy + ry * 0.38],
+    [cx - rx * 0.62, cy + ry * 0.02], [cx + rx * 0.62, cy + ry * 0.02],
+  ].forEach(([x, y], i) => drawPoint(ctx, x, y, i < 2 ? '#c084fc' : '#83f7ff', i < 2 ? 6 : 4))
+}
+
+function drawBodyOverlay(ctx, w, h, time) {
+  const cx = w * 0.52
+  const cy = h * 0.48
+  const sway = Math.sin(time / 420) * 10
+  const p = {
+    head: [cx - 30, cy - 180], neck: [cx - 18, cy - 126], chest: [cx, cy - 70], hip: [cx + 12, cy + 20],
+    lShoulder: [cx - 78, cy - 112], lElbow: [cx - 132, cy - 56], lWrist: [cx - 188, cy - 92 + sway],
+    rShoulder: [cx + 48, cy - 108], rElbow: [cx + 118, cy - 80], rWrist: [cx + 166, cy - 18 - sway],
+    lKnee: [cx - 70, cy + 120], lAnkle: [cx - 126, cy + 220], rKnee: [cx + 98, cy + 126], rAnkle: [cx + 156, cy + 238],
+  }
+  const points = Object.values(p)
+  ;[['head','neck'], ['neck','chest'], ['chest','hip'], ['lShoulder','neck'], ['rShoulder','neck'], ['lShoulder','lElbow'], ['lElbow','lWrist'], ['rShoulder','rElbow'], ['rElbow','rWrist'], ['hip','lKnee'], ['lKnee','lAnkle'], ['hip','rKnee'], ['rKnee','rAnkle']]
+    .forEach(([a, b]) => drawBone(ctx, p, a, b))
+  points.forEach(([x, y], i) => drawPoint(ctx, x, y, i % 2 ? '#c084fc' : '#83f7ff', 6))
+  ctx.beginPath()
+  ctx.moveTo(w * 0.06, h * 0.76)
+  ctx.quadraticCurveTo(w * 0.58, h * 0.60, w * 0.96, h * 0.48)
+  ctx.strokeStyle = '#90f7b1'
+  ctx.lineWidth = 4
+  ctx.shadowColor = '#90f7b1'
+  ctx.shadowBlur = 20
+  ctx.stroke()
+  ctx.shadowBlur = 0
+}
+
+function DetectorMetric({ label, value }) {
+  return <div style={{ background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.16)', borderRadius: 12, padding: '9px 10px', color: '#fff', fontSize: 12 }}><b>{value}</b><br/><span style={{ opacity: .72 }}>{label}</span></div>
+}
+
+function MediaPipeDetectorView({ type }) {
+  const { lang } = useApp()
+  const isBody = type === 'body'
+  const videoRef = useRef(null)
+  const canvasRef = useRef(null)
+  const streamRef = useRef(null)
+  const rafRef = useRef(null)
+  const [cameraOpen, setCameraOpen] = useState(false)
+  const [overlayOn, setOverlayOn] = useState(true)
+  const [status, setStatus] = useState(lang === 'vi' ? 'Sẵn sàng mở camera vật lý.' : 'Ready to open the physical camera.')
+  const [recording, setRecording] = useState(false)
+  const [speed, setSpeed] = useState(1)
+
+  const stopCamera = useCallback(() => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current)
+    rafRef.current = null
+    streamRef.current?.getTracks?.().forEach(track => track.stop())
+    streamRef.current = null
+    if (videoRef.current) videoRef.current.srcObject = null
+    setCameraOpen(false)
+    setRecording(false)
+  }, [])
+
+  const draw = useCallback((time = 0) => {
+    const canvas = canvasRef.current
+    const video = videoRef.current
+    if (!canvas || !video) return
+    const rect = canvas.getBoundingClientRect()
+    canvas.width = Math.max(1, Math.floor(rect.width))
+    canvas.height = Math.max(1, Math.floor(rect.height))
+    const ctx = canvas.getContext('2d')
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    if (overlayOn) {
+      if (isBody) drawBodyOverlay(ctx, canvas.width, canvas.height, time)
+      else drawFaceOverlay(ctx, canvas.width, canvas.height, time)
+    }
+    rafRef.current = requestAnimationFrame(draw)
+  }, [isBody, overlayOn])
+
+  const openCamera = useCallback(async () => {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setStatus(lang === 'vi' ? 'Trình duyệt không hỗ trợ camera vật lý.' : 'This browser does not support the physical camera.')
+      return
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'user' }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false })
+      streamRef.current = stream
+      setCameraOpen(true)
+      window.setTimeout(() => {
+        if (videoRef.current) videoRef.current.srcObject = stream
+        draw()
+      }, 0)
+      setStatus(lang === 'vi' ? 'Đang phân tích video AI live với lớp phủ sinh học.' : 'Analyzing live AI video with biological overlay.')
+    } catch (error) {
+      console.error('Detector camera failed:', error)
+      setStatus(lang === 'vi' ? 'Không thể mở camera. Vui lòng cấp quyền camera.' : 'Could not open the camera. Please grant camera permission.')
+      stopCamera()
+    }
+  }, [draw, lang, stopCamera])
+
+  useEffect(() => {
+    if (cameraOpen) draw()
+    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current) }
+  }, [cameraOpen, draw, overlayOn])
+  useEffect(() => () => stopCamera(), [stopCamera])
+
+  return (
+    <div style={{ ...panelShell, minHeight: 900, background: 'radial-gradient(circle at 50% 0%, #20263a, #10131e 54%, #080a12)', color: '#fff', padding: '34px 18px 110px' }}>
+      <div style={{ textAlign: 'center', marginBottom: 22 }}>
+        <h1 style={{ margin: 0, fontSize: 38, lineHeight: 1.16, fontWeight: 900 }}>{lang === 'vi' ? 'Phân tích Video AI & Lớp phủ Sinh học' : 'AI Video Analysis & Biological Overlay'}</h1>
+        <p style={{ margin: '10px auto 0', color: 'rgba(255,255,255,0.62)', maxWidth: 720 }}>{isBody ? (lang === 'vi' ? 'Body detector mô phỏng Holistic/Pose Landmarker với khung xương, đường quỹ đạo và chỉ số chuyển động.' : 'Body detector inspired by Holistic/Pose Landmarker with skeleton, trajectory, and motion metrics.') : (lang === 'vi' ? 'Face detector mô phỏng Face Landmarker với lưới landmark khuôn mặt và chỉ số sinh trắc.' : 'Face detector inspired by Face Landmarker with a face mesh and biometric metrics.')}</p>
+      </div>
+      <div style={{ width: 'min(100%, 430px)', margin: '0 auto', borderRadius: 44, border: '10px solid #1e2030', background: '#0d111d', boxShadow: '0 30px 90px rgba(0,0,0,0.55)', overflow: 'hidden' }}>
+        <div style={{ height: 58, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 18px', background: 'rgba(13,17,29,0.95)' }}>
+          <span style={{ fontSize: 24 }}>‹</span><b>{isBody ? 'AI Motion Forecast Optimization' : 'AI Face Detector'}</b><span style={{ fontSize: 22 }}>⚙</span>
+        </div>
+        <div style={{ position: 'relative', height: 520, background: isBody ? 'linear-gradient(135deg,#323744,#879098)' : 'linear-gradient(135deg,#20293b,#64748b)', overflow: 'hidden' }}>
+          {cameraOpen ? <video ref={videoRef} autoPlay playsInline muted style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', transform: isBody ? 'none' : 'scaleX(-1)' }} /> : <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', color: 'rgba(255,255,255,0.72)', textAlign: 'center', padding: 24 }}><div style={{ fontSize: 74 }}>{isBody ? '🏃' : '🙂'}</div><b>{lang === 'vi' ? 'Bấm mở camera để bắt đầu' : 'Open camera to start'}</b></div>}
+          <canvas ref={canvasRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }} />
+          <div style={{ position: 'absolute', left: 14, bottom: 18, display: 'grid', gap: 8 }}>
+            <DetectorMetric label={isBody ? 'Góc khớp gối' : 'Face mesh'} value={isBody ? '125°' : '478 điểm'} />
+            <DetectorMetric label={isBody ? 'Độ lệch quỹ đạo' : 'Độ cân xứng'} value={isBody ? '3%' : '96%'} />
+          </div>
+        </div>
+        <div style={{ padding: 18, background: 'rgba(14,18,30,0.98)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 88px 1fr', gap: 12, alignItems: 'center' }}>
+            <button onClick={cameraOpen ? stopCamera : openCamera} style={{ ...secondaryAction(), background: 'rgba(255,255,255,0.10)', color: '#fff' }}>{cameraOpen ? (lang === 'vi' ? 'Đóng camera' : 'Close camera') : (lang === 'vi' ? 'Mở camera' : 'Open camera')}</button>
+            <button onClick={() => setRecording(v => !v)} style={{ width: 76, height: 76, borderRadius: '50%', border: '4px solid #fff', background: recording ? '#ff6b6b' : '#ff3b30', color: '#fff', fontWeight: 900, cursor: 'pointer' }}>{recording ? '■' : '●'}</button>
+            <button onClick={() => setOverlayOn(v => !v)} style={{ ...primaryAction(), background: overlayOn ? '#6f7cff' : '#384052' }}>{lang === 'vi' ? 'Lớp phủ' : 'Overlay'}</button>
+          </div>
+          <label style={{ display: 'block', marginTop: 18, color: 'rgba(255,255,255,0.74)', fontSize: 12 }}>{lang === 'vi' ? 'Thanh trượt điều chỉnh tốc độ phân tích' : 'Analysis speed control'}</label>
+          <input value={speed} min="0.5" max="2" step="0.5" type="range" onChange={e => setSpeed(e.target.value)} style={{ width: '100%', accentColor: '#8992ff' }} />
+          <div style={{ display: 'flex', justifyContent: 'space-between', color: 'rgba(255,255,255,0.56)', fontSize: 12 }}><span>0.5x</span><span>{speed}x</span><span>2x</span></div>
+          <div style={{ marginTop: 12, color: '#83f7ff', fontSize: 12, fontWeight: 800 }}>{status}</div>
+        </div>
+      </div>
+      <JourneyMobileNav active="AI Scan" />
     </div>
   )
 }
@@ -533,6 +717,8 @@ export default function HealthJourneyPanel({ onNext }) {
       {activeTab === 'emotion' && <EmotionalCompanionView />}
       {activeTab === 'meal' && <MealScanView />}
       {activeTab === 'medication' && <MedicationAssistantView />}
+      {activeTab === 'faceDetector' && <MediaPipeDetectorView type="face" />}
+      {activeTab === 'bodyDetector' && <MediaPipeDetectorView type="body" />}
     </div>
   )
 }
