@@ -534,6 +534,7 @@ Trả lời bằng tiếng Việt, ngắn gọn và rõ ràng. Nhắc nhở đâ
             )}
           </div>
           <input ref={fileInputRef} type="file" multiple accept={ACCEPT} onChange={onFileChange} style={{ display: 'none' }} />
+          <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={onCameraChange} style={{ display: 'none' }} />
 
           {cameraError && (
             <div style={{ marginBottom: 16, padding: '10px 14px', borderRadius: 10, border: '1px solid rgba(255,82,82,0.25)', background: 'rgba(255,82,82,0.08)', color: '#ff5252', fontSize: 12 }}>
