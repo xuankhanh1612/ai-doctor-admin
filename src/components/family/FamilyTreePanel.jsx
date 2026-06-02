@@ -1,8 +1,9 @@
 import React, { useState, useCallback, useEffect } from 'react'
 import { useApp } from '../../context/AppContext'
+import { useAuth } from '../../context/AuthContext'
 import NavButtons from '../NavButtons.jsx'
 
-import { CONDITION_COLORS, DEFAULT_FAMILY_MEMBERS, RELATIONS, RELATION_META, isNonDiseaseCondition, loadFamilyMembers, saveFamilyMembers } from './familyData.js'
+import { CONDITION_COLORS, DEFAULT_FAMILY_MEMBERS, LXK_PATIENT_PROFILE, RELATIONS, RELATION_META, isNonDiseaseCondition, loadFamilyMembers, saveFamilyMembers } from './familyData.js'
 
 // Backward-compatible exports for panels that import shared family data through this component.
 export { DEFAULT_FAMILY_MEMBERS, loadFamilyMembers } from './familyData.js'
@@ -72,6 +73,27 @@ const buildMemberRecord = (member) => {
 
 // ─── Empty form state ──────────────────────────────────────────────────────
 const EMPTY_FORM = { name:'', age:'', gender:'M', relation:'child', dob:'', blood_type:'', conditions:'', symptoms:'', labs:'', imaging:'', medications:'', allergies:'', genomics:'', timeline:'', risk_factors:'', alive:true, note:'' }
+const isPrimaryPatientMember = member => member?.relation === 'self' || member?.id === LXK_PATIENT_PROFILE.id
+const displayNameFromUser = user => String(user?.name || '').trim()
+const syncPrimaryPatientName = (members, name) => {
+  const patientName = String(name || '').trim()
+  if (!patientName) return members
+  let changed = false
+  const nextMembers = members.map(member => {
+    if (!isPrimaryPatientMember(member) || member.name === patientName) return member
+    changed = true
+    return {
+      ...member,
+      name: patientName,
+      medicalRecord: member.medicalRecord ? {
+        ...member.medicalRecord,
+        name: patientName,
+        avatar_initials: patientName.split(' ').slice(-2).map(w => w[0]).join('').toUpperCase(),
+      } : member.medicalRecord,
+    }
+  })
+  return changed ? nextMembers : members
+}
 const splitCommaItems = value => String(value || '').split(',').map(item => item.trim()).filter(Boolean)
 const joinMedicalItems = (items, key = 'name') => (
   Array.isArray(items) ? items.map(item => item?.[key] || item?.name || item).filter(Boolean).join(', ') : ''
@@ -99,6 +121,7 @@ const buildFamilyMedicalRecord = (memberId, form, conditions) => ({
 
 // ─── Member Card ───────────────────────────────────────────────────────────
 function MemberCard({ member, lang, isDark, c, onViewRecord, onEdit, onDelete }) {
+  const isPrimaryPatient = isPrimaryPatientMember(member)
   const meta     = FAMILY_RELATION_META[member.relation] || { color:'#888', label:{ vi:'Khác', en:'Other' } }
   const relColor = meta.color
   const hasDisease = (member.conditions || []).some(cd => !isNonDiseaseCondition(cd))
@@ -112,7 +135,7 @@ function MemberCard({ member, lang, isDark, c, onViewRecord, onEdit, onDelete })
         fontSize:8, fontWeight:700, fontFamily:'monospace',
         padding:'2px 8px', borderRadius:20, letterSpacing:'.06em', whiteSpace:'nowrap',
         opacity:0, transition:'opacity 0.18s', pointerEvents:'none', zIndex:10,
-      }}>Sửa thành viên →</div>
+      }}>{isPrimaryPatient ? (lang === 'vi' ? 'Sửa thông tin, tên từ Hồ sơ cá nhân →' : 'Edit details, name from User Profile →') : (lang === 'vi' ? 'Sửa thành viên →' : 'Edit member →')}</div>
 
       {/* Main card */}
       <div
@@ -190,16 +213,18 @@ function MemberCard({ member, lang, isDark, c, onViewRecord, onEdit, onDelete })
           onMouseEnter={e => { e.currentTarget.style.borderColor='#00b8cc'; e.currentTarget.style.color='#00b8cc' }}
           onMouseLeave={e => { e.currentTarget.style.borderColor=c.border; e.currentTarget.style.color=c.text2 }}
         >📋 Hồ sơ</button>
-        <button
-          onClick={e => { e.stopPropagation(); onDelete(member.id) }}
-          style={{
-            flex:1, padding:'4px 0', borderRadius:6, border:'1px solid rgba(255,82,82,0.2)',
-            background:'rgba(255,82,82,0.06)',
-            color:'#ff5252', fontSize:10, cursor:'pointer', transition:'all .15s',
-          }}
-          onMouseEnter={e => { e.currentTarget.style.background='rgba(255,82,82,0.15)' }}
-          onMouseLeave={e => { e.currentTarget.style.background='rgba(255,82,82,0.06)' }}
-        >🗑️ Xoá</button>
+        {!isPrimaryPatient && (
+          <button
+            onClick={e => { e.stopPropagation(); onDelete(member.id) }}
+            style={{
+              flex:1, padding:'4px 0', borderRadius:6, border:'1px solid rgba(255,82,82,0.2)',
+              background:'rgba(255,82,82,0.06)',
+              color:'#ff5252', fontSize:10, cursor:'pointer', transition:'all .15s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background='rgba(255,82,82,0.15)' }}
+            onMouseLeave={e => { e.currentTarget.style.background='rgba(255,82,82,0.06)' }}
+          >🗑️ Xoá</button>
+        )}
       </div>
     </div>
   )
@@ -216,7 +241,7 @@ function Field({ label, children }) {
 }
 
 // ─── Member Form Modal ─────────────────────────────────────────────────────
-function MemberFormModal({ mode, initialForm, onSave, onClose, lang, isDark, c }) {
+function MemberFormModal({ mode, initialForm, onSave, onClose, lang, isDark, c, lockName = false }) {
   // Use local ref-backed state so typing never causes parent re-render
   const [localForm, setLocalForm] = useState(initialForm)
   const title = mode === 'add'
@@ -252,10 +277,19 @@ function MemberFormModal({ mode, initialForm, onSave, onClose, lang, isDark, c }
 
         <Field label={lang === 'vi' ? 'Họ và tên *' : 'Full Name *'}>
           <input
-            value={localForm.name} onChange={e => setLocalForm(p => ({ ...p, name:e.target.value }))}
+            value={localForm.name}
+            onChange={e => setLocalForm(p => ({ ...p, name:e.target.value }))}
+            disabled={lockName}
             placeholder={lang === 'vi' ? 'Nguyễn Văn A' : 'John Doe'}
-            style={inputStyle}
+            style={{ ...inputStyle, opacity: lockName ? 0.7 : 1, cursor: lockName ? 'not-allowed' : 'text' }}
           />
+          {lockName && (
+            <div style={{ fontSize:10, color:'#ffb74d', marginTop:4, lineHeight:1.45 }}>
+              {lang === 'vi'
+                ? 'Tên Patient chính lấy từ Hồ sơ cá nhân. Vào User Profile để đổi tên và hệ thống sẽ tự đồng bộ lại.'
+                : 'The primary Patient name comes from User Profile. Update User Profile to sync it here.'}
+            </div>
+          )}
         </Field>
 
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
@@ -379,30 +413,42 @@ function MemberFormModal({ mode, initialForm, onSave, onClose, lang, isDark, c }
 // ─── Main Component ────────────────────────────────────────────────────────
 export default function FamilyTreePanel({ patientId, storageOwnerId = 'guest', onNext, onPrev, prevLabel, onViewRecord }) {
   const { theme, lang, t } = useApp()
+  const { user } = useAuth()
   const isDark    = theme === 'dark'
 
   // Load from localStorage, fallback to DEFAULT_MEMBERS
-  const [members, setMembersState] = useState(() => loadFamilyMembers(patientId, storageOwnerId) || DEFAULT_FAMILY_MEMBERS)
+  const [members, setMembersState] = useState(() => syncPrimaryPatientName(loadFamilyMembers(patientId, storageOwnerId) || DEFAULT_FAMILY_MEMBERS, displayNameFromUser(user)))
   const [modal, setModal]   = useState(null)   // null | 'add' | 'edit'
   const [form, setForm]     = useState(EMPTY_FORM)
   const [editId, setEditId] = useState(null)
   const [deleteConfirm, setDeleteConfirm] = useState(null)
 
   useEffect(() => {
-    setMembersState(loadFamilyMembers(patientId, storageOwnerId) || DEFAULT_FAMILY_MEMBERS)
+    setMembersState(syncPrimaryPatientName(loadFamilyMembers(patientId, storageOwnerId) || DEFAULT_FAMILY_MEMBERS, displayNameFromUser(user)))
     setModal(null)
     setEditId(null)
     setDeleteConfirm(null)
-  }, [patientId, storageOwnerId])
+  }, [patientId, storageOwnerId, user?.name])
+
+  useEffect(() => {
+    const patientName = displayNameFromUser(user)
+    if (!patientName) return
+    setMembersState(prev => {
+      const next = syncPrimaryPatientName(prev, patientName)
+      if (next !== prev) saveFamilyMembers(patientId, next, storageOwnerId)
+      return next
+    })
+  }, [patientId, storageOwnerId, user?.name])
 
   // Persist every change
   const setMembers = useCallback((updater) => {
     setMembersState(prev => {
       const next = typeof updater === 'function' ? updater(prev) : updater
-      saveFamilyMembers(patientId, next, storageOwnerId)
-      return next
+      const syncedNext = syncPrimaryPatientName(next, displayNameFromUser(user))
+      saveFamilyMembers(patientId, syncedNext, storageOwnerId)
+      return syncedNext
     })
-  }, [patientId, storageOwnerId])
+  }, [patientId, storageOwnerId, user])
 
   const c = isDark ? {
     bg:'transparent', border:'rgba(255,255,255,0.08)',
@@ -450,7 +496,7 @@ export default function FamilyTreePanel({ patientId, storageOwnerId = 'guest', o
     const memberId = modal === 'add' ? `fm-${Date.now()}` : editId
     const conditions = splitCommaItems(localForm.conditions).length ? splitCommaItems(localForm.conditions) : ['Chưa rõ tiền sử']
     const parsed = {
-      name:       localForm.name.trim(),
+      name:       isPrimaryPatientMember(members.find(m => m.id === editId)) ? displayNameFromUser(user) || localForm.name.trim() : localForm.name.trim(),
       age:        parseInt(localForm.age, 10) || 0,
       gender:     localForm.gender,
       relation:   localForm.relation,
@@ -472,6 +518,7 @@ export default function FamilyTreePanel({ patientId, storageOwnerId = 'guest', o
   }
 
   const handleDelete = (id) => {
+    if (isPrimaryPatientMember(members.find(m => m.id === id))) return
     setMembers(prev => prev.filter(m => m.id !== id))
     setDeleteConfirm(null)
   }
@@ -641,9 +688,11 @@ export default function FamilyTreePanel({ patientId, storageOwnerId = 'guest', o
                         <button onClick={() => openEdit(member)} style={{ padding:'4px 8px', borderRadius:6, border:`1px solid ${c.border}`, background:'transparent', color:c.text2, fontSize:10, cursor:'pointer' }}>
                           ✏️
                         </button>
-                        <button onClick={() => setDeleteConfirm(member.id)} style={{ padding:'4px 8px', borderRadius:6, border:'1px solid rgba(255,82,82,0.2)', background:'rgba(255,82,82,0.06)', color:'#ff5252', fontSize:10, cursor:'pointer' }}>
-                          🗑️
-                        </button>
+                        {!isPrimaryPatientMember(member) && (
+                          <button onClick={() => setDeleteConfirm(member.id)} style={{ padding:'4px 8px', borderRadius:6, border:'1px solid rgba(255,82,82,0.2)', background:'rgba(255,82,82,0.06)', color:'#ff5252', fontSize:10, cursor:'pointer' }}>
+                            🗑️
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -689,6 +738,7 @@ export default function FamilyTreePanel({ patientId, storageOwnerId = 'guest', o
           mode={modal} initialForm={form}
           onSave={handleSave} onClose={() => setModal(null)}
           lang={lang} isDark={isDark} c={c}
+          lockName={modal === 'edit' && isPrimaryPatientMember(members.find(m => m.id === editId))}
         />
       )}
 
