@@ -232,11 +232,15 @@ export function AuthProvider({ children }) {
   // Called from ProfileSetupModal or Settings when user updates their info
   const updateProfile = (updates) => {
     const users = getUsers()
-    const hasCustomAvatar = updates.avatar && updates.avatar !== users[user.email]?.googleAvatar
+    const existingUser = users[user.email] || {}
+    const hasCustomAvatar = updates.avatar && updates.avatar !== existingUser.googleAvatar
+    const avatarCustomized = typeof updates.avatarCustomized === 'boolean'
+      ? updates.avatarCustomized
+      : hasCustomAvatar || existingUser.avatarCustomized || false
     const updated = {
-      ...users[user.email],
+      ...existingUser,
       ...updates,
-      avatarCustomized: hasCustomAvatar || users[user.email]?.avatarCustomized || false,
+      avatarCustomized,
       profileComplete: true,
     }
     users[user.email] = updated

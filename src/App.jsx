@@ -19,6 +19,7 @@ import FamilyMedicalRelationshipPanel from './components/family/FamilyMedicalRel
 import AdminPanel from './components/admin/AdminPanel.jsx'
 import PatientRecordPanel from './components/PatientRecordPanel.jsx'
 import Protein3DPanel from './components/Protein3DPanel.jsx'
+import UserProfilePanel from './components/UserProfilePanel.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 
 // Swarm panel replaces simulation; keep consensus as classic fallback
@@ -60,6 +61,7 @@ export default function App() {
     swarm: t('swarmCouncil'),
     consensus: `${t('consensus')} (Classic)`,
     protein3d: t('protein3d'),
+    profile: t('profile'),
   }
 
   const navigateToRecord = (member) => { setSelectedMember(member); setActive('record') }
@@ -169,7 +171,7 @@ export default function App() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
-      <Topbar activePanel={active} />
+      <Topbar activePanel={active} onNavigateProfile={() => setActive('profile')} />
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         <Sidebar active={active} onNavigate={(id) => { if (id === 'record') setSelectedMember(null); setActive(id) }} />
         <main ref={mainRef} style={{ flex: 1, overflowY: 'auto', background: mainBg }}>
@@ -194,6 +196,7 @@ export default function App() {
             {active === 'swarm'     && <SwarmConsensusPanel onReset={() => setActive('upload')} onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'consensus' && <ConsensusPanel     onReset={() => setActive('upload')} onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'protein3d' && <Protein3DPanel     onPrev={goPrev} prevLabel={prevLabel} />}
+            {active === 'profile'   && <UserProfilePanel />}
             {active === 'admin'     && user?.isAdmin && <AdminPanel />}
             {active === 'admin'     && !user?.isAdmin && (
               <div style={{ padding: 40, textAlign: 'center', color: '#ff5252' }}>🔒 Admin only</div>
