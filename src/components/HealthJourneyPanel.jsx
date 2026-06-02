@@ -1,6 +1,9 @@
-import React, { useState } from 'react'
+import React, { useCallback, useRef, useState } from 'react'
 import NavButtons from './NavButtons.jsx'
 import { useApp } from '../context/AppContext.jsx'
+import { useAuth } from '../context/AuthContext.jsx'
+import { detectFileType, fileToBase64, fileToDataUrl, saveRecord } from '../lib/medicalStorage.js'
+import { notifyUpload } from '../hooks/useMedicalData.js'
 
 const BLUE = '#0058bc'
 const PRIMARY = '#0070eb'
@@ -32,6 +35,112 @@ const glass = {
   backdropFilter: 'blur(20px)',
   border: '1px solid rgba(255,255,255,0.45)',
   boxShadow: '0 10px 40px rgba(0,0,0,0.06)',
+}
+
+
+const SAFE_FOLDER_FALLBACK = 'guest'
+
+function safeUploadSegment(value) {
+  return (value || SAFE_FOLDER_FALLBACK)
+    .toString()
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, '-')
+    .replace(/^-+|-+$/g, '') || SAFE_FOLDER_FALLBACK
+}
+
+function makeJourneyFilename(prefix, originalName = 'camera.jpg') {
+  const ext = originalName.includes('.') ? originalName.split('.').pop() : 'jpg'
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-')
+  return `${prefix}_${stamp}.${ext || 'jpg'}`
+}
+
+function JourneyCameraUploader({ mode, title, helper, onUploaded }) {
+  const { lang } = useApp()
+  const { user } = useAuth()
+  const inputRef = useRef(null)
+  const [uploading, setUploading] = useState(false)
+  const [status, setStatus] = useState('')
+  const [preview, setPreview] = useState('')
+
+  const userFolder = safeUploadSegment(user?.email || user?.name || 'guest')
+  const modeFolder = mode === 'medication' ? 'medication-assistant' : 'meal-scan'
+  const virtualFolder = `upload/${userFolder}/${modeFolder}`
+
+  const handleFiles = useCallback(async (files) => {
+    const file = files?.[0]
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      setStatus(lang === 'vi' ? 'Vui lòng chụp hoặc chọn một hình ảnh.' : 'Please capture or choose an image.')
+      return
+    }
+
+    setUploading(true)
+    setStatus(lang === 'vi' ? 'Đang lưu ảnh vào thư mục upload của user...' : 'Saving image into the user upload folder...')
+
+    try {
+      const [dataUrl, base64Data] = await Promise.all([fileToDataUrl(file), fileToBase64(file)])
+      const filename = makeJourneyFilename(mode === 'medication' ? 'medication' : 'meal', file.name)
+      const uploadPath = `${virtualFolder}/${filename}`
+      const record = {
+        id: `hj_${mode}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+        filename,
+        name: filename,
+        fileType: detectFileType(file.type, filename),
+        type: detectFileType(file.type, filename),
+        mimeType: file.type,
+        size: file.size,
+        uploadedAt: new Date().toISOString(),
+        dataUrl,
+        base64Data,
+        notes: lang === 'vi' ? `${title} · lưu tại ${uploadPath}` : `${title} · saved at ${uploadPath}`,
+        ownerEmail: user?.email || null,
+        ownerName: user?.name || '',
+        ownerAvatar: user?.avatar || '',
+        ownerProvider: user?.provider || '',
+        sourceModule: mode,
+        uploadFolder: virtualFolder,
+        uploadPath,
+      }
+
+      await saveRecord(record, {
+        ownerEmail: user?.email,
+        ownerName: user?.name,
+        ownerAvatar: user?.avatar,
+        ownerProvider: user?.provider,
+      })
+      notifyUpload()
+      setPreview(dataUrl)
+      setStatus(lang === 'vi' ? `Đã upload: ${uploadPath}` : `Uploaded: ${uploadPath}`)
+      onUploaded?.(record)
+    } catch (error) {
+      console.error('Health journey camera upload failed:', error)
+      setStatus(lang === 'vi' ? 'Không thể upload ảnh. Vui lòng thử lại.' : 'Could not upload the image. Please try again.')
+    } finally {
+      setUploading(false)
+    }
+  }, [lang, mode, onUploaded, title, user?.avatar, user?.email, user?.name, user?.provider, virtualFolder])
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        onChange={e => { handleFiles(e.target.files); e.target.value = '' }}
+        style={{ display: 'none' }}
+      />
+      <button disabled={uploading} onClick={() => inputRef.current?.click()} style={{ ...primaryAction(), opacity: uploading ? 0.72 : 1 }}>
+        {uploading ? (lang === 'vi' ? 'Đang upload...' : 'Uploading...') : `📷 ${title}`}
+      </button>
+      <div style={{ fontSize: 11, color: mode === 'meal' ? MUTED : 'rgba(29,29,31,0.62)', lineHeight: 1.45 }}>
+        {helper}<br />{lang === 'vi' ? 'Thư mục user:' : 'User folder:'} <b>{virtualFolder}</b>
+      </div>
+      {preview && <img alt={title} src={preview} style={{ width: '100%', maxHeight: 120, objectFit: 'cover', borderRadius: 14, border: '1px solid rgba(0,112,235,0.18)' }} />}
+      {status && <div style={{ fontSize: 11, color: status.startsWith('Không') || status.startsWith('Could') ? '#93000a' : BLUE, fontWeight: 800, lineHeight: 1.4 }}>{status}</div>}
+    </div>
+  )
 }
 
 function MaterialIcon({ children, size = 22, style }) {
@@ -165,9 +274,10 @@ function roundButton(bg, color) {
 
 function MealScanView() {
   const [flash, setFlash] = useState(false)
+  const [capturedRecord, setCapturedRecord] = useState(null)
   return (
     <div style={{ ...panelShell, minHeight: 820, background: '#111' }}>
-      <img alt="Salmon salad being scanned" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDz673aowy2PSOhw7UeuUZHoFiJO_SQTymK2RWuGYolAX9ok2Eugcl8j17Ip3FWZh0sLSoEuJbb-6LNoLAx5NKWwQ4X-nfqnnDuhGQvU_Dnqxw7oWZ6IW5kNaCG4vfKLbgFEAB2OXpUPeMzAoiWAqNGIjyo-wbhqxNF7d2BtrQY5HECx53yA3z9L7GdwfOiHxbQB6UdclRS9c4hau37W37ieVXlmK40gZ0dB2H8sW9PobMG23MnaC8tYR0V12bMf46MMJNaRznFkUu7" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+      <img alt="Salmon salad being scanned" src={capturedRecord?.dataUrl || "https://lh3.googleusercontent.com/aida-public/AB6AXuDz673aowy2PSOhw7UeuUZHoFiJO_SQTymK2RWuGYolAX9ok2Eugcl8j17Ip3FWZh0sLSoEuJbb-6LNoLAx5NKWwQ4X-nfqnnDuhGQvU_Dnqxw7oWZ6IW5kNaCG4vfKLbgFEAB2OXpUPeMzAoiWAqNGIjyo-wbhqxNF7d2BtrQY5HECx53yA3z9L7GdwfOiHxbQB6UdclRS9c4hau37W37ieVXlmK40gZ0dB2H8sW9PobMG23MnaC8tYR0V12bMf46MMJNaRznFkUu7"} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
       <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.05)' }} />
       <header style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10, padding: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <button style={floatingPillButton()}>×</button>
@@ -188,10 +298,10 @@ function MealScanView() {
           <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 230px', gap: 24 }} className="hj-responsive-sheet">
             <div>
               <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center', marginBottom: 8 }}>
-                <h1 style={{ margin: 0, fontSize: 26, color: INK }}>Salad Cá Hồi Áp Chảo</h1>
+                <h1 style={{ margin: 0, fontSize: 26, color: INK }}>{capturedRecord ? 'Bữa ăn vừa chụp' : 'Salad Cá Hồi Áp Chảo'}</h1>
                 <span style={{ padding: '6px 10px', borderRadius: 999, background: 'rgba(104,211,145,0.16)', color: '#2f9e62', fontSize: 12, fontWeight: 800 }}>✓ Phù hợp phác đồ</span>
               </div>
-              <p style={{ color: MUTED, margin: '0 0 20px', lineHeight: 1.5 }}>Phân tích hình ảnh xác nhận thành phần dinh dưỡng tối ưu cho bệnh nhân đang điều trị.</p>
+              <p style={{ color: MUTED, margin: '0 0 20px', lineHeight: 1.5 }}>{capturedRecord ? `Ảnh đã được lưu vào ${capturedRecord.uploadPath} và sẵn sàng cho AI nhận diện dinh dưỡng.` : 'Phân tích hình ảnh xác nhận thành phần dinh dưỡng tối ưu cho bệnh nhân đang điều trị.'}</p>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 18 }}>
                 <NutritionCard value="320" label="kcal" />
                 <NutritionCard value="26g" label="Đạm" />
@@ -200,7 +310,12 @@ function MealScanView() {
               <div style={{ background: 'rgba(255,218,214,0.36)', border: '1px solid #ffdad6', padding: 14, borderRadius: 14, display: 'flex', gap: 10, color: '#93000a', fontWeight: 700, lineHeight: 1.45 }}>⚠️ <span>Lưu ý: Sốt chanh leo đi kèm có chứa đường tinh luyện. Nên sử dụng hạn chế.</span></div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <button style={primaryAction()}>Lưu vào nhật ký</button>
+              <JourneyCameraUploader
+                mode="meal"
+                title="Chụp & upload bữa ăn"
+                helper="Mở camera để chụp bữa ăn, tự động lưu vào upload theo từng user."
+                onUploaded={setCapturedRecord}
+              />
               <button style={secondaryAction()}>Chỉnh sửa thủ công</button>
             </div>
           </div>
@@ -243,13 +358,14 @@ function secondaryAction() {
 
 function MedicationAssistantView() {
   const [flash, setFlash] = useState(false)
+  const [capturedRecord, setCapturedRecord] = useState(null)
   return (
     <div style={{ ...panelShell, minHeight: 820, background: '#000' }}>
       <header style={{ position: 'relative', zIndex: 15, height: 64, display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 20px', ...glass }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, color: INK }}><button style={{ border: 'none', background: 'transparent', fontSize: 24, cursor: 'pointer' }}>×</button><h1 style={{ margin: 0, fontSize: 24 }}>Trợ lý thuốc</h1></div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}><button onClick={() => setFlash(!flash)} style={{ border: 'none', background: 'transparent', color: flash ? BLUE : INK, fontSize: 22, cursor: 'pointer' }}>{flash ? '🔦' : '⚡'}</button><img alt="Patient" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAQKeTt8_ixyEzSPUh64YGich4CWVUCDHlAED0v66qzTB8rzONzJD_GBylNvUOCiBFxk9njOsY3qdU1MvmNYz2oc6dcZZ8cLBeX4cw701UMQjBjsm9UoiNevceFpQRaat5AthvRm2ihEbGQnfFnAfjJDQ8Inb1usap4d3mvsSoZRFa6lPEkbJKcg_2oaNIyBiG0QLPsJL8tZzPVU2HZDifgoOO4GcVdYWNJmxiuj0irLtdFBy-gDf8sEBwU2qkiyehS0pde6FcQP8-J" style={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover' }} /></div>
       </header>
-      <img alt="Pill Bottle" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAZH2XA_C2g9jti8cF8o0E5hvwbxBLhK2y-tf0NDCFY7cyKfoeZ_U8_kn3jiQHhOa6b56cisSwi2bz6AE1EFWFS0dNQBehYv66eK0nIeMiU0q1kRU5vfIdZz1KoCj7T6VpAyJAotvB_di10b0BzJ7RdFkt_41wXUXbswPWEv9u7eX9drmA7OkyMb1YS1l1QjiSzEbHDivTPH6XurlsDr6cR5vjNnYcEWsLxKzNgrooWpXB-uu9DZvIchL5J627pN73vdwj5KTI9lY4z" style={{ position: 'absolute', inset: 64, top: 64, bottom: 0, width: '100%', height: 'calc(100% - 64px)', objectFit: 'cover', opacity: 0.82 }} />
+      <img alt="Pill Bottle" src={capturedRecord?.dataUrl || "https://lh3.googleusercontent.com/aida-public/AB6AXuAZH2XA_C2g9jti8cF8o0E5hvwbxBLhK2y-tf0NDCFY7cyKfoeZ_U8_kn3jiQHhOa6b56cisSwi2bz6AE1EFWFS0dNQBehYv66eK0nIeMiU0q1kRU5vfIdZz1KoCj7T6VpAyJAotvB_di10b0BzJ7RdFkt_41wXUXbswPWEv9u7eX9drmA7OkyMb1YS1l1QjiSzEbHDivTPH6XurlsDr6cR5vjNnYcEWsLxKzNgrooWpXB-uu9DZvIchL5J627pN73vdwj5KTI9lY4z"} style={{ position: 'absolute', inset: 64, top: 64, bottom: 0, width: '100%', height: 'calc(100% - 64px)', objectFit: 'cover', opacity: 0.82 }} />
       <div style={{ position: 'absolute', inset: '64px 0 0', background: 'radial-gradient(circle, transparent 38%, rgba(0,0,0,0.58) 100%)' }} />
       <div style={{ position: 'absolute', inset: '64px 0 0', display: 'grid', placeItems: 'center', pointerEvents: 'none' }}>
         <div style={{ position: 'relative', width: 270, height: 270, border: '2px solid rgba(0,112,235,0.42)', borderRadius: 30, overflow: 'hidden', boxShadow: '0 0 28px rgba(0,88,188,0.28)' }}>
@@ -266,11 +382,16 @@ function MedicationAssistantView() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}><h2 style={{ margin: 0, color: INK, fontSize: 25 }}>Kết quả Quét</h2><span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', padding: '6px 10px', borderRadius: 999, background: 'rgba(0,112,235,0.10)', color: PRIMARY, fontSize: 12, fontWeight: 900 }}>✨ Trợ lý AI</span></div>
           <div style={{ background: '#fff', border: '1px solid #ededed', borderRadius: 18, padding: 16, display: 'flex', gap: 16, marginBottom: 14 }}>
             <img alt="Tamoxifen Pill" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDjQHXpDlpop937cl2g-AgliTNjDZsZ4GaF0rbg3MKB7vu7r4SSTf5ZE4f4cYvbx6aU-WYjKBGzOnAXiyqGGEbHI1MRQDO9_we6ANnp2f7YpkTUeukmmaehNfcJvm_CwjQyOziUN0cIpQE-tQk_Y6_gUoNIfvc0MHgG7HtGaBkkcUJDa9hj3JCY--_v5y83HUUj0xepnsgxJ2r7DfVC_xBrQqHmFvNGT5I6vkGRg2_N8O27M71Dk42QokOPRn2_frR1KCKEkf2Kyl4o" style={{ width: 66, height: 66, borderRadius: 14, objectFit: 'cover', background: '#eeeef0', flexShrink: 0 }} />
-            <div><h3 style={{ margin: 0, color: INK, fontSize: 20 }}>Tamoxifen 20mg</h3><p style={{ margin: '6px 0 12px', color: MUTED }}>Viên nén tròn, màu trắng, khắc số '20'</p><div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', color: MUTED, fontWeight: 700, fontSize: 13 }}><span>🕒 1 lần/ngày</span><span>🍽 Sau ăn</span></div></div>
+            <div><h3 style={{ margin: 0, color: INK, fontSize: 20 }}>{capturedRecord ? 'Ảnh thuốc vừa chụp' : 'Tamoxifen 20mg'}</h3><p style={{ margin: '6px 0 12px', color: MUTED }}>{capturedRecord ? `Đã upload vào ${capturedRecord.uploadPath}` : "Viên nén tròn, màu trắng, khắc số '20'"}</p><div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', color: MUTED, fontWeight: 700, fontSize: 13 }}><span>🕒 1 lần/ngày</span><span>🍽 Sau ăn</span></div></div>
           </div>
           <div style={{ background: 'rgba(255,218,214,0.48)', border: '1px solid rgba(186,26,26,0.12)', borderRadius: 18, padding: 16, marginBottom: 18, color: '#93000a' }}><div style={{ fontWeight: 900, marginBottom: 7 }}>⚠️ Cảnh báo Tương tác</div><div style={{ lineHeight: 1.55 }}>Tương tác nhẹ phát hiện với <b>Ondansetron</b>. Có thể làm giảm hiệu quả của thuốc. Vui lòng tham khảo ý kiến bác sĩ điều trị.</div></div>
-          <button style={{ ...primaryAction(), height: 54 }}>Thêm vào Lịch trình</button>
-          <button style={{ width: '100%', marginTop: 8, padding: 12, border: 'none', background: 'transparent', color: BLUE, fontWeight: 900, cursor: 'pointer' }}>Quét lại</button>
+          <JourneyCameraUploader
+            mode="medication"
+            title="Chụp & upload thuốc"
+            helper="Mở camera để chụp vỉ thuốc/lọ thuốc, tự động lưu vào upload theo từng user."
+            onUploaded={setCapturedRecord}
+          />
+          <button style={{ width: '100%', marginTop: 8, padding: 12, border: 'none', background: 'transparent', color: BLUE, fontWeight: 900, cursor: 'pointer' }} onClick={() => setCapturedRecord(null)}>Quét lại</button>
         </div>
       </div>
       <JourneyMobileNav active="AI Scan" />
