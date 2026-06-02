@@ -11,14 +11,14 @@ import { DEFAULT_FAMILY_MEMBERS, loadFamilyMembers, saveFamilyMembers } from './
 const PATIENT_RECORD_STORAGE_KEY = 'cdoc_patient_record_by_user'
 const patientRecordOwnerKey = ownerId => String(ownerId || 'guest').trim().toLowerCase() || 'guest'
 const clonePatientRecord = patient => JSON.parse(JSON.stringify(patient || LXK_PATIENT_RECORD))
-const DEMO_PATIENT_DISPLAY_NAME = 'Lê Xuân Khánh Demo'
+const SAMPLE_PATIENT_DISPLAY_NAME = 'Lê Xuân Khánh Sample'
 const isLxkDemoRecord = patient => patient?.id === LXK_PATIENT_RECORD.id && !patient?.familyMemberId
 const isDemoTemplatePatientRecord = patient => isLxkDemoRecord(patient) || patient?._isDemoTemplate
 const isPrimaryPatientRecord = patient => isLxkDemoRecord(patient) || patient?.familyMemberId === 'fm-3'
 const patientAvatarUrl = (patient, user) => isPrimaryPatientRecord(patient) ? (user?.avatar || patient?.avatar_url || '') : (patient?.avatar_url || '')
 const displayPatientName = patient => {
   const name = String(patient?.name || '').trim()
-  if (isLxkDemoRecord(patient) && !/\bDemo$/i.test(name)) return DEMO_PATIENT_DISPLAY_NAME
+  if (isLxkDemoRecord(patient) && !/\bDemo$/i.test(name)) return SAMPLE_PATIENT_DISPLAY_NAME
   return name
 }
 
@@ -33,7 +33,7 @@ const patientInitialsFromName = name => String(name || 'Patient')
 
 const buildPrimaryPatientRecord = (patient, user, ownerId) => {
   const ownerKey = patientRecordOwnerKey(ownerId).replace(/[^a-z0-9]+/gi, '-').toUpperCase()
-  const primaryName = patient?.id === LXK_PATIENT_RECORD.id ? DEMO_PATIENT_DISPLAY_NAME : String(user?.name || patient?.name || 'Patient').trim()
+  const primaryName = patient?.id === LXK_PATIENT_RECORD.id ? SAMPLE_PATIENT_DISPLAY_NAME : String(user?.name || patient?.name || 'Patient').trim()
   return {
     ...patient,
     id: `PRIMARY-${ownerKey}`,
@@ -279,13 +279,19 @@ const SECTION_STYLE = `
     box-shadow: 0 0 0 1px rgba(255,183,77,0.08), 0 0 18px rgba(255,183,77,0.12);
   }
   .record-guideline-field::before {
-    content: 'GUIDE';
-    position: absolute; top: -8px; right: 10px;
-    padding: 1px 7px; border-radius: 999px;
-    background: rgba(255,183,77,0.95); color: #1b1200;
-    font-size: 8px; font-family: var(--font-mono); font-weight: 800;
-    letter-spacing: .08em;
+    content: '';
+    display: none;
   }
+  .record-copy-button {
+    position: absolute; top: -10px; right: 10px;
+    padding: 3px 9px; border-radius: 999px; border: 1px solid rgba(255,183,77,0.92);
+    background: rgba(255,183,77,0.95); color: #1b1200;
+    font-size: 9px; font-family: var(--font-mono); font-weight: 900;
+    letter-spacing: .08em; cursor: pointer; line-height: 1;
+    box-shadow: 0 5px 14px rgba(255,183,77,0.22);
+  }
+  .record-copy-button:hover { transform: translateY(-1px); filter: brightness(1.05); }
+  .record-copy-button:active { transform: translateY(0); }
   .record-guideline-input {
     border-color: rgba(255,183,77,0.82) !important;
     box-shadow: 0 0 0 2px rgba(255,183,77,0.14), 0 0 16px rgba(255,183,77,0.18) !important;
@@ -599,6 +605,40 @@ export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selected
   const [patient, setPatient] = useState(basePatient)
   const [isEditingRecord, setIsEditingRecord] = useState(false)
   const [editForm, setEditForm] = useState(() => serializePatientForEdit(basePatient))
+  const editFieldRefs = useRef({})
+
+  const setEditFieldRef = (key) => (node) => {
+    if (node) editFieldRefs.current[key] = node
+  }
+
+  const focusEditField = (key) => {
+    const el = editFieldRefs.current[key]
+    el?.focus?.()
+    el?.select?.()
+  }
+
+  const copyWithFallback = (value) => {
+    const textarea = document.createElement('textarea')
+    textarea.value = value
+    textarea.setAttribute('readonly', '')
+    textarea.style.position = 'fixed'
+    textarea.style.opacity = '0'
+    textarea.style.pointerEvents = 'none'
+    document.body.appendChild(textarea)
+    textarea.select()
+    document.execCommand('copy')
+    document.body.removeChild(textarea)
+  }
+
+  const copyEditFieldValue = async (key) => {
+    const value = String(editForm?.[key] ?? '')
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(value).catch(() => copyWithFallback(value))
+    } else {
+      copyWithFallback(value)
+    }
+    window.requestAnimationFrame(() => focusEditField(key))
+  }
 
   useEffect(() => {
     if (!selectedMember) {
@@ -796,7 +836,7 @@ export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selected
               background: 'transparent', color: 'var(--cyan)', fontSize: 11,
               fontFamily: 'var(--font-mono)', cursor: 'pointer',
             }}
-          >{lang === 'vi' ? `← Back to Patient Guidelines: ${DEMO_PATIENT_DISPLAY_NAME}` : `← Back to Patient Guidelines: ${DEMO_PATIENT_DISPLAY_NAME}`}</button>
+          >{lang === 'vi' ? `← Back to Patient Guidelines: ${SAMPLE_PATIENT_DISPLAY_NAME}` : `← Back to Patient Guidelines: ${SAMPLE_PATIENT_DISPLAY_NAME}`}</button>
         </div>
       )}
 
@@ -876,7 +916,7 @@ export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selected
                 📋 SỬA HỒ SƠ BỆNH NHÂN
               </div>
               <div style={{ fontSize: 11, color: text3, marginTop: 4 }}>
-                {lang === 'vi' ? 'Guideline: các ô đang được viền vàng là nơi user có thể copy dữ liệu demo và thử chỉnh sửa tạm.' : 'Guideline: yellow-highlighted fields are where users can copy demo data and try temporary edits.'}
+                {lang === 'vi' ? 'Guideline: các ô đang được viền vàng là nơi user có thể copy dữ liệu sample và thử chỉnh sửa tạm.' : 'Guideline: yellow-highlighted fields are where users can copy sample data and try temporary edits.'}
               </div>
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
@@ -903,9 +943,9 @@ export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selected
               border: '1px solid rgba(255,183,77,0.35)', background: 'rgba(255,183,77,0.12)',
               color: 'var(--amber)', fontSize: 12, lineHeight: 1.6, fontWeight: 600,
             }}>
-              ⚠️ <b>{DEMO_PATIENT_DISPLAY_NAME}</b> — {lang === 'vi'
-                ? 'tài khoản Demo này chỉ dùng để copy/sao chép nhanh dữ liệu và chỉnh sửa tạm, giúp user học cách thao tác sửa dữ liệu tạm. Nút Lưu hồ sơ đã được khóa để không ghi đè dữ liệu demo gốc.'
-                : 'this Demo account is only for quickly copying data and temporary edits so users can learn temporary record editing. Save is disabled to protect the original demo data.'}
+              ⚠️ <b>{SAMPLE_PATIENT_DISPLAY_NAME}</b> — {lang === 'vi'
+                ? 'tài khoản Sample này chỉ dùng để copy/sao chép nhanh dữ liệu và chỉnh sửa tạm, giúp user học cách thao tác sửa dữ liệu tạm. Nút Lưu hồ sơ đã được khóa để không ghi đè dữ liệu sample gốc.'
+                : 'this Sample account is only for quickly copying data and temporary edits so users can learn temporary record editing. Save is disabled to protect the original sample data.'}
             </div>
           )}
 
@@ -918,18 +958,33 @@ export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selected
             ].map(([key, label]) => (
               <label key={key} className="record-guideline-field" style={guidelineLabelStyle}>
                 {label}
-                <input
-                  value={editForm[key]}
-                  onChange={e => setEditForm(prev => ({ ...prev, [key]: e.target.value }))}
-                  placeholder={label}
-                  className="record-guideline-input"
-                  style={guidelineInputStyle}
-                />
+                <button type="button" className="record-copy-button" onClick={() => copyEditFieldValue(key)}>Copy</button>
+                {key === 'dob' ? (
+                  <input
+                    ref={setEditFieldRef(key)}
+                    type="date"
+                    value={editForm[key]}
+                    onChange={e => setEditForm(prev => ({ ...prev, [key]: e.target.value }))}
+                    className="record-guideline-input"
+                    style={guidelineInputStyle}
+                  />
+                ) : (
+                  <input
+                    ref={setEditFieldRef(key)}
+                    value={editForm[key]}
+                    onChange={e => setEditForm(prev => ({ ...prev, [key]: e.target.value }))}
+                    placeholder={label}
+                    className="record-guideline-input"
+                    style={guidelineInputStyle}
+                  />
+                )}
               </label>
             ))}
             <label className="record-guideline-field" style={guidelineLabelStyle}>
               Giới tính
+              <button type="button" className="record-copy-button" onClick={() => copyEditFieldValue('gender')}>Copy</button>
               <select
+                ref={setEditFieldRef('gender')}
                 value={editForm.gender}
                 onChange={e => setEditForm(prev => ({ ...prev, gender: e.target.value }))}
                 className="record-guideline-input"
@@ -956,7 +1011,9 @@ export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selected
             ].map(([key, label]) => (
               <label key={key} className="record-guideline-field" style={guidelineLabelStyle}>
                 {label}
+                <button type="button" className="record-copy-button" onClick={() => copyEditFieldValue(key)}>Copy</button>
                 <textarea
+                  ref={setEditFieldRef(key)}
                   value={editForm[key]}
                   onChange={e => setEditForm(prev => ({ ...prev, [key]: e.target.value }))}
                   placeholder={`${label} — phân cách bằng dấu phẩy`}

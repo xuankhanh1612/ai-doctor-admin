@@ -174,7 +174,7 @@ export default function App() {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
       <Topbar activePanel={active} onNavigateProfile={() => setActive('profile')} onNavigateAdmin={() => setActive('admin')} />
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-        <Sidebar active={active} onNavigate={(id) => { if (id === 'record') setSelectedMember(null); setActive(id) }} />
+        <Sidebar active={active} onNavigate={(id) => setActive(id)} />
         <main ref={mainRef} style={{ flex: 1, overflowY: 'auto', background: mainBg }}>
           <PanelErrorBoundary
             resetKey={active}
