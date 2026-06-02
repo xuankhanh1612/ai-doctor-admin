@@ -55,13 +55,14 @@ function makeJourneyFilename(prefix, originalName = 'camera.jpg') {
   return `${prefix}_${stamp}.${ext || 'jpg'}`
 }
 
-function JourneyCameraUploader({ mode, title, helper, onUploaded }) {
+function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUploaded }) {
   const { lang } = useApp()
   const { user } = useAuth()
   const inputRef = useRef(null)
   const [uploading, setUploading] = useState(false)
   const [status, setStatus] = useState('')
   const [preview, setPreview] = useState('')
+  const [capturedFile, setCapturedFile] = useState(null)
 
   const userFolder = safeUploadSegment(user?.email || user?.name || 'guest')
   const modeFolder = mode === 'medication' ? 'medication-assistant' : 'meal-scan'
@@ -75,25 +76,43 @@ function JourneyCameraUploader({ mode, title, helper, onUploaded }) {
       return
     }
 
+    try {
+      const dataUrl = await fileToDataUrl(file)
+      setCapturedFile(file)
+      setPreview(dataUrl)
+      setStatus(lang === 'vi' ? 'Đã chụp ảnh. Bấm nút upload để lưu vào hệ thống.' : 'Photo captured. Press upload to save it to the system.')
+    } catch (error) {
+      console.error('Health journey camera preview failed:', error)
+      setStatus(lang === 'vi' ? 'Không thể đọc ảnh vừa chụp. Vui lòng thử lại.' : 'Could not read the captured image. Please try again.')
+    }
+  }, [lang])
+
+  const uploadCapturedFile = useCallback(async () => {
+    if (!capturedFile) {
+      setStatus(lang === 'vi' ? 'Vui lòng chụp hình trước khi upload.' : 'Please capture a photo before uploading.')
+      inputRef.current?.click()
+      return
+    }
+
     setUploading(true)
-    setStatus(lang === 'vi' ? 'Đang lưu ảnh vào thư mục upload của user...' : 'Saving image into the user upload folder...')
+    setStatus(lang === 'vi' ? 'Đang upload ảnh vào thư mục upload của user...' : 'Uploading image into the user upload folder...')
 
     try {
-      const [dataUrl, base64Data] = await Promise.all([fileToDataUrl(file), fileToBase64(file)])
-      const filename = makeJourneyFilename(mode === 'medication' ? 'medication' : 'meal', file.name)
+      const [dataUrl, base64Data] = await Promise.all([fileToDataUrl(capturedFile), fileToBase64(capturedFile)])
+      const filename = makeJourneyFilename(mode === 'medication' ? 'medication' : 'meal', capturedFile.name)
       const uploadPath = `${virtualFolder}/${filename}`
       const record = {
         id: `hj_${mode}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
         filename,
         name: filename,
-        fileType: detectFileType(file.type, filename),
-        type: detectFileType(file.type, filename),
-        mimeType: file.type,
-        size: file.size,
+        fileType: detectFileType(capturedFile.type, filename),
+        type: detectFileType(capturedFile.type, filename),
+        mimeType: capturedFile.type,
+        size: capturedFile.size,
         uploadedAt: new Date().toISOString(),
         dataUrl,
         base64Data,
-        notes: lang === 'vi' ? `${title} · lưu tại ${uploadPath}` : `${title} · saved at ${uploadPath}`,
+        notes: lang === 'vi' ? `${uploadLabel} · lưu tại ${uploadPath}` : `${uploadLabel} · saved at ${uploadPath}`,
         ownerEmail: user?.email || null,
         ownerName: user?.name || '',
         ownerAvatar: user?.avatar || '',
@@ -111,6 +130,7 @@ function JourneyCameraUploader({ mode, title, helper, onUploaded }) {
       })
       notifyUpload()
       setPreview(dataUrl)
+      setCapturedFile(null)
       setStatus(lang === 'vi' ? `Đã upload: ${uploadPath}` : `Uploaded: ${uploadPath}`)
       onUploaded?.(record)
     } catch (error) {
@@ -119,7 +139,7 @@ function JourneyCameraUploader({ mode, title, helper, onUploaded }) {
     } finally {
       setUploading(false)
     }
-  }, [lang, mode, onUploaded, title, user?.avatar, user?.email, user?.name, user?.provider, virtualFolder])
+  }, [capturedFile, lang, mode, onUploaded, uploadLabel, user?.avatar, user?.email, user?.name, user?.provider, virtualFolder])
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -131,13 +151,18 @@ function JourneyCameraUploader({ mode, title, helper, onUploaded }) {
         onChange={e => { handleFiles(e.target.files); e.target.value = '' }}
         style={{ display: 'none' }}
       />
-      <button disabled={uploading} onClick={() => inputRef.current?.click()} style={{ ...primaryAction(), opacity: uploading ? 0.72 : 1 }}>
-        {uploading ? (lang === 'vi' ? 'Đang upload...' : 'Uploading...') : `📷 ${title}`}
-      </button>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+        <button disabled={uploading} onClick={() => inputRef.current?.click()} style={{ ...secondaryAction(), opacity: uploading ? 0.72 : 1 }}>
+          {captureLabel}
+        </button>
+        <button disabled={uploading} onClick={uploadCapturedFile} style={{ ...primaryAction(), opacity: uploading ? 0.72 : 1 }}>
+          {uploading ? (lang === 'vi' ? 'Đang upload...' : 'Uploading...') : uploadLabel}
+        </button>
+      </div>
       <div style={{ fontSize: 11, color: mode === 'meal' ? MUTED : 'rgba(29,29,31,0.62)', lineHeight: 1.45 }}>
         {helper}<br />{lang === 'vi' ? 'Thư mục user:' : 'User folder:'} <b>{virtualFolder}</b>
       </div>
-      {preview && <img alt={title} src={preview} style={{ width: '100%', maxHeight: 120, objectFit: 'cover', borderRadius: 14, border: '1px solid rgba(0,112,235,0.18)' }} />}
+      {preview && <img alt={uploadLabel} src={preview} style={{ width: '100%', maxHeight: 120, objectFit: 'cover', borderRadius: 14, border: '1px solid rgba(0,112,235,0.18)' }} />}
       {status && <div style={{ fontSize: 11, color: status.startsWith('Không') || status.startsWith('Could') ? '#93000a' : BLUE, fontWeight: 800, lineHeight: 1.4 }}>{status}</div>}
     </div>
   )
@@ -312,8 +337,9 @@ function MealScanView() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <JourneyCameraUploader
                 mode="meal"
-                title="Chụp & upload bữa ăn"
-                helper="Mở camera để chụp bữa ăn, tự động lưu vào upload theo từng user."
+                captureLabel="📷 Chụp"
+                uploadLabel="upload bữa ăn"
+                helper="Chụp bữa ăn trước, sau đó upload để lưu vào thư mục upload theo từng user."
                 onUploaded={setCapturedRecord}
               />
               <button style={secondaryAction()}>Chỉnh sửa thủ công</button>
@@ -387,8 +413,9 @@ function MedicationAssistantView() {
           <div style={{ background: 'rgba(255,218,214,0.48)', border: '1px solid rgba(186,26,26,0.12)', borderRadius: 18, padding: 16, marginBottom: 18, color: '#93000a' }}><div style={{ fontWeight: 900, marginBottom: 7 }}>⚠️ Cảnh báo Tương tác</div><div style={{ lineHeight: 1.55 }}>Tương tác nhẹ phát hiện với <b>Ondansetron</b>. Có thể làm giảm hiệu quả của thuốc. Vui lòng tham khảo ý kiến bác sĩ điều trị.</div></div>
           <JourneyCameraUploader
             mode="medication"
-            title="Chụp & upload thuốc"
-            helper="Mở camera để chụp vỉ thuốc/lọ thuốc, tự động lưu vào upload theo từng user."
+            captureLabel="📷 Chụp"
+            uploadLabel="upload thuốc"
+            helper="Chụp vỉ thuốc/lọ thuốc trước, sau đó upload để lưu vào thư mục upload theo từng user."
             onUploaded={setCapturedRecord}
           />
           <button style={{ width: '100%', marginTop: 8, padding: 12, border: 'none', background: 'transparent', color: BLUE, fontWeight: 900, cursor: 'pointer' }} onClick={() => setCapturedRecord(null)}>Quét lại</button>
