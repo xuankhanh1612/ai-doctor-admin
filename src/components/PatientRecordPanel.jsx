@@ -12,6 +12,8 @@ const PATIENT_RECORD_STORAGE_KEY = 'cdoc_patient_record_by_user'
 const patientRecordOwnerKey = ownerId => String(ownerId || 'guest').trim().toLowerCase() || 'guest'
 const clonePatientRecord = patient => JSON.parse(JSON.stringify(patient || LXK_PATIENT_RECORD))
 const isLxkDemoRecord = patient => patient?.id === LXK_PATIENT_RECORD.id && !patient?.familyMemberId
+const isPrimaryPatientRecord = patient => isLxkDemoRecord(patient) || patient?.familyMemberId === 'fm-3'
+const patientAvatarUrl = (patient, user) => isPrimaryPatientRecord(patient) ? (user?.avatar || patient?.avatar_url || '') : (patient?.avatar_url || '')
 const displayPatientName = patient => {
   const name = String(patient?.name || '').trim()
   if (isLxkDemoRecord(patient) && !/\bDemo$/i.test(name)) return `${name} Demo`
@@ -562,6 +564,7 @@ export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selected
   const [showConsensus, setShowConsensus] = useState(false)
   const isFromFamily = !!(selectedMember)
   const isDemoRecord = isLxkDemoRecord(patient)
+  const displayedPatientAvatar = patientAvatarUrl(patient, user)
   const canSaveEditedRecord = editForm.name.trim() && !isDemoRecord
 
   const startEditRecord = () => {
@@ -705,8 +708,10 @@ export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selected
       {/* Patient card */}
       <div style={{ background: surfaceBg, border: '1px solid rgba(255,82,82,0.25)', borderRadius: 16, padding: '18px 20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-          <div style={{ width: 56, height: 56, borderRadius: '50%', flexShrink: 0, background: 'rgba(255,82,82,0.12)', border: '2px solid var(--red)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 800, color: 'var(--red)' }}>
-            {patient.avatar_initials}
+          <div style={{ width: 56, height: 56, borderRadius: '50%', flexShrink: 0, background: 'rgba(255,82,82,0.12)', border: '2px solid var(--red)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 800, color: 'var(--red)', overflow: 'hidden' }}>
+            {displayedPatientAvatar ? (
+              <img src={displayedPatientAvatar} alt={displayPatientName(patient)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            ) : patient.avatar_initials}
           </div>
           <div style={{ flex: 1 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 6 }}>

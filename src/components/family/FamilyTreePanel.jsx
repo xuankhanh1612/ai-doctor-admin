@@ -3,7 +3,7 @@ import { useApp } from '../../context/AppContext'
 import { useAuth } from '../../context/AuthContext'
 import NavButtons from '../NavButtons.jsx'
 
-import { CONDITION_COLORS, DEFAULT_FAMILY_MEMBERS, LXK_PATIENT_PROFILE, RELATIONS, RELATION_META, isNonDiseaseCondition, loadFamilyMembers, saveFamilyMembers } from './familyData.js'
+import { CONDITION_COLORS, DEFAULT_FAMILY_MEMBERS, LXK_PATIENT_PROFILE, RELATIONS, RELATION_META, isNonDiseaseCondition, loadFamilyMembers, saveFamilyMembers, stripMissingNamePrefix } from './familyData.js'
 
 // Backward-compatible exports for panels that import shared family data through this component.
 export { DEFAULT_FAMILY_MEMBERS, loadFamilyMembers } from './familyData.js'
@@ -37,6 +37,7 @@ const buildMemberRecord = (member) => {
     blood_type: member.blood_type || member.medicalRecord?.blood_type || '—',
     dob: member.dob || member.medicalRecord?.dob || (member.age ? `${new Date().getFullYear() - member.age}-01-01` : '—'),
     avatar_initials: member.name.split(' ').slice(-2).map(w => w[0]).join('').toUpperCase(),
+    avatar_url: member.avatar_url || member.medicalRecord?.avatar_url,
     diseases: derivedDiseases,
     symptoms: [],
     labs: [],
@@ -68,6 +69,7 @@ const buildMemberRecord = (member) => {
     blood_type: derivedRecord.blood_type,
     dob: derivedRecord.dob,
     avatar_initials: member.medicalRecord?.avatar_initials || derivedRecord.avatar_initials,
+    avatar_url: member.avatar_url || member.medicalRecord?.avatar_url || derivedRecord.avatar_url,
   }
 }
 
@@ -75,20 +77,34 @@ const buildMemberRecord = (member) => {
 const EMPTY_FORM = { name:'', age:'', gender:'M', relation:'child', dob:'', blood_type:'', conditions:'', symptoms:'', labs:'', imaging:'', medications:'', allergies:'', genomics:'', timeline:'', risk_factors:'', alive:true, note:'' }
 const isPrimaryPatientMember = member => member?.relation === 'self' || member?.id === LXK_PATIENT_PROFILE.id
 const displayNameFromUser = user => String(user?.name || '').trim()
-const syncPrimaryPatientName = (members, name) => {
-  const patientName = String(name || '').trim()
-  if (!patientName) return members
+const avatarFromUser = user => String(user?.avatar || '').trim()
+const initialsFromName = name => String(name || '').split(' ').filter(Boolean).slice(-2).map(w => w[0]).join('').toUpperCase()
+const syncPrimaryPatientProfile = (members, user) => {
+  const patientName = displayNameFromUser(user)
+  const patientAvatar = avatarFromUser(user)
+  if (!patientName && !patientAvatar) return members
   let changed = false
   const nextMembers = members.map(member => {
-    if (!isPrimaryPatientMember(member) || member.name === patientName) return member
+    if (!isPrimaryPatientMember(member)) return member
+
+    const nextName = patientName || member.name
+    const nextAvatar = patientAvatar || member.avatar_url
+    const needsName = member.name !== nextName
+    const needsAvatar = nextAvatar && member.avatar_url !== nextAvatar
+    const needsRecordName = member.medicalRecord && member.medicalRecord.name !== nextName
+    const needsRecordAvatar = member.medicalRecord && nextAvatar && member.medicalRecord.avatar_url !== nextAvatar
+    if (!needsName && !needsAvatar && !needsRecordName && !needsRecordAvatar) return member
+
     changed = true
     return {
       ...member,
-      name: patientName,
+      name: nextName,
+      ...(nextAvatar ? { avatar_url: nextAvatar } : {}),
       medicalRecord: member.medicalRecord ? {
         ...member.medicalRecord,
-        name: patientName,
-        avatar_initials: patientName.split(' ').slice(-2).map(w => w[0]).join('').toUpperCase(),
+        name: nextName,
+        avatar_initials: initialsFromName(nextName),
+        ...(nextAvatar ? { avatar_url: nextAvatar } : {}),
       } : member.medicalRecord,
     }
   })
@@ -122,6 +138,7 @@ const buildFamilyMedicalRecord = (memberId, form, conditions) => ({
 // ─── Member Card ───────────────────────────────────────────────────────────
 function MemberCard({ member, lang, isDark, c, onViewRecord, onEdit, onDelete }) {
   const isPrimaryPatient = isPrimaryPatientMember(member)
+  const avatarUrl = isPrimaryPatient ? member.avatar_url || member.medicalRecord?.avatar_url : ''
   const meta     = FAMILY_RELATION_META[member.relation] || { color:'#888', label:{ vi:'Khác', en:'Other' } }
   const relColor = meta.color
   const hasDisease = (member.conditions || []).some(cd => !isNonDiseaseCondition(cd))
@@ -168,7 +185,9 @@ function MemberCard({ member, lang, isDark, c, onViewRecord, onEdit, onDelete })
           background:`${relColor}20`, border:`2px solid ${relColor}55`,
           display:'flex', alignItems:'center', justifyContent:'center', fontSize:20,
         }}>
-          {member.alive === false ? '🕊️' : member.gender === 'F' ? '👩' : member.relation === 'child' || member.relation === 'grandchild' ? '🧒' : '👨'}
+          {avatarUrl ? (
+            <img src={avatarUrl} alt={member.name} style={{ width:'100%', height:'100%', borderRadius:'50%', objectFit:'cover' }} />
+          ) : (member.alive === false ? '🕊️' : member.gender === 'F' ? '👩' : member.relation === 'child' || member.relation === 'grandchild' ? '🧒' : '👨')}
         </div>
 
         <div style={{ fontSize:12, fontWeight:700, color:c.text, marginBottom:2, lineHeight:1.3 }}>{member.name}</div>
@@ -417,34 +436,33 @@ export default function FamilyTreePanel({ patientId, storageOwnerId = 'guest', o
   const isDark    = theme === 'dark'
 
   // Load from localStorage, fallback to DEFAULT_MEMBERS
-  const [members, setMembersState] = useState(() => syncPrimaryPatientName(loadFamilyMembers(patientId, storageOwnerId) || DEFAULT_FAMILY_MEMBERS, displayNameFromUser(user)))
+  const [members, setMembersState] = useState(() => syncPrimaryPatientProfile(loadFamilyMembers(patientId, storageOwnerId) || DEFAULT_FAMILY_MEMBERS, user))
   const [modal, setModal]   = useState(null)   // null | 'add' | 'edit'
   const [form, setForm]     = useState(EMPTY_FORM)
   const [editId, setEditId] = useState(null)
   const [deleteConfirm, setDeleteConfirm] = useState(null)
 
   useEffect(() => {
-    setMembersState(syncPrimaryPatientName(loadFamilyMembers(patientId, storageOwnerId) || DEFAULT_FAMILY_MEMBERS, displayNameFromUser(user)))
+    setMembersState(syncPrimaryPatientProfile(loadFamilyMembers(patientId, storageOwnerId) || DEFAULT_FAMILY_MEMBERS, user))
     setModal(null)
     setEditId(null)
     setDeleteConfirm(null)
-  }, [patientId, storageOwnerId, user?.name])
+  }, [patientId, storageOwnerId, user?.name, user?.avatar])
 
   useEffect(() => {
-    const patientName = displayNameFromUser(user)
-    if (!patientName) return
+    if (!displayNameFromUser(user) && !avatarFromUser(user)) return
     setMembersState(prev => {
-      const next = syncPrimaryPatientName(prev, patientName)
+      const next = syncPrimaryPatientProfile(prev, user)
       if (next !== prev) saveFamilyMembers(patientId, next, storageOwnerId)
       return next
     })
-  }, [patientId, storageOwnerId, user?.name])
+  }, [patientId, storageOwnerId, user?.name, user?.avatar])
 
   // Persist every change
   const setMembers = useCallback((updater) => {
     setMembersState(prev => {
       const next = typeof updater === 'function' ? updater(prev) : updater
-      const syncedNext = syncPrimaryPatientName(next, displayNameFromUser(user))
+      const syncedNext = syncPrimaryPatientProfile(next, user)
       saveFamilyMembers(patientId, syncedNext, storageOwnerId)
       return syncedNext
     })
@@ -496,7 +514,7 @@ export default function FamilyTreePanel({ patientId, storageOwnerId = 'guest', o
     const memberId = modal === 'add' ? `fm-${Date.now()}` : editId
     const conditions = splitCommaItems(localForm.conditions).length ? splitCommaItems(localForm.conditions) : ['Chưa rõ tiền sử']
     const parsed = {
-      name:       isPrimaryPatientMember(members.find(m => m.id === editId)) ? displayNameFromUser(user) || localForm.name.trim() : localForm.name.trim(),
+      name:       stripMissingNamePrefix(isPrimaryPatientMember(members.find(m => m.id === editId)) ? displayNameFromUser(user) || localForm.name.trim() : localForm.name.trim()),
       age:        parseInt(localForm.age, 10) || 0,
       gender:     localForm.gender,
       relation:   localForm.relation,
@@ -650,8 +668,10 @@ export default function FamilyTreePanel({ patientId, storageOwnerId = 'guest', o
                   >
                     <td style={{ padding:'10px 14px' }}>
                       <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                        <div style={{ width:28, height:28, borderRadius:'50%', background:`${relColor}20`, border:`1.5px solid ${relColor}50`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, flexShrink:0 }}>
-                          {member.alive === false ? '🕊️' : member.gender === 'F' ? '👩' : '👨'}
+                        <div style={{ width:28, height:28, borderRadius:'50%', background:`${relColor}20`, border:`1.5px solid ${relColor}50`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, flexShrink:0, overflow:'hidden' }}>
+                          {isPrimaryPatientMember(member) && (member.avatar_url || member.medicalRecord?.avatar_url) ? (
+                            <img src={member.avatar_url || member.medicalRecord?.avatar_url} alt={member.name} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+                          ) : (member.alive === false ? '🕊️' : member.gender === 'F' ? '👩' : '👨')}
                         </div>
                         <span style={{ fontWeight:600, color:c.text }}>{member.name}</span>
                       </div>

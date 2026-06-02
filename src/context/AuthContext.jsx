@@ -9,9 +9,10 @@ const saveUsers = (u) => localStorage.setItem('cdoc_users', JSON.stringify(u))
 const getSavedSession = () => { try { return JSON.parse(localStorage.getItem('cdoc_session') || 'null') } catch { return null } }
 const saveSession = (s) => s ? localStorage.setItem('cdoc_session', JSON.stringify(s)) : localStorage.removeItem('cdoc_session')
 
-const syncPrimaryPatientNameInFamilyTree = (email, name) => {
+const syncPrimaryPatientNameInFamilyTree = (email, name, avatar = '') => {
   const patientName = String(name || '').trim()
-  if (!email || !patientName) return
+  const patientAvatar = String(avatar || '').trim()
+  if (!email || (!patientName && !patientAvatar)) return
   try {
     const ownerKey = getFamilyOwnerKey(email)
     const byUser = JSON.parse(localStorage.getItem(FAMILY_USER_STORAGE_KEY) || '{}')
@@ -22,15 +23,19 @@ const syncPrimaryPatientNameInFamilyTree = (email, name) => {
     let changed = false
     const nextMembers = members.map(member => {
       if (member?.relation !== 'self' && member?.id !== LXK_PATIENT_PROFILE.id) return member
-      if (member.name === patientName && member.medicalRecord?.name === patientName) return member
+      const nextName = patientName || member.name
+      const nextAvatar = patientAvatar || member.avatar_url
+      if (member.name === nextName && member.avatar_url === nextAvatar && member.medicalRecord?.name === nextName && member.medicalRecord?.avatar_url === nextAvatar) return member
       changed = true
       return {
         ...member,
-        name: patientName,
+        name: nextName,
+        ...(nextAvatar ? { avatar_url: nextAvatar } : {}),
         medicalRecord: member.medicalRecord ? {
           ...member.medicalRecord,
-          name: patientName,
-          avatar_initials: patientName.split(' ').slice(-2).map(w => w[0]).join('').toUpperCase(),
+          name: nextName,
+          avatar_initials: nextName.split(' ').slice(-2).map(w => w[0]).join('').toUpperCase(),
+          ...(nextAvatar ? { avatar_url: nextAvatar } : {}),
         } : member.medicalRecord,
       }
     })
@@ -245,7 +250,7 @@ export function AuthProvider({ children }) {
     }
     users[user.email] = updated
     saveUsers(users)
-    syncPrimaryPatientNameInFamilyTree(user.email, updated.name)
+    syncPrimaryPatientNameInFamilyTree(user.email, updated.name, updated.avatar)
     const enriched = { ...updated, isAdmin: user.isAdmin }
     setUser(enriched)
     return enriched
