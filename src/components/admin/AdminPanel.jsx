@@ -87,7 +87,21 @@ function RecordRow({ record, onDelete, lang }) {
             </span>
             <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>{formatBytes(record.size || 0)}</span>
             <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)' }}>{formatDateTime(record.uploadedAt, lang)}</span>
+            <span style={{ fontSize: 10, color: '#00b8cc', fontFamily: 'monospace' }}>👤 {record.ownerName || record.ownerEmail || 'Unknown user'}</span>
             {hasAI && <span style={{ fontSize: 10, color: '#00e676' }}>✓ AI</span>}
+          </div>
+        </div>
+
+        {/* Uploader */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, minWidth: 180 }}>
+          {record.ownerAvatar ? (
+            <img src={record.ownerAvatar} alt={record.ownerName || record.ownerEmail || ''} style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover', border: '1px solid rgba(0,184,204,0.35)' }} />
+          ) : (
+            <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'rgba(0,184,204,0.12)', border: '1px solid rgba(0,184,204,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11 }}>👤</div>
+          )}
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 11, color: '#e8f0f8', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{record.ownerName || 'Unknown user'}</div>
+            <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.32)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{record.ownerEmail || 'no email'}</div>
           </div>
         </div>
 
@@ -146,7 +160,7 @@ export default function AdminPanel() {
     records, loading, lastUpdated,
     activities, totalFiles, aiAnalyzed, byType, totalSizeMB,
     remove, refresh,
-  } = useMedicalData({ lang })
+  } = useMedicalData({ lang, includeAll: !!user?.isAdmin })
 
   const users = getAllUsers()
 
@@ -269,7 +283,7 @@ export default function AdminPanel() {
                   {totalFiles} {lang === 'vi' ? 'hồ sơ' : 'records'} · {totalSizeMB} MB
                 </span>
                 <span style={{ fontSize: 11, color: c.text3 }}>
-                  {lang === 'vi' ? 'Nhấn để xem AI analysis' : 'Click to expand AI analysis'}
+                  {lang === 'vi' ? `Realtime tracking · cập nhật ${lastUpdated ? formatDateTime(lastUpdated.toISOString(), lang) : '—'}` : `Realtime tracking · updated ${lastUpdated ? formatDateTime(lastUpdated.toISOString(), lang) : '—'}`}
                 </span>
               </div>
               {records.map(r => (

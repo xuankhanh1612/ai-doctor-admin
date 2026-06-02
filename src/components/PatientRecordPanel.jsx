@@ -20,6 +20,27 @@ const displayPatientName = patient => {
   return name
 }
 
+
+const mergeUploadedImaging = (basePatient, uploadedPatient) => {
+  if (!uploadedPatient?.imaging?.length) return basePatient
+  const existing = basePatient.imaging || []
+  const existingIds = new Set(existing.map(item => item.id))
+  const uploadedImaging = uploadedPatient.imaging.filter(item => !existingIds.has(item.id))
+  if (!uploadedImaging.length) return basePatient
+
+  const existingTimeline = basePatient.timeline || []
+  const timelineIds = new Set(existingTimeline.map(item => item.id))
+  const uploadedTimeline = (uploadedPatient.timeline || []).filter(item => !timelineIds.has(item.id))
+
+  return {
+    ...basePatient,
+    imaging: [...uploadedImaging, ...existing],
+    timeline: [...uploadedTimeline, ...existingTimeline],
+    _records: uploadedPatient._records || [],
+    _hasUploadedImaging: true,
+  }
+}
+
 const loadSavedPatientRecord = (ownerId) => {
   if (typeof localStorage === 'undefined') return null
   try {
@@ -384,7 +405,16 @@ function ImagingView({ data }) {
         </div>
         {isOpen && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <ScanSVG modality={img.modality} color={mc} />
+            {img.dataUrl ? (
+              <img src={img.dataUrl} alt={img.type} style={{ width: '100%', maxHeight: 260, objectFit: 'contain', borderRadius: 8, background: '#050912', border: `1px solid ${mc}30` }} />
+            ) : (
+              <ScanSVG modality={img.modality} color={mc} />
+            )}
+            {img.uploadedBy && (
+              <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--font-mono)' }}>
+                UPLOADED BY: {img.uploadedByName || img.uploadedBy} · {img.uploadedAt ? new Date(img.uploadedAt).toLocaleString('vi-VN') : img.date}
+              </div>
+            )}
             <div style={{ fontSize: 12, color: 'var(--text2)', lineHeight: 1.7 }}>
               <span style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'var(--font-mono)', display: 'block', marginBottom: 2 }}>FINDINGS</span>
               {img.findings}
@@ -496,11 +526,11 @@ export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selected
   const { user } = useAuth()
   const isDark = theme === 'dark'
 
-  // Keep uploader hook subscribed for cross-panel record changes, while Patient Record defaults to the real LXK chart.
-  useMedicalData({ lang })
+  // Keep uploader hook subscribed and merge each user's uploaded images into Patient Record > Imaging.
+  const { patient: uploadedPatient } = useMedicalData({ lang })
 
   const ownerId = storageOwnerId || user?.email || 'guest'
-  const mainPatient = useMemo(() => clonePatientRecord(loadSavedPatientRecord(ownerId) || LXK_PATIENT_RECORD), [ownerId])
+  const mainPatient = useMemo(() => mergeUploadedImaging(clonePatientRecord(loadSavedPatientRecord(ownerId) || LXK_PATIENT_RECORD), uploadedPatient), [ownerId, uploadedPatient])
   const basePatient = selectedMember ? selectedMember : mainPatient
 
   const [patient, setPatient] = useState(basePatient)
