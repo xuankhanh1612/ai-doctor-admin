@@ -1,0 +1,311 @@
+import React, { useState } from 'react'
+import NavButtons from './NavButtons.jsx'
+import { useApp } from '../context/AppContext.jsx'
+
+const BLUE = '#0058bc'
+const PRIMARY = '#0070eb'
+const SURFACE = '#f9f9fb'
+const INK = '#1D1D1F'
+const MUTED = '#86868B'
+const HEALTHY = '#68D391'
+const ATTENTION = '#FF8A7A'
+
+const journeyTabs = [
+  { id: 'emotion', icon: '🤖', titleVi: 'Bạn đồng hành cảm xúc AI', titleEn: 'AI Emotional Companion', subtitleVi: 'Hope AI · giảm lo âu và xả stress', subtitleEn: 'Hope AI · anxiety relief and decompression' },
+  { id: 'meal', icon: '🥗', titleVi: 'Quét bữa ăn AI', titleEn: 'AI Meal Scan', subtitleVi: 'Nhận diện món ăn · dinh dưỡng · phù hợp phác đồ', subtitleEn: 'Food recognition · nutrition · care-plan fit' },
+  { id: 'medication', icon: '💊', titleVi: 'Trợ lý thuốc thông minh', titleEn: 'Smart Medication Assistant', subtitleVi: 'Quét thuốc · lịch uống · cảnh báo tương tác', subtitleEn: 'Medication scan · schedule · interaction warnings' },
+]
+
+const panelShell = {
+  minHeight: 760,
+  borderRadius: 28,
+  overflow: 'hidden',
+  background: SURFACE,
+  border: '1px solid rgba(0,0,0,0.08)',
+  boxShadow: '0 24px 80px rgba(0,0,0,0.10)',
+  color: '#1a1c1d',
+  position: 'relative',
+}
+
+const glass = {
+  background: 'rgba(255,255,255,0.76)',
+  backdropFilter: 'blur(20px)',
+  border: '1px solid rgba(255,255,255,0.45)',
+  boxShadow: '0 10px 40px rgba(0,0,0,0.06)',
+}
+
+function MaterialIcon({ children, size = 22, style }) {
+  return <span style={{ fontSize: size, lineHeight: 1, ...style }}>{children}</span>
+}
+
+function HealthJourneyTabs({ activeTab, setActiveTab, lang }) {
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 12 }}>
+      {journeyTabs.map(tab => {
+        const active = activeTab === tab.id
+        return (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', padding: '14px 16px', borderRadius: 16,
+              border: `1px solid ${active ? 'rgba(0,229,255,0.42)' : 'rgba(255,255,255,0.10)'}`,
+              background: active ? 'linear-gradient(135deg, rgba(0,229,255,0.16), rgba(156,111,255,0.14))' : 'rgba(255,255,255,0.045)',
+              color: active ? 'var(--cyan)' : 'var(--text2)', cursor: 'pointer', fontFamily: 'inherit',
+              boxShadow: active ? '0 14px 34px rgba(0,229,255,0.10)' : 'none',
+            }}
+          >
+            <span style={{ width: 38, height: 38, borderRadius: 14, display: 'grid', placeItems: 'center', background: active ? 'rgba(0,229,255,0.14)' : 'rgba(255,255,255,0.06)', fontSize: 18 }}>{tab.icon}</span>
+            <span style={{ minWidth: 0 }}>
+              <span style={{ display: 'block', fontWeight: 800, fontSize: 13, color: active ? 'var(--text)' : 'inherit' }}>{lang === 'vi' ? tab.titleVi : tab.titleEn}</span>
+              <span style={{ display: 'block', marginTop: 3, fontSize: 10, lineHeight: 1.35 }}>{lang === 'vi' ? tab.subtitleVi : tab.subtitleEn}</span>
+            </span>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+function JourneyMobileNav({ active }) {
+  const items = [
+    ['Health', '♿'], ['Community', '👥'], ['AI Scan', '🧬'], ['Records', '📄'], ['Profile', '👤'],
+  ]
+  return (
+    <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 78, display: 'flex', justifyContent: 'space-around', alignItems: 'center', padding: '8px 14px 18px', ...glass, borderRadius: '22px 22px 0 0', zIndex: 15 }}>
+      {items.map(([label, icon]) => {
+        const selected = active === label
+        return <div key={label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, minWidth: 54, color: selected ? BLUE : '#626266', fontWeight: selected ? 800 : 600, fontSize: 11 }}><span style={{ fontSize: 20 }}>{icon}</span>{label}</div>
+      })}
+    </div>
+  )
+}
+
+function EmotionalCompanionView() {
+  const [playing, setPlaying] = useState(false)
+  return (
+    <div style={panelShell}>
+      <div style={{ position: 'sticky', top: 0, zIndex: 10, height: 64, display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 20px', ...glass }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <img alt="Patient Profile" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAtKXZ8Z8xPdcddYd3_3LBUEgNXwg0eUvQSbHPBE7s4E0uhgb1LmS8wv5Igo9RqOekFLODV8AnqqJ87x2V5HuMj4zhCQDQhBlHpwDeVC7qg754k6-pXFeqwK9QDHldUAg7tHwQvn2isqzLDdinvGpzXK9ceLKuMGv8Qw1zBWtZb50Y2DehAH-CvqixV5e8bGLSTG3FNFmQ8DSlRQQBa6dpkXRs-tUXnA6dpiVBpbS9Wgl61ud3uxjSzBXi6HI0SnVuiskg5fquAGSs5" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', background: '#e1dfe3' }} />
+          <b style={{ fontSize: 22, color: '#1a1c1d' }}>Digital Twin</b>
+        </div>
+        <MaterialIcon style={{ color: BLUE }}>🔔</MaterialIcon>
+      </div>
+
+      <main style={{ maxWidth: 760, margin: '0 auto', padding: '28px 20px 150px' }}>
+        <section style={{ marginBottom: 28 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            <div style={{ width: 52, height: 52, borderRadius: 18, background: BLUE, display: 'grid', placeItems: 'center', color: '#fff', boxShadow: '0 12px 30px rgba(0,88,188,0.24)', fontSize: 28 }}>🤖</div>
+            <div>
+              <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800, color: INK }}>Xin chào, tôi là Hope AI</h1>
+              <p style={{ margin: '4px 0 0', color: MUTED, fontSize: 16 }}>Bạn Đồng Hành Cảm Xúc của bạn</p>
+            </div>
+          </div>
+        </section>
+
+        <section style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 16, marginBottom: 28 }}>
+          <CompanionTile icon="📝" color={ATTENTION} title="Góc xả stress" subtitle="Viết ra mọi lo lắng của bạn" />
+          <CompanionTile icon="💚" color={HEALTHY} title="Khẳng định" subtitle="Năng lượng tích cực mỗi ngày" />
+          <div style={{ gridColumn: '1 / -1', padding: 30, borderRadius: 28, ...glass, position: 'relative', overflow: 'hidden' }}>
+            <div style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+              <div>
+                <span style={{ display: 'inline-block', padding: '5px 12px', borderRadius: 999, background: 'rgba(0,88,188,0.10)', color: BLUE, fontSize: 12, fontWeight: 800, marginBottom: 14 }}>Hoạt động đề xuất</span>
+                <h3 style={{ margin: 0, fontSize: 26, color: INK }}>Bài tập thở sâu 3 phút</h3>
+                <p style={{ margin: '10px 0 0', maxWidth: 440, color: MUTED, lineHeight: 1.55 }}>Giúp ổn định nhịp tim và giảm bớt lo âu ngay lập tức.</p>
+              </div>
+              <button onClick={() => setPlaying(!playing)} style={{ width: 58, height: 58, borderRadius: '50%', border: 'none', background: playing ? HEALTHY : BLUE, color: '#fff', fontSize: 28, display: 'grid', placeItems: 'center', cursor: 'pointer', boxShadow: '0 16px 30px rgba(0,88,188,0.26)' }}>{playing ? '⏸' : '▶'}</button>
+            </div>
+            <div style={{ position: 'absolute', right: -40, bottom: -40, width: 170, height: 170, borderRadius: '50%', background: 'rgba(0,88,188,0.06)', animation: 'hj-breathe 8s ease-in-out infinite' }} />
+          </div>
+        </section>
+
+        <section style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginLeft: 70 }}>
+            <div style={{ background: PRIMARY, color: '#fff', padding: '16px 20px', borderRadius: '24px 24px 4px 24px', boxShadow: '0 4px 12px rgba(0,0,0,0.06)' }}>
+              <p style={{ margin: 0, lineHeight: 1.55 }}>Gần đây mình cảm thấy rất mệt mỏi và lo lắng. Việc điều trị khiến mình kiệt sức...</p>
+              <span style={{ display: 'block', textAlign: 'right', opacity: 0.72, fontSize: 12, marginTop: 8 }}>14:20</span>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 12, marginRight: 70 }}>
+            <div style={{ width: 34, height: 34, borderRadius: '50%', background: BLUE, color: '#fff', flexShrink: 0, display: 'grid', placeItems: 'center' }}>🤖</div>
+            <div style={{ ...glass, padding: '16px 20px', borderRadius: '4px 24px 24px 24px' }}>
+              <p style={{ margin: 0, lineHeight: 1.65 }}>Tôi rất tiếc khi nghe bạn đang trải qua những cảm xúc này. Điều này hoàn toàn bình thường trong hành trình của bạn. 🌿<br/><br/>Hãy thử kỹ thuật thở 4-7-8 ngay lúc này: Hít vào (4s) → Giữ hơi (7s) → Thở ra (8s).<br/><br/>Bạn muốn tôi cùng thực hiện với bạn không?</p>
+              <span style={{ display: 'block', opacity: 0.5, fontSize: 12, marginTop: 8 }}>14:21</span>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <div style={{ position: 'absolute', left: 0, right: 0, bottom: 84, zIndex: 16, maxWidth: 760, margin: '0 auto', padding: '0 20px' }}>
+        <div style={{ ...glass, display: 'flex', alignItems: 'center', gap: 8, padding: 8, borderRadius: 999 }}>
+          <button style={roundButton('#f3f3f5', MUTED)}>＋</button>
+          <input placeholder="Hãy nói với Hope AI..." style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', fontSize: 15, color: INK, padding: '0 10px' }} />
+          <button style={roundButton(BLUE, '#fff')}>↑</button>
+        </div>
+      </div>
+      <JourneyMobileNav active="AI Scan" />
+    </div>
+  )
+}
+
+function CompanionTile({ icon, color, title, subtitle }) {
+  return (
+    <div style={{ ...glass, padding: 24, borderRadius: 26, cursor: 'pointer' }}>
+      <div style={{ width: 42, height: 42, borderRadius: '50%', background: `${color}25`, display: 'grid', placeItems: 'center', color, marginBottom: 16, fontSize: 22 }}>{icon}</div>
+      <h3 style={{ margin: 0, fontSize: 15, color: INK }}>{title}</h3>
+      <p style={{ margin: '6px 0 0', color: MUTED, fontSize: 13 }}>{subtitle}</p>
+    </div>
+  )
+}
+
+function roundButton(bg, color) {
+  return { width: 42, height: 42, borderRadius: '50%', border: 'none', background: bg, color, display: 'grid', placeItems: 'center', cursor: 'pointer', fontSize: 20, flexShrink: 0 }
+}
+
+function MealScanView() {
+  const [flash, setFlash] = useState(false)
+  return (
+    <div style={{ ...panelShell, minHeight: 820, background: '#111' }}>
+      <img alt="Salmon salad being scanned" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDz673aowy2PSOhw7UeuUZHoFiJO_SQTymK2RWuGYolAX9ok2Eugcl8j17Ip3FWZh0sLSoEuJbb-6LNoLAx5NKWwQ4X-nfqnnDuhGQvU_Dnqxw7oWZ6IW5kNaCG4vfKLbgFEAB2OXpUPeMzAoiWAqNGIjyo-wbhqxNF7d2BtrQY5HECx53yA3z9L7GdwfOiHxbQB6UdclRS9c4hau37W37ieVXlmK40gZ0dB2H8sW9PobMG23MnaC8tYR0V12bMf46MMJNaRznFkUu7" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.05)' }} />
+      <header style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10, padding: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <button style={floatingPillButton()}>×</button>
+        <div style={{ ...glass, padding: '8px 24px', borderRadius: 999, color: BLUE, fontSize: 13, fontWeight: 900, letterSpacing: '.08em' }}>AI SCANNING</div>
+        <button onClick={() => setFlash(!flash)} style={{ ...floatingPillButton(), background: flash ? 'rgba(0,88,188,0.24)' : 'rgba(255,255,255,0.75)' }}>{flash ? '🔦' : '⚡'}</button>
+      </header>
+      <ScanReticle />
+      <div style={{ position: 'absolute', top: '30%', right: '22%', zIndex: 7, pointerEvents: 'none', animation: 'hj-float 3s ease-in-out infinite' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <div style={{ ...glass, padding: '8px 12px', borderRadius: 10, color: BLUE, fontSize: 12, fontWeight: 800 }}>Salmon (26g Protein)</div>
+          <div style={{ width: 1, height: 34, background: 'rgba(0,88,188,0.60)' }} />
+          <div style={{ width: 9, height: 9, borderRadius: '50%', background: BLUE, boxShadow: '0 0 14px #0058bc' }} />
+        </div>
+      </div>
+      <div style={{ position: 'absolute', left: 0, right: 0, bottom: 76, zIndex: 12, padding: '0 18px' }}>
+        <div style={{ background: '#fff', borderRadius: '32px 32px 0 0', maxWidth: 900, margin: '0 auto', padding: 28, boxShadow: '0 -20px 55px rgba(0,0,0,0.16)', borderTop: '1px solid #c1c6d7' }}>
+          <div style={{ width: 48, height: 6, borderRadius: 999, background: '#e3e2e6', margin: '0 auto 22px' }} />
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 230px', gap: 24 }} className="hj-responsive-sheet">
+            <div>
+              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center', marginBottom: 8 }}>
+                <h1 style={{ margin: 0, fontSize: 26, color: INK }}>Salad Cá Hồi Áp Chảo</h1>
+                <span style={{ padding: '6px 10px', borderRadius: 999, background: 'rgba(104,211,145,0.16)', color: '#2f9e62', fontSize: 12, fontWeight: 800 }}>✓ Phù hợp phác đồ</span>
+              </div>
+              <p style={{ color: MUTED, margin: '0 0 20px', lineHeight: 1.5 }}>Phân tích hình ảnh xác nhận thành phần dinh dưỡng tối ưu cho bệnh nhân đang điều trị.</p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 18 }}>
+                <NutritionCard value="320" label="kcal" />
+                <NutritionCard value="26g" label="Đạm" />
+                <NutritionCard value="8g" label="Chất xơ" />
+              </div>
+              <div style={{ background: 'rgba(255,218,214,0.36)', border: '1px solid #ffdad6', padding: 14, borderRadius: 14, display: 'flex', gap: 10, color: '#93000a', fontWeight: 700, lineHeight: 1.45 }}>⚠️ <span>Lưu ý: Sốt chanh leo đi kèm có chứa đường tinh luyện. Nên sử dụng hạn chế.</span></div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <button style={primaryAction()}>Lưu vào nhật ký</button>
+              <button style={secondaryAction()}>Chỉnh sửa thủ công</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <JourneyMobileNav active="AI Scan" />
+    </div>
+  )
+}
+
+function floatingPillButton() {
+  return { width: 42, height: 42, borderRadius: '50%', border: '1px solid rgba(255,255,255,0.35)', background: 'rgba(255,255,255,0.75)', backdropFilter: 'blur(20px)', display: 'grid', placeItems: 'center', color: '#1a1c1d', cursor: 'pointer', fontSize: 22, boxShadow: '0 6px 18px rgba(0,0,0,0.10)' }
+}
+
+function ScanReticle() {
+  const corner = { position: 'absolute', width: 34, height: 34, borderColor: BLUE }
+  return (
+    <div style={{ position: 'absolute', inset: 0, zIndex: 5, display: 'grid', placeItems: 'center', pointerEvents: 'none' }}>
+      <div style={{ position: 'relative', width: 280, height: 280 }}>
+        <div style={{ ...corner, top: 0, left: 0, borderTop: '4px solid', borderLeft: '4px solid', borderRadius: '14px 0 0 0' }} />
+        <div style={{ ...corner, top: 0, right: 0, borderTop: '4px solid', borderRight: '4px solid', borderRadius: '0 14px 0 0' }} />
+        <div style={{ ...corner, bottom: 0, left: 0, borderBottom: '4px solid', borderLeft: '4px solid', borderRadius: '0 0 0 14px' }} />
+        <div style={{ ...corner, bottom: 0, right: 0, borderBottom: '4px solid', borderRight: '4px solid', borderRadius: '0 0 14px 0' }} />
+        <div style={{ position: 'absolute', left: 0, right: 0, height: 2, background: 'linear-gradient(90deg, transparent, #0058bc, transparent)', animation: 'hj-scan 2.5s ease-in-out infinite' }} />
+      </div>
+    </div>
+  )
+}
+
+function NutritionCard({ value, label }) {
+  return <div style={{ background: '#f3f3f5', borderRadius: 18, padding: 16, textAlign: 'center' }}><div style={{ color: BLUE, fontSize: 26, fontWeight: 900 }}>{value}</div><div style={{ color: MUTED, fontSize: 12, fontWeight: 700 }}>{label}</div></div>
+}
+
+function primaryAction() {
+  return { width: '100%', padding: '16px 18px', borderRadius: 14, border: 'none', background: BLUE, color: '#fff', fontWeight: 800, cursor: 'pointer', boxShadow: '0 14px 28px rgba(0,88,188,0.18)' }
+}
+function secondaryAction() {
+  return { width: '100%', padding: '16px 18px', borderRadius: 14, border: 'none', background: '#e3e2e6', color: INK, fontWeight: 800, cursor: 'pointer' }
+}
+
+function MedicationAssistantView() {
+  const [flash, setFlash] = useState(false)
+  return (
+    <div style={{ ...panelShell, minHeight: 820, background: '#000' }}>
+      <header style={{ position: 'relative', zIndex: 15, height: 64, display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 20px', ...glass }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, color: INK }}><button style={{ border: 'none', background: 'transparent', fontSize: 24, cursor: 'pointer' }}>×</button><h1 style={{ margin: 0, fontSize: 24 }}>Trợ lý thuốc</h1></div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}><button onClick={() => setFlash(!flash)} style={{ border: 'none', background: 'transparent', color: flash ? BLUE : INK, fontSize: 22, cursor: 'pointer' }}>{flash ? '🔦' : '⚡'}</button><img alt="Patient" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAQKeTt8_ixyEzSPUh64YGich4CWVUCDHlAED0v66qzTB8rzONzJD_GBylNvUOCiBFxk9njOsY3qdU1MvmNYz2oc6dcZZ8cLBeX4cw701UMQjBjsm9UoiNevceFpQRaat5AthvRm2ihEbGQnfFnAfjJDQ8Inb1usap4d3mvsSoZRFa6lPEkbJKcg_2oaNIyBiG0QLPsJL8tZzPVU2HZDifgoOO4GcVdYWNJmxiuj0irLtdFBy-gDf8sEBwU2qkiyehS0pde6FcQP8-J" style={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover' }} /></div>
+      </header>
+      <img alt="Pill Bottle" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAZH2XA_C2g9jti8cF8o0E5hvwbxBLhK2y-tf0NDCFY7cyKfoeZ_U8_kn3jiQHhOa6b56cisSwi2bz6AE1EFWFS0dNQBehYv66eK0nIeMiU0q1kRU5vfIdZz1KoCj7T6VpAyJAotvB_di10b0BzJ7RdFkt_41wXUXbswPWEv9u7eX9drmA7OkyMb1YS1l1QjiSzEbHDivTPH6XurlsDr6cR5vjNnYcEWsLxKzNgrooWpXB-uu9DZvIchL5J627pN73vdwj5KTI9lY4z" style={{ position: 'absolute', inset: 64, top: 64, bottom: 0, width: '100%', height: 'calc(100% - 64px)', objectFit: 'cover', opacity: 0.82 }} />
+      <div style={{ position: 'absolute', inset: '64px 0 0', background: 'radial-gradient(circle, transparent 38%, rgba(0,0,0,0.58) 100%)' }} />
+      <div style={{ position: 'absolute', inset: '64px 0 0', display: 'grid', placeItems: 'center', pointerEvents: 'none' }}>
+        <div style={{ position: 'relative', width: 270, height: 270, border: '2px solid rgba(0,112,235,0.42)', borderRadius: 30, overflow: 'hidden', boxShadow: '0 0 28px rgba(0,88,188,0.28)' }}>
+          <div style={{ position: 'absolute', top: 0, left: 0, width: 36, height: 36, borderTop: '4px solid #0070eb', borderLeft: '4px solid #0070eb', borderRadius: '18px 0 0 0' }} />
+          <div style={{ position: 'absolute', top: 0, right: 0, width: 36, height: 36, borderTop: '4px solid #0070eb', borderRight: '4px solid #0070eb', borderRadius: '0 18px 0 0' }} />
+          <div style={{ position: 'absolute', bottom: 0, left: 0, width: 36, height: 36, borderBottom: '4px solid #0070eb', borderLeft: '4px solid #0070eb', borderRadius: '0 0 0 18px' }} />
+          <div style={{ position: 'absolute', bottom: 0, right: 0, width: 36, height: 36, borderBottom: '4px solid #0070eb', borderRight: '4px solid #0070eb', borderRadius: '0 0 18px 0' }} />
+          <div style={{ position: 'absolute', left: 0, right: 0, height: 4, background: 'linear-gradient(90deg, transparent, #0070eb, transparent)', boxShadow: '0 0 10px #0070eb', animation: 'hj-laser 3s linear infinite' }} />
+        </div>
+      </div>
+      <div style={{ position: 'absolute', left: 0, right: 0, bottom: 76, zIndex: 14, padding: '0 18px' }}>
+        <div style={{ ...glass, maxWidth: 720, margin: '0 auto', borderRadius: 28, padding: 24 }}>
+          <div style={{ width: 48, height: 6, borderRadius: 999, background: 'rgba(113,119,134,0.22)', margin: '0 auto 20px' }} />
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}><h2 style={{ margin: 0, color: INK, fontSize: 25 }}>Kết quả Quét</h2><span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', padding: '6px 10px', borderRadius: 999, background: 'rgba(0,112,235,0.10)', color: PRIMARY, fontSize: 12, fontWeight: 900 }}>✨ Trợ lý AI</span></div>
+          <div style={{ background: '#fff', border: '1px solid #ededed', borderRadius: 18, padding: 16, display: 'flex', gap: 16, marginBottom: 14 }}>
+            <img alt="Tamoxifen Pill" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDjQHXpDlpop937cl2g-AgliTNjDZsZ4GaF0rbg3MKB7vu7r4SSTf5ZE4f4cYvbx6aU-WYjKBGzOnAXiyqGGEbHI1MRQDO9_we6ANnp2f7YpkTUeukmmaehNfcJvm_CwjQyOziUN0cIpQE-tQk_Y6_gUoNIfvc0MHgG7HtGaBkkcUJDa9hj3JCY--_v5y83HUUj0xepnsgxJ2r7DfVC_xBrQqHmFvNGT5I6vkGRg2_N8O27M71Dk42QokOPRn2_frR1KCKEkf2Kyl4o" style={{ width: 66, height: 66, borderRadius: 14, objectFit: 'cover', background: '#eeeef0', flexShrink: 0 }} />
+            <div><h3 style={{ margin: 0, color: INK, fontSize: 20 }}>Tamoxifen 20mg</h3><p style={{ margin: '6px 0 12px', color: MUTED }}>Viên nén tròn, màu trắng, khắc số '20'</p><div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', color: MUTED, fontWeight: 700, fontSize: 13 }}><span>🕒 1 lần/ngày</span><span>🍽 Sau ăn</span></div></div>
+          </div>
+          <div style={{ background: 'rgba(255,218,214,0.48)', border: '1px solid rgba(186,26,26,0.12)', borderRadius: 18, padding: 16, marginBottom: 18, color: '#93000a' }}><div style={{ fontWeight: 900, marginBottom: 7 }}>⚠️ Cảnh báo Tương tác</div><div style={{ lineHeight: 1.55 }}>Tương tác nhẹ phát hiện với <b>Ondansetron</b>. Có thể làm giảm hiệu quả của thuốc. Vui lòng tham khảo ý kiến bác sĩ điều trị.</div></div>
+          <button style={{ ...primaryAction(), height: 54 }}>Thêm vào Lịch trình</button>
+          <button style={{ width: '100%', marginTop: 8, padding: 12, border: 'none', background: 'transparent', color: BLUE, fontWeight: 900, cursor: 'pointer' }}>Quét lại</button>
+        </div>
+      </div>
+      <JourneyMobileNav active="AI Scan" />
+    </div>
+  )
+}
+
+export default function HealthJourneyPanel({ onNext }) {
+  const { lang, t } = useApp()
+  const [activeTab, setActiveTab] = useState('emotion')
+
+  return (
+    <div className="animate-fade" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 18 }}>
+      <style>{`
+        @keyframes hj-breathe { 0%, 100% { transform: scale(1); opacity: .35; } 50% { transform: scale(1.12); opacity: .7; } }
+        @keyframes hj-scan { 0% { top: 0%; opacity: 0; } 20%, 80% { opacity: 1; } 100% { top: 100%; opacity: 0; } }
+        @keyframes hj-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+        @keyframes hj-laser { 0% { top: 0%; opacity: .8; } 50% { top: 100%; opacity: 1; } 100% { top: 0%; opacity: .8; } }
+        @media (max-width: 760px) { .hj-responsive-sheet { grid-template-columns: 1fr !important; } }
+      `}</style>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap' }}>
+        <div>
+          <h2 style={{ fontSize: 24, fontWeight: 900, margin: 0 }}>🌿 {lang === 'vi' ? 'Hành trình sức khỏe' : 'Health Journey'}</h2>
+          <p style={{ color: 'var(--text2)', fontSize: 13, margin: '6px 0 0' }}>
+            {lang === 'vi'
+              ? 'Một không gian wellness gồm cảm xúc, dinh dưỡng và trợ lý thuốc thông minh.'
+              : 'A wellness hub for emotions, nutrition, and smart medication support.'}
+          </p>
+        </div>
+        {onNext && <NavButtons onNext={onNext} nextLabel={`${t('next')} →`} style={{ marginTop: 0 }} />}
+      </div>
+      <HealthJourneyTabs activeTab={activeTab} setActiveTab={setActiveTab} lang={lang} />
+      {activeTab === 'emotion' && <EmotionalCompanionView />}
+      {activeTab === 'meal' && <MealScanView />}
+      {activeTab === 'medication' && <MedicationAssistantView />}
+    </div>
+  )
+}

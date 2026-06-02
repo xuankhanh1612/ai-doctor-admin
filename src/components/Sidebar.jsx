@@ -36,20 +36,21 @@ export default function Sidebar({ active, onNavigate }) {
   const surface2 = isDark ? 'rgba(255,255,255,0.06)'  : 'rgba(0,0,0,0.06)'
 
   const STEPS = [
-    { id: 'upload',    label: t('uploadRecords'),   step: '01' },
-    { id: 'imaging',    label: t('imaging'),        step: '02' },
-    { id: 'checkin',   label: t('checkin'),         step: '03' },
-    { id: 'family',    label: t('familyTree'),      step: '04' },
-    { id: 'record',    label: t('patientRecord'),   step: '05' },
-    { id: 'familyRelationship', label: t('familyRelationship'), step: '06' },
-    { id: 'matrix3dBody', label: t('matrix3dBody'), step: '07' },
-    { id: 'omnidirectional3dBody', label: t('omnidirectional3dBody'), step: '08' },
-    { id: 'twin',      label: t('twin'),            step: '09' },
-    { id: 'telemedicine', label: t('telemedicine'), step: '10' },
-    { id: 'statAnalysis', label: t('statAnalysis'), step: '11' },
-    { id: 'swarm',      label: t('swarmCouncil'),    step: '12' },
-    { id: 'consensus', label: t('consensus'),       step: '13' },
-    { id: 'protein3d', label: t('protein3d'),       step: '14' },
+    { id: 'healthJourney', label: t('healthJourney'), step: '01' },
+    { id: 'upload',    label: t('uploadRecords'),   step: '02' },
+    { id: 'imaging',    label: t('imaging'),        step: '03' },
+    { id: 'checkin',   label: t('checkin'),         step: '04' },
+    { id: 'family',    label: t('familyTree'),      step: '05' },
+    { id: 'record',    label: t('patientRecord'),   step: '06' },
+    { id: 'familyRelationship', label: t('familyRelationship'), step: '07' },
+    { id: 'matrix3dBody', label: t('matrix3dBody'), step: '08' },
+    { id: 'omnidirectional3dBody', label: t('omnidirectional3dBody'), step: '09' },
+    { id: 'twin',      label: t('twin'),            step: '10' },
+    { id: 'telemedicine', label: t('telemedicine'), step: '11' },
+    { id: 'statAnalysis', label: t('statAnalysis'), step: '12' },
+    { id: 'swarm',      label: t('swarmCouncil'),    step: '13' },
+    { id: 'consensus', label: t('consensus'),       step: '14' },
+    { id: 'protein3d', label: t('protein3d'),       step: '15' },
   ]
 
   const ADMIN_STEPS = user?.isAdmin ? [
