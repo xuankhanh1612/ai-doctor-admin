@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect } from 'react'
 import { useApp } from '../../context/AppContext'
 import { useAuth } from '../../context/AuthContext'
 import NavButtons from '../NavButtons.jsx'
+import { useMedicalData } from '../../hooks/useMedicalData.js'
 
 import { CONDITION_COLORS, DEFAULT_FAMILY_MEMBERS, LXK_PATIENT_PROFILE, RELATIONS, RELATION_META, isNonDiseaseCondition, loadFamilyMembers, saveFamilyMembers, stripMissingNamePrefix } from './familyData.js'
 
@@ -106,6 +107,59 @@ const syncPrimaryPatientProfile = (members, user) => {
         avatar_initials: initialsFromName(nextName),
         ...(nextAvatar ? { avatar_url: nextAvatar } : {}),
       } : member.medicalRecord,
+    }
+  })
+  return changed ? nextMembers : members
+}
+const primaryPatientRecordId = ownerId => `PRIMARY-${String(ownerId || 'guest').trim().replace(/[^a-z0-9]+/gi, '-').toUpperCase() || 'GUEST'}`
+const mergeById = (baseItems = [], uploadedItems = []) => {
+  const existingIds = new Set(baseItems.map(item => item?.id).filter(Boolean))
+  return [...uploadedItems.filter(item => !existingIds.has(item?.id)), ...baseItems]
+}
+const itemIds = items => (items || []).map(item => item?.id).filter(Boolean).join('|')
+const syncUploadedRecordsToPrimaryPatient = (members, uploadedPatient, user, ownerId) => {
+  if (!uploadedPatient?._fromUpload) return members
+  let changed = false
+  const nextMembers = members.map(member => {
+    if (!isPrimaryPatientMember(member)) return member
+    const baseRecord = member.medicalRecord || {}
+    const primaryName = displayNameFromUser(user) || member.name || baseRecord.name || 'Patient'
+    const primaryAvatar = avatarFromUser(user) || member.avatar_url || baseRecord.avatar_url || ''
+    const nextRecord = {
+      ...baseRecord,
+      id: primaryPatientRecordId(ownerId),
+      sourceDemoId: baseRecord.sourceDemoId || uploadedPatient.sourceDemoId,
+      familyMemberId: member.id,
+      name: primaryName,
+      age: member.age || baseRecord.age || uploadedPatient.age || 0,
+      gender: member.gender || baseRecord.gender || uploadedPatient.gender || 'M',
+      dob: member.dob || baseRecord.dob || uploadedPatient.dob || '—',
+      blood_type: member.blood_type || baseRecord.blood_type || uploadedPatient.blood_type || '—',
+      avatar_initials: initialsFromName(primaryName),
+      ...(primaryAvatar ? { avatar_url: primaryAvatar } : {}),
+      imaging: mergeById(baseRecord.imaging, uploadedPatient.imaging),
+      labs: mergeById(baseRecord.labs, uploadedPatient.labs),
+      timeline: mergeById(baseRecord.timeline, uploadedPatient.timeline),
+      _records: uploadedPatient._records || baseRecord._records || [],
+      _hasUploadedImaging: !!uploadedPatient._hasUploadedImaging,
+      _hasUploadedLabs: !!uploadedPatient._hasUploadedLabs,
+      _isPrimaryPatient: true,
+      _isDemoTemplate: false,
+    }
+    const sameUploadState =
+      baseRecord.id === nextRecord.id &&
+      baseRecord.name === nextRecord.name &&
+      itemIds(baseRecord.imaging) === itemIds(nextRecord.imaging) &&
+      itemIds(baseRecord.labs) === itemIds(nextRecord.labs) &&
+      itemIds(baseRecord.timeline) === itemIds(nextRecord.timeline) &&
+      itemIds(baseRecord._records) === itemIds(nextRecord._records)
+    if (sameUploadState) return member
+    changed = true
+    return {
+      ...member,
+      name: primaryName,
+      ...(primaryAvatar ? { avatar_url: primaryAvatar } : {}),
+      medicalRecord: nextRecord,
     }
   })
   return changed ? nextMembers : members
@@ -434,6 +488,7 @@ export default function FamilyTreePanel({ patientId, storageOwnerId = 'guest', o
   const { theme, lang, t } = useApp()
   const { user } = useAuth()
   const isDark    = theme === 'dark'
+  const { patient: uploadedPatient } = useMedicalData({ lang })
 
   // Load from localStorage, fallback to DEFAULT_MEMBERS
   const [members, setMembersState] = useState(() => syncPrimaryPatientProfile(loadFamilyMembers(patientId, storageOwnerId) || DEFAULT_FAMILY_MEMBERS, user))
@@ -457,6 +512,15 @@ export default function FamilyTreePanel({ patientId, storageOwnerId = 'guest', o
       return next
     })
   }, [patientId, storageOwnerId, user?.name, user?.avatar])
+
+  useEffect(() => {
+    if (!uploadedPatient?._fromUpload) return
+    setMembersState(prev => {
+      const next = syncUploadedRecordsToPrimaryPatient(prev, uploadedPatient, user, storageOwnerId)
+      if (next !== prev) saveFamilyMembers(patientId, next, storageOwnerId)
+      return next
+    })
+  }, [patientId, storageOwnerId, uploadedPatient, user?.name, user?.avatar])
 
   // Persist every change
   const setMembers = useCallback((updater) => {

@@ -14,6 +14,7 @@ import SimulationPanel from './components/SimulationPanel.jsx'
 import ConsensusPanel from './components/ConsensusPanel.jsx'
 import SwarmConsensusPanel from './components/SwarmConsensusPanel.jsx'
 import UploadPanel from './components/upload/UploadPanel.jsx'
+import HealthJourneyPanel from './components/HealthJourneyPanel.jsx'
 import FamilyTreePanel from './components/family/FamilyTreePanel.jsx'
 import FamilyMedicalRelationshipPanel from './components/family/FamilyMedicalRelationshipPanel.jsx'
 import AdminPanel from './components/admin/AdminPanel.jsx'
@@ -24,12 +25,12 @@ import LoginPage from './pages/LoginPage.jsx'
 import { addNotification } from './lib/notifications.js'
 
 // Swarm panel replaces simulation; keep consensus as classic fallback
-const PANELS = ['upload', 'imaging', 'checkin', 'family', 'record', 'familyRelationship', 'matrix3dBody', 'omnidirectional3dBody', 'twin', 'telemedicine', 'statAnalysis', 'swarm', 'consensus', 'protein3d']
+const PANELS = ['healthJourney', 'upload', 'imaging', 'checkin', 'family', 'record', 'familyRelationship', 'matrix3dBody', 'omnidirectional3dBody', 'twin', 'telemedicine', 'statAnalysis', 'swarm', 'consensus', 'protein3d']
 
 export default function App() {
   const { user, loading } = useAuth()
   const { theme, t } = useApp()
-  const [active, setActive]               = useState('upload')
+  const [active, setActive]               = useState('healthJourney')
   const [selectedMember, setSelectedMember] = useState(null)
   const [compareImage, setCompareImage] = useState(null)
   const [uploadedImages, setUploadedImages] = useState([])
@@ -48,6 +49,7 @@ export default function App() {
   }, [user?.email])
 
   const panelLabels = {
+    healthJourney: t('healthJourney'),
     upload: t('uploadRecords'),
     imaging: t('imaging'),
     checkin: t('checkin'),
@@ -174,7 +176,7 @@ export default function App() {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
       <Topbar activePanel={active} onNavigateProfile={() => setActive('profile')} onNavigateAdmin={() => setActive('admin')} />
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-        <Sidebar active={active} onNavigate={(id) => { if (id === 'record') setSelectedMember(null); setActive(id) }} />
+        <Sidebar active={active} onNavigate={(id) => setActive(id)} />
         <main ref={mainRef} style={{ flex: 1, overflowY: 'auto', background: mainBg }}>
           <PanelErrorBoundary
             resetKey={active}
@@ -184,6 +186,7 @@ export default function App() {
             familyStorageOwnerId={familyStorageOwnerId}
             user={user}
           >
+            {active === 'healthJourney' && <HealthJourneyPanel onNext={goNext} />}
             {active === 'upload'    && <UploadPanel        patientId="LXK-2024" onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} onSelectImage={handleSelectCompareFile} />}
             {active === 'imaging'   && <ImagingPanel       onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} compareImage={compareImage} uploadedImages={uploadedImages} onSelectCompareImage={setCompareImage} scrollTarget={imagingScrollTarget} onScrollTargetHandled={() => setImagingScrollTarget(null)} />}
             {active === 'checkin'   && <CheckinPanel       onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
