@@ -652,8 +652,11 @@ export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selected
   const ownerId = storageOwnerId || user?.email || 'guest'
   const samplePatient = useMemo(() => buildSamplePatientRecord(), [])
   const mainPatient = useMemo(() => {
-    const savedOrTemplate = clonePatientRecord(loadSavedPatientRecord(ownerId) || LXK_PATIENT_RECORD)
-    const primaryPatient = buildPrimaryPatientRecord(savedOrTemplate, user, ownerId)
+    const savedRecord = loadSavedPatientRecord(ownerId)
+    const savedOrTemplate = clonePatientRecord(savedRecord || LXK_PATIENT_RECORD)
+    const hasUploadedRecords = !!uploadedPatient?._fromUpload
+    const shouldShowSample = !savedRecord && !hasUploadedRecords && savedOrTemplate.id === LXK_PATIENT_RECORD.id
+    const primaryPatient = buildPrimaryPatientRecord(savedOrTemplate, user, ownerId, { asSample: shouldShowSample })
     return mergeUploadedRecords(primaryPatient, uploadedPatient)
   }, [ownerId, uploadedPatient, user?.name, user?.avatar])
   const basePatient = selectedMember ? selectedMember : samplePatient
