@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
+import { FAMILY_MEMBERS_CHANGED_EVENT, FAMILY_USER_STORAGE_KEY, LXK_PATIENT_PROFILE, getFamilyOwnerKey } from '../components/family/familyData.js'
 
 const AuthContext = createContext(null)
 const ADMIN_EMAIL = 'khanhlegood1@gmail.com'
@@ -7,6 +8,41 @@ const getUsers = () => { try { return JSON.parse(localStorage.getItem('cdoc_user
 const saveUsers = (u) => localStorage.setItem('cdoc_users', JSON.stringify(u))
 const getSavedSession = () => { try { return JSON.parse(localStorage.getItem('cdoc_session') || 'null') } catch { return null } }
 const saveSession = (s) => s ? localStorage.setItem('cdoc_session', JSON.stringify(s)) : localStorage.removeItem('cdoc_session')
+
+const syncPrimaryPatientNameInFamilyTree = (email, name) => {
+  const patientName = String(name || '').trim()
+  if (!email || !patientName) return
+  try {
+    const ownerKey = getFamilyOwnerKey(email)
+    const byUser = JSON.parse(localStorage.getItem(FAMILY_USER_STORAGE_KEY) || '{}')
+    const userPatients = byUser[ownerKey]
+    const members = userPatients?.['LXK-2024']
+    if (!Array.isArray(members)) return
+
+    let changed = false
+    const nextMembers = members.map(member => {
+      if (member?.relation !== 'self' && member?.id !== LXK_PATIENT_PROFILE.id) return member
+      if (member.name === patientName && member.medicalRecord?.name === patientName) return member
+      changed = true
+      return {
+        ...member,
+        name: patientName,
+        medicalRecord: member.medicalRecord ? {
+          ...member.medicalRecord,
+          name: patientName,
+          avatar_initials: patientName.split(' ').slice(-2).map(w => w[0]).join('').toUpperCase(),
+        } : member.medicalRecord,
+      }
+    })
+    if (!changed) return
+
+    byUser[ownerKey] = { ...userPatients, 'LXK-2024': nextMembers }
+    localStorage.setItem(FAMILY_USER_STORAGE_KEY, JSON.stringify(byUser))
+    window.dispatchEvent(new CustomEvent(FAMILY_MEMBERS_CHANGED_EVENT, {
+      detail: { patientId: 'LXK-2024', ownerId: ownerKey },
+    }))
+  } catch (e) { console.error('Profile-to-family sync error:', e) }
+}
 
 // Simulate Google OAuth — in production replace with real Google Sign-In SDK
 // Returns a profile object mimicking what Google's ID token gives you
@@ -205,6 +241,7 @@ export function AuthProvider({ children }) {
     }
     users[user.email] = updated
     saveUsers(users)
+    syncPrimaryPatientNameInFamilyTree(user.email, updated.name)
     const enriched = { ...updated, isAdmin: user.isAdmin }
     setUser(enriched)
     return enriched
