@@ -31,9 +31,11 @@ const patientInitialsFromName = name => String(name || 'Patient')
   .join('')
   .toUpperCase() || 'PT'
 
-const buildPrimaryPatientRecord = (patient, user, ownerId) => {
+const buildPrimaryPatientRecord = (patient, user, ownerId, { asSample = false } = {}) => {
   const ownerKey = patientRecordOwnerKey(ownerId).replace(/[^a-z0-9]+/gi, '-').toUpperCase()
-  const primaryName = patient?.id === LXK_PATIENT_RECORD.id ? SAMPLE_PATIENT_DISPLAY_NAME : String(user?.name || patient?.name || 'Patient').trim()
+  const primaryName = asSample
+    ? SAMPLE_PATIENT_DISPLAY_NAME
+    : String(user?.name || patient?.name || 'Patient').trim().replace(/\s+Sample$/i, '')
   return {
     ...patient,
     id: `PRIMARY-${ownerKey}`,
@@ -43,7 +45,7 @@ const buildPrimaryPatientRecord = (patient, user, ownerId) => {
     avatar_url: user?.avatar || patient?.avatar_url,
     avatar_initials: patientInitialsFromName(primaryName),
     _isPrimaryPatient: true,
-    _isDemoTemplate: patient?.id === LXK_PATIENT_RECORD.id,
+    _isDemoTemplate: asSample && patient?.id === LXK_PATIENT_RECORD.id,
   }
 }
 
@@ -635,13 +637,16 @@ export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selected
   const { user } = useAuth()
   const isDark = theme === 'dark'
 
-  // Keep uploader hook subscribed and merge each user's uploaded images into Patient Record > Imaging.
+  // Keep uploader hook subscribed and merge uploads into the real primary patient, not the Sample demo record.
   const { patient: uploadedPatient } = useMedicalData({ lang })
 
   const ownerId = storageOwnerId || user?.email || 'guest'
   const mainPatient = useMemo(() => {
-    const savedOrTemplate = clonePatientRecord(loadSavedPatientRecord(ownerId) || LXK_PATIENT_RECORD)
-    const primaryPatient = buildPrimaryPatientRecord(savedOrTemplate, user, ownerId)
+    const savedRecord = loadSavedPatientRecord(ownerId)
+    const savedOrTemplate = clonePatientRecord(savedRecord || LXK_PATIENT_RECORD)
+    const hasUploadedRecords = !!uploadedPatient?._fromUpload
+    const shouldShowSample = !savedRecord && !hasUploadedRecords && savedOrTemplate.id === LXK_PATIENT_RECORD.id
+    const primaryPatient = buildPrimaryPatientRecord(savedOrTemplate, user, ownerId, { asSample: shouldShowSample })
     return mergeUploadedRecords(primaryPatient, uploadedPatient)
   }, [ownerId, uploadedPatient, user?.name, user?.avatar])
   const basePatient = selectedMember ? selectedMember : mainPatient
