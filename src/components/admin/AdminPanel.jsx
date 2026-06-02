@@ -3,6 +3,7 @@ import { useAuth } from '../../context/AuthContext'
 import { useApp } from '../../context/AppContext'
 import { useMedicalData } from '../../hooks/useMedicalData.js'
 import { fileTypeLabel, fileTypeIcon, formatBytes, getMetaKey } from '../../lib/medicalStorage.js'
+import { useNotifications } from '../../lib/notifications.js'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function formatDate(iso, lang) {
@@ -19,8 +20,8 @@ function formatDateTime(iso, lang) {
   })
 }
 
-const TYPE_COLOR = { upload: '#00b8cc', view: '#9c6fff', edit: '#ffb74d', auth: '#00e676' }
-const TYPE_ICON  = { upload: '📤', view: '👁️', edit: '✏️', auth: '🔐' }
+const TYPE_COLOR = { upload: '#00b8cc', view: '#9c6fff', edit: '#ffb74d', auth: '#00e676', 'system-error': '#ffb74d' }
+const TYPE_ICON  = { upload: '📤', view: '👁️', edit: '✏️', auth: '🔐', 'system-error': '🚨' }
 const FILE_COLOR = { xray: '#00e5ff', ct: '#9c6fff', mri: '#f48fb1', pdf: '#ffb74d', photo: '#00e676' }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -163,6 +164,7 @@ export default function AdminPanel() {
   } = useMedicalData({ lang, includeAll: !!user?.isAdmin })
 
   const users = getAllUsers()
+  const { notifications, unreadCount, markAllRead } = useNotifications(user)
 
   const [tab, setTab] = useState('records')
 
@@ -179,6 +181,7 @@ export default function AdminPanel() {
     { id: 'records',  label: lang === 'vi' ? '📋 Hồ Sơ Upload'  : '📋 Records'  },
     { id: 'patients', label: lang === 'vi' ? '👥 Bệnh Nhân'     : '👥 Patients' },
     { id: 'activity', label: lang === 'vi' ? '📊 Nhật Ký'       : '📊 Activity' },
+    { id: 'notifications', label: `${lang === 'vi' ? '🔔 Thông Báo' : '🔔 Notifications'}${unreadCount ? ` (${unreadCount})` : ''}` },
     { id: 'users',    label: lang === 'vi' ? '🔐 Tài Khoản'     : '🔐 Accounts' },
   ]
 
@@ -188,6 +191,7 @@ export default function AdminPanel() {
     { label: lang === 'vi' ? 'Đã phân tích AI'  : 'AI Analyzed',    value: aiAnalyzed,              icon: '🤖', color: '#9c6fff', sub: `${totalFiles ? Math.round(aiAnalyzed/totalFiles*100) : 0}%` },
     { label: lang === 'vi' ? 'Dung lượng'        : 'Storage Used',   value: `${totalSizeMB}MB`,      icon: '💾', color: '#00e676' },
     { label: lang === 'vi' ? 'Tài khoản'         : 'User Accounts',  value: users.length,            icon: '👥', color: '#ffb74d' },
+    { label: lang === 'vi' ? 'Thông báo mới'      : 'New Alerts',     value: unreadCount,              icon: '🔔', color: '#ff5252' },
   ]
 
   // Patient synthesized from upload records
@@ -229,7 +233,7 @@ export default function AdminPanel() {
       </div>
 
       {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
         {stats.map((s, i) => <StatCard key={i} {...s} />)}
       </div>
 
@@ -423,6 +427,56 @@ export default function AdminPanel() {
                         </span>
                       )}
                     </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+
+
+      {/* ── TAB: Thông Báo ───────────────────────────────────────────────── */}
+      {tab === 'notifications' && (
+        <div style={{ background: c.bg, border: `1px solid ${c.border}`, borderRadius: 14, overflow: 'hidden' }}>
+          <div style={{ padding: '12px 16px', borderBottom: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 800, color: c.text }}>{lang === 'vi' ? 'Inbox lỗi hệ thống & thông báo user' : 'System error and user notification inbox'}</div>
+              <div style={{ fontSize: 11, color: c.text3 }}>{notifications.length} {lang === 'vi' ? 'thông báo được tracking từ local dashboard' : 'notifications tracked in the local dashboard'}</div>
+            </div>
+            <button type="button" onClick={markAllRead} style={{ padding: '7px 12px', borderRadius: 8, cursor: 'pointer', fontSize: 11, border: '1px solid rgba(0,184,204,0.3)', background: 'rgba(0,184,204,0.1)', color: '#00b8cc', fontWeight: 800 }}>
+              {lang === 'vi' ? 'Đánh dấu đã đọc' : 'Mark all read'}
+            </button>
+          </div>
+          {notifications.length === 0 ? (
+            <div style={{ padding: 48, textAlign: 'center', color: c.text3, fontSize: 13 }}>
+              <div style={{ fontSize: 40, marginBottom: 12 }}>🔔</div>
+              {lang === 'vi' ? 'Chưa có thông báo lỗi nào được gửi tới admin.' : 'No error notifications have been sent to admin yet.'}
+            </div>
+          ) : (
+            <div>
+              {notifications.map((n, i) => (
+                <div key={n.id || i} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '14px 16px', borderBottom: `1px solid ${c.border}`, background: n.type === 'system-error' ? 'rgba(255,183,77,0.06)' : 'transparent' }}>
+                  <div style={{ width: 34, height: 34, borderRadius: 10, flexShrink: 0, background: `${TYPE_COLOR[n.type] || '#00b8cc'}15`, border: `1px solid ${TYPE_COLOR[n.type] || '#00b8cc'}35`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15 }}>
+                    {TYPE_ICON[n.type] || '🔔'}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: c.text }}>{n.title || (lang === 'vi' ? 'Thông báo hệ thống' : 'System notification')}</div>
+                      <span style={{ fontSize: 10, padding: '1px 7px', borderRadius: 999, color: n.status === 'new' ? '#ffb74d' : '#00e676', border: `1px solid ${n.status === 'new' ? 'rgba(255,183,77,0.3)' : 'rgba(0,230,118,0.3)'}`, background: n.status === 'new' ? 'rgba(255,183,77,0.08)' : 'rgba(0,230,118,0.08)' }}>{n.status || 'new'}</span>
+                    </div>
+                    <div style={{ fontSize: 12, color: c.text2, lineHeight: 1.55, marginTop: 5 }}>{n.message}</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 8, marginTop: 10 }}>
+                      <div style={{ fontSize: 11, color: c.text3 }}><b style={{ color: c.text2 }}>Email:</b> {n.userEmail || '—'}</div>
+                      <div style={{ fontSize: 11, color: c.text3 }}><b style={{ color: c.text2 }}>{lang === 'vi' ? 'Màn hình:' : 'Screen:'}</b> {n.screenMessage || n.panelLabel || '—'}</div>
+                      <div style={{ fontSize: 11, color: c.text3 }}><b style={{ color: c.text2 }}>{lang === 'vi' ? 'Thời gian:' : 'Time:'}</b> {formatDateTime(n.createdAt, lang)}</div>
+                    </div>
+                    {n.errorMessage && (
+                      <pre style={{ margin: '10px 0 0', whiteSpace: 'pre-wrap', maxHeight: 130, overflow: 'auto', padding: 10, borderRadius: 9, border: `1px solid ${c.border}`, background: isDark ? 'rgba(0,0,0,0.22)' : 'rgba(0,0,0,0.03)', color: '#ff8a65', fontSize: 11 }}>
+                        {n.errorMessage}
+                      </pre>
+                    )}
                   </div>
                 </div>
               ))}
