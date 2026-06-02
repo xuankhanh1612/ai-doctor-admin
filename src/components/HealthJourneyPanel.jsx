@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import NavButtons from './NavButtons.jsx'
 import { useApp } from '../context/AppContext.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
@@ -58,18 +58,31 @@ function makeJourneyFilename(prefix, originalName = 'camera.jpg') {
 function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUploaded }) {
   const { lang } = useApp()
   const { user } = useAuth()
-  const inputRef = useRef(null)
+  const localInputRef = useRef(null)
+  const videoRef = useRef(null)
+  const streamRef = useRef(null)
   const [uploading, setUploading] = useState(false)
   const [status, setStatus] = useState('')
   const [preview, setPreview] = useState('')
   const [capturedFile, setCapturedFile] = useState(null)
+  const [cameraOpen, setCameraOpen] = useState(false)
+  const [cameraStarting, setCameraStarting] = useState(false)
 
   const userFolder = safeUploadSegment(user?.email || user?.name || 'guest')
   const modeFolder = mode === 'medication' ? 'medication-assistant' : 'meal-scan'
   const virtualFolder = `upload/${userFolder}/${modeFolder}`
 
-  const handleFiles = useCallback(async (files) => {
-    const file = files?.[0]
+  const stopCamera = useCallback(() => {
+    streamRef.current?.getTracks?.().forEach(track => track.stop())
+    streamRef.current = null
+    if (videoRef.current) videoRef.current.srcObject = null
+    setCameraOpen(false)
+    setCameraStarting(false)
+  }, [])
+
+  useEffect(() => () => stopCamera(), [stopCamera])
+
+  const setSelectedImage = useCallback(async (file, source = 'camera') => {
     if (!file) return
     if (!file.type.startsWith('image/')) {
       setStatus(lang === 'vi' ? 'Vui lòng chụp hoặc chọn một hình ảnh.' : 'Please capture or choose an image.')
@@ -80,17 +93,73 @@ function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUplo
       const dataUrl = await fileToDataUrl(file)
       setCapturedFile(file)
       setPreview(dataUrl)
-      setStatus(lang === 'vi' ? 'Đã chụp ảnh. Bấm nút upload để lưu vào hệ thống.' : 'Photo captured. Press upload to save it to the system.')
+      setStatus(source === 'camera'
+        ? (lang === 'vi' ? 'Đã chụp ảnh thật từ camera. Bấm upload để lưu vào hệ thống.' : 'Real camera photo captured. Press upload to save it to the system.')
+        : (lang === 'vi' ? 'Đã chọn hình trong máy. Bấm upload để lưu vào hệ thống.' : 'Local image selected. Press upload to save it to the system.'))
     } catch (error) {
-      console.error('Health journey camera preview failed:', error)
-      setStatus(lang === 'vi' ? 'Không thể đọc ảnh vừa chụp. Vui lòng thử lại.' : 'Could not read the captured image. Please try again.')
+      console.error('Health journey image preview failed:', error)
+      setStatus(lang === 'vi' ? 'Không thể đọc ảnh. Vui lòng thử lại.' : 'Could not read the image. Please try again.')
     }
   }, [lang])
 
+  const openPhysicalCamera = useCallback(async () => {
+    setStatus('')
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setStatus(lang === 'vi' ? 'Trình duyệt không hỗ trợ mở camera vật lý. Vui lòng dùng nút upload hình trong máy.' : 'This browser cannot open the physical camera. Please use the local image upload button.')
+      return
+    }
+
+    setCameraStarting(true)
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1600 }, height: { ideal: 1200 } },
+        audio: false,
+      })
+      streamRef.current = stream
+      setCameraOpen(true)
+      window.setTimeout(() => {
+        if (videoRef.current) videoRef.current.srcObject = stream
+      }, 0)
+      setStatus(lang === 'vi' ? 'Camera vật lý đã mở. Bấm “Chụp ảnh” để lấy hình.' : 'Physical camera is open. Press “Take photo” to capture.')
+    } catch (error) {
+      console.error('Health journey physical camera failed:', error)
+      stopCamera()
+      setStatus(lang === 'vi' ? 'Không thể mở camera vật lý. Vui lòng kiểm tra quyền camera hoặc dùng nút upload hình trong máy.' : 'Could not open the physical camera. Please check camera permission or use the local image upload button.')
+    } finally {
+      setCameraStarting(false)
+    }
+  }, [lang, stopCamera])
+
+  const captureFromCamera = useCallback(() => {
+    const video = videoRef.current
+    if (!video) return
+    const canvas = document.createElement('canvas')
+    canvas.width = video.videoWidth || 1280
+    canvas.height = video.videoHeight || 720
+    const ctx = canvas.getContext('2d')
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+    canvas.toBlob(blob => {
+      if (!blob) {
+        setStatus(lang === 'vi' ? 'Không chụp được ảnh từ camera.' : 'Could not capture a photo from the camera.')
+        return
+      }
+      const file = new File([blob], makeJourneyFilename(mode === 'medication' ? 'medication_camera' : 'meal_camera'), { type: 'image/jpeg' })
+      stopCamera()
+      setSelectedImage(file, 'camera')
+    }, 'image/jpeg', 0.92)
+  }, [lang, mode, setSelectedImage, stopCamera])
+
+  const resetCapture = useCallback(() => {
+    stopCamera()
+    setCapturedFile(null)
+    setPreview('')
+    setStatus(lang === 'vi' ? 'Đã huỷ hình vừa chụp.' : 'Captured image cleared.')
+    onUploaded?.(null)
+  }, [lang, onUploaded, stopCamera])
+
   const uploadCapturedFile = useCallback(async () => {
     if (!capturedFile) {
-      setStatus(lang === 'vi' ? 'Vui lòng chụp hình trước khi upload.' : 'Please capture a photo before uploading.')
-      inputRef.current?.click()
+      setStatus(lang === 'vi' ? 'Vui lòng chụp hình hoặc chọn hình trong máy trước khi upload.' : 'Please capture a photo or choose a local image before uploading.')
       return
     }
 
@@ -144,21 +213,33 @@ function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUplo
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <input
-        ref={inputRef}
+        ref={localInputRef}
         type="file"
         accept="image/*"
-        capture="environment"
-        onChange={e => { handleFiles(e.target.files); e.target.value = '' }}
+        onChange={e => { setSelectedImage(e.target.files?.[0], 'local'); e.target.value = '' }}
         style={{ display: 'none' }}
       />
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-        <button disabled={uploading} onClick={() => inputRef.current?.click()} style={{ ...secondaryAction(), opacity: uploading ? 0.72 : 1 }}>
-          {captureLabel}
+        <button disabled={uploading || cameraStarting} onClick={openPhysicalCamera} style={{ ...secondaryAction(), opacity: uploading || cameraStarting ? 0.72 : 1 }}>
+          {cameraStarting ? (lang === 'vi' ? 'Đang mở...' : 'Opening...') : captureLabel}
         </button>
         <button disabled={uploading} onClick={uploadCapturedFile} style={{ ...primaryAction(), opacity: uploading ? 0.72 : 1 }}>
           {uploading ? (lang === 'vi' ? 'Đang upload...' : 'Uploading...') : uploadLabel}
         </button>
       </div>
+      {cameraOpen && (
+        <div style={{ border: '1px solid rgba(0,112,235,0.22)', borderRadius: 16, padding: 10, background: 'rgba(0,112,235,0.06)' }}>
+          <video ref={videoRef} autoPlay playsInline muted style={{ width: '100%', maxHeight: 220, objectFit: 'cover', borderRadius: 12, background: '#000' }} />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8 }}>
+            <button onClick={captureFromCamera} style={primaryAction()}>{lang === 'vi' ? '📸 Chụp ảnh' : '📸 Take photo'}</button>
+            <button onClick={stopCamera} style={secondaryAction()}>{lang === 'vi' ? 'Đóng camera' : 'Close camera'}</button>
+          </div>
+        </div>
+      )}
+      <button disabled={uploading} onClick={() => localInputRef.current?.click()} style={secondaryAction()}>
+        {lang === 'vi' ? 'upload hình trong máy' : 'upload local image'}
+      </button>
+      {preview && <button disabled={uploading} onClick={resetCapture} style={{ ...secondaryAction(), background: '#fff0f0', color: '#93000a' }}>{lang === 'vi' ? 'Quét lại' : 'Scan again'}</button>}
       <div style={{ fontSize: 11, color: mode === 'meal' ? MUTED : 'rgba(29,29,31,0.62)', lineHeight: 1.45 }}>
         {helper}<br />{lang === 'vi' ? 'Thư mục user:' : 'User folder:'} <b>{virtualFolder}</b>
       </div>
@@ -339,10 +420,9 @@ function MealScanView() {
                 mode="meal"
                 captureLabel="📷 Chụp"
                 uploadLabel="upload bữa ăn"
-                helper="Chụp bữa ăn trước, sau đó upload để lưu vào thư mục upload theo từng user."
+                helper="Nút Chụp mở camera vật lý để chụp thật; hoặc upload hình trong máy rồi lưu vào thư mục upload theo từng user."
                 onUploaded={setCapturedRecord}
               />
-              <button style={secondaryAction()}>Chỉnh sửa thủ công</button>
             </div>
           </div>
         </div>
@@ -415,10 +495,9 @@ function MedicationAssistantView() {
             mode="medication"
             captureLabel="📷 Chụp"
             uploadLabel="upload thuốc"
-            helper="Chụp vỉ thuốc/lọ thuốc trước, sau đó upload để lưu vào thư mục upload theo từng user."
+            helper="Nút Chụp mở camera vật lý để chụp thật; hoặc upload hình trong máy rồi lưu vào thư mục upload theo từng user."
             onUploaded={setCapturedRecord}
           />
-          <button style={{ width: '100%', marginTop: 8, padding: 12, border: 'none', background: 'transparent', color: BLUE, fontWeight: 900, cursor: 'pointer' }} onClick={() => setCapturedRecord(null)}>Quét lại</button>
         </div>
       </div>
       <JourneyMobileNav active="AI Scan" />
