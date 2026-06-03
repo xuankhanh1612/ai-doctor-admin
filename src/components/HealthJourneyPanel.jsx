@@ -194,6 +194,10 @@ function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUplo
     return () => window.clearInterval(timer)
   }, [cameraOpen])
 
+  useEffect(() => {
+    onCameraState?.({ cameraOpen, stream: streamRef.current, facingMode, scanOverlayOn, scanNow })
+  }, [cameraOpen, facingMode, onCameraState, scanNow, scanOverlayOn])
+
   const setSelectedImage = useCallback(async (file, source = 'camera') => {
     if (!file) return
     if (!file.type.startsWith('image/')) {
@@ -316,7 +320,7 @@ function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUplo
   const backdropCamera = cameraOpen && backgroundCamera
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, position: cameraBackdrop ? 'relative' : 'static', zIndex: 20 }}>
       <input
         ref={localInputRef}
         type="file"
@@ -352,6 +356,14 @@ function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUplo
             <button onClick={() => setScanOverlayOn(v => !v)} style={{ ...secondaryAction(), background: scanOverlayOn ? 'rgba(0,229,255,0.14)' : '#e3e2e6', color: scanOverlayOn ? BLUE : INK }}>▣ {lang === 'vi' ? 'Lớp phủ' : 'Overlay'}</button>
             <button onClick={stopCamera} style={{ ...secondaryAction(), gridColumn: '1 / -1' }}>{lang === 'vi' ? 'Đóng camera' : 'Close camera'}</button>
           </div>
+        </div>
+      )}
+      {cameraOpen && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 2 }}>
+          <button onClick={captureFromCamera} style={primaryAction()}>{lang === 'vi' ? '📸 Chụp ảnh' : '📸 Take photo'}</button>
+          <button onClick={switchCamera} style={secondaryAction()}>🔄 {lang === 'vi' ? 'Đổi camera' : 'Switch camera'}</button>
+          <button onClick={() => setScanOverlayOn(v => !v)} style={{ ...secondaryAction(), background: scanOverlayOn ? 'rgba(0,229,255,0.14)' : '#e3e2e6', color: scanOverlayOn ? BLUE : INK }}>▣ {lang === 'vi' ? 'Lớp phủ' : 'Overlay'}</button>
+          <button onClick={stopCamera} style={secondaryAction()}>{lang === 'vi' ? 'Đóng camera' : 'Close camera'}</button>
         </div>
       )}
       <button disabled={uploading} onClick={() => localInputRef.current?.click()} style={secondaryAction()}>
@@ -451,8 +463,14 @@ function drawBodyOverlay(ctx, w, h, time) {
   ctx.shadowBlur = 0
 }
 
-function DetectorMetric({ label, value }) {
-  return <div style={{ background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.16)', borderRadius: 12, padding: '9px 10px', color: '#fff', fontSize: 12 }}><b>{value}</b><br/><span style={{ opacity: .72 }}>{label}</span></div>
+function DetectorRealtimeOverlay({ isBody }) {
+  return (
+    <div style={{ position: 'absolute', left: 24, top: 96, zIndex: 8, display: 'flex', gap: 10, flexWrap: 'wrap', maxWidth: 380, pointerEvents: 'none' }}>
+      <RealtimeOverlayChip value={isBody ? '125°' : '478'} label={isBody ? 'Góc khớp gối' : 'Face mesh'} />
+      <RealtimeOverlayChip value={isBody ? '3%' : '96%'} label={isBody ? 'Độ lệch' : 'Độ cân xứng'} tone="#6f7cff" />
+      <RealtimeOverlayChip value="Live" label="AI realtime" tone="#2f9e62" />
+    </div>
+  )
 }
 
 function MediaPipeDetectorView({ type }) {
@@ -783,9 +801,42 @@ function roundButton(bg, color) {
   return { width: 42, height: 42, borderRadius: '50%', border: 'none', background: bg, color, display: 'grid', placeItems: 'center', cursor: 'pointer', fontSize: 20, flexShrink: 0 }
 }
 
+
+function RealtimeOverlayChip({ value, label, tone = BLUE }) {
+  return (
+    <div style={{ ...glass, minWidth: 88, padding: '10px 12px', borderRadius: 16, textAlign: 'center', border: `1px solid ${tone}33`, boxShadow: `0 12px 34px ${tone}24` }}>
+      <div style={{ color: tone, fontSize: 22, fontWeight: 950, lineHeight: 1 }}>{value}</div>
+      <div style={{ color: INK, fontSize: 11, fontWeight: 850, marginTop: 5 }}>{label}</div>
+    </div>
+  )
+}
+
+function MealRealtimeNutritionOverlay() {
+  return (
+    <div style={{ position: 'absolute', left: 24, top: 96, zIndex: 8, display: 'flex', gap: 10, flexWrap: 'wrap', maxWidth: 330, pointerEvents: 'none' }}>
+      <RealtimeOverlayChip value="320" label="kcal" />
+      <RealtimeOverlayChip value="26g" label="Đạm" />
+      <RealtimeOverlayChip value="8g" label="Chất xơ" tone="#2f9e62" />
+    </div>
+  )
+}
+
+function MedicationRealtimeOverlay() {
+  return (
+    <div style={{ position: 'absolute', left: 24, top: 96, zIndex: 8, display: 'flex', gap: 10, flexWrap: 'wrap', maxWidth: 360, pointerEvents: 'none' }}>
+      <RealtimeOverlayChip value="20mg" label="Tamoxifen" />
+      <RealtimeOverlayChip value="1x" label="mỗi ngày" tone="#6f7cff" />
+      <RealtimeOverlayChip value="Sau ăn" label="lịch uống" tone="#2f9e62" />
+    </div>
+  )
+}
+
 function MealScanView() {
   const [flash, setFlash] = useState(false)
   const [capturedRecord, setCapturedRecord] = useState(null)
+  const [cameraState, setCameraState] = useState(null)
+  const handleCameraState = useCallback(nextState => setCameraState(nextState), [])
+  const fallbackSrc = "https://lh3.googleusercontent.com/aida-public/AB6AXuDz673aowy2PSOhw7UeuUZHoFiJO_SQTymK2RWuGYolAX9ok2Eugcl8j17Ip3FWZh0sLSoEuJbb-6LNoLAx5NKWwQ4X-nfqnnDuhGQvU_Dnqxw7oWZ6IW5kNaCG4vfKLbgFEAB2OXpUPeMzAoiWAqNGIjyo-wbhqxNF7d2BtrQY5HECx53yA3z9L7GdwfOiHxbQB6UdclRS9c4hau37W37ieVXlmK40gZ0dB2H8sW9PobMG23MnaC8tYR0V12bMf46MMJNaRznFkUu7"
   return (
     <div style={{ ...panelShell, minHeight: 820, background: '#111' }}>
       <div id="hj-meal-camera-host" style={{ position: 'absolute', inset: 0, zIndex: 2, overflow: 'hidden' }} />
@@ -797,6 +848,7 @@ function MealScanView() {
         <button onClick={() => setFlash(!flash)} style={{ ...floatingPillButton(), background: flash ? 'rgba(0,88,188,0.24)' : 'rgba(255,255,255,0.75)' }}>{flash ? '🔦' : '⚡'}</button>
       </header>
       <ScanReticle />
+      <MealAiOverlay capturedRecord={capturedRecord} />
       <div style={{ position: 'absolute', top: '30%', right: '22%', zIndex: 7, pointerEvents: 'none', animation: 'hj-float 3s ease-in-out infinite' }}>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <div style={{ ...glass, padding: '8px 12px', borderRadius: 10, color: BLUE, fontSize: 12, fontWeight: 800 }}>Salmon (26g Protein)</div>
@@ -805,7 +857,7 @@ function MealScanView() {
         </div>
       </div>
       <div style={{ position: 'absolute', left: 0, right: 0, bottom: 76, zIndex: 12, padding: '0 18px' }}>
-        <div style={{ background: '#fff', borderRadius: '32px 32px 0 0', maxWidth: 900, margin: '0 auto', padding: 28, boxShadow: '0 -20px 55px rgba(0,0,0,0.16)', borderTop: '1px solid #c1c6d7' }}>
+        <div style={{ ...glass, background: 'rgba(255,255,255,0.86)', borderRadius: '32px 32px 0 0', maxWidth: 840, margin: '0 auto', padding: 24, boxShadow: '0 -20px 55px rgba(0,0,0,0.16)', borderTop: '1px solid #c1c6d7' }}>
           <div style={{ width: 48, height: 6, borderRadius: 999, background: '#e3e2e6', margin: '0 auto 22px' }} />
           <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 230px', gap: 24 }} className="hj-responsive-sheet">
             <div>
@@ -814,19 +866,14 @@ function MealScanView() {
                 <span style={{ padding: '6px 10px', borderRadius: 999, background: 'rgba(104,211,145,0.16)', color: '#2f9e62', fontSize: 12, fontWeight: 800 }}>✓ Phù hợp phác đồ</span>
               </div>
               <p style={{ color: MUTED, margin: '0 0 20px', lineHeight: 1.5 }}>{capturedRecord ? `Ảnh đã được lưu vào ${capturedRecord.uploadPath} và sẵn sàng cho AI nhận diện dinh dưỡng.` : 'Phân tích hình ảnh xác nhận thành phần dinh dưỡng tối ưu cho bệnh nhân đang điều trị.'}</p>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 18 }}>
-                <NutritionCard value="320" label="kcal" />
-                <NutritionCard value="26g" label="Đạm" />
-                <NutritionCard value="8g" label="Chất xơ" />
-              </div>
-              <div style={{ background: 'rgba(255,218,214,0.36)', border: '1px solid #ffdad6', padding: 14, borderRadius: 14, display: 'flex', gap: 10, color: '#93000a', fontWeight: 700, lineHeight: 1.45 }}>⚠️ <span>Lưu ý: Sốt chanh leo đi kèm có chứa đường tinh luyện. Nên sử dụng hạn chế.</span></div>
+              <div style={{ background: 'rgba(255,218,214,0.36)', border: '1px solid #ffdad6', padding: 14, borderRadius: 14, display: 'flex', gap: 10, color: '#93000a', fontWeight: 700, lineHeight: 1.45 }}>⚠️ <span>Lưu ý: các chỉ số kcal, 26g Đạm và chất xơ đang là lớp phủ AI quan sát realtime trên ảnh/camera.</span></div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <JourneyCameraUploader
                 mode="meal"
                 captureLabel="📷 Chụp"
                 uploadLabel="upload bữa ăn"
-                helper="Nút Chụp mở camera vật lý để chụp thật; hoặc upload hình trong máy rồi lưu vào thư mục upload theo từng user."
+                helper="Nút Chụp mở camera vật lý để chụp thật; hoặc upload hình trong máy rồi lưu vào thư mục upload theo từng user. Camera được đẩy ra lớp nền phía sau để AI quan sát realtime."
                 onUploaded={setCapturedRecord}
                 backgroundCamera
               />
@@ -862,6 +909,64 @@ function NutritionCard({ value, label }) {
   return <div style={{ background: '#f3f3f5', borderRadius: 18, padding: 16, textAlign: 'center' }}><div style={{ color: BLUE, fontSize: 26, fontWeight: 900 }}>{value}</div><div style={{ color: MUTED, fontSize: 12, fontWeight: 700 }}>{label}</div></div>
 }
 
+function FullBleedCameraBackground({ cameraState, fallbackSrc, fallbackAlt, capturedSrc, topOffset = 0, dim = 'rgba(0,0,0,0.18)' }) {
+  const videoRef = useRef(null)
+  const isLive = cameraState?.cameraOpen && cameraState?.stream
+
+  useEffect(() => {
+    if (!videoRef.current) return
+    videoRef.current.srcObject = isLive ? cameraState.stream : null
+  }, [cameraState?.stream, isLive])
+
+  return (
+    <>
+      {isLive ? (
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          muted
+          style={{ position: 'absolute', left: 0, right: 0, top: topOffset, bottom: 0, width: '100%', height: `calc(100% - ${topOffset}px)`, objectFit: 'cover', background: '#000', transform: cameraState.facingMode === 'user' ? 'scaleX(-1)' : 'none', zIndex: 0 }}
+        />
+      ) : (
+        <img alt={fallbackAlt} src={capturedSrc || fallbackSrc} style={{ position: 'absolute', left: 0, right: 0, top: topOffset, bottom: 0, width: '100%', height: `calc(100% - ${topOffset}px)`, objectFit: 'cover', zIndex: 0 }} />
+      )}
+      <div style={{ position: 'absolute', left: 0, right: 0, top: topOffset, bottom: 0, background: dim, zIndex: 1, pointerEvents: 'none' }} />
+    </>
+  )
+}
+
+function AiObservationChip({ value, label, accent = BLUE }) {
+  return (
+    <div style={{ ...glass, padding: '10px 13px', borderRadius: 16, color: accent, minWidth: 86, textAlign: 'center', boxShadow: '0 12px 34px rgba(0,0,0,0.18)' }}>
+      <div style={{ fontSize: 23, fontWeight: 950, lineHeight: 1 }}>{value}</div>
+      <div style={{ marginTop: 4, fontSize: 11, fontWeight: 850, color: 'rgba(29,29,31,0.70)' }}>{label}</div>
+    </div>
+  )
+}
+
+function MealAiOverlay({ capturedRecord }) {
+  return (
+    <div style={{ position: 'absolute', left: 22, right: 22, bottom: 328, zIndex: 8, display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', pointerEvents: 'none' }}>
+      <AiObservationChip value="320" label="kcal" />
+      <AiObservationChip value="26g" label="Đạm" />
+      <AiObservationChip value="8g" label="Chất xơ" />
+      <div style={{ ...glass, padding: '10px 14px', borderRadius: 18, color: '#2f9e62', fontWeight: 900 }}>{capturedRecord ? 'AI đang đọc ảnh vừa upload' : 'AI quan sát realtime trên Camera'}</div>
+    </div>
+  )
+}
+
+function MedicationAiOverlay({ capturedRecord }) {
+  return (
+    <div style={{ position: 'absolute', left: 22, right: 22, bottom: 328, zIndex: 8, display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', pointerEvents: 'none' }}>
+      <AiObservationChip value="20mg" label="Tamoxifen" />
+      <AiObservationChip value="1×" label="Mỗi ngày" />
+      <AiObservationChip value="Sau ăn" label="Lịch uống" />
+      <div style={{ ...glass, padding: '10px 14px', borderRadius: 18, color: '#93000a', fontWeight: 900 }}>{capturedRecord ? 'AI kiểm tra ảnh thuốc vừa upload' : 'AI quan sát realtime trên Camera'}</div>
+    </div>
+  )
+}
+
 function primaryAction() {
   return { width: '100%', padding: '16px 18px', borderRadius: 14, border: 'none', background: BLUE, color: '#fff', fontWeight: 800, cursor: 'pointer', boxShadow: '0 14px 28px rgba(0,88,188,0.18)' }
 }
@@ -872,6 +977,9 @@ function secondaryAction() {
 function MedicationAssistantView() {
   const [flash, setFlash] = useState(false)
   const [capturedRecord, setCapturedRecord] = useState(null)
+  const [cameraState, setCameraState] = useState(null)
+  const handleCameraState = useCallback(nextState => setCameraState(nextState), [])
+  const fallbackSrc = "https://lh3.googleusercontent.com/aida-public/AB6AXuAZH2XA_C2g9jti8cF8o0E5hvwbxBLhK2y-tf0NDCFY7cyKfoeZ_U8_kn3jiQHhOa6b56cisSwi2bz6AE1EFWFS0dNQBehYv66eK0nIeMiU0q1kRU5vfIdZz1KoCj7T6VpAyJAotvB_di10b0BzJ7RdFkt_41wXUXbswPWEv9u7eX9drmA7OkyMb1YS1l1QjiSzEbHDivTPH6XurlsDr6cR5vjNnYcEWsLxKzNgrooWpXB-uu9DZvIchL5J627pN73vdwj5KTI9lY4z"
   return (
     <div style={{ ...panelShell, minHeight: 820, background: '#000' }}>
       <div id="hj-medication-camera-host" style={{ position: 'absolute', inset: 0, zIndex: 2, overflow: 'hidden' }} />
@@ -890,8 +998,10 @@ function MedicationAssistantView() {
           <div style={{ position: 'absolute', left: 0, right: 0, height: 4, background: 'linear-gradient(90deg, transparent, #0070eb, transparent)', boxShadow: '0 0 10px #0070eb', animation: 'hj-laser 3s linear infinite' }} />
         </div>
       </div>
+      <AiMetricBubble value="20mg" label="Liều thuốc" note="Tamoxifen" style={{ top: '24%', right: '16%', animation: 'hj-float 3s ease-in-out infinite' }} />
+      <AiMetricBubble value="1x" label="Mỗi ngày" note="Sau ăn" style={{ top: '45%', left: '14%', animation: 'hj-float 3.5s ease-in-out infinite' }} />
       <div style={{ position: 'absolute', left: 0, right: 0, bottom: 76, zIndex: 14, padding: '0 18px' }}>
-        <div style={{ ...glass, maxWidth: 720, margin: '0 auto', borderRadius: 28, padding: 24 }}>
+        <div style={{ ...glass, maxWidth: 760, margin: '0 auto', borderRadius: 28, padding: 22 }}>
           <div style={{ width: 48, height: 6, borderRadius: 999, background: 'rgba(113,119,134,0.22)', margin: '0 auto 20px' }} />
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}><h2 style={{ margin: 0, color: INK, fontSize: 25 }}>Kết quả Quét</h2><span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', padding: '6px 10px', borderRadius: 999, background: 'rgba(0,112,235,0.10)', color: PRIMARY, fontSize: 12, fontWeight: 900 }}>✨ Trợ lý AI</span></div>
           <div style={{ background: '#fff', border: '1px solid #ededed', borderRadius: 18, padding: 16, display: 'flex', gap: 16, marginBottom: 14 }}>
@@ -903,7 +1013,7 @@ function MedicationAssistantView() {
             mode="medication"
             captureLabel="📷 Chụp"
             uploadLabel="upload thuốc"
-            helper="Nút Chụp mở camera vật lý để chụp thật; hoặc upload hình trong máy rồi lưu vào thư mục upload theo từng user."
+            helper="Nút Chụp mở camera vật lý để chụp thật; hoặc upload hình trong máy rồi lưu vào thư mục upload theo từng user. Camera được đẩy ra lớp nền phía sau để AI quan sát realtime."
             onUploaded={setCapturedRecord}
             backgroundCamera
           />
