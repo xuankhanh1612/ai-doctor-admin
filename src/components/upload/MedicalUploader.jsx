@@ -17,7 +17,7 @@ import { notifyUpload } from '../../hooks/useMedicalData.js'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const TYPE_COLORS = {
-  xray: '#00e5ff', ct: '#9c6fff', mri: '#f48fb1', pdf: '#ffb74d', photo: '#00e676',
+  xray: '#00e5ff', ct: '#9c6fff', mri: '#f48fb1', pdf: '#ffb74d', photo: '#00e676', video: '#83f7ff',
 }
 const ACCEPT  = 'image/jpeg,image/png,image/webp,image/gif,application/pdf'
 const MAX_MB  = 20
@@ -128,7 +128,9 @@ function RecordThumb({ record, onClick, onDelete, lang }) {
       borderRadius: 12, overflow: 'hidden', display: 'flex', flexDirection: 'column',
     }}>
       <div onClick={onClick} style={{ cursor: 'pointer', flex: 1 }}>
-        {record.mimeType === 'application/pdf' ? (
+        {record.mimeType?.startsWith('video/') ? (
+          <div style={{ height: 90, background: 'rgba(131,247,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', color, fontSize: 28 }}>🎥</div>
+        ) : record.mimeType === 'application/pdf' ? (
           <div style={{ height: 90, background: 'rgba(255,171,64,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28 }}>📄</div>
         ) : (
           <img src={record.dataUrl} alt={record.filename}
@@ -530,7 +532,7 @@ Trả lời bằng tiếng Việt, ngắn gọn và rõ ràng. Nhắc nhở đâ
           <TabBtn active={view === 'upload'}  onClick={() => setView('upload')}>
             + {uploadText(lang, 'upload')}
           </TabBtn>
-          <TabBtn active={cameraOpen} onClick={() => !uploading && openCamera()}>
+          <TabBtn active={cameraOpen} onClick={() => { setView('upload'); if (!uploading) openCamera() }}>
             📷 {cameraStarting ? uploadText(lang, 'cameraStarting') : uploadText(lang, 'camera')}
           </TabBtn>
           <TabBtn active={view === 'library'} onClick={() => setView('library')}>
@@ -580,6 +582,42 @@ Trả lời bằng tiếng Việt, ngắn gọn và rõ ràng. Nhắc nhở đâ
       {/* ── UPLOAD VIEW ─────────────────────────────────────────────────── */}
       {view === 'upload' && (
         <div className="uploader-fade">
+          {cameraError && (
+            <div style={{ marginBottom: 16, padding: '10px 14px', borderRadius: 10, border: '1px solid rgba(255,82,82,0.25)', background: 'rgba(255,82,82,0.08)', color: '#ff5252', fontSize: 12 }}>
+              ⚠️ {cameraError}
+            </div>
+          )}
+
+          {cameraOpen && (
+            <div className="uploader-fade" style={{ marginBottom: 20, border: '1px solid rgba(0,229,255,0.22)', borderRadius: 16, padding: 14, background: 'rgba(0,229,255,0.05)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 10 }}>
+                <div style={{ color: '#00e5ff', fontSize: 12, fontWeight: 700 }}>📷 {uploadText(lang, 'camera')}</div>
+                <button type="button" onClick={stopCamera} style={{ border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.75)', borderRadius: 8, padding: '6px 10px', cursor: 'pointer', fontSize: 12 }}>
+                  {uploadText(lang, 'closeCamera')}
+                </button>
+              </div>
+              <div style={{ position: 'relative', borderRadius: 12, overflow: 'hidden', background: '#000', border: '1px solid rgba(255,255,255,0.08)' }}>
+                <video ref={videoRef} autoPlay playsInline muted style={{ display: 'block', width: '100%', maxHeight: 420, objectFit: 'contain', transform: cameraFacingMode === 'user' ? 'scaleX(-1)' : 'none' }} />
+                {scanOverlayOn && <ScanOverlayBadge label={uploadText(lang, 'aiDocumentScan')} timestamp={scanTimestamp(lang, scanNow)} />}
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginTop: 10 }}>
+                <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11 }}>{uploadText(lang, 'cameraHelp')}</div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                  <button type="button" onClick={switchCamera} style={{ border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.06)', color: '#fff', borderRadius: 10, padding: '10px 12px', cursor: 'pointer', fontWeight: 800, fontSize: 12 }}>
+                    🔄 {uploadText(lang, 'switchCamera')}
+                  </button>
+                  <button type="button" onClick={() => setScanOverlayOn(v => !v)} style={{ border: '1px solid rgba(131,247,255,0.34)', background: scanOverlayOn ? 'rgba(0,229,255,0.16)' : 'rgba(255,255,255,0.06)', color: scanOverlayOn ? '#83f7ff' : '#fff', borderRadius: 10, padding: '10px 12px', cursor: 'pointer', fontWeight: 800, fontSize: 12 }}>
+                    ▣ {uploadText(lang, 'overlay')}
+                  </button>
+                  <button type="button" onClick={captureCameraPhoto} style={{ border: 'none', background: 'linear-gradient(135deg,#00b8cc,#6b3fd4)', color: '#fff', borderRadius: 10, padding: '10px 16px', cursor: 'pointer', fontWeight: 800, fontSize: 13 }}>
+                    📸 {uploadText(lang, 'capturePhoto')}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+
           {/* Drop zone */}
           <div
             onDragOver={onDragOver} onDragLeave={onDragLeave} onDrop={onDrop}
@@ -630,41 +668,6 @@ Trả lời bằng tiếng Việt, ngắn gọn và rõ ràng. Nhắc nhở đâ
             )}
           </div>
           <input ref={fileInputRef} type="file" multiple accept={ACCEPT} onChange={onFileChange} style={{ display: 'none' }} />
-
-          {cameraError && (
-            <div style={{ marginBottom: 16, padding: '10px 14px', borderRadius: 10, border: '1px solid rgba(255,82,82,0.25)', background: 'rgba(255,82,82,0.08)', color: '#ff5252', fontSize: 12 }}>
-              ⚠️ {cameraError}
-            </div>
-          )}
-
-          {cameraOpen && (
-            <div className="uploader-fade" style={{ marginBottom: 20, border: '1px solid rgba(0,229,255,0.22)', borderRadius: 16, padding: 14, background: 'rgba(0,229,255,0.05)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 10 }}>
-                <div style={{ color: '#00e5ff', fontSize: 12, fontWeight: 700 }}>📷 {uploadText(lang, 'camera')}</div>
-                <button type="button" onClick={stopCamera} style={{ border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.75)', borderRadius: 8, padding: '6px 10px', cursor: 'pointer', fontSize: 12 }}>
-                  {uploadText(lang, 'closeCamera')}
-                </button>
-              </div>
-              <div style={{ position: 'relative', borderRadius: 12, overflow: 'hidden', background: '#000', border: '1px solid rgba(255,255,255,0.08)' }}>
-                <video ref={videoRef} autoPlay playsInline muted style={{ display: 'block', width: '100%', maxHeight: 420, objectFit: 'contain', transform: cameraFacingMode === 'user' ? 'scaleX(-1)' : 'none' }} />
-                {scanOverlayOn && <ScanOverlayBadge label={uploadText(lang, 'aiDocumentScan')} timestamp={scanTimestamp(lang, scanNow)} />}
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginTop: 10 }}>
-                <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11 }}>{uploadText(lang, 'cameraHelp')}</div>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                  <button type="button" onClick={switchCamera} style={{ border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.06)', color: '#fff', borderRadius: 10, padding: '10px 12px', cursor: 'pointer', fontWeight: 800, fontSize: 12 }}>
-                    🔄 {uploadText(lang, 'switchCamera')}
-                  </button>
-                  <button type="button" onClick={() => setScanOverlayOn(v => !v)} style={{ border: '1px solid rgba(131,247,255,0.34)', background: scanOverlayOn ? 'rgba(0,229,255,0.16)' : 'rgba(255,255,255,0.06)', color: scanOverlayOn ? '#83f7ff' : '#fff', borderRadius: 10, padding: '10px 12px', cursor: 'pointer', fontWeight: 800, fontSize: 12 }}>
-                    ▣ {uploadText(lang, 'overlay')}
-                  </button>
-                  <button type="button" onClick={captureCameraPhoto} style={{ border: 'none', background: 'linear-gradient(135deg,#00b8cc,#6b3fd4)', color: '#fff', borderRadius: 10, padding: '10px 16px', cursor: 'pointer', fontWeight: 800, fontSize: 13 }}>
-                    📸 {uploadText(lang, 'capturePhoto')}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Recent records */}
           {records.length > 0 && (
@@ -734,7 +737,9 @@ Trả lời bằng tiếng Việt, ngắn gọn và rõ ràng. Nhắc nhở đâ
                 border: '1px solid rgba(255,255,255,0.08)', marginBottom: 14,
                 minHeight: 280, display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>
-                {selected.mimeType === 'application/pdf' ? (
+                {selected.mimeType?.startsWith('video/') ? (
+                  <video src={selected.dataUrl} controls style={{ maxWidth: '100%', maxHeight: 320, borderRadius: 8 }} />
+                ) : selected.mimeType === 'application/pdf' ? (
                   <div style={{ textAlign: 'center', padding: 32 }}>
                     <div style={{ fontSize: 48, marginBottom: 12 }}>📄</div>
                     <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', marginBottom: 16 }}>{selected.filename}</div>
