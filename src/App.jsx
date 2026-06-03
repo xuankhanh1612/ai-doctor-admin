@@ -20,12 +20,13 @@ import FamilyMedicalRelationshipPanel from './components/family/FamilyMedicalRel
 import AdminPanel from './components/admin/AdminPanel.jsx'
 import PatientRecordPanel from './components/PatientRecordPanel.jsx'
 import Protein3DPanel from './components/Protein3DPanel.jsx'
+import AIHealthcareVisionPanel from './components/AIHealthcareVisionPanel.jsx'
 import UserProfilePanel from './components/UserProfilePanel.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 import { addNotification } from './lib/notifications.js'
 
 // Swarm panel replaces simulation; keep consensus as classic fallback
-const PANELS = ['healthJourney', 'upload', 'imaging', 'checkin', 'family', 'record', 'familyRelationship', 'matrix3dBody', 'omnidirectional3dBody', 'twin', 'telemedicine', 'statAnalysis', 'swarm', 'consensus', 'protein3d']
+const PANELS = ['healthJourney', 'upload', 'imaging', 'checkin', 'family', 'record', 'familyRelationship', 'matrix3dBody', 'omnidirectional3dBody', 'twin', 'telemedicine', 'statAnalysis', 'swarm', 'consensus', 'protein3d', 'aiHealthcareVision']
 
 export default function App() {
   const { user, loading } = useAuth()
@@ -64,6 +65,7 @@ export default function App() {
     swarm: t('swarmCouncil'),
     consensus: `${t('consensus')} (Classic)`,
     protein3d: t('protein3d'),
+    aiHealthcareVision: t('aiHealthcareVision'),
     profile: t('profile'),
   }
 
@@ -200,7 +202,8 @@ export default function App() {
             {active === 'statAnalysis' && <StatisticalAnalysisPanel onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'swarm'     && <SwarmConsensusPanel onReset={() => setActive('upload')} onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'consensus' && <ConsensusPanel     onReset={() => setActive('upload')} onPrev={goPrev} prevLabel={prevLabel} />}
-            {active === 'protein3d' && <Protein3DPanel     onPrev={goPrev} prevLabel={prevLabel} />}
+            {active === 'protein3d' && <Protein3DPanel     onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
+            {active === 'aiHealthcareVision' && <AIHealthcareVisionPanel onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'profile'   && <UserProfilePanel />}
             {active === 'admin'     && user?.isAdmin && <AdminPanel />}
             {active === 'admin'     && !user?.isAdmin && (

@@ -803,7 +803,6 @@ export default function HealthJourneyPanel({ onNext }) {
               : 'A wellness hub for emotions, nutrition, and smart medication support.'}
           </p>
         </div>
-        {onNext && <NavButtons onNext={onNext} nextLabel={`${t('next')} →`} style={{ marginTop: 0 }} />}
       </div>
       <HealthJourneyTabs activeTab={activeTab} setActiveTab={setActiveTab} lang={lang} />
       {activeTab === 'emotion' && <EmotionalCompanionView />}
@@ -811,6 +810,7 @@ export default function HealthJourneyPanel({ onNext }) {
       {activeTab === 'medication' && <MedicationAssistantView />}
       {activeTab === 'faceDetector' && <MediaPipeDetectorView type="face" />}
       {activeTab === 'bodyDetector' && <MediaPipeDetectorView type="body" />}
+      {onNext && <NavButtons onNext={onNext} nextLabel={`${t('next')} →`} />}
     </div>
   )
 }
