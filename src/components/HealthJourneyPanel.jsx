@@ -159,7 +159,7 @@ async function saveJourneyImageFile(file, { mode, user, lang, label }) {
   return record
 }
 
-function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUploaded, backgroundCamera = false }) {
+function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUploaded, onCameraState = null, backgroundCamera = false }) {
   const { lang } = useApp()
   const { user } = useAuth()
   const localInputRef = useRef(null)
@@ -173,6 +173,7 @@ function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUplo
   const [cameraStarting, setCameraStarting] = useState(false)
   const [scanOverlayOn, setScanOverlayOn] = useState(true)
   const [scanNow, setScanNow] = useState(new Date())
+  const [portalHost, setPortalHost] = useState(null)
 
   const [facingMode, setFacingMode] = useState('environment')
   const virtualFolder = getUploadFolder(user, mode)
@@ -195,8 +196,18 @@ function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUplo
   }, [cameraOpen])
 
   useEffect(() => {
-    onCameraState?.({ cameraOpen, stream: streamRef.current, facingMode, scanOverlayOn, scanNow })
-  }, [cameraOpen, facingMode, onCameraState, scanNow, scanOverlayOn])
+    if (!backgroundCamera) {
+      setPortalHost(null)
+      return
+    }
+    setPortalHost(document.getElementById(`hj-${mode}-camera-host`))
+  }, [backgroundCamera, mode])
+
+  useEffect(() => {
+    if (typeof onCameraState === 'function') {
+      onCameraState({ cameraOpen, cameraStarting, facingMode, mode, overlayOn: scanOverlayOn })
+    }
+  }, [cameraOpen, cameraStarting, facingMode, mode, onCameraState, scanOverlayOn])
 
   const setSelectedImage = useCallback(async (file, source = 'camera') => {
     if (!file) return
@@ -375,12 +386,12 @@ function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUplo
       </div>
       {preview && <img alt={uploadLabel} src={preview} style={{ width: '100%', maxHeight: 120, objectFit: 'cover', borderRadius: 14, border: '1px solid rgba(0,112,235,0.18)' }} />}
       {status && <div style={{ fontSize: 11, color: status.startsWith('Không') || status.startsWith('Could') ? '#93000a' : BLUE, fontWeight: 800, lineHeight: 1.4 }}>{status}</div>}
-      {backdropCamera && createPortal(
+      {backdropCamera && portalHost && createPortal(
         <div style={{ position: 'absolute', inset: 0, zIndex: 2, background: '#000', pointerEvents: 'none' }} data-hj-camera-backdrop="true">
           <video ref={videoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover', transform: facingMode === 'user' ? 'scaleX(-1)' : 'none' }} />
           {scanOverlayOn && <CameraScanOverlayBadge label={cameraLabel} timestamp={cameraTimestamp(lang, scanNow)} />}
         </div>,
-        document.getElementById(`hj-${mode}-camera-host`) || document.body,
+        portalHost,
       )}
     </div>
   )
