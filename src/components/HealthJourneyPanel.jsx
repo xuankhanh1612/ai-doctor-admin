@@ -350,7 +350,7 @@ function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUplo
             <button onClick={captureFromCamera} style={primaryAction()}>{lang === 'vi' ? '📸 Chụp ảnh' : '📸 Take photo'}</button>
             <button onClick={switchCamera} style={secondaryAction()}>🔄 {lang === 'vi' ? 'Đổi camera' : 'Switch camera'}</button>
             <button onClick={() => setScanOverlayOn(v => !v)} style={{ ...secondaryAction(), background: scanOverlayOn ? 'rgba(0,229,255,0.14)' : '#e3e2e6', color: scanOverlayOn ? BLUE : INK }}>▣ {lang === 'vi' ? 'Lớp phủ' : 'Overlay'}</button>
-            <button onClick={stopCamera} style={{ ...secondaryAction(), gridColumn: '1 / -1' }}>{lang === 'vi' ? 'Đóng camera' : 'Close camera'}</button>
+            <button onClick={stopCamera} style={secondaryAction()}>{lang === 'vi' ? 'Đóng camera' : 'Close camera'}</button>
           </div>
         </div>
       )}
@@ -451,8 +451,14 @@ function drawBodyOverlay(ctx, w, h, time) {
   ctx.shadowBlur = 0
 }
 
-function DetectorMetric({ label, value }) {
-  return <div style={{ background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.16)', borderRadius: 12, padding: '9px 10px', color: '#fff', fontSize: 12 }}><b>{value}</b><br/><span style={{ opacity: .72 }}>{label}</span></div>
+function DetectorRealtimeOverlay({ isBody }) {
+  return (
+    <div style={{ position: 'absolute', left: 24, top: 96, zIndex: 8, display: 'flex', gap: 10, flexWrap: 'wrap', maxWidth: 380, pointerEvents: 'none' }}>
+      <RealtimeOverlayChip value={isBody ? '125°' : '478'} label={isBody ? 'Góc khớp gối' : 'Face mesh'} />
+      <RealtimeOverlayChip value={isBody ? '3%' : '96%'} label={isBody ? 'Độ lệch' : 'Độ cân xứng'} tone="#6f7cff" />
+      <RealtimeOverlayChip value="Live" label="AI realtime" tone="#2f9e62" />
+    </div>
+  )
 }
 
 function MediaPipeDetectorView({ type }) {
@@ -786,9 +792,40 @@ function roundButton(bg, color) {
   return { width: 42, height: 42, borderRadius: '50%', border: 'none', background: bg, color, display: 'grid', placeItems: 'center', cursor: 'pointer', fontSize: 20, flexShrink: 0 }
 }
 
+
+function RealtimeOverlayChip({ value, label, tone = BLUE }) {
+  return (
+    <div style={{ ...glass, minWidth: 88, padding: '10px 12px', borderRadius: 16, textAlign: 'center', border: `1px solid ${tone}33`, boxShadow: `0 12px 34px ${tone}24` }}>
+      <div style={{ color: tone, fontSize: 22, fontWeight: 950, lineHeight: 1 }}>{value}</div>
+      <div style={{ color: INK, fontSize: 11, fontWeight: 850, marginTop: 5 }}>{label}</div>
+    </div>
+  )
+}
+
+function MealRealtimeNutritionOverlay() {
+  return (
+    <div style={{ position: 'absolute', left: 24, top: 96, zIndex: 8, display: 'flex', gap: 10, flexWrap: 'wrap', maxWidth: 330, pointerEvents: 'none' }}>
+      <RealtimeOverlayChip value="320" label="kcal" />
+      <RealtimeOverlayChip value="26g" label="Đạm" />
+      <RealtimeOverlayChip value="8g" label="Chất xơ" tone="#2f9e62" />
+    </div>
+  )
+}
+
+function MedicationRealtimeOverlay() {
+  return (
+    <div style={{ position: 'absolute', left: 24, top: 96, zIndex: 8, display: 'flex', gap: 10, flexWrap: 'wrap', maxWidth: 360, pointerEvents: 'none' }}>
+      <RealtimeOverlayChip value="20mg" label="Tamoxifen" />
+      <RealtimeOverlayChip value="1x" label="mỗi ngày" tone="#6f7cff" />
+      <RealtimeOverlayChip value="Sau ăn" label="lịch uống" tone="#2f9e62" />
+    </div>
+  )
+}
+
 function MealScanView() {
   const [flash, setFlash] = useState(false)
   const [capturedRecord, setCapturedRecord] = useState(null)
+  const panelRef = useRef(null)
   return (
     <div style={{ ...panelShell, minHeight: 820, background: '#111' }}>
       <div id="hj-meal-camera-host" style={{ position: 'absolute', inset: 0, zIndex: 2, overflow: 'hidden' }} />
@@ -800,6 +837,7 @@ function MealScanView() {
         <button onClick={() => setFlash(!flash)} style={{ ...floatingPillButton(), background: flash ? 'rgba(0,88,188,0.24)' : 'rgba(255,255,255,0.75)' }}>{flash ? '🔦' : '⚡'}</button>
       </header>
       <ScanReticle />
+      <MealRealtimeNutritionOverlay />
       <div style={{ position: 'absolute', top: '30%', right: '22%', zIndex: 7, pointerEvents: 'none', animation: 'hj-float 3s ease-in-out infinite' }}>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <div style={{ ...glass, padding: '8px 12px', borderRadius: 10, color: BLUE, fontSize: 12, fontWeight: 800 }}>Salmon (26g Protein)</div>
@@ -817,11 +855,6 @@ function MealScanView() {
                 <span style={{ padding: '6px 10px', borderRadius: 999, background: 'rgba(104,211,145,0.16)', color: '#2f9e62', fontSize: 12, fontWeight: 800 }}>✓ Phù hợp phác đồ</span>
               </div>
               <p style={{ color: MUTED, margin: '0 0 20px', lineHeight: 1.5 }}>{capturedRecord ? `Ảnh đã được lưu vào ${capturedRecord.uploadPath} và sẵn sàng cho AI nhận diện dinh dưỡng.` : 'Phân tích hình ảnh xác nhận thành phần dinh dưỡng tối ưu cho bệnh nhân đang điều trị.'}</p>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 18 }}>
-                <NutritionCard value="320" label="kcal" />
-                <NutritionCard value="26g" label="Đạm" />
-                <NutritionCard value="8g" label="Chất xơ" />
-              </div>
               <div style={{ background: 'rgba(255,218,214,0.36)', border: '1px solid #ffdad6', padding: 14, borderRadius: 14, display: 'flex', gap: 10, color: '#93000a', fontWeight: 700, lineHeight: 1.45 }}>⚠️ <span>Lưu ý: Sốt chanh leo đi kèm có chứa đường tinh luyện. Nên sử dụng hạn chế.</span></div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -861,10 +894,6 @@ function ScanReticle() {
   )
 }
 
-function NutritionCard({ value, label }) {
-  return <div style={{ background: '#f3f3f5', borderRadius: 18, padding: 16, textAlign: 'center' }}><div style={{ color: BLUE, fontSize: 26, fontWeight: 900 }}>{value}</div><div style={{ color: MUTED, fontSize: 12, fontWeight: 700 }}>{label}</div></div>
-}
-
 function primaryAction() {
   return { width: '100%', padding: '16px 18px', borderRadius: 14, border: 'none', background: BLUE, color: '#fff', fontWeight: 800, cursor: 'pointer', boxShadow: '0 14px 28px rgba(0,88,188,0.18)' }
 }
@@ -875,6 +904,7 @@ function secondaryAction() {
 function MedicationAssistantView() {
   const [flash, setFlash] = useState(false)
   const [capturedRecord, setCapturedRecord] = useState(null)
+  const panelRef = useRef(null)
   return (
     <div style={{ ...panelShell, minHeight: 820, background: '#000' }}>
       <div id="hj-medication-camera-host" style={{ position: 'absolute', inset: 0, zIndex: 2, overflow: 'hidden' }} />
