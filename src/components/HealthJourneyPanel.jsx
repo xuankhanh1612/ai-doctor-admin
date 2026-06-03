@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import NavButtons from './NavButtons.jsx'
 import { useApp } from '../context/AppContext.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
@@ -252,6 +253,8 @@ function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUplo
     openPhysicalCamera(nextFacingMode)
   }, [facingMode, openPhysicalCamera])
 
+  const cameraLabel = mode === 'medication' ? 'AI Medication Scan' : mode === 'body-detector' ? 'AI Body Detector Scan' : mode === 'face-detector' ? 'AI Face Detector Scan' : 'AI Meal Scan'
+
   const captureFromCamera = useCallback(() => {
     const video = videoRef.current
     if (!video) return
@@ -267,7 +270,7 @@ function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUplo
     if (facingMode === 'user') ctx.setTransform(1, 0, 0, 1, 0, 0)
     if (scanOverlayOn) {
       drawCameraScanOverlay(ctx, canvas.width, canvas.height, {
-        label: mode === 'medication' ? 'AI Medication Scan' : 'AI Meal Scan',
+        label: cameraLabel,
         timestamp: cameraTimestamp(lang, scanNow),
       })
     }
@@ -276,11 +279,11 @@ function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUplo
         setStatus(lang === 'vi' ? 'Không chụp được ảnh từ camera.' : 'Could not capture a photo from the camera.')
         return
       }
-      const file = new File([blob], makeJourneyFilename(mode === 'medication' ? 'medication_camera' : 'meal_camera'), { type: 'image/jpeg' })
+      const file = new File([blob], makeJourneyFilename(`${mode}_camera`), { type: 'image/jpeg' })
       stopCamera()
       setSelectedImage(file, 'camera')
     }, 'image/jpeg', 0.92)
-  }, [facingMode, lang, mode, scanNow, scanOverlayOn, setSelectedImage, stopCamera])
+  }, [cameraLabel, facingMode, lang, mode, scanNow, scanOverlayOn, setSelectedImage, stopCamera])
 
   const resetCapture = useCallback(() => {
     stopCamera()
@@ -313,8 +316,11 @@ function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUplo
     }
   }, [capturedFile, lang, mode, onUploaded, uploadLabel, user])
 
+  const inlineCamera = cameraOpen && !backgroundCamera
+  const backdropCamera = cameraOpen && backgroundCamera
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, position: cameraBackdrop ? 'relative' : 'static', zIndex: 20 }}>
       <input
         ref={localInputRef}
         type="file"
@@ -330,18 +336,27 @@ function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUplo
           {uploading ? (lang === 'vi' ? 'Đang upload...' : 'Uploading...') : uploadLabel}
         </button>
       </div>
-      {cameraOpen && (
+      {cameraOpen && cameraBackdrop && (
+        <div style={{ position: 'absolute', inset: 'calc(-100vh + 150px) -24px -24px', zIndex: -1, borderRadius: 24, overflow: 'hidden', pointerEvents: 'none' }}>
+          <video ref={videoRef} autoPlay playsInline muted style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', background: '#000', transform: facingMode === 'user' ? 'scaleX(-1)' : 'none' }} />
+          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(0,0,0,0.10), rgba(0,0,0,0.32) 68%, rgba(0,0,0,0.62))' }} />
+          {scanOverlayOn && <CameraScanOverlayBadge label={mode === 'medication' ? 'AI Medication Scan' : 'AI Meal Scan'} timestamp={cameraTimestamp(lang, scanNow)} />}
+        </div>
+      )}
+      {cameraOpen && !cameraBackdrop && (
         <div style={{ border: '1px solid rgba(0,112,235,0.22)', borderRadius: 16, padding: 10, background: 'rgba(0,112,235,0.06)' }}>
           <div style={{ position: 'relative', borderRadius: 12, overflow: 'hidden', background: '#000' }}>
             <video ref={videoRef} autoPlay playsInline muted style={{ display: 'block', width: '100%', maxHeight: 220, objectFit: 'cover', background: '#000', transform: facingMode === 'user' ? 'scaleX(-1)' : 'none' }} />
-            {scanOverlayOn && <CameraScanOverlayBadge label={mode === 'medication' ? 'AI Medication Scan' : 'AI Meal Scan'} timestamp={cameraTimestamp(lang, scanNow)} />}
+            {scanOverlayOn && <CameraScanOverlayBadge label={cameraLabel} timestamp={cameraTimestamp(lang, scanNow)} />}
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8 }}>
-            <button onClick={captureFromCamera} style={primaryAction()}>{lang === 'vi' ? '📸 Chụp ảnh' : '📸 Take photo'}</button>
-            <button onClick={switchCamera} style={secondaryAction()}>🔄 {lang === 'vi' ? 'Đổi camera' : 'Switch camera'}</button>
-            <button onClick={() => setScanOverlayOn(v => !v)} style={{ ...secondaryAction(), background: scanOverlayOn ? 'rgba(0,229,255,0.14)' : '#e3e2e6', color: scanOverlayOn ? BLUE : INK }}>▣ {lang === 'vi' ? 'Lớp phủ' : 'Overlay'}</button>
-            <button onClick={stopCamera} style={{ ...secondaryAction(), gridColumn: '1 / -1' }}>{lang === 'vi' ? 'Đóng camera' : 'Close camera'}</button>
-          </div>
+        </div>
+      )}
+      {cameraOpen && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 2 }}>
+          <button onClick={captureFromCamera} style={primaryAction()}>{lang === 'vi' ? '📸 Chụp ảnh' : '📸 Take photo'}</button>
+          <button onClick={switchCamera} style={secondaryAction()}>🔄 {lang === 'vi' ? 'Đổi camera' : 'Switch camera'}</button>
+          <button onClick={() => setScanOverlayOn(v => !v)} style={{ ...secondaryAction(), background: scanOverlayOn ? 'rgba(0,229,255,0.14)' : '#e3e2e6', color: scanOverlayOn ? BLUE : INK }}>▣ {lang === 'vi' ? 'Lớp phủ' : 'Overlay'}</button>
+          <button onClick={stopCamera} style={secondaryAction()}>{lang === 'vi' ? 'Đóng camera' : 'Close camera'}</button>
         </div>
       )}
       <button disabled={uploading} onClick={() => localInputRef.current?.click()} style={secondaryAction()}>
@@ -353,6 +368,13 @@ function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUplo
       </div>
       {preview && <img alt={uploadLabel} src={preview} style={{ width: '100%', maxHeight: 120, objectFit: 'cover', borderRadius: 14, border: '1px solid rgba(0,112,235,0.18)' }} />}
       {status && <div style={{ fontSize: 11, color: status.startsWith('Không') || status.startsWith('Could') ? '#93000a' : BLUE, fontWeight: 800, lineHeight: 1.4 }}>{status}</div>}
+      {backdropCamera && createPortal(
+        <div style={{ position: 'absolute', inset: 0, zIndex: 2, background: '#000', pointerEvents: 'none' }} data-hj-camera-backdrop="true">
+          <video ref={videoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover', transform: facingMode === 'user' ? 'scaleX(-1)' : 'none' }} />
+          {scanOverlayOn && <CameraScanOverlayBadge label={cameraLabel} timestamp={cameraTimestamp(lang, scanNow)} />}
+        </div>,
+        document.getElementById(`hj-${mode}-camera-host`) || document.body,
+      )}
     </div>
   )
 }
@@ -434,8 +456,14 @@ function drawBodyOverlay(ctx, w, h, time) {
   ctx.shadowBlur = 0
 }
 
-function DetectorMetric({ label, value }) {
-  return <div style={{ background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.16)', borderRadius: 12, padding: '9px 10px', color: '#fff', fontSize: 12 }}><b>{value}</b><br/><span style={{ opacity: .72 }}>{label}</span></div>
+function DetectorRealtimeOverlay({ isBody }) {
+  return (
+    <div style={{ position: 'absolute', left: 24, top: 96, zIndex: 8, display: 'flex', gap: 10, flexWrap: 'wrap', maxWidth: 380, pointerEvents: 'none' }}>
+      <RealtimeOverlayChip value={isBody ? '125°' : '478'} label={isBody ? 'Góc khớp gối' : 'Face mesh'} />
+      <RealtimeOverlayChip value={isBody ? '3%' : '96%'} label={isBody ? 'Độ lệch' : 'Độ cân xứng'} tone="#6f7cff" />
+      <RealtimeOverlayChip value="Live" label="AI realtime" tone="#2f9e62" />
+    </div>
+  )
 }
 
 function MediaPipeDetectorView({ type }) {
@@ -609,22 +637,11 @@ function MediaPipeDetectorView({ type }) {
             <button onClick={captureDetectorSnapshot} disabled={!cameraOpen || snapshotSaving} style={{ width: 76, height: 76, borderRadius: '50%', border: '4px solid #fff', background: recording ? '#ff6b6b' : '#ff3b30', color: '#fff', fontWeight: 900, cursor: snapshotSaving ? 'wait' : 'pointer', opacity: !cameraOpen || snapshotSaving ? 0.72 : 1 }}>{snapshotSaving ? '…' : '📷'}</button>
             <button onClick={() => setOverlayOn(v => !v)} style={{ ...primaryAction(), background: overlayOn ? '#6f7cff' : '#384052' }}>{lang === 'vi' ? 'Lớp phủ' : 'Overlay'}</button>
           </div>
-          <button onClick={switchCamera} disabled={cameraStarting || snapshotSaving} style={{ ...secondaryAction(), width: '100%', marginTop: 10, background: 'rgba(255,255,255,0.10)', color: '#fff' }}>🔄 {lang === 'vi' ? `Đổi camera (${facingMode === 'user' ? 'trước' : 'sau'})` : `Switch camera (${facingMode === 'user' ? 'front' : 'rear'})`}</button>
-          {cameraOpen && <button onClick={stopCamera} disabled={snapshotSaving} style={{ ...secondaryAction(), width: '100%', marginTop: 8, background: 'rgba(255,255,255,0.08)', color: '#fff' }}>{lang === 'vi' ? 'Đóng camera' : 'Close camera'}</button>}
-          <label style={{ display: 'block', marginTop: 18, color: 'rgba(255,255,255,0.74)', fontSize: 12 }}>{lang === 'vi' ? 'Thanh trượt điều chỉnh tốc độ phân tích' : 'Analysis speed control'}</label>
-          <input value={speed} min="0.5" max="2" step="0.5" type="range" onChange={e => setSpeed(e.target.value)} style={{ width: '100%', accentColor: '#8992ff' }} />
-          <div style={{ display: 'flex', justifyContent: 'space-between', color: 'rgba(255,255,255,0.56)', fontSize: 12 }}><span>0.5x</span><span>{speed}x</span><span>2x</span></div>
-          <div style={{ marginTop: 12, color: '#83f7ff', fontSize: 12, fontWeight: 800 }}>{status}</div>
-          <div style={{ marginTop: 8, color: 'rgba(255,255,255,0.52)', fontSize: 11 }}>{lang === 'vi' ? 'Thư mục upload:' : 'Upload folder:'} <b>{uploadFolder}</b></div>
         </div>
       </div>
       <JourneyMobileNav active="AI Scan" />
     </div>
   )
-}
-
-function MaterialIcon({ children, size = 22, style }) {
-  return <span style={{ fontSize: size, lineHeight: 1, ...style }}>{children}</span>
 }
 
 function HealthJourneyTabs({ activeTab, setActiveTab, lang }) {
@@ -752,6 +769,36 @@ function roundButton(bg, color) {
   return { width: 42, height: 42, borderRadius: '50%', border: 'none', background: bg, color, display: 'grid', placeItems: 'center', cursor: 'pointer', fontSize: 20, flexShrink: 0 }
 }
 
+
+function RealtimeOverlayChip({ value, label, tone = BLUE }) {
+  return (
+    <div style={{ ...glass, minWidth: 88, padding: '10px 12px', borderRadius: 16, textAlign: 'center', border: `1px solid ${tone}33`, boxShadow: `0 12px 34px ${tone}24` }}>
+      <div style={{ color: tone, fontSize: 22, fontWeight: 950, lineHeight: 1 }}>{value}</div>
+      <div style={{ color: INK, fontSize: 11, fontWeight: 850, marginTop: 5 }}>{label}</div>
+    </div>
+  )
+}
+
+function MealRealtimeNutritionOverlay() {
+  return (
+    <div style={{ position: 'absolute', left: 24, top: 96, zIndex: 8, display: 'flex', gap: 10, flexWrap: 'wrap', maxWidth: 330, pointerEvents: 'none' }}>
+      <RealtimeOverlayChip value="320" label="kcal" />
+      <RealtimeOverlayChip value="26g" label="Đạm" />
+      <RealtimeOverlayChip value="8g" label="Chất xơ" tone="#2f9e62" />
+    </div>
+  )
+}
+
+function MedicationRealtimeOverlay() {
+  return (
+    <div style={{ position: 'absolute', left: 24, top: 96, zIndex: 8, display: 'flex', gap: 10, flexWrap: 'wrap', maxWidth: 360, pointerEvents: 'none' }}>
+      <RealtimeOverlayChip value="20mg" label="Tamoxifen" />
+      <RealtimeOverlayChip value="1x" label="mỗi ngày" tone="#6f7cff" />
+      <RealtimeOverlayChip value="Sau ăn" label="lịch uống" tone="#2f9e62" />
+    </div>
+  )
+}
+
 function MealScanView() {
   const [flash, setFlash] = useState(false)
   const [capturedRecord, setCapturedRecord] = useState(null)
@@ -785,12 +832,7 @@ function MealScanView() {
                 <span style={{ padding: '6px 10px', borderRadius: 999, background: 'rgba(104,211,145,0.16)', color: '#2f9e62', fontSize: 12, fontWeight: 800 }}>✓ Phù hợp phác đồ</span>
               </div>
               <p style={{ color: MUTED, margin: '0 0 20px', lineHeight: 1.5 }}>{capturedRecord ? `Ảnh đã được lưu vào ${capturedRecord.uploadPath} và sẵn sàng cho AI nhận diện dinh dưỡng.` : 'Phân tích hình ảnh xác nhận thành phần dinh dưỡng tối ưu cho bệnh nhân đang điều trị.'}</p>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 18 }}>
-                <NutritionCard value="320" label="kcal" />
-                <NutritionCard value="26g" label="Đạm" />
-                <NutritionCard value="8g" label="Chất xơ" />
-              </div>
-              <div style={{ background: 'rgba(255,218,214,0.36)', border: '1px solid #ffdad6', padding: 14, borderRadius: 14, display: 'flex', gap: 10, color: '#93000a', fontWeight: 700, lineHeight: 1.45 }}>⚠️ <span>Lưu ý: Sốt chanh leo đi kèm có chứa đường tinh luyện. Nên sử dụng hạn chế.</span></div>
+              <div style={{ background: 'rgba(255,218,214,0.36)', border: '1px solid #ffdad6', padding: 14, borderRadius: 14, display: 'flex', gap: 10, color: '#93000a', fontWeight: 700, lineHeight: 1.45 }}>⚠️ <span>Lưu ý: các chỉ số kcal, 26g Đạm và chất xơ đang là lớp phủ AI quan sát realtime trên ảnh/camera.</span></div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <JourneyCameraUploader
@@ -921,8 +963,10 @@ function MedicationAssistantView() {
           <div style={{ position: 'absolute', left: 0, right: 0, height: 4, background: 'linear-gradient(90deg, transparent, #0070eb, transparent)', boxShadow: '0 0 10px #0070eb', animation: 'hj-laser 3s linear infinite' }} />
         </div>
       </div>
+      <AiMetricBubble value="20mg" label="Liều thuốc" note="Tamoxifen" style={{ top: '24%', right: '16%', animation: 'hj-float 3s ease-in-out infinite' }} />
+      <AiMetricBubble value="1x" label="Mỗi ngày" note="Sau ăn" style={{ top: '45%', left: '14%', animation: 'hj-float 3.5s ease-in-out infinite' }} />
       <div style={{ position: 'absolute', left: 0, right: 0, bottom: 76, zIndex: 14, padding: '0 18px' }}>
-        <div style={{ ...glass, maxWidth: 720, margin: '0 auto', borderRadius: 28, padding: 24 }}>
+        <div style={{ ...glass, maxWidth: 760, margin: '0 auto', borderRadius: 28, padding: 22 }}>
           <div style={{ width: 48, height: 6, borderRadius: 999, background: 'rgba(113,119,134,0.22)', margin: '0 auto 20px' }} />
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}><h2 style={{ margin: 0, color: INK, fontSize: 25 }}>Kết quả Quét</h2><span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', padding: '6px 10px', borderRadius: 999, background: 'rgba(0,112,235,0.10)', color: PRIMARY, fontSize: 12, fontWeight: 900 }}>✨ Trợ lý AI</span></div>
           <div style={{ background: '#fff', border: '1px solid #ededed', borderRadius: 18, padding: 16, display: 'flex', gap: 16, marginBottom: 14 }}>
