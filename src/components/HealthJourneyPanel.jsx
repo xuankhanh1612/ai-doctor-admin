@@ -57,6 +57,48 @@ function makeJourneyFilename(prefix, originalName = 'camera.jpg') {
   return `${prefix}_${stamp}.${ext || 'jpg'}`
 }
 
+function getUploadFolder(user, mode) {
+  const userFolder = safeUploadSegment(user?.email || user?.name || 'guest')
+  const modeFolder = mode === 'medication' ? 'medication-assistant' : mode === 'meal' ? 'meal-scan' : mode
+  return `upload/${userFolder}/${modeFolder}`
+}
+
+async function saveJourneyImageFile(file, { mode, user, lang, label }) {
+  const [dataUrl, base64Data] = await Promise.all([fileToDataUrl(file), fileToBase64(file)])
+  const uploadFolder = getUploadFolder(user, mode)
+  const filename = makeJourneyFilename(mode, file.name)
+  const uploadPath = `${uploadFolder}/${filename}`
+  const record = {
+    id: `hj_${mode}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+    filename,
+    name: filename,
+    fileType: detectFileType(file.type, filename),
+    type: detectFileType(file.type, filename),
+    mimeType: file.type,
+    size: file.size,
+    uploadedAt: new Date().toISOString(),
+    dataUrl,
+    base64Data,
+    notes: lang === 'vi' ? `${label} · lưu tại ${uploadPath}` : `${label} · saved at ${uploadPath}`,
+    ownerEmail: user?.email || null,
+    ownerName: user?.name || '',
+    ownerAvatar: user?.avatar || '',
+    ownerProvider: user?.provider || '',
+    sourceModule: mode,
+    uploadFolder,
+    uploadPath,
+  }
+
+  await saveRecord(record, {
+    ownerEmail: user?.email,
+    ownerName: user?.name,
+    ownerAvatar: user?.avatar,
+    ownerProvider: user?.provider,
+  })
+  notifyUpload()
+  return record
+}
+
 function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUploaded }) {
   const { lang } = useApp()
   const { user } = useAuth()
@@ -70,9 +112,8 @@ function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUplo
   const [cameraOpen, setCameraOpen] = useState(false)
   const [cameraStarting, setCameraStarting] = useState(false)
 
-  const userFolder = safeUploadSegment(user?.email || user?.name || 'guest')
-  const modeFolder = mode === 'medication' ? 'medication-assistant' : 'meal-scan'
-  const virtualFolder = `upload/${userFolder}/${modeFolder}`
+  const [facingMode, setFacingMode] = useState('environment')
+  const virtualFolder = getUploadFolder(user, mode)
 
   const stopCamera = useCallback(() => {
     streamRef.current?.getTracks?.().forEach(track => track.stop())
@@ -104,7 +145,7 @@ function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUplo
     }
   }, [lang])
 
-  const openPhysicalCamera = useCallback(async () => {
+  const openPhysicalCamera = useCallback(async (nextFacingMode = facingMode) => {
     setStatus('')
     if (!navigator.mediaDevices?.getUserMedia) {
       setStatus(lang === 'vi' ? 'Trình duyệt không hỗ trợ mở camera vật lý. Vui lòng dùng nút upload hình trong máy.' : 'This browser cannot open the physical camera. Please use the local image upload button.')
@@ -112,17 +153,19 @@ function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUplo
     }
 
     setCameraStarting(true)
+    streamRef.current?.getTracks?.().forEach(track => track.stop())
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1600 }, height: { ideal: 1200 } },
+        video: { facingMode: { ideal: nextFacingMode }, width: { ideal: 1600 }, height: { ideal: 1200 } },
         audio: false,
       })
       streamRef.current = stream
+      setFacingMode(nextFacingMode)
       setCameraOpen(true)
       window.setTimeout(() => {
         if (videoRef.current) videoRef.current.srcObject = stream
       }, 0)
-      setStatus(lang === 'vi' ? 'Camera vật lý đã mở. Bấm “Chụp ảnh” để lấy hình.' : 'Physical camera is open. Press “Take photo” to capture.')
+      setStatus(lang === 'vi' ? `Camera ${nextFacingMode === 'user' ? 'trước' : 'sau'} đã mở. Bấm “Chụp ảnh” để lấy hình.` : `${nextFacingMode === 'user' ? 'Front' : 'Rear'} camera is open. Press “Take photo” to capture.`)
     } catch (error) {
       console.error('Health journey physical camera failed:', error)
       stopCamera()
@@ -130,7 +173,12 @@ function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUplo
     } finally {
       setCameraStarting(false)
     }
-  }, [lang, stopCamera])
+  }, [facingMode, lang, stopCamera])
+
+  const switchCamera = useCallback(() => {
+    const nextFacingMode = facingMode === 'user' ? 'environment' : 'user'
+    openPhysicalCamera(nextFacingMode)
+  }, [facingMode, openPhysicalCamera])
 
   const captureFromCamera = useCallback(() => {
     const video = videoRef.current
@@ -139,6 +187,10 @@ function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUplo
     canvas.width = video.videoWidth || 1280
     canvas.height = video.videoHeight || 720
     const ctx = canvas.getContext('2d')
+    if (facingMode === 'user') {
+      ctx.translate(canvas.width, 0)
+      ctx.scale(-1, 1)
+    }
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
     canvas.toBlob(blob => {
       if (!blob) {
@@ -149,7 +201,7 @@ function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUplo
       stopCamera()
       setSelectedImage(file, 'camera')
     }, 'image/jpeg', 0.92)
-  }, [lang, mode, setSelectedImage, stopCamera])
+  }, [facingMode, lang, mode, setSelectedImage, stopCamera])
 
   const resetCapture = useCallback(() => {
     stopCamera()
@@ -169,40 +221,10 @@ function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUplo
     setStatus(lang === 'vi' ? 'Đang upload ảnh vào thư mục upload của user...' : 'Uploading image into the user upload folder...')
 
     try {
-      const [dataUrl, base64Data] = await Promise.all([fileToDataUrl(capturedFile), fileToBase64(capturedFile)])
-      const filename = makeJourneyFilename(mode === 'medication' ? 'medication' : 'meal', capturedFile.name)
-      const uploadPath = `${virtualFolder}/${filename}`
-      const record = {
-        id: `hj_${mode}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-        filename,
-        name: filename,
-        fileType: detectFileType(capturedFile.type, filename),
-        type: detectFileType(capturedFile.type, filename),
-        mimeType: capturedFile.type,
-        size: capturedFile.size,
-        uploadedAt: new Date().toISOString(),
-        dataUrl,
-        base64Data,
-        notes: lang === 'vi' ? `${uploadLabel} · lưu tại ${uploadPath}` : `${uploadLabel} · saved at ${uploadPath}`,
-        ownerEmail: user?.email || null,
-        ownerName: user?.name || '',
-        ownerAvatar: user?.avatar || '',
-        ownerProvider: user?.provider || '',
-        sourceModule: mode,
-        uploadFolder: virtualFolder,
-        uploadPath,
-      }
-
-      await saveRecord(record, {
-        ownerEmail: user?.email,
-        ownerName: user?.name,
-        ownerAvatar: user?.avatar,
-        ownerProvider: user?.provider,
-      })
-      notifyUpload()
-      setPreview(dataUrl)
+      const record = await saveJourneyImageFile(capturedFile, { mode, user, lang, label: uploadLabel })
+      setPreview(record.dataUrl)
       setCapturedFile(null)
-      setStatus(lang === 'vi' ? `Đã upload: ${uploadPath}` : `Uploaded: ${uploadPath}`)
+      setStatus(lang === 'vi' ? `Đã upload: ${record.uploadPath}` : `Uploaded: ${record.uploadPath}`)
       onUploaded?.(record)
     } catch (error) {
       console.error('Health journey camera upload failed:', error)
@@ -210,7 +232,7 @@ function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUplo
     } finally {
       setUploading(false)
     }
-  }, [capturedFile, lang, mode, onUploaded, uploadLabel, user?.avatar, user?.email, user?.name, user?.provider, virtualFolder])
+  }, [capturedFile, lang, mode, onUploaded, uploadLabel, user])
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -222,7 +244,7 @@ function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUplo
         style={{ display: 'none' }}
       />
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-        <button disabled={uploading || cameraStarting} onClick={openPhysicalCamera} style={{ ...secondaryAction(), opacity: uploading || cameraStarting ? 0.72 : 1 }}>
+        <button disabled={uploading || cameraStarting} onClick={() => openPhysicalCamera()} style={{ ...secondaryAction(), opacity: uploading || cameraStarting ? 0.72 : 1 }}>
           {cameraStarting ? (lang === 'vi' ? 'Đang mở...' : 'Opening...') : captureLabel}
         </button>
         <button disabled={uploading} onClick={uploadCapturedFile} style={{ ...primaryAction(), opacity: uploading ? 0.72 : 1 }}>
@@ -231,10 +253,11 @@ function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUplo
       </div>
       {cameraOpen && (
         <div style={{ border: '1px solid rgba(0,112,235,0.22)', borderRadius: 16, padding: 10, background: 'rgba(0,112,235,0.06)' }}>
-          <video ref={videoRef} autoPlay playsInline muted style={{ width: '100%', maxHeight: 220, objectFit: 'cover', borderRadius: 12, background: '#000' }} />
+          <video ref={videoRef} autoPlay playsInline muted style={{ width: '100%', maxHeight: 220, objectFit: 'cover', borderRadius: 12, background: '#000', transform: facingMode === 'user' ? 'scaleX(-1)' : 'none' }} />
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8 }}>
             <button onClick={captureFromCamera} style={primaryAction()}>{lang === 'vi' ? '📸 Chụp ảnh' : '📸 Take photo'}</button>
-            <button onClick={stopCamera} style={secondaryAction()}>{lang === 'vi' ? 'Đóng camera' : 'Close camera'}</button>
+            <button onClick={switchCamera} style={secondaryAction()}>🔄 {lang === 'vi' ? 'Đổi camera' : 'Switch camera'}</button>
+            <button onClick={stopCamera} style={{ ...secondaryAction(), gridColumn: '1 / -1' }}>{lang === 'vi' ? 'Đóng camera' : 'Close camera'}</button>
           </div>
         </div>
       )}
@@ -334,16 +357,22 @@ function DetectorMetric({ label, value }) {
 
 function MediaPipeDetectorView({ type }) {
   const { lang } = useApp()
+  const { user } = useAuth()
   const isBody = type === 'body'
+  const detectorMode = isBody ? 'body-detector' : 'face-detector'
   const videoRef = useRef(null)
   const canvasRef = useRef(null)
   const streamRef = useRef(null)
   const rafRef = useRef(null)
   const [cameraOpen, setCameraOpen] = useState(false)
+  const [cameraStarting, setCameraStarting] = useState(false)
+  const [facingMode, setFacingMode] = useState('user')
   const [overlayOn, setOverlayOn] = useState(true)
   const [status, setStatus] = useState(lang === 'vi' ? 'Sẵn sàng mở camera vật lý.' : 'Ready to open the physical camera.')
   const [recording, setRecording] = useState(false)
+  const [snapshotSaving, setSnapshotSaving] = useState(false)
   const [speed, setSpeed] = useState(1)
+  const uploadFolder = getUploadFolder(user, detectorMode)
 
   const stopCamera = useCallback(() => {
     if (rafRef.current) cancelAnimationFrame(rafRef.current)
@@ -352,13 +381,13 @@ function MediaPipeDetectorView({ type }) {
     streamRef.current = null
     if (videoRef.current) videoRef.current.srcObject = null
     setCameraOpen(false)
+    setCameraStarting(false)
     setRecording(false)
   }, [])
 
   const draw = useCallback((time = 0) => {
     const canvas = canvasRef.current
-    const video = videoRef.current
-    if (!canvas || !video) return
+    if (!canvas) return
     const rect = canvas.getBoundingClientRect()
     canvas.width = Math.max(1, Math.floor(rect.width))
     canvas.height = Math.max(1, Math.floor(rect.height))
@@ -371,26 +400,86 @@ function MediaPipeDetectorView({ type }) {
     rafRef.current = requestAnimationFrame(draw)
   }, [isBody, overlayOn])
 
-  const openCamera = useCallback(async () => {
+  const openCamera = useCallback(async (nextFacingMode = facingMode) => {
     if (!navigator.mediaDevices?.getUserMedia) {
       setStatus(lang === 'vi' ? 'Trình duyệt không hỗ trợ camera vật lý.' : 'This browser does not support the physical camera.')
       return
     }
+    setCameraStarting(true)
+    streamRef.current?.getTracks?.().forEach(track => track.stop())
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'user' }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false })
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: nextFacingMode }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false })
       streamRef.current = stream
+      setFacingMode(nextFacingMode)
       setCameraOpen(true)
       window.setTimeout(() => {
         if (videoRef.current) videoRef.current.srcObject = stream
         draw()
       }, 0)
-      setStatus(lang === 'vi' ? 'Đang phân tích video AI live với lớp phủ sinh học.' : 'Analyzing live AI video with biological overlay.')
+      setStatus(lang === 'vi' ? `Camera ${nextFacingMode === 'user' ? 'trước' : 'sau'} đang phân tích video AI live.` : `${nextFacingMode === 'user' ? 'Front' : 'Rear'} camera is analyzing live AI video.`)
     } catch (error) {
       console.error('Detector camera failed:', error)
       setStatus(lang === 'vi' ? 'Không thể mở camera. Vui lòng cấp quyền camera.' : 'Could not open the camera. Please grant camera permission.')
       stopCamera()
+    } finally {
+      setCameraStarting(false)
     }
-  }, [draw, lang, stopCamera])
+  }, [draw, facingMode, lang, stopCamera])
+
+  const switchCamera = useCallback(() => {
+    const nextFacingMode = facingMode === 'user' ? 'environment' : 'user'
+    openCamera(nextFacingMode)
+  }, [facingMode, openCamera])
+
+  const captureDetectorSnapshot = useCallback(() => {
+    const video = videoRef.current
+    if (!cameraOpen || !video) {
+      setStatus(lang === 'vi' ? 'Vui lòng mở camera trước khi chụp.' : 'Please open the camera before taking a snapshot.')
+      return
+    }
+
+    const canvas = document.createElement('canvas')
+    canvas.width = video.videoWidth || 1280
+    canvas.height = video.videoHeight || 720
+    const ctx = canvas.getContext('2d')
+    if (facingMode === 'user') {
+      ctx.translate(canvas.width, 0)
+      ctx.scale(-1, 1)
+    }
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+    if (facingMode === 'user') ctx.setTransform(1, 0, 0, 1, 0, 0)
+    if (overlayOn) {
+      if (isBody) drawBodyOverlay(ctx, canvas.width, canvas.height, performance.now())
+      else drawFaceOverlay(ctx, canvas.width, canvas.height, performance.now())
+    }
+
+    setSnapshotSaving(true)
+    setRecording(true)
+    canvas.toBlob(async blob => {
+      if (!blob) {
+        setStatus(lang === 'vi' ? 'Không chụp được hình detector.' : 'Could not capture detector snapshot.')
+        setSnapshotSaving(false)
+        setRecording(false)
+        return
+      }
+      try {
+        const file = new File([blob], makeJourneyFilename(`${detectorMode}_camera`), { type: 'image/jpeg' })
+        const record = await saveJourneyImageFile(file, {
+          mode: detectorMode,
+          user,
+          lang,
+          label: isBody ? 'Body detector snapshot' : 'Face detector snapshot',
+        })
+        setStatus(lang === 'vi' ? `Đã chụp và lưu vào upload hình: ${record.uploadPath}` : `Captured and saved to image uploads: ${record.uploadPath}`)
+      } catch (error) {
+        console.error('Detector snapshot upload failed:', error)
+        setStatus(lang === 'vi' ? 'Không thể lưu hình detector vào upload.' : 'Could not save detector snapshot to uploads.')
+      } finally {
+        setSnapshotSaving(false)
+        setRecording(false)
+      }
+    }, 'image/jpeg', 0.92)
+  }, [cameraOpen, detectorMode, facingMode, isBody, lang, overlayOn, user])
 
   useEffect(() => {
     if (cameraOpen) draw()
@@ -409,7 +498,7 @@ function MediaPipeDetectorView({ type }) {
           <span style={{ fontSize: 24 }}>‹</span><b>{isBody ? 'AI Motion Forecast Optimization' : 'AI Face Detector'}</b><span style={{ fontSize: 22 }}>⚙</span>
         </div>
         <div style={{ position: 'relative', height: 520, background: isBody ? 'linear-gradient(135deg,#323744,#879098)' : 'linear-gradient(135deg,#20293b,#64748b)', overflow: 'hidden' }}>
-          {cameraOpen ? <video ref={videoRef} autoPlay playsInline muted style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', transform: isBody ? 'none' : 'scaleX(-1)' }} /> : <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', color: 'rgba(255,255,255,0.72)', textAlign: 'center', padding: 24 }}><div style={{ fontSize: 74 }}>{isBody ? '🏃' : '🙂'}</div><b>{lang === 'vi' ? 'Bấm mở camera để bắt đầu' : 'Open camera to start'}</b></div>}
+          {cameraOpen ? <video ref={videoRef} autoPlay playsInline muted style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', transform: facingMode === 'user' ? 'scaleX(-1)' : 'none' }} /> : <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', color: 'rgba(255,255,255,0.72)', textAlign: 'center', padding: 24 }}><div style={{ fontSize: 74 }}>{isBody ? '🏃' : '🙂'}</div><b>{lang === 'vi' ? 'Bấm mở camera để bắt đầu' : 'Open camera to start'}</b></div>}
           <canvas ref={canvasRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }} />
           <div style={{ position: 'absolute', left: 14, bottom: 18, display: 'grid', gap: 8 }}>
             <DetectorMetric label={isBody ? 'Góc khớp gối' : 'Face mesh'} value={isBody ? '125°' : '478 điểm'} />
@@ -418,14 +507,17 @@ function MediaPipeDetectorView({ type }) {
         </div>
         <div style={{ padding: 18, background: 'rgba(14,18,30,0.98)' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 88px 1fr', gap: 12, alignItems: 'center' }}>
-            <button onClick={cameraOpen ? stopCamera : openCamera} style={{ ...secondaryAction(), background: 'rgba(255,255,255,0.10)', color: '#fff' }}>{cameraOpen ? (lang === 'vi' ? 'Đóng camera' : 'Close camera') : (lang === 'vi' ? 'Mở camera' : 'Open camera')}</button>
-            <button onClick={() => setRecording(v => !v)} style={{ width: 76, height: 76, borderRadius: '50%', border: '4px solid #fff', background: recording ? '#ff6b6b' : '#ff3b30', color: '#fff', fontWeight: 900, cursor: 'pointer' }}>{recording ? '■' : '●'}</button>
+            <button onClick={() => openCamera()} disabled={cameraStarting || snapshotSaving} style={{ ...secondaryAction(), background: 'rgba(255,255,255,0.10)', color: '#fff', opacity: cameraStarting ? 0.72 : 1 }}>{cameraOpen ? (lang === 'vi' ? 'Khởi động lại' : 'Restart') : cameraStarting ? (lang === 'vi' ? 'Đang mở...' : 'Opening...') : (lang === 'vi' ? 'Mở camera' : 'Open camera')}</button>
+            <button onClick={captureDetectorSnapshot} disabled={!cameraOpen || snapshotSaving} style={{ width: 76, height: 76, borderRadius: '50%', border: '4px solid #fff', background: recording ? '#ff6b6b' : '#ff3b30', color: '#fff', fontWeight: 900, cursor: snapshotSaving ? 'wait' : 'pointer', opacity: !cameraOpen || snapshotSaving ? 0.72 : 1 }}>{snapshotSaving ? '…' : '📷'}</button>
             <button onClick={() => setOverlayOn(v => !v)} style={{ ...primaryAction(), background: overlayOn ? '#6f7cff' : '#384052' }}>{lang === 'vi' ? 'Lớp phủ' : 'Overlay'}</button>
           </div>
+          <button onClick={switchCamera} disabled={cameraStarting || snapshotSaving} style={{ ...secondaryAction(), width: '100%', marginTop: 10, background: 'rgba(255,255,255,0.10)', color: '#fff' }}>🔄 {lang === 'vi' ? `Đổi camera (${facingMode === 'user' ? 'trước' : 'sau'})` : `Switch camera (${facingMode === 'user' ? 'front' : 'rear'})`}</button>
+          {cameraOpen && <button onClick={stopCamera} disabled={snapshotSaving} style={{ ...secondaryAction(), width: '100%', marginTop: 8, background: 'rgba(255,255,255,0.08)', color: '#fff' }}>{lang === 'vi' ? 'Đóng camera' : 'Close camera'}</button>}
           <label style={{ display: 'block', marginTop: 18, color: 'rgba(255,255,255,0.74)', fontSize: 12 }}>{lang === 'vi' ? 'Thanh trượt điều chỉnh tốc độ phân tích' : 'Analysis speed control'}</label>
           <input value={speed} min="0.5" max="2" step="0.5" type="range" onChange={e => setSpeed(e.target.value)} style={{ width: '100%', accentColor: '#8992ff' }} />
           <div style={{ display: 'flex', justifyContent: 'space-between', color: 'rgba(255,255,255,0.56)', fontSize: 12 }}><span>0.5x</span><span>{speed}x</span><span>2x</span></div>
           <div style={{ marginTop: 12, color: '#83f7ff', fontSize: 12, fontWeight: 800 }}>{status}</div>
+          <div style={{ marginTop: 8, color: 'rgba(255,255,255,0.52)', fontSize: 11 }}>{lang === 'vi' ? 'Thư mục upload:' : 'Upload folder:'} <b>{uploadFolder}</b></div>
         </div>
       </div>
       <JourneyMobileNav active="AI Scan" />
