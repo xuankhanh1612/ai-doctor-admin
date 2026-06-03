@@ -781,7 +781,7 @@ function MedicationAssistantView() {
   )
 }
 
-export default function HealthJourneyPanel({ onNext }) {
+export default function LunchJourneyPanel({ onNext, onPrev, prevLabel }) {
   const { lang, t } = useApp()
   const [activeTab, setActiveTab] = useState('emotion')
 
@@ -796,7 +796,7 @@ export default function HealthJourneyPanel({ onNext }) {
       `}</style>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap' }}>
         <div>
-          <h2 style={{ fontSize: 24, fontWeight: 900, margin: 0 }}>🌿 {lang === 'vi' ? 'Buổi Sáng' : 'Morning'}</h2>
+          <h2 style={{ fontSize: 24, fontWeight: 900, margin: 0 }}>🌿 {lang === 'vi' ? 'buổi trưa' : 'Noon'}</h2>
           <p style={{ color: 'var(--text2)', fontSize: 13, margin: '6px 0 0' }}>
             {lang === 'vi'
               ? 'Một không gian wellness gồm cảm xúc, dinh dưỡng và trợ lý thuốc thông minh.'
@@ -810,7 +810,7 @@ export default function HealthJourneyPanel({ onNext }) {
       {activeTab === 'medication' && <MedicationAssistantView />}
       {activeTab === 'faceDetector' && <MediaPipeDetectorView type="face" />}
       {activeTab === 'bodyDetector' && <MediaPipeDetectorView type="body" />}
-      {onNext && <NavButtons onNext={onNext} nextLabel={`${t('next')} →`} />}
+      <NavButtons onNext={onNext} nextLabel={`${t('next')} →`} onPrev={onPrev} prevLabel={prevLabel} />
     </div>
   )
 }
