@@ -150,6 +150,7 @@ export async function deleteRecord(id, options = {}) {
 // ─── Utilities ─────────────────────────────────────────────────────────────────
 
 export function detectFileType(mimeType, filename) {
+  if (mimeType?.startsWith('video/')) return 'video'
   if (mimeType === 'application/pdf') return 'pdf'
   const l = (filename || '').toLowerCase()
   if (l.match(/\bct\b|computed.tomography/)) return 'ct'
@@ -159,11 +160,11 @@ export function detectFileType(mimeType, filename) {
 }
 
 export function fileTypeLabel(type) {
-  return { xray: 'X-Ray', ct: 'CT Scan', mri: 'MRI', pdf: 'PDF / Hồ sơ', photo: 'Ảnh chụp' }[type] || type
+  return { xray: 'X-Ray', ct: 'CT Scan', mri: 'MRI', pdf: 'PDF / Hồ sơ', photo: 'Ảnh chụp', video: 'Video' }[type] || type
 }
 
 export function fileTypeIcon(type) {
-  return { xray: '🩻', ct: '🔬', mri: '🧲', pdf: '📄', photo: '📷' }[type] || '📎'
+  return { xray: '🩻', ct: '🔬', mri: '🧲', pdf: '📄', photo: '📷', video: '🎥' }[type] || '📎'
 }
 
 export function formatBytes(bytes) {
