@@ -32,6 +32,60 @@ const PROVIDER_META = {
 const initialsAvatar = name => `https://ui-avatars.com/api/?name=${encodeURIComponent(name || 'User')}&background=6b3fd4&color=fff&size=256&bold=true&rounded=true`
 const isDataImage = value => /^data:image\//.test(String(value || ''))
 
+
+function profileCameraTimestamp(lang, date = new Date()) {
+  return date.toLocaleString(lang === 'vi' ? 'vi-VN' : 'en-US', {
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+  })
+}
+
+function drawProfileCameraOverlay(ctx, width, height, label, timestamp) {
+  const pad = Math.max(14, Math.round(width * 0.035))
+  const corner = Math.min(width, height) * 0.18
+  ctx.save()
+  ctx.strokeStyle = 'rgba(255,255,255,0.96)'
+  ctx.lineWidth = Math.max(3, Math.round(width * 0.007))
+  ctx.shadowColor = 'rgba(0,229,255,0.95)'
+  ctx.shadowBlur = 14
+  ;[
+    [pad, pad, pad + corner, pad, pad, pad + corner],
+    [width - pad, pad, width - pad - corner, pad, width - pad, pad + corner],
+    [pad, height - pad, pad + corner, height - pad, pad, height - pad - corner],
+    [width - pad, height - pad, width - pad - corner, height - pad, width - pad, height - pad - corner],
+  ].forEach(([ax, ay, bx, by, cx, cy]) => {
+    ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.moveTo(ax, ay); ctx.lineTo(cx, cy); ctx.stroke()
+  })
+  const boxH = Math.max(56, height * 0.12)
+  const boxY = height - pad - boxH
+  const boxW = Math.min(width - pad * 2, Math.max(260, width * 0.56))
+  ctx.shadowBlur = 0
+  ctx.fillStyle = 'rgba(0,12,24,0.76)'
+  ctx.fillRect(pad, boxY, boxW, boxH)
+  ctx.strokeStyle = 'rgba(131,247,255,0.78)'
+  ctx.lineWidth = 2
+  ctx.strokeRect(pad, boxY, boxW, boxH)
+  ctx.fillStyle = '#fff'
+  ctx.font = `900 ${Math.max(14, width * 0.032)}px sans-serif`
+  ctx.fillText(label, pad + 12, boxY + 24)
+  ctx.fillStyle = '#83f7ff'
+  ctx.font = `800 ${Math.max(12, width * 0.026)}px monospace`
+  ctx.fillText(timestamp, pad + 12, boxY + 46)
+  ctx.restore()
+}
+
+function ProfileCameraOverlayBadge({ label, timestamp }) {
+  return (
+    <div style={{ position: 'absolute', inset: 8, zIndex: 3, pointerEvents: 'none' }}>
+      <div style={{ position: 'absolute', inset: 0, border: '2px solid rgba(255,255,255,0.94)', borderRadius: 12, boxShadow: '0 0 0 1px rgba(0,229,255,0.78), 0 0 22px rgba(0,229,255,0.28) inset' }} />
+      <div style={{ position: 'absolute', left: 10, bottom: 10, padding: '7px 9px', borderRadius: 9, background: 'rgba(0,12,24,0.76)', border: '1px solid rgba(131,247,255,0.72)' }}>
+        <div style={{ color: '#fff', fontSize: 10, fontWeight: 900 }}>{label}</div>
+        <div style={{ color: '#83f7ff', fontSize: 9, marginTop: 3, fontFamily: 'monospace', fontWeight: 800 }}>{timestamp}</div>
+      </div>
+    </div>
+  )
+}
+
 function GoogleIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
@@ -85,6 +139,9 @@ export default function UserProfilePanel() {
   const [avatarPreview, setAvatarPreview] = useState(user?.avatar || providerAvatar || initialsAvatar(user?.name))
   const [avatarCustomized, setAvatarCustomized] = useState(!!user?.avatarCustomized || isDataImage(user?.avatar))
   const [cameraActive, setCameraActive] = useState(false)
+  const [cameraFacingMode, setCameraFacingMode] = useState('user')
+  const [cameraOverlayOn, setCameraOverlayOn] = useState(true)
+  const [cameraNow, setCameraNow] = useState(new Date())
   const [cameraError, setCameraError] = useState('')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -101,6 +158,13 @@ export default function UserProfilePanel() {
   const text3 = isDark ? 'rgba(232,240,248,0.38)' : '#888'
 
   useEffect(() => () => stopCamera(), [])
+
+  useEffect(() => {
+    if (!cameraActive) return undefined
+    setCameraNow(new Date())
+    const timer = window.setInterval(() => setCameraNow(new Date()), 1000)
+    return () => window.clearInterval(timer)
+  }, [cameraActive])
 
   const stopCamera = () => {
     streamRef.current?.getTracks?.().forEach(track => track.stop())
@@ -137,15 +201,16 @@ export default function UserProfilePanel() {
     reader.readAsDataURL(file)
   }
 
-  const startCamera = async () => {
+  const startCamera = async (nextFacingMode = cameraFacingMode) => {
     setCameraError('')
     if (!navigator.mediaDevices?.getUserMedia) {
       setCameraError(vi ? 'Trình duyệt không hỗ trợ camera.' : 'Camera is not supported in this browser.')
       return
     }
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false })
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: nextFacingMode } }, audio: false })
       streamRef.current = stream
+      setCameraFacingMode(nextFacingMode)
       setCameraActive(true)
       window.setTimeout(() => {
         if (videoRef.current) videoRef.current.srcObject = stream
@@ -155,6 +220,11 @@ export default function UserProfilePanel() {
     }
   }
 
+  const switchCamera = () => {
+    const nextFacingMode = cameraFacingMode === 'user' ? 'environment' : 'user'
+    startCamera(nextFacingMode)
+  }
+
   const captureCamera = () => {
     const video = videoRef.current
     if (!video) return
@@ -162,7 +232,15 @@ export default function UserProfilePanel() {
     canvas.width = video.videoWidth || 640
     canvas.height = video.videoHeight || 480
     const ctx = canvas.getContext('2d')
+    if (cameraFacingMode === 'user') {
+      ctx.translate(canvas.width, 0)
+      ctx.scale(-1, 1)
+    }
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+    if (cameraFacingMode === 'user') ctx.setTransform(1, 0, 0, 1, 0, 0)
+    if (cameraOverlayOn) {
+      drawProfileCameraOverlay(ctx, canvas.width, canvas.height, 'AI Profile Scan', profileCameraTimestamp(lang, cameraNow))
+    }
     setAvatarPreview(canvas.toDataURL('image/jpeg', 0.9))
     setAvatarCustomized(true)
     setCameraError('')
@@ -255,7 +333,14 @@ export default function UserProfilePanel() {
 
             {cameraActive && (
               <div style={{ marginTop: 14, border: `1px solid ${border}`, borderRadius: 16, padding: 10, background: isDark ? '#070b18' : '#fff' }}>
-                <video ref={videoRef} autoPlay playsInline muted style={{ width: '100%', borderRadius: 12, background: '#000' }} />
+                <div style={{ position: 'relative', borderRadius: 12, overflow: 'hidden', background: '#000' }}>
+                  <video ref={videoRef} autoPlay playsInline muted style={{ display: 'block', width: '100%', background: '#000', transform: cameraFacingMode === 'user' ? 'scaleX(-1)' : 'none' }} />
+                  {cameraOverlayOn && <ProfileCameraOverlayBadge label="AI Profile Scan" timestamp={profileCameraTimestamp(lang, cameraNow)} />}
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 10 }}>
+                  <button type="button" onClick={switchCamera} style={{ padding: '10px 12px', borderRadius: 12, border: `1px solid ${border}`, cursor: 'pointer', color: text, fontWeight: 800, background: surface2, fontFamily: 'inherit' }}>🔄 {vi ? 'Đổi camera' : 'Switch camera'}</button>
+                  <button type="button" onClick={() => setCameraOverlayOn(v => !v)} style={{ padding: '10px 12px', borderRadius: 12, border: '1px solid rgba(0,229,255,0.32)', cursor: 'pointer', color: cameraOverlayOn ? '#00b8cc' : text2, fontWeight: 800, background: cameraOverlayOn ? 'rgba(0,229,255,0.10)' : surface2, fontFamily: 'inherit' }}>▣ {vi ? 'Lớp phủ' : 'Overlay'}</button>
+                </div>
                 <button
                   type="button"
                   onClick={captureCamera}

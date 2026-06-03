@@ -40,6 +40,65 @@ const glass = {
 }
 
 
+
+function cameraTimestamp(lang, date = new Date()) {
+  return date.toLocaleString(lang === 'vi' ? 'vi-VN' : 'en-US', {
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+  })
+}
+
+function drawCameraScanOverlay(ctx, width, height, { label, timestamp }) {
+  const pad = Math.max(16, Math.round(width * 0.034))
+  const corner = Math.min(width, height) * 0.16
+  ctx.save()
+  ctx.strokeStyle = 'rgba(255,255,255,0.96)'
+  ctx.lineWidth = Math.max(4, Math.round(width * 0.006))
+  ctx.shadowColor = 'rgba(0,229,255,0.95)'
+  ctx.shadowBlur = 16
+  ;[
+    [pad, pad, pad + corner, pad, pad, pad + corner],
+    [width - pad, pad, width - pad - corner, pad, width - pad, pad + corner],
+    [pad, height - pad, pad + corner, height - pad, pad, height - pad - corner],
+    [width - pad, height - pad, width - pad - corner, height - pad, width - pad, height - pad - corner],
+  ].forEach(([ax, ay, bx, by, cx, cy]) => {
+    ctx.beginPath()
+    ctx.moveTo(ax, ay)
+    ctx.lineTo(bx, by)
+    ctx.moveTo(ax, ay)
+    ctx.lineTo(cx, cy)
+    ctx.stroke()
+  })
+  const boxW = Math.min(width - pad * 2, Math.max(330, width * 0.46))
+  const boxH = Math.max(70, height * 0.09)
+  const boxY = height - pad - boxH
+  ctx.shadowBlur = 0
+  ctx.fillStyle = 'rgba(0,12,24,0.76)'
+  ctx.fillRect(pad, boxY, boxW, boxH)
+  ctx.strokeStyle = 'rgba(131,247,255,0.78)'
+  ctx.lineWidth = 2
+  ctx.strokeRect(pad, boxY, boxW, boxH)
+  ctx.fillStyle = '#fff'
+  ctx.font = `900 ${Math.max(16, width * 0.023)}px sans-serif`
+  ctx.fillText(label, pad + 14, boxY + 28)
+  ctx.fillStyle = '#83f7ff'
+  ctx.font = `800 ${Math.max(14, width * 0.019)}px monospace`
+  ctx.fillText(timestamp, pad + 14, boxY + 54)
+  ctx.restore()
+}
+
+function CameraScanOverlayBadge({ label, timestamp }) {
+  return (
+    <div style={{ position: 'absolute', inset: 10, zIndex: 5, pointerEvents: 'none' }}>
+      <div style={{ position: 'absolute', inset: 0, border: '2px solid rgba(255,255,255,0.94)', borderRadius: 12, boxShadow: '0 0 0 1px rgba(0,229,255,0.78), 0 0 24px rgba(0,229,255,0.32) inset' }} />
+      <div style={{ position: 'absolute', left: 12, bottom: 12, padding: '8px 10px', borderRadius: 10, border: '1px solid rgba(131,247,255,0.72)', background: 'rgba(0,12,24,0.76)', boxShadow: '0 0 18px rgba(0,229,255,0.22)' }}>
+        <div style={{ color: '#fff', fontSize: 11, fontWeight: 900, letterSpacing: '0.08em' }}>{label}</div>
+        <div style={{ color: '#83f7ff', fontSize: 10, marginTop: 4, fontFamily: 'monospace', fontWeight: 800 }}>{timestamp}</div>
+      </div>
+    </div>
+  )
+}
+
 const SAFE_FOLDER_FALLBACK = 'guest'
 
 function safeUploadSegment(value) {
@@ -111,6 +170,8 @@ function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUplo
   const [capturedFile, setCapturedFile] = useState(null)
   const [cameraOpen, setCameraOpen] = useState(false)
   const [cameraStarting, setCameraStarting] = useState(false)
+  const [scanOverlayOn, setScanOverlayOn] = useState(true)
+  const [scanNow, setScanNow] = useState(new Date())
 
   const [facingMode, setFacingMode] = useState('environment')
   const virtualFolder = getUploadFolder(user, mode)
@@ -124,6 +185,13 @@ function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUplo
   }, [])
 
   useEffect(() => () => stopCamera(), [stopCamera])
+
+  useEffect(() => {
+    if (!cameraOpen) return undefined
+    setScanNow(new Date())
+    const timer = window.setInterval(() => setScanNow(new Date()), 1000)
+    return () => window.clearInterval(timer)
+  }, [cameraOpen])
 
   const setSelectedImage = useCallback(async (file, source = 'camera') => {
     if (!file) return
@@ -192,6 +260,13 @@ function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUplo
       ctx.scale(-1, 1)
     }
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+    if (facingMode === 'user') ctx.setTransform(1, 0, 0, 1, 0, 0)
+    if (scanOverlayOn) {
+      drawCameraScanOverlay(ctx, canvas.width, canvas.height, {
+        label: mode === 'medication' ? 'AI Medication Scan' : 'AI Meal Scan',
+        timestamp: cameraTimestamp(lang, scanNow),
+      })
+    }
     canvas.toBlob(blob => {
       if (!blob) {
         setStatus(lang === 'vi' ? 'Không chụp được ảnh từ camera.' : 'Could not capture a photo from the camera.')
@@ -201,7 +276,7 @@ function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUplo
       stopCamera()
       setSelectedImage(file, 'camera')
     }, 'image/jpeg', 0.92)
-  }, [facingMode, lang, mode, setSelectedImage, stopCamera])
+  }, [facingMode, lang, mode, scanNow, scanOverlayOn, setSelectedImage, stopCamera])
 
   const resetCapture = useCallback(() => {
     stopCamera()
@@ -253,10 +328,14 @@ function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUplo
       </div>
       {cameraOpen && (
         <div style={{ border: '1px solid rgba(0,112,235,0.22)', borderRadius: 16, padding: 10, background: 'rgba(0,112,235,0.06)' }}>
-          <video ref={videoRef} autoPlay playsInline muted style={{ width: '100%', maxHeight: 220, objectFit: 'cover', borderRadius: 12, background: '#000', transform: facingMode === 'user' ? 'scaleX(-1)' : 'none' }} />
+          <div style={{ position: 'relative', borderRadius: 12, overflow: 'hidden', background: '#000' }}>
+            <video ref={videoRef} autoPlay playsInline muted style={{ display: 'block', width: '100%', maxHeight: 220, objectFit: 'cover', background: '#000', transform: facingMode === 'user' ? 'scaleX(-1)' : 'none' }} />
+            {scanOverlayOn && <CameraScanOverlayBadge label={mode === 'medication' ? 'AI Medication Scan' : 'AI Meal Scan'} timestamp={cameraTimestamp(lang, scanNow)} />}
+          </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8 }}>
             <button onClick={captureFromCamera} style={primaryAction()}>{lang === 'vi' ? '📸 Chụp ảnh' : '📸 Take photo'}</button>
             <button onClick={switchCamera} style={secondaryAction()}>🔄 {lang === 'vi' ? 'Đổi camera' : 'Switch camera'}</button>
+            <button onClick={() => setScanOverlayOn(v => !v)} style={{ ...secondaryAction(), background: scanOverlayOn ? 'rgba(0,229,255,0.14)' : '#e3e2e6', color: scanOverlayOn ? BLUE : INK }}>▣ {lang === 'vi' ? 'Lớp phủ' : 'Overlay'}</button>
             <button onClick={stopCamera} style={{ ...secondaryAction(), gridColumn: '1 / -1' }}>{lang === 'vi' ? 'Đóng camera' : 'Close camera'}</button>
           </div>
         </div>
@@ -368,6 +447,7 @@ function MediaPipeDetectorView({ type }) {
   const [cameraStarting, setCameraStarting] = useState(false)
   const [facingMode, setFacingMode] = useState('user')
   const [overlayOn, setOverlayOn] = useState(true)
+  const [scanNow, setScanNow] = useState(new Date())
   const [status, setStatus] = useState(lang === 'vi' ? 'Sẵn sàng mở camera vật lý.' : 'Ready to open the physical camera.')
   const [recording, setRecording] = useState(false)
   const [snapshotSaving, setSnapshotSaving] = useState(false)
@@ -464,6 +544,12 @@ function MediaPipeDetectorView({ type }) {
       }
       try {
         const file = new File([blob], makeJourneyFilename(`${detectorMode}_camera`), { type: 'image/jpeg' })
+        if (overlayOn) {
+          drawCameraScanOverlay(ctx, canvas.width, canvas.height, {
+            label: isBody ? 'AI Body Detector Scan' : 'AI Face Detector Scan',
+            timestamp: cameraTimestamp(lang, scanNow),
+          })
+        }
         const record = await saveJourneyImageFile(file, {
           mode: detectorMode,
           user,
@@ -479,12 +565,19 @@ function MediaPipeDetectorView({ type }) {
         setRecording(false)
       }
     }, 'image/jpeg', 0.92)
-  }, [cameraOpen, detectorMode, facingMode, isBody, lang, overlayOn, user])
+  }, [cameraOpen, detectorMode, facingMode, isBody, lang, overlayOn, scanNow, user])
 
   useEffect(() => {
     if (cameraOpen) draw()
     return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current) }
   }, [cameraOpen, draw, overlayOn])
+
+  useEffect(() => {
+    if (!cameraOpen) return undefined
+    setScanNow(new Date())
+    const timer = window.setInterval(() => setScanNow(new Date()), 1000)
+    return () => window.clearInterval(timer)
+  }, [cameraOpen])
   useEffect(() => () => stopCamera(), [stopCamera])
 
   return (
@@ -500,6 +593,7 @@ function MediaPipeDetectorView({ type }) {
         <div style={{ position: 'relative', height: 520, background: isBody ? 'linear-gradient(135deg,#323744,#879098)' : 'linear-gradient(135deg,#20293b,#64748b)', overflow: 'hidden' }}>
           {cameraOpen ? <video ref={videoRef} autoPlay playsInline muted style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', transform: facingMode === 'user' ? 'scaleX(-1)' : 'none' }} /> : <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', color: 'rgba(255,255,255,0.72)', textAlign: 'center', padding: 24 }}><div style={{ fontSize: 74 }}>{isBody ? '🏃' : '🙂'}</div><b>{lang === 'vi' ? 'Bấm mở camera để bắt đầu' : 'Open camera to start'}</b></div>}
           <canvas ref={canvasRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }} />
+          {cameraOpen && overlayOn && <CameraScanOverlayBadge label={isBody ? 'AI Body Detector Scan' : 'AI Face Detector Scan'} timestamp={cameraTimestamp(lang, scanNow)} />}
           <div style={{ position: 'absolute', left: 14, bottom: 18, display: 'grid', gap: 8 }}>
             <DetectorMetric label={isBody ? 'Góc khớp gối' : 'Face mesh'} value={isBody ? '125°' : '478 điểm'} />
             <DetectorMetric label={isBody ? 'Độ lệch quỹ đạo' : 'Độ cân xứng'} value={isBody ? '3%' : '96%'} />
@@ -701,9 +795,15 @@ function EveningPhoneCameraView({ mode }) {
     canvas.height = Math.max(1, Math.floor(rect.height))
     const ctx = canvas.getContext('2d')
     ctx.clearRect(0, 0, canvas.width, canvas.height)
-    if (overlayOnRef.current) drawEveningCameraOverlay(ctx, canvas.width, canvas.height, time, isMeal)
+    if (overlayOnRef.current) {
+      drawEveningCameraOverlay(ctx, canvas.width, canvas.height, time, isMeal)
+      drawCameraScanOverlay(ctx, canvas.width, canvas.height, {
+        label: isMeal ? 'AI Meal Scan' : 'AI Medication Scan',
+        timestamp: cameraTimestamp(lang),
+      })
+    }
     rafRef.current = requestAnimationFrame(draw)
-  }, [isMeal])
+  }, [isMeal, lang])
 
   const openCamera = useCallback(async (nextFacingMode = facingMode) => {
     if (!navigator.mediaDevices?.getUserMedia) {
@@ -753,7 +853,13 @@ function EveningPhoneCameraView({ mode }) {
     }
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
     if (facingMode === 'user') ctx.setTransform(1, 0, 0, 1, 0, 0)
-    if (overlayOnRef.current) drawEveningCameraOverlay(ctx, canvas.width, canvas.height, performance.now(), isMeal)
+    if (overlayOnRef.current) {
+      drawEveningCameraOverlay(ctx, canvas.width, canvas.height, performance.now(), isMeal)
+      drawCameraScanOverlay(ctx, canvas.width, canvas.height, {
+        label: isMeal ? 'AI Meal Scan' : 'AI Medication Scan',
+        timestamp: cameraTimestamp(lang),
+      })
+    }
 
     setSnapshotSaving(true)
     setRecording(true)
