@@ -159,7 +159,7 @@ async function saveJourneyImageFile(file, { mode, user, lang, label }) {
   return record
 }
 
-function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUploaded, cameraBackdrop = false }) {
+function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUploaded, onCameraState }) {
   const { lang } = useApp()
   const { user } = useAuth()
   const localInputRef = useRef(null)
@@ -193,6 +193,10 @@ function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUplo
     const timer = window.setInterval(() => setScanNow(new Date()), 1000)
     return () => window.clearInterval(timer)
   }, [cameraOpen])
+
+  useEffect(() => {
+    onCameraState?.({ cameraOpen, stream: streamRef.current, facingMode, scanOverlayOn, scanNow })
+  }, [cameraOpen, facingMode, onCameraState, scanNow, scanOverlayOn])
 
   const setSelectedImage = useCallback(async (file, source = 'camera') => {
     if (!file) return
@@ -609,46 +613,29 @@ function MediaPipeDetectorView({ type }) {
   useEffect(() => () => stopCamera(), [stopCamera])
 
   return (
-    <div style={{ ...panelShell, minHeight: 820, background: '#111', color: '#fff' }}>
-      {cameraOpen ? (
-        <video ref={videoRef} autoPlay playsInline muted style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', transform: facingMode === 'user' ? 'scaleX(-1)' : 'none' }} />
-      ) : (
-        <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', background: isBody ? 'linear-gradient(135deg,#323744,#879098)' : 'linear-gradient(135deg,#20293b,#64748b)', color: 'rgba(255,255,255,0.78)', textAlign: 'center', padding: 24 }}>
-          <div><div style={{ fontSize: 86 }}>{isBody ? '🏃' : '🙂'}</div><b>{lang === 'vi' ? 'Bấm mở camera để bắt đầu' : 'Open camera to start'}</b></div>
+    <div style={{ ...panelShell, minHeight: 920, background: 'radial-gradient(circle at 50% 0%, #20263a, #10131e 54%, #080a12)', color: '#fff', padding: '28px 18px 110px' }}>
+      <div style={{ textAlign: 'center', marginBottom: 18, position: 'relative', zIndex: 4 }}>
+        <h1 style={{ margin: 0, fontSize: 38, lineHeight: 1.16, fontWeight: 900 }}>{lang === 'vi' ? 'Phân tích Video AI & Lớp phủ Sinh học' : 'AI Video Analysis & Biological Overlay'}</h1>
+        <p style={{ margin: '10px auto 0', color: 'rgba(255,255,255,0.62)', maxWidth: 720 }}>{isBody ? (lang === 'vi' ? 'Body detector mô phỏng Holistic/Pose Landmarker với khung xương, đường quỹ đạo và chỉ số chuyển động.' : 'Body detector inspired by Holistic/Pose Landmarker with skeleton, trajectory, and motion metrics.') : (lang === 'vi' ? 'Face detector mô phỏng Face Landmarker với lưới landmark khuôn mặt và chỉ số sinh trắc.' : 'Face detector inspired by Face Landmarker with a face mesh and biometric metrics.')}</p>
+      </div>
+      <div style={{ width: 'min(100%, 1040px)', margin: '0 auto', borderRadius: 34, border: '1px solid rgba(255,255,255,0.14)', background: 'rgba(13,17,29,0.36)', boxShadow: '0 30px 90px rgba(0,0,0,0.55)', overflow: 'hidden', position: 'relative', zIndex: 3 }}>
+        <div style={{ height: 58, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 18px', background: 'rgba(13,17,29,0.62)', backdropFilter: 'blur(18px)' }}>
+          <span style={{ fontSize: 24 }}>‹</span><b>{isBody ? 'AI Motion Forecast Optimization' : 'AI Face Detector'}</b><span style={{ fontSize: 22 }}>⚙</span>
         </div>
-      )}
-      <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(0,0,0,0.18), rgba(0,0,0,0.06) 42%, rgba(0,0,0,0.65))' }} />
-      <header style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10, padding: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <button style={floatingPillButton()}>×</button>
-        <div style={{ ...glass, padding: '8px 24px', borderRadius: 999, color: BLUE, fontSize: 13, fontWeight: 900, letterSpacing: '.08em' }}>{isBody ? 'AI BODY DETECTOR' : 'AI FACE DETECTOR'}</div>
-        <button onClick={() => setOverlayOn(v => !v)} style={{ ...floatingPillButton(), background: overlayOn ? 'rgba(0,88,188,0.24)' : 'rgba(255,255,255,0.75)' }}>▣</button>
-      </header>
-      <ScanReticle />
-      <canvas ref={canvasRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 6 }} />
-      {cameraOpen && overlayOn && <CameraScanOverlayBadge label={isBody ? 'AI Body Detector Scan' : 'AI Face Detector Scan'} timestamp={cameraTimestamp(lang, scanNow)} />}
-      <AiMetricBubble value={isBody ? '125°' : '478'} label={isBody ? 'Góc khớp gối' : 'Face mesh'} note={isBody ? 'Pose realtime' : 'Landmarks'} style={{ top: '24%', right: '18%', animation: 'hj-float 3s ease-in-out infinite' }} />
-      <AiMetricBubble value={isBody ? '3%' : '96%'} label={isBody ? 'Lệch quỹ đạo' : 'Cân xứng'} note="AI realtime" style={{ top: '44%', left: '14%', animation: 'hj-float 3.5s ease-in-out infinite' }} />
-      <div style={{ position: 'absolute', left: 0, right: 0, bottom: 76, zIndex: 14, padding: '0 18px' }}>
-        <div style={{ ...glass, maxWidth: 860, margin: '0 auto', borderRadius: 28, padding: 22 }}>
-          <div style={{ width: 48, height: 6, borderRadius: 999, background: 'rgba(113,119,134,0.22)', margin: '0 auto 18px' }} />
-          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 300px', gap: 20 }} className="hj-responsive-sheet">
-            <div>
-              <h1 style={{ margin: 0, color: INK, fontSize: 26 }}>{isBody ? 'Body Detector' : 'Face Detector'}</h1>
-              <p style={{ margin: '8px 0 12px', color: MUTED, lineHeight: 1.5 }}>{isBody ? (lang === 'vi' ? 'Camera live hiển thị phía sau cùng, khung xương và chỉ số chuyển động là lớp phủ AI realtime.' : 'Live camera stays in the back layer; skeleton and movement metrics are realtime AI overlays.') : (lang === 'vi' ? 'Camera live hiển thị phía sau cùng, lưới landmark và sinh trắc là lớp phủ AI realtime.' : 'Live camera stays in the back layer; face landmarks and biometrics are realtime AI overlays.')}</p>
-              <div style={{ background: 'rgba(0,112,235,0.10)', border: '1px solid rgba(0,112,235,0.18)', padding: 14, borderRadius: 14, color: BLUE, fontWeight: 800, lineHeight: 1.45 }}>{status}</div>
-              <div style={{ marginTop: 8, color: MUTED, fontSize: 11 }}>{lang === 'vi' ? 'Thư mục upload:' : 'Upload folder:'} <b>{uploadFolder}</b></div>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                <button onClick={() => openCamera()} disabled={cameraStarting || snapshotSaving} style={{ ...secondaryAction(), opacity: cameraStarting ? 0.72 : 1 }}>{cameraOpen ? (lang === 'vi' ? 'Khởi động lại' : 'Restart') : cameraStarting ? (lang === 'vi' ? 'Đang mở...' : 'Opening...') : (lang === 'vi' ? '📷 Mở camera' : '📷 Open camera')}</button>
-                <button onClick={captureDetectorSnapshot} disabled={!cameraOpen || snapshotSaving} style={{ ...primaryAction(), opacity: !cameraOpen || snapshotSaving ? 0.72 : 1 }}>{snapshotSaving ? '…' : (lang === 'vi' ? '📸 Chụp' : '📸 Capture')}</button>
-              </div>
-              <button onClick={switchCamera} disabled={cameraStarting || snapshotSaving} style={secondaryAction()}>🔄 {lang === 'vi' ? `Đổi camera (${facingMode === 'user' ? 'trước' : 'sau'})` : `Switch camera (${facingMode === 'user' ? 'front' : 'rear'})`}</button>
-              <button onClick={() => setOverlayOn(v => !v)} style={{ ...secondaryAction(), background: overlayOn ? 'rgba(0,229,255,0.14)' : '#e3e2e6', color: overlayOn ? BLUE : INK }}>▣ {lang === 'vi' ? 'Lớp phủ' : 'Overlay'}</button>
-              {cameraOpen && <button onClick={stopCamera} disabled={snapshotSaving} style={secondaryAction()}>{lang === 'vi' ? 'Đóng camera' : 'Close camera'}</button>}
-              <label style={{ color: MUTED, fontSize: 12 }}>{lang === 'vi' ? 'Tốc độ phân tích' : 'Analysis speed'}</label>
-              <input value={speed} min="0.5" max="2" step="0.5" type="range" onChange={e => setSpeed(e.target.value)} style={{ width: '100%', accentColor: BLUE }} />
-            </div>
+        <div style={{ position: 'relative', minHeight: 620, height: 'clamp(560px, 62vw, 720px)', background: isBody ? 'linear-gradient(135deg,#323744,#879098)' : 'linear-gradient(135deg,#20293b,#64748b)', overflow: 'hidden' }}>
+          {cameraOpen ? <video ref={videoRef} autoPlay playsInline muted style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', transform: facingMode === 'user' ? 'scaleX(-1)' : 'none' }} /> : <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', color: 'rgba(255,255,255,0.72)', textAlign: 'center', padding: 24 }}><div style={{ fontSize: 74 }}>{isBody ? '🏃' : '🙂'}</div><b>{lang === 'vi' ? 'Bấm mở camera để bắt đầu' : 'Open camera to start'}</b></div>}
+          <canvas ref={canvasRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }} />
+          {cameraOpen && overlayOn && <CameraScanOverlayBadge label={isBody ? 'AI Body Detector Scan' : 'AI Face Detector Scan'} timestamp={cameraTimestamp(lang, scanNow)} />}
+          <div style={{ position: 'absolute', left: 22, bottom: 24, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <DetectorMetric label={isBody ? 'Góc khớp gối' : 'Face mesh'} value={isBody ? '125°' : '478 điểm'} />
+            <DetectorMetric label={isBody ? 'Độ lệch quỹ đạo' : 'Độ cân xứng'} value={isBody ? '3%' : '96%'} />
+          </div>
+        </div>
+        <div style={{ padding: 18, background: 'rgba(14,18,30,0.72)', backdropFilter: 'blur(18px)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 88px 1fr', gap: 12, alignItems: 'center' }}>
+            <button onClick={() => openCamera()} disabled={cameraStarting || snapshotSaving} style={{ ...secondaryAction(), background: 'rgba(255,255,255,0.10)', color: '#fff', opacity: cameraStarting ? 0.72 : 1 }}>{cameraOpen ? (lang === 'vi' ? 'Khởi động lại' : 'Restart') : cameraStarting ? (lang === 'vi' ? 'Đang mở...' : 'Opening...') : (lang === 'vi' ? 'Mở camera' : 'Open camera')}</button>
+            <button onClick={captureDetectorSnapshot} disabled={!cameraOpen || snapshotSaving} style={{ width: 76, height: 76, borderRadius: '50%', border: '4px solid #fff', background: recording ? '#ff6b6b' : '#ff3b30', color: '#fff', fontWeight: 900, cursor: snapshotSaving ? 'wait' : 'pointer', opacity: !cameraOpen || snapshotSaving ? 0.72 : 1 }}>{snapshotSaving ? '…' : '📷'}</button>
+            <button onClick={() => setOverlayOn(v => !v)} style={{ ...primaryAction(), background: overlayOn ? '#6f7cff' : '#384052' }}>{lang === 'vi' ? 'Lớp phủ' : 'Overlay'}</button>
           </div>
         </div>
       </div>
@@ -815,23 +802,28 @@ function MedicationRealtimeOverlay() {
 function MealScanView() {
   const [flash, setFlash] = useState(false)
   const [capturedRecord, setCapturedRecord] = useState(null)
-  const panelRef = useRef(null)
+  const [cameraState, setCameraState] = useState(null)
+  const handleCameraState = useCallback(nextState => setCameraState(nextState), [])
+  const fallbackSrc = "https://lh3.googleusercontent.com/aida-public/AB6AXuDz673aowy2PSOhw7UeuUZHoFiJO_SQTymK2RWuGYolAX9ok2Eugcl8j17Ip3FWZh0sLSoEuJbb-6LNoLAx5NKWwQ4X-nfqnnDuhGQvU_Dnqxw7oWZ6IW5kNaCG4vfKLbgFEAB2OXpUPeMzAoiWAqNGIjyo-wbhqxNF7d2BtrQY5HECx53yA3z9L7GdwfOiHxbQB6UdclRS9c4hau37W37ieVXlmK40gZ0dB2H8sW9PobMG23MnaC8tYR0V12bMf46MMJNaRznFkUu7"
   return (
-    <div style={{ ...panelShell, minHeight: 820, background: '#111' }}>
-      <div id="hj-meal-camera-host" style={{ position: 'absolute', inset: 0, zIndex: 2, overflow: 'hidden' }} />
-      <img alt="Salmon salad being scanned" src={capturedRecord?.dataUrl || "https://lh3.googleusercontent.com/aida-public/AB6AXuDz673aowy2PSOhw7UeuUZHoFiJO_SQTymK2RWuGYolAX9ok2Eugcl8j17Ip3FWZh0sLSoEuJbb-6LNoLAx5NKWwQ4X-nfqnnDuhGQvU_Dnqxw7oWZ6IW5kNaCG4vfKLbgFEAB2OXpUPeMzAoiWAqNGIjyo-wbhqxNF7d2BtrQY5HECx53yA3z9L7GdwfOiHxbQB6UdclRS9c4hau37W37ieVXlmK40gZ0dB2H8sW9PobMG23MnaC8tYR0V12bMf46MMJNaRznFkUu7"} style={{ position: 'absolute', inset: 0, zIndex: 1, width: '100%', height: '100%', objectFit: 'cover' }} />
-      <div style={{ position: 'absolute', inset: 0, zIndex: 3, background: 'rgba(0,0,0,0.05)', pointerEvents: 'none' }} />
+    <div style={{ ...panelShell, minHeight: 920, background: '#111' }}>
+      <FullBleedCameraBackground cameraState={cameraState} fallbackSrc={fallbackSrc} fallbackAlt="Salmon salad being scanned" capturedSrc={capturedRecord?.dataUrl} dim="rgba(0,0,0,0.08)" />
       <header style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10, padding: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <button style={floatingPillButton()}>×</button>
         <div style={{ ...glass, padding: '8px 24px', borderRadius: 999, color: BLUE, fontSize: 13, fontWeight: 900, letterSpacing: '.08em' }}>AI SCANNING</div>
         <button onClick={() => setFlash(!flash)} style={{ ...floatingPillButton(), background: flash ? 'rgba(0,88,188,0.24)' : 'rgba(255,255,255,0.75)' }}>{flash ? '🔦' : '⚡'}</button>
       </header>
       <ScanReticle />
-      <AiMetricBubble value="26g" label="Đạm" note="Salmon realtime" style={{ top: '24%', right: '18%', animation: 'hj-float 3s ease-in-out infinite' }} />
-      <AiMetricBubble value="320" label="kcal" note="AI ước tính" style={{ top: '42%', left: '14%', animation: 'hj-float 3.4s ease-in-out infinite' }} />
-      <AiMetricBubble value="8g" label="Chất xơ" note="Rau xanh" style={{ top: '49%', right: '25%', animation: 'hj-float 3.8s ease-in-out infinite' }} />
+      <MealAiOverlay capturedRecord={capturedRecord} />
+      <div style={{ position: 'absolute', top: '30%', right: '22%', zIndex: 7, pointerEvents: 'none', animation: 'hj-float 3s ease-in-out infinite' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <div style={{ ...glass, padding: '8px 12px', borderRadius: 10, color: BLUE, fontSize: 12, fontWeight: 800 }}>Salmon (26g Protein)</div>
+          <div style={{ width: 1, height: 34, background: 'rgba(0,88,188,0.60)' }} />
+          <div style={{ width: 9, height: 9, borderRadius: '50%', background: BLUE, boxShadow: '0 0 14px #0058bc' }} />
+        </div>
+      </div>
       <div style={{ position: 'absolute', left: 0, right: 0, bottom: 76, zIndex: 12, padding: '0 18px' }}>
-        <div style={{ ...glass, borderRadius: 28, maxWidth: 860, margin: '0 auto', padding: 22, boxShadow: '0 -20px 55px rgba(0,0,0,0.16)' }}>
+        <div style={{ ...glass, background: 'rgba(255,255,255,0.86)', borderRadius: '32px 32px 0 0', maxWidth: 840, margin: '0 auto', padding: 24, boxShadow: '0 -20px 55px rgba(0,0,0,0.16)', borderTop: '1px solid #c1c6d7' }}>
           <div style={{ width: 48, height: 6, borderRadius: 999, background: '#e3e2e6', margin: '0 auto 22px' }} />
           <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 230px', gap: 24 }} className="hj-responsive-sheet">
             <div>
@@ -847,9 +839,9 @@ function MealScanView() {
                 mode="meal"
                 captureLabel="📷 Chụp"
                 uploadLabel="upload bữa ăn"
-                helper="Nút Chụp mở camera vật lý để chụp thật; hoặc upload hình trong máy rồi lưu vào thư mục upload theo từng user."
+                helper="Nút Chụp mở camera vật lý để chụp thật; hoặc upload hình trong máy rồi lưu vào thư mục upload theo từng user. Camera được đẩy ra lớp nền phía sau để AI quan sát realtime."
                 onUploaded={setCapturedRecord}
-                cameraBackdrop
+                onCameraState={handleCameraState}
               />
             </div>
           </div>
@@ -883,16 +875,60 @@ function NutritionCard({ value, label }) {
   return <div style={{ background: '#f3f3f5', borderRadius: 18, padding: 16, textAlign: 'center' }}><div style={{ color: BLUE, fontSize: 26, fontWeight: 900 }}>{value}</div><div style={{ color: MUTED, fontSize: 12, fontWeight: 700 }}>{label}</div></div>
 }
 
-function AiMetricBubble({ value, label, note, style = {} }) {
+function FullBleedCameraBackground({ cameraState, fallbackSrc, fallbackAlt, capturedSrc, topOffset = 0, dim = 'rgba(0,0,0,0.18)' }) {
+  const videoRef = useRef(null)
+  const isLive = cameraState?.cameraOpen && cameraState?.stream
+
+  useEffect(() => {
+    if (!videoRef.current) return
+    videoRef.current.srcObject = isLive ? cameraState.stream : null
+  }, [cameraState?.stream, isLive])
+
   return (
-    <div style={{ position: 'absolute', zIndex: 8, pointerEvents: 'none', ...style }}>
-      <div style={{ ...glass, padding: '10px 14px', borderRadius: 16, color: INK, minWidth: 108, border: '1px solid rgba(255,255,255,0.60)' }}>
-        <div style={{ color: BLUE, fontSize: 24, fontWeight: 950, lineHeight: 1 }}>{value}</div>
-        <div style={{ color: INK, fontSize: 12, fontWeight: 900, marginTop: 3 }}>{label}</div>
-        {note && <div style={{ color: MUTED, fontSize: 10, fontWeight: 800, marginTop: 4 }}>{note}</div>}
-      </div>
-      <div style={{ width: 1, height: 30, background: 'rgba(0,88,188,0.60)', margin: '0 auto' }} />
-      <div style={{ width: 9, height: 9, borderRadius: '50%', background: BLUE, boxShadow: '0 0 14px #0058bc', margin: '0 auto' }} />
+    <>
+      {isLive ? (
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          muted
+          style={{ position: 'absolute', left: 0, right: 0, top: topOffset, bottom: 0, width: '100%', height: `calc(100% - ${topOffset}px)`, objectFit: 'cover', background: '#000', transform: cameraState.facingMode === 'user' ? 'scaleX(-1)' : 'none', zIndex: 0 }}
+        />
+      ) : (
+        <img alt={fallbackAlt} src={capturedSrc || fallbackSrc} style={{ position: 'absolute', left: 0, right: 0, top: topOffset, bottom: 0, width: '100%', height: `calc(100% - ${topOffset}px)`, objectFit: 'cover', zIndex: 0 }} />
+      )}
+      <div style={{ position: 'absolute', left: 0, right: 0, top: topOffset, bottom: 0, background: dim, zIndex: 1, pointerEvents: 'none' }} />
+    </>
+  )
+}
+
+function AiObservationChip({ value, label, accent = BLUE }) {
+  return (
+    <div style={{ ...glass, padding: '10px 13px', borderRadius: 16, color: accent, minWidth: 86, textAlign: 'center', boxShadow: '0 12px 34px rgba(0,0,0,0.18)' }}>
+      <div style={{ fontSize: 23, fontWeight: 950, lineHeight: 1 }}>{value}</div>
+      <div style={{ marginTop: 4, fontSize: 11, fontWeight: 850, color: 'rgba(29,29,31,0.70)' }}>{label}</div>
+    </div>
+  )
+}
+
+function MealAiOverlay({ capturedRecord }) {
+  return (
+    <div style={{ position: 'absolute', left: 22, right: 22, bottom: 328, zIndex: 8, display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', pointerEvents: 'none' }}>
+      <AiObservationChip value="320" label="kcal" />
+      <AiObservationChip value="26g" label="Đạm" />
+      <AiObservationChip value="8g" label="Chất xơ" />
+      <div style={{ ...glass, padding: '10px 14px', borderRadius: 18, color: '#2f9e62', fontWeight: 900 }}>{capturedRecord ? 'AI đang đọc ảnh vừa upload' : 'AI quan sát realtime trên Camera'}</div>
+    </div>
+  )
+}
+
+function MedicationAiOverlay({ capturedRecord }) {
+  return (
+    <div style={{ position: 'absolute', left: 22, right: 22, bottom: 328, zIndex: 8, display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center', pointerEvents: 'none' }}>
+      <AiObservationChip value="20mg" label="Tamoxifen" />
+      <AiObservationChip value="1×" label="Mỗi ngày" />
+      <AiObservationChip value="Sau ăn" label="Lịch uống" />
+      <div style={{ ...glass, padding: '10px 14px', borderRadius: 18, color: '#93000a', fontWeight: 900 }}>{capturedRecord ? 'AI kiểm tra ảnh thuốc vừa upload' : 'AI quan sát realtime trên Camera'}</div>
     </div>
   )
 }
@@ -907,17 +943,18 @@ function secondaryAction() {
 function MedicationAssistantView() {
   const [flash, setFlash] = useState(false)
   const [capturedRecord, setCapturedRecord] = useState(null)
-  const panelRef = useRef(null)
+  const [cameraState, setCameraState] = useState(null)
+  const handleCameraState = useCallback(nextState => setCameraState(nextState), [])
+  const fallbackSrc = "https://lh3.googleusercontent.com/aida-public/AB6AXuAZH2XA_C2g9jti8cF8o0E5hvwbxBLhK2y-tf0NDCFY7cyKfoeZ_U8_kn3jiQHhOa6b56cisSwi2bz6AE1EFWFS0dNQBehYv66eK0nIeMiU0q1kRU5vfIdZz1KoCj7T6VpAyJAotvB_di10b0BzJ7RdFkt_41wXUXbswPWEv9u7eX9drmA7OkyMb1YS1l1QjiSzEbHDivTPH6XurlsDr6cR5vjNnYcEWsLxKzNgrooWpXB-uu9DZvIchL5J627pN73vdwj5KTI9lY4z"
   return (
-    <div style={{ ...panelShell, minHeight: 820, background: '#000' }}>
-      <div id="hj-medication-camera-host" style={{ position: 'absolute', inset: 0, zIndex: 2, overflow: 'hidden' }} />
+    <div style={{ ...panelShell, minHeight: 920, background: '#000' }}>
+      <FullBleedCameraBackground cameraState={cameraState} fallbackSrc={fallbackSrc} fallbackAlt="Pill Bottle" capturedSrc={capturedRecord?.dataUrl} topOffset={64} dim="radial-gradient(circle, transparent 42%, rgba(0,0,0,0.58) 100%)" />
       <header style={{ position: 'relative', zIndex: 15, height: 64, display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 20px', ...glass }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, color: INK }}><button style={{ border: 'none', background: 'transparent', fontSize: 24, cursor: 'pointer' }}>×</button><h1 style={{ margin: 0, fontSize: 24 }}>Trợ lý thuốc</h1></div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}><button onClick={() => setFlash(!flash)} style={{ border: 'none', background: 'transparent', color: flash ? BLUE : INK, fontSize: 22, cursor: 'pointer' }}>{flash ? '🔦' : '⚡'}</button><img alt="Patient" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAQKeTt8_ixyEzSPUh64YGich4CWVUCDHlAED0v66qzTB8rzONzJD_GBylNvUOCiBFxk9njOsY3qdU1MvmNYz2oc6dcZZ8cLBeX4cw701UMQjBjsm9UoiNevceFpQRaat5AthvRm2ihEbGQnfFnAfjJDQ8Inb1usap4d3mvsSoZRFa6lPEkbJKcg_2oaNIyBiG0QLPsJL8tZzPVU2HZDifgoOO4GcVdYWNJmxiuj0irLtdFBy-gDf8sEBwU2qkiyehS0pde6FcQP8-J" style={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover' }} /></div>
       </header>
-      <img alt="Pill Bottle" src={capturedRecord?.dataUrl || "https://lh3.googleusercontent.com/aida-public/AB6AXuAZH2XA_C2g9jti8cF8o0E5hvwbxBLhK2y-tf0NDCFY7cyKfoeZ_U8_kn3jiQHhOa6b56cisSwi2bz6AE1EFWFS0dNQBehYv66eK0nIeMiU0q1kRU5vfIdZz1KoCj7T6VpAyJAotvB_di10b0BzJ7RdFkt_41wXUXbswPWEv9u7eX9drmA7OkyMb1YS1l1QjiSzEbHDivTPH6XurlsDr6cR5vjNnYcEWsLxKzNgrooWpXB-uu9DZvIchL5J627pN73vdwj5KTI9lY4z"} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0.86 }} />
-      <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle, transparent 38%, rgba(0,0,0,0.58) 100%)' }} />
-      <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', pointerEvents: 'none' }}>
+      <MedicationAiOverlay capturedRecord={capturedRecord} />
+      <div style={{ position: 'absolute', inset: '64px 0 0', zIndex: 6, display: 'grid', placeItems: 'center', pointerEvents: 'none' }}>
         <div style={{ position: 'relative', width: 270, height: 270, border: '2px solid rgba(0,112,235,0.42)', borderRadius: 30, overflow: 'hidden', boxShadow: '0 0 28px rgba(0,88,188,0.28)' }}>
           <div style={{ position: 'absolute', top: 0, left: 0, width: 36, height: 36, borderTop: '4px solid #0070eb', borderLeft: '4px solid #0070eb', borderRadius: '18px 0 0 0' }} />
           <div style={{ position: 'absolute', top: 0, right: 0, width: 36, height: 36, borderTop: '4px solid #0070eb', borderRight: '4px solid #0070eb', borderRadius: '0 18px 0 0' }} />
@@ -941,9 +978,9 @@ function MedicationAssistantView() {
             mode="medication"
             captureLabel="📷 Chụp"
             uploadLabel="upload thuốc"
-            helper="Nút Chụp mở camera vật lý để chụp thật; hoặc upload hình trong máy rồi lưu vào thư mục upload theo từng user."
+            helper="Nút Chụp mở camera vật lý để chụp thật; hoặc upload hình trong máy rồi lưu vào thư mục upload theo từng user. Camera được đẩy ra lớp nền phía sau để AI quan sát realtime."
             onUploaded={setCapturedRecord}
-            cameraBackdrop
+            onCameraState={handleCameraState}
           />
         </div>
       </div>
