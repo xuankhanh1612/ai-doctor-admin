@@ -662,6 +662,7 @@ function EveningPhoneCameraView({ mode }) {
   const canvasRef = useRef(null)
   const streamRef = useRef(null)
   const rafRef = useRef(null)
+  const overlayOnRef = useRef(true)
   const [cameraOpen, setCameraOpen] = useState(false)
   const [cameraStarting, setCameraStarting] = useState(false)
   const [facingMode, setFacingMode] = useState('environment')
@@ -700,9 +701,9 @@ function EveningPhoneCameraView({ mode }) {
     canvas.height = Math.max(1, Math.floor(rect.height))
     const ctx = canvas.getContext('2d')
     ctx.clearRect(0, 0, canvas.width, canvas.height)
-    if (overlayOn) drawEveningCameraOverlay(ctx, canvas.width, canvas.height, time, isMeal)
+    if (overlayOnRef.current) drawEveningCameraOverlay(ctx, canvas.width, canvas.height, time, isMeal)
     rafRef.current = requestAnimationFrame(draw)
-  }, [isMeal, overlayOn])
+  }, [isMeal])
 
   const openCamera = useCallback(async (nextFacingMode = facingMode) => {
     if (!navigator.mediaDevices?.getUserMedia) {
@@ -752,7 +753,7 @@ function EveningPhoneCameraView({ mode }) {
     }
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
     if (facingMode === 'user') ctx.setTransform(1, 0, 0, 1, 0, 0)
-    if (overlayOn) drawEveningCameraOverlay(ctx, canvas.width, canvas.height, performance.now(), isMeal)
+    if (overlayOnRef.current) drawEveningCameraOverlay(ctx, canvas.width, canvas.height, performance.now(), isMeal)
 
     setSnapshotSaving(true)
     setRecording(true)
@@ -776,7 +777,19 @@ function EveningPhoneCameraView({ mode }) {
         window.setTimeout(() => setRecording(false), 520)
       }
     }, 'image/jpeg', 0.92)
-  }, [cameraOpen, facingMode, isMeal, label, lang, mode, overlayOn, user])
+  }, [cameraOpen, facingMode, isMeal, label, lang, mode, user])
+
+  const toggleOverlay = useCallback(() => {
+    setOverlayOn(current => {
+      const next = !current
+      overlayOnRef.current = next
+      return next
+    })
+  }, [])
+
+  useEffect(() => {
+    overlayOnRef.current = overlayOn
+  }, [overlayOn])
 
   useEffect(() => () => stopCamera(), [stopCamera])
 
@@ -806,7 +819,7 @@ function EveningPhoneCameraView({ mode }) {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 88px 1fr', gap: 12, alignItems: 'center' }}>
             <button onClick={() => openCamera()} disabled={cameraStarting || snapshotSaving} style={{ ...secondaryAction(), background: 'rgba(255,255,255,0.10)', color: '#fff', opacity: cameraStarting ? 0.72 : 1 }}>{cameraOpen ? (lang === 'vi' ? 'Khởi động lại' : 'Restart') : cameraStarting ? (lang === 'vi' ? 'Đang mở...' : 'Opening...') : (lang === 'vi' ? 'Mở camera' : 'Open camera')}</button>
             <button onClick={capturePhoneSnapshot} disabled={!cameraOpen || snapshotSaving} style={{ width: 76, height: 76, borderRadius: '50%', border: '4px solid #fff', background: recording ? '#ff6b6b' : '#ff3b30', color: '#fff', fontWeight: 900, cursor: snapshotSaving ? 'wait' : 'pointer', opacity: !cameraOpen || snapshotSaving ? 0.72 : 1 }}>{snapshotSaving ? '…' : '📷'}</button>
-            <button onClick={() => setOverlayOn(v => !v)} style={{ ...primaryAction(), background: overlayOn ? '#6f7cff' : '#384052' }}>{lang === 'vi' ? 'Lớp phủ' : 'Overlay'}</button>
+            <button onClick={toggleOverlay} style={{ ...primaryAction(), background: overlayOn ? '#6f7cff' : '#384052' }}>{lang === 'vi' ? 'Lớp phủ' : 'Overlay'}</button>
           </div>
           <button onClick={switchCamera} disabled={cameraStarting || snapshotSaving} style={{ ...secondaryAction(), width: '100%', marginTop: 10, background: 'rgba(255,255,255,0.10)', color: '#fff' }}>🔄 {lang === 'vi' ? `Đổi camera (${facingMode === 'user' ? 'trước' : 'sau'})` : `Switch camera (${facingMode === 'user' ? 'front' : 'rear'})`}</button>
           {cameraOpen && <button onClick={stopCamera} disabled={snapshotSaving} style={{ ...secondaryAction(), width: '100%', marginTop: 8, background: 'rgba(255,255,255,0.08)', color: '#fff' }}>{lang === 'vi' ? 'Đóng camera' : 'Close camera'}</button>}
