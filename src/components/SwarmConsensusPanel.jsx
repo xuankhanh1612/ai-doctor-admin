@@ -15,6 +15,7 @@ import React, {
 } from 'react'
 import { useApp } from '../context/AppContext'
 import { useConsensus } from '../hooks/useConsensus.js'
+import NavButtons from './NavButtons.jsx'
 
 // ─── Agent definitions ────────────────────────────────────────────────────────
 const SWARM_AGENTS = [
@@ -1095,14 +1096,8 @@ export default function SwarmConsensusPanel({ onReset, onPrev, prevLabel }) {
             color: 'var(--text2)', fontSize: 12, fontWeight: 600,
           }}>↺ {sText(lang, 'rerun')}</button>
         )}
-        {onPrev && prevLabel && (
-          <button onClick={onPrev} style={{
-            padding: '10px 18px', borderRadius: 10, cursor: 'pointer',
-            background: 'transparent', border: '1px solid var(--border2)',
-            color: 'var(--text2)', fontSize: 12, fontWeight: 500, marginLeft: 'auto',
-          }}>← {prevLabel}</button>
-        )}
       </div>
+      <NavButtons onPrev={onPrev} prevLabel={prevLabel} />
     </div>
   )
 }
