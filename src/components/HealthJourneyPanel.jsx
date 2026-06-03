@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import NavButtons from './NavButtons.jsx'
 import { useApp } from '../context/AppContext.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
@@ -248,6 +249,8 @@ function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUplo
     openPhysicalCamera(nextFacingMode)
   }, [facingMode, openPhysicalCamera])
 
+  const cameraLabel = mode === 'medication' ? 'AI Medication Scan' : mode === 'body-detector' ? 'AI Body Detector Scan' : mode === 'face-detector' ? 'AI Face Detector Scan' : 'AI Meal Scan'
+
   const captureFromCamera = useCallback(() => {
     const video = videoRef.current
     if (!video) return
@@ -263,7 +266,7 @@ function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUplo
     if (facingMode === 'user') ctx.setTransform(1, 0, 0, 1, 0, 0)
     if (scanOverlayOn) {
       drawCameraScanOverlay(ctx, canvas.width, canvas.height, {
-        label: mode === 'medication' ? 'AI Medication Scan' : 'AI Meal Scan',
+        label: cameraLabel,
         timestamp: cameraTimestamp(lang, scanNow),
       })
     }
@@ -272,11 +275,11 @@ function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUplo
         setStatus(lang === 'vi' ? 'Không chụp được ảnh từ camera.' : 'Could not capture a photo from the camera.')
         return
       }
-      const file = new File([blob], makeJourneyFilename(mode === 'medication' ? 'medication_camera' : 'meal_camera'), { type: 'image/jpeg' })
+      const file = new File([blob], makeJourneyFilename(`${mode}_camera`), { type: 'image/jpeg' })
       stopCamera()
       setSelectedImage(file, 'camera')
     }, 'image/jpeg', 0.92)
-  }, [facingMode, lang, mode, scanNow, scanOverlayOn, setSelectedImage, stopCamera])
+  }, [cameraLabel, facingMode, lang, mode, scanNow, scanOverlayOn, setSelectedImage, stopCamera])
 
   const resetCapture = useCallback(() => {
     stopCamera()
@@ -309,6 +312,9 @@ function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUplo
     }
   }, [capturedFile, lang, mode, onUploaded, uploadLabel, user])
 
+  const inlineCamera = cameraOpen && !backgroundCamera
+  const backdropCamera = cameraOpen && backgroundCamera
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10, position: cameraBackdrop ? 'relative' : 'static', zIndex: 20 }}>
       <input
@@ -337,7 +343,7 @@ function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUplo
         <div style={{ border: '1px solid rgba(0,112,235,0.22)', borderRadius: 16, padding: 10, background: 'rgba(0,112,235,0.06)' }}>
           <div style={{ position: 'relative', borderRadius: 12, overflow: 'hidden', background: '#000' }}>
             <video ref={videoRef} autoPlay playsInline muted style={{ display: 'block', width: '100%', maxHeight: 220, objectFit: 'cover', background: '#000', transform: facingMode === 'user' ? 'scaleX(-1)' : 'none' }} />
-            {scanOverlayOn && <CameraScanOverlayBadge label={mode === 'medication' ? 'AI Medication Scan' : 'AI Meal Scan'} timestamp={cameraTimestamp(lang, scanNow)} />}
+            {scanOverlayOn && <CameraScanOverlayBadge label={cameraLabel} timestamp={cameraTimestamp(lang, scanNow)} />}
           </div>
         </div>
       )}
@@ -358,6 +364,13 @@ function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUplo
       </div>
       {preview && <img alt={uploadLabel} src={preview} style={{ width: '100%', maxHeight: 120, objectFit: 'cover', borderRadius: 14, border: '1px solid rgba(0,112,235,0.18)' }} />}
       {status && <div style={{ fontSize: 11, color: status.startsWith('Không') || status.startsWith('Could') ? '#93000a' : BLUE, fontWeight: 800, lineHeight: 1.4 }}>{status}</div>}
+      {backdropCamera && createPortal(
+        <div style={{ position: 'absolute', inset: 0, zIndex: 2, background: '#000', pointerEvents: 'none' }} data-hj-camera-backdrop="true">
+          <video ref={videoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover', transform: facingMode === 'user' ? 'scaleX(-1)' : 'none' }} />
+          {scanOverlayOn && <CameraScanOverlayBadge label={cameraLabel} timestamp={cameraTimestamp(lang, scanNow)} />}
+        </div>,
+        document.getElementById(`hj-${mode}-camera-host`) || document.body,
+      )}
     </div>
   )
 }
@@ -439,8 +452,14 @@ function drawBodyOverlay(ctx, w, h, time) {
   ctx.shadowBlur = 0
 }
 
-function DetectorMetric({ label, value }) {
-  return <div style={{ background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.16)', borderRadius: 12, padding: '9px 10px', color: '#fff', fontSize: 12 }}><b>{value}</b><br/><span style={{ opacity: .72 }}>{label}</span></div>
+function DetectorRealtimeOverlay({ isBody }) {
+  return (
+    <div style={{ position: 'absolute', left: 24, top: 96, zIndex: 8, display: 'flex', gap: 10, flexWrap: 'wrap', maxWidth: 380, pointerEvents: 'none' }}>
+      <RealtimeOverlayChip value={isBody ? '125°' : '478'} label={isBody ? 'Góc khớp gối' : 'Face mesh'} />
+      <RealtimeOverlayChip value={isBody ? '3%' : '96%'} label={isBody ? 'Độ lệch' : 'Độ cân xứng'} tone="#6f7cff" />
+      <RealtimeOverlayChip value="Live" label="AI realtime" tone="#2f9e62" />
+    </div>
+  )
 }
 
 function MediaPipeDetectorView({ type }) {
@@ -763,13 +782,45 @@ function roundButton(bg, color) {
   return { width: 42, height: 42, borderRadius: '50%', border: 'none', background: bg, color, display: 'grid', placeItems: 'center', cursor: 'pointer', fontSize: 20, flexShrink: 0 }
 }
 
+
+function RealtimeOverlayChip({ value, label, tone = BLUE }) {
+  return (
+    <div style={{ ...glass, minWidth: 88, padding: '10px 12px', borderRadius: 16, textAlign: 'center', border: `1px solid ${tone}33`, boxShadow: `0 12px 34px ${tone}24` }}>
+      <div style={{ color: tone, fontSize: 22, fontWeight: 950, lineHeight: 1 }}>{value}</div>
+      <div style={{ color: INK, fontSize: 11, fontWeight: 850, marginTop: 5 }}>{label}</div>
+    </div>
+  )
+}
+
+function MealRealtimeNutritionOverlay() {
+  return (
+    <div style={{ position: 'absolute', left: 24, top: 96, zIndex: 8, display: 'flex', gap: 10, flexWrap: 'wrap', maxWidth: 330, pointerEvents: 'none' }}>
+      <RealtimeOverlayChip value="320" label="kcal" />
+      <RealtimeOverlayChip value="26g" label="Đạm" />
+      <RealtimeOverlayChip value="8g" label="Chất xơ" tone="#2f9e62" />
+    </div>
+  )
+}
+
+function MedicationRealtimeOverlay() {
+  return (
+    <div style={{ position: 'absolute', left: 24, top: 96, zIndex: 8, display: 'flex', gap: 10, flexWrap: 'wrap', maxWidth: 360, pointerEvents: 'none' }}>
+      <RealtimeOverlayChip value="20mg" label="Tamoxifen" />
+      <RealtimeOverlayChip value="1x" label="mỗi ngày" tone="#6f7cff" />
+      <RealtimeOverlayChip value="Sau ăn" label="lịch uống" tone="#2f9e62" />
+    </div>
+  )
+}
+
 function MealScanView() {
   const [flash, setFlash] = useState(false)
   const [capturedRecord, setCapturedRecord] = useState(null)
+  const panelRef = useRef(null)
   return (
     <div style={{ ...panelShell, minHeight: 820, background: '#111' }}>
-      <img alt="Salmon salad being scanned" src={capturedRecord?.dataUrl || "https://lh3.googleusercontent.com/aida-public/AB6AXuDz673aowy2PSOhw7UeuUZHoFiJO_SQTymK2RWuGYolAX9ok2Eugcl8j17Ip3FWZh0sLSoEuJbb-6LNoLAx5NKWwQ4X-nfqnnDuhGQvU_Dnqxw7oWZ6IW5kNaCG4vfKLbgFEAB2OXpUPeMzAoiWAqNGIjyo-wbhqxNF7d2BtrQY5HECx53yA3z9L7GdwfOiHxbQB6UdclRS9c4hau37W37ieVXlmK40gZ0dB2H8sW9PobMG23MnaC8tYR0V12bMf46MMJNaRznFkUu7"} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
-      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.05)' }} />
+      <div id="hj-meal-camera-host" style={{ position: 'absolute', inset: 0, zIndex: 2, overflow: 'hidden' }} />
+      <img alt="Salmon salad being scanned" src={capturedRecord?.dataUrl || "https://lh3.googleusercontent.com/aida-public/AB6AXuDz673aowy2PSOhw7UeuUZHoFiJO_SQTymK2RWuGYolAX9ok2Eugcl8j17Ip3FWZh0sLSoEuJbb-6LNoLAx5NKWwQ4X-nfqnnDuhGQvU_Dnqxw7oWZ6IW5kNaCG4vfKLbgFEAB2OXpUPeMzAoiWAqNGIjyo-wbhqxNF7d2BtrQY5HECx53yA3z9L7GdwfOiHxbQB6UdclRS9c4hau37W37ieVXlmK40gZ0dB2H8sW9PobMG23MnaC8tYR0V12bMf46MMJNaRznFkUu7"} style={{ position: 'absolute', inset: 0, zIndex: 1, width: '100%', height: '100%', objectFit: 'cover' }} />
+      <div style={{ position: 'absolute', inset: 0, zIndex: 3, background: 'rgba(0,0,0,0.05)', pointerEvents: 'none' }} />
       <header style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10, padding: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <button style={floatingPillButton()}>×</button>
         <div style={{ ...glass, padding: '8px 24px', borderRadius: 999, color: BLUE, fontSize: 13, fontWeight: 900, letterSpacing: '.08em' }}>AI SCANNING</div>
@@ -856,8 +907,10 @@ function secondaryAction() {
 function MedicationAssistantView() {
   const [flash, setFlash] = useState(false)
   const [capturedRecord, setCapturedRecord] = useState(null)
+  const panelRef = useRef(null)
   return (
     <div style={{ ...panelShell, minHeight: 820, background: '#000' }}>
+      <div id="hj-medication-camera-host" style={{ position: 'absolute', inset: 0, zIndex: 2, overflow: 'hidden' }} />
       <header style={{ position: 'relative', zIndex: 15, height: 64, display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 20px', ...glass }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, color: INK }}><button style={{ border: 'none', background: 'transparent', fontSize: 24, cursor: 'pointer' }}>×</button><h1 style={{ margin: 0, fontSize: 24 }}>Trợ lý thuốc</h1></div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}><button onClick={() => setFlash(!flash)} style={{ border: 'none', background: 'transparent', color: flash ? BLUE : INK, fontSize: 22, cursor: 'pointer' }}>{flash ? '🔦' : '⚡'}</button><img alt="Patient" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAQKeTt8_ixyEzSPUh64YGich4CWVUCDHlAED0v66qzTB8rzONzJD_GBylNvUOCiBFxk9njOsY3qdU1MvmNYz2oc6dcZZ8cLBeX4cw701UMQjBjsm9UoiNevceFpQRaat5AthvRm2ihEbGQnfFnAfjJDQ8Inb1usap4d3mvsSoZRFa6lPEkbJKcg_2oaNIyBiG0QLPsJL8tZzPVU2HZDifgoOO4GcVdYWNJmxiuj0irLtdFBy-gDf8sEBwU2qkiyehS0pde6FcQP8-J" style={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover' }} /></div>
