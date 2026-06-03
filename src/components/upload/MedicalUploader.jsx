@@ -17,7 +17,7 @@ import { notifyUpload } from '../../hooks/useMedicalData.js'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const TYPE_COLORS = {
-  xray: '#00e5ff', ct: '#9c6fff', mri: '#f48fb1', pdf: '#ffb74d', photo: '#00e676',
+  xray: '#00e5ff', ct: '#9c6fff', mri: '#f48fb1', pdf: '#ffb74d', photo: '#00e676', video: '#83f7ff',
 }
 const ACCEPT  = 'image/jpeg,image/png,image/webp,image/gif,application/pdf'
 const MAX_MB  = 20
@@ -27,13 +27,13 @@ const UPLOADER_TEXT = {
   vi: {
     delete: 'Xóa', deleteWithIcon: '🗑 Xóa', confirmDelete: 'Xóa hồ sơ này?',
     fileTooLarge: 'File "{name}" quá lớn (tối đa {max}MB)', unsupportedType: 'Định dạng không hỗ trợ: {type}', readError: 'Lỗi khi đọc file. Vui lòng thử lại.', unknownError: 'Không xác định', errorPrefix: 'Lỗi',
-    title: 'Hồ Sơ Y Tế', subtitle: 'Upload X-Ray · CT · MRI · PDF · Ảnh hồ sơ · Lưu local vĩnh viễn', upload: 'Tải lên', camera: 'Camera', cameraStarting: 'Đang mở camera…', capturePhoto: 'Chụp ảnh', closeCamera: 'Đóng camera', cameraHelp: 'Camera thật đang mở. Canh khung hồ sơ rồi nhấn Chụp ảnh.', library: 'Thư viện',
+    title: 'Hồ Sơ Y Tế', subtitle: 'Upload X-Ray · CT · MRI · PDF · Ảnh hồ sơ · Lưu local vĩnh viễn', upload: 'Tải lên', camera: 'Camera', cameraStarting: 'Đang mở camera…', capturePhoto: 'Chụp ảnh', closeCamera: 'Đóng camera', cameraHelp: 'Camera thật đang mở. Canh khung hồ sơ rồi nhấn Chụp ảnh.', switchCamera: 'Đổi camera', overlay: 'Lớp phủ', aiDocumentScan: 'AI Document Scan', library: 'Thư viện',
     apiKeyPrompt: 'Nhập Anthropic API key để phân tích AI (lưu local, không gửi server):', save: 'Lưu', processing: 'Đang xử lý file…', dragDrop: 'Kéo thả file vào đây', clickSelect: 'hoặc nhấn để chọn file', pdfRecord: 'PDF hồ sơ', photoRecord: 'Ảnh chụp', maxHint: 'Tối đa 20MB · JPG, PNG, WebP, PDF', recentRecords: 'Hồ sơ gần đây', viewAll: 'Xem tất cả {count} hồ sơ →', noRecords: 'Chưa có hồ sơ nào. Upload file đầu tiên!', backToLibrary: 'Quay lại thư viện', useForCompare: 'So sánh bên Compare →', type: 'Loại', size: 'Kích thước', uploaded: 'Upload', notes: 'GHI CHÚ', notesPlaceholder: 'Thêm ghi chú về hồ sơ này…', saveNotes: 'Lưu ghi chú', aiAnalysis: 'PHÂN TÍCH AI', aiAnalyzeHelp: 'Để AI phân tích hồ sơ này', analyzeWithClaude: 'Phân tích với Claude AI', requiresKey: 'Cần Anthropic API key', enterKey: 'Nhập key', claudeAnalyzing: 'Claude đang phân tích…', aiConfidence: 'Độ tin cậy AI', aiDisclaimer: 'Phân tích AI chỉ mang tính hỗ trợ, không thay thế chẩn đoán của bác sĩ.', reAnalyze: 'Phân tích lại',
   },
   en: {
     delete: 'Delete', deleteWithIcon: '🗑 Delete', confirmDelete: 'Delete this record?',
     fileTooLarge: 'File "{name}" is too large (max {max}MB)', unsupportedType: 'Unsupported file type: {type}', readError: 'Could not read the file. Please try again.', unknownError: 'Unknown', errorPrefix: 'Error',
-    title: 'Medical Records', subtitle: 'Upload X-Ray · CT · MRI · PDF · Images · Stored locally', upload: 'Upload', camera: 'Camera', cameraStarting: 'Opening camera…', capturePhoto: 'Capture photo', closeCamera: 'Close camera', cameraHelp: 'Live camera is open. Frame the record, then capture.', library: 'Library',
+    title: 'Medical Records', subtitle: 'Upload X-Ray · CT · MRI · PDF · Images · Stored locally', upload: 'Upload', camera: 'Camera', cameraStarting: 'Opening camera…', capturePhoto: 'Capture photo', closeCamera: 'Close camera', cameraHelp: 'Live camera is open. Frame the record, then capture.', switchCamera: 'Switch camera', overlay: 'Overlay', aiDocumentScan: 'AI Document Scan', library: 'Library',
     apiKeyPrompt: 'Enter Anthropic API key for AI analysis (stored locally):', save: 'Save', processing: 'Processing file…', dragDrop: 'Drag & drop files here', clickSelect: 'or click to select', pdfRecord: 'PDF record', photoRecord: 'Photo', maxHint: 'Max 20MB · JPG, PNG, WebP, PDF', recentRecords: 'Recent records', viewAll: 'View all {count} records →', noRecords: 'No records yet. Upload your first file!', backToLibrary: 'Back to library', useForCompare: 'Use for Compare →', type: 'Type', size: 'Size', uploaded: 'Uploaded', notes: 'NOTES', notesPlaceholder: 'Add notes about this record…', saveNotes: 'Save notes', aiAnalysis: 'AI ANALYSIS', aiAnalyzeHelp: 'Let AI analyze this medical file', analyzeWithClaude: 'Analyze with Claude AI', requiresKey: 'Requires Anthropic API key', enterKey: 'Enter key', claudeAnalyzing: 'Claude analyzing…', aiConfidence: 'AI Confidence', aiDisclaimer: "AI analysis is for support only and does not replace a doctor\'s diagnosis.", reAnalyze: 'Re-analyze',
   },
 }
@@ -41,6 +41,70 @@ const UPLOADER_TEXT = {
 function uploadText(lang, key, vars = {}) {
   const template = UPLOADER_TEXT[lang]?.[key] || UPLOADER_TEXT.vi[key] || key
   return Object.entries(vars).reduce((text, [name, value]) => text.replace(`{${name}}`, value), template)
+}
+
+function scanTimestamp(lang, date = new Date()) {
+  return date.toLocaleString(lang === 'vi' ? 'vi-VN' : 'en-US', {
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+  })
+}
+
+function drawScanOverlay(ctx, width, height, { label, timestamp }) {
+  const pad = Math.max(18, Math.round(width * 0.035))
+  const line = Math.max(3, Math.round(width * 0.006))
+  const corner = Math.min(width, height) * 0.16
+  ctx.save()
+  ctx.strokeStyle = 'rgba(255,255,255,0.96)'
+  ctx.lineWidth = line + 2
+  ctx.shadowColor = 'rgba(0,229,255,0.95)'
+  ctx.shadowBlur = 16
+  ;[
+    [pad, pad, pad + corner, pad, pad, pad + corner],
+    [width - pad, pad, width - pad - corner, pad, width - pad, pad + corner],
+    [pad, height - pad, pad + corner, height - pad, pad, height - pad - corner],
+    [width - pad, height - pad, width - pad - corner, height - pad, width - pad, height - pad - corner],
+  ].forEach(([ax, ay, bx, by, cx, cy]) => {
+    ctx.beginPath()
+    ctx.moveTo(ax, ay)
+    ctx.lineTo(bx, by)
+    ctx.moveTo(ax, ay)
+    ctx.lineTo(cx, cy)
+    ctx.stroke()
+  })
+
+  ctx.shadowBlur = 0
+  ctx.fillStyle = 'rgba(0,12,24,0.70)'
+  const boxW = Math.min(width - pad * 2, Math.max(360, width * 0.48))
+  const boxH = Math.max(74, height * 0.095)
+  const boxX = pad
+  const boxY = height - pad - boxH
+  ctx.fillRect(boxX, boxY, boxW, boxH)
+  ctx.strokeStyle = 'rgba(0,229,255,0.82)'
+  ctx.lineWidth = Math.max(2, line - 1)
+  ctx.strokeRect(boxX, boxY, boxW, boxH)
+  ctx.fillStyle = '#ffffff'
+  ctx.font = `800 ${Math.max(18, width * 0.026)}px sans-serif`
+  ctx.fillText(label, boxX + 16, boxY + 30)
+  ctx.fillStyle = '#83f7ff'
+  ctx.font = `700 ${Math.max(15, width * 0.021)}px monospace`
+  ctx.fillText(timestamp, boxX + 16, boxY + 58)
+  ctx.restore()
+}
+
+function ScanOverlayBadge({ label, timestamp }) {
+  return (
+    <div style={{ position: 'absolute', inset: 12, pointerEvents: 'none', zIndex: 3 }}>
+      <div style={{ position: 'absolute', inset: 0, border: '2px solid rgba(255,255,255,0.92)', borderRadius: 12, boxShadow: '0 0 0 1px rgba(0,229,255,0.75), 0 0 26px rgba(0,229,255,0.34) inset' }} />
+      {[['top', 'left'], ['top', 'right'], ['bottom', 'left'], ['bottom', 'right']].map(([v, h]) => (
+        <div key={`${v}-${h}`} style={{ position: 'absolute', [v]: 0, [h]: 0, width: 48, height: 48, borderColor: '#83f7ff', borderStyle: 'solid', borderWidth: `${v === 'top' ? 4 : 0}px ${h === 'right' ? 4 : 0}px ${v === 'bottom' ? 4 : 0}px ${h === 'left' ? 4 : 0}px`, borderRadius: `${v === 'top' && h === 'left' ? 12 : 0}px ${v === 'top' && h === 'right' ? 12 : 0}px ${v === 'bottom' && h === 'right' ? 12 : 0}px ${v === 'bottom' && h === 'left' ? 12 : 0}px` }} />
+      ))}
+      <div style={{ position: 'absolute', left: 14, bottom: 14, padding: '10px 12px', borderRadius: 10, border: '1px solid rgba(131,247,255,0.72)', background: 'rgba(0,12,24,0.72)', boxShadow: '0 0 18px rgba(0,229,255,0.22)' }}>
+        <div style={{ color: '#fff', fontSize: 12, fontWeight: 900, letterSpacing: '0.08em' }}>{label}</div>
+        <div style={{ color: '#83f7ff', fontSize: 11, marginTop: 4, fontFamily: 'var(--font-mono, monospace)', fontWeight: 800 }}>{timestamp}</div>
+      </div>
+    </div>
+  )
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -64,7 +128,9 @@ function RecordThumb({ record, onClick, onDelete, lang }) {
       borderRadius: 12, overflow: 'hidden', display: 'flex', flexDirection: 'column',
     }}>
       <div onClick={onClick} style={{ cursor: 'pointer', flex: 1 }}>
-        {record.mimeType === 'application/pdf' ? (
+        {record.mimeType?.startsWith('video/') ? (
+          <div style={{ height: 90, background: 'rgba(131,247,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', color, fontSize: 28 }}>🎥</div>
+        ) : record.mimeType === 'application/pdf' ? (
           <div style={{ height: 90, background: 'rgba(255,171,64,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28 }}>📄</div>
         ) : (
           <img src={record.dataUrl} alt={record.filename}
@@ -157,6 +223,9 @@ export default function MedicalUploader({ patientId, onSelectImage }) {
   const [cameraOpen, setCameraOpen]       = useState(false)
   const [cameraStarting, setCameraStarting] = useState(false)
   const [cameraError, setCameraError]     = useState('')
+  const [cameraFacingMode, setCameraFacingMode] = useState('environment')
+  const [scanOverlayOn, setScanOverlayOn] = useState(true)
+  const [scanNow, setScanNow] = useState(new Date())
   const fileInputRef = useRef(null)
   const cameraInputRef = useRef(null)
   const videoRef = useRef(null)
@@ -171,6 +240,13 @@ export default function MedicalUploader({ patientId, onSelectImage }) {
   }, [])
 
   useEffect(() => () => stopCamera(), [stopCamera])
+
+  useEffect(() => {
+    if (!cameraOpen) return undefined
+    setScanNow(new Date())
+    const timer = window.setInterval(() => setScanNow(new Date()), 1000)
+    return () => window.clearInterval(timer)
+  }, [cameraOpen])
 
   useEffect(() => {
     loadRecords()
@@ -252,7 +328,7 @@ export default function MedicalUploader({ patientId, onSelectImage }) {
     }
   }, [user?.email, user?.name, user?.avatar, user?.provider, lang])
 
-  const openCamera = useCallback(async () => {
+  const openCamera = useCallback(async (nextFacingMode = cameraFacingMode) => {
     setCameraError('')
     if (!navigator.mediaDevices?.getUserMedia) {
       setCameraError(lang === 'vi' ? 'Trình duyệt không hỗ trợ mở camera thật. Đang mở camera hệ thống của thiết bị.' : 'This browser does not support live camera capture. Opening the device camera picker instead.')
@@ -262,10 +338,11 @@ export default function MedicalUploader({ patientId, onSelectImage }) {
     setCameraStarting(true)
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1600 }, height: { ideal: 1200 } },
+        video: { facingMode: { ideal: nextFacingMode }, width: { ideal: 1600 }, height: { ideal: 1200 } },
         audio: false,
       })
       streamRef.current = stream
+      setCameraFacingMode(nextFacingMode)
       setCameraOpen(true)
       window.setTimeout(() => {
         if (videoRef.current) videoRef.current.srcObject = stream
@@ -277,7 +354,12 @@ export default function MedicalUploader({ patientId, onSelectImage }) {
     } finally {
       setCameraStarting(false)
     }
-  }, [lang, stopCamera])
+  }, [cameraFacingMode, lang, stopCamera])
+
+  const switchCamera = useCallback(() => {
+    const nextFacingMode = cameraFacingMode === 'user' ? 'environment' : 'user'
+    openCamera(nextFacingMode)
+  }, [cameraFacingMode, openCamera])
 
   const captureCameraPhoto = useCallback(() => {
     const video = videoRef.current
@@ -286,7 +368,18 @@ export default function MedicalUploader({ patientId, onSelectImage }) {
     canvas.width = video.videoWidth || 1280
     canvas.height = video.videoHeight || 720
     const ctx = canvas.getContext('2d')
+    if (cameraFacingMode === 'user') {
+      ctx.translate(canvas.width, 0)
+      ctx.scale(-1, 1)
+    }
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+    if (cameraFacingMode === 'user') ctx.setTransform(1, 0, 0, 1, 0, 0)
+    if (scanOverlayOn) {
+      drawScanOverlay(ctx, canvas.width, canvas.height, {
+        label: uploadText(lang, 'aiDocumentScan'),
+        timestamp: scanTimestamp(lang, scanNow),
+      })
+    }
     canvas.toBlob(blob => {
       if (!blob) {
         setCameraError(lang === 'vi' ? 'Không chụp được ảnh từ camera.' : 'Could not capture a camera photo.')
@@ -296,7 +389,7 @@ export default function MedicalUploader({ patientId, onSelectImage }) {
       stopCamera()
       processFiles([file])
     }, 'image/jpeg', 0.92)
-  }, [lang, processFiles, stopCamera])
+  }, [cameraFacingMode, lang, processFiles, scanNow, scanOverlayOn, stopCamera])
 
   const onDragOver  = e => { e.preventDefault(); setDragging(true) }
   const onDragLeave = () => setDragging(false)
@@ -416,7 +509,7 @@ Trả lời bằng tiếng Việt, ngắn gọn và rõ ràng. Nhắc nhở đâ
   // ─── Render ─────────────────────────────────────────────────────────────
   return (
     <div style={{ minHeight: '100%', background: '#04060f', fontFamily: "'DM Sans', sans-serif", color: '#e8f0f8', padding: 24 }}>
-      <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={onCameraChange} style={{ display: 'none' }} />
+      <input ref={cameraInputRef} type="file" accept="image/*" capture={cameraFacingMode} onChange={onCameraChange} style={{ display: 'none' }} />
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes fade-in { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
@@ -439,7 +532,7 @@ Trả lời bằng tiếng Việt, ngắn gọn và rõ ràng. Nhắc nhở đâ
           <TabBtn active={view === 'upload'}  onClick={() => setView('upload')}>
             + {uploadText(lang, 'upload')}
           </TabBtn>
-          <TabBtn active={cameraOpen} onClick={() => !uploading && openCamera()}>
+          <TabBtn active={cameraOpen} onClick={() => { setView('upload'); if (!uploading) openCamera() }}>
             📷 {cameraStarting ? uploadText(lang, 'cameraStarting') : uploadText(lang, 'camera')}
           </TabBtn>
           <TabBtn active={view === 'library'} onClick={() => setView('library')}>
@@ -489,6 +582,42 @@ Trả lời bằng tiếng Việt, ngắn gọn và rõ ràng. Nhắc nhở đâ
       {/* ── UPLOAD VIEW ─────────────────────────────────────────────────── */}
       {view === 'upload' && (
         <div className="uploader-fade">
+          {cameraError && (
+            <div style={{ marginBottom: 16, padding: '10px 14px', borderRadius: 10, border: '1px solid rgba(255,82,82,0.25)', background: 'rgba(255,82,82,0.08)', color: '#ff5252', fontSize: 12 }}>
+              ⚠️ {cameraError}
+            </div>
+          )}
+
+          {cameraOpen && (
+            <div className="uploader-fade" style={{ marginBottom: 20, border: '1px solid rgba(0,229,255,0.22)', borderRadius: 16, padding: 14, background: 'rgba(0,229,255,0.05)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 10 }}>
+                <div style={{ color: '#00e5ff', fontSize: 12, fontWeight: 700 }}>📷 {uploadText(lang, 'camera')}</div>
+                <button type="button" onClick={stopCamera} style={{ border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.75)', borderRadius: 8, padding: '6px 10px', cursor: 'pointer', fontSize: 12 }}>
+                  {uploadText(lang, 'closeCamera')}
+                </button>
+              </div>
+              <div style={{ position: 'relative', borderRadius: 12, overflow: 'hidden', background: '#000', border: '1px solid rgba(255,255,255,0.08)' }}>
+                <video ref={videoRef} autoPlay playsInline muted style={{ display: 'block', width: '100%', maxHeight: 420, objectFit: 'contain', transform: cameraFacingMode === 'user' ? 'scaleX(-1)' : 'none' }} />
+                {scanOverlayOn && <ScanOverlayBadge label={uploadText(lang, 'aiDocumentScan')} timestamp={scanTimestamp(lang, scanNow)} />}
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginTop: 10 }}>
+                <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11 }}>{uploadText(lang, 'cameraHelp')}</div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                  <button type="button" onClick={switchCamera} style={{ border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.06)', color: '#fff', borderRadius: 10, padding: '10px 12px', cursor: 'pointer', fontWeight: 800, fontSize: 12 }}>
+                    🔄 {uploadText(lang, 'switchCamera')}
+                  </button>
+                  <button type="button" onClick={() => setScanOverlayOn(v => !v)} style={{ border: '1px solid rgba(131,247,255,0.34)', background: scanOverlayOn ? 'rgba(0,229,255,0.16)' : 'rgba(255,255,255,0.06)', color: scanOverlayOn ? '#83f7ff' : '#fff', borderRadius: 10, padding: '10px 12px', cursor: 'pointer', fontWeight: 800, fontSize: 12 }}>
+                    ▣ {uploadText(lang, 'overlay')}
+                  </button>
+                  <button type="button" onClick={captureCameraPhoto} style={{ border: 'none', background: 'linear-gradient(135deg,#00b8cc,#6b3fd4)', color: '#fff', borderRadius: 10, padding: '10px 16px', cursor: 'pointer', fontWeight: 800, fontSize: 13 }}>
+                    📸 {uploadText(lang, 'capturePhoto')}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+
           {/* Drop zone */}
           <div
             onDragOver={onDragOver} onDragLeave={onDragLeave} onDrop={onDrop}
@@ -539,30 +668,6 @@ Trả lời bằng tiếng Việt, ngắn gọn và rõ ràng. Nhắc nhở đâ
             )}
           </div>
           <input ref={fileInputRef} type="file" multiple accept={ACCEPT} onChange={onFileChange} style={{ display: 'none' }} />
-
-          {cameraError && (
-            <div style={{ marginBottom: 16, padding: '10px 14px', borderRadius: 10, border: '1px solid rgba(255,82,82,0.25)', background: 'rgba(255,82,82,0.08)', color: '#ff5252', fontSize: 12 }}>
-              ⚠️ {cameraError}
-            </div>
-          )}
-
-          {cameraOpen && (
-            <div className="uploader-fade" style={{ marginBottom: 20, border: '1px solid rgba(0,229,255,0.22)', borderRadius: 16, padding: 14, background: 'rgba(0,229,255,0.05)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 10 }}>
-                <div style={{ color: '#00e5ff', fontSize: 12, fontWeight: 700 }}>📷 {uploadText(lang, 'camera')}</div>
-                <button type="button" onClick={stopCamera} style={{ border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.75)', borderRadius: 8, padding: '6px 10px', cursor: 'pointer', fontSize: 12 }}>
-                  {uploadText(lang, 'closeCamera')}
-                </button>
-              </div>
-              <video ref={videoRef} autoPlay playsInline muted style={{ width: '100%', maxHeight: 420, objectFit: 'contain', borderRadius: 12, background: '#000', border: '1px solid rgba(255,255,255,0.08)' }} />
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginTop: 10 }}>
-                <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11 }}>{uploadText(lang, 'cameraHelp')}</div>
-                <button type="button" onClick={captureCameraPhoto} style={{ border: 'none', background: 'linear-gradient(135deg,#00b8cc,#6b3fd4)', color: '#fff', borderRadius: 10, padding: '10px 16px', cursor: 'pointer', fontWeight: 800, fontSize: 13 }}>
-                  📸 {uploadText(lang, 'capturePhoto')}
-                </button>
-              </div>
-            </div>
-          )}
 
           {/* Recent records */}
           {records.length > 0 && (
@@ -632,7 +737,9 @@ Trả lời bằng tiếng Việt, ngắn gọn và rõ ràng. Nhắc nhở đâ
                 border: '1px solid rgba(255,255,255,0.08)', marginBottom: 14,
                 minHeight: 280, display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>
-                {selected.mimeType === 'application/pdf' ? (
+                {selected.mimeType?.startsWith('video/') ? (
+                  <video src={selected.dataUrl} controls style={{ maxWidth: '100%', maxHeight: 320, borderRadius: 8 }} />
+                ) : selected.mimeType === 'application/pdf' ? (
                   <div style={{ textAlign: 'center', padding: 32 }}>
                     <div style={{ fontSize: 48, marginBottom: 12 }}>📄</div>
                     <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', marginBottom: 16 }}>{selected.filename}</div>
