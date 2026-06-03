@@ -15,17 +15,20 @@ import ConsensusPanel from './components/ConsensusPanel.jsx'
 import SwarmConsensusPanel from './components/SwarmConsensusPanel.jsx'
 import UploadPanel from './components/upload/UploadPanel.jsx'
 import HealthJourneyPanel from './components/HealthJourneyPanel.jsx'
+import LunchJourneyPanel from './components/LunchJourneyPanel.jsx'
+import DinnerJourneyPanel from './components/DinnerJourneyPanel.jsx'
 import FamilyTreePanel from './components/family/FamilyTreePanel.jsx'
 import FamilyMedicalRelationshipPanel from './components/family/FamilyMedicalRelationshipPanel.jsx'
 import AdminPanel from './components/admin/AdminPanel.jsx'
 import PatientRecordPanel from './components/PatientRecordPanel.jsx'
 import Protein3DPanel from './components/Protein3DPanel.jsx'
+import AIHealthcareVisionPanel from './components/AIHealthcareVisionPanel.jsx'
 import UserProfilePanel from './components/UserProfilePanel.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 import { addNotification } from './lib/notifications.js'
 
 // Swarm panel replaces simulation; keep consensus as classic fallback
-const PANELS = ['healthJourney', 'upload', 'imaging', 'checkin', 'family', 'record', 'familyRelationship', 'matrix3dBody', 'omnidirectional3dBody', 'twin', 'telemedicine', 'statAnalysis', 'swarm', 'consensus', 'protein3d']
+const PANELS = ['healthJourney', 'lunchJourney', 'dinnerJourney', 'upload', 'imaging', 'checkin', 'family', 'record', 'familyRelationship', 'matrix3dBody', 'omnidirectional3dBody', 'twin', 'telemedicine', 'statAnalysis', 'swarm', 'consensus', 'protein3d', 'aiHealthcareVision']
 
 export default function App() {
   const { user, loading } = useAuth()
@@ -50,6 +53,8 @@ export default function App() {
 
   const panelLabels = {
     healthJourney: t('healthJourney'),
+    lunchJourney: t('lunchJourney'),
+    dinnerJourney: t('dinnerJourney'),
     upload: t('uploadRecords'),
     imaging: t('imaging'),
     checkin: t('checkin'),
@@ -64,6 +69,7 @@ export default function App() {
     swarm: t('swarmCouncil'),
     consensus: `${t('consensus')} (Classic)`,
     protein3d: t('protein3d'),
+    aiHealthcareVision: t('aiHealthcareVision'),
     profile: t('profile'),
   }
 
@@ -187,6 +193,8 @@ export default function App() {
             user={user}
           >
             {active === 'healthJourney' && <HealthJourneyPanel onNext={goNext} />}
+            {active === 'lunchJourney' && <LunchJourneyPanel onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
+            {active === 'dinnerJourney' && <DinnerJourneyPanel onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'upload'    && <UploadPanel        patientId="LXK-2024" onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} onSelectImage={handleSelectCompareFile} />}
             {active === 'imaging'   && <ImagingPanel       onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} compareImage={compareImage} uploadedImages={uploadedImages} onSelectCompareImage={setCompareImage} scrollTarget={imagingScrollTarget} onScrollTargetHandled={() => setImagingScrollTarget(null)} />}
             {active === 'checkin'   && <CheckinPanel       onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
@@ -200,7 +208,8 @@ export default function App() {
             {active === 'statAnalysis' && <StatisticalAnalysisPanel onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'swarm'     && <SwarmConsensusPanel onReset={() => setActive('upload')} onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'consensus' && <ConsensusPanel     onReset={() => setActive('upload')} onPrev={goPrev} prevLabel={prevLabel} />}
-            {active === 'protein3d' && <Protein3DPanel     onPrev={goPrev} prevLabel={prevLabel} />}
+            {active === 'protein3d' && <Protein3DPanel     onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
+            {active === 'aiHealthcareVision' && <AIHealthcareVisionPanel onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'profile'   && <UserProfilePanel />}
             {active === 'admin'     && user?.isAdmin && <AdminPanel />}
             {active === 'admin'     && !user?.isAdmin && (
