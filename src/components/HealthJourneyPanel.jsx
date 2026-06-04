@@ -205,7 +205,7 @@ function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUplo
 
   useEffect(() => {
     if (typeof onCameraState === 'function') {
-      onCameraState({ cameraOpen, cameraStarting, facingMode, mode, overlayOn: scanOverlayOn })
+      onCameraState({ cameraOpen, cameraStarting, facingMode, mode, overlayOn: scanOverlayOn, stream: cameraOpen ? streamRef.current : null })
     }
   }, [cameraOpen, cameraStarting, facingMode, mode, onCameraState, scanOverlayOn])
 
@@ -331,7 +331,7 @@ function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUplo
   const backdropCamera = cameraOpen && backgroundCamera
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, position: cameraBackdrop ? 'relative' : 'static', zIndex: 20 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, position: backgroundCamera ? 'relative' : 'static', zIndex: 20 }}>
       <input
         ref={localInputRef}
         type="file"
@@ -367,14 +367,6 @@ function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUplo
             <button onClick={() => setScanOverlayOn(v => !v)} style={{ ...secondaryAction(), background: scanOverlayOn ? 'rgba(0,229,255,0.14)' : '#e3e2e6', color: scanOverlayOn ? BLUE : INK }}>▣ {lang === 'vi' ? 'Lớp phủ' : 'Overlay'}</button>
             <button onClick={stopCamera} style={{ ...secondaryAction(), gridColumn: '1 / -1' }}>{lang === 'vi' ? 'Đóng camera' : 'Close camera'}</button>
           </div>
-        </div>
-      )}
-      {cameraOpen && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 2 }}>
-          <button onClick={captureFromCamera} style={primaryAction()}>{lang === 'vi' ? '📸 Chụp ảnh' : '📸 Take photo'}</button>
-          <button onClick={switchCamera} style={secondaryAction()}>🔄 {lang === 'vi' ? 'Đổi camera' : 'Switch camera'}</button>
-          <button onClick={() => setScanOverlayOn(v => !v)} style={{ ...secondaryAction(), background: scanOverlayOn ? 'rgba(0,229,255,0.14)' : '#e3e2e6', color: scanOverlayOn ? BLUE : INK }}>▣ {lang === 'vi' ? 'Lớp phủ' : 'Overlay'}</button>
-          <button onClick={stopCamera} style={secondaryAction()}>{lang === 'vi' ? 'Đóng camera' : 'Close camera'}</button>
         </div>
       )}
       <button disabled={uploading} onClick={() => localInputRef.current?.click()} style={secondaryAction()}>
@@ -886,6 +878,7 @@ function MealScanView() {
                 uploadLabel="upload bữa ăn"
                 helper="Nút Chụp mở camera vật lý để chụp thật; hoặc upload hình trong máy rồi lưu vào thư mục upload theo từng user. Camera được đẩy ra lớp nền phía sau để AI quan sát realtime."
                 onUploaded={setCapturedRecord}
+                onCameraState={handleCameraState}
                 backgroundCamera
               />
             </div>
@@ -1026,6 +1019,7 @@ function MedicationAssistantView() {
             uploadLabel="upload thuốc"
             helper="Nút Chụp mở camera vật lý để chụp thật; hoặc upload hình trong máy rồi lưu vào thư mục upload theo từng user. Camera được đẩy ra lớp nền phía sau để AI quan sát realtime."
             onUploaded={setCapturedRecord}
+            onCameraState={handleCameraState}
             backgroundCamera
           />
         </div>
