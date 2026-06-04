@@ -15,7 +15,7 @@ export default function NavButtons({ onNext, nextLabel, onPrev, prevLabel, style
           onMouseEnter={e => e.currentTarget.style.opacity = '0.82'}
           onMouseLeave={e => e.currentTarget.style.opacity = '1'}
         >
-          {nextLabel || 'Tiếp theo →'}
+          {nextLabel || '→'}
         </button>
       )}
 

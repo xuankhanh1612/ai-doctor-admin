@@ -127,7 +127,7 @@ export default function UploadPanel({ patientId, onNext, onPrev, prevLabel, onSe
       <div style={{ padding: '16px 28px', borderTop: `1px solid ${c.border}` }}>
         <NavButtons
           onNext={onNext}
-          nextLabel={`${t('next')} →`}
+          nextLabel={`${t('imaging')} →`}
           onPrev={onPrev}
           prevLabel={prevLabel}
         />

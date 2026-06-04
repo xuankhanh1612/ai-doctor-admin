@@ -502,7 +502,7 @@ function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, showHe
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <button disabled={uploading} onClick={() => localInputRef.current?.click()} style={{ ...secondaryAction(), background: 'rgba(255,255,255,0.10)', color: '#fff', opacity: uploading ? 0.72 : 1 }}>{lang === 'vi' ? 'upload hình trong máy' : 'upload local image'}</button>
-            <button onClick={switchCamera} disabled={cameraStarting || uploading} style={{ ...secondaryAction(), background: 'rgba(255,255,255,0.10)', color: '#fff', opacity: cameraStarting || uploading ? 0.72 : 1 }}>🔄 {lang === 'vi' ? `Đổi camera (${facingMode === 'user' ? 'trước' : 'sau'})` : `Switch camera (${facingMode === 'user' ? 'front' : 'rear'})`}</button>
+            <button onClick={switchCamera} disabled={cameraStarting || uploading} style={{ ...secondaryAction(), background: 'rgba(255,255,255,0.10)', color: '#fff', opacity: cameraStarting || uploading ? 0.72 : 1 }}>🔄 {lang === 'vi' ? 'Đổi camera' : 'Switch camera'}</button>
           </div>
           {cameraOpen && <button onClick={stopCamera} disabled={uploading} style={{ ...secondaryAction(), width: '100%', background: 'rgba(255,255,255,0.08)', color: '#fff' }}>{lang === 'vi' ? 'Đóng camera' : 'Close camera'}</button>}
         </>
@@ -1278,7 +1278,7 @@ export default function HealthJourneyPanel({ onNext }) {
       {activeTab === 'medication' && <MedicationAssistantView />}
       {activeTab === 'faceDetector' && <MediaPipeDetectorView type="face" />}
       {activeTab === 'bodyDetector' && <MediaPipeDetectorView type="body" />}
-      {onNext && <NavButtons onNext={onNext} nextLabel={`${t('next')} →`} />}
+      {onNext && <NavButtons onNext={onNext} nextLabel={`${t('lunchJourney')} →`} />}
     </div>
   )
 }
