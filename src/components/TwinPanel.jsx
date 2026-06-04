@@ -119,7 +119,7 @@ export default function TwinPanel({ onNext, onPrev, prevLabel }) {
         <BiometricBar label="Drug response"   value={PATIENT.biomarkers.drugResponse}  color="var(--violet)" />
       </Card>
 
-      <NavButtons onNext={onNext} nextLabel={t('runSimulation')} onPrev={onPrev} prevLabel={prevLabel} />
+      <NavButtons onNext={onNext} nextLabel={`${t('telemedicine')} →`} onPrev={onPrev} prevLabel={prevLabel} />
     </div>
   )
 }

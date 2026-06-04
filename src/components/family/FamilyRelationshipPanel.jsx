@@ -255,7 +255,7 @@ export default function FamilyRelationshipPanel({ patientId = 'LXK-2024', storag
         </Card>
       </section>
 
-      {!embedded && <NavButtons onNext={onNext} nextLabel={`${t('next')} →`} onPrev={onPrev} prevLabel={prevLabel} />}
+      {!embedded && <NavButtons onNext={onNext} nextLabel={`${t('patientRecord')} →`} onPrev={onPrev} prevLabel={prevLabel} />}
     </div>
   )
 }
