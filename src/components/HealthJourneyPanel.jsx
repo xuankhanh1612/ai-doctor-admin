@@ -346,6 +346,29 @@ function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, showHe
     }
   }, [lang, onCapturedPreview])
 
+  const saveFileImmediately = useCallback(async (file) => {
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      setStatus(lang === 'vi' ? 'Vui lòng chụp hoặc chọn một hình ảnh.' : 'Please capture or choose an image.')
+      return
+    }
+
+    setUploading(true)
+    setStatus(lang === 'vi' ? 'Đang upload ảnh vào thư mục upload của user...' : 'Uploading image into the user upload folder...')
+    try {
+      const record = await saveJourneyImageFile(file, { mode, user, lang, label: uploadLabel })
+      setPreview(record.dataUrl)
+      setCapturedFile(null)
+      setStatus(lang === 'vi' ? 'Đã upload ảnh vào hồ sơ của bạn.' : 'Uploaded image to your records.')
+      onUploaded?.(record)
+    } catch (error) {
+      console.error('Health journey instant camera upload failed:', error)
+      setStatus(lang === 'vi' ? 'Không thể upload ảnh. Vui lòng thử lại.' : 'Could not upload the image. Please try again.')
+    } finally {
+      setUploading(false)
+    }
+  }, [lang, mode, onUploaded, uploadLabel, user])
+
   const openPhysicalCamera = useCallback(async (nextFacingMode = facingMode) => {
     setStatus('')
     if (!navigator.mediaDevices?.getUserMedia) {
@@ -413,9 +436,10 @@ function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, showHe
       }
       const file = new File([blob], makeJourneyFilename(`${mode}_camera`), { type: 'image/jpeg' })
       stopCamera()
-      setSelectedImage(file, 'camera')
+      if (backgroundCamera) saveFileImmediately(file)
+      else setSelectedImage(file, 'camera')
     }, 'image/jpeg', 0.92)
-  }, [cameraLabel, facingMode, lang, mode, scanNow, scanOverlayOn, setSelectedImage, stopCamera])
+  }, [backgroundCamera, cameraLabel, facingMode, lang, mode, saveFileImmediately, scanNow, scanOverlayOn, setSelectedImage, stopCamera])
 
   const resetCapture = useCallback(() => {
     stopCamera()
@@ -457,23 +481,37 @@ function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, showHe
         ref={localInputRef}
         type="file"
         accept="image/*"
-        onChange={e => { setSelectedImage(e.target.files?.[0], 'local'); e.target.value = '' }}
+        onChange={e => {
+          const file = e.target.files?.[0]
+          if (backgroundCamera) saveFileImmediately(file)
+          else setSelectedImage(file, 'local')
+          e.target.value = ''
+        }}
         style={{ display: 'none' }}
       />
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-        <button disabled={uploading || cameraStarting} onClick={() => openPhysicalCamera()} style={{ ...secondaryAction(), opacity: uploading || cameraStarting ? 0.72 : 1 }}>
-          {cameraStarting ? (lang === 'vi' ? 'Đang mở...' : 'Opening...') : cameraOpen ? '📷Khởi động lại Camera' : '📷 Mở Camera'}
-        </button>
-        <button disabled={uploading} onClick={uploadCapturedFile} style={{ ...primaryAction(), opacity: uploading ? 0.72 : 1 }}>
-          {uploading ? (lang === 'vi' ? 'Đang upload...' : 'Uploading...') : uploadLabel}
-        </button>
-      </div>
-      {backdropCamera && (
+      {backgroundCamera ? (
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 88px 1fr', gap: 12, alignItems: 'center' }}>
+            <button disabled={uploading || cameraStarting} onClick={() => openPhysicalCamera()} style={{ ...secondaryAction(), background: 'rgba(255,255,255,0.10)', color: '#fff', opacity: uploading || cameraStarting ? 0.72 : 1 }}>
+              {cameraStarting ? (lang === 'vi' ? 'Đang mở...' : 'Opening...') : cameraOpen ? (lang === 'vi' ? 'Khởi động lại' : 'Restart') : (lang === 'vi' ? 'Mở camera' : 'Open camera')}
+            </button>
+            <button onClick={captureFromCamera} disabled={!cameraOpen || uploading} style={{ width: 76, height: 76, borderRadius: '50%', border: '4px solid #fff', background: uploading ? '#ff6b6b' : '#ff3b30', color: '#fff', fontWeight: 900, cursor: uploading ? 'wait' : 'pointer', opacity: !cameraOpen || uploading ? 0.72 : 1 }}>{uploading ? '…' : '📷'}</button>
+            <button onClick={() => setScanOverlayOn(v => !v)} disabled={uploading} style={{ ...primaryAction(), background: scanOverlayOn ? '#6f7cff' : '#384052' }}>{scanOverlayOn ? (lang === 'vi' ? 'Bỏ lớp phủ' : 'Remove overlay') : (lang === 'vi' ? 'Hiện lớp phủ' : 'Show overlay')}</button>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <button disabled={uploading} onClick={() => localInputRef.current?.click()} style={{ ...secondaryAction(), background: 'rgba(255,255,255,0.10)', color: '#fff', opacity: uploading ? 0.72 : 1 }}>{lang === 'vi' ? 'upload hình trong máy' : 'upload local image'}</button>
+            <button onClick={switchCamera} disabled={cameraStarting || uploading} style={{ ...secondaryAction(), background: 'rgba(255,255,255,0.10)', color: '#fff', opacity: cameraStarting || uploading ? 0.72 : 1 }}>🔄 {lang === 'vi' ? `Đổi camera (${facingMode === 'user' ? 'trước' : 'sau'})` : `Switch camera (${facingMode === 'user' ? 'front' : 'rear'})`}</button>
+          </div>
+          {cameraOpen && <button onClick={stopCamera} disabled={uploading} style={{ ...secondaryAction(), width: '100%', background: 'rgba(255,255,255,0.08)', color: '#fff' }}>{lang === 'vi' ? 'Đóng camera' : 'Close camera'}</button>}
+        </>
+      ) : (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-          <button onClick={captureFromCamera} style={primaryAction()}>{lang === 'vi' ? '📸 Chụp ảnh' : '📸 Take photo'}</button>
-          <button onClick={switchCamera} style={secondaryAction()}>🔄 {lang === 'vi' ? 'Đổi camera' : 'Switch camera'}</button>
-          <button onClick={() => setScanOverlayOn(v => !v)} style={{ ...secondaryAction(), background: scanOverlayOn ? 'rgba(0,229,255,0.14)' : '#e3e2e6', color: scanOverlayOn ? BLUE : INK }}>▣ {lang === 'vi' ? 'Lớp phủ' : 'Overlay'}</button>
-          <button onClick={stopCamera} style={secondaryAction()}>{lang === 'vi' ? 'Đóng camera' : 'Close camera'}</button>
+          <button disabled={uploading || cameraStarting} onClick={() => openPhysicalCamera()} style={{ ...secondaryAction(), opacity: uploading || cameraStarting ? 0.72 : 1 }}>
+            {cameraStarting ? (lang === 'vi' ? 'Đang mở...' : 'Opening...') : cameraOpen ? '📷Khởi động lại Camera' : '📷 Mở Camera'}
+          </button>
+          <button disabled={uploading} onClick={uploadCapturedFile} style={{ ...primaryAction(), opacity: uploading ? 0.72 : 1 }}>
+            {uploading ? (lang === 'vi' ? 'Đang upload...' : 'Uploading...') : uploadLabel}
+          </button>
         </div>
       )}
       {inlineCamera && (
@@ -490,16 +528,16 @@ function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, showHe
           </div>
         </div>
       )}
-      <button disabled={uploading} onClick={() => localInputRef.current?.click()} style={secondaryAction()}>
+      {!backgroundCamera && <button disabled={uploading} onClick={() => localInputRef.current?.click()} style={secondaryAction()}>
         {lang === 'vi' ? 'upload hình trong máy' : 'upload local image'}
-      </button>
-      {preview && <button disabled={uploading} onClick={resetCapture} style={{ ...secondaryAction(), background: '#fff0f0', color: '#93000a' }}>{lang === 'vi' ? 'Quét lại' : 'Scan again'}</button>}
+      </button>}
+      {!backgroundCamera && preview && <button disabled={uploading} onClick={resetCapture} style={{ ...secondaryAction(), background: '#fff0f0', color: '#93000a' }}>{lang === 'vi' ? 'Quét lại' : 'Scan again'}</button>}
       {showHelperDetails && (
         <div style={{ fontSize: 11, color: mode === 'meal' ? MUTED : 'rgba(29,29,31,0.62)', lineHeight: 1.45 }}>
           {helper}<br />{lang === 'vi' ? 'Thư mục user:' : 'User folder:'} <b>{virtualFolder}</b>
         </div>
       )}
-      {preview && <img alt={uploadLabel} src={preview} style={{ width: '100%', maxHeight: 120, objectFit: 'cover', borderRadius: 14, border: '1px solid rgba(0,112,235,0.18)' }} />}
+      {!backgroundCamera && preview && <img alt={uploadLabel} src={preview} style={{ width: '100%', maxHeight: 120, objectFit: 'cover', borderRadius: 14, border: '1px solid rgba(0,112,235,0.18)' }} />}
       {status && <div style={{ fontSize: 11, color: status.startsWith('Không') || status.startsWith('Could') ? '#93000a' : BLUE, fontWeight: 800, lineHeight: 1.4 }}>{status}</div>}
       {backdropCamera && portalHost && createPortal(
         <div style={{ position: 'absolute', inset: 0, zIndex: 2, background: '#000', pointerEvents: 'none' }} data-hj-camera-backdrop="true">

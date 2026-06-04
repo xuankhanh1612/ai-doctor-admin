@@ -492,6 +492,7 @@ function MediaPipeDetectorView({ type }) {
   const { user } = useAuth()
   const isBody = type === 'body'
   const detectorMode = isBody ? 'body-detector' : 'face-detector'
+  const localInputRef = useRef(null)
   const videoRef = useRef(null)
   const canvasRef = useRef(null)
   const streamRef = useRef(null)
@@ -562,6 +563,32 @@ function MediaPipeDetectorView({ type }) {
     const nextFacingMode = facingMode === 'user' ? 'environment' : 'user'
     openCamera(nextFacingMode)
   }, [facingMode, openCamera])
+
+
+  const uploadLocalDetectorImage = useCallback(async (file) => {
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      setStatus(lang === 'vi' ? 'Vui lòng chọn một hình ảnh.' : 'Please choose an image.')
+      return
+    }
+
+    setSnapshotSaving(true)
+    setStatus(lang === 'vi' ? 'Đang upload hình trong máy...' : 'Uploading local image...')
+    try {
+      const record = await saveJourneyImageFile(file, {
+        mode: detectorMode,
+        user,
+        lang,
+        label: isBody ? 'Body detector local image' : 'Face detector local image',
+      })
+      setStatus(lang === 'vi' ? `Đã upload hình trong máy: ${record.uploadPath}` : `Uploaded local image: ${record.uploadPath}`)
+    } catch (error) {
+      console.error('Detector local image upload failed:', error)
+      setStatus(lang === 'vi' ? 'Không thể upload hình trong máy.' : 'Could not upload the local image.')
+    } finally {
+      setSnapshotSaving(false)
+    }
+  }, [detectorMode, isBody, lang, user])
 
   const captureDetectorSnapshot = useCallback(() => {
     const video = videoRef.current
@@ -653,12 +680,22 @@ function MediaPipeDetectorView({ type }) {
           </div>
         </div>
         <div style={{ padding: 18, background: 'rgba(14,18,30,0.98)' }}>
+          <input
+            ref={localInputRef}
+            type="file"
+            accept="image/*"
+            onChange={e => { uploadLocalDetectorImage(e.target.files?.[0]); e.target.value = '' }}
+            style={{ display: 'none' }}
+          />
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 88px 1fr', gap: 12, alignItems: 'center' }}>
             <button onClick={() => openCamera()} disabled={cameraStarting || snapshotSaving} style={{ ...secondaryAction(), background: 'rgba(255,255,255,0.10)', color: '#fff', opacity: cameraStarting ? 0.72 : 1 }}>{cameraOpen ? (lang === 'vi' ? 'Khởi động lại' : 'Restart') : cameraStarting ? (lang === 'vi' ? 'Đang mở...' : 'Opening...') : (lang === 'vi' ? 'Mở camera' : 'Open camera')}</button>
             <button onClick={captureDetectorSnapshot} disabled={!cameraOpen || snapshotSaving} style={{ width: 76, height: 76, borderRadius: '50%', border: '4px solid #fff', background: recording ? '#ff6b6b' : '#ff3b30', color: '#fff', fontWeight: 900, cursor: snapshotSaving ? 'wait' : 'pointer', opacity: !cameraOpen || snapshotSaving ? 0.72 : 1 }}>{snapshotSaving ? '…' : '📷'}</button>
             <button onClick={() => setOverlayOn(v => !v)} style={{ ...primaryAction(), background: overlayOn ? '#6f7cff' : '#384052' }}>{lang === 'vi' ? 'Lớp phủ' : 'Overlay'}</button>
           </div>
-          <button onClick={switchCamera} disabled={cameraStarting || snapshotSaving} style={{ ...secondaryAction(), width: '100%', marginTop: 10, background: 'rgba(255,255,255,0.10)', color: '#fff' }}>🔄 {lang === 'vi' ? `Đổi camera (${facingMode === 'user' ? 'trước' : 'sau'})` : `Switch camera (${facingMode === 'user' ? 'front' : 'rear'})`}</button>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10 }}>
+            <button onClick={() => localInputRef.current?.click()} disabled={snapshotSaving} style={{ ...secondaryAction(), background: 'rgba(255,255,255,0.10)', color: '#fff', opacity: snapshotSaving ? 0.72 : 1 }}>{lang === 'vi' ? 'upload hình trong máy' : 'upload local image'}</button>
+            <button onClick={switchCamera} disabled={cameraStarting || snapshotSaving} style={{ ...secondaryAction(), background: 'rgba(255,255,255,0.10)', color: '#fff' }}>🔄 {lang === 'vi' ? `Đổi camera (${facingMode === 'user' ? 'trước' : 'sau'})` : `Switch camera (${facingMode === 'user' ? 'front' : 'rear'})`}</button>
+          </div>
           {cameraOpen && <button onClick={stopCamera} disabled={snapshotSaving} style={{ ...secondaryAction(), width: '100%', marginTop: 8, background: 'rgba(255,255,255,0.08)', color: '#fff' }}>{lang === 'vi' ? 'Đóng camera' : 'Close camera'}</button>}
           <div style={{ marginTop: 12, color: '#83f7ff', fontSize: 12, fontWeight: 800 }}>{status}</div>
         </div>
@@ -786,6 +823,7 @@ function EveningPhoneCameraView({ mode }) {
   const { lang } = useApp()
   const { user } = useAuth()
   const isMeal = mode === 'meal'
+  const localInputRef = useRef(null)
   const videoRef = useRef(null)
   const canvasRef = useRef(null)
   const streamRef = useRef(null)
@@ -924,6 +962,28 @@ function EveningPhoneCameraView({ mode }) {
     }, 'image/jpeg', 0.92)
   }, [cameraOpen, facingMode, isMeal, label, lang, metricA, metricB, mode, user])
 
+
+  const uploadLocalImage = useCallback(async (file) => {
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      setStatus(lang === 'vi' ? 'Vui lòng chọn một hình ảnh.' : 'Please choose an image.')
+      return
+    }
+
+    setSnapshotSaving(true)
+    setStatus(lang === 'vi' ? 'Đang upload hình trong máy...' : 'Uploading local image...')
+    try {
+      const record = await saveJourneyImageFile(file, { mode, user, lang, label })
+      setCapturedRecord(record)
+      setStatus(lang === 'vi' ? `Đã upload hình trong máy: ${record.uploadPath}` : `Uploaded local image: ${record.uploadPath}`)
+    } catch (error) {
+      console.error('Dinner local image upload failed:', error)
+      setStatus(lang === 'vi' ? 'Không thể upload hình trong máy.' : 'Could not upload the local image.')
+    } finally {
+      setSnapshotSaving(false)
+    }
+  }, [label, lang, mode, user])
+
   const toggleOverlay = useCallback(() => {
     setOverlayOn(current => {
       const next = !current
@@ -961,12 +1021,22 @@ function EveningPhoneCameraView({ mode }) {
           </div>}
         </div>
         <div style={{ padding: 18, background: 'rgba(14,18,30,0.98)' }}>
+          <input
+            ref={localInputRef}
+            type="file"
+            accept="image/*"
+            onChange={e => { uploadLocalImage(e.target.files?.[0]); e.target.value = '' }}
+            style={{ display: 'none' }}
+          />
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 88px 1fr', gap: 12, alignItems: 'center' }}>
             <button onClick={() => openCamera()} disabled={cameraStarting || snapshotSaving} style={{ ...secondaryAction(), background: 'rgba(255,255,255,0.10)', color: '#fff', opacity: cameraStarting ? 0.72 : 1 }}>{cameraOpen ? (lang === 'vi' ? 'Khởi động lại' : 'Restart') : cameraStarting ? (lang === 'vi' ? 'Đang mở...' : 'Opening...') : (lang === 'vi' ? 'Mở camera' : 'Open camera')}</button>
             <button onClick={capturePhoneSnapshot} disabled={!cameraOpen || snapshotSaving} style={{ width: 76, height: 76, borderRadius: '50%', border: '4px solid #fff', background: recording ? '#ff6b6b' : '#ff3b30', color: '#fff', fontWeight: 900, cursor: snapshotSaving ? 'wait' : 'pointer', opacity: !cameraOpen || snapshotSaving ? 0.72 : 1 }}>{snapshotSaving ? '…' : '📷'}</button>
             <button onClick={toggleOverlay} style={{ ...primaryAction(), background: overlayOn ? '#6f7cff' : '#384052' }}>{overlayOn ? (lang === 'vi' ? 'Bỏ lớp phủ' : 'Remove overlay') : (lang === 'vi' ? 'Hiện lớp phủ' : 'Show overlay')}</button>
           </div>
-          <button onClick={switchCamera} disabled={cameraStarting || snapshotSaving} style={{ ...secondaryAction(), width: '100%', marginTop: 10, background: 'rgba(255,255,255,0.10)', color: '#fff' }}>🔄 {lang === 'vi' ? `Đổi camera (${facingMode === 'user' ? 'trước' : 'sau'})` : `Switch camera (${facingMode === 'user' ? 'front' : 'rear'})`}</button>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10 }}>
+            <button onClick={() => localInputRef.current?.click()} disabled={snapshotSaving} style={{ ...secondaryAction(), background: 'rgba(255,255,255,0.10)', color: '#fff', opacity: snapshotSaving ? 0.72 : 1 }}>{lang === 'vi' ? 'upload hình trong máy' : 'upload local image'}</button>
+            <button onClick={switchCamera} disabled={cameraStarting || snapshotSaving} style={{ ...secondaryAction(), background: 'rgba(255,255,255,0.10)', color: '#fff' }}>🔄 {lang === 'vi' ? `Đổi camera (${facingMode === 'user' ? 'trước' : 'sau'})` : `Switch camera (${facingMode === 'user' ? 'front' : 'rear'})`}</button>
+          </div>
           {cameraOpen && <button onClick={stopCamera} disabled={snapshotSaving} style={{ ...secondaryAction(), width: '100%', marginTop: 8, background: 'rgba(255,255,255,0.08)', color: '#fff' }}>{lang === 'vi' ? 'Đóng camera' : 'Close camera'}</button>}
           {capturedRecord && <div style={{ marginTop: 12, padding: 12, borderRadius: 14, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.84)', fontSize: 12, lineHeight: 1.5 }}><b>{isMeal ? 'Bữa ăn vừa chụp' : 'Ảnh thuốc vừa chụp'}</b><br />{capturedRecord.uploadPath}</div>}
           <div style={{ marginTop: 12, color: '#83f7ff', fontSize: 12, fontWeight: 800 }}>{status}</div>
