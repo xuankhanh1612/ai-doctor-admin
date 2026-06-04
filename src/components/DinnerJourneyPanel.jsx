@@ -12,12 +12,13 @@ const INK = '#1D1D1F'
 const MUTED = '#86868B'
 const HEALTHY = '#68D391'
 const ATTENTION = '#FF8A7A'
+const GENERAL_DOCTOR_PLAYLIST_URL = 'https://www.youtube.com/playlist?list=PLhPgpmsoyA4GrZ5mGrOPyf1wb1Ke1Zw8p'
 const detectorBackgroundUrl = fileName => new URL(`../pages/${fileName}.png`, import.meta.url).href
 const BODY_DETECTOR_BACKGROUND = detectorBackgroundUrl('thumbs_up')
 const FACE_DETECTOR_BACKGROUND = detectorBackgroundUrl('hand_model')
 
 const journeyTabs = [
-  { id: 'emotion', icon: '🤖', titleVi: 'Bạn đồng hành cảm xúc AI', titleEn: 'AI Emotional Companion', subtitleVi: 'Hope AI · giảm lo âu và xả stress', subtitleEn: 'Hope AI · anxiety relief and decompression' },
+  { id: 'emotion', icon: '🤖', titleVi: 'Bạn đồng hành cảm xúc AI', titleEn: 'AI Emotional Companion', subtitleVi: 'AI Bác sĩ đa khoa · lắng nghe và tâm sự', subtitleEn: 'Hope AI · anxiety relief and decompression' },
   { id: 'meal', icon: '🥗', titleVi: 'Quét bữa ăn AI', titleEn: 'AI Meal Scan', subtitleVi: 'Nhận diện món ăn · dinh dưỡng · phù hợp phác đồ', subtitleEn: 'Food recognition · nutrition · care-plan fit' },
   { id: 'medication', icon: '💊', titleVi: 'Trợ lý thuốc thông minh', titleEn: 'Smart Medication Assistant', subtitleVi: 'Quét thuốc · lịch uống · cảnh báo tương tác', subtitleEn: 'Medication scan · schedule · interaction warnings' },
   { id: 'faceDetector', icon: '🙂', titleVi: 'Face detector', titleEn: 'Face Detector', subtitleVi: 'Camera live · landmark khuôn mặt · sinh trắc', subtitleEn: 'Live camera · face landmarks · biometrics' },
@@ -758,8 +759,8 @@ function EmotionalCompanionView() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             <div style={{ width: 52, height: 52, borderRadius: 18, background: BLUE, display: 'grid', placeItems: 'center', color: '#fff', boxShadow: '0 12px 30px rgba(0,88,188,0.24)', fontSize: 28 }}>🤖</div>
             <div>
-              <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800, color: INK }}>Xin chào, tôi là Hope AI</h1>
-              <p style={{ margin: '4px 0 0', color: MUTED, fontSize: 16 }}>Bạn Đồng Hành Cảm Xúc của bạn</p>
+              <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800, color: INK }}>Xin chào, tôi là AI Bác sĩ đa khoa</h1>
+              <p style={{ margin: '4px 0 0', color: MUTED, fontSize: 16 }}>Bác sĩ đa khoa AI luôn sẵn sàng lắng nghe và tâm sự cùng bạn</p>
             </div>
           </div>
         </section>
@@ -771,10 +772,10 @@ function EmotionalCompanionView() {
             <div style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
               <div>
                 <span style={{ display: 'inline-block', padding: '5px 12px', borderRadius: 999, background: 'rgba(0,88,188,0.10)', color: BLUE, fontSize: 12, fontWeight: 800, marginBottom: 14 }}>Hoạt động đề xuất</span>
-                <h3 style={{ margin: 0, fontSize: 26, color: INK }}>Bài tập thở sâu 3 phút</h3>
-                <p style={{ margin: '10px 0 0', maxWidth: 440, color: MUTED, lineHeight: 1.55 }}>Giúp ổn định nhịp tim và giảm bớt lo âu ngay lập tức.</p>
+                <h3 style={{ margin: 0, fontSize: 26, color: INK }}>Playlist chăm sóc tinh thần cùng AI Bác sĩ đa khoa</h3>
+                <p style={{ margin: '10px 0 0', maxWidth: 440, color: MUTED, lineHeight: 1.55 }}>Mở danh sách video hướng dẫn thư giãn, chăm sóc sức khoẻ tinh thần và phục hồi năng lượng.</p>
               </div>
-              <button onClick={() => setPlaying(!playing)} style={{ width: 58, height: 58, borderRadius: '50%', border: 'none', background: playing ? HEALTHY : BLUE, color: '#fff', fontSize: 28, display: 'grid', placeItems: 'center', cursor: 'pointer', boxShadow: '0 16px 30px rgba(0,88,188,0.26)' }}>{playing ? '⏸' : '▶'}</button>
+              <button onClick={() => { setPlaying(!playing); window.open(GENERAL_DOCTOR_PLAYLIST_URL, '_blank', 'noopener,noreferrer') }} style={{ width: 58, height: 58, borderRadius: '50%', border: 'none', background: playing ? HEALTHY : BLUE, color: '#fff', fontSize: 28, display: 'grid', placeItems: 'center', cursor: 'pointer', boxShadow: '0 16px 30px rgba(0,88,188,0.26)' }}>{playing ? '⏸' : '▶'}</button>
             </div>
             <div style={{ position: 'absolute', right: -40, bottom: -40, width: 170, height: 170, borderRadius: '50%', background: 'rgba(0,88,188,0.06)', animation: 'hj-breathe 8s ease-in-out infinite' }} />
           </div>
@@ -790,7 +791,7 @@ function EmotionalCompanionView() {
           <div style={{ display: 'flex', gap: 12, marginRight: 70 }}>
             <div style={{ width: 34, height: 34, borderRadius: '50%', background: BLUE, color: '#fff', flexShrink: 0, display: 'grid', placeItems: 'center' }}>🤖</div>
             <div style={{ ...glass, padding: '16px 20px', borderRadius: '4px 24px 24px 24px' }}>
-              <p style={{ margin: 0, lineHeight: 1.65 }}>Tôi rất tiếc khi nghe bạn đang trải qua những cảm xúc này. Điều này hoàn toàn bình thường trong hành trình của bạn. 🌿<br/><br/>Hãy thử kỹ thuật thở 4-7-8 ngay lúc này: Hít vào (4s) → Giữ hơi (7s) → Thở ra (8s).<br/><br/>Bạn muốn tôi cùng thực hiện với bạn không?</p>
+              <p style={{ margin: 0, lineHeight: 1.65 }}>Tôi là AI Bác sĩ đa khoa, tôi sẽ lắng nghe và đồng hành cùng bạn. Những cảm xúc mệt mỏi, lo lắng trong quá trình điều trị là điều rất đáng được quan tâm. 🌿<br/><br/>Bạn có thể kể thêm cho tôi điều đang làm bạn nặng lòng nhất hôm nay. Nếu cần thư giãn ngay, hãy thử thở chậm 4-7-8 hoặc mở hoạt động đề xuất phía trên.</p>
               <span style={{ display: 'block', opacity: 0.5, fontSize: 12, marginTop: 8 }}>14:21</span>
             </div>
           </div>
@@ -800,7 +801,7 @@ function EmotionalCompanionView() {
       <div style={{ position: 'absolute', left: 0, right: 0, bottom: 84, zIndex: 16, maxWidth: 760, margin: '0 auto', padding: '0 20px' }}>
         <div style={{ ...glass, display: 'flex', alignItems: 'center', gap: 8, padding: 8, borderRadius: 999 }}>
           <button style={roundButton('#f3f3f5', MUTED)}>＋</button>
-          <input placeholder="Hãy nói với Hope AI..." style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', fontSize: 15, color: INK, padding: '0 10px' }} />
+          <input placeholder="Tâm sự với AI Bác sĩ đa khoa..." style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', fontSize: 15, color: INK, padding: '0 10px' }} />
           <button style={roundButton(BLUE, '#fff')}>↑</button>
         </div>
       </div>
