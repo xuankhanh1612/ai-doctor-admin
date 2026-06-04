@@ -75,7 +75,10 @@ export default function App() {
   }
 
   const navigateToRecord = (member) => { setSelectedMember(member); setActive('record') }
-  const openMainMenu = useCallback(() => setSidebarOpenSignal(signal => signal + 1), [])
+  const openMainMenu = useCallback(() => {
+    setActive('healthJourney')
+    window.setTimeout(() => setSidebarOpenSignal(signal => signal + 1), 0)
+  }, [])
 
   const goNext = () => {
     const idx = PANELS.indexOf(active)

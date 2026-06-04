@@ -574,7 +574,6 @@ function MediaPipeDetectorView({ type }) {
   const [status, setStatus] = useState(lang === 'vi' ? 'Sẵn sàng mở camera vật lý.' : 'Ready to open the physical camera.')
   const [recording, setRecording] = useState(false)
   const [snapshotSaving, setSnapshotSaving] = useState(false)
-  const [speed, setSpeed] = useState(1)
   const uploadFolder = getUploadFolder(user, detectorMode)
 
   const stopCamera = useCallback(() => {
@@ -741,8 +740,7 @@ function MediaPipeDetectorView({ type }) {
             <div style={{ width: 48, height: 6, borderRadius: 999, background: '#e3e2e6' }} />
             <SheetToggleButton open={sheetOpen} onClick={() => setSheetOpen(open => !open)} lang={lang} />
           </div>
-          {sheetOpen ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 230px', gap: 24 }} className="hj-responsive-sheet">
+          <div style={{ display: sheetOpen ? 'grid' : 'none', gridTemplateColumns: 'minmax(0, 1fr) 230px', gap: 24 }} className="hj-responsive-sheet">
             <div>
               <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center', marginBottom: 8 }}>
                 <h1 style={{ margin: 0, fontSize: 26, color: INK }}>{isBody ? 'Body Detector AI' : 'Face Detector AI'}</h1>
@@ -766,9 +764,7 @@ function MediaPipeDetectorView({ type }) {
               />
             </div>
           </div>
-          ) : (
-            <div style={{ color: INK, fontWeight: 900 }}>{isBody ? 'Body Detector AI' : 'Face Detector AI'}</div>
-          )}
+          {!sheetOpen && <div style={{ color: INK, fontWeight: 900 }}>{isBody ? 'Body Detector AI' : 'Face Detector AI'}</div>}
         </div>
       </div>
     </div>
@@ -960,8 +956,7 @@ function MealScanView() {
             <div style={{ width: 48, height: 6, borderRadius: 999, background: '#e3e2e6' }} />
             <SheetToggleButton open={sheetOpen} onClick={() => setSheetOpen(open => !open)} lang={lang} />
           </div>
-          {sheetOpen ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 230px', gap: 24 }} className="hj-responsive-sheet">
+          <div style={{ display: sheetOpen ? 'grid' : 'none', gridTemplateColumns: 'minmax(0, 1fr) 230px', gap: 24 }} className="hj-responsive-sheet">
             <div>
               <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center', marginBottom: 8 }}>
                 <h1 style={{ margin: 0, fontSize: 26, color: INK }}>{capturedRecord ? 'Bữa ăn vừa chụp' : 'Salad Cá Hồi Áp Chảo'}</h1>
@@ -981,9 +976,7 @@ function MealScanView() {
               />
             </div>
           </div>
-          ) : (
-            <div style={{ color: INK, fontWeight: 900 }}>{capturedRecord ? 'Bữa ăn vừa chụp' : 'Salad Cá Hồi Áp Chảo'}</div>
-          )}
+          {!sheetOpen && <div style={{ color: INK, fontWeight: 900 }}>{capturedRecord ? 'Bữa ăn vừa chụp' : 'Salad Cá Hồi Áp Chảo'}</div>}
         </div>
       </div>
     </div>
@@ -1134,8 +1127,7 @@ function MedicationAssistantView() {
             <div style={{ width: 48, height: 6, borderRadius: 999, background: 'rgba(113,119,134,0.22)' }} />
             <SheetToggleButton open={sheetOpen} onClick={() => setSheetOpen(open => !open)} lang={lang} />
           </div>
-          {sheetOpen ? (
-          <>
+          <div style={{ display: sheetOpen ? 'block' : 'none' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}><h2 style={{ margin: 0, color: INK, fontSize: 25 }}>Kết quả Quét</h2><span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', padding: '6px 10px', borderRadius: 999, background: 'rgba(0,112,235,0.10)', color: PRIMARY, fontSize: 12, fontWeight: 900 }}>✨ Trợ lý AI</span></div>
           <div style={{ background: '#fff', border: '1px solid #ededed', borderRadius: 18, padding: 16, display: 'flex', gap: 16, marginBottom: 14 }}>
             <img alt="Tamoxifen Pill" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDjQHXpDlpop937cl2g-AgliTNjDZsZ4GaF0rbg3MKB7vu7r4SSTf5ZE4f4cYvbx6aU-WYjKBGzOnAXiyqGGEbHI1MRQDO9_we6ANnp2f7YpkTUeukmmaehNfcJvm_CwjQyOziUN0cIpQE-tQk_Y6_gUoNIfvc0MHgG7HtGaBkkcUJDa9hj3JCY--_v5y83HUUj0xepnsgxJ2r7DfVC_xBrQqHmFvNGT5I6vkGRg2_N8O27M71Dk42QokOPRn2_frR1KCKEkf2Kyl4o" style={{ width: 66, height: 66, borderRadius: 14, objectFit: 'cover', background: '#eeeef0', flexShrink: 0 }} />
@@ -1152,10 +1144,8 @@ function MedicationAssistantView() {
             onCameraState={handleCameraState}
             backgroundCamera
           />
-          </>
-          ) : (
-            <div style={{ color: INK, fontWeight: 900 }}>Kết quả Quét · Trợ lý thuốc</div>
-          )}
+          </div>
+          {!sheetOpen && <div style={{ color: INK, fontWeight: 900 }}>Kết quả Quét · Trợ lý thuốc</div>}
         </div>
       </div>
     </div>
