@@ -409,7 +409,7 @@ export default function FamilyMedicalRelationshipPanel({ patientId = PATIENT_ID,
         </>
       )}
 
-      <NavButtons onNext={onNext} nextLabel={`${t('next')} →`} onPrev={onPrev} prevLabel={prevLabel} />
+      <NavButtons onNext={onNext} nextLabel={`${t('matrix3dBody')} →`} onPrev={onPrev} prevLabel={prevLabel} />
     </div>
   )
 }

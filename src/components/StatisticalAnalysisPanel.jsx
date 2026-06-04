@@ -897,7 +897,7 @@ export default function StatisticalAnalysisPanel({ onNext, onPrev, prevLabel }) 
         </div>
       </div>
 
-      <NavButtons onNext={onNext} nextLabel={t('continueAiCouncil')} onPrev={onPrev} prevLabel={prevLabel} />
+      <NavButtons onNext={onNext} nextLabel={`${t('swarmCouncil')} →`} onPrev={onPrev} prevLabel={prevLabel} />
     </div>
   )
 }

@@ -324,7 +324,7 @@ export default function ImagingPanel({ onNext, onPrev, prevLabel, compareImage, 
 
       <div ref={endRef} />
 
-      <NavButtons onNext={onNext} nextLabel={t('continueCheckin')} onPrev={onPrev} prevLabel={prevLabel} />
+      <NavButtons onNext={onNext} nextLabel={`${t('checkin')} →`} onPrev={onPrev} prevLabel={prevLabel} />
     </div>
   )
 }

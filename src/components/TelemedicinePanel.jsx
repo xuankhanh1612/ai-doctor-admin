@@ -510,7 +510,7 @@ export default function TelemedicinePanel({ onNext, onPrev, prevLabel }) {
         </div>
       </div>
 
-      <NavButtons onNext={onNext} nextLabel={t('continueAiCouncil')} onPrev={onPrev} prevLabel={prevLabel} />
+      <NavButtons onNext={onNext} nextLabel={`${t('statAnalysis')} →`} onPrev={onPrev} prevLabel={prevLabel} />
     </div>
   )
 }

@@ -881,7 +881,7 @@ export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selected
             {consensusLoading ? '⟳ ' + (lang === 'vi' ? 'Đang chạy…' : 'Running…') : '🤖 ' + t('runConsensus')}
           </button>
           {onNext && (
-            <NavButtons onNext={onNext} nextLabel={`${t('next')} →`} onPrev={onPrev} prevLabel={prevLabel} style={{ marginTop: 0 }} />
+            <NavButtons onNext={onNext} nextLabel={`${t('familyRelationship')} →`} onPrev={onPrev} prevLabel={prevLabel} style={{ marginTop: 0 }} />
           )}
         </div>
       </div>

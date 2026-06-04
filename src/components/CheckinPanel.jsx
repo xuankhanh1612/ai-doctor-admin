@@ -478,7 +478,7 @@ export default function CheckinPanel({ onNext, onPrev, prevLabel }) {
         ))}
       </Card>
 
-      <NavButtons onNext={onNext} nextLabel={t('buildTwin')} onPrev={onPrev} prevLabel={prevLabel} />
+      <NavButtons onNext={onNext} nextLabel={`${t('familyTree')} →`} onPrev={onPrev} prevLabel={prevLabel} />
     </div>
   )
 }
