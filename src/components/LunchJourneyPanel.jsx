@@ -158,7 +158,7 @@ async function saveJourneyImageFile(file, { mode, user, lang, label }) {
   return record
 }
 
-function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUploaded }) {
+function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, showHelperDetails = true, onUploaded }) {
   const { lang } = useApp()
   const { user } = useAuth()
   const localInputRef = useRef(null)
@@ -299,7 +299,7 @@ function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUplo
       const record = await saveJourneyImageFile(capturedFile, { mode, user, lang, label: uploadLabel })
       setPreview(record.dataUrl)
       setCapturedFile(null)
-      setStatus(lang === 'vi' ? `Đã upload: ${record.uploadPath}` : `Uploaded: ${record.uploadPath}`)
+      setStatus(lang === 'vi' ? 'Đã upload ảnh vào hồ sơ của bạn.' : 'Uploaded image to your records.')
       onUploaded?.(record)
     } catch (error) {
       console.error('Health journey camera upload failed:', error)
@@ -344,9 +344,11 @@ function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUplo
         {lang === 'vi' ? 'upload hình trong máy' : 'upload local image'}
       </button>
       {preview && <button disabled={uploading} onClick={resetCapture} style={{ ...secondaryAction(), background: '#fff0f0', color: '#93000a' }}>{lang === 'vi' ? 'Quét lại' : 'Scan again'}</button>}
-      <div style={{ fontSize: 11, color: mode === 'meal' ? MUTED : 'rgba(29,29,31,0.62)', lineHeight: 1.45 }}>
-        {helper}<br />{lang === 'vi' ? 'Thư mục user:' : 'User folder:'} <b>{virtualFolder}</b>
-      </div>
+      {showHelperDetails && (
+        <div style={{ fontSize: 11, color: mode === 'meal' ? MUTED : 'rgba(29,29,31,0.62)', lineHeight: 1.45 }}>
+          {helper}<br />{lang === 'vi' ? 'Thư mục user:' : 'User folder:'} <b>{virtualFolder}</b>
+        </div>
+      )}
       {preview && <img alt={uploadLabel} src={preview} style={{ width: '100%', maxHeight: 120, objectFit: 'cover', borderRadius: 14, border: '1px solid rgba(0,112,235,0.18)' }} />}
       {status && <div style={{ fontSize: 11, color: status.startsWith('Không') || status.startsWith('Could') ? '#93000a' : BLUE, fontWeight: 800, lineHeight: 1.4 }}>{status}</div>}
     </div>
@@ -451,7 +453,6 @@ function MediaPipeDetectorView({ type }) {
   const [status, setStatus] = useState(lang === 'vi' ? 'Sẵn sàng mở camera vật lý.' : 'Ready to open the physical camera.')
   const [recording, setRecording] = useState(false)
   const [snapshotSaving, setSnapshotSaving] = useState(false)
-  const [speed, setSpeed] = useState(1)
   const uploadFolder = getUploadFolder(user, detectorMode)
 
   const stopCamera = useCallback(() => {
@@ -607,14 +608,9 @@ function MediaPipeDetectorView({ type }) {
           </div>
           <button onClick={switchCamera} disabled={cameraStarting || snapshotSaving} style={{ ...secondaryAction(), width: '100%', marginTop: 10, background: 'rgba(255,255,255,0.10)', color: '#fff' }}>🔄 {lang === 'vi' ? `Đổi camera (${facingMode === 'user' ? 'trước' : 'sau'})` : `Switch camera (${facingMode === 'user' ? 'front' : 'rear'})`}</button>
           {cameraOpen && <button onClick={stopCamera} disabled={snapshotSaving} style={{ ...secondaryAction(), width: '100%', marginTop: 8, background: 'rgba(255,255,255,0.08)', color: '#fff' }}>{lang === 'vi' ? 'Đóng camera' : 'Close camera'}</button>}
-          <label style={{ display: 'block', marginTop: 18, color: 'rgba(255,255,255,0.74)', fontSize: 12 }}>{lang === 'vi' ? 'Thanh trượt điều chỉnh tốc độ phân tích' : 'Analysis speed control'}</label>
-          <input value={speed} min="0.5" max="2" step="0.5" type="range" onChange={e => setSpeed(e.target.value)} style={{ width: '100%', accentColor: '#8992ff' }} />
-          <div style={{ display: 'flex', justifyContent: 'space-between', color: 'rgba(255,255,255,0.56)', fontSize: 12 }}><span>0.5x</span><span>{speed}x</span><span>2x</span></div>
           <div style={{ marginTop: 12, color: '#83f7ff', fontSize: 12, fontWeight: 800 }}>{status}</div>
-          <div style={{ marginTop: 8, color: 'rgba(255,255,255,0.52)', fontSize: 11 }}>{lang === 'vi' ? 'Thư mục upload:' : 'Upload folder:'} <b>{uploadFolder}</b></div>
         </div>
       </div>
-      <JourneyMobileNav active="AI Scan" />
     </div>
   )
 }
@@ -652,19 +648,6 @@ function HealthJourneyTabs({ activeTab, setActiveTab, lang }) {
   )
 }
 
-function JourneyMobileNav({ active }) {
-  const items = [
-    ['Health', '♿'], ['Community', '👥'], ['AI Scan', '🧬'], ['Records', '📄'], ['Profile', '👤'],
-  ]
-  return (
-    <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 78, display: 'flex', justifyContent: 'space-around', alignItems: 'center', padding: '8px 14px 18px', ...glass, borderRadius: '22px 22px 0 0', zIndex: 15 }}>
-      {items.map(([label, icon]) => {
-        const selected = active === label
-        return <div key={label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, minWidth: 54, color: selected ? BLUE : '#626266', fontWeight: selected ? 800 : 600, fontSize: 11 }}><span style={{ fontSize: 20 }}>{icon}</span>{label}</div>
-      })}
-    </div>
-  )
-}
 
 function EmotionalCompanionView() {
   const [playing, setPlaying] = useState(false)
@@ -729,7 +712,6 @@ function EmotionalCompanionView() {
           <button style={roundButton(BLUE, '#fff')}>↑</button>
         </div>
       </div>
-      <JourneyMobileNav active="AI Scan" />
     </div>
   )
 }
@@ -777,27 +759,20 @@ function MealScanView() {
                 <h1 style={{ margin: 0, fontSize: 26, color: INK }}>{capturedRecord ? 'Bữa ăn vừa chụp' : 'Salad Cá Hồi Áp Chảo'}</h1>
                 <span style={{ padding: '6px 10px', borderRadius: 999, background: 'rgba(104,211,145,0.16)', color: '#2f9e62', fontSize: 12, fontWeight: 800 }}>✓ Phù hợp phác đồ</span>
               </div>
-              <p style={{ color: MUTED, margin: '0 0 20px', lineHeight: 1.5 }}>{capturedRecord ? `Ảnh đã được lưu vào ${capturedRecord.uploadPath} và sẵn sàng cho AI nhận diện dinh dưỡng.` : 'Phân tích hình ảnh xác nhận thành phần dinh dưỡng tối ưu cho bệnh nhân đang điều trị.'}</p>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 18 }}>
-                <NutritionCard value="320" label="kcal" />
-                <NutritionCard value="26g" label="Đạm" />
-                <NutritionCard value="8g" label="Chất xơ" />
-              </div>
-              <div style={{ background: 'rgba(255,218,214,0.36)', border: '1px solid #ffdad6', padding: 14, borderRadius: 14, display: 'flex', gap: 10, color: '#93000a', fontWeight: 700, lineHeight: 1.45 }}>⚠️ <span>Lưu ý: Sốt chanh leo đi kèm có chứa đường tinh luyện. Nên sử dụng hạn chế.</span></div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <JourneyCameraUploader
                 mode="meal"
                 captureLabel="📷 Chụp"
                 uploadLabel="upload bữa ăn"
-                helper="Nút Chụp mở camera vật lý để chụp thật; hoặc upload hình trong máy rồi lưu vào thư mục upload theo từng user."
+                helper="Camera AI"
+                showHelperDetails={false}
                 onUploaded={setCapturedRecord}
               />
             </div>
           </div>
         </div>
       </div>
-      <JourneyMobileNav active="AI Scan" />
     </div>
   )
 }
@@ -865,12 +840,12 @@ function MedicationAssistantView() {
             mode="medication"
             captureLabel="📷 Chụp"
             uploadLabel="upload thuốc"
-            helper="Nút Chụp mở camera vật lý để chụp thật; hoặc upload hình trong máy rồi lưu vào thư mục upload theo từng user."
+            helper="Camera AI"
+            showHelperDetails={false}
             onUploaded={setCapturedRecord}
           />
         </div>
       </div>
-      <JourneyMobileNav active="AI Scan" />
     </div>
   )
 }

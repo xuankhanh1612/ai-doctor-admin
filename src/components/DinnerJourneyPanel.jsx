@@ -451,7 +451,6 @@ function MediaPipeDetectorView({ type }) {
   const [status, setStatus] = useState(lang === 'vi' ? 'Sẵn sàng mở camera vật lý.' : 'Ready to open the physical camera.')
   const [recording, setRecording] = useState(false)
   const [snapshotSaving, setSnapshotSaving] = useState(false)
-  const [speed, setSpeed] = useState(1)
   const uploadFolder = getUploadFolder(user, detectorMode)
 
   const stopCamera = useCallback(() => {
@@ -607,14 +606,9 @@ function MediaPipeDetectorView({ type }) {
           </div>
           <button onClick={switchCamera} disabled={cameraStarting || snapshotSaving} style={{ ...secondaryAction(), width: '100%', marginTop: 10, background: 'rgba(255,255,255,0.10)', color: '#fff' }}>🔄 {lang === 'vi' ? `Đổi camera (${facingMode === 'user' ? 'trước' : 'sau'})` : `Switch camera (${facingMode === 'user' ? 'front' : 'rear'})`}</button>
           {cameraOpen && <button onClick={stopCamera} disabled={snapshotSaving} style={{ ...secondaryAction(), width: '100%', marginTop: 8, background: 'rgba(255,255,255,0.08)', color: '#fff' }}>{lang === 'vi' ? 'Đóng camera' : 'Close camera'}</button>}
-          <label style={{ display: 'block', marginTop: 18, color: 'rgba(255,255,255,0.74)', fontSize: 12 }}>{lang === 'vi' ? 'Thanh trượt điều chỉnh tốc độ phân tích' : 'Analysis speed control'}</label>
-          <input value={speed} min="0.5" max="2" step="0.5" type="range" onChange={e => setSpeed(e.target.value)} style={{ width: '100%', accentColor: '#8992ff' }} />
-          <div style={{ display: 'flex', justifyContent: 'space-between', color: 'rgba(255,255,255,0.56)', fontSize: 12 }}><span>0.5x</span><span>{speed}x</span><span>2x</span></div>
           <div style={{ marginTop: 12, color: '#83f7ff', fontSize: 12, fontWeight: 800 }}>{status}</div>
-          <div style={{ marginTop: 8, color: 'rgba(255,255,255,0.52)', fontSize: 11 }}>{lang === 'vi' ? 'Thư mục upload:' : 'Upload folder:'} <b>{uploadFolder}</b></div>
         </div>
       </div>
-      <JourneyMobileNav active="AI Scan" />
     </div>
   )
 }
@@ -652,19 +646,6 @@ function HealthJourneyTabs({ activeTab, setActiveTab, lang }) {
   )
 }
 
-function JourneyMobileNav({ active }) {
-  const items = [
-    ['Health', '♿'], ['Community', '👥'], ['AI Scan', '🧬'], ['Records', '📄'], ['Profile', '👤'],
-  ]
-  return (
-    <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 78, display: 'flex', justifyContent: 'space-around', alignItems: 'center', padding: '8px 14px 18px', ...glass, borderRadius: '22px 22px 0 0', zIndex: 15 }}>
-      {items.map(([label, icon]) => {
-        const selected = active === label
-        return <div key={label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, minWidth: 54, color: selected ? BLUE : '#626266', fontWeight: selected ? 800 : 600, fontSize: 11 }}><span style={{ fontSize: 20 }}>{icon}</span>{label}</div>
-      })}
-    </div>
-  )
-}
 
 function EmotionalCompanionView() {
   const [playing, setPlaying] = useState(false)
@@ -729,7 +710,6 @@ function EmotionalCompanionView() {
           <button style={roundButton(BLUE, '#fff')}>↑</button>
         </div>
       </div>
-      <JourneyMobileNav active="AI Scan" />
     </div>
   )
 }
@@ -764,7 +744,6 @@ function EveningPhoneCameraView({ mode }) {
   const [status, setStatus] = useState(lang === 'vi' ? 'Sẵn sàng mở camera vật lý.' : 'Ready to open the physical camera.')
   const [recording, setRecording] = useState(false)
   const [snapshotSaving, setSnapshotSaving] = useState(false)
-  const [speed, setSpeed] = useState(1)
   const [capturedRecord, setCapturedRecord] = useState(null)
   const uploadFolder = getUploadFolder(user, mode)
 
@@ -796,14 +775,16 @@ function EveningPhoneCameraView({ mode }) {
     const ctx = canvas.getContext('2d')
     ctx.clearRect(0, 0, canvas.width, canvas.height)
     if (overlayOnRef.current) {
+      const overlayMetrics = [metricA, metricB]
       drawEveningCameraOverlay(ctx, canvas.width, canvas.height, time, isMeal)
       drawCameraScanOverlay(ctx, canvas.width, canvas.height, {
         label: isMeal ? 'AI Meal Scan' : 'AI Medication Scan',
         timestamp: cameraTimestamp(lang),
       })
+      drawEveningMetricOverlay(ctx, canvas.width, canvas.height, overlayMetrics)
     }
     rafRef.current = requestAnimationFrame(draw)
-  }, [isMeal, lang])
+  }, [isMeal, lang, metricA, metricB])
 
   const openCamera = useCallback(async (nextFacingMode = facingMode) => {
     if (!navigator.mediaDevices?.getUserMedia) {
@@ -854,11 +835,13 @@ function EveningPhoneCameraView({ mode }) {
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
     if (facingMode === 'user') ctx.setTransform(1, 0, 0, 1, 0, 0)
     if (overlayOnRef.current) {
+      const overlayMetrics = [metricA, metricB]
       drawEveningCameraOverlay(ctx, canvas.width, canvas.height, performance.now(), isMeal)
       drawCameraScanOverlay(ctx, canvas.width, canvas.height, {
         label: isMeal ? 'AI Meal Scan' : 'AI Medication Scan',
         timestamp: cameraTimestamp(lang),
       })
+      drawEveningMetricOverlay(ctx, canvas.width, canvas.height, overlayMetrics)
     }
 
     setSnapshotSaving(true)
@@ -883,7 +866,7 @@ function EveningPhoneCameraView({ mode }) {
         window.setTimeout(() => setRecording(false), 520)
       }
     }, 'image/jpeg', 0.92)
-  }, [cameraOpen, facingMode, isMeal, label, lang, mode, user])
+  }, [cameraOpen, facingMode, isMeal, label, lang, metricA, metricB, mode, user])
 
   const toggleOverlay = useCallback(() => {
     setOverlayOn(current => {
@@ -916,28 +899,23 @@ function EveningPhoneCameraView({ mode }) {
         <div style={{ position: 'relative', height: 520, background: isMeal ? 'linear-gradient(135deg,#273f32,#9fb76d)' : 'linear-gradient(135deg,#2f3346,#667085)', overflow: 'hidden' }}>
           {cameraOpen ? <video ref={videoRef} autoPlay playsInline muted style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', transform: facingMode === 'user' ? 'scaleX(-1)' : 'none' }} /> : <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', color: 'rgba(255,255,255,0.72)', textAlign: 'center', padding: 24 }}><div style={{ fontSize: 74 }}>{placeholderIcon}</div><b>{lang === 'vi' ? 'Bấm mở camera để bắt đầu' : 'Open camera to start'}</b></div>}
           <canvas ref={canvasRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }} />
-          <div style={{ position: 'absolute', left: 14, bottom: 18, display: 'grid', gap: 8 }}>
+          {overlayOn && <div style={{ position: 'absolute', left: 14, bottom: 18, display: 'grid', gap: 8 }}>
             <DetectorMetric label={metricA.label} value={metricA.value} />
             <DetectorMetric label={metricB.label} value={metricB.value} />
-          </div>
+          </div>}
         </div>
         <div style={{ padding: 18, background: 'rgba(14,18,30,0.98)' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 88px 1fr', gap: 12, alignItems: 'center' }}>
             <button onClick={() => openCamera()} disabled={cameraStarting || snapshotSaving} style={{ ...secondaryAction(), background: 'rgba(255,255,255,0.10)', color: '#fff', opacity: cameraStarting ? 0.72 : 1 }}>{cameraOpen ? (lang === 'vi' ? 'Khởi động lại' : 'Restart') : cameraStarting ? (lang === 'vi' ? 'Đang mở...' : 'Opening...') : (lang === 'vi' ? 'Mở camera' : 'Open camera')}</button>
             <button onClick={capturePhoneSnapshot} disabled={!cameraOpen || snapshotSaving} style={{ width: 76, height: 76, borderRadius: '50%', border: '4px solid #fff', background: recording ? '#ff6b6b' : '#ff3b30', color: '#fff', fontWeight: 900, cursor: snapshotSaving ? 'wait' : 'pointer', opacity: !cameraOpen || snapshotSaving ? 0.72 : 1 }}>{snapshotSaving ? '…' : '📷'}</button>
-            <button onClick={toggleOverlay} style={{ ...primaryAction(), background: overlayOn ? '#6f7cff' : '#384052' }}>{lang === 'vi' ? 'Lớp phủ' : 'Overlay'}</button>
+            <button onClick={toggleOverlay} style={{ ...primaryAction(), background: overlayOn ? '#6f7cff' : '#384052' }}>{overlayOn ? (lang === 'vi' ? 'Bỏ lớp phủ' : 'Remove overlay') : (lang === 'vi' ? 'Hiện lớp phủ' : 'Show overlay')}</button>
           </div>
           <button onClick={switchCamera} disabled={cameraStarting || snapshotSaving} style={{ ...secondaryAction(), width: '100%', marginTop: 10, background: 'rgba(255,255,255,0.10)', color: '#fff' }}>🔄 {lang === 'vi' ? `Đổi camera (${facingMode === 'user' ? 'trước' : 'sau'})` : `Switch camera (${facingMode === 'user' ? 'front' : 'rear'})`}</button>
           {cameraOpen && <button onClick={stopCamera} disabled={snapshotSaving} style={{ ...secondaryAction(), width: '100%', marginTop: 8, background: 'rgba(255,255,255,0.08)', color: '#fff' }}>{lang === 'vi' ? 'Đóng camera' : 'Close camera'}</button>}
-          <label style={{ display: 'block', marginTop: 18, color: 'rgba(255,255,255,0.74)', fontSize: 12 }}>{lang === 'vi' ? 'Thanh trượt điều chỉnh tốc độ phân tích' : 'Analysis speed control'}</label>
-          <input value={speed} min="0.5" max="2" step="0.5" type="range" onChange={e => setSpeed(e.target.value)} style={{ width: '100%', accentColor: '#8992ff' }} />
-          <div style={{ display: 'flex', justifyContent: 'space-between', color: 'rgba(255,255,255,0.56)', fontSize: 12 }}><span>0.5x</span><span>{speed}x</span><span>2x</span></div>
           {capturedRecord && <div style={{ marginTop: 12, padding: 12, borderRadius: 14, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.84)', fontSize: 12, lineHeight: 1.5 }}><b>{isMeal ? 'Bữa ăn vừa chụp' : 'Ảnh thuốc vừa chụp'}</b><br />{capturedRecord.uploadPath}</div>}
           <div style={{ marginTop: 12, color: '#83f7ff', fontSize: 12, fontWeight: 800 }}>{status}</div>
-          <div style={{ marginTop: 8, color: 'rgba(255,255,255,0.52)', fontSize: 11 }}>{lang === 'vi' ? 'Thư mục upload:' : 'Upload folder:'} <b>{uploadFolder}</b></div>
         </div>
       </div>
-      <JourneyMobileNav active="AI Scan" />
     </div>
   )
 }
@@ -984,6 +962,34 @@ function drawEveningCameraOverlay(ctx, width, height, time, isMeal) {
   ctx.shadowBlur = 8
   ctx.fillText(isMeal ? 'AI MEAL SCAN' : 'AI MED SCAN', x, Math.max(24, y - 16))
   ctx.restore()
+}
+
+function drawEveningMetricOverlay(ctx, width, height, metrics) {
+  const pad = Math.max(18, Math.round(width * 0.035))
+  const boxW = Math.min(width * 0.48, 250)
+  const boxH = 58
+  const gap = 10
+  const startY = height - pad - (boxH * metrics.length) - (gap * (metrics.length - 1))
+
+  metrics.forEach((metric, index) => {
+    const y = startY + index * (boxH + gap)
+    ctx.save()
+    ctx.shadowColor = 'rgba(0,0,0,0.36)'
+    ctx.shadowBlur = 18
+    ctx.fillStyle = 'rgba(14,18,30,0.72)'
+    ctx.fillRect(pad, y, boxW, boxH)
+    ctx.shadowBlur = 0
+    ctx.strokeStyle = 'rgba(255,255,255,0.18)'
+    ctx.lineWidth = 2
+    ctx.strokeRect(pad, y, boxW, boxH)
+    ctx.fillStyle = '#fff'
+    ctx.font = `900 ${Math.max(16, width * 0.022)}px sans-serif`
+    ctx.fillText(metric.value, pad + 12, y + 25)
+    ctx.fillStyle = 'rgba(255,255,255,0.72)'
+    ctx.font = `800 ${Math.max(11, width * 0.015)}px sans-serif`
+    ctx.fillText(metric.label, pad + 12, y + 45)
+    ctx.restore()
+  })
 }
 
 function MealScanView() {
