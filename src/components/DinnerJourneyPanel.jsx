@@ -71,19 +71,20 @@ function drawCameraScanOverlay(ctx, width, height, { label, timestamp }) {
   })
   const boxW = Math.min(width - pad * 2, Math.max(330, width * 0.46))
   const boxH = Math.max(70, height * 0.09)
+  const boxX = width - pad - boxW
   const boxY = height - pad - boxH
   ctx.shadowBlur = 0
   ctx.fillStyle = 'rgba(0,12,24,0.76)'
-  ctx.fillRect(pad, boxY, boxW, boxH)
+  ctx.fillRect(boxX, boxY, boxW, boxH)
   ctx.strokeStyle = 'rgba(131,247,255,0.78)'
   ctx.lineWidth = 2
-  ctx.strokeRect(pad, boxY, boxW, boxH)
+  ctx.strokeRect(boxX, boxY, boxW, boxH)
   ctx.fillStyle = '#fff'
   ctx.font = `900 ${Math.max(16, width * 0.023)}px sans-serif`
-  ctx.fillText(label, pad + 14, boxY + 28)
+  ctx.fillText(label, boxX + 14, boxY + 28)
   ctx.fillStyle = '#83f7ff'
   ctx.font = `800 ${Math.max(14, width * 0.019)}px monospace`
-  ctx.fillText(timestamp, pad + 14, boxY + 54)
+  ctx.fillText(timestamp, boxX + 14, boxY + 54)
   ctx.restore()
 }
 
@@ -91,7 +92,7 @@ function CameraScanOverlayBadge({ label, timestamp }) {
   return (
     <div style={{ position: 'absolute', inset: 10, zIndex: 5, pointerEvents: 'none' }}>
       <div style={{ position: 'absolute', inset: 0, border: '2px solid rgba(255,255,255,0.94)', borderRadius: 12, boxShadow: '0 0 0 1px rgba(0,229,255,0.78), 0 0 24px rgba(0,229,255,0.32) inset' }} />
-      <div style={{ position: 'absolute', left: 12, bottom: 12, padding: '8px 10px', borderRadius: 10, border: '1px solid rgba(131,247,255,0.72)', background: 'rgba(0,12,24,0.76)', boxShadow: '0 0 18px rgba(0,229,255,0.22)' }}>
+      <div style={{ position: 'absolute', right: 12, bottom: 12, padding: '8px 10px', borderRadius: 10, border: '1px solid rgba(131,247,255,0.72)', background: 'rgba(0,12,24,0.76)', boxShadow: '0 0 18px rgba(0,229,255,0.22)' }}>
         <div style={{ color: '#fff', fontSize: 11, fontWeight: 900, letterSpacing: '0.08em' }}>{label}</div>
         <div style={{ color: '#83f7ff', fontSize: 10, marginTop: 4, fontFamily: 'monospace', fontWeight: 800 }}>{timestamp}</div>
       </div>

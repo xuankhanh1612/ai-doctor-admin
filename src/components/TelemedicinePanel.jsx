@@ -194,21 +194,22 @@ function drawLivestreamScanOverlay(ctx, width, height, timestamp, capturedAt = '
   ctx.fillText('AI LIVESTREAM SCAN', pad + 12, pad + 27)
   const boxH = capturedAt ? 90 : 66
   const boxW = Math.min(width - pad * 2, 440)
+  const boxX = width - pad - boxW
   const boxY = height - pad - boxH
   ctx.fillStyle = 'rgba(0,12,24,0.78)'
-  ctx.fillRect(pad, boxY, boxW, boxH)
+  ctx.fillRect(boxX, boxY, boxW, boxH)
   ctx.strokeStyle = 'rgba(131,247,255,0.74)'
-  ctx.strokeRect(pad, boxY, boxW, boxH)
+  ctx.strokeRect(boxX, boxY, boxW, boxH)
   ctx.fillStyle = '#ffffff'
   ctx.font = `900 ${Math.max(15, width * 0.022)}px sans-serif`
-  ctx.fillText('REAL-TIME CAPTURE CLOCK', pad + 14, boxY + 27)
+  ctx.fillText('REAL-TIME CAPTURE CLOCK', boxX + 14, boxY + 27)
   ctx.fillStyle = '#83f7ff'
   ctx.font = `800 ${Math.max(14, width * 0.020)}px monospace`
-  ctx.fillText(timestamp, pad + 14, boxY + 52)
+  ctx.fillText(timestamp, boxX + 14, boxY + 52)
   if (capturedAt) {
     ctx.fillStyle = 'rgba(255,255,255,0.78)'
     ctx.font = `700 ${Math.max(12, width * 0.017)}px sans-serif`
-    ctx.fillText(`Last capture · ${capturedAt}`, pad + 14, boxY + 76)
+    ctx.fillText(`Last capture · ${capturedAt}`, boxX + 14, boxY + 76)
   }
   ctx.restore()
 }
@@ -223,7 +224,7 @@ function LivestreamScanOverlay({ timestamp, capturedAt }) {
       <div style={{ position: 'absolute', left: 16, top: 16, padding: '8px 10px', borderRadius: 999, background: 'rgba(0,12,24,0.72)', border: '1px solid rgba(131,247,255,0.64)', color: '#83f7ff', fontSize: 11, fontFamily: 'var(--font-mono)', fontWeight: 900, letterSpacing: '0.08em' }}>
         AI LIVESTREAM SCAN
       </div>
-      <div style={{ position: 'absolute', left: 16, bottom: 16, padding: '10px 12px', borderRadius: 12, background: 'rgba(0,12,24,0.78)', border: '1px solid rgba(131,247,255,0.68)', boxShadow: '0 0 18px rgba(0,229,255,0.24)' }}>
+      <div style={{ position: 'absolute', right: 16, bottom: 16, padding: '10px 12px', borderRadius: 12, background: 'rgba(0,12,24,0.78)', border: '1px solid rgba(131,247,255,0.68)', boxShadow: '0 0 18px rgba(0,229,255,0.24)' }}>
         <div style={{ color: '#fff', fontSize: 12, fontWeight: 900 }}>REAL-TIME CAPTURE CLOCK</div>
         <div style={{ color: '#83f7ff', fontFamily: 'var(--font-mono)', fontSize: 12, marginTop: 4, fontWeight: 800 }}>{timestamp}</div>
         {capturedAt && <div style={{ color: 'rgba(255,255,255,0.74)', fontSize: 10, marginTop: 6 }}>Last capture · {capturedAt}</div>}

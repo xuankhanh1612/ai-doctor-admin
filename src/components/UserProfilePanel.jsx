@@ -59,18 +59,19 @@ function drawProfileCameraOverlay(ctx, width, height, label, timestamp) {
   const boxH = Math.max(56, height * 0.12)
   const boxY = height - pad - boxH
   const boxW = Math.min(width - pad * 2, Math.max(260, width * 0.56))
+  const boxX = width - pad - boxW
   ctx.shadowBlur = 0
   ctx.fillStyle = 'rgba(0,12,24,0.76)'
-  ctx.fillRect(pad, boxY, boxW, boxH)
+  ctx.fillRect(boxX, boxY, boxW, boxH)
   ctx.strokeStyle = 'rgba(131,247,255,0.78)'
   ctx.lineWidth = 2
-  ctx.strokeRect(pad, boxY, boxW, boxH)
+  ctx.strokeRect(boxX, boxY, boxW, boxH)
   ctx.fillStyle = '#fff'
   ctx.font = `900 ${Math.max(14, width * 0.032)}px sans-serif`
-  ctx.fillText(label, pad + 12, boxY + 24)
+  ctx.fillText(label, boxX + 12, boxY + 24)
   ctx.fillStyle = '#83f7ff'
   ctx.font = `800 ${Math.max(12, width * 0.026)}px monospace`
-  ctx.fillText(timestamp, pad + 12, boxY + 46)
+  ctx.fillText(timestamp, boxX + 12, boxY + 46)
   ctx.restore()
 }
 
@@ -78,7 +79,7 @@ function ProfileCameraOverlayBadge({ label, timestamp }) {
   return (
     <div style={{ position: 'absolute', inset: 8, zIndex: 3, pointerEvents: 'none' }}>
       <div style={{ position: 'absolute', inset: 0, border: '2px solid rgba(255,255,255,0.94)', borderRadius: 12, boxShadow: '0 0 0 1px rgba(0,229,255,0.78), 0 0 22px rgba(0,229,255,0.28) inset' }} />
-      <div style={{ position: 'absolute', left: 10, bottom: 10, padding: '7px 9px', borderRadius: 9, background: 'rgba(0,12,24,0.76)', border: '1px solid rgba(131,247,255,0.72)' }}>
+      <div style={{ position: 'absolute', right: 10, bottom: 10, padding: '7px 9px', borderRadius: 9, background: 'rgba(0,12,24,0.76)', border: '1px solid rgba(131,247,255,0.72)' }}>
         <div style={{ color: '#fff', fontSize: 10, fontWeight: 900 }}>{label}</div>
         <div style={{ color: '#83f7ff', fontSize: 9, marginTop: 3, fontFamily: 'monospace', fontWeight: 800 }}>{timestamp}</div>
       </div>
