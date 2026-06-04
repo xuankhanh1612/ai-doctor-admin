@@ -813,7 +813,7 @@ export default function FamilyTreePanel({ patientId, storageOwnerId = 'guest', o
       </div>
 
       {/* ── Navigation ─────────────────────────────────────────────────────── */}
-      <NavButtons onNext={onNext} nextLabel={`${t('next')} →`} onPrev={onPrev} prevLabel={prevLabel} />
+      <NavButtons onNext={onNext} nextLabel={`${t('patientRecord')} →`} onPrev={onPrev} prevLabel={prevLabel} />
 
       {/* ── Add / Edit Modal ─────────────────────────────────────────────────── */}
       {modal && (

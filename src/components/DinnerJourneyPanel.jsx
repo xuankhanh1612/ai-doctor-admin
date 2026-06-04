@@ -12,6 +12,9 @@ const INK = '#1D1D1F'
 const MUTED = '#86868B'
 const HEALTHY = '#68D391'
 const ATTENTION = '#FF8A7A'
+const detectorBackgroundUrl = fileName => new URL(`../pages/${fileName}.png`, import.meta.url).href
+const BODY_DETECTOR_BACKGROUND = detectorBackgroundUrl('thumbs_up')
+const FACE_DETECTOR_BACKGROUND = detectorBackgroundUrl('hand_model')
 
 const journeyTabs = [
   { id: 'emotion', icon: '🤖', titleVi: 'Bạn đồng hành cảm xúc AI', titleEn: 'AI Emotional Companion', subtitleVi: 'Hope AI · giảm lo âu và xả stress', subtitleEn: 'Hope AI · anxiety relief and decompression' },
@@ -88,6 +91,53 @@ function drawCameraScanOverlay(ctx, width, height, { label, timestamp }) {
   ctx.restore()
 }
 
+function drawRealtimeTimestampOverlay(ctx, width, height, timestamp) {
+  const pad = Math.max(16, Math.round(width * 0.034))
+  const boxW = Math.min(width - pad * 2, Math.max(280, width * 0.34))
+  const boxH = Math.max(44, height * 0.058)
+  const boxX = width - pad - boxW
+  const boxY = height - pad - boxH
+  ctx.save()
+  ctx.shadowColor = 'rgba(0,0,0,0.34)'
+  ctx.shadowBlur = 16
+  ctx.fillStyle = 'rgba(0,12,24,0.68)'
+  ctx.fillRect(boxX, boxY, boxW, boxH)
+  ctx.shadowBlur = 0
+  ctx.strokeStyle = 'rgba(131,247,255,0.56)'
+  ctx.lineWidth = 2
+  ctx.strokeRect(boxX, boxY, boxW, boxH)
+  ctx.fillStyle = '#83f7ff'
+  ctx.font = `800 ${Math.max(14, width * 0.019)}px monospace`
+  ctx.fillText(timestamp, boxX + 14, boxY + Math.round(boxH / 2) + 6)
+  ctx.restore()
+}
+
+function drawDetectorSnapshotMetrics(ctx, width, height, isBody) {
+  const pad = Math.max(16, Math.round(width * 0.034))
+  const text = isBody ? 'Pose Skeleton · 33 điểm' : 'Face Mesh · 478 điểm'
+  const text2 = isBody ? 'Góc khớp gối · 125°' : 'Độ cân xứng · 96%'
+  const boxW = Math.min(width - pad * 2, Math.max(280, width * 0.36))
+  const boxH = 92
+  const boxX = pad
+  const boxY = Math.max(pad + 18, Math.round(height * 0.12))
+  ctx.save()
+  ctx.shadowColor = 'rgba(0,0,0,0.30)'
+  ctx.shadowBlur = 18
+  ctx.fillStyle = 'rgba(255,255,255,0.86)'
+  ctx.fillRect(boxX, boxY, boxW, boxH)
+  ctx.shadowBlur = 0
+  ctx.strokeStyle = 'rgba(0,112,235,0.34)'
+  ctx.lineWidth = 2
+  ctx.strokeRect(boxX, boxY, boxW, boxH)
+  ctx.fillStyle = '#0058bc'
+  ctx.font = `900 ${Math.max(16, width * 0.021)}px sans-serif`
+  ctx.fillText(text, boxX + 14, boxY + 34)
+  ctx.fillStyle = 'rgba(29,29,31,0.72)'
+  ctx.font = `800 ${Math.max(14, width * 0.018)}px sans-serif`
+  ctx.fillText(text2, boxX + 14, boxY + 66)
+  ctx.restore()
+}
+
 function CameraScanOverlayBadge({ label, timestamp }) {
   return (
     <div style={{ position: 'absolute', inset: 10, zIndex: 5, pointerEvents: 'none' }}>
@@ -159,7 +209,7 @@ async function saveJourneyImageFile(file, { mode, user, lang, label }) {
   return record
 }
 
-function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUploaded }) {
+function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUploaded, onCapturedPreview }) {
   const { lang } = useApp()
   const { user } = useAuth()
   const localInputRef = useRef(null)
@@ -205,14 +255,17 @@ function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUplo
       const dataUrl = await fileToDataUrl(file)
       setCapturedFile(file)
       setPreview(dataUrl)
-      setStatus(source === 'camera'
-        ? (lang === 'vi' ? 'Đã chụp ảnh thật từ camera. Bấm upload để lưu vào hệ thống.' : 'Real camera photo captured. Press upload to save it to the system.')
-        : (lang === 'vi' ? 'Đã chọn hình trong máy. Bấm upload để lưu vào hệ thống.' : 'Local image selected. Press upload to save it to the system.'))
+      if (source === 'camera') {
+        setStatus('')
+        onCapturedPreview?.({ dataUrl, uploadPath: '', pendingUpload: true })
+      } else {
+        setStatus(lang === 'vi' ? 'Đã chọn hình trong máy. Bấm upload để lưu vào hệ thống.' : 'Local image selected. Press upload to save it to the system.')
+      }
     } catch (error) {
       console.error('Health journey image preview failed:', error)
       setStatus(lang === 'vi' ? 'Không thể đọc ảnh. Vui lòng thử lại.' : 'Could not read the image. Please try again.')
     }
-  }, [lang])
+  }, [lang, onCapturedPreview])
 
   const openPhysicalCamera = useCallback(async (nextFacingMode = facingMode) => {
     setStatus('')
@@ -267,6 +320,8 @@ function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUplo
         label: mode === 'medication' ? 'AI Medication Scan' : 'AI Meal Scan',
         timestamp: cameraTimestamp(lang, scanNow),
       })
+    } else {
+      drawRealtimeTimestampOverlay(ctx, canvas.width, canvas.height, cameraTimestamp(lang, scanNow))
     }
     canvas.toBlob(blob => {
       if (!blob) {
@@ -440,6 +495,7 @@ function MediaPipeDetectorView({ type }) {
   const { user } = useAuth()
   const isBody = type === 'body'
   const detectorMode = isBody ? 'body-detector' : 'face-detector'
+  const localInputRef = useRef(null)
   const videoRef = useRef(null)
   const canvasRef = useRef(null)
   const streamRef = useRef(null)
@@ -511,6 +567,32 @@ function MediaPipeDetectorView({ type }) {
     openCamera(nextFacingMode)
   }, [facingMode, openCamera])
 
+
+  const uploadLocalDetectorImage = useCallback(async (file) => {
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      setStatus(lang === 'vi' ? 'Vui lòng chọn một hình ảnh.' : 'Please choose an image.')
+      return
+    }
+
+    setSnapshotSaving(true)
+    setStatus(lang === 'vi' ? 'Đang upload hình trong máy...' : 'Uploading local image...')
+    try {
+      const record = await saveJourneyImageFile(file, {
+        mode: detectorMode,
+        user,
+        lang,
+        label: isBody ? 'Body detector local image' : 'Face detector local image',
+      })
+      setStatus(lang === 'vi' ? `Đã upload hình trong máy: ${record.uploadPath}` : `Uploaded local image: ${record.uploadPath}`)
+    } catch (error) {
+      console.error('Detector local image upload failed:', error)
+      setStatus(lang === 'vi' ? 'Không thể upload hình trong máy.' : 'Could not upload the local image.')
+    } finally {
+      setSnapshotSaving(false)
+    }
+  }, [detectorMode, isBody, lang, user])
+
   const captureDetectorSnapshot = useCallback(() => {
     const video = videoRef.current
     if (!cameraOpen || !video) {
@@ -531,6 +613,13 @@ function MediaPipeDetectorView({ type }) {
     if (overlayOn) {
       if (isBody) drawBodyOverlay(ctx, canvas.width, canvas.height, performance.now())
       else drawFaceOverlay(ctx, canvas.width, canvas.height, performance.now())
+      drawDetectorSnapshotMetrics(ctx, canvas.width, canvas.height, isBody)
+      drawCameraScanOverlay(ctx, canvas.width, canvas.height, {
+        label: isBody ? 'AI Body Detector Scan' : 'AI Face Detector Scan',
+        timestamp: cameraTimestamp(lang, scanNow),
+      })
+    } else {
+      drawRealtimeTimestampOverlay(ctx, canvas.width, canvas.height, cameraTimestamp(lang, scanNow))
     }
 
     setSnapshotSaving(true)
@@ -544,12 +633,6 @@ function MediaPipeDetectorView({ type }) {
       }
       try {
         const file = new File([blob], makeJourneyFilename(`${detectorMode}_camera`), { type: 'image/jpeg' })
-        if (overlayOn) {
-          drawCameraScanOverlay(ctx, canvas.width, canvas.height, {
-            label: isBody ? 'AI Body Detector Scan' : 'AI Face Detector Scan',
-            timestamp: cameraTimestamp(lang, scanNow),
-          })
-        }
         const record = await saveJourneyImageFile(file, {
           mode: detectorMode,
           user,
@@ -591,7 +674,7 @@ function MediaPipeDetectorView({ type }) {
           <span style={{ fontSize: 24 }}>‹</span><b>{isBody ? 'AI Motion Forecast Optimization' : 'AI Face Detector'}</b><span style={{ fontSize: 22 }}>⚙</span>
         </div>
         <div style={{ position: 'relative', height: 520, background: isBody ? 'linear-gradient(135deg,#323744,#879098)' : 'linear-gradient(135deg,#20293b,#64748b)', overflow: 'hidden' }}>
-          {cameraOpen ? <video ref={videoRef} autoPlay playsInline muted style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', transform: facingMode === 'user' ? 'scaleX(-1)' : 'none' }} /> : <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', color: 'rgba(255,255,255,0.72)', textAlign: 'center', padding: 24 }}><div style={{ fontSize: 74 }}>{isBody ? '🏃' : '🙂'}</div><b>{lang === 'vi' ? 'Bấm mở camera để bắt đầu' : 'Open camera to start'}</b></div>}
+          {cameraOpen ? <video ref={videoRef} autoPlay playsInline muted style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', transform: facingMode === 'user' ? 'scaleX(-1)' : 'none' }} /> : <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', color: 'rgba(255,255,255,0.92)', textAlign: 'center', padding: 24, backgroundImage: `linear-gradient(rgba(0,0,0,0.16), rgba(0,0,0,0.42)), url(${isBody ? BODY_DETECTOR_BACKGROUND : FACE_DETECTOR_BACKGROUND})`, backgroundSize: 'cover', backgroundPosition: 'center' }}><b style={{ padding: '10px 14px', borderRadius: 999, background: 'rgba(0,12,24,0.58)', backdropFilter: 'blur(12px)' }}>{lang === 'vi' ? 'Bấm mở camera để bắt đầu' : 'Open camera to start'}</b></div>}
           <canvas ref={canvasRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }} />
           {cameraOpen && overlayOn && <CameraScanOverlayBadge label={isBody ? 'AI Body Detector Scan' : 'AI Face Detector Scan'} timestamp={cameraTimestamp(lang, scanNow)} />}
           <div style={{ position: 'absolute', left: 14, bottom: 18, display: 'grid', gap: 8 }}>
@@ -600,12 +683,22 @@ function MediaPipeDetectorView({ type }) {
           </div>
         </div>
         <div style={{ padding: 18, background: 'rgba(14,18,30,0.98)' }}>
+          <input
+            ref={localInputRef}
+            type="file"
+            accept="image/*"
+            onChange={e => { uploadLocalDetectorImage(e.target.files?.[0]); e.target.value = '' }}
+            style={{ display: 'none' }}
+          />
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 88px 1fr', gap: 12, alignItems: 'center' }}>
             <button onClick={() => openCamera()} disabled={cameraStarting || snapshotSaving} style={{ ...secondaryAction(), background: 'rgba(255,255,255,0.10)', color: '#fff', opacity: cameraStarting ? 0.72 : 1 }}>{cameraOpen ? (lang === 'vi' ? 'Khởi động lại' : 'Restart') : cameraStarting ? (lang === 'vi' ? 'Đang mở...' : 'Opening...') : (lang === 'vi' ? 'Mở camera' : 'Open camera')}</button>
             <button onClick={captureDetectorSnapshot} disabled={!cameraOpen || snapshotSaving} style={{ width: 76, height: 76, borderRadius: '50%', border: '4px solid #fff', background: recording ? '#ff6b6b' : '#ff3b30', color: '#fff', fontWeight: 900, cursor: snapshotSaving ? 'wait' : 'pointer', opacity: !cameraOpen || snapshotSaving ? 0.72 : 1 }}>{snapshotSaving ? '…' : '📷'}</button>
             <button onClick={() => setOverlayOn(v => !v)} style={{ ...primaryAction(), background: overlayOn ? '#6f7cff' : '#384052' }}>{lang === 'vi' ? 'Lớp phủ' : 'Overlay'}</button>
           </div>
-          <button onClick={switchCamera} disabled={cameraStarting || snapshotSaving} style={{ ...secondaryAction(), width: '100%', marginTop: 10, background: 'rgba(255,255,255,0.10)', color: '#fff' }}>🔄 {lang === 'vi' ? `Đổi camera (${facingMode === 'user' ? 'trước' : 'sau'})` : `Switch camera (${facingMode === 'user' ? 'front' : 'rear'})`}</button>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10 }}>
+            <button onClick={() => localInputRef.current?.click()} disabled={snapshotSaving} style={{ ...secondaryAction(), background: 'rgba(255,255,255,0.10)', color: '#fff', opacity: snapshotSaving ? 0.72 : 1 }}>{lang === 'vi' ? 'upload hình trong máy' : 'upload local image'}</button>
+            <button onClick={switchCamera} disabled={cameraStarting || snapshotSaving} style={{ ...secondaryAction(), background: 'rgba(255,255,255,0.10)', color: '#fff' }}>🔄 {lang === 'vi' ? 'Đổi camera' : 'Switch camera'}</button>
+          </div>
           {cameraOpen && <button onClick={stopCamera} disabled={snapshotSaving} style={{ ...secondaryAction(), width: '100%', marginTop: 8, background: 'rgba(255,255,255,0.08)', color: '#fff' }}>{lang === 'vi' ? 'Đóng camera' : 'Close camera'}</button>}
           <div style={{ marginTop: 12, color: '#83f7ff', fontSize: 12, fontWeight: 800 }}>{status}</div>
         </div>
@@ -733,6 +826,7 @@ function EveningPhoneCameraView({ mode }) {
   const { lang } = useApp()
   const { user } = useAuth()
   const isMeal = mode === 'meal'
+  const localInputRef = useRef(null)
   const videoRef = useRef(null)
   const canvasRef = useRef(null)
   const streamRef = useRef(null)
@@ -843,6 +937,8 @@ function EveningPhoneCameraView({ mode }) {
         timestamp: cameraTimestamp(lang),
       })
       drawEveningMetricOverlay(ctx, canvas.width, canvas.height, overlayMetrics)
+    } else {
+      drawRealtimeTimestampOverlay(ctx, canvas.width, canvas.height, cameraTimestamp(lang))
     }
 
     setSnapshotSaving(true)
@@ -868,6 +964,28 @@ function EveningPhoneCameraView({ mode }) {
       }
     }, 'image/jpeg', 0.92)
   }, [cameraOpen, facingMode, isMeal, label, lang, metricA, metricB, mode, user])
+
+
+  const uploadLocalImage = useCallback(async (file) => {
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      setStatus(lang === 'vi' ? 'Vui lòng chọn một hình ảnh.' : 'Please choose an image.')
+      return
+    }
+
+    setSnapshotSaving(true)
+    setStatus(lang === 'vi' ? 'Đang upload hình trong máy...' : 'Uploading local image...')
+    try {
+      const record = await saveJourneyImageFile(file, { mode, user, lang, label })
+      setCapturedRecord(record)
+      setStatus(lang === 'vi' ? `Đã upload hình trong máy: ${record.uploadPath}` : `Uploaded local image: ${record.uploadPath}`)
+    } catch (error) {
+      console.error('Dinner local image upload failed:', error)
+      setStatus(lang === 'vi' ? 'Không thể upload hình trong máy.' : 'Could not upload the local image.')
+    } finally {
+      setSnapshotSaving(false)
+    }
+  }, [label, lang, mode, user])
 
   const toggleOverlay = useCallback(() => {
     setOverlayOn(current => {
@@ -906,12 +1024,22 @@ function EveningPhoneCameraView({ mode }) {
           </div>}
         </div>
         <div style={{ padding: 18, background: 'rgba(14,18,30,0.98)' }}>
+          <input
+            ref={localInputRef}
+            type="file"
+            accept="image/*"
+            onChange={e => { uploadLocalImage(e.target.files?.[0]); e.target.value = '' }}
+            style={{ display: 'none' }}
+          />
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 88px 1fr', gap: 12, alignItems: 'center' }}>
             <button onClick={() => openCamera()} disabled={cameraStarting || snapshotSaving} style={{ ...secondaryAction(), background: 'rgba(255,255,255,0.10)', color: '#fff', opacity: cameraStarting ? 0.72 : 1 }}>{cameraOpen ? (lang === 'vi' ? 'Khởi động lại' : 'Restart') : cameraStarting ? (lang === 'vi' ? 'Đang mở...' : 'Opening...') : (lang === 'vi' ? 'Mở camera' : 'Open camera')}</button>
             <button onClick={capturePhoneSnapshot} disabled={!cameraOpen || snapshotSaving} style={{ width: 76, height: 76, borderRadius: '50%', border: '4px solid #fff', background: recording ? '#ff6b6b' : '#ff3b30', color: '#fff', fontWeight: 900, cursor: snapshotSaving ? 'wait' : 'pointer', opacity: !cameraOpen || snapshotSaving ? 0.72 : 1 }}>{snapshotSaving ? '…' : '📷'}</button>
             <button onClick={toggleOverlay} style={{ ...primaryAction(), background: overlayOn ? '#6f7cff' : '#384052' }}>{overlayOn ? (lang === 'vi' ? 'Bỏ lớp phủ' : 'Remove overlay') : (lang === 'vi' ? 'Hiện lớp phủ' : 'Show overlay')}</button>
           </div>
-          <button onClick={switchCamera} disabled={cameraStarting || snapshotSaving} style={{ ...secondaryAction(), width: '100%', marginTop: 10, background: 'rgba(255,255,255,0.10)', color: '#fff' }}>🔄 {lang === 'vi' ? `Đổi camera (${facingMode === 'user' ? 'trước' : 'sau'})` : `Switch camera (${facingMode === 'user' ? 'front' : 'rear'})`}</button>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10 }}>
+            <button onClick={() => localInputRef.current?.click()} disabled={snapshotSaving} style={{ ...secondaryAction(), background: 'rgba(255,255,255,0.10)', color: '#fff', opacity: snapshotSaving ? 0.72 : 1 }}>{lang === 'vi' ? 'upload hình trong máy' : 'upload local image'}</button>
+            <button onClick={switchCamera} disabled={cameraStarting || snapshotSaving} style={{ ...secondaryAction(), background: 'rgba(255,255,255,0.10)', color: '#fff' }}>🔄 {lang === 'vi' ? 'Đổi camera' : 'Switch camera'}</button>
+          </div>
           {cameraOpen && <button onClick={stopCamera} disabled={snapshotSaving} style={{ ...secondaryAction(), width: '100%', marginTop: 8, background: 'rgba(255,255,255,0.08)', color: '#fff' }}>{lang === 'vi' ? 'Đóng camera' : 'Close camera'}</button>}
           {capturedRecord && <div style={{ marginTop: 12, padding: 12, borderRadius: 14, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.84)', fontSize: 12, lineHeight: 1.5 }}><b>{isMeal ? 'Bữa ăn vừa chụp' : 'Ảnh thuốc vừa chụp'}</b><br />{capturedRecord.uploadPath}</div>}
           <div style={{ marginTop: 12, color: '#83f7ff', fontSize: 12, fontWeight: 800 }}>{status}</div>
@@ -1060,7 +1188,7 @@ export default function DinnerJourneyPanel({ onNext, onPrev, prevLabel }) {
       {activeTab === 'medication' && <MedicationAssistantView />}
       {activeTab === 'faceDetector' && <MediaPipeDetectorView type="face" />}
       {activeTab === 'bodyDetector' && <MediaPipeDetectorView type="body" />}
-      <NavButtons onNext={onNext} nextLabel={`${t('next')} →`} onPrev={onPrev} prevLabel={prevLabel} />
+      <NavButtons onNext={onNext} nextLabel={`${t('uploadRecords')} →`} onPrev={onPrev} prevLabel={prevLabel} />
     </div>
   )
 }
