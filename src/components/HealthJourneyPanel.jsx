@@ -13,6 +13,8 @@ const INK = '#1D1D1F'
 const MUTED = '#86868B'
 const HEALTHY = '#68D391'
 const ATTENTION = '#FF8A7A'
+const BODY_DETECTOR_BACKGROUND = '/src/pages/thumbs_up.png'
+const FACE_DETECTOR_BACKGROUND = '/src/pages/hand_model.png'
 
 const journeyTabs = [
   { id: 'emotion', icon: '🤖', titleVi: 'Bạn đồng hành cảm xúc AI', titleEn: 'AI Emotional Companion', subtitleVi: 'Hope AI · giảm lo âu và xả stress', subtitleEn: 'Hope AI · anxiety relief and decompression' },
@@ -150,7 +152,7 @@ async function setCameraTorch(cameraState, enabled) {
 function SheetToggleButton({ open, onClick, lang }) {
   return (
     <button onClick={onClick} style={{ border: 'none', background: 'rgba(0,112,235,0.10)', color: BLUE, borderRadius: 999, padding: '8px 12px', fontWeight: 900, cursor: 'pointer' }}>
-      {open ? (lang === 'vi' ? '⌄ Thu gọn' : '⌄ Collapse') : (lang === 'vi' ? '⌃ Mở lớp phủ' : '⌃ Open overlay')}
+      {open ? (lang === 'vi' ? '⌄ Thu gọn' : '⌄ Collapse') : (lang === 'vi' ? '⌃ Mở Phân Tích AI' : '⌃ Open AI Analysis')}
     </button>
   )
 }
@@ -812,6 +814,7 @@ function MediaPipeDetectorView({ type }) {
       <div style={{ ...panelShell, minHeight: 820, background: isBody ? '#141820' : '#111827' }}>
         <div id={`hj-${detectorMode}-camera-host`} style={{ position: 'absolute', inset: 0, zIndex: 2, overflow: 'hidden' }} />
       <div style={{ position: 'absolute', inset: 0, zIndex: 1, background: isBody ? 'linear-gradient(135deg,#323744,#879098)' : 'linear-gradient(135deg,#20293b,#64748b)' }} />
+      {!backgroundCameraState?.cameraOpen && <img alt={isBody ? 'Body detector placeholder' : 'Face detector placeholder'} src={isBody ? BODY_DETECTOR_BACKGROUND : FACE_DETECTOR_BACKGROUND} style={{ position: 'absolute', inset: 0, zIndex: 1, width: '100%', height: '100%', objectFit: 'cover', opacity: 0.9 }} />}
       <div style={{ position: 'absolute', inset: 0, zIndex: 3, background: 'rgba(0,0,0,0.12)', pointerEvents: 'none' }} />
       <header style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10, padding: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <button onClick={handleCloseCamera} style={floatingPillButton()}>×</button>
