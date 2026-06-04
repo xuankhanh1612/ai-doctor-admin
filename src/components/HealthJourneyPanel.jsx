@@ -13,6 +13,8 @@ const INK = '#1D1D1F'
 const MUTED = '#86868B'
 const HEALTHY = '#68D391'
 const ATTENTION = '#FF8A7A'
+const BODY_DETECTOR_BACKGROUND = '/src/pages/thumbs_up.png'
+const FACE_DETECTOR_BACKGROUND = '/src/pages/hand_model.png'
 
 const journeyTabs = [
   { id: 'emotion', icon: '🤖', titleVi: 'Bạn đồng hành cảm xúc AI', titleEn: 'AI Emotional Companion', subtitleVi: 'Hope AI · giảm lo âu và xả stress', subtitleEn: 'Hope AI · anxiety relief and decompression' },
@@ -150,9 +152,56 @@ async function setCameraTorch(cameraState, enabled) {
 function SheetToggleButton({ open, onClick, lang }) {
   return (
     <button onClick={onClick} style={{ border: 'none', background: 'rgba(0,112,235,0.10)', color: BLUE, borderRadius: 999, padding: '8px 12px', fontWeight: 900, cursor: 'pointer' }}>
-      {open ? (lang === 'vi' ? '⌄ Thu gọn' : '⌄ Collapse') : (lang === 'vi' ? '⌃ Mở lớp phủ' : '⌃ Open overlay')}
+      {open ? (lang === 'vi' ? '⌄ Thu gọn' : '⌄ Collapse') : (lang === 'vi' ? '⌃ Mở Phân Tích AI' : '⌃ Open AI Analysis')}
     </button>
   )
+}
+
+function drawRealtimeTimestampOverlay(ctx, width, height, timestamp) {
+  const pad = Math.max(16, Math.round(width * 0.034))
+  const boxW = Math.min(width - pad * 2, Math.max(280, width * 0.34))
+  const boxH = Math.max(44, height * 0.058)
+  const boxX = width - pad - boxW
+  const boxY = height - pad - boxH
+  ctx.save()
+  ctx.shadowColor = 'rgba(0,0,0,0.34)'
+  ctx.shadowBlur = 16
+  ctx.fillStyle = 'rgba(0,12,24,0.68)'
+  ctx.fillRect(boxX, boxY, boxW, boxH)
+  ctx.shadowBlur = 0
+  ctx.strokeStyle = 'rgba(131,247,255,0.56)'
+  ctx.lineWidth = 2
+  ctx.strokeRect(boxX, boxY, boxW, boxH)
+  ctx.fillStyle = '#83f7ff'
+  ctx.font = `800 ${Math.max(14, width * 0.019)}px monospace`
+  ctx.fillText(timestamp, boxX + 14, boxY + Math.round(boxH / 2) + 6)
+  ctx.restore()
+}
+
+function drawDetectorSnapshotMetrics(ctx, width, height, isBody) {
+  const pad = Math.max(16, Math.round(width * 0.034))
+  const text = isBody ? 'Pose Skeleton · 33 điểm' : 'Face Mesh · 478 điểm'
+  const text2 = isBody ? 'Góc khớp gối · 125°' : 'Độ cân xứng · 96%'
+  const boxW = Math.min(width - pad * 2, Math.max(280, width * 0.36))
+  const boxH = 92
+  const boxX = pad
+  const boxY = Math.max(pad + 18, Math.round(height * 0.12))
+  ctx.save()
+  ctx.shadowColor = 'rgba(0,0,0,0.30)'
+  ctx.shadowBlur = 18
+  ctx.fillStyle = 'rgba(255,255,255,0.86)'
+  ctx.fillRect(boxX, boxY, boxW, boxH)
+  ctx.shadowBlur = 0
+  ctx.strokeStyle = 'rgba(0,112,235,0.34)'
+  ctx.lineWidth = 2
+  ctx.strokeRect(boxX, boxY, boxW, boxH)
+  ctx.fillStyle = '#0058bc'
+  ctx.font = `900 ${Math.max(16, width * 0.021)}px sans-serif`
+  ctx.fillText(text, boxX + 14, boxY + 34)
+  ctx.fillStyle = 'rgba(29,29,31,0.72)'
+  ctx.font = `800 ${Math.max(14, width * 0.018)}px sans-serif`
+  ctx.fillText(text2, boxX + 14, boxY + 66)
+  ctx.restore()
 }
 
 function CameraScanOverlayBadge({ label, timestamp }) {
@@ -226,7 +275,7 @@ async function saveJourneyImageFile(file, { mode, user, lang, label }) {
   return record
 }
 
-function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, showHelperDetails = true, onUploaded, onCameraState = null, backgroundCamera = false }) {
+function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, showHelperDetails = true, onUploaded, onCapturedPreview, onCameraState = null, backgroundCamera = false }) {
   const { lang } = useApp()
   const { user } = useAuth()
   const localInputRef = useRef(null)
@@ -287,14 +336,40 @@ function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, showHe
       const dataUrl = await fileToDataUrl(file)
       setCapturedFile(file)
       setPreview(dataUrl)
-      setStatus(source === 'camera'
-        ? (lang === 'vi' ? 'Đã chụp ảnh thật từ camera. Bấm upload để lưu vào hệ thống.' : 'Real camera photo captured. Press upload to save it to the system.')
-        : (lang === 'vi' ? 'Đã chọn hình trong máy. Bấm upload để lưu vào hệ thống.' : 'Local image selected. Press upload to save it to the system.'))
+      if (source === 'camera') {
+        setStatus('')
+        onCapturedPreview?.({ dataUrl, uploadPath: '', pendingUpload: true })
+      } else {
+        setStatus(lang === 'vi' ? 'Đã chọn hình trong máy. Bấm upload để lưu vào hệ thống.' : 'Local image selected. Press upload to save it to the system.')
+      }
     } catch (error) {
       console.error('Health journey image preview failed:', error)
       setStatus(lang === 'vi' ? 'Không thể đọc ảnh. Vui lòng thử lại.' : 'Could not read the image. Please try again.')
     }
-  }, [lang])
+  }, [lang, onCapturedPreview])
+
+  const saveFileImmediately = useCallback(async (file) => {
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      setStatus(lang === 'vi' ? 'Vui lòng chụp hoặc chọn một hình ảnh.' : 'Please capture or choose an image.')
+      return
+    }
+
+    setUploading(true)
+    setStatus(lang === 'vi' ? 'Đang upload ảnh vào thư mục upload của user...' : 'Uploading image into the user upload folder...')
+    try {
+      const record = await saveJourneyImageFile(file, { mode, user, lang, label: uploadLabel })
+      setPreview(record.dataUrl)
+      setCapturedFile(null)
+      setStatus(lang === 'vi' ? 'Đã upload ảnh vào hồ sơ của bạn.' : 'Uploaded image to your records.')
+      onUploaded?.(record)
+    } catch (error) {
+      console.error('Health journey instant camera upload failed:', error)
+      setStatus(lang === 'vi' ? 'Không thể upload ảnh. Vui lòng thử lại.' : 'Could not upload the image. Please try again.')
+    } finally {
+      setUploading(false)
+    }
+  }, [lang, mode, onUploaded, uploadLabel, user])
 
   const openPhysicalCamera = useCallback(async (nextFacingMode = facingMode) => {
     setStatus('')
@@ -348,10 +423,13 @@ function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, showHe
     if (facingMode === 'user') ctx.setTransform(1, 0, 0, 1, 0, 0)
     if (scanOverlayOn) {
       drawJourneyModeOverlay(ctx, canvas.width, canvas.height, { mode })
+      if (mode === 'face-detector' || mode === 'body-detector') drawDetectorSnapshotMetrics(ctx, canvas.width, canvas.height, mode === 'body-detector')
       drawCameraScanOverlay(ctx, canvas.width, canvas.height, {
         label: cameraLabel,
         timestamp: cameraTimestamp(lang, scanNow),
       })
+    } else {
+      drawRealtimeTimestampOverlay(ctx, canvas.width, canvas.height, cameraTimestamp(lang, scanNow))
     }
     canvas.toBlob(blob => {
       if (!blob) {
@@ -360,9 +438,10 @@ function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, showHe
       }
       const file = new File([blob], makeJourneyFilename(`${mode}_camera`), { type: 'image/jpeg' })
       stopCamera()
-      setSelectedImage(file, 'camera')
+      if (backgroundCamera) saveFileImmediately(file)
+      else setSelectedImage(file, 'camera')
     }, 'image/jpeg', 0.92)
-  }, [cameraLabel, facingMode, lang, mode, scanNow, scanOverlayOn, setSelectedImage, stopCamera])
+  }, [backgroundCamera, cameraLabel, facingMode, lang, mode, saveFileImmediately, scanNow, scanOverlayOn, setSelectedImage, stopCamera])
 
   const resetCapture = useCallback(() => {
     stopCamera()
@@ -404,23 +483,37 @@ function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, showHe
         ref={localInputRef}
         type="file"
         accept="image/*"
-        onChange={e => { setSelectedImage(e.target.files?.[0], 'local'); e.target.value = '' }}
+        onChange={e => {
+          const file = e.target.files?.[0]
+          if (backgroundCamera) saveFileImmediately(file)
+          else setSelectedImage(file, 'local')
+          e.target.value = ''
+        }}
         style={{ display: 'none' }}
       />
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-        <button disabled={uploading || cameraStarting} onClick={() => openPhysicalCamera()} style={{ ...secondaryAction(), opacity: uploading || cameraStarting ? 0.72 : 1 }}>
-          {cameraStarting ? (lang === 'vi' ? 'Đang mở...' : 'Opening...') : cameraOpen ? '📷Khởi động lại Camera' : '📷 Mở Camera'}
-        </button>
-        <button disabled={uploading} onClick={uploadCapturedFile} style={{ ...primaryAction(), opacity: uploading ? 0.72 : 1 }}>
-          {uploading ? (lang === 'vi' ? 'Đang upload...' : 'Uploading...') : uploadLabel}
-        </button>
-      </div>
-      {backdropCamera && (
+      {backgroundCamera ? (
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 88px 1fr', gap: 12, alignItems: 'center' }}>
+            <button disabled={uploading || cameraStarting} onClick={() => openPhysicalCamera()} style={{ ...secondaryAction(), background: 'rgba(255,255,255,0.10)', color: '#fff', opacity: uploading || cameraStarting ? 0.72 : 1 }}>
+              {cameraStarting ? (lang === 'vi' ? 'Đang mở...' : 'Opening...') : cameraOpen ? (lang === 'vi' ? 'Khởi động lại' : 'Restart') : (lang === 'vi' ? 'Mở camera' : 'Open camera')}
+            </button>
+            <button onClick={captureFromCamera} disabled={!cameraOpen || uploading} style={{ width: 76, height: 76, borderRadius: '50%', border: '4px solid #fff', background: uploading ? '#ff6b6b' : '#ff3b30', color: '#fff', fontWeight: 900, cursor: uploading ? 'wait' : 'pointer', opacity: !cameraOpen || uploading ? 0.72 : 1 }}>{uploading ? '…' : '📷'}</button>
+            <button onClick={() => setScanOverlayOn(v => !v)} disabled={uploading} style={{ ...primaryAction(), background: scanOverlayOn ? '#6f7cff' : '#384052' }}>{scanOverlayOn ? (lang === 'vi' ? 'Bỏ lớp phủ' : 'Remove overlay') : (lang === 'vi' ? 'Hiện lớp phủ' : 'Show overlay')}</button>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <button disabled={uploading} onClick={() => localInputRef.current?.click()} style={{ ...secondaryAction(), background: 'rgba(255,255,255,0.10)', color: '#fff', opacity: uploading ? 0.72 : 1 }}>{lang === 'vi' ? 'upload hình trong máy' : 'upload local image'}</button>
+            <button onClick={switchCamera} disabled={cameraStarting || uploading} style={{ ...secondaryAction(), background: 'rgba(255,255,255,0.10)', color: '#fff', opacity: cameraStarting || uploading ? 0.72 : 1 }}>🔄 {lang === 'vi' ? `Đổi camera (${facingMode === 'user' ? 'trước' : 'sau'})` : `Switch camera (${facingMode === 'user' ? 'front' : 'rear'})`}</button>
+          </div>
+          {cameraOpen && <button onClick={stopCamera} disabled={uploading} style={{ ...secondaryAction(), width: '100%', background: 'rgba(255,255,255,0.08)', color: '#fff' }}>{lang === 'vi' ? 'Đóng camera' : 'Close camera'}</button>}
+        </>
+      ) : (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-          <button onClick={captureFromCamera} style={primaryAction()}>{lang === 'vi' ? '📸 Chụp ảnh' : '📸 Take photo'}</button>
-          <button onClick={switchCamera} style={secondaryAction()}>🔄 {lang === 'vi' ? 'Đổi camera' : 'Switch camera'}</button>
-          <button onClick={() => setScanOverlayOn(v => !v)} style={{ ...secondaryAction(), background: scanOverlayOn ? 'rgba(0,229,255,0.14)' : '#e3e2e6', color: scanOverlayOn ? BLUE : INK }}>▣ {lang === 'vi' ? 'Lớp phủ' : 'Overlay'}</button>
-          <button onClick={stopCamera} style={secondaryAction()}>{lang === 'vi' ? 'Đóng camera' : 'Close camera'}</button>
+          <button disabled={uploading || cameraStarting} onClick={() => openPhysicalCamera()} style={{ ...secondaryAction(), opacity: uploading || cameraStarting ? 0.72 : 1 }}>
+            {cameraStarting ? (lang === 'vi' ? 'Đang mở...' : 'Opening...') : cameraOpen ? '📷Khởi động lại Camera' : '📷 Mở Camera'}
+          </button>
+          <button disabled={uploading} onClick={uploadCapturedFile} style={{ ...primaryAction(), opacity: uploading ? 0.72 : 1 }}>
+            {uploading ? (lang === 'vi' ? 'Đang upload...' : 'Uploading...') : uploadLabel}
+          </button>
         </div>
       )}
       {inlineCamera && (
@@ -437,16 +530,16 @@ function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, showHe
           </div>
         </div>
       )}
-      <button disabled={uploading} onClick={() => localInputRef.current?.click()} style={secondaryAction()}>
+      {!backgroundCamera && <button disabled={uploading} onClick={() => localInputRef.current?.click()} style={secondaryAction()}>
         {lang === 'vi' ? 'upload hình trong máy' : 'upload local image'}
-      </button>
-      {preview && <button disabled={uploading} onClick={resetCapture} style={{ ...secondaryAction(), background: '#fff0f0', color: '#93000a' }}>{lang === 'vi' ? 'Quét lại' : 'Scan again'}</button>}
+      </button>}
+      {!backgroundCamera && preview && <button disabled={uploading} onClick={resetCapture} style={{ ...secondaryAction(), background: '#fff0f0', color: '#93000a' }}>{lang === 'vi' ? 'Quét lại' : 'Scan again'}</button>}
       {showHelperDetails && (
         <div style={{ fontSize: 11, color: mode === 'meal' ? MUTED : 'rgba(29,29,31,0.62)', lineHeight: 1.45 }}>
           {helper}<br />{lang === 'vi' ? 'Thư mục user:' : 'User folder:'} <b>{virtualFolder}</b>
         </div>
       )}
-      {preview && <img alt={uploadLabel} src={preview} style={{ width: '100%', maxHeight: 120, objectFit: 'cover', borderRadius: 14, border: '1px solid rgba(0,112,235,0.18)' }} />}
+      {!backgroundCamera && preview && <img alt={uploadLabel} src={preview} style={{ width: '100%', maxHeight: 120, objectFit: 'cover', borderRadius: 14, border: '1px solid rgba(0,112,235,0.18)' }} />}
       {status && <div style={{ fontSize: 11, color: status.startsWith('Không') || status.startsWith('Could') ? '#93000a' : BLUE, fontWeight: 800, lineHeight: 1.4 }}>{status}</div>}
       {backdropCamera && portalHost && createPortal(
         <div style={{ position: 'absolute', inset: 0, zIndex: 2, background: '#000', pointerEvents: 'none' }} data-hj-camera-backdrop="true">
@@ -561,7 +654,7 @@ function MediaPipeDetectorView({ type }) {
   const detectorMode = isBody ? 'body-detector' : 'face-detector'
   const [backgroundCameraState, setBackgroundCameraState] = useState(null)
   const [flash, setFlash] = useState(false)
-  const [sheetOpen, setSheetOpen] = useState(true)
+  const [sheetOpen, setSheetOpen] = useState(false)
   const handleBackgroundCameraState = useCallback(nextState => setBackgroundCameraState(nextState), [])
   const videoRef = useRef(null)
   const canvasRef = useRef(null)
@@ -666,10 +759,13 @@ function MediaPipeDetectorView({ type }) {
       if (isBody) drawBodyOverlay(ctx, canvas.width, canvas.height, performance.now())
       else drawFaceOverlay(ctx, canvas.width, canvas.height, performance.now())
       drawJourneyModeOverlay(ctx, canvas.width, canvas.height, { mode: detectorMode })
+      drawDetectorSnapshotMetrics(ctx, canvas.width, canvas.height, isBody)
       drawCameraScanOverlay(ctx, canvas.width, canvas.height, {
         label: isBody ? 'AI Body Detector Scan' : 'AI Face Detector Scan',
         timestamp: cameraTimestamp(lang, scanNow),
       })
+    } else {
+      drawRealtimeTimestampOverlay(ctx, canvas.width, canvas.height, cameraTimestamp(lang, scanNow))
     }
 
     setSnapshotSaving(true)
@@ -714,9 +810,11 @@ function MediaPipeDetectorView({ type }) {
   useEffect(() => () => stopCamera(), [stopCamera])
 
   return (
-    <div style={{ ...panelShell, minHeight: 820, background: isBody ? '#141820' : '#111827' }}>
-      <div id={`hj-${detectorMode}-camera-host`} style={{ position: 'absolute', inset: 0, zIndex: 2, overflow: 'hidden' }} />
+    <div style={{ display: 'grid', gap: 12 }}>
+      <div style={{ ...panelShell, minHeight: 820, background: isBody ? '#141820' : '#111827' }}>
+        <div id={`hj-${detectorMode}-camera-host`} style={{ position: 'absolute', inset: 0, zIndex: 2, overflow: 'hidden' }} />
       <div style={{ position: 'absolute', inset: 0, zIndex: 1, background: isBody ? 'linear-gradient(135deg,#323744,#879098)' : 'linear-gradient(135deg,#20293b,#64748b)' }} />
+      {!backgroundCameraState?.cameraOpen && <img alt={isBody ? 'Body detector placeholder' : 'Face detector placeholder'} src={isBody ? BODY_DETECTOR_BACKGROUND : FACE_DETECTOR_BACKGROUND} style={{ position: 'absolute', inset: 0, zIndex: 1, width: '100%', height: '100%', objectFit: 'cover', opacity: 0.9 }} />}
       <div style={{ position: 'absolute', inset: 0, zIndex: 3, background: 'rgba(0,0,0,0.12)', pointerEvents: 'none' }} />
       <header style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10, padding: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <button onClick={handleCloseCamera} style={floatingPillButton()}>×</button>
@@ -735,37 +833,35 @@ function MediaPipeDetectorView({ type }) {
         <DetectorMetric label={isBody ? 'Góc khớp gối' : 'Độ cân xứng'} value={isBody ? '125°' : '96%'} />
         <DetectorMetric label={isBody ? 'Độ lệch quỹ đạo' : 'Sinh trắc'} value={isBody ? '3%' : 'live'} />
       </div>
-      <div style={{ position: 'absolute', left: 0, right: 0, bottom: sheetOpen ? 76 : 18, zIndex: 12, padding: '0 18px' }}>
-        <div style={{ background: '#fff', borderRadius: 32, maxWidth: 900, margin: '0 auto', padding: sheetOpen ? 28 : 14, boxShadow: '0 -20px 55px rgba(0,0,0,0.16)', borderTop: '1px solid #c1c6d7' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: sheetOpen ? 22 : 0 }}>
-            <div style={{ width: 48, height: 6, borderRadius: 999, background: '#e3e2e6' }} />
-            <SheetToggleButton open={sheetOpen} onClick={() => setSheetOpen(open => !open)} lang={lang} />
-          </div>
-          <div style={{ display: sheetOpen ? 'grid' : 'none', gridTemplateColumns: 'minmax(0, 1fr) 230px', gap: 24 }} className="hj-responsive-sheet">
-            <div>
-              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center', marginBottom: 8 }}>
-                <h1 style={{ margin: 0, fontSize: 26, color: INK }}>{isBody ? 'Body Detector AI' : 'Face Detector AI'}</h1>
-                <span style={{ padding: '6px 10px', borderRadius: 999, background: 'rgba(104,211,145,0.16)', color: '#2f9e62', fontSize: 12, fontWeight: 800 }}>✓ Realtime overlay</span>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 18 }}>
-                <NutritionCard value={isBody ? '33' : '478'} label={isBody ? 'Pose điểm' : 'Face mesh'} />
-                <NutritionCard value={isBody ? '125°' : '96%'} label={isBody ? 'Góc gối' : 'Cân xứng'} />
-                <NutritionCard value="live" label="AI realtime" />
-              </div>
+      <div style={{ position: 'absolute', left: 0, right: 0, bottom: sheetOpen ? 176 : 150, zIndex: 12, padding: '0 18px', pointerEvents: sheetOpen ? 'auto' : 'none' }}>
+        <div style={{ display: sheetOpen ? 'block' : 'none', background: '#fff', borderRadius: 32, maxWidth: 900, margin: '0 auto', padding: 24, boxShadow: '0 -20px 55px rgba(0,0,0,0.16)', borderTop: '1px solid #c1c6d7' }}>
+          <div style={{ width: 48, height: 6, borderRadius: 999, background: '#e3e2e6', margin: '0 auto 22px' }} />
+          <div>
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center', marginBottom: 8 }}>
+              <h1 style={{ margin: 0, fontSize: 26, color: INK }}>{isBody ? 'Body Detector AI' : 'Face Detector AI'}</h1>
+              <span style={{ padding: '6px 10px', borderRadius: 999, background: 'rgba(104,211,145,0.16)', color: '#2f9e62', fontSize: 12, fontWeight: 800 }}>✓ Realtime overlay</span>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <JourneyCameraUploader
-                mode={detectorMode}
-                captureLabel="📷 Mở Camera"
-                uploadLabel="Xác Nhận Lưu Hình"
-                helper={lang === 'vi' ? 'Dùng camera AI để lưu hình.' : 'Use the AI camera to save an image.'}
-                showHelperDetails={false}
-                onCameraState={handleBackgroundCameraState}
-                backgroundCamera
-              />
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 18 }}>
+              <NutritionCard value={isBody ? '33' : '478'} label={isBody ? 'Pose điểm' : 'Face mesh'} />
+              <NutritionCard value={isBody ? '125°' : '96%'} label={isBody ? 'Góc gối' : 'Cân xứng'} />
+              <NutritionCard value="live" label="AI realtime" />
             </div>
           </div>
-          {!sheetOpen && <div style={{ color: INK, fontWeight: 900 }}>{isBody ? 'Body Detector AI' : 'Face Detector AI'}</div>}
+        </div>
+      </div>
+      </div>
+      <div style={{ maxWidth: 900, width: '100%', margin: '0 auto', display: 'grid', gap: 10 }}>
+        <JourneyCameraUploader
+          mode={detectorMode}
+          captureLabel="📷 Mở Camera"
+          uploadLabel="Xác Nhận Lưu Hình"
+          helper={lang === 'vi' ? 'Dùng camera AI để lưu hình.' : 'Use the AI camera to save an image.'}
+          showHelperDetails={false}
+          onCameraState={handleBackgroundCameraState}
+          backgroundCamera
+        />
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <SheetToggleButton open={sheetOpen} onClick={() => setSheetOpen(open => !open)} lang={lang} />
         </div>
       </div>
     </div>
@@ -919,7 +1015,7 @@ function MealScanView() {
   const [flash, setFlash] = useState(false)
   const [capturedRecord, setCapturedRecord] = useState(null)
   const [cameraState, setCameraState] = useState(null)
-  const [sheetOpen, setSheetOpen] = useState(true)
+  const [sheetOpen, setSheetOpen] = useState(false)
   const handleCameraState = useCallback(nextState => setCameraState(nextState), [])
   const handleCloseCamera = useCallback(() => {
     setFlash(false)
@@ -933,8 +1029,9 @@ function MealScanView() {
   }, [cameraState, flash])
   const fallbackSrc = "https://lh3.googleusercontent.com/aida-public/AB6AXuDz673aowy2PSOhw7UeuUZHoFiJO_SQTymK2RWuGYolAX9ok2Eugcl8j17Ip3FWZh0sLSoEuJbb-6LNoLAx5NKWwQ4X-nfqnnDuhGQvU_Dnqxw7oWZ6IW5kNaCG4vfKLbgFEAB2OXpUPeMzAoiWAqNGIjyo-wbhqxNF7d2BtrQY5HECx53yA3z9L7GdwfOiHxbQB6UdclRS9c4hau37W37ieVXlmK40gZ0dB2H8sW9PobMG23MnaC8tYR0V12bMf46MMJNaRznFkUu7"
   return (
-    <div style={{ ...panelShell, minHeight: 820, background: '#111' }}>
-      <div id="hj-meal-camera-host" style={{ position: 'absolute', inset: 0, zIndex: 2, overflow: 'hidden' }} />
+    <div style={{ display: 'grid', gap: 12 }}>
+      <div style={{ ...panelShell, minHeight: 820, background: '#111' }}>
+        <div id="hj-meal-camera-host" style={{ position: 'absolute', inset: 0, zIndex: 2, overflow: 'hidden' }} />
       <img alt="Salmon salad being scanned" src={capturedRecord?.dataUrl || "https://lh3.googleusercontent.com/aida-public/AB6AXuDz673aowy2PSOhw7UeuUZHoFiJO_SQTymK2RWuGYolAX9ok2Eugcl8j17Ip3FWZh0sLSoEuJbb-6LNoLAx5NKWwQ4X-nfqnnDuhGQvU_Dnqxw7oWZ6IW5kNaCG4vfKLbgFEAB2OXpUPeMzAoiWAqNGIjyo-wbhqxNF7d2BtrQY5HECx53yA3z9L7GdwfOiHxbQB6UdclRS9c4hau37W37ieVXlmK40gZ0dB2H8sW9PobMG23MnaC8tYR0V12bMf46MMJNaRznFkUu7"} style={{ position: 'absolute', inset: 0, zIndex: 1, width: '100%', height: '100%', objectFit: 'cover' }} />
       <div style={{ position: 'absolute', inset: 0, zIndex: 3, background: 'rgba(0,0,0,0.05)', pointerEvents: 'none' }} />
       <header style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10, padding: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -951,33 +1048,30 @@ function MealScanView() {
           <div style={{ width: 9, height: 9, borderRadius: '50%', background: BLUE, boxShadow: '0 0 14px #0058bc' }} />
         </div>
       </div>
-      <div style={{ position: 'absolute', left: 0, right: 0, bottom: sheetOpen ? 76 : 18, zIndex: 12, padding: '0 18px' }}>
-        <div style={{ ...glass, background: 'rgba(255,255,255,0.86)', borderRadius: 32, maxWidth: 840, margin: '0 auto', padding: sheetOpen ? 24 : 14, boxShadow: '0 -20px 55px rgba(0,0,0,0.16)', borderTop: '1px solid #c1c6d7' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: sheetOpen ? 22 : 0 }}>
-            <div style={{ width: 48, height: 6, borderRadius: 999, background: '#e3e2e6' }} />
-            <SheetToggleButton open={sheetOpen} onClick={() => setSheetOpen(open => !open)} lang={lang} />
+      <div style={{ position: 'absolute', left: 0, right: 0, bottom: sheetOpen ? 176 : 150, zIndex: 12, padding: '0 18px', pointerEvents: sheetOpen ? 'auto' : 'none' }}>
+        <div style={{ display: sheetOpen ? 'block' : 'none', ...glass, background: 'rgba(255,255,255,0.86)', borderRadius: 32, maxWidth: 840, margin: '0 auto', padding: 24, boxShadow: '0 -20px 55px rgba(0,0,0,0.16)', borderTop: '1px solid #c1c6d7' }}>
+          <div style={{ width: 48, height: 6, borderRadius: 999, background: '#e3e2e6', margin: '0 auto 22px' }} />
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center', marginBottom: 8 }}>
+            <h1 style={{ margin: 0, fontSize: 26, color: INK }}>{capturedRecord ? 'Bữa ăn vừa chụp' : 'Salad Cá Hồi Áp Chảo'}</h1>
+            <span style={{ padding: '6px 10px', borderRadius: 999, background: 'rgba(104,211,145,0.16)', color: '#2f9e62', fontSize: 12, fontWeight: 800 }}>✓ Phù hợp phác đồ</span>
           </div>
-          <div style={{ display: sheetOpen ? 'grid' : 'none', gridTemplateColumns: 'minmax(0, 1fr) 230px', gap: 24 }} className="hj-responsive-sheet">
-            <div>
-              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center', marginBottom: 8 }}>
-                <h1 style={{ margin: 0, fontSize: 26, color: INK }}>{capturedRecord ? 'Bữa ăn vừa chụp' : 'Salad Cá Hồi Áp Chảo'}</h1>
-                <span style={{ padding: '6px 10px', borderRadius: 999, background: 'rgba(104,211,145,0.16)', color: '#2f9e62', fontSize: 12, fontWeight: 800 }}>✓ Phù hợp phác đồ</span>
-              </div>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <JourneyCameraUploader
-                mode="meal"
-                captureLabel="📷 Mở Camera"
-                uploadLabel="Xác Nhận Lưu Hình"
-                helper="Camera AI"
-                showHelperDetails={false}
-                onUploaded={setCapturedRecord}
-                onCameraState={handleCameraState}
-                backgroundCamera
-              />
-            </div>
-          </div>
-          {!sheetOpen && <div style={{ color: INK, fontWeight: 900 }}>{capturedRecord ? 'Bữa ăn vừa chụp' : 'Salad Cá Hồi Áp Chảo'}</div>}
+        </div>
+      </div>
+      </div>
+      <div style={{ maxWidth: 840, width: '100%', margin: '0 auto', display: 'grid', gap: 10 }}>
+        <JourneyCameraUploader
+          mode="meal"
+          captureLabel="📷 Mở Camera"
+          uploadLabel="Xác Nhận Lưu Hình"
+          helper="Camera AI"
+          showHelperDetails={false}
+          onUploaded={setCapturedRecord}
+          onCapturedPreview={setCapturedRecord}
+          onCameraState={handleCameraState}
+          backgroundCamera
+        />
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <SheetToggleButton open={sheetOpen} onClick={() => setSheetOpen(open => !open)} lang={lang} />
         </div>
       </div>
     </div>
@@ -1089,7 +1183,7 @@ function MedicationAssistantView() {
   const [flash, setFlash] = useState(false)
   const [capturedRecord, setCapturedRecord] = useState(null)
   const [cameraState, setCameraState] = useState(null)
-  const [sheetOpen, setSheetOpen] = useState(true)
+  const [sheetOpen, setSheetOpen] = useState(false)
   const handleCameraState = useCallback(nextState => setCameraState(nextState), [])
   const handleCloseCamera = useCallback(() => {
     setFlash(false)
@@ -1103,8 +1197,9 @@ function MedicationAssistantView() {
   }, [cameraState, flash])
   const fallbackSrc = "https://lh3.googleusercontent.com/aida-public/AB6AXuAZH2XA_C2g9jti8cF8o0E5hvwbxBLhK2y-tf0NDCFY7cyKfoeZ_U8_kn3jiQHhOa6b56cisSwi2bz6AE1EFWFS0dNQBehYv66eK0nIeMiU0q1kRU5vfIdZz1KoCj7T6VpAyJAotvB_di10b0BzJ7RdFkt_41wXUXbswPWEv9u7eX9drmA7OkyMb1YS1l1QjiSzEbHDivTPH6XurlsDr6cR5vjNnYcEWsLxKzNgrooWpXB-uu9DZvIchL5J627pN73vdwj5KTI9lY4z"
   return (
-    <div style={{ ...panelShell, minHeight: 820, background: '#000' }}>
-      <div id="hj-medication-camera-host" style={{ position: 'absolute', inset: 0, zIndex: 2, overflow: 'hidden' }} />
+    <div style={{ display: 'grid', gap: 12 }}>
+      <div style={{ ...panelShell, minHeight: 820, background: '#000' }}>
+        <div id="hj-medication-camera-host" style={{ position: 'absolute', inset: 0, zIndex: 2, overflow: 'hidden' }} />
       <header style={{ position: 'relative', zIndex: 15, height: 64, display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 20px', ...glass }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, color: INK }}><button onClick={handleCloseCamera} style={{ border: 'none', background: 'transparent', fontSize: 24, cursor: 'pointer' }}>×</button><h1 style={{ margin: 0, fontSize: 24 }}>Trợ lý thuốc</h1></div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}><button onClick={handleFlashToggle} style={{ border: 'none', background: 'transparent', color: flash ? BLUE : INK, fontSize: 22, cursor: 'pointer' }}>{flash ? '🔦' : '⚡'}</button><img alt="Patient" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAQKeTt8_ixyEzSPUh64YGich4CWVUCDHlAED0v66qzTB8rzONzJD_GBylNvUOCiBFxk9njOsY3qdU1MvmNYz2oc6dcZZ8cLBeX4cw701UMQjBjsm9UoiNevceFpQRaat5AthvRm2ihEbGQnfFnAfjJDQ8Inb1usap4d3mvsSoZRFa6lPEkbJKcg_2oaNIyBiG0QLPsJL8tZzPVU2HZDifgoOO4GcVdYWNJmxiuj0irLtdFBy-gDf8sEBwU2qkiyehS0pde6FcQP8-J" style={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover' }} /></div>
@@ -1122,31 +1217,32 @@ function MedicationAssistantView() {
       </div>
       <AiMetricBubble value="20mg" label="Liều thuốc" note="Tamoxifen" style={{ top: '24%', right: '16%', animation: 'hj-float 3s ease-in-out infinite' }} />
       <AiMetricBubble value="1x" label="Mỗi ngày" note="Sau ăn" style={{ top: '45%', left: '14%', animation: 'hj-float 3.5s ease-in-out infinite' }} />
-      <div style={{ position: 'absolute', left: 0, right: 0, bottom: sheetOpen ? 76 : 18, zIndex: 14, padding: '0 18px' }}>
-        <div style={{ ...glass, maxWidth: 760, margin: '0 auto', borderRadius: 28, padding: sheetOpen ? 22 : 14 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: sheetOpen ? 18 : 0 }}>
-            <div style={{ width: 48, height: 6, borderRadius: 999, background: 'rgba(113,119,134,0.22)' }} />
-            <SheetToggleButton open={sheetOpen} onClick={() => setSheetOpen(open => !open)} lang={lang} />
-          </div>
-          <div style={{ display: sheetOpen ? 'block' : 'none' }}>
+      <div style={{ position: 'absolute', left: 0, right: 0, bottom: sheetOpen ? 176 : 150, zIndex: 14, padding: '0 18px', pointerEvents: sheetOpen ? 'auto' : 'none' }}>
+        <div style={{ display: sheetOpen ? 'block' : 'none', ...glass, maxWidth: 760, margin: '0 auto', borderRadius: 28, padding: 22 }}>
+          <div style={{ width: 48, height: 6, borderRadius: 999, background: 'rgba(113,119,134,0.22)', margin: '0 auto 18px' }} />
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}><h2 style={{ margin: 0, color: INK, fontSize: 25 }}>Kết quả Quét</h2><span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', padding: '6px 10px', borderRadius: 999, background: 'rgba(0,112,235,0.10)', color: PRIMARY, fontSize: 12, fontWeight: 900 }}>✨ Trợ lý AI</span></div>
           <div style={{ background: '#fff', border: '1px solid #ededed', borderRadius: 18, padding: 16, display: 'flex', gap: 16, marginBottom: 14 }}>
             <img alt="Tamoxifen Pill" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDjQHXpDlpop937cl2g-AgliTNjDZsZ4GaF0rbg3MKB7vu7r4SSTf5ZE4f4cYvbx6aU-WYjKBGzOnAXiyqGGEbHI1MRQDO9_we6ANnp2f7YpkTUeukmmaehNfcJvm_CwjQyOziUN0cIpQE-tQk_Y6_gUoNIfvc0MHgG7HtGaBkkcUJDa9hj3JCY--_v5y83HUUj0xepnsgxJ2r7DfVC_xBrQqHmFvNGT5I6vkGRg2_N8O27M71Dk42QokOPRn2_frR1KCKEkf2Kyl4o" style={{ width: 66, height: 66, borderRadius: 14, objectFit: 'cover', background: '#eeeef0', flexShrink: 0 }} />
-            <div><h3 style={{ margin: 0, color: INK, fontSize: 20 }}>{capturedRecord ? 'Ảnh thuốc vừa chụp' : 'Tamoxifen 20mg'}</h3><p style={{ margin: '6px 0 12px', color: MUTED }}>{capturedRecord ? `Đã upload vào ${capturedRecord.uploadPath}` : "Viên nén tròn, màu trắng, khắc số '20'"}</p><div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', color: MUTED, fontWeight: 700, fontSize: 13 }}><span>🕒 1 lần/ngày</span><span>🍽 Sau ăn</span></div></div>
+            <div><h3 style={{ margin: 0, color: INK, fontSize: 20 }}>{capturedRecord ? 'Ảnh thuốc vừa chụp' : 'Tamoxifen 20mg'}</h3><p style={{ margin: '6px 0 12px', color: MUTED }}>{capturedRecord ? (capturedRecord.pendingUpload ? 'Ảnh vừa chụp đang chờ xác nhận lưu' : `Đã upload vào ${capturedRecord.uploadPath}`) : "Viên nén tròn, màu trắng, khắc số '20'"}</p><div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', color: MUTED, fontWeight: 700, fontSize: 13 }}><span>🕒 1 lần/ngày</span><span>🍽 Sau ăn</span></div></div>
           </div>
-          <div style={{ background: 'rgba(255,218,214,0.48)', border: '1px solid rgba(186,26,26,0.12)', borderRadius: 18, padding: 16, marginBottom: 18, color: '#93000a' }}><div style={{ fontWeight: 900, marginBottom: 7 }}>⚠️ Cảnh báo Tương tác</div><div style={{ lineHeight: 1.55 }}>Tương tác nhẹ phát hiện với <b>Ondansetron</b>. Có thể làm giảm hiệu quả của thuốc. Vui lòng tham khảo ý kiến bác sĩ điều trị.</div></div>
-          <JourneyCameraUploader
-            mode="medication"
-            captureLabel="📷 Mở Camera"
-            uploadLabel="Xác Nhận Lưu Hình"
-            helper="Camera AI"
-            showHelperDetails={false}
-            onUploaded={setCapturedRecord}
-            onCameraState={handleCameraState}
-            backgroundCamera
-          />
-          </div>
-          {!sheetOpen && <div style={{ color: INK, fontWeight: 900 }}>Kết quả Quét · Trợ lý thuốc</div>}
+          <div style={{ background: 'rgba(255,218,214,0.48)', border: '1px solid rgba(186,26,26,0.12)', borderRadius: 18, padding: 16, marginBottom: 0, color: '#93000a' }}><div style={{ fontWeight: 900, marginBottom: 7 }}>⚠️ Cảnh báo Tương tác</div><div style={{ lineHeight: 1.55 }}>Tương tác nhẹ phát hiện với <b>Ondansetron</b>. Có thể làm giảm hiệu quả của thuốc. Vui lòng tham khảo ý kiến bác sĩ điều trị.</div></div>
+        </div>
+      </div>
+      </div>
+      <div style={{ maxWidth: 760, width: '100%', margin: '0 auto', display: 'grid', gap: 10 }}>
+        <JourneyCameraUploader
+          mode="medication"
+          captureLabel="📷 Mở Camera"
+          uploadLabel="Xác Nhận Lưu Hình"
+          helper="Camera AI"
+          showHelperDetails={false}
+          onUploaded={setCapturedRecord}
+          onCapturedPreview={setCapturedRecord}
+          onCameraState={handleCameraState}
+          backgroundCamera
+        />
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <SheetToggleButton open={sheetOpen} onClick={() => setSheetOpen(open => !open)} lang={lang} />
         </div>
       </div>
     </div>

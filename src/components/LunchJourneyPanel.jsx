@@ -12,6 +12,8 @@ const INK = '#1D1D1F'
 const MUTED = '#86868B'
 const HEALTHY = '#68D391'
 const ATTENTION = '#FF8A7A'
+const BODY_DETECTOR_BACKGROUND = '/src/pages/thumbs_up.png'
+const FACE_DETECTOR_BACKGROUND = '/src/pages/hand_model.png'
 
 const journeyTabs = [
   { id: 'emotion', icon: '🤖', titleVi: 'Bạn đồng hành cảm xúc AI', titleEn: 'AI Emotional Companion', subtitleVi: 'Hope AI · giảm lo âu và xả stress', subtitleEn: 'Hope AI · anxiety relief and decompression' },
@@ -88,6 +90,53 @@ function drawCameraScanOverlay(ctx, width, height, { label, timestamp }) {
   ctx.restore()
 }
 
+function drawRealtimeTimestampOverlay(ctx, width, height, timestamp) {
+  const pad = Math.max(16, Math.round(width * 0.034))
+  const boxW = Math.min(width - pad * 2, Math.max(280, width * 0.34))
+  const boxH = Math.max(44, height * 0.058)
+  const boxX = width - pad - boxW
+  const boxY = height - pad - boxH
+  ctx.save()
+  ctx.shadowColor = 'rgba(0,0,0,0.34)'
+  ctx.shadowBlur = 16
+  ctx.fillStyle = 'rgba(0,12,24,0.68)'
+  ctx.fillRect(boxX, boxY, boxW, boxH)
+  ctx.shadowBlur = 0
+  ctx.strokeStyle = 'rgba(131,247,255,0.56)'
+  ctx.lineWidth = 2
+  ctx.strokeRect(boxX, boxY, boxW, boxH)
+  ctx.fillStyle = '#83f7ff'
+  ctx.font = `800 ${Math.max(14, width * 0.019)}px monospace`
+  ctx.fillText(timestamp, boxX + 14, boxY + Math.round(boxH / 2) + 6)
+  ctx.restore()
+}
+
+function drawDetectorSnapshotMetrics(ctx, width, height, isBody) {
+  const pad = Math.max(16, Math.round(width * 0.034))
+  const text = isBody ? 'Pose Skeleton · 33 điểm' : 'Face Mesh · 478 điểm'
+  const text2 = isBody ? 'Góc khớp gối · 125°' : 'Độ cân xứng · 96%'
+  const boxW = Math.min(width - pad * 2, Math.max(280, width * 0.36))
+  const boxH = 92
+  const boxX = pad
+  const boxY = Math.max(pad + 18, Math.round(height * 0.12))
+  ctx.save()
+  ctx.shadowColor = 'rgba(0,0,0,0.30)'
+  ctx.shadowBlur = 18
+  ctx.fillStyle = 'rgba(255,255,255,0.86)'
+  ctx.fillRect(boxX, boxY, boxW, boxH)
+  ctx.shadowBlur = 0
+  ctx.strokeStyle = 'rgba(0,112,235,0.34)'
+  ctx.lineWidth = 2
+  ctx.strokeRect(boxX, boxY, boxW, boxH)
+  ctx.fillStyle = '#0058bc'
+  ctx.font = `900 ${Math.max(16, width * 0.021)}px sans-serif`
+  ctx.fillText(text, boxX + 14, boxY + 34)
+  ctx.fillStyle = 'rgba(29,29,31,0.72)'
+  ctx.font = `800 ${Math.max(14, width * 0.018)}px sans-serif`
+  ctx.fillText(text2, boxX + 14, boxY + 66)
+  ctx.restore()
+}
+
 function CameraScanOverlayBadge({ label, timestamp }) {
   return (
     <div style={{ position: 'absolute', inset: 10, zIndex: 5, pointerEvents: 'none' }}>
@@ -159,7 +208,7 @@ async function saveJourneyImageFile(file, { mode, user, lang, label }) {
   return record
 }
 
-function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, showHelperDetails = true, onUploaded }) {
+function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, showHelperDetails = true, onUploaded, onCapturedPreview }) {
   const { lang } = useApp()
   const { user } = useAuth()
   const localInputRef = useRef(null)
@@ -205,14 +254,17 @@ function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, showHe
       const dataUrl = await fileToDataUrl(file)
       setCapturedFile(file)
       setPreview(dataUrl)
-      setStatus(source === 'camera'
-        ? (lang === 'vi' ? 'Đã chụp ảnh thật từ camera. Bấm upload để lưu vào hệ thống.' : 'Real camera photo captured. Press upload to save it to the system.')
-        : (lang === 'vi' ? 'Đã chọn hình trong máy. Bấm upload để lưu vào hệ thống.' : 'Local image selected. Press upload to save it to the system.'))
+      if (source === 'camera') {
+        setStatus('')
+        onCapturedPreview?.({ dataUrl, uploadPath: '', pendingUpload: true })
+      } else {
+        setStatus(lang === 'vi' ? 'Đã chọn hình trong máy. Bấm upload để lưu vào hệ thống.' : 'Local image selected. Press upload to save it to the system.')
+      }
     } catch (error) {
       console.error('Health journey image preview failed:', error)
       setStatus(lang === 'vi' ? 'Không thể đọc ảnh. Vui lòng thử lại.' : 'Could not read the image. Please try again.')
     }
-  }, [lang])
+  }, [lang, onCapturedPreview])
 
   const openPhysicalCamera = useCallback(async (nextFacingMode = facingMode) => {
     setStatus('')
@@ -267,6 +319,8 @@ function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, showHe
         label: mode === 'medication' ? 'AI Medication Scan' : 'AI Meal Scan',
         timestamp: cameraTimestamp(lang, scanNow),
       })
+    } else {
+      drawRealtimeTimestampOverlay(ctx, canvas.width, canvas.height, cameraTimestamp(lang, scanNow))
     }
     canvas.toBlob(blob => {
       if (!blob) {
@@ -533,6 +587,13 @@ function MediaPipeDetectorView({ type }) {
     if (overlayOn) {
       if (isBody) drawBodyOverlay(ctx, canvas.width, canvas.height, performance.now())
       else drawFaceOverlay(ctx, canvas.width, canvas.height, performance.now())
+      drawDetectorSnapshotMetrics(ctx, canvas.width, canvas.height, isBody)
+      drawCameraScanOverlay(ctx, canvas.width, canvas.height, {
+        label: isBody ? 'AI Body Detector Scan' : 'AI Face Detector Scan',
+        timestamp: cameraTimestamp(lang, scanNow),
+      })
+    } else {
+      drawRealtimeTimestampOverlay(ctx, canvas.width, canvas.height, cameraTimestamp(lang, scanNow))
     }
 
     setSnapshotSaving(true)
@@ -546,12 +607,6 @@ function MediaPipeDetectorView({ type }) {
       }
       try {
         const file = new File([blob], makeJourneyFilename(`${detectorMode}_camera`), { type: 'image/jpeg' })
-        if (overlayOn) {
-          drawCameraScanOverlay(ctx, canvas.width, canvas.height, {
-            label: isBody ? 'AI Body Detector Scan' : 'AI Face Detector Scan',
-            timestamp: cameraTimestamp(lang, scanNow),
-          })
-        }
         const record = await saveJourneyImageFile(file, {
           mode: detectorMode,
           user,
@@ -593,7 +648,7 @@ function MediaPipeDetectorView({ type }) {
           <span style={{ fontSize: 24 }}>‹</span><b>{isBody ? 'AI Motion Forecast Optimization' : 'AI Face Detector'}</b><span style={{ fontSize: 22 }}>⚙</span>
         </div>
         <div style={{ position: 'relative', height: 520, background: isBody ? 'linear-gradient(135deg,#323744,#879098)' : 'linear-gradient(135deg,#20293b,#64748b)', overflow: 'hidden' }}>
-          {cameraOpen ? <video ref={videoRef} autoPlay playsInline muted style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', transform: facingMode === 'user' ? 'scaleX(-1)' : 'none' }} /> : <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', color: 'rgba(255,255,255,0.72)', textAlign: 'center', padding: 24 }}><div style={{ fontSize: 74 }}>{isBody ? '🏃' : '🙂'}</div><b>{lang === 'vi' ? 'Bấm mở camera để bắt đầu' : 'Open camera to start'}</b></div>}
+          {cameraOpen ? <video ref={videoRef} autoPlay playsInline muted style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', transform: facingMode === 'user' ? 'scaleX(-1)' : 'none' }} /> : <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', color: 'rgba(255,255,255,0.92)', textAlign: 'center', padding: 24, backgroundImage: `linear-gradient(rgba(0,0,0,0.16), rgba(0,0,0,0.42)), url(${isBody ? BODY_DETECTOR_BACKGROUND : FACE_DETECTOR_BACKGROUND})`, backgroundSize: 'cover', backgroundPosition: 'center' }}><b style={{ padding: '10px 14px', borderRadius: 999, background: 'rgba(0,12,24,0.58)', backdropFilter: 'blur(12px)' }}>{lang === 'vi' ? 'Bấm mở camera để bắt đầu' : 'Open camera to start'}</b></div>}
           <canvas ref={canvasRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }} />
           {cameraOpen && overlayOn && <CameraScanOverlayBadge label={isBody ? 'AI Body Detector Scan' : 'AI Face Detector Scan'} timestamp={cameraTimestamp(lang, scanNow)} />}
           <div style={{ position: 'absolute', left: 14, bottom: 18, display: 'grid', gap: 8 }}>
@@ -769,6 +824,7 @@ function MealScanView() {
                 helper="Camera AI"
                 showHelperDetails={false}
                 onUploaded={setCapturedRecord}
+                onCapturedPreview={setCapturedRecord}
               />
             </div>
           </div>
@@ -834,7 +890,7 @@ function MedicationAssistantView() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}><h2 style={{ margin: 0, color: INK, fontSize: 25 }}>Kết quả Quét</h2><span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', padding: '6px 10px', borderRadius: 999, background: 'rgba(0,112,235,0.10)', color: PRIMARY, fontSize: 12, fontWeight: 900 }}>✨ Trợ lý AI</span></div>
           <div style={{ background: '#fff', border: '1px solid #ededed', borderRadius: 18, padding: 16, display: 'flex', gap: 16, marginBottom: 14 }}>
             <img alt="Tamoxifen Pill" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDjQHXpDlpop937cl2g-AgliTNjDZsZ4GaF0rbg3MKB7vu7r4SSTf5ZE4f4cYvbx6aU-WYjKBGzOnAXiyqGGEbHI1MRQDO9_we6ANnp2f7YpkTUeukmmaehNfcJvm_CwjQyOziUN0cIpQE-tQk_Y6_gUoNIfvc0MHgG7HtGaBkkcUJDa9hj3JCY--_v5y83HUUj0xepnsgxJ2r7DfVC_xBrQqHmFvNGT5I6vkGRg2_N8O27M71Dk42QokOPRn2_frR1KCKEkf2Kyl4o" style={{ width: 66, height: 66, borderRadius: 14, objectFit: 'cover', background: '#eeeef0', flexShrink: 0 }} />
-            <div><h3 style={{ margin: 0, color: INK, fontSize: 20 }}>{capturedRecord ? 'Ảnh thuốc vừa chụp' : 'Tamoxifen 20mg'}</h3><p style={{ margin: '6px 0 12px', color: MUTED }}>{capturedRecord ? `Đã upload vào ${capturedRecord.uploadPath}` : "Viên nén tròn, màu trắng, khắc số '20'"}</p><div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', color: MUTED, fontWeight: 700, fontSize: 13 }}><span>🕒 1 lần/ngày</span><span>🍽 Sau ăn</span></div></div>
+            <div><h3 style={{ margin: 0, color: INK, fontSize: 20 }}>{capturedRecord ? 'Ảnh thuốc vừa chụp' : 'Tamoxifen 20mg'}</h3><p style={{ margin: '6px 0 12px', color: MUTED }}>{capturedRecord ? (capturedRecord.pendingUpload ? 'Ảnh vừa chụp đang chờ xác nhận lưu' : `Đã upload vào ${capturedRecord.uploadPath}`) : "Viên nén tròn, màu trắng, khắc số '20'"}</p><div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', color: MUTED, fontWeight: 700, fontSize: 13 }}><span>🕒 1 lần/ngày</span><span>🍽 Sau ăn</span></div></div>
           </div>
           <div style={{ background: 'rgba(255,218,214,0.48)', border: '1px solid rgba(186,26,26,0.12)', borderRadius: 18, padding: 16, marginBottom: 18, color: '#93000a' }}><div style={{ fontWeight: 900, marginBottom: 7 }}>⚠️ Cảnh báo Tương tác</div><div style={{ lineHeight: 1.55 }}>Tương tác nhẹ phát hiện với <b>Ondansetron</b>. Có thể làm giảm hiệu quả của thuốc. Vui lòng tham khảo ý kiến bác sĩ điều trị.</div></div>
           <JourneyCameraUploader
@@ -844,6 +900,7 @@ function MedicationAssistantView() {
             helper="Camera AI"
             showHelperDetails={false}
             onUploaded={setCapturedRecord}
+            onCapturedPreview={setCapturedRecord}
           />
         </div>
       </div>
