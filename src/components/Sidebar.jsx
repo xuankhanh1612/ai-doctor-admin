@@ -20,7 +20,7 @@ function useIsMobile() {
   return isMobile
 }
 
-export default function Sidebar({ active, onNavigate }) {
+export default function Sidebar({ active, onNavigate, openSignal = 0 }) {
   const { user, logout } = useAuth()
   const { t, theme } = useApp()
   const isDark = theme === 'dark'
@@ -59,6 +59,10 @@ export default function Sidebar({ active, onNavigate }) {
   const ADMIN_STEPS = user?.isAdmin ? [
     { id: 'admin', label: t('adminPanel'), step: '★' },
   ] : []
+
+  useEffect(() => {
+    if (openSignal > 0) setOpen(true)
+  }, [openSignal])
 
   const handleNavigate = (id) => {
     onNavigate(id)

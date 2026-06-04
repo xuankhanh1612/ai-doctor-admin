@@ -771,7 +771,6 @@ function MediaPipeDetectorView({ type }) {
           )}
         </div>
       </div>
-      <JourneyMobileNav active="AI Scan" />
     </div>
   )
 }
@@ -806,19 +805,6 @@ function HealthJourneyTabs({ activeTab, setActiveTab, lang }) {
   )
 }
 
-function JourneyMobileNav({ active }) {
-  const items = [
-    ['Health', '♿'], ['Community', '👥'], ['AI Scan', '🧬'], ['Records', '📄'], ['Profile', '👤'],
-  ]
-  return (
-    <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 78, display: 'flex', justifyContent: 'space-around', alignItems: 'center', padding: '8px 14px 18px', ...glass, borderRadius: '22px 22px 0 0', zIndex: 15 }}>
-      {items.map(([label, icon]) => {
-        const selected = active === label
-        return <div key={label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, minWidth: 54, color: selected ? BLUE : '#626266', fontWeight: selected ? 800 : 600, fontSize: 11 }}><span style={{ fontSize: 20 }}>{icon}</span>{label}</div>
-      })}
-    </div>
-  )
-}
 
 function EmotionalCompanionView() {
   const [playing, setPlaying] = useState(false)
@@ -883,7 +869,6 @@ function EmotionalCompanionView() {
           <button style={roundButton(BLUE, '#fff')}>↑</button>
         </div>
       </div>
-      <JourneyMobileNav active="AI Scan" />
     </div>
   )
 }
@@ -1001,7 +986,6 @@ function MealScanView() {
           )}
         </div>
       </div>
-      <JourneyMobileNav active="AI Scan" />
     </div>
   )
 }
@@ -1174,7 +1158,6 @@ function MedicationAssistantView() {
           )}
         </div>
       </div>
-      <JourneyMobileNav active="AI Scan" />
     </div>
   )
 }
