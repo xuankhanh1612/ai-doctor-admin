@@ -88,6 +88,53 @@ function drawCameraScanOverlay(ctx, width, height, { label, timestamp }) {
   ctx.restore()
 }
 
+function drawRealtimeTimestampOverlay(ctx, width, height, timestamp) {
+  const pad = Math.max(16, Math.round(width * 0.034))
+  const boxW = Math.min(width - pad * 2, Math.max(280, width * 0.34))
+  const boxH = Math.max(44, height * 0.058)
+  const boxX = width - pad - boxW
+  const boxY = height - pad - boxH
+  ctx.save()
+  ctx.shadowColor = 'rgba(0,0,0,0.34)'
+  ctx.shadowBlur = 16
+  ctx.fillStyle = 'rgba(0,12,24,0.68)'
+  ctx.fillRect(boxX, boxY, boxW, boxH)
+  ctx.shadowBlur = 0
+  ctx.strokeStyle = 'rgba(131,247,255,0.56)'
+  ctx.lineWidth = 2
+  ctx.strokeRect(boxX, boxY, boxW, boxH)
+  ctx.fillStyle = '#83f7ff'
+  ctx.font = `800 ${Math.max(14, width * 0.019)}px monospace`
+  ctx.fillText(timestamp, boxX + 14, boxY + Math.round(boxH / 2) + 6)
+  ctx.restore()
+}
+
+function drawDetectorSnapshotMetrics(ctx, width, height, isBody) {
+  const pad = Math.max(16, Math.round(width * 0.034))
+  const text = isBody ? 'Pose Skeleton · 33 điểm' : 'Face Mesh · 478 điểm'
+  const text2 = isBody ? 'Góc khớp gối · 125°' : 'Độ cân xứng · 96%'
+  const boxW = Math.min(width - pad * 2, Math.max(280, width * 0.36))
+  const boxH = 92
+  const boxX = pad
+  const boxY = Math.max(pad + 18, Math.round(height * 0.12))
+  ctx.save()
+  ctx.shadowColor = 'rgba(0,0,0,0.30)'
+  ctx.shadowBlur = 18
+  ctx.fillStyle = 'rgba(255,255,255,0.86)'
+  ctx.fillRect(boxX, boxY, boxW, boxH)
+  ctx.shadowBlur = 0
+  ctx.strokeStyle = 'rgba(0,112,235,0.34)'
+  ctx.lineWidth = 2
+  ctx.strokeRect(boxX, boxY, boxW, boxH)
+  ctx.fillStyle = '#0058bc'
+  ctx.font = `900 ${Math.max(16, width * 0.021)}px sans-serif`
+  ctx.fillText(text, boxX + 14, boxY + 34)
+  ctx.fillStyle = 'rgba(29,29,31,0.72)'
+  ctx.font = `800 ${Math.max(14, width * 0.018)}px sans-serif`
+  ctx.fillText(text2, boxX + 14, boxY + 66)
+  ctx.restore()
+}
+
 function CameraScanOverlayBadge({ label, timestamp }) {
   return (
     <div style={{ position: 'absolute', inset: 10, zIndex: 5, pointerEvents: 'none' }}>
@@ -159,7 +206,7 @@ async function saveJourneyImageFile(file, { mode, user, lang, label }) {
   return record
 }
 
-function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUploaded }) {
+function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUploaded, onCapturedPreview }) {
   const { lang } = useApp()
   const { user } = useAuth()
   const localInputRef = useRef(null)
@@ -205,14 +252,17 @@ function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUplo
       const dataUrl = await fileToDataUrl(file)
       setCapturedFile(file)
       setPreview(dataUrl)
-      setStatus(source === 'camera'
-        ? (lang === 'vi' ? 'Đã chụp ảnh thật từ camera. Bấm upload để lưu vào hệ thống.' : 'Real camera photo captured. Press upload to save it to the system.')
-        : (lang === 'vi' ? 'Đã chọn hình trong máy. Bấm upload để lưu vào hệ thống.' : 'Local image selected. Press upload to save it to the system.'))
+      if (source === 'camera') {
+        setStatus('')
+        onCapturedPreview?.({ dataUrl, uploadPath: '', pendingUpload: true })
+      } else {
+        setStatus(lang === 'vi' ? 'Đã chọn hình trong máy. Bấm upload để lưu vào hệ thống.' : 'Local image selected. Press upload to save it to the system.')
+      }
     } catch (error) {
       console.error('Health journey image preview failed:', error)
       setStatus(lang === 'vi' ? 'Không thể đọc ảnh. Vui lòng thử lại.' : 'Could not read the image. Please try again.')
     }
-  }, [lang])
+  }, [lang, onCapturedPreview])
 
   const openPhysicalCamera = useCallback(async (nextFacingMode = facingMode) => {
     setStatus('')
@@ -267,6 +317,8 @@ function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUplo
         label: mode === 'medication' ? 'AI Medication Scan' : 'AI Meal Scan',
         timestamp: cameraTimestamp(lang, scanNow),
       })
+    } else {
+      drawRealtimeTimestampOverlay(ctx, canvas.width, canvas.height, cameraTimestamp(lang, scanNow))
     }
     canvas.toBlob(blob => {
       if (!blob) {
@@ -531,6 +583,13 @@ function MediaPipeDetectorView({ type }) {
     if (overlayOn) {
       if (isBody) drawBodyOverlay(ctx, canvas.width, canvas.height, performance.now())
       else drawFaceOverlay(ctx, canvas.width, canvas.height, performance.now())
+      drawDetectorSnapshotMetrics(ctx, canvas.width, canvas.height, isBody)
+      drawCameraScanOverlay(ctx, canvas.width, canvas.height, {
+        label: isBody ? 'AI Body Detector Scan' : 'AI Face Detector Scan',
+        timestamp: cameraTimestamp(lang, scanNow),
+      })
+    } else {
+      drawRealtimeTimestampOverlay(ctx, canvas.width, canvas.height, cameraTimestamp(lang, scanNow))
     }
 
     setSnapshotSaving(true)
@@ -544,12 +603,6 @@ function MediaPipeDetectorView({ type }) {
       }
       try {
         const file = new File([blob], makeJourneyFilename(`${detectorMode}_camera`), { type: 'image/jpeg' })
-        if (overlayOn) {
-          drawCameraScanOverlay(ctx, canvas.width, canvas.height, {
-            label: isBody ? 'AI Body Detector Scan' : 'AI Face Detector Scan',
-            timestamp: cameraTimestamp(lang, scanNow),
-          })
-        }
         const record = await saveJourneyImageFile(file, {
           mode: detectorMode,
           user,
@@ -843,6 +896,8 @@ function EveningPhoneCameraView({ mode }) {
         timestamp: cameraTimestamp(lang),
       })
       drawEveningMetricOverlay(ctx, canvas.width, canvas.height, overlayMetrics)
+    } else {
+      drawRealtimeTimestampOverlay(ctx, canvas.width, canvas.height, cameraTimestamp(lang))
     }
 
     setSnapshotSaving(true)
