@@ -652,7 +652,7 @@ function MediaPipeDetectorView({ type }) {
   const detectorMode = isBody ? 'body-detector' : 'face-detector'
   const [backgroundCameraState, setBackgroundCameraState] = useState(null)
   const [flash, setFlash] = useState(false)
-  const [sheetOpen, setSheetOpen] = useState(true)
+  const [sheetOpen, setSheetOpen] = useState(false)
   const handleBackgroundCameraState = useCallback(nextState => setBackgroundCameraState(nextState), [])
   const videoRef = useRef(null)
   const canvasRef = useRef(null)
@@ -808,8 +808,9 @@ function MediaPipeDetectorView({ type }) {
   useEffect(() => () => stopCamera(), [stopCamera])
 
   return (
-    <div style={{ ...panelShell, minHeight: 820, background: isBody ? '#141820' : '#111827' }}>
-      <div id={`hj-${detectorMode}-camera-host`} style={{ position: 'absolute', inset: 0, zIndex: 2, overflow: 'hidden' }} />
+    <div style={{ display: 'grid', gap: 12 }}>
+      <div style={{ ...panelShell, minHeight: 820, background: isBody ? '#141820' : '#111827' }}>
+        <div id={`hj-${detectorMode}-camera-host`} style={{ position: 'absolute', inset: 0, zIndex: 2, overflow: 'hidden' }} />
       <div style={{ position: 'absolute', inset: 0, zIndex: 1, background: isBody ? 'linear-gradient(135deg,#323744,#879098)' : 'linear-gradient(135deg,#20293b,#64748b)' }} />
       <div style={{ position: 'absolute', inset: 0, zIndex: 3, background: 'rgba(0,0,0,0.12)', pointerEvents: 'none' }} />
       <header style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10, padding: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -845,20 +846,19 @@ function MediaPipeDetectorView({ type }) {
           </div>
         </div>
       </div>
-      <div style={{ position: 'absolute', left: 0, right: 0, bottom: 18, zIndex: 16, padding: '0 18px' }}>
-        <div style={{ maxWidth: 900, margin: '0 auto', display: 'grid', gap: 10 }}>
-          <JourneyCameraUploader
-            mode={detectorMode}
-            captureLabel="📷 Mở Camera"
-            uploadLabel="Xác Nhận Lưu Hình"
-            helper={lang === 'vi' ? 'Dùng camera AI để lưu hình.' : 'Use the AI camera to save an image.'}
-            showHelperDetails={false}
-            onCameraState={handleBackgroundCameraState}
-            backgroundCamera
-          />
-          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <SheetToggleButton open={sheetOpen} onClick={() => setSheetOpen(open => !open)} lang={lang} />
-          </div>
+      </div>
+      <div style={{ maxWidth: 900, width: '100%', margin: '0 auto', display: 'grid', gap: 10 }}>
+        <JourneyCameraUploader
+          mode={detectorMode}
+          captureLabel="📷 Mở Camera"
+          uploadLabel="Xác Nhận Lưu Hình"
+          helper={lang === 'vi' ? 'Dùng camera AI để lưu hình.' : 'Use the AI camera to save an image.'}
+          showHelperDetails={false}
+          onCameraState={handleBackgroundCameraState}
+          backgroundCamera
+        />
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <SheetToggleButton open={sheetOpen} onClick={() => setSheetOpen(open => !open)} lang={lang} />
         </div>
       </div>
     </div>
@@ -1012,7 +1012,7 @@ function MealScanView() {
   const [flash, setFlash] = useState(false)
   const [capturedRecord, setCapturedRecord] = useState(null)
   const [cameraState, setCameraState] = useState(null)
-  const [sheetOpen, setSheetOpen] = useState(true)
+  const [sheetOpen, setSheetOpen] = useState(false)
   const handleCameraState = useCallback(nextState => setCameraState(nextState), [])
   const handleCloseCamera = useCallback(() => {
     setFlash(false)
@@ -1026,8 +1026,9 @@ function MealScanView() {
   }, [cameraState, flash])
   const fallbackSrc = "https://lh3.googleusercontent.com/aida-public/AB6AXuDz673aowy2PSOhw7UeuUZHoFiJO_SQTymK2RWuGYolAX9ok2Eugcl8j17Ip3FWZh0sLSoEuJbb-6LNoLAx5NKWwQ4X-nfqnnDuhGQvU_Dnqxw7oWZ6IW5kNaCG4vfKLbgFEAB2OXpUPeMzAoiWAqNGIjyo-wbhqxNF7d2BtrQY5HECx53yA3z9L7GdwfOiHxbQB6UdclRS9c4hau37W37ieVXlmK40gZ0dB2H8sW9PobMG23MnaC8tYR0V12bMf46MMJNaRznFkUu7"
   return (
-    <div style={{ ...panelShell, minHeight: 820, background: '#111' }}>
-      <div id="hj-meal-camera-host" style={{ position: 'absolute', inset: 0, zIndex: 2, overflow: 'hidden' }} />
+    <div style={{ display: 'grid', gap: 12 }}>
+      <div style={{ ...panelShell, minHeight: 820, background: '#111' }}>
+        <div id="hj-meal-camera-host" style={{ position: 'absolute', inset: 0, zIndex: 2, overflow: 'hidden' }} />
       <img alt="Salmon salad being scanned" src={capturedRecord?.dataUrl || "https://lh3.googleusercontent.com/aida-public/AB6AXuDz673aowy2PSOhw7UeuUZHoFiJO_SQTymK2RWuGYolAX9ok2Eugcl8j17Ip3FWZh0sLSoEuJbb-6LNoLAx5NKWwQ4X-nfqnnDuhGQvU_Dnqxw7oWZ6IW5kNaCG4vfKLbgFEAB2OXpUPeMzAoiWAqNGIjyo-wbhqxNF7d2BtrQY5HECx53yA3z9L7GdwfOiHxbQB6UdclRS9c4hau37W37ieVXlmK40gZ0dB2H8sW9PobMG23MnaC8tYR0V12bMf46MMJNaRznFkUu7"} style={{ position: 'absolute', inset: 0, zIndex: 1, width: '100%', height: '100%', objectFit: 'cover' }} />
       <div style={{ position: 'absolute', inset: 0, zIndex: 3, background: 'rgba(0,0,0,0.05)', pointerEvents: 'none' }} />
       <header style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10, padding: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -1053,22 +1054,21 @@ function MealScanView() {
           </div>
         </div>
       </div>
-      <div style={{ position: 'absolute', left: 0, right: 0, bottom: 18, zIndex: 16, padding: '0 18px' }}>
-        <div style={{ maxWidth: 840, margin: '0 auto', display: 'grid', gap: 10 }}>
-          <JourneyCameraUploader
-            mode="meal"
-            captureLabel="📷 Mở Camera"
-            uploadLabel="Xác Nhận Lưu Hình"
-            helper="Camera AI"
-            showHelperDetails={false}
-            onUploaded={setCapturedRecord}
-            onCapturedPreview={setCapturedRecord}
-            onCameraState={handleCameraState}
-            backgroundCamera
-          />
-          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <SheetToggleButton open={sheetOpen} onClick={() => setSheetOpen(open => !open)} lang={lang} />
-          </div>
+      </div>
+      <div style={{ maxWidth: 840, width: '100%', margin: '0 auto', display: 'grid', gap: 10 }}>
+        <JourneyCameraUploader
+          mode="meal"
+          captureLabel="📷 Mở Camera"
+          uploadLabel="Xác Nhận Lưu Hình"
+          helper="Camera AI"
+          showHelperDetails={false}
+          onUploaded={setCapturedRecord}
+          onCapturedPreview={setCapturedRecord}
+          onCameraState={handleCameraState}
+          backgroundCamera
+        />
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <SheetToggleButton open={sheetOpen} onClick={() => setSheetOpen(open => !open)} lang={lang} />
         </div>
       </div>
     </div>
@@ -1180,7 +1180,7 @@ function MedicationAssistantView() {
   const [flash, setFlash] = useState(false)
   const [capturedRecord, setCapturedRecord] = useState(null)
   const [cameraState, setCameraState] = useState(null)
-  const [sheetOpen, setSheetOpen] = useState(true)
+  const [sheetOpen, setSheetOpen] = useState(false)
   const handleCameraState = useCallback(nextState => setCameraState(nextState), [])
   const handleCloseCamera = useCallback(() => {
     setFlash(false)
@@ -1194,8 +1194,9 @@ function MedicationAssistantView() {
   }, [cameraState, flash])
   const fallbackSrc = "https://lh3.googleusercontent.com/aida-public/AB6AXuAZH2XA_C2g9jti8cF8o0E5hvwbxBLhK2y-tf0NDCFY7cyKfoeZ_U8_kn3jiQHhOa6b56cisSwi2bz6AE1EFWFS0dNQBehYv66eK0nIeMiU0q1kRU5vfIdZz1KoCj7T6VpAyJAotvB_di10b0BzJ7RdFkt_41wXUXbswPWEv9u7eX9drmA7OkyMb1YS1l1QjiSzEbHDivTPH6XurlsDr6cR5vjNnYcEWsLxKzNgrooWpXB-uu9DZvIchL5J627pN73vdwj5KTI9lY4z"
   return (
-    <div style={{ ...panelShell, minHeight: 820, background: '#000' }}>
-      <div id="hj-medication-camera-host" style={{ position: 'absolute', inset: 0, zIndex: 2, overflow: 'hidden' }} />
+    <div style={{ display: 'grid', gap: 12 }}>
+      <div style={{ ...panelShell, minHeight: 820, background: '#000' }}>
+        <div id="hj-medication-camera-host" style={{ position: 'absolute', inset: 0, zIndex: 2, overflow: 'hidden' }} />
       <header style={{ position: 'relative', zIndex: 15, height: 64, display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 20px', ...glass }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, color: INK }}><button onClick={handleCloseCamera} style={{ border: 'none', background: 'transparent', fontSize: 24, cursor: 'pointer' }}>×</button><h1 style={{ margin: 0, fontSize: 24 }}>Trợ lý thuốc</h1></div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}><button onClick={handleFlashToggle} style={{ border: 'none', background: 'transparent', color: flash ? BLUE : INK, fontSize: 22, cursor: 'pointer' }}>{flash ? '🔦' : '⚡'}</button><img alt="Patient" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAQKeTt8_ixyEzSPUh64YGich4CWVUCDHlAED0v66qzTB8rzONzJD_GBylNvUOCiBFxk9njOsY3qdU1MvmNYz2oc6dcZZ8cLBeX4cw701UMQjBjsm9UoiNevceFpQRaat5AthvRm2ihEbGQnfFnAfjJDQ8Inb1usap4d3mvsSoZRFa6lPEkbJKcg_2oaNIyBiG0QLPsJL8tZzPVU2HZDifgoOO4GcVdYWNJmxiuj0irLtdFBy-gDf8sEBwU2qkiyehS0pde6FcQP8-J" style={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover' }} /></div>
@@ -1224,22 +1225,21 @@ function MedicationAssistantView() {
           <div style={{ background: 'rgba(255,218,214,0.48)', border: '1px solid rgba(186,26,26,0.12)', borderRadius: 18, padding: 16, marginBottom: 0, color: '#93000a' }}><div style={{ fontWeight: 900, marginBottom: 7 }}>⚠️ Cảnh báo Tương tác</div><div style={{ lineHeight: 1.55 }}>Tương tác nhẹ phát hiện với <b>Ondansetron</b>. Có thể làm giảm hiệu quả của thuốc. Vui lòng tham khảo ý kiến bác sĩ điều trị.</div></div>
         </div>
       </div>
-      <div style={{ position: 'absolute', left: 0, right: 0, bottom: 18, zIndex: 16, padding: '0 18px' }}>
-        <div style={{ maxWidth: 760, margin: '0 auto', display: 'grid', gap: 10 }}>
-          <JourneyCameraUploader
-            mode="medication"
-            captureLabel="📷 Mở Camera"
-            uploadLabel="Xác Nhận Lưu Hình"
-            helper="Camera AI"
-            showHelperDetails={false}
-            onUploaded={setCapturedRecord}
-            onCapturedPreview={setCapturedRecord}
-            onCameraState={handleCameraState}
-            backgroundCamera
-          />
-          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <SheetToggleButton open={sheetOpen} onClick={() => setSheetOpen(open => !open)} lang={lang} />
-          </div>
+      </div>
+      <div style={{ maxWidth: 760, width: '100%', margin: '0 auto', display: 'grid', gap: 10 }}>
+        <JourneyCameraUploader
+          mode="medication"
+          captureLabel="📷 Mở Camera"
+          uploadLabel="Xác Nhận Lưu Hình"
+          helper="Camera AI"
+          showHelperDetails={false}
+          onUploaded={setCapturedRecord}
+          onCapturedPreview={setCapturedRecord}
+          onCameraState={handleCameraState}
+          backgroundCamera
+        />
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <SheetToggleButton open={sheetOpen} onClick={() => setSheetOpen(open => !open)} lang={lang} />
         </div>
       </div>
     </div>
