@@ -205,7 +205,7 @@ function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUplo
 
   useEffect(() => {
     if (typeof onCameraState === 'function') {
-      onCameraState({ cameraOpen, cameraStarting, facingMode, mode, overlayOn: scanOverlayOn })
+      onCameraState({ cameraOpen, cameraStarting, facingMode, mode, overlayOn: scanOverlayOn, stream: cameraOpen ? streamRef.current : null })
     }
   }, [cameraOpen, cameraStarting, facingMode, mode, onCameraState, scanOverlayOn])
 
@@ -331,7 +331,7 @@ function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUplo
   const backdropCamera = cameraOpen && backgroundCamera
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, position: cameraBackdrop ? 'relative' : 'static', zIndex: 20 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, position: backgroundCamera ? 'relative' : 'static', zIndex: 20 }}>
       <input
         ref={localInputRef}
         type="file"
@@ -367,14 +367,6 @@ function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUplo
             <button onClick={() => setScanOverlayOn(v => !v)} style={{ ...secondaryAction(), background: scanOverlayOn ? 'rgba(0,229,255,0.14)' : '#e3e2e6', color: scanOverlayOn ? BLUE : INK }}>▣ {lang === 'vi' ? 'Lớp phủ' : 'Overlay'}</button>
             <button onClick={stopCamera} style={{ ...secondaryAction(), gridColumn: '1 / -1' }}>{lang === 'vi' ? 'Đóng camera' : 'Close camera'}</button>
           </div>
-        </div>
-      )}
-      {cameraOpen && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 2 }}>
-          <button onClick={captureFromCamera} style={primaryAction()}>{lang === 'vi' ? '📸 Chụp ảnh' : '📸 Take photo'}</button>
-          <button onClick={switchCamera} style={secondaryAction()}>🔄 {lang === 'vi' ? 'Đổi camera' : 'Switch camera'}</button>
-          <button onClick={() => setScanOverlayOn(v => !v)} style={{ ...secondaryAction(), background: scanOverlayOn ? 'rgba(0,229,255,0.14)' : '#e3e2e6', color: scanOverlayOn ? BLUE : INK }}>▣ {lang === 'vi' ? 'Lớp phủ' : 'Overlay'}</button>
-          <button onClick={stopCamera} style={secondaryAction()}>{lang === 'vi' ? 'Đóng camera' : 'Close camera'}</button>
         </div>
       )}
       <button disabled={uploading} onClick={() => localInputRef.current?.click()} style={secondaryAction()}>
@@ -480,6 +472,14 @@ function DetectorRealtimeOverlay({ isBody }) {
       <RealtimeOverlayChip value={isBody ? '125°' : '478'} label={isBody ? 'Góc khớp gối' : 'Face mesh'} />
       <RealtimeOverlayChip value={isBody ? '3%' : '96%'} label={isBody ? 'Độ lệch' : 'Độ cân xứng'} tone="#6f7cff" />
       <RealtimeOverlayChip value="Live" label="AI realtime" tone="#2f9e62" />
+    </div>
+  )
+}
+
+function DetectorMetric({ label, value }) {
+  return (
+    <div style={{ background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.16)', borderRadius: 12, padding: '9px 10px', color: '#fff', fontSize: 12, boxShadow: '0 12px 30px rgba(0,0,0,0.18)' }}>
+      <b>{value}</b><br /><span style={{ opacity: 0.72 }}>{label}</span>
     </div>
   )
 }
@@ -886,6 +886,7 @@ function MealScanView() {
                 uploadLabel="upload bữa ăn"
                 helper="Nút Chụp mở camera vật lý để chụp thật; hoặc upload hình trong máy rồi lưu vào thư mục upload theo từng user. Camera được đẩy ra lớp nền phía sau để AI quan sát realtime."
                 onUploaded={setCapturedRecord}
+                onCameraState={handleCameraState}
                 backgroundCamera
               />
             </div>
@@ -952,6 +953,18 @@ function AiObservationChip({ value, label, accent = BLUE }) {
     <div style={{ ...glass, padding: '10px 13px', borderRadius: 16, color: accent, minWidth: 86, textAlign: 'center', boxShadow: '0 12px 34px rgba(0,0,0,0.18)' }}>
       <div style={{ fontSize: 23, fontWeight: 950, lineHeight: 1 }}>{value}</div>
       <div style={{ marginTop: 4, fontSize: 11, fontWeight: 850, color: 'rgba(29,29,31,0.70)' }}>{label}</div>
+    </div>
+  )
+}
+
+function AiMetricBubble({ value, label, note, style }) {
+  return (
+    <div style={{ position: 'absolute', zIndex: 8, pointerEvents: 'none', ...style }}>
+      <div style={{ ...glass, padding: '12px 14px', borderRadius: 18, minWidth: 118, color: BLUE, textAlign: 'center', boxShadow: '0 14px 36px rgba(0,0,0,0.18)' }}>
+        <div style={{ fontSize: 24, fontWeight: 950, lineHeight: 1 }}>{value}</div>
+        <div style={{ marginTop: 5, color: INK, fontSize: 12, fontWeight: 900 }}>{label}</div>
+        {note && <div style={{ marginTop: 4, color: MUTED, fontSize: 11, fontWeight: 750 }}>{note}</div>}
+      </div>
     </div>
   )
 }
@@ -1026,6 +1039,7 @@ function MedicationAssistantView() {
             uploadLabel="upload thuốc"
             helper="Nút Chụp mở camera vật lý để chụp thật; hoặc upload hình trong máy rồi lưu vào thư mục upload theo từng user. Camera được đẩy ra lớp nền phía sau để AI quan sát realtime."
             onUploaded={setCapturedRecord}
+            onCameraState={handleCameraState}
             backgroundCamera
           />
         </div>
