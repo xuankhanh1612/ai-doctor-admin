@@ -44,6 +44,7 @@ export default function App() {
     showTop: false,
     showEnd: false,
   })
+  const [sidebarOpenSignal, setSidebarOpenSignal] = useState(0)
 
   useEffect(() => {
     setCompareImage(null)
@@ -74,6 +75,10 @@ export default function App() {
   }
 
   const navigateToRecord = (member) => { setSelectedMember(member); setActive('record') }
+  const openMainMenu = useCallback(() => {
+    setActive('healthJourney')
+    window.setTimeout(() => setSidebarOpenSignal(signal => signal + 1), 0)
+  }, [])
 
   const goNext = () => {
     const idx = PANELS.indexOf(active)
@@ -182,8 +187,8 @@ export default function App() {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
       <Topbar activePanel={active} onNavigateProfile={() => setActive('profile')} onNavigateAdmin={() => setActive('admin')} />
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-        <Sidebar active={active} onNavigate={(id) => setActive(id)} />
-        <main ref={mainRef} style={{ flex: 1, overflowY: 'auto', background: mainBg }}>
+        <Sidebar active={active} onNavigate={(id) => setActive(id)} openSignal={sidebarOpenSignal} />
+        <main ref={mainRef} style={{ flex: 1, overflowY: 'auto', background: mainBg, paddingBottom: 104 }}>
           <PanelErrorBoundary
             resetKey={active}
             isDark={isDark}
@@ -223,8 +228,60 @@ export default function App() {
             onGoEnd={() => scrollMainTo('end')}
           />
         </main>
+        <GlobalBottomNav
+          active={active}
+          onOpenMainMenu={openMainMenu}
+          onNavigate={(id) => setActive(id)}
+        />
       </div>
     </div>
+  )
+}
+
+
+function GlobalBottomNav({ active, onOpenMainMenu, onNavigate }) {
+  const { theme } = useApp()
+  const isDark = theme === 'dark'
+  const items = [
+    { id: 'health', label: 'Health', icon: '♿', action: onOpenMainMenu, active: ['healthJourney', 'lunchJourney', 'dinnerJourney'].includes(active) },
+    { id: 'family', label: 'Community', icon: '👥', action: () => onNavigate('family'), active: active === 'family' },
+    { id: 'aiHealthcareVision', label: 'AI Scan', icon: '🧬', action: () => onNavigate('aiHealthcareVision'), active: active === 'aiHealthcareVision' },
+    { id: 'upload', label: 'Record', icon: '📄', action: () => onNavigate('upload'), active: active === 'upload' },
+    { id: 'profile', label: 'Profile', icon: '👤', action: () => onNavigate('profile'), active: active === 'profile' },
+  ]
+
+  return (
+    <nav
+      aria-label="Global quick navigation"
+      style={{
+        position: 'fixed', left: '50%', bottom: 14, transform: 'translateX(-50%)', zIndex: 180,
+        width: 'min(calc(100vw - 24px), 560px)', minHeight: 72,
+        display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: 4,
+        padding: '8px 10px calc(8px + env(safe-area-inset-bottom))', borderRadius: 24,
+        border: `1px solid ${isDark ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.10)'}`,
+        background: isDark ? 'rgba(8,12,26,0.90)' : 'rgba(255,255,255,0.92)',
+        backdropFilter: 'blur(18px)', boxShadow: '0 18px 55px rgba(0,0,0,0.24)',
+      }}
+    >
+      {items.map(item => (
+        <button
+          key={item.id}
+          type="button"
+          onClick={item.action}
+          aria-current={item.active ? 'page' : undefined}
+          style={{
+            minWidth: 0, minHeight: 54, border: 'none', borderRadius: 18, cursor: 'pointer',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4,
+            background: item.active ? 'linear-gradient(135deg, rgba(0,229,255,0.20), rgba(156,111,255,0.18))' : 'transparent',
+            color: item.active ? '#00e5ff' : (isDark ? 'rgba(232,240,248,0.72)' : '#626266'),
+            fontFamily: 'inherit', fontSize: 11, fontWeight: item.active ? 900 : 700,
+          }}
+        >
+          <span style={{ fontSize: 20, lineHeight: 1 }}>{item.icon}</span>
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>{item.label}</span>
+        </button>
+      ))}
+    </nav>
   )
 }
 

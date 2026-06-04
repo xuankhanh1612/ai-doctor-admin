@@ -77,7 +77,7 @@ function drawScanOverlay(ctx, width, height, { label, timestamp }) {
   ctx.fillStyle = 'rgba(0,12,24,0.70)'
   const boxW = Math.min(width - pad * 2, Math.max(360, width * 0.48))
   const boxH = Math.max(74, height * 0.095)
-  const boxX = pad
+  const boxX = width - pad - boxW
   const boxY = height - pad - boxH
   ctx.fillRect(boxX, boxY, boxW, boxH)
   ctx.strokeStyle = 'rgba(0,229,255,0.82)'
@@ -99,7 +99,7 @@ function ScanOverlayBadge({ label, timestamp }) {
       {[['top', 'left'], ['top', 'right'], ['bottom', 'left'], ['bottom', 'right']].map(([v, h]) => (
         <div key={`${v}-${h}`} style={{ position: 'absolute', [v]: 0, [h]: 0, width: 48, height: 48, borderColor: '#83f7ff', borderStyle: 'solid', borderWidth: `${v === 'top' ? 4 : 0}px ${h === 'right' ? 4 : 0}px ${v === 'bottom' ? 4 : 0}px ${h === 'left' ? 4 : 0}px`, borderRadius: `${v === 'top' && h === 'left' ? 12 : 0}px ${v === 'top' && h === 'right' ? 12 : 0}px ${v === 'bottom' && h === 'right' ? 12 : 0}px ${v === 'bottom' && h === 'left' ? 12 : 0}px` }} />
       ))}
-      <div style={{ position: 'absolute', left: 14, bottom: 14, padding: '10px 12px', borderRadius: 10, border: '1px solid rgba(131,247,255,0.72)', background: 'rgba(0,12,24,0.72)', boxShadow: '0 0 18px rgba(0,229,255,0.22)' }}>
+      <div style={{ position: 'absolute', right: 14, bottom: 14, padding: '10px 12px', borderRadius: 10, border: '1px solid rgba(131,247,255,0.72)', background: 'rgba(0,12,24,0.72)', boxShadow: '0 0 18px rgba(0,229,255,0.22)' }}>
         <div style={{ color: '#fff', fontSize: 12, fontWeight: 900, letterSpacing: '0.08em' }}>{label}</div>
         <div style={{ color: '#83f7ff', fontSize: 11, marginTop: 4, fontFamily: 'var(--font-mono, monospace)', fontWeight: 800 }}>{timestamp}</div>
       </div>
