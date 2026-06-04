@@ -158,7 +158,7 @@ async function saveJourneyImageFile(file, { mode, user, lang, label }) {
   return record
 }
 
-function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUploaded }) {
+function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, showHelperDetails = true, onUploaded }) {
   const { lang } = useApp()
   const { user } = useAuth()
   const localInputRef = useRef(null)
@@ -299,7 +299,7 @@ function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUplo
       const record = await saveJourneyImageFile(capturedFile, { mode, user, lang, label: uploadLabel })
       setPreview(record.dataUrl)
       setCapturedFile(null)
-      setStatus(lang === 'vi' ? `Đã upload: ${record.uploadPath}` : `Uploaded: ${record.uploadPath}`)
+      setStatus(lang === 'vi' ? 'Đã upload ảnh vào hồ sơ của bạn.' : 'Uploaded image to your records.')
       onUploaded?.(record)
     } catch (error) {
       console.error('Health journey camera upload failed:', error)
@@ -344,9 +344,11 @@ function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUplo
         {lang === 'vi' ? 'upload hình trong máy' : 'upload local image'}
       </button>
       {preview && <button disabled={uploading} onClick={resetCapture} style={{ ...secondaryAction(), background: '#fff0f0', color: '#93000a' }}>{lang === 'vi' ? 'Quét lại' : 'Scan again'}</button>}
-      <div style={{ fontSize: 11, color: mode === 'meal' ? MUTED : 'rgba(29,29,31,0.62)', lineHeight: 1.45 }}>
-        {helper}<br />{lang === 'vi' ? 'Thư mục user:' : 'User folder:'} <b>{virtualFolder}</b>
-      </div>
+      {showHelperDetails && (
+        <div style={{ fontSize: 11, color: mode === 'meal' ? MUTED : 'rgba(29,29,31,0.62)', lineHeight: 1.45 }}>
+          {helper}<br />{lang === 'vi' ? 'Thư mục user:' : 'User folder:'} <b>{virtualFolder}</b>
+        </div>
+      )}
       {preview && <img alt={uploadLabel} src={preview} style={{ width: '100%', maxHeight: 120, objectFit: 'cover', borderRadius: 14, border: '1px solid rgba(0,112,235,0.18)' }} />}
       {status && <div style={{ fontSize: 11, color: status.startsWith('Không') || status.startsWith('Could') ? '#93000a' : BLUE, fontWeight: 800, lineHeight: 1.4 }}>{status}</div>}
     </div>
@@ -777,20 +779,14 @@ function MealScanView() {
                 <h1 style={{ margin: 0, fontSize: 26, color: INK }}>{capturedRecord ? 'Bữa ăn vừa chụp' : 'Salad Cá Hồi Áp Chảo'}</h1>
                 <span style={{ padding: '6px 10px', borderRadius: 999, background: 'rgba(104,211,145,0.16)', color: '#2f9e62', fontSize: 12, fontWeight: 800 }}>✓ Phù hợp phác đồ</span>
               </div>
-              <p style={{ color: MUTED, margin: '0 0 20px', lineHeight: 1.5 }}>{capturedRecord ? `Ảnh đã được lưu vào ${capturedRecord.uploadPath} và sẵn sàng cho AI nhận diện dinh dưỡng.` : 'Phân tích hình ảnh xác nhận thành phần dinh dưỡng tối ưu cho bệnh nhân đang điều trị.'}</p>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 18 }}>
-                <NutritionCard value="320" label="kcal" />
-                <NutritionCard value="26g" label="Đạm" />
-                <NutritionCard value="8g" label="Chất xơ" />
-              </div>
-              <div style={{ background: 'rgba(255,218,214,0.36)', border: '1px solid #ffdad6', padding: 14, borderRadius: 14, display: 'flex', gap: 10, color: '#93000a', fontWeight: 700, lineHeight: 1.45 }}>⚠️ <span>Lưu ý: Sốt chanh leo đi kèm có chứa đường tinh luyện. Nên sử dụng hạn chế.</span></div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <JourneyCameraUploader
                 mode="meal"
                 captureLabel="📷 Chụp"
                 uploadLabel="upload bữa ăn"
-                helper="Nút Chụp mở camera vật lý để chụp thật; hoặc upload hình trong máy rồi lưu vào thư mục upload theo từng user."
+                helper="Camera AI"
+                showHelperDetails={false}
                 onUploaded={setCapturedRecord}
               />
             </div>
@@ -865,7 +861,8 @@ function MedicationAssistantView() {
             mode="medication"
             captureLabel="📷 Chụp"
             uploadLabel="upload thuốc"
-            helper="Nút Chụp mở camera vật lý để chụp thật; hoặc upload hình trong máy rồi lưu vào thư mục upload theo từng user."
+            helper="Camera AI"
+            showHelperDetails={false}
             onUploaded={setCapturedRecord}
           />
         </div>
