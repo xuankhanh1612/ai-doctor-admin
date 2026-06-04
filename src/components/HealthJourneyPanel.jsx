@@ -13,8 +13,9 @@ const INK = '#1D1D1F'
 const MUTED = '#86868B'
 const HEALTHY = '#68D391'
 const ATTENTION = '#FF8A7A'
-const BODY_DETECTOR_BACKGROUND = '/src/pages/thumbs_up.png'
-const FACE_DETECTOR_BACKGROUND = '/src/pages/hand_model.png'
+const detectorBackgroundUrl = fileName => new URL(`../pages/${fileName}.png`, import.meta.url).href
+const BODY_DETECTOR_BACKGROUND = detectorBackgroundUrl('thumbs_up')
+const FACE_DETECTOR_BACKGROUND = detectorBackgroundUrl('hand_model')
 
 const journeyTabs = [
   { id: 'emotion', icon: '🤖', titleVi: 'Bạn đồng hành cảm xúc AI', titleEn: 'AI Emotional Companion', subtitleVi: 'Hope AI · giảm lo âu và xả stress', subtitleEn: 'Hope AI · anxiety relief and decompression' },
