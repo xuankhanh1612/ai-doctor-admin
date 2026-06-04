@@ -225,7 +225,7 @@ async function saveJourneyImageFile(file, { mode, user, lang, label }) {
   return record
 }
 
-function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUploaded, onCameraState = null, backgroundCamera = false }) {
+function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, showHelperDetails = true, onUploaded, onCameraState = null, backgroundCamera = false }) {
   const { lang } = useApp()
   const { user } = useAuth()
   const localInputRef = useRef(null)
@@ -384,7 +384,7 @@ function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUplo
       const record = await saveJourneyImageFile(capturedFile, { mode, user, lang, label: uploadLabel })
       setPreview(record.dataUrl)
       setCapturedFile(null)
-      setStatus(lang === 'vi' ? `Đã upload: ${record.uploadPath}` : `Uploaded: ${record.uploadPath}`)
+      setStatus(lang === 'vi' ? 'Đã upload ảnh vào hồ sơ của bạn.' : 'Uploaded image to your records.')
       onUploaded?.(record)
     } catch (error) {
       console.error('Health journey camera upload failed:', error)
@@ -440,9 +440,11 @@ function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUplo
         {lang === 'vi' ? 'upload hình trong máy' : 'upload local image'}
       </button>
       {preview && <button disabled={uploading} onClick={resetCapture} style={{ ...secondaryAction(), background: '#fff0f0', color: '#93000a' }}>{lang === 'vi' ? 'Quét lại' : 'Scan again'}</button>}
-      <div style={{ fontSize: 11, color: mode === 'meal' ? MUTED : 'rgba(29,29,31,0.62)', lineHeight: 1.45 }}>
-        {helper}<br />{lang === 'vi' ? 'Thư mục user:' : 'User folder:'} <b>{virtualFolder}</b>
-      </div>
+      {showHelperDetails && (
+        <div style={{ fontSize: 11, color: mode === 'meal' ? MUTED : 'rgba(29,29,31,0.62)', lineHeight: 1.45 }}>
+          {helper}<br />{lang === 'vi' ? 'Thư mục user:' : 'User folder:'} <b>{virtualFolder}</b>
+        </div>
+      )}
       {preview && <img alt={uploadLabel} src={preview} style={{ width: '100%', maxHeight: 120, objectFit: 'cover', borderRadius: 14, border: '1px solid rgba(0,112,235,0.18)' }} />}
       {status && <div style={{ fontSize: 11, color: status.startsWith('Không') || status.startsWith('Could') ? '#93000a' : BLUE, fontWeight: 800, lineHeight: 1.4 }}>{status}</div>}
       {backdropCamera && portalHost && createPortal(
@@ -746,20 +748,19 @@ function MediaPipeDetectorView({ type }) {
                 <h1 style={{ margin: 0, fontSize: 26, color: INK }}>{isBody ? 'Body Detector AI' : 'Face Detector AI'}</h1>
                 <span style={{ padding: '6px 10px', borderRadius: 999, background: 'rgba(104,211,145,0.16)', color: '#2f9e62', fontSize: 12, fontWeight: 800 }}>✓ Realtime overlay</span>
               </div>
-              <p style={{ color: MUTED, margin: '0 0 20px', lineHeight: 1.5 }}>{isBody ? (lang === 'vi' ? 'Camera, nút chụp, đổi camera, lớp phủ và upload được đồng bộ theo cùng template Quét bữa ăn AI.' : 'Camera, capture, switch camera, overlay, and upload are synchronized with the AI Meal Scan template.') : (lang === 'vi' ? 'Face Detector dùng cùng template Quét bữa ăn AI để camera nằm phía sau lớp phủ quan sát realtime.' : 'Face Detector uses the AI Meal Scan template with the camera behind realtime overlays.')}</p>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 18 }}>
                 <NutritionCard value={isBody ? '33' : '478'} label={isBody ? 'Pose điểm' : 'Face mesh'} />
                 <NutritionCard value={isBody ? '125°' : '96%'} label={isBody ? 'Góc gối' : 'Cân xứng'} />
                 <NutritionCard value="live" label="AI realtime" />
               </div>
-              <div style={{ background: 'rgba(0,112,235,0.08)', border: '1px solid rgba(0,112,235,0.14)', padding: 14, borderRadius: 14, display: 'flex', gap: 10, color: BLUE, fontWeight: 700, lineHeight: 1.45 }}>▣ <span>{lang === 'vi' ? 'Các chỉ số là lớp phủ AI nằm trên hình ảnh/camera, không chiếm vùng quan sát chính.' : 'Metrics are AI overlays above the image/camera and do not consume the main viewing area.'}</span></div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <JourneyCameraUploader
                 mode={detectorMode}
                 captureLabel="📷 Mở Camera"
                 uploadLabel="Xác Nhận Lưu Hình"
-                helper={lang === 'vi' ? 'Dùng cùng chức năng camera, đổi camera, lớp phủ và upload như Quét bữa ăn AI.' : 'Uses the same camera, switch camera, overlay, and upload functions as AI Meal Scan.'}
+                helper={lang === 'vi' ? 'Dùng camera AI để lưu hình.' : 'Use the AI camera to save an image.'}
+                showHelperDetails={false}
                 onCameraState={handleBackgroundCameraState}
                 backgroundCamera
               />
@@ -981,15 +982,14 @@ function MealScanView() {
                 <h1 style={{ margin: 0, fontSize: 26, color: INK }}>{capturedRecord ? 'Bữa ăn vừa chụp' : 'Salad Cá Hồi Áp Chảo'}</h1>
                 <span style={{ padding: '6px 10px', borderRadius: 999, background: 'rgba(104,211,145,0.16)', color: '#2f9e62', fontSize: 12, fontWeight: 800 }}>✓ Phù hợp phác đồ</span>
               </div>
-              <p style={{ color: MUTED, margin: '0 0 20px', lineHeight: 1.5 }}>{capturedRecord ? `Ảnh đã được lưu vào ${capturedRecord.uploadPath} và sẵn sàng cho AI nhận diện dinh dưỡng.` : 'Phân tích hình ảnh xác nhận thành phần dinh dưỡng tối ưu cho bệnh nhân đang điều trị.'}</p>
-              <div style={{ background: 'rgba(255,218,214,0.36)', border: '1px solid #ffdad6', padding: 14, borderRadius: 14, display: 'flex', gap: 10, color: '#93000a', fontWeight: 700, lineHeight: 1.45 }}>⚠️ <span>Lưu ý: các chỉ số kcal, 26g Đạm và chất xơ đang là lớp phủ AI quan sát realtime trên ảnh/camera.</span></div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <JourneyCameraUploader
                 mode="meal"
                 captureLabel="📷 Mở Camera"
                 uploadLabel="Xác Nhận Lưu Hình"
-                helper="Nút Mở Camera mở camera vật lý để chụp thật; hoặc upload hình trong máy rồi lưu vào thư mục upload theo từng user. Camera được đẩy ra lớp nền phía sau để AI quan sát realtime."
+                helper="Camera AI"
+                showHelperDetails={false}
                 onUploaded={setCapturedRecord}
                 onCameraState={handleCameraState}
                 backgroundCamera
@@ -1162,7 +1162,8 @@ function MedicationAssistantView() {
             mode="medication"
             captureLabel="📷 Mở Camera"
             uploadLabel="Xác Nhận Lưu Hình"
-            helper="Nút Mở Camera mở camera vật lý để chụp thật; hoặc upload hình trong máy rồi lưu vào thư mục upload theo từng user. Camera được đẩy ra lớp nền phía sau để AI quan sát realtime."
+            helper="Camera AI"
+            showHelperDetails={false}
             onUploaded={setCapturedRecord}
             onCameraState={handleCameraState}
             backgroundCamera
