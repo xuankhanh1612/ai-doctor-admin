@@ -476,6 +476,14 @@ function DetectorRealtimeOverlay({ isBody }) {
   )
 }
 
+function DetectorMetric({ label, value }) {
+  return (
+    <div style={{ background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.16)', borderRadius: 12, padding: '9px 10px', color: '#fff', fontSize: 12, boxShadow: '0 12px 30px rgba(0,0,0,0.18)' }}>
+      <b>{value}</b><br /><span style={{ opacity: 0.72 }}>{label}</span>
+    </div>
+  )
+}
+
 function MediaPipeDetectorView({ type }) {
   const { lang } = useApp()
   const { user } = useAuth()
@@ -945,6 +953,18 @@ function AiObservationChip({ value, label, accent = BLUE }) {
     <div style={{ ...glass, padding: '10px 13px', borderRadius: 16, color: accent, minWidth: 86, textAlign: 'center', boxShadow: '0 12px 34px rgba(0,0,0,0.18)' }}>
       <div style={{ fontSize: 23, fontWeight: 950, lineHeight: 1 }}>{value}</div>
       <div style={{ marginTop: 4, fontSize: 11, fontWeight: 850, color: 'rgba(29,29,31,0.70)' }}>{label}</div>
+    </div>
+  )
+}
+
+function AiMetricBubble({ value, label, note, style }) {
+  return (
+    <div style={{ position: 'absolute', zIndex: 8, pointerEvents: 'none', ...style }}>
+      <div style={{ ...glass, padding: '12px 14px', borderRadius: 18, minWidth: 118, color: BLUE, textAlign: 'center', boxShadow: '0 14px 36px rgba(0,0,0,0.18)' }}>
+        <div style={{ fontSize: 24, fontWeight: 950, lineHeight: 1 }}>{value}</div>
+        <div style={{ marginTop: 5, color: INK, fontSize: 12, fontWeight: 900 }}>{label}</div>
+        {note && <div style={{ marginTop: 4, color: MUTED, fontSize: 11, fontWeight: 750 }}>{note}</div>}
+      </div>
     </div>
   )
 }
