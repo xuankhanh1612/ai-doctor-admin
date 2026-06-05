@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import NavButtons from './NavButtons.jsx'
+import GPEmotionalCompanionView from './EmotionalCompanionView.jsx'
 import { useApp } from '../context/AppContext.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { detectFileType, fileToBase64, fileToDataUrl, saveRecord } from '../lib/medicalStorage.js'
@@ -742,71 +743,8 @@ function HealthJourneyTabs({ activeTab, setActiveTab, lang }) {
 }
 
 
-function EmotionalCompanionView() {
-  const [playing, setPlaying] = useState(false)
-  return (
-    <div style={panelShell}>
-      <div style={{ position: 'sticky', top: 0, zIndex: 10, height: 64, display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 20px', ...glass }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <img alt="Patient Profile" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAtKXZ8Z8xPdcddYd3_3LBUEgNXwg0eUvQSbHPBE7s4E0uhgb1LmS8wv5Igo9RqOekFLODV8AnqqJ87x2V5HuMj4zhCQDQhBlHpwDeVC7qg754k6-pXFeqwK9QDHldUAg7tHwQvn2isqzLDdinvGpzXK9ceLKuMGv8Qw1zBWtZb50Y2DehAH-CvqixV5e8bGLSTG3FNFmQ8DSlRQQBa6dpkXRs-tUXnA6dpiVBpbS9Wgl61ud3uxjSzBXi6HI0SnVuiskg5fquAGSs5" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', background: '#e1dfe3' }} />
-          <b style={{ fontSize: 22, color: '#1a1c1d' }}>Digital Twin</b>
-        </div>
-        <MaterialIcon style={{ color: BLUE }}>🔔</MaterialIcon>
-      </div>
-
-      <main style={{ maxWidth: 760, margin: '0 auto', padding: '28px 20px 150px' }}>
-        <section style={{ marginBottom: 28 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <div style={{ width: 52, height: 52, borderRadius: 18, background: BLUE, display: 'grid', placeItems: 'center', color: '#fff', boxShadow: '0 12px 30px rgba(0,88,188,0.24)', fontSize: 28 }}>🤖</div>
-            <div>
-              <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800, color: INK }}>Xin chào, tôi là AI Bác sĩ đa khoa</h1>
-              <p style={{ margin: '4px 0 0', color: MUTED, fontSize: 16 }}>Bác sĩ đa khoa AI luôn sẵn sàng lắng nghe và tâm sự cùng bạn</p>
-            </div>
-          </div>
-        </section>
-
-        <section style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 16, marginBottom: 28 }}>
-          <CompanionTile icon="📝" color={ATTENTION} title="Góc xả stress" subtitle="Viết ra mọi lo lắng của bạn" />
-          <CompanionTile icon="💚" color={HEALTHY} title="Khẳng định" subtitle="Năng lượng tích cực mỗi ngày" />
-          <div style={{ gridColumn: '1 / -1', padding: 30, borderRadius: 28, ...glass, position: 'relative', overflow: 'hidden' }}>
-            <div style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
-              <div>
-                <span style={{ display: 'inline-block', padding: '5px 12px', borderRadius: 999, background: 'rgba(0,88,188,0.10)', color: BLUE, fontSize: 12, fontWeight: 800, marginBottom: 14 }}>Hoạt động đề xuất</span>
-                <h3 style={{ margin: 0, fontSize: 26, color: INK }}>Playlist chăm sóc tinh thần cùng AI Bác sĩ đa khoa</h3>
-                <p style={{ margin: '10px 0 0', maxWidth: 440, color: MUTED, lineHeight: 1.55 }}>Mở danh sách video hướng dẫn thư giãn, chăm sóc sức khoẻ tinh thần và phục hồi năng lượng.</p>
-              </div>
-              <button onClick={() => { setPlaying(!playing); window.open(GENERAL_DOCTOR_PLAYLIST_URL, '_blank', 'noopener,noreferrer') }} style={{ width: 58, height: 58, borderRadius: '50%', border: 'none', background: playing ? HEALTHY : BLUE, color: '#fff', fontSize: 28, display: 'grid', placeItems: 'center', cursor: 'pointer', boxShadow: '0 16px 30px rgba(0,88,188,0.26)' }}>{playing ? '⏸' : '▶'}</button>
-            </div>
-            <div style={{ position: 'absolute', right: -40, bottom: -40, width: 170, height: 170, borderRadius: '50%', background: 'rgba(0,88,188,0.06)', animation: 'hj-breathe 8s ease-in-out infinite' }} />
-          </div>
-        </section>
-
-        <section style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginLeft: 70 }}>
-            <div style={{ background: PRIMARY, color: '#fff', padding: '16px 20px', borderRadius: '24px 24px 4px 24px', boxShadow: '0 4px 12px rgba(0,0,0,0.06)' }}>
-              <p style={{ margin: 0, lineHeight: 1.55 }}>Gần đây mình cảm thấy rất mệt mỏi và lo lắng. Việc điều trị khiến mình kiệt sức...</p>
-              <span style={{ display: 'block', textAlign: 'right', opacity: 0.72, fontSize: 12, marginTop: 8 }}>14:20</span>
-            </div>
-          </div>
-          <div style={{ display: 'flex', gap: 12, marginRight: 70 }}>
-            <div style={{ width: 34, height: 34, borderRadius: '50%', background: BLUE, color: '#fff', flexShrink: 0, display: 'grid', placeItems: 'center' }}>🤖</div>
-            <div style={{ ...glass, padding: '16px 20px', borderRadius: '4px 24px 24px 24px' }}>
-              <p style={{ margin: 0, lineHeight: 1.65 }}>Tôi là AI Bác sĩ đa khoa, tôi sẽ lắng nghe và đồng hành cùng bạn. Những cảm xúc mệt mỏi, lo lắng trong quá trình điều trị là điều rất đáng được quan tâm. 🌿<br/><br/>Bạn có thể kể thêm cho tôi điều đang làm bạn nặng lòng nhất hôm nay. Nếu cần thư giãn ngay, hãy thử thở chậm 4-7-8 hoặc mở hoạt động đề xuất phía trên.</p>
-              <span style={{ display: 'block', opacity: 0.5, fontSize: 12, marginTop: 8 }}>14:21</span>
-            </div>
-          </div>
-        </section>
-      </main>
-
-      <div style={{ position: 'absolute', left: 0, right: 0, bottom: 84, zIndex: 16, maxWidth: 760, margin: '0 auto', padding: '0 20px' }}>
-        <div style={{ ...glass, display: 'flex', alignItems: 'center', gap: 8, padding: 8, borderRadius: 999 }}>
-          <button style={roundButton('#f3f3f5', MUTED)}>＋</button>
-          <input placeholder="Tâm sự với AI Bác sĩ đa khoa..." style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', fontSize: 15, color: INK, padding: '0 10px' }} />
-          <button style={roundButton(BLUE, '#fff')}>↑</button>
-        </div>
-      </div>
-    </div>
-  )
+function EmotionalCompanionView({ onOpenStressRelief }) {
+  return <GPEmotionalCompanionView onOpenStressRelief={onOpenStressRelief} />
 }
 
 function CompanionTile({ icon, color, title, subtitle }) {
@@ -847,8 +785,6 @@ function EveningPhoneCameraView({ mode }) {
     ? (lang === 'vi' ? 'AI Meal Camera' : 'AI Meal Camera')
     : (lang === 'vi' ? 'AI Medication Camera' : 'AI Medication Camera')
   const placeholderIcon = isMeal ? '🥗' : '💊'
-  const metricA = isMeal ? { label: 'Nutrition scan', value: capturedRecord ? 'Saved' : '320 kcal' } : { label: 'Pill scan', value: capturedRecord ? 'Saved' : '20mg' }
-  const metricB = isMeal ? { label: 'Care-plan fit', value: '96%' } : { label: 'Interaction', value: 'Low' }
   const label = isMeal ? 'Dinner meal camera snapshot' : 'Dinner medication camera snapshot'
 
   const stopCamera = useCallback(() => {
@@ -871,16 +807,11 @@ function EveningPhoneCameraView({ mode }) {
     const ctx = canvas.getContext('2d')
     ctx.clearRect(0, 0, canvas.width, canvas.height)
     if (overlayOnRef.current) {
-      const overlayMetrics = [metricA, metricB]
       drawEveningCameraOverlay(ctx, canvas.width, canvas.height, time, isMeal)
-      drawCameraScanOverlay(ctx, canvas.width, canvas.height, {
-        label: isMeal ? 'AI Meal Scan' : 'AI Medication Scan',
-        timestamp: cameraTimestamp(lang),
-      })
-      drawEveningMetricOverlay(ctx, canvas.width, canvas.height, overlayMetrics)
+      drawRealtimeTimestampOverlay(ctx, canvas.width, canvas.height, cameraTimestamp(lang))
     }
     rafRef.current = requestAnimationFrame(draw)
-  }, [isMeal, lang, metricA, metricB])
+  }, [isMeal, lang])
 
   const openCamera = useCallback(async (nextFacingMode = facingMode) => {
     if (!navigator.mediaDevices?.getUserMedia) {
@@ -931,14 +862,7 @@ function EveningPhoneCameraView({ mode }) {
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
     if (facingMode === 'user') ctx.setTransform(1, 0, 0, 1, 0, 0)
     if (overlayOnRef.current) {
-      const overlayMetrics = [metricA, metricB]
       drawEveningCameraOverlay(ctx, canvas.width, canvas.height, performance.now(), isMeal)
-      drawCameraScanOverlay(ctx, canvas.width, canvas.height, {
-        label: isMeal ? 'AI Meal Scan' : 'AI Medication Scan',
-        timestamp: cameraTimestamp(lang),
-      })
-      drawEveningMetricOverlay(ctx, canvas.width, canvas.height, overlayMetrics)
-    } else {
       drawRealtimeTimestampOverlay(ctx, canvas.width, canvas.height, cameraTimestamp(lang))
     }
 
@@ -964,7 +888,7 @@ function EveningPhoneCameraView({ mode }) {
         window.setTimeout(() => setRecording(false), 520)
       }
     }, 'image/jpeg', 0.92)
-  }, [cameraOpen, facingMode, isMeal, label, lang, metricA, metricB, mode, user])
+  }, [cameraOpen, facingMode, isMeal, label, lang, mode, user])
 
 
   const uploadLocalImage = useCallback(async (file) => {
@@ -1019,10 +943,6 @@ function EveningPhoneCameraView({ mode }) {
         <div style={{ position: 'relative', height: 520, background: isMeal ? 'linear-gradient(135deg,#273f32,#9fb76d)' : 'linear-gradient(135deg,#2f3346,#667085)', overflow: 'hidden' }}>
           {cameraOpen ? <video ref={videoRef} autoPlay playsInline muted style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', transform: facingMode === 'user' ? 'scaleX(-1)' : 'none' }} /> : <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', color: 'rgba(255,255,255,0.72)', textAlign: 'center', padding: 24 }}><div style={{ fontSize: 74 }}>{placeholderIcon}</div><b>{lang === 'vi' ? 'Bấm mở camera để bắt đầu' : 'Open camera to start'}</b></div>}
           <canvas ref={canvasRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }} />
-          {overlayOn && <div style={{ position: 'absolute', left: 14, bottom: 18, display: 'grid', gap: 8 }}>
-            <DetectorMetric label={metricA.label} value={metricA.value} />
-            <DetectorMetric label={metricB.label} value={metricB.value} />
-          </div>}
         </div>
         <div style={{ padding: 18, background: 'rgba(14,18,30,0.98)' }}>
           <input
@@ -1094,34 +1014,6 @@ function drawEveningCameraOverlay(ctx, width, height, time, isMeal) {
   ctx.restore()
 }
 
-function drawEveningMetricOverlay(ctx, width, height, metrics) {
-  const pad = Math.max(18, Math.round(width * 0.035))
-  const boxW = Math.min(width * 0.48, 250)
-  const boxH = 58
-  const gap = 10
-  const startY = height - pad - (boxH * metrics.length) - (gap * (metrics.length - 1))
-
-  metrics.forEach((metric, index) => {
-    const y = startY + index * (boxH + gap)
-    ctx.save()
-    ctx.shadowColor = 'rgba(0,0,0,0.36)'
-    ctx.shadowBlur = 18
-    ctx.fillStyle = 'rgba(14,18,30,0.72)'
-    ctx.fillRect(pad, y, boxW, boxH)
-    ctx.shadowBlur = 0
-    ctx.strokeStyle = 'rgba(255,255,255,0.18)'
-    ctx.lineWidth = 2
-    ctx.strokeRect(pad, y, boxW, boxH)
-    ctx.fillStyle = '#fff'
-    ctx.font = `900 ${Math.max(16, width * 0.022)}px sans-serif`
-    ctx.fillText(metric.value, pad + 12, y + 25)
-    ctx.fillStyle = 'rgba(255,255,255,0.72)'
-    ctx.font = `800 ${Math.max(11, width * 0.015)}px sans-serif`
-    ctx.fillText(metric.label, pad + 12, y + 45)
-    ctx.restore()
-  })
-}
-
 function MealScanView() {
   return <EveningPhoneCameraView mode="meal" />
 }
@@ -1160,7 +1052,7 @@ function MedicationAssistantView() {
   return <EveningPhoneCameraView mode="medication" />
 }
 
-export default function DinnerJourneyPanel({ onNext, onPrev, prevLabel }) {
+export default function DinnerJourneyPanel({ onNext, onPrev, prevLabel, onOpenStressRelief }) {
   const { lang, t } = useApp()
   const [activeTab, setActiveTab] = useState('emotion')
 
@@ -1184,7 +1076,7 @@ export default function DinnerJourneyPanel({ onNext, onPrev, prevLabel }) {
         </div>
       </div>
       <HealthJourneyTabs activeTab={activeTab} setActiveTab={setActiveTab} lang={lang} />
-      {activeTab === 'emotion' && <EmotionalCompanionView />}
+      {activeTab === 'emotion' && <EmotionalCompanionView onOpenStressRelief={onOpenStressRelief} />}
       {activeTab === 'meal' && <MealScanView />}
       {activeTab === 'medication' && <MedicationAssistantView />}
       {activeTab === 'faceDetector' && <MediaPipeDetectorView type="face" />}
