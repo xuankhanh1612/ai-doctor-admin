@@ -12,6 +12,11 @@ export default defineConfig({
       },
     },
   },
+  worker: {
+    rollupOptions: {
+      external: ['@mediapipe/tasks-vision', '@mediapipe/tasks-audio', '@mediapipe/tasks-text'],
+    },
+  },
   server: {
     proxy: {
       // Proxy /api/* and /health to the FastAPI backend
