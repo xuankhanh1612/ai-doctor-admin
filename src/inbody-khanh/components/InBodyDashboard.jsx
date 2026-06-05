@@ -1,13 +1,5 @@
-'use client';
-
-import { useState, useRef, useEffect } from 'react';
-import { Line } from 'react-chartjs-2';
-import {
-  Chart as ChartJS, CategoryScale, LinearScale,
-  PointElement, LineElement, Tooltip, Legend
-} from 'chart.js';
-
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend);
+import React, { useState, useRef } from 'react';
+import { LineChart, Line, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 // ─── Gamification engine ────────────────────────────────────────────────────
 function calcXP(records) {
@@ -261,35 +253,28 @@ function QuestsTab({ records }) {
 }
 
 function HistoryTab({ records }) {
-  const labels = records.map((r) => r.date.slice(5));
-  const chartData = {
-    labels,
-    datasets: [
-      {
-        label: 'Cơ bắp (kg)',
-        data: records.map((r) => r.muscle),
-        borderColor: '#378ADD',
-        backgroundColor: 'rgba(55,138,221,0.08)',
-        tension: 0.4,
-      },
-      {
-        label: 'Mỡ (%)',
-        data: records.map((r) => r.fat),
-        borderColor: '#D85A30',
-        backgroundColor: 'rgba(216,90,48,0.08)',
-        tension: 0.4,
-      },
-    ],
-  };
-  const options = {
-    responsive: true,
-    plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 11 } } } },
-    scales: { x: { grid: { display: false } } },
-  };
+  const chartData = records.map((record) => ({
+    date: record.date.slice(5),
+    muscle: record.muscle,
+    fat: record.fat,
+  }));
+
   return (
     <div>
       <div className="section-title">Xu hướng 3 tháng</div>
-      <Line data={chartData} options={options} />
+      <div className="inbody-chart">
+        <ResponsiveContainer width="100%" height={260}>
+          <LineChart data={chartData} margin={{ top: 8, right: 16, left: -18, bottom: 8 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+            <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+            <YAxis tick={{ fontSize: 11 }} />
+            <Tooltip />
+            <Legend wrapperStyle={{ fontSize: 11 }} />
+            <Line type="monotone" dataKey="muscle" name="Cơ bắp (kg)" stroke="#378ADD" strokeWidth={2.5} dot={{ r: 3 }} />
+            <Line type="monotone" dataKey="fat" name="Mỡ (%)" stroke="#D85A30" strokeWidth={2.5} dot={{ r: 3 }} />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
       <div className="section-title" style={{ marginTop: '1rem' }}>Lịch sử đo</div>
       {records.map((r, i) => {
         const prev = records[i - 1];
@@ -409,8 +394,9 @@ export default function InBodyDashboard({ userId, initialRecords }) {
         {tab === 'badges' && <BadgesTab records={records} />}
       </div>
 
-      <style jsx>{`
-        .inbody-dashboard { font-family: var(--font-sans, system-ui); max-width: 680px; }
+      <style>{`
+        .inbody-dashboard { font-family: var(--font-sans, system-ui); max-width: 100%; color: #111827; }
+        .inbody-chart { height: 260px; width: 100%; margin-bottom: 1rem; }
         .hero-card { display: flex; align-items: center; gap: 16px; padding: 1.25rem; background: #f8f9fa; border-radius: 12px; margin-bottom: 1rem; border: 1px solid #e9ecef; }
         .avatar { width: 64px; height: 64px; border-radius: 50%; background: #e6f1fb; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border: 2px solid #378ADD; position: relative; }
         .avatar-emoji { font-size: 28px; }
