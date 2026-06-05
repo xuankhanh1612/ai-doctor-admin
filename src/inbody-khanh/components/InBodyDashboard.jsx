@@ -396,8 +396,9 @@ export default function InBodyDashboard({ userId, initialRecords }) {
         {tab === 'badges' && <BadgesTab records={records} />}
       </div>
 
-      <style jsx>{`
-        .inbody-dashboard { font-family: var(--font-sans, system-ui); max-width: 680px; }
+      <style>{`
+        .inbody-dashboard { font-family: var(--font-sans, system-ui); max-width: 100%; color: #111827; }
+        .inbody-chart { height: 260px; width: 100%; margin-bottom: 1rem; }
         .hero-card { display: flex; align-items: center; gap: 16px; padding: 1.25rem; background: #f8f9fa; border-radius: 12px; margin-bottom: 1rem; border: 1px solid #e9ecef; }
         .avatar { width: 64px; height: 64px; border-radius: 50%; background: #e6f1fb; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border: 2px solid #378ADD; position: relative; }
         .avatar-emoji { font-size: 28px; }

@@ -4,7 +4,7 @@ import { useApp } from '../context/AppContext.jsx'
 
 const STRESS_RELIEF_URL = 'https://castle.xyz/d/t8p9l7o0N'
 
-export default function StressReliefPanel({ onPrev, prevLabel }) {
+export default function StressReliefPanel({ onNext, nextLabel, onPrev, prevLabel }) {
   const { lang } = useApp()
 
   return (
@@ -115,7 +115,7 @@ export default function StressReliefPanel({ onPrev, prevLabel }) {
         </div>
       </div>
 
-      <NavButtons onPrev={onPrev} prevLabel={prevLabel} />
+      <NavButtons onNext={onNext} nextLabel={nextLabel} onPrev={onPrev} prevLabel={prevLabel} />
     </div>
   )
 }
