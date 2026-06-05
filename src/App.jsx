@@ -75,8 +75,8 @@ export default function App() {
     protein3d: t('protein3d'),
     aiHealthcareVision: t('aiHealthcareVision'),
     aiHealthcareVisionControl: t('aiHealthcareVisionControl'),
-    aiInbodyPortal: t('aiInbodyPortal'),
     stressRelief: t('stressRelief'),
+    aiInbodyPortal: t('aiInbodyPortal'),
     profile: t('profile'),
   }
 
@@ -222,7 +222,7 @@ export default function App() {
             {active === 'protein3d' && <Protein3DPanel     onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'aiHealthcareVision' && <AIHealthcareVisionPanel onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'aiHealthcareVisionControl' && <AIHealthcareVisionControlPanel onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
-            {active === 'stressRelief' && <StressReliefPanel onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
+            {active === 'stressRelief' && <StressReliefPanel onNext={goNext} nextLabel={`${t('aiInbodyPortal')} →`} onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'aiInbodyPortal' && <AIInbodyPortalPanel onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'profile'   && <UserProfilePanel />}
             {active === 'admin'     && user?.isAdmin && <AdminPanel />}
@@ -254,7 +254,7 @@ function GlobalBottomNav({ active, onOpenMainMenu, onNavigate }) {
   const items = [
     { id: 'health', label: 'Health', icon: '♿', action: onOpenMainMenu, active: ['healthJourney', 'lunchJourney', 'dinnerJourney'].includes(active) },
     { id: 'family', label: 'Community', icon: '👥', action: () => onNavigate('family'), active: active === 'family' },
-    { id: 'aiHealthcareVision', label: 'AI Scan', icon: '🧬', action: () => onNavigate('aiHealthcareVision'), active: active === 'aiHealthcareVision' },
+    { id: 'aiHealthcareVision', label: 'AI Scan', icon: '🧬', action: () => onNavigate('aiHealthcareVision'), active: active === 'aiHealthcareVision' || active === 'aiHealthcareVisionControl' },
     { id: 'upload', label: 'Record', icon: '📄', action: () => onNavigate('upload'), active: active === 'upload' },
     { id: 'profile', label: 'Profile', icon: '👤', action: () => onNavigate('profile'), active: active === 'profile' },
   ]
