@@ -23,13 +23,15 @@ import AdminPanel from './components/admin/AdminPanel.jsx'
 import PatientRecordPanel from './components/PatientRecordPanel.jsx'
 import Protein3DPanel from './components/Protein3DPanel.jsx'
 import AIHealthcareVisionPanel from './components/AIHealthcareVisionPanel.jsx'
+import AIHealthcareVisionControlPanel from './components/AIHealthcareVisionControlPanel.jsx'
+import AIInbodyPortalPanel from './components/AIInbodyPortalPanel.jsx'
 import StressReliefPanel from './components/StressReliefPanel.jsx'
 import UserProfilePanel from './components/UserProfilePanel.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 import { addNotification } from './lib/notifications.js'
 
 // Swarm panel replaces simulation; keep consensus as classic fallback
-const PANELS = ['healthJourney', 'lunchJourney', 'dinnerJourney', 'upload', 'imaging', 'checkin', 'family', 'record', 'familyRelationship', 'matrix3dBody', 'omnidirectional3dBody', 'twin', 'telemedicine', 'statAnalysis', 'swarm', 'consensus', 'protein3d', 'aiHealthcareVision', 'stressRelief']
+const PANELS = ['healthJourney', 'lunchJourney', 'dinnerJourney', 'upload', 'imaging', 'checkin', 'family', 'record', 'familyRelationship', 'matrix3dBody', 'omnidirectional3dBody', 'twin', 'telemedicine', 'statAnalysis', 'swarm', 'consensus', 'protein3d', 'aiHealthcareVision', 'aiHealthcareVisionControl', 'stressRelief', 'aiInbodyPortal']
 
 export default function App() {
   const { user, loading } = useAuth()
@@ -72,6 +74,8 @@ export default function App() {
     consensus: `${t('consensus')} (Classic)`,
     protein3d: t('protein3d'),
     aiHealthcareVision: t('aiHealthcareVision'),
+    aiHealthcareVisionControl: t('aiHealthcareVisionControl'),
+    aiInbodyPortal: t('aiInbodyPortal'),
     stressRelief: t('stressRelief'),
     profile: t('profile'),
   }
@@ -217,7 +221,9 @@ export default function App() {
             {active === 'consensus' && <ConsensusPanel     onReset={() => setActive('upload')} onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'protein3d' && <Protein3DPanel     onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'aiHealthcareVision' && <AIHealthcareVisionPanel onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
-            {active === 'stressRelief' && <StressReliefPanel onPrev={goPrev} prevLabel={prevLabel} />}
+            {active === 'aiHealthcareVisionControl' && <AIHealthcareVisionControlPanel onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
+            {active === 'stressRelief' && <StressReliefPanel onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
+            {active === 'aiInbodyPortal' && <AIInbodyPortalPanel onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'profile'   && <UserProfilePanel />}
             {active === 'admin'     && user?.isAdmin && <AdminPanel />}
             {active === 'admin'     && !user?.isAdmin && (
