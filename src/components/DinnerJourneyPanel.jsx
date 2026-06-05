@@ -666,13 +666,13 @@ function MediaPipeDetectorView({ type }) {
   useEffect(() => () => stopCamera(), [stopCamera])
 
   return (
-    <div style={{ ...panelShell, minHeight: 900, background: 'radial-gradient(circle at 50% 0%, #20263a, #10131e 54%, #080a12)', color: '#fff', padding: '34px 18px 110px' }}>
+    <div className="dinner-phone-camera-panel" style={{ ...panelShell, minHeight: 900, background: 'radial-gradient(circle at 50% 0%, #20263a, #10131e 54%, #080a12)', color: '#fff', padding: '34px 18px 110px' }}>
       <div style={{ textAlign: 'center', marginBottom: 22 }}>
-        <h1 style={{ margin: 0, fontSize: 38, lineHeight: 1.16, fontWeight: 900 }}>{lang === 'vi' ? 'Phân tích Video AI & Lớp phủ Sinh học' : 'AI Video Analysis & Biological Overlay'}</h1>
+        <h1 className="dinner-phone-camera-title" style={{ margin: 0, fontSize: 38, lineHeight: 1.16, fontWeight: 900 }}>{lang === 'vi' ? 'Phân tích Video AI & Lớp phủ Sinh học' : 'AI Video Analysis & Biological Overlay'}</h1>
         <p style={{ margin: '10px auto 0', color: 'rgba(255,255,255,0.62)', maxWidth: 720 }}>{isBody ? (lang === 'vi' ? 'Body detector mô phỏng Holistic/Pose Landmarker với khung xương, đường quỹ đạo và chỉ số chuyển động.' : 'Body detector inspired by Holistic/Pose Landmarker with skeleton, trajectory, and motion metrics.') : (lang === 'vi' ? 'Face detector mô phỏng Face Landmarker với lưới landmark khuôn mặt và chỉ số sinh trắc.' : 'Face detector inspired by Face Landmarker with a face mesh and biometric metrics.')}</p>
       </div>
-      <div style={{ width: 'min(100%, 430px)', margin: '0 auto', borderRadius: 44, border: '10px solid #1e2030', background: '#0d111d', boxShadow: '0 30px 90px rgba(0,0,0,0.55)', overflow: 'hidden' }}>
-        <div style={{ height: 58, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 18px', background: 'rgba(13,17,29,0.95)' }}>
+      <div className="dinner-phone-frame" style={{ width: 'min(100%, 430px)', margin: '0 auto', borderRadius: 44, border: '10px solid #1e2030', background: '#0d111d', boxShadow: '0 30px 90px rgba(0,0,0,0.55)', overflow: 'hidden' }}>
+        <div className="dinner-phone-topbar" style={{ height: 58, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 18px', background: 'rgba(13,17,29,0.95)' }}>
           <span style={{ fontSize: 24 }}>‹</span><b>{isBody ? 'AI Motion Forecast Optimization' : 'AI Face Detector'}</b><span style={{ fontSize: 22 }}>⚙</span>
         </div>
         <div style={{ position: 'relative', height: 520, background: isBody ? 'linear-gradient(135deg,#323744,#879098)' : 'linear-gradient(135deg,#20293b,#64748b)', overflow: 'hidden' }}>
@@ -684,7 +684,7 @@ function MediaPipeDetectorView({ type }) {
             <DetectorMetric label={isBody ? 'Độ lệch quỹ đạo' : 'Độ cân xứng'} value={isBody ? '3%' : '96%'} />
           </div>
         </div>
-        <div style={{ padding: 18, background: 'rgba(14,18,30,0.98)' }}>
+        <div className="dinner-phone-controls" style={{ padding: 18, background: 'rgba(14,18,30,0.98)' }}>
           <input
             ref={localInputRef}
             type="file"
@@ -692,12 +692,12 @@ function MediaPipeDetectorView({ type }) {
             onChange={e => { uploadLocalDetectorImage(e.target.files?.[0]); e.target.value = '' }}
             style={{ display: 'none' }}
           />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 88px 1fr', gap: 12, alignItems: 'center' }}>
+          <div className="dinner-phone-action-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 88px 1fr', gap: 12, alignItems: 'center' }}>
             <button onClick={() => openCamera()} disabled={cameraStarting || snapshotSaving} style={{ ...secondaryAction(), background: 'rgba(255,255,255,0.10)', color: '#fff', opacity: cameraStarting ? 0.72 : 1 }}>{cameraOpen ? (lang === 'vi' ? 'Khởi động lại' : 'Restart') : cameraStarting ? (lang === 'vi' ? 'Đang mở...' : 'Opening...') : (lang === 'vi' ? 'Mở camera' : 'Open camera')}</button>
             <button onClick={captureDetectorSnapshot} disabled={!cameraOpen || snapshotSaving} style={{ width: 76, height: 76, borderRadius: '50%', border: '4px solid #fff', background: recording ? '#ff6b6b' : '#ff3b30', color: '#fff', fontWeight: 900, cursor: snapshotSaving ? 'wait' : 'pointer', opacity: !cameraOpen || snapshotSaving ? 0.72 : 1 }}>{snapshotSaving ? '…' : '📷'}</button>
             <button onClick={() => setOverlayOn(v => !v)} style={{ ...primaryAction(), background: overlayOn ? '#6f7cff' : '#384052' }}>{lang === 'vi' ? 'Lớp phủ' : 'Overlay'}</button>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10 }}>
+          <div className="dinner-phone-secondary-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10 }}>
             <button onClick={() => localInputRef.current?.click()} disabled={snapshotSaving} style={{ ...secondaryAction(), background: 'rgba(255,255,255,0.10)', color: '#fff', opacity: snapshotSaving ? 0.72 : 1 }}>{lang === 'vi' ? 'upload hình trong máy' : 'upload local image'}</button>
             <button onClick={switchCamera} disabled={cameraStarting || snapshotSaving} style={{ ...secondaryAction(), background: 'rgba(255,255,255,0.10)', color: '#fff' }}>🔄 {lang === 'vi' ? 'Đổi camera' : 'Switch camera'}</button>
           </div>
@@ -927,24 +927,24 @@ function EveningPhoneCameraView({ mode }) {
   useEffect(() => () => stopCamera(), [stopCamera])
 
   return (
-    <div style={{ ...panelShell, minHeight: 900, background: 'radial-gradient(circle at 50% 0%, #20263a, #10131e 54%, #080a12)', color: '#fff', padding: '34px 18px 110px' }}>
+    <div className="dinner-phone-camera-panel" style={{ ...panelShell, minHeight: 900, background: 'radial-gradient(circle at 50% 0%, #20263a, #10131e 54%, #080a12)', color: '#fff', padding: '34px 18px 110px' }}>
       <div style={{ textAlign: 'center', marginBottom: 22 }}>
-        <h1 style={{ margin: 0, fontSize: 38, lineHeight: 1.16, fontWeight: 900 }}>{isMeal ? (lang === 'vi' ? 'Quét bữa ăn AI · Điện thoại Camera' : 'AI Meal Scan · Phone Camera') : (lang === 'vi' ? 'Trợ lý thuốc thông minh · Điện thoại Camera' : 'Smart Medication Assistant · Phone Camera')}</h1>
+        <h1 className="dinner-phone-camera-title" style={{ margin: 0, fontSize: 38, lineHeight: 1.16, fontWeight: 900 }}>{isMeal ? (lang === 'vi' ? 'Quét bữa ăn AI · Điện thoại Camera' : 'AI Meal Scan · Phone Camera') : (lang === 'vi' ? 'Trợ lý thuốc thông minh · Điện thoại Camera' : 'Smart Medication Assistant · Phone Camera')}</h1>
         <p style={{ margin: '10px auto 0', color: 'rgba(255,255,255,0.62)', maxWidth: 720 }}>
           {lang === 'vi'
             ? 'Buổi Tối dùng cùng giao diện chiếc Điện Thoại và cùng các chức năng Camera như Face Detector: mở camera, chụp, bật/tắt lớp phủ, đổi camera và lưu ảnh vào upload.'
             : 'Evening uses the same phone UI and camera controls as Face Detector: open camera, capture, toggle overlay, switch camera, and save to uploads.'}
         </p>
       </div>
-      <div style={{ width: 'min(100%, 430px)', margin: '0 auto', borderRadius: 44, border: '10px solid #1e2030', background: '#0d111d', boxShadow: '0 30px 90px rgba(0,0,0,0.55)', overflow: 'hidden' }}>
-        <div style={{ height: 58, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 18px', background: 'rgba(13,17,29,0.95)' }}>
+      <div className="dinner-phone-frame" style={{ width: 'min(100%, 430px)', margin: '0 auto', borderRadius: 44, border: '10px solid #1e2030', background: '#0d111d', boxShadow: '0 30px 90px rgba(0,0,0,0.55)', overflow: 'hidden' }}>
+        <div className="dinner-phone-topbar" style={{ height: 58, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 18px', background: 'rgba(13,17,29,0.95)' }}>
           <span style={{ fontSize: 24 }}>‹</span><b>{title}</b><span style={{ fontSize: 22 }}>⚙</span>
         </div>
-        <div style={{ position: 'relative', height: 520, background: isMeal ? 'linear-gradient(135deg,#273f32,#9fb76d)' : 'linear-gradient(135deg,#2f3346,#667085)', overflow: 'hidden' }}>
+        <div className="dinner-phone-camera-viewport" style={{ position: 'relative', height: 520, background: isMeal ? 'linear-gradient(135deg,#273f32,#9fb76d)' : 'linear-gradient(135deg,#2f3346,#667085)', overflow: 'hidden' }}>
           {cameraOpen ? <video ref={videoRef} autoPlay playsInline muted style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', transform: facingMode === 'user' ? 'scaleX(-1)' : 'none' }} /> : <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', color: 'rgba(255,255,255,0.72)', textAlign: 'center', padding: 24 }}><div style={{ fontSize: 74 }}>{placeholderIcon}</div><b>{lang === 'vi' ? 'Bấm mở camera để bắt đầu' : 'Open camera to start'}</b></div>}
           <canvas ref={canvasRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }} />
         </div>
-        <div style={{ padding: 18, background: 'rgba(14,18,30,0.98)' }}>
+        <div className="dinner-phone-controls" style={{ padding: 18, background: 'rgba(14,18,30,0.98)' }}>
           <input
             ref={localInputRef}
             type="file"
@@ -952,12 +952,12 @@ function EveningPhoneCameraView({ mode }) {
             onChange={e => { uploadLocalImage(e.target.files?.[0]); e.target.value = '' }}
             style={{ display: 'none' }}
           />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 88px 1fr', gap: 12, alignItems: 'center' }}>
+          <div className="dinner-phone-action-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 88px 1fr', gap: 12, alignItems: 'center' }}>
             <button onClick={() => openCamera()} disabled={cameraStarting || snapshotSaving} style={{ ...secondaryAction(), background: 'rgba(255,255,255,0.10)', color: '#fff', opacity: cameraStarting ? 0.72 : 1 }}>{cameraOpen ? (lang === 'vi' ? 'Khởi động lại' : 'Restart') : cameraStarting ? (lang === 'vi' ? 'Đang mở...' : 'Opening...') : (lang === 'vi' ? 'Mở camera' : 'Open camera')}</button>
-            <button onClick={capturePhoneSnapshot} disabled={!cameraOpen || snapshotSaving} style={{ width: 76, height: 76, borderRadius: '50%', border: '4px solid #fff', background: recording ? '#ff6b6b' : '#ff3b30', color: '#fff', fontWeight: 900, cursor: snapshotSaving ? 'wait' : 'pointer', opacity: !cameraOpen || snapshotSaving ? 0.72 : 1 }}>{snapshotSaving ? '…' : '📷'}</button>
+            <button className="dinner-phone-capture-button" onClick={capturePhoneSnapshot} disabled={!cameraOpen || snapshotSaving} style={{ width: 76, height: 76, borderRadius: '50%', border: '4px solid #fff', background: recording ? '#ff6b6b' : '#ff3b30', color: '#fff', fontWeight: 900, cursor: snapshotSaving ? 'wait' : 'pointer', opacity: !cameraOpen || snapshotSaving ? 0.72 : 1 }}>{snapshotSaving ? '…' : '📷'}</button>
             <button onClick={toggleOverlay} style={{ ...primaryAction(), background: overlayOn ? '#6f7cff' : '#384052' }}>{overlayOn ? (lang === 'vi' ? 'Bỏ lớp phủ' : 'Remove overlay') : (lang === 'vi' ? 'Hiện lớp phủ' : 'Show overlay')}</button>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10 }}>
+          <div className="dinner-phone-secondary-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10 }}>
             <button onClick={() => localInputRef.current?.click()} disabled={snapshotSaving} style={{ ...secondaryAction(), background: 'rgba(255,255,255,0.10)', color: '#fff', opacity: snapshotSaving ? 0.72 : 1 }}>{lang === 'vi' ? 'upload hình trong máy' : 'upload local image'}</button>
             <button onClick={switchCamera} disabled={cameraStarting || snapshotSaving} style={{ ...secondaryAction(), background: 'rgba(255,255,255,0.10)', color: '#fff' }}>🔄 {lang === 'vi' ? 'Đổi camera' : 'Switch camera'}</button>
           </div>
@@ -1064,6 +1064,42 @@ export default function DinnerJourneyPanel({ onNext, onPrev, prevLabel, onOpenSt
         @keyframes hj-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
         @keyframes hj-laser { 0% { top: 0%; opacity: .8; } 50% { top: 100%; opacity: 1; } 100% { top: 0%; opacity: .8; } }
         @media (max-width: 760px) { .hj-responsive-sheet { grid-template-columns: 1fr !important; } }
+        .dinner-phone-camera-panel { padding: clamp(20px, 3vw, 34px) clamp(12px, 2vw, 18px) 110px !important; }
+        .dinner-phone-camera-title { font-size: clamp(26px, 4.2vw, 42px) !important; }
+        .dinner-phone-frame {
+          width: min(100%, clamp(390px, 48vw, 620px)) !important;
+          border-width: clamp(7px, 1.2vw, 12px) !important;
+          border-radius: clamp(34px, 4vw, 52px) !important;
+        }
+        .dinner-phone-topbar { height: clamp(54px, 5.2vw, 66px) !important; }
+        .dinner-phone-camera-viewport {
+          height: clamp(500px, 58vw, 720px) !important;
+          max-height: min(74vh, 760px);
+        }
+        .dinner-phone-action-grid { grid-template-columns: minmax(0, 1fr) clamp(72px, 9vw, 96px) minmax(0, 1fr) !important; }
+        .dinner-phone-capture-button {
+          width: clamp(68px, 8vw, 86px) !important;
+          height: clamp(68px, 8vw, 86px) !important;
+          justify-self: center;
+        }
+        @media (min-width: 1280px) {
+          .dinner-phone-frame { width: min(88%, 660px) !important; }
+          .dinner-phone-camera-viewport { height: min(72vh, 760px) !important; }
+        }
+        @media (max-width: 900px) {
+          .dinner-phone-frame { width: min(100%, 520px) !important; }
+          .dinner-phone-camera-viewport { height: min(66vh, 640px) !important; min-height: 460px; }
+        }
+        @media (max-width: 560px) {
+          .dinner-phone-camera-panel { padding: 18px 10px 96px !important; }
+          .dinner-phone-frame { border-width: 7px !important; border-radius: 34px !important; }
+          .dinner-phone-topbar { height: 50px !important; padding: 0 14px !important; font-size: 13px; }
+          .dinner-phone-camera-viewport { height: min(62vh, 520px) !important; min-height: 360px; }
+          .dinner-phone-controls { padding: 14px !important; }
+          .dinner-phone-action-grid { grid-template-columns: minmax(0, 1fr) 70px minmax(0, 1fr) !important; gap: 8px !important; }
+          .dinner-phone-capture-button { width: 64px !important; height: 64px !important; }
+          .dinner-phone-secondary-grid { grid-template-columns: 1fr !important; }
+        }
       `}</style>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap' }}>
         <div>
