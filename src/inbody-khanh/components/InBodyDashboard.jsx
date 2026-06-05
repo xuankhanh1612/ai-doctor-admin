@@ -1,4 +1,3 @@
-'use client';
 import React, { useState, useRef } from 'react';
 import { LineChart, Line, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
@@ -253,49 +252,29 @@ function QuestsTab({ records }) {
   );
 }
 
-function MiniLineChart({ records }) {
-  const width = 620;
-  const height = 220;
-  const pad = 28;
-  const allValues = records.flatMap((r) => [r.muscle, r.fat]);
-  const min = Math.floor(Math.min(...allValues) - 1);
-  const max = Math.ceil(Math.max(...allValues) + 1);
-  const xFor = (i) => pad + (records.length === 1 ? 0 : (i * (width - pad * 2)) / (records.length - 1));
-  const yFor = (value) => height - pad - ((value - min) * (height - pad * 2)) / Math.max(1, max - min);
-  const pointsFor = (field) => records.map((r, i) => `${xFor(i)},${yFor(r[field])}`).join(' ');
-
-  return (
-    <div className="mini-chart" role="img" aria-label="Xu hướng cơ bắp và mỡ cơ thể trong 3 tháng">
-      <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
-        <line x1={pad} y1={height - pad} x2={width - pad} y2={height - pad} className="axis" />
-        <line x1={pad} y1={pad} x2={pad} y2={height - pad} className="axis" />
-        {[0, 1, 2].map((tick) => {
-          const y = pad + tick * ((height - pad * 2) / 2);
-          return <line key={tick} x1={pad} y1={y} x2={width - pad} y2={y} className="grid-line" />;
-        })}
-        <polyline points={pointsFor('muscle')} className="series muscle" />
-        <polyline points={pointsFor('fat')} className="series fat" />
-        {records.map((r, i) => (
-          <g key={r.date}>
-            <circle cx={xFor(i)} cy={yFor(r.muscle)} r="4" className="dot muscle" />
-            <circle cx={xFor(i)} cy={yFor(r.fat)} r="4" className="dot fat" />
-            <text x={xFor(i)} y={height - 8} textAnchor="middle" className="chart-label">{r.date.slice(5)}</text>
-          </g>
-        ))}
-      </svg>
-      <div className="chart-legend">
-        <span><i className="legend muscle" /> Cơ bắp (kg)</span>
-        <span><i className="legend fat" /> Mỡ (%)</span>
-      </div>
-    </div>
-  );
-}
-
 function HistoryTab({ records }) {
+  const chartData = records.map((record) => ({
+    date: record.date.slice(5),
+    muscle: record.muscle,
+    fat: record.fat,
+  }));
+
   return (
     <div>
       <div className="section-title">Xu hướng 3 tháng</div>
-      <MiniLineChart records={records} />
+      <div className="inbody-chart">
+        <ResponsiveContainer width="100%" height={260}>
+          <LineChart data={chartData} margin={{ top: 8, right: 16, left: -18, bottom: 8 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+            <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+            <YAxis tick={{ fontSize: 11 }} />
+            <Tooltip />
+            <Legend wrapperStyle={{ fontSize: 11 }} />
+            <Line type="monotone" dataKey="muscle" name="Cơ bắp (kg)" stroke="#378ADD" strokeWidth={2.5} dot={{ r: 3 }} />
+            <Line type="monotone" dataKey="fat" name="Mỡ (%)" stroke="#D85A30" strokeWidth={2.5} dot={{ r: 3 }} />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
       <div className="section-title" style={{ marginTop: '1rem' }}>Lịch sử đo</div>
       {records.map((r, i) => {
         const prev = records[i - 1];
@@ -478,20 +457,6 @@ export default function InBodyDashboard({ userId, initialRecords }) {
         .quest-bar { height: 4px; background: #e9ecef; border-radius: 2px; margin-top: 6px; overflow: hidden; }
         .quest-fill { height: 100%; border-radius: 2px; }
         .quest-reward { font-size: 11px; color: #BA7517; font-weight: 500; white-space: nowrap; }
-        .mini-chart { width: 100%; border: 1px solid #e9ecef; border-radius: 12px; background: #fff; padding: 10px; margin-bottom: 0.5rem; }
-        .mini-chart svg { width: 100%; height: 220px; display: block; }
-        .axis { stroke: #d7dde3; stroke-width: 1.5; }
-        .grid-line { stroke: #eef2f6; stroke-width: 1; }
-        .series { fill: none; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
-        .series.muscle { stroke: #378ADD; }
-        .series.fat { stroke: #D85A30; }
-        .dot.muscle { fill: #378ADD; }
-        .dot.fat { fill: #D85A30; }
-        .chart-label { fill: #888; font-size: 11px; }
-        .chart-legend { display: flex; justify-content: center; gap: 14px; color: #666; font-size: 11px; }
-        .legend { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 4px; }
-        .legend.muscle { background: #378ADD; }
-        .legend.fat { background: #D85A30; }
         .hist-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid #f1f3f4; font-size: 12px; }
         .hist-date { color: #888; width: 85px; flex-shrink: 0; }
         .hist-weight { font-weight: 500; min-width: 55px; }

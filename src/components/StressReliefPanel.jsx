@@ -115,7 +115,7 @@ export default function StressReliefPanel({ onNext, nextLabel, onPrev, prevLabel
         </div>
       </div>
 
-      <NavButtons onNext={onNext} nextLabel="AI inbody Portal →" onPrev={onPrev} prevLabel={prevLabel} />
+      <NavButtons onNext={onNext} nextLabel={nextLabel} onPrev={onPrev} prevLabel={prevLabel} />
     </div>
   )
 }

@@ -8,14 +8,14 @@ export default function AIInbodyPortalPanel({ onPrev, prevLabel }) {
 
   return (
     <div className="animate-fade ai-inbody-portal-page">
-      <section className="ai-inbody-portal-header">
+      <section className="ai-healthcare-vision-header ai-inbody-portal-header">
         <div>
-          <div className="ai-healthcare-vision-kicker">INBODY-KHANH INTEGRATION</div>
+          <div className="ai-healthcare-vision-kicker">AI INBODY PORTAL</div>
           <h2>⚖️ AI inbody Portal</h2>
           <p>
             {lang === 'vi'
-              ? 'Tích hợp dashboard InBody từ thư mục inbody-khanh: upload kết quả, xem chỉ số thành phần cơ thể, nhiệm vụ sức khỏe, lịch sử và huy hiệu thành tích.'
-              : 'Integrates the InBody dashboard from the inbody-khanh source folder: upload results, review body composition metrics, quests, history, and achievement badges.'}
+              ? 'Tích hợp source code inbody-khanh vào dự án: upload kết quả InBody, gamification XP/level, nhiệm vụ sức khỏe, lịch sử đo và huy hiệu thành tích trong một portal cuối menu.'
+              : 'Integrates the inbody-khanh source into this project: InBody uploads, gamified XP/levels, health quests, measurement history, and achievement badges in the final menu portal.'}
           </p>
         </div>
       </section>
