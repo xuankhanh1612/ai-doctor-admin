@@ -3,10 +3,6 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 
-const client = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
-
 const SYSTEM_PROMPT = `Bạn là chuyên gia phân tích kết quả InBody (máy đo thành phần cơ thể).
 Khi nhận ảnh/PDF kết quả InBody, hãy:
 1. Trích xuất chính xác các chỉ số: Cân nặng, Cơ bắp (SMM), Mỡ cơ thể (%), Nước (%), BMI, InBody Score, Mỡ nội tạng (nếu có), Protein, Khoáng chất
@@ -35,25 +31,56 @@ Luôn trả lời bằng JSON với cấu trúc sau:
   "inbody_score": 72
 }`;
 
-export default async function handler(req, res) {
-  // Only allow POST
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+// Helper: parse raw body thành JSON (Vercel không tự parse)
+function parseBody(req) {
+  return new Promise((resolve, reject) => {
+    // Nếu body đã được parse sẵn (Vercel thường tự parse JSON)
+    if (req.body && typeof req.body === 'object') {
+      return resolve(req.body);
+    }
+    let data = '';
+    req.on('data', (chunk) => (data += chunk));
+    req.on('end', () => {
+      try {
+        resolve(JSON.parse(data));
+      } catch {
+        reject(new Error('Invalid JSON body'));
+      }
+    });
+    req.on('error', reject);
+  });
+}
 
-  // CORS headers (nếu frontend và api khác domain)
+export default async function handler(req, res) {
+  // Handle CORS preflight
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  // Kiểm tra API key trước
+  if (!process.env.ANTHROPIC_API_KEY) {
+    console.error('ANTHROPIC_API_KEY is not set');
+    return res.status(500).json({ error: 'Server configuration error: missing API key' });
+  }
+
   try {
-    const { image, mediaType, previousRecord } = req.body;
+    const body = await parseBody(req);
+    const { image, mediaType, previousRecord } = body;
 
     if (!image) {
       return res.status(400).json({ error: 'No image provided' });
     }
 
-    // Build message content
+    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
     const userContent = [
       {
         type: 'image',
@@ -78,7 +105,6 @@ export default async function handler(req, res) {
       messages: [{ role: 'user', content: userContent }],
     });
 
-    // Parse JSON response from Claude
     const rawText = response.content
       .filter((block) => block.type === 'text')
       .map((block) => block.text)
@@ -86,11 +112,9 @@ export default async function handler(req, res) {
 
     let analysis;
     try {
-      // Strip markdown code fences if present
       const cleaned = rawText.replace(/```json\n?|```\n?/g, '').trim();
       analysis = JSON.parse(cleaned);
     } catch {
-      // Fallback if not valid JSON
       analysis = {
         summary: rawText,
         metrics: {},
@@ -102,7 +126,10 @@ export default async function handler(req, res) {
 
     return res.status(200).json({ analysis });
   } catch (error) {
-    console.error('InBody analyze error:', error);
-    return res.status(500).json({ error: 'Lỗi phân tích. Vui lòng thử lại.' });
+    console.error('InBody analyze error:', error?.message || error);
+    return res.status(500).json({
+      error: 'Lỗi phân tích. Vui lòng thử lại.',
+      detail: error?.message,
+    });
   }
 }
