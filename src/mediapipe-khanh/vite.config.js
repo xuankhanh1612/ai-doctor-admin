@@ -1,33 +1,15 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-const mediapipeExternal = [
-  '@mediapipe/tasks-vision',
-  '@mediapipe/tasks-audio',
-  '@mediapipe/tasks-text',
-]
-
-const externalizeMediapipe = {
-  name: 'externalize-mediapipe',
-  resolveId(id) {
-    if (mediapipeExternal.includes(id)) {
-      return { id, external: true }
-    }
-  },
-}
-
 export default defineConfig({
-  plugins: [react(), externalizeMediapipe],
+  plugins: [react()],
   build: {
     rollupOptions: {
-      external: mediapipeExternal,
+      external: (id) => id.startsWith('@mediapipe/'),
     },
   },
-  worker: {
-    plugins: () => [externalizeMediapipe],
-    rollupOptions: {
-      external: mediapipeExternal,
-    },
+  optimizeDeps: {
+    exclude: ['@mediapipe/tasks-vision', '@mediapipe/tasks-audio', '@mediapipe/tasks-text'],
   },
   server: {
     proxy: {
