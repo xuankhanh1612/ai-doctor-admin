@@ -1098,3 +1098,257 @@ html, body, #root {
     border-radius: 18px;
   }
 }
+
+.ai-vision-camera-card {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.9fr) minmax(280px, 430px);
+  gap: clamp(16px, 3vw, 28px);
+  align-items: center;
+  padding: clamp(18px, 3vw, 28px);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at 82% 8%, rgba(0,229,255,0.14), transparent 30%),
+    linear-gradient(145deg, rgba(255,255,255,0.075), rgba(255,255,255,0.025));
+  box-shadow: 0 24px 80px rgba(0,0,0,0.22);
+}
+
+.ai-vision-camera-copy h3 {
+  margin: 0;
+  color: var(--text);
+  font-size: clamp(22px, 3vw, 34px);
+  line-height: 1.12;
+}
+
+.ai-vision-camera-copy p {
+  margin: 10px 0 0;
+  color: var(--text2);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.ai-vision-upload-path {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid rgba(131,247,255,0.22);
+  border-radius: 14px;
+  background: rgba(0,229,255,0.08);
+  color: var(--cyan);
+  font-size: 12px;
+  line-height: 1.55;
+  word-break: break-word;
+}
+
+.ai-vision-phone-frame {
+  width: 100%;
+  min-width: 0;
+  margin: 0 auto;
+  border: clamp(7px, 1vw, 10px) solid #1e2030;
+  border-radius: clamp(30px, 3vw, 44px);
+  overflow: hidden;
+  background: #0d111d;
+  box-shadow: 0 30px 90px rgba(0,0,0,0.55);
+}
+
+.ai-vision-phone-topbar {
+  height: clamp(52px, 5vw, 58px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 14px;
+  background: rgba(13,17,29,0.95);
+}
+
+.ai-vision-icon-button {
+  width: 36px;
+  height: 36px;
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 999px;
+  background: rgba(255,255,255,0.78);
+  color: #0d111d;
+  font-size: 20px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.ai-vision-icon-button.active {
+  background: rgba(0,229,255,0.18);
+  color: #83f7ff;
+}
+
+.ai-vision-phone-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+  padding: 8px 14px;
+  border: 1px solid rgba(131,247,255,0.22);
+  border-radius: 999px;
+  background: rgba(255,255,255,0.08);
+  color: #83f7ff;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.ai-vision-camera-viewport {
+  position: relative;
+  min-height: 340px;
+  height: clamp(360px, 44vw, 560px);
+  max-height: min(68vh, 620px);
+  overflow: hidden;
+  background: linear-gradient(135deg, #20293b, #64748b);
+}
+
+.ai-vision-video,
+.ai-vision-overlay-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ai-vision-overlay-canvas {
+  pointer-events: none;
+}
+
+.ai-vision-camera-placeholder {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 8px;
+  color: rgba(255,255,255,0.76);
+  text-align: center;
+  padding: 24px;
+}
+
+.ai-vision-camera-placeholder div {
+  font-size: 72px;
+}
+
+.ai-vision-camera-controls {
+  padding: clamp(14px, 2vw, 18px);
+  background: rgba(14,18,30,0.98);
+}
+
+.ai-vision-primary-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) clamp(68px, 7vw, 86px) minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+}
+
+.ai-vision-secondary-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.ai-vision-primary-actions button,
+.ai-vision-secondary-actions button,
+.ai-vision-close-camera {
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 14px;
+  border: none;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.10);
+  color: #fff;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.ai-vision-primary-actions button:disabled,
+.ai-vision-secondary-actions button:disabled,
+.ai-vision-close-camera:disabled {
+  cursor: wait;
+  opacity: 0.66;
+}
+
+.ai-vision-capture-button {
+  width: clamp(68px, 7vw, 86px) !important;
+  height: clamp(68px, 7vw, 86px) !important;
+  min-height: 0 !important;
+  justify-self: center;
+  border: 4px solid #fff !important;
+  border-radius: 50% !important;
+  background: #ff3b30 !important;
+  font-size: 24px;
+}
+
+.ai-vision-close-camera {
+  margin-top: 8px;
+  background: rgba(255,255,255,0.08);
+}
+
+.ai-vision-status {
+  margin-top: 12px;
+  color: #83f7ff;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.5;
+}
+
+.ai-vision-status.recording {
+  color: #ffb4ad;
+}
+
+@media (max-width: 1024px) {
+  .ai-vision-camera-card {
+    grid-template-columns: 1fr;
+  }
+
+  .ai-vision-phone-frame {
+    max-width: 520px;
+  }
+
+  .ai-healthcare-vision-frame-card {
+    min-height: min(72vh, 760px);
+  }
+
+  .ai-healthcare-vision-frame {
+    height: min(72vh, 760px);
+    min-height: 560px;
+  }
+}
+
+@media (max-width: 560px) {
+  .ai-vision-camera-card {
+    padding: 14px;
+    border-radius: 18px;
+  }
+
+  .ai-vision-camera-viewport {
+    min-height: 320px;
+    height: min(62vh, 480px);
+  }
+
+  .ai-vision-primary-actions {
+    grid-template-columns: minmax(0, 1fr) 64px minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .ai-vision-secondary-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .ai-vision-primary-actions button,
+  .ai-vision-secondary-actions button,
+  .ai-vision-close-camera {
+    min-height: 44px;
+    padding: 10px 9px;
+    font-size: 12px;
+  }
+
+  .ai-vision-capture-button {
+    width: 62px !important;
+    height: 62px !important;
+  }
+}

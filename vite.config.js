@@ -4,6 +4,7 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
+  assetsInclude: ['**/*.PNG', '**/*.JPG', '**/*.JPEG', '**/*.HEIC'],
   build: {
     rollupOptions: {
       input: {
@@ -13,9 +14,7 @@ export default defineConfig({
     },
   },
   worker: {
-    rollupOptions: {
-      external: ['@mediapipe/tasks-vision', '@mediapipe/tasks-audio', '@mediapipe/tasks-text'],
-    },
+    format: 'es',
   },
   server: {
     proxy: {

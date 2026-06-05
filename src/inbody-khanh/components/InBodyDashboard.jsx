@@ -1,5 +1,9 @@
 import React, { useState, useRef } from 'react';
 import { LineChart, Line, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import standardInBodyCsv from '../DataInBody/InBody-20260508 3.csv?raw';
+import aiClinicInBodyRef from '../DataInBody/AIClinicInBody.PNG';
+import inBodyChartRef from '../DataInBody/IMG_2635.PNG';
+import khanhInBodyRef from '../DataInBody/KhanhInBody.JPG';
 
 // ─── Gamification engine ────────────────────────────────────────────────────
 function calcXP(records) {
@@ -94,6 +98,122 @@ async function analyzeInBodyWithAI(base64Image, mediaType) {
   return data.analysis;
 }
 
+
+const STANDARD_INBODY_FILE = 'InBody-20260508 3.csv';
+const INBODY_REFERENCE_IMAGES = [
+  { src: aiClinicInBodyRef, label: 'AIClinicInBody.PNG' },
+  { src: inBodyChartRef, label: 'IMG_2635.PNG' },
+  { src: khanhInBodyRef, label: 'KhanhInBody.JPG' },
+];
+
+function parseNumber(value) {
+  if (value === undefined || value === null) return null;
+  const normalized = String(value).replace(/\ufeff/g, '').replace(',', '.').trim();
+  if (!normalized || normalized === '-') return null;
+  const parsed = Number.parseFloat(normalized);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function parseCsvLine(line) {
+  const cells = [];
+  let current = '';
+  let quoted = false;
+  for (let i = 0; i < line.length; i += 1) {
+    const char = line[i];
+    const next = line[i + 1];
+    if (char === '"' && quoted && next === '"') {
+      current += '"';
+      i += 1;
+    } else if (char === '"') {
+      quoted = !quoted;
+    } else if (char === ',' && !quoted) {
+      cells.push(current.trim());
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  cells.push(current.trim());
+  return cells;
+}
+
+function formatInBodyDate(raw) {
+  const digits = String(raw || '').replace(/\D/g, '');
+  if (digits.length < 8) return String(raw || '');
+  const date = `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6, 8)}`;
+  if (digits.length < 12) return date;
+  return `${date} ${digits.slice(8, 10)}:${digits.slice(10, 12)}`;
+}
+
+function parseInBodyCsv(csvText) {
+  const lines = csvText.replace(/\r/g, '').split('\n').filter(line => line.trim());
+  if (lines.length < 2) return [];
+  const headers = parseCsvLine(lines[0]).map(header => header.replace(/\ufeff/g, '').trim());
+  const rows = lines.slice(1).map((line) => {
+    const values = parseCsvLine(line);
+    return headers.reduce((row, header, index) => ({ ...row, [header]: values[index] }), {});
+  });
+
+  return rows.map((row) => ({
+    date: formatInBodyDate(row['ngày']),
+    rawDate: String(row['ngày'] || ''),
+    device: row['Thiết bị đo'] || '',
+    weight: parseNumber(row['Cân nặng(kg)']),
+    skeletalMuscle: parseNumber(row['Khối lượng cơ xương(kg)']),
+    muscle: parseNumber(row['Khối lượng cơ xương(kg)']) ?? parseNumber(row['Khối lượng cơ(kg)']),
+    bodyFatMass: parseNumber(row['Khối lượng mỡ trong cơ thể(kg)']),
+    fat: parseNumber(row['Tỷ lệ mỡ cơ thể(%)']),
+    bmi: parseNumber(row['BMI(kg/m²)']),
+    bmr: parseNumber(row['Tỷ lệ trao đổi chất cơ bản(kcal)']),
+    score: parseNumber(row['Điểm InBody']),
+    water: parseNumber(row['Lượng nước trong cơ thể(L)']),
+    intracellularWater: parseNumber(row['Nước nội bào(L)']),
+    extracellularWater: parseNumber(row['Nước ngoại bào(L)']),
+    ecwRatio: parseNumber(row['Tỷ lệ ECW']),
+    visceralFatLevel: parseNumber(row['Mức độ chất béo nội tạng(Level)']),
+    waistHipRatio: parseNumber(row['Tỷ lệ mỡ bụng']),
+    protein: parseNumber(row['Protein(kg)']),
+    minerals: parseNumber(row['Khoáng chất(kg)']),
+    boneMineral: parseNumber(row['Hàm lượng khoáng trong xương(kg)']),
+    bodyCellMass: parseNumber(row['Khối lượng tế bào cơ thể(kg)']),
+    smi: parseNumber(row['Chỉ số khối cơ xương(kg/m²)']),
+    phaseAngle: parseNumber(row['Góc pha toàn bộ cơ thể(°)']),
+    rightArmMuscle: parseNumber(row['Khối lượng cơ ở cánh tay phải(kg)']),
+    leftArmMuscle: parseNumber(row['Khối lượng cơ ở cánh tay trái(kg)']),
+    trunkMuscle: parseNumber(row['Khối lượng cơ ở thân mình(kg)']),
+    rightLegMuscle: parseNumber(row['Khối lượng cơ ở chân phải(kg)']),
+    leftLegMuscle: parseNumber(row['Khối lượng cơ ở chân trái(kg)']),
+  })).filter(record => record.rawDate && record.weight !== null).sort((a, b) => a.rawDate.localeCompare(b.rawDate));
+}
+
+function buildSimulatedClaudeAnalysis(records, fileName = STANDARD_INBODY_FILE) {
+  const first = records[0];
+  const latest = records[records.length - 1];
+  const prev = records[records.length - 2] || first;
+  const diff = (key) => latest?.[key] != null && first?.[key] != null ? latest[key] - first[key] : 0;
+  const trend = diff('fat') <= 0 ? 'ok' : 'warn';
+
+  return {
+    summary: `Giả lập Claude đã đọc file chuẩn ${fileName}: phát hiện ${records.length} lần đo trong cùng ngày, cân nặng quanh ${latest?.weight ?? '-'}kg, cơ xương ${latest?.muscle ?? '-'}kg, mỡ cơ thể ${latest?.fat ?? '-'}%, BMI ${latest?.bmi ?? '-'} và điểm InBody ${latest?.score ?? '-'}. Dashboard đã dựng đồ thị theo thời gian từ CSV LookinBody để theo dõi cân nặng, cơ, mỡ, nước, ECW và điểm InBody.`,
+    tags: [
+      { label: 'CSV chuẩn LookinBody', type: 'ok' },
+      { label: trend === 'ok' ? 'Mỡ ổn định/giảm' : 'Mỡ tăng nhẹ', type: trend },
+      { label: 'Đồ thị thời gian đã tạo', type: 'info' },
+    ],
+    metrics: {
+      'Số lần đo': records.length,
+      'Cân nặng mới nhất': `${latest?.weight ?? '-'} kg`,
+      'Thay đổi cân nặng': `${diff('weight').toFixed(1)} kg`,
+      'Cơ xương mới nhất': `${latest?.muscle ?? '-'} kg`,
+      'Thay đổi cơ': `${diff('muscle').toFixed(1)} kg`,
+      'Mỡ cơ thể mới nhất': `${latest?.fat ?? '-'}%`,
+      'ECW Ratio': latest?.ecwRatio ?? '-',
+      'Điểm InBody': latest?.score ?? '-',
+      'So với lần trước': prev && latest ? `Cân ${latest.weight - prev.weight >= 0 ? '+' : ''}${(latest.weight - prev.weight).toFixed(1)}kg · Mỡ ${latest.fat - prev.fat >= 0 ? '+' : ''}${(latest.fat - prev.fat).toFixed(1)}%` : '-',
+    },
+  };
+}
+
 // ─── Sample data (replace with real DB) ───────────────────────────────────
 const SAMPLE_RECORDS = [
   { date: '2025-04-01', weight: 70.2, muscle: 29.2, fat: 23.5, water: 53.1, bmi: 24.2 },
@@ -144,16 +264,109 @@ function MetricCard({ icon, label, value, unit, delta, deltaUp }) {
   );
 }
 
+function InBodyTrendPreview({ records }) {
+  if (!records?.length) return null;
+  const chartData = records.map((record) => ({
+    ...record,
+    dateLabel: record.date.includes(' ') ? record.date.slice(11) : record.date.slice(5),
+  }));
+  const latest = records[records.length - 1];
+
+  return (
+    <div className="inbody-simulated-charts">
+      <div className="section-title">Đồ thị sức khoẻ theo thời gian · InBody-20260508 3.csv</div>
+      <div className="inbody-chart-grid">
+        <div className="inbody-chart-card">
+          <div className="chart-title">Cân nặng · BMI · Điểm InBody</div>
+          <ResponsiveContainer width="100%" height={230}>
+            <LineChart data={chartData} margin={{ top: 8, right: 12, left: -18, bottom: 8 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+              <XAxis dataKey="dateLabel" tick={{ fontSize: 10 }} />
+              <YAxis tick={{ fontSize: 10 }} />
+              <Tooltip />
+              <Legend wrapperStyle={{ fontSize: 10 }} />
+              <Line type="monotone" dataKey="weight" name="Cân nặng kg" stroke="#378ADD" strokeWidth={2.5} dot={{ r: 3 }} />
+              <Line type="monotone" dataKey="bmi" name="BMI" stroke="#BA7517" strokeWidth={2.5} dot={{ r: 3 }} />
+              <Line type="monotone" dataKey="score" name="Điểm" stroke="#1D9E75" strokeWidth={2.5} dot={{ r: 3 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+        <div className="inbody-chart-card">
+          <div className="chart-title">Cơ · Mỡ · Nước</div>
+          <ResponsiveContainer width="100%" height={230}>
+            <LineChart data={chartData} margin={{ top: 8, right: 12, left: -18, bottom: 8 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+              <XAxis dataKey="dateLabel" tick={{ fontSize: 10 }} />
+              <YAxis tick={{ fontSize: 10 }} />
+              <Tooltip />
+              <Legend wrapperStyle={{ fontSize: 10 }} />
+              <Line type="monotone" dataKey="muscle" name="Cơ xương kg" stroke="#0058bc" strokeWidth={2.5} dot={{ r: 3 }} />
+              <Line type="monotone" dataKey="bodyFatMass" name="Mỡ kg" stroke="#D85A30" strokeWidth={2.5} dot={{ r: 3 }} />
+              <Line type="monotone" dataKey="water" name="Nước L" stroke="#00a6d6" strokeWidth={2.5} dot={{ r: 3 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+        <div className="inbody-chart-card wide">
+          <div className="chart-title">Cân bằng nước · ECW · Phase angle</div>
+          <ResponsiveContainer width="100%" height={230}>
+            <LineChart data={chartData} margin={{ top: 8, right: 12, left: -18, bottom: 8 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+              <XAxis dataKey="dateLabel" tick={{ fontSize: 10 }} />
+              <YAxis tick={{ fontSize: 10 }} />
+              <Tooltip />
+              <Legend wrapperStyle={{ fontSize: 10 }} />
+              <Line type="monotone" dataKey="intracellularWater" name="ICW L" stroke="#1D9E75" strokeWidth={2.5} dot={{ r: 3 }} />
+              <Line type="monotone" dataKey="extracellularWater" name="ECW L" stroke="#7c3aed" strokeWidth={2.5} dot={{ r: 3 }} />
+              <Line type="monotone" dataKey="ecwRatio" name="ECW ratio" stroke="#ef4444" strokeWidth={2.5} dot={{ r: 3 }} />
+              <Line type="monotone" dataKey="phaseAngle" name="Góc pha" stroke="#111827" strokeWidth={2.5} dot={{ r: 3 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+      <div className="inbody-reference-strip">
+        <div><b>Latest</b><span>{latest.date}</span></div>
+        <div><b>Protein</b><span>{latest.protein ?? '-'} kg</span></div>
+        <div><b>Khoáng</b><span>{latest.minerals ?? '-'} kg</span></div>
+        <div><b>SMI</b><span>{latest.smi ?? '-'} kg/m²</span></div>
+        <div><b>Mỡ nội tạng</b><span>Level {latest.visceralFatLevel ?? '-'}</span></div>
+      </div>
+      <div className="inbody-reference-gallery">
+        {INBODY_REFERENCE_IMAGES.map((image) => (
+          <figure key={image.label}>
+            <img src={image.src} alt={image.label} />
+            <figcaption>Tham khảo: {image.label}</figcaption>
+          </figure>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function UploadTab({ onAnalysis }) {
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
+  const [simulatedRecords, setSimulatedRecords] = useState([]);
   const inputRef = useRef();
+
+  const runSimulatedCsvAnalysis = (csvText, fileName = STANDARD_INBODY_FILE) => {
+    const parsedRecords = parseInBodyCsv(csvText);
+    if (!parsedRecords.length) throw new Error('CSV không có dòng dữ liệu InBody hợp lệ.');
+    const analysis = buildSimulatedClaudeAnalysis(parsedRecords, fileName);
+    setResult(analysis);
+    setSimulatedRecords(parsedRecords);
+    if (onAnalysis) onAnalysis(analysis, parsedRecords);
+  };
 
   const handleFile = (e) => {
     const f = e.target.files[0];
-    if (f) setFile(f);
+    if (f) {
+      setFile(f);
+      setResult(null);
+      setError(null);
+      setSimulatedRecords([]);
+    }
   };
 
   const handleAnalyze = async () => {
@@ -161,20 +374,44 @@ function UploadTab({ onAnalysis }) {
     setLoading(true);
     setError(null);
     try {
+      if (file.name === STANDARD_INBODY_FILE || file.name.toLowerCase().endsWith('.csv')) {
+        const csvText = await file.text();
+        runSimulatedCsvAnalysis(csvText, file.name);
+        setLoading(false);
+        return;
+      }
+
       const reader = new FileReader();
       reader.onload = async (e) => {
-        const base64 = e.target.result.split(',')[1];
-        const mediaType = file.type;
-        const analysis = await analyzeInBodyWithAI(base64, mediaType);
-        setResult(analysis);
-        if (onAnalysis) onAnalysis(analysis);
+        try {
+          const base64 = e.target.result.split(',')[1];
+          const mediaType = file.type;
+          const analysis = await analyzeInBodyWithAI(base64, mediaType);
+          setResult(analysis);
+          if (onAnalysis) onAnalysis(analysis);
+        } catch (err) {
+          setError('Lỗi phân tích. Vui lòng thử lại.');
+        } finally {
+          setLoading(false);
+        }
+      };
+      reader.onerror = () => {
+        setError('Không đọc được file. Vui lòng thử lại.');
         setLoading(false);
       };
       reader.readAsDataURL(file);
     } catch (err) {
-      setError('Lỗi phân tích. Vui lòng thử lại.');
+      setError(err.message || 'Lỗi phân tích. Vui lòng thử lại.');
       setLoading(false);
     }
+  };
+
+  const loadBundledStandardCsv = () => {
+    const demoFile = new File([standardInBodyCsv], STANDARD_INBODY_FILE, { type: 'text/csv' });
+    setFile(demoFile);
+    setError(null);
+    setResult(null);
+    setSimulatedRecords([]);
   };
 
   return (
@@ -194,9 +431,13 @@ function UploadTab({ onAnalysis }) {
         accept=".pdf,.jpg,.jpeg,.png,.csv"
         onChange={handleFile}
       />
+      <button type="button" className="sample-csv-btn" onClick={loadBundledStandardCsv}>
+        🧪 Nạp file mẫu chuẩn: {STANDARD_INBODY_FILE}
+      </button>
       {file && (
         <div className="file-preview">
           ✅ {file.name} ({(file.size / 1024).toFixed(0)} KB)
+          {file.name === STANDARD_INBODY_FILE && <span className="standard-file-pill">CSV chuẩn · giả lập Claude</span>}
         </div>
       )}
       <button className="analyze-btn" onClick={handleAnalyze} disabled={!file || loading}>
@@ -206,7 +447,7 @@ function UploadTab({ onAnalysis }) {
       {result && (
         <div className="ai-result">
           <div className="ai-header">
-            <span className="ai-badge">Claude Vision</span>
+            <span className="ai-badge">{simulatedRecords.length ? 'Claude Simulation' : 'Claude Vision'}</span>
             <span className="ai-title">Phân tích InBody</span>
           </div>
           <p className="ai-text">{result.summary}</p>
@@ -226,6 +467,7 @@ function UploadTab({ onAnalysis }) {
           )}
         </div>
       )}
+      <InBodyTrendPreview records={simulatedRecords} />
     </div>
   );
 }
@@ -335,7 +577,12 @@ export default function InBodyDashboard({ userId, initialRecords }) {
   const prev = records[records.length - 2];
   const levelInfo = calcLevel(calcXP(records));
 
-  const handleNewAnalysis = (analysis) => {
+  const handleNewAnalysis = (analysis, parsedRecords) => {
+    if (parsedRecords?.length) {
+      setRecords(parsedRecords);
+      return;
+    }
+
     // If AI extracts metrics, add to records
     if (analysis?.metrics) {
       const newRecord = {
@@ -371,7 +618,7 @@ export default function InBodyDashboard({ userId, initialRecords }) {
         <MetricCard icon="🔥" label="Mỡ cơ thể" value={latest?.fat} unit="%"
           delta={prev ? `${Math.abs((latest.fat - prev.fat).toFixed(1))}%` : null}
           deltaUp={latest?.fat < prev?.fat} />
-        <MetricCard icon="💧" label="Nước" value={latest?.water} unit="%"
+        <MetricCard icon="💧" label="Nước" value={latest?.water} unit="L"
           delta="Ổn định" deltaUp />
       </div>
 
@@ -469,6 +716,32 @@ export default function InBodyDashboard({ userId, initialRecords }) {
         .badge-name { font-size: 10px; color: #666; line-height: 1.2; }
         .badge-progress-wrap { padding: 10px 14px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e9ecef; }
         .badge-progress-label { font-size: 12px; color: #666; margin-bottom: 6px; }
+        .sample-csv-btn { width: 100%; padding: 10px 12px; border: 1px solid #bbf7d0; background: #f0fdf4; color: #085041; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; margin: -4px 0 10px; }
+        .standard-file-pill { display: inline-flex; margin-left: 8px; padding: 2px 8px; border-radius: 999px; background: #E1F5EE; color: #085041; font-size: 11px; font-weight: 700; }
+        .inbody-simulated-charts { margin-top: 1rem; }
+        .inbody-chart-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+        .inbody-chart-card { min-width: 0; padding: 12px; border: 1px solid #e9ecef; border-radius: 12px; background: #fff; }
+        .inbody-chart-card.wide { grid-column: 1 / -1; }
+        .chart-title { font-size: 12px; font-weight: 700; color: #111827; margin-bottom: 8px; }
+        .inbody-reference-strip { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
+        .inbody-reference-strip > div { padding: 10px; border-radius: 10px; background: #f8f9fa; border: 1px solid #e9ecef; }
+        .inbody-reference-strip b { display: block; font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: .04em; }
+        .inbody-reference-strip span { display: block; margin-top: 3px; font-size: 12px; font-weight: 700; color: #111827; }
+        .inbody-reference-gallery { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 10px; }
+        .inbody-reference-gallery figure { margin: 0; overflow: hidden; border: 1px solid #e9ecef; border-radius: 12px; background: #fff; }
+        .inbody-reference-gallery img { display: block; width: 100%; height: 120px; object-fit: cover; object-position: top; }
+        .inbody-reference-gallery figcaption { padding: 7px 9px; color: #666; font-size: 10px; font-weight: 700; }
+        @media (max-width: 760px) {
+          .hero-card { align-items: flex-start; }
+          .tab-bar { overflow-x: auto; }
+          .tab-btn { min-width: 92px; }
+          .inbody-chart-grid { grid-template-columns: 1fr; }
+          .inbody-reference-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+          .inbody-reference-gallery { grid-template-columns: 1fr; }
+          .inbody-reference-gallery img { height: 160px; }
+          .hist-row { flex-wrap: wrap; }
+        }
+
       `}</style>
     </div>
   );
