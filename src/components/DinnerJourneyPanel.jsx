@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import NavButtons from './NavButtons.jsx'
+import GPEmotionalCompanionView from './EmotionalCompanionView.jsx'
 import { useApp } from '../context/AppContext.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { detectFileType, fileToBase64, fileToDataUrl, saveRecord } from '../lib/medicalStorage.js'
@@ -149,6 +150,15 @@ function CameraScanOverlayBadge({ label, timestamp }) {
       </div>
     </div>
   )
+}
+
+async function setCameraTorch(cameraState, enabled) {
+  const track = cameraState?.stream?.getVideoTracks?.()[0]
+  if (!track) return false
+  const capabilities = track.getCapabilities?.() || {}
+  if (!capabilities.torch) return false
+  await track.applyConstraints({ advanced: [{ torch: enabled }] })
+  return true
 }
 
 const SAFE_FOLDER_FALLBACK = 'guest'
@@ -505,6 +515,7 @@ function MediaPipeDetectorView({ type }) {
   const [cameraStarting, setCameraStarting] = useState(false)
   const [facingMode, setFacingMode] = useState('user')
   const [overlayOn, setOverlayOn] = useState(true)
+  const [flash, setFlash] = useState(false)
   const [scanNow, setScanNow] = useState(new Date())
   const [status, setStatus] = useState(lang === 'vi' ? 'Sẵn sàng mở camera vật lý.' : 'Ready to open the physical camera.')
   const [recording, setRecording] = useState(false)
@@ -520,7 +531,20 @@ function MediaPipeDetectorView({ type }) {
     setCameraOpen(false)
     setCameraStarting(false)
     setRecording(false)
+    setFlash(false)
   }, [])
+
+  const handleFlashToggle = useCallback(() => {
+    const nextFlash = !flash
+    setFlash(nextFlash)
+    setCameraTorch({ stream: streamRef.current }, nextFlash).catch(error => console.warn('Unable to toggle torch:', error))
+  }, [flash])
+
+  const handleCloseCamera = useCallback(() => {
+    setFlash(false)
+    setCameraTorch({ stream: streamRef.current }, false).catch(error => console.warn('Unable to disable torch:', error))
+    stopCamera()
+  }, [stopCamera])
 
   const draw = useCallback((time = 0) => {
     const canvas = canvasRef.current
@@ -547,6 +571,7 @@ function MediaPipeDetectorView({ type }) {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: nextFacingMode }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false })
       streamRef.current = stream
+      if (flash) setCameraTorch({ stream }, true).catch(error => console.warn('Unable to enable torch:', error))
       setFacingMode(nextFacingMode)
       setCameraOpen(true)
       window.setTimeout(() => {
@@ -561,7 +586,7 @@ function MediaPipeDetectorView({ type }) {
     } finally {
       setCameraStarting(false)
     }
-  }, [draw, facingMode, lang, stopCamera])
+  }, [draw, facingMode, flash, lang, stopCamera])
 
   const switchCamera = useCallback(() => {
     const nextFacingMode = facingMode === 'user' ? 'environment' : 'user'
@@ -665,16 +690,18 @@ function MediaPipeDetectorView({ type }) {
   useEffect(() => () => stopCamera(), [stopCamera])
 
   return (
-    <div style={{ ...panelShell, minHeight: 900, background: 'radial-gradient(circle at 50% 0%, #20263a, #10131e 54%, #080a12)', color: '#fff', padding: '34px 18px 110px' }}>
+    <div className="dinner-phone-camera-panel" style={{ ...panelShell, minHeight: 900, background: 'radial-gradient(circle at 50% 0%, #20263a, #10131e 54%, #080a12)', color: '#fff', padding: '34px 18px 110px' }}>
       <div style={{ textAlign: 'center', marginBottom: 22 }}>
-        <h1 style={{ margin: 0, fontSize: 38, lineHeight: 1.16, fontWeight: 900 }}>{lang === 'vi' ? 'Phân tích Video AI & Lớp phủ Sinh học' : 'AI Video Analysis & Biological Overlay'}</h1>
+        <h1 className="dinner-phone-camera-title" style={{ margin: 0, fontSize: 38, lineHeight: 1.16, fontWeight: 900 }}>{lang === 'vi' ? 'Phân tích Video AI & Lớp phủ Sinh học' : 'AI Video Analysis & Biological Overlay'}</h1>
         <p style={{ margin: '10px auto 0', color: 'rgba(255,255,255,0.62)', maxWidth: 720 }}>{isBody ? (lang === 'vi' ? 'Body detector mô phỏng Holistic/Pose Landmarker với khung xương, đường quỹ đạo và chỉ số chuyển động.' : 'Body detector inspired by Holistic/Pose Landmarker with skeleton, trajectory, and motion metrics.') : (lang === 'vi' ? 'Face detector mô phỏng Face Landmarker với lưới landmark khuôn mặt và chỉ số sinh trắc.' : 'Face detector inspired by Face Landmarker with a face mesh and biometric metrics.')}</p>
       </div>
-      <div style={{ width: 'min(100%, 430px)', margin: '0 auto', borderRadius: 44, border: '10px solid #1e2030', background: '#0d111d', boxShadow: '0 30px 90px rgba(0,0,0,0.55)', overflow: 'hidden' }}>
-        <div style={{ height: 58, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 18px', background: 'rgba(13,17,29,0.95)' }}>
-          <span style={{ fontSize: 24 }}>‹</span><b>{isBody ? 'AI Motion Forecast Optimization' : 'AI Face Detector'}</b><span style={{ fontSize: 22 }}>⚙</span>
+      <div className="dinner-phone-frame" style={{ width: 'min(100%, 430px)', margin: '0 auto', borderRadius: 44, border: '10px solid #1e2030', background: '#0d111d', boxShadow: '0 30px 90px rgba(0,0,0,0.55)', overflow: 'hidden' }}>
+        <div className="dinner-phone-topbar dinner-camera-action-topbar" style={{ height: 58, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 18px', background: 'rgba(13,17,29,0.95)' }}>
+          <button type="button" onClick={handleCloseCamera} style={floatingPillButton()} title={lang === 'vi' ? 'Đóng camera' : 'Close camera'}>×</button>
+          <div className="dinner-camera-topbar-label" style={{ ...glass, padding: '8px 24px', borderRadius: 999, color: BLUE, fontSize: 13, fontWeight: 900, letterSpacing: '.08em' }}>{isBody ? 'BODY DETECTOR' : 'FACE DETECTOR'}</div>
+          <button type="button" onClick={handleFlashToggle} style={{ ...floatingPillButton(), background: flash ? 'rgba(0,88,188,0.24)' : 'rgba(255,255,255,0.75)' }} title={lang === 'vi' ? 'Bật/tắt đèn flash' : 'Toggle flash'}>{flash ? '🔦' : '⚡'}</button>
         </div>
-        <div style={{ position: 'relative', height: 520, background: isBody ? 'linear-gradient(135deg,#323744,#879098)' : 'linear-gradient(135deg,#20293b,#64748b)', overflow: 'hidden' }}>
+        <div className="dinner-phone-camera-viewport" style={{ position: 'relative', height: 520, background: isBody ? 'linear-gradient(135deg,#323744,#879098)' : 'linear-gradient(135deg,#20293b,#64748b)', overflow: 'hidden' }}>
           {cameraOpen ? <video ref={videoRef} autoPlay playsInline muted style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', transform: facingMode === 'user' ? 'scaleX(-1)' : 'none' }} /> : <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', color: 'rgba(255,255,255,0.92)', textAlign: 'center', padding: 24, backgroundImage: `linear-gradient(rgba(0,0,0,0.16), rgba(0,0,0,0.42)), url(${isBody ? BODY_DETECTOR_BACKGROUND : FACE_DETECTOR_BACKGROUND})`, backgroundSize: 'cover', backgroundPosition: 'center' }}><b style={{ padding: '10px 14px', borderRadius: 999, background: 'rgba(0,12,24,0.58)', backdropFilter: 'blur(12px)' }}>{lang === 'vi' ? 'Bấm mở camera để bắt đầu' : 'Open camera to start'}</b></div>}
           <canvas ref={canvasRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }} />
           {cameraOpen && overlayOn && <CameraScanOverlayBadge label={isBody ? 'AI Body Detector Scan' : 'AI Face Detector Scan'} timestamp={cameraTimestamp(lang, scanNow)} />}
@@ -683,7 +710,7 @@ function MediaPipeDetectorView({ type }) {
             <DetectorMetric label={isBody ? 'Độ lệch quỹ đạo' : 'Độ cân xứng'} value={isBody ? '3%' : '96%'} />
           </div>
         </div>
-        <div style={{ padding: 18, background: 'rgba(14,18,30,0.98)' }}>
+        <div className="dinner-phone-controls" style={{ padding: 18, background: 'rgba(14,18,30,0.98)' }}>
           <input
             ref={localInputRef}
             type="file"
@@ -691,12 +718,12 @@ function MediaPipeDetectorView({ type }) {
             onChange={e => { uploadLocalDetectorImage(e.target.files?.[0]); e.target.value = '' }}
             style={{ display: 'none' }}
           />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 88px 1fr', gap: 12, alignItems: 'center' }}>
+          <div className="dinner-phone-action-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 88px 1fr', gap: 12, alignItems: 'center' }}>
             <button onClick={() => openCamera()} disabled={cameraStarting || snapshotSaving} style={{ ...secondaryAction(), background: 'rgba(255,255,255,0.10)', color: '#fff', opacity: cameraStarting ? 0.72 : 1 }}>{cameraOpen ? (lang === 'vi' ? 'Khởi động lại' : 'Restart') : cameraStarting ? (lang === 'vi' ? 'Đang mở...' : 'Opening...') : (lang === 'vi' ? 'Mở camera' : 'Open camera')}</button>
-            <button onClick={captureDetectorSnapshot} disabled={!cameraOpen || snapshotSaving} style={{ width: 76, height: 76, borderRadius: '50%', border: '4px solid #fff', background: recording ? '#ff6b6b' : '#ff3b30', color: '#fff', fontWeight: 900, cursor: snapshotSaving ? 'wait' : 'pointer', opacity: !cameraOpen || snapshotSaving ? 0.72 : 1 }}>{snapshotSaving ? '…' : '📷'}</button>
+            <button className="dinner-phone-capture-button" onClick={captureDetectorSnapshot} disabled={!cameraOpen || snapshotSaving} style={{ width: 76, height: 76, borderRadius: '50%', border: '4px solid #fff', background: recording ? '#ff6b6b' : '#ff3b30', color: '#fff', fontWeight: 900, cursor: snapshotSaving ? 'wait' : 'pointer', opacity: !cameraOpen || snapshotSaving ? 0.72 : 1 }}>{snapshotSaving ? '…' : '📷'}</button>
             <button onClick={() => setOverlayOn(v => !v)} style={{ ...primaryAction(), background: overlayOn ? '#6f7cff' : '#384052' }}>{lang === 'vi' ? 'Lớp phủ' : 'Overlay'}</button>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10 }}>
+          <div className="dinner-phone-secondary-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10 }}>
             <button onClick={() => localInputRef.current?.click()} disabled={snapshotSaving} style={{ ...secondaryAction(), background: 'rgba(255,255,255,0.10)', color: '#fff', opacity: snapshotSaving ? 0.72 : 1 }}>{lang === 'vi' ? 'upload hình trong máy' : 'upload local image'}</button>
             <button onClick={switchCamera} disabled={cameraStarting || snapshotSaving} style={{ ...secondaryAction(), background: 'rgba(255,255,255,0.10)', color: '#fff' }}>🔄 {lang === 'vi' ? 'Đổi camera' : 'Switch camera'}</button>
           </div>
@@ -742,71 +769,8 @@ function HealthJourneyTabs({ activeTab, setActiveTab, lang }) {
 }
 
 
-function EmotionalCompanionView() {
-  const [playing, setPlaying] = useState(false)
-  return (
-    <div style={panelShell}>
-      <div style={{ position: 'sticky', top: 0, zIndex: 10, height: 64, display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 20px', ...glass }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <img alt="Patient Profile" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAtKXZ8Z8xPdcddYd3_3LBUEgNXwg0eUvQSbHPBE7s4E0uhgb1LmS8wv5Igo9RqOekFLODV8AnqqJ87x2V5HuMj4zhCQDQhBlHpwDeVC7qg754k6-pXFeqwK9QDHldUAg7tHwQvn2isqzLDdinvGpzXK9ceLKuMGv8Qw1zBWtZb50Y2DehAH-CvqixV5e8bGLSTG3FNFmQ8DSlRQQBa6dpkXRs-tUXnA6dpiVBpbS9Wgl61ud3uxjSzBXi6HI0SnVuiskg5fquAGSs5" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', background: '#e1dfe3' }} />
-          <b style={{ fontSize: 22, color: '#1a1c1d' }}>Digital Twin</b>
-        </div>
-        <MaterialIcon style={{ color: BLUE }}>🔔</MaterialIcon>
-      </div>
-
-      <main style={{ maxWidth: 760, margin: '0 auto', padding: '28px 20px 150px' }}>
-        <section style={{ marginBottom: 28 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <div style={{ width: 52, height: 52, borderRadius: 18, background: BLUE, display: 'grid', placeItems: 'center', color: '#fff', boxShadow: '0 12px 30px rgba(0,88,188,0.24)', fontSize: 28 }}>🤖</div>
-            <div>
-              <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800, color: INK }}>Xin chào, tôi là AI Bác sĩ đa khoa</h1>
-              <p style={{ margin: '4px 0 0', color: MUTED, fontSize: 16 }}>Bác sĩ đa khoa AI luôn sẵn sàng lắng nghe và tâm sự cùng bạn</p>
-            </div>
-          </div>
-        </section>
-
-        <section style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 16, marginBottom: 28 }}>
-          <CompanionTile icon="📝" color={ATTENTION} title="Góc xả stress" subtitle="Viết ra mọi lo lắng của bạn" />
-          <CompanionTile icon="💚" color={HEALTHY} title="Khẳng định" subtitle="Năng lượng tích cực mỗi ngày" />
-          <div style={{ gridColumn: '1 / -1', padding: 30, borderRadius: 28, ...glass, position: 'relative', overflow: 'hidden' }}>
-            <div style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
-              <div>
-                <span style={{ display: 'inline-block', padding: '5px 12px', borderRadius: 999, background: 'rgba(0,88,188,0.10)', color: BLUE, fontSize: 12, fontWeight: 800, marginBottom: 14 }}>Hoạt động đề xuất</span>
-                <h3 style={{ margin: 0, fontSize: 26, color: INK }}>Playlist chăm sóc tinh thần cùng AI Bác sĩ đa khoa</h3>
-                <p style={{ margin: '10px 0 0', maxWidth: 440, color: MUTED, lineHeight: 1.55 }}>Mở danh sách video hướng dẫn thư giãn, chăm sóc sức khoẻ tinh thần và phục hồi năng lượng.</p>
-              </div>
-              <button onClick={() => { setPlaying(!playing); window.open(GENERAL_DOCTOR_PLAYLIST_URL, '_blank', 'noopener,noreferrer') }} style={{ width: 58, height: 58, borderRadius: '50%', border: 'none', background: playing ? HEALTHY : BLUE, color: '#fff', fontSize: 28, display: 'grid', placeItems: 'center', cursor: 'pointer', boxShadow: '0 16px 30px rgba(0,88,188,0.26)' }}>{playing ? '⏸' : '▶'}</button>
-            </div>
-            <div style={{ position: 'absolute', right: -40, bottom: -40, width: 170, height: 170, borderRadius: '50%', background: 'rgba(0,88,188,0.06)', animation: 'hj-breathe 8s ease-in-out infinite' }} />
-          </div>
-        </section>
-
-        <section style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginLeft: 70 }}>
-            <div style={{ background: PRIMARY, color: '#fff', padding: '16px 20px', borderRadius: '24px 24px 4px 24px', boxShadow: '0 4px 12px rgba(0,0,0,0.06)' }}>
-              <p style={{ margin: 0, lineHeight: 1.55 }}>Gần đây mình cảm thấy rất mệt mỏi và lo lắng. Việc điều trị khiến mình kiệt sức...</p>
-              <span style={{ display: 'block', textAlign: 'right', opacity: 0.72, fontSize: 12, marginTop: 8 }}>14:20</span>
-            </div>
-          </div>
-          <div style={{ display: 'flex', gap: 12, marginRight: 70 }}>
-            <div style={{ width: 34, height: 34, borderRadius: '50%', background: BLUE, color: '#fff', flexShrink: 0, display: 'grid', placeItems: 'center' }}>🤖</div>
-            <div style={{ ...glass, padding: '16px 20px', borderRadius: '4px 24px 24px 24px' }}>
-              <p style={{ margin: 0, lineHeight: 1.65 }}>Tôi là AI Bác sĩ đa khoa, tôi sẽ lắng nghe và đồng hành cùng bạn. Những cảm xúc mệt mỏi, lo lắng trong quá trình điều trị là điều rất đáng được quan tâm. 🌿<br/><br/>Bạn có thể kể thêm cho tôi điều đang làm bạn nặng lòng nhất hôm nay. Nếu cần thư giãn ngay, hãy thử thở chậm 4-7-8 hoặc mở hoạt động đề xuất phía trên.</p>
-              <span style={{ display: 'block', opacity: 0.5, fontSize: 12, marginTop: 8 }}>14:21</span>
-            </div>
-          </div>
-        </section>
-      </main>
-
-      <div style={{ position: 'absolute', left: 0, right: 0, bottom: 84, zIndex: 16, maxWidth: 760, margin: '0 auto', padding: '0 20px' }}>
-        <div style={{ ...glass, display: 'flex', alignItems: 'center', gap: 8, padding: 8, borderRadius: 999 }}>
-          <button style={roundButton('#f3f3f5', MUTED)}>＋</button>
-          <input placeholder="Tâm sự với AI Bác sĩ đa khoa..." style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', fontSize: 15, color: INK, padding: '0 10px' }} />
-          <button style={roundButton(BLUE, '#fff')}>↑</button>
-        </div>
-      </div>
-    </div>
-  )
+function EmotionalCompanionView({ onOpenStressRelief }) {
+  return <GPEmotionalCompanionView onOpenStressRelief={onOpenStressRelief} />
 }
 
 function CompanionTile({ icon, color, title, subtitle }) {
@@ -837,6 +801,7 @@ function EveningPhoneCameraView({ mode }) {
   const [cameraStarting, setCameraStarting] = useState(false)
   const [facingMode, setFacingMode] = useState('environment')
   const [overlayOn, setOverlayOn] = useState(true)
+  const [flash, setFlash] = useState(false)
   const [status, setStatus] = useState(lang === 'vi' ? 'Sẵn sàng mở camera vật lý.' : 'Ready to open the physical camera.')
   const [recording, setRecording] = useState(false)
   const [snapshotSaving, setSnapshotSaving] = useState(false)
@@ -847,8 +812,6 @@ function EveningPhoneCameraView({ mode }) {
     ? (lang === 'vi' ? 'AI Meal Camera' : 'AI Meal Camera')
     : (lang === 'vi' ? 'AI Medication Camera' : 'AI Medication Camera')
   const placeholderIcon = isMeal ? '🥗' : '💊'
-  const metricA = isMeal ? { label: 'Nutrition scan', value: capturedRecord ? 'Saved' : '320 kcal' } : { label: 'Pill scan', value: capturedRecord ? 'Saved' : '20mg' }
-  const metricB = isMeal ? { label: 'Care-plan fit', value: '96%' } : { label: 'Interaction', value: 'Low' }
   const label = isMeal ? 'Dinner meal camera snapshot' : 'Dinner medication camera snapshot'
 
   const stopCamera = useCallback(() => {
@@ -860,7 +823,20 @@ function EveningPhoneCameraView({ mode }) {
     setCameraOpen(false)
     setCameraStarting(false)
     setRecording(false)
+    setFlash(false)
   }, [])
+
+  const handleFlashToggle = useCallback(() => {
+    const nextFlash = !flash
+    setFlash(nextFlash)
+    setCameraTorch({ stream: streamRef.current }, nextFlash).catch(error => console.warn('Unable to toggle torch:', error))
+  }, [flash])
+
+  const handleCloseCamera = useCallback(() => {
+    setFlash(false)
+    setCameraTorch({ stream: streamRef.current }, false).catch(error => console.warn('Unable to disable torch:', error))
+    stopCamera()
+  }, [stopCamera])
 
   const draw = useCallback((time = 0) => {
     const canvas = canvasRef.current
@@ -871,16 +847,11 @@ function EveningPhoneCameraView({ mode }) {
     const ctx = canvas.getContext('2d')
     ctx.clearRect(0, 0, canvas.width, canvas.height)
     if (overlayOnRef.current) {
-      const overlayMetrics = [metricA, metricB]
       drawEveningCameraOverlay(ctx, canvas.width, canvas.height, time, isMeal)
-      drawCameraScanOverlay(ctx, canvas.width, canvas.height, {
-        label: isMeal ? 'AI Meal Scan' : 'AI Medication Scan',
-        timestamp: cameraTimestamp(lang),
-      })
-      drawEveningMetricOverlay(ctx, canvas.width, canvas.height, overlayMetrics)
+      drawRealtimeTimestampOverlay(ctx, canvas.width, canvas.height, cameraTimestamp(lang))
     }
     rafRef.current = requestAnimationFrame(draw)
-  }, [isMeal, lang, metricA, metricB])
+  }, [isMeal, lang])
 
   const openCamera = useCallback(async (nextFacingMode = facingMode) => {
     if (!navigator.mediaDevices?.getUserMedia) {
@@ -892,6 +863,7 @@ function EveningPhoneCameraView({ mode }) {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: nextFacingMode }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false })
       streamRef.current = stream
+      if (flash) setCameraTorch({ stream }, true).catch(error => console.warn('Unable to enable torch:', error))
       setFacingMode(nextFacingMode)
       setCameraOpen(true)
       window.setTimeout(() => {
@@ -906,7 +878,7 @@ function EveningPhoneCameraView({ mode }) {
     } finally {
       setCameraStarting(false)
     }
-  }, [draw, facingMode, lang, stopCamera])
+  }, [draw, facingMode, flash, lang, stopCamera])
 
   const switchCamera = useCallback(() => {
     const nextFacingMode = facingMode === 'user' ? 'environment' : 'user'
@@ -931,14 +903,7 @@ function EveningPhoneCameraView({ mode }) {
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
     if (facingMode === 'user') ctx.setTransform(1, 0, 0, 1, 0, 0)
     if (overlayOnRef.current) {
-      const overlayMetrics = [metricA, metricB]
       drawEveningCameraOverlay(ctx, canvas.width, canvas.height, performance.now(), isMeal)
-      drawCameraScanOverlay(ctx, canvas.width, canvas.height, {
-        label: isMeal ? 'AI Meal Scan' : 'AI Medication Scan',
-        timestamp: cameraTimestamp(lang),
-      })
-      drawEveningMetricOverlay(ctx, canvas.width, canvas.height, overlayMetrics)
-    } else {
       drawRealtimeTimestampOverlay(ctx, canvas.width, canvas.height, cameraTimestamp(lang))
     }
 
@@ -964,7 +929,7 @@ function EveningPhoneCameraView({ mode }) {
         window.setTimeout(() => setRecording(false), 520)
       }
     }, 'image/jpeg', 0.92)
-  }, [cameraOpen, facingMode, isMeal, label, lang, metricA, metricB, mode, user])
+  }, [cameraOpen, facingMode, isMeal, label, lang, mode, user])
 
 
   const uploadLocalImage = useCallback(async (file) => {
@@ -1003,28 +968,26 @@ function EveningPhoneCameraView({ mode }) {
   useEffect(() => () => stopCamera(), [stopCamera])
 
   return (
-    <div style={{ ...panelShell, minHeight: 900, background: 'radial-gradient(circle at 50% 0%, #20263a, #10131e 54%, #080a12)', color: '#fff', padding: '34px 18px 110px' }}>
+    <div className="dinner-phone-camera-panel" style={{ ...panelShell, minHeight: 900, background: 'radial-gradient(circle at 50% 0%, #20263a, #10131e 54%, #080a12)', color: '#fff', padding: '34px 18px 110px' }}>
       <div style={{ textAlign: 'center', marginBottom: 22 }}>
-        <h1 style={{ margin: 0, fontSize: 38, lineHeight: 1.16, fontWeight: 900 }}>{isMeal ? (lang === 'vi' ? 'Quét bữa ăn AI · Điện thoại Camera' : 'AI Meal Scan · Phone Camera') : (lang === 'vi' ? 'Trợ lý thuốc thông minh · Điện thoại Camera' : 'Smart Medication Assistant · Phone Camera')}</h1>
+        <h1 className="dinner-phone-camera-title" style={{ margin: 0, fontSize: 38, lineHeight: 1.16, fontWeight: 900 }}>{isMeal ? (lang === 'vi' ? 'Quét bữa ăn AI · Điện thoại Camera' : 'AI Meal Scan · Phone Camera') : (lang === 'vi' ? 'Trợ lý thuốc thông minh · Điện thoại Camera' : 'Smart Medication Assistant · Phone Camera')}</h1>
         <p style={{ margin: '10px auto 0', color: 'rgba(255,255,255,0.62)', maxWidth: 720 }}>
           {lang === 'vi'
             ? 'Buổi Tối dùng cùng giao diện chiếc Điện Thoại và cùng các chức năng Camera như Face Detector: mở camera, chụp, bật/tắt lớp phủ, đổi camera và lưu ảnh vào upload.'
             : 'Evening uses the same phone UI and camera controls as Face Detector: open camera, capture, toggle overlay, switch camera, and save to uploads.'}
         </p>
       </div>
-      <div style={{ width: 'min(100%, 430px)', margin: '0 auto', borderRadius: 44, border: '10px solid #1e2030', background: '#0d111d', boxShadow: '0 30px 90px rgba(0,0,0,0.55)', overflow: 'hidden' }}>
-        <div style={{ height: 58, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 18px', background: 'rgba(13,17,29,0.95)' }}>
-          <span style={{ fontSize: 24 }}>‹</span><b>{title}</b><span style={{ fontSize: 22 }}>⚙</span>
+      <div className="dinner-phone-frame" style={{ width: 'min(100%, 430px)', margin: '0 auto', borderRadius: 44, border: '10px solid #1e2030', background: '#0d111d', boxShadow: '0 30px 90px rgba(0,0,0,0.55)', overflow: 'hidden' }}>
+        <div className="dinner-phone-topbar dinner-camera-action-topbar" style={{ height: 58, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 18px', background: 'rgba(13,17,29,0.95)' }}>
+          <button type="button" onClick={handleCloseCamera} style={floatingPillButton()} title={lang === 'vi' ? 'Đóng camera' : 'Close camera'}>×</button>
+          <div className="dinner-camera-topbar-label" style={{ ...glass, padding: '8px 24px', borderRadius: 999, color: BLUE, fontSize: 13, fontWeight: 900, letterSpacing: '.08em' }}>{isMeal ? 'AI SCANNING' : 'TRỢ LÝ THUỐC'}</div>
+          <button type="button" onClick={handleFlashToggle} style={{ ...floatingPillButton(), background: flash ? 'rgba(0,88,188,0.24)' : 'rgba(255,255,255,0.75)' }} title={lang === 'vi' ? 'Bật/tắt đèn flash' : 'Toggle flash'}>{flash ? '🔦' : '⚡'}</button>
         </div>
-        <div style={{ position: 'relative', height: 520, background: isMeal ? 'linear-gradient(135deg,#273f32,#9fb76d)' : 'linear-gradient(135deg,#2f3346,#667085)', overflow: 'hidden' }}>
+        <div className="dinner-phone-camera-viewport" style={{ position: 'relative', height: 520, background: isMeal ? 'linear-gradient(135deg,#273f32,#9fb76d)' : 'linear-gradient(135deg,#2f3346,#667085)', overflow: 'hidden' }}>
           {cameraOpen ? <video ref={videoRef} autoPlay playsInline muted style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', transform: facingMode === 'user' ? 'scaleX(-1)' : 'none' }} /> : <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', color: 'rgba(255,255,255,0.72)', textAlign: 'center', padding: 24 }}><div style={{ fontSize: 74 }}>{placeholderIcon}</div><b>{lang === 'vi' ? 'Bấm mở camera để bắt đầu' : 'Open camera to start'}</b></div>}
           <canvas ref={canvasRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }} />
-          {overlayOn && <div style={{ position: 'absolute', left: 14, bottom: 18, display: 'grid', gap: 8 }}>
-            <DetectorMetric label={metricA.label} value={metricA.value} />
-            <DetectorMetric label={metricB.label} value={metricB.value} />
-          </div>}
         </div>
-        <div style={{ padding: 18, background: 'rgba(14,18,30,0.98)' }}>
+        <div className="dinner-phone-controls" style={{ padding: 18, background: 'rgba(14,18,30,0.98)' }}>
           <input
             ref={localInputRef}
             type="file"
@@ -1032,12 +995,12 @@ function EveningPhoneCameraView({ mode }) {
             onChange={e => { uploadLocalImage(e.target.files?.[0]); e.target.value = '' }}
             style={{ display: 'none' }}
           />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 88px 1fr', gap: 12, alignItems: 'center' }}>
+          <div className="dinner-phone-action-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 88px 1fr', gap: 12, alignItems: 'center' }}>
             <button onClick={() => openCamera()} disabled={cameraStarting || snapshotSaving} style={{ ...secondaryAction(), background: 'rgba(255,255,255,0.10)', color: '#fff', opacity: cameraStarting ? 0.72 : 1 }}>{cameraOpen ? (lang === 'vi' ? 'Khởi động lại' : 'Restart') : cameraStarting ? (lang === 'vi' ? 'Đang mở...' : 'Opening...') : (lang === 'vi' ? 'Mở camera' : 'Open camera')}</button>
-            <button onClick={capturePhoneSnapshot} disabled={!cameraOpen || snapshotSaving} style={{ width: 76, height: 76, borderRadius: '50%', border: '4px solid #fff', background: recording ? '#ff6b6b' : '#ff3b30', color: '#fff', fontWeight: 900, cursor: snapshotSaving ? 'wait' : 'pointer', opacity: !cameraOpen || snapshotSaving ? 0.72 : 1 }}>{snapshotSaving ? '…' : '📷'}</button>
+            <button className="dinner-phone-capture-button" onClick={capturePhoneSnapshot} disabled={!cameraOpen || snapshotSaving} style={{ width: 76, height: 76, borderRadius: '50%', border: '4px solid #fff', background: recording ? '#ff6b6b' : '#ff3b30', color: '#fff', fontWeight: 900, cursor: snapshotSaving ? 'wait' : 'pointer', opacity: !cameraOpen || snapshotSaving ? 0.72 : 1 }}>{snapshotSaving ? '…' : '📷'}</button>
             <button onClick={toggleOverlay} style={{ ...primaryAction(), background: overlayOn ? '#6f7cff' : '#384052' }}>{overlayOn ? (lang === 'vi' ? 'Bỏ lớp phủ' : 'Remove overlay') : (lang === 'vi' ? 'Hiện lớp phủ' : 'Show overlay')}</button>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10 }}>
+          <div className="dinner-phone-secondary-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10 }}>
             <button onClick={() => localInputRef.current?.click()} disabled={snapshotSaving} style={{ ...secondaryAction(), background: 'rgba(255,255,255,0.10)', color: '#fff', opacity: snapshotSaving ? 0.72 : 1 }}>{lang === 'vi' ? 'upload hình trong máy' : 'upload local image'}</button>
             <button onClick={switchCamera} disabled={cameraStarting || snapshotSaving} style={{ ...secondaryAction(), background: 'rgba(255,255,255,0.10)', color: '#fff' }}>🔄 {lang === 'vi' ? 'Đổi camera' : 'Switch camera'}</button>
           </div>
@@ -1094,34 +1057,6 @@ function drawEveningCameraOverlay(ctx, width, height, time, isMeal) {
   ctx.restore()
 }
 
-function drawEveningMetricOverlay(ctx, width, height, metrics) {
-  const pad = Math.max(18, Math.round(width * 0.035))
-  const boxW = Math.min(width * 0.48, 250)
-  const boxH = 58
-  const gap = 10
-  const startY = height - pad - (boxH * metrics.length) - (gap * (metrics.length - 1))
-
-  metrics.forEach((metric, index) => {
-    const y = startY + index * (boxH + gap)
-    ctx.save()
-    ctx.shadowColor = 'rgba(0,0,0,0.36)'
-    ctx.shadowBlur = 18
-    ctx.fillStyle = 'rgba(14,18,30,0.72)'
-    ctx.fillRect(pad, y, boxW, boxH)
-    ctx.shadowBlur = 0
-    ctx.strokeStyle = 'rgba(255,255,255,0.18)'
-    ctx.lineWidth = 2
-    ctx.strokeRect(pad, y, boxW, boxH)
-    ctx.fillStyle = '#fff'
-    ctx.font = `900 ${Math.max(16, width * 0.022)}px sans-serif`
-    ctx.fillText(metric.value, pad + 12, y + 25)
-    ctx.fillStyle = 'rgba(255,255,255,0.72)'
-    ctx.font = `800 ${Math.max(11, width * 0.015)}px sans-serif`
-    ctx.fillText(metric.label, pad + 12, y + 45)
-    ctx.restore()
-  })
-}
-
 function MealScanView() {
   return <EveningPhoneCameraView mode="meal" />
 }
@@ -1160,7 +1095,7 @@ function MedicationAssistantView() {
   return <EveningPhoneCameraView mode="medication" />
 }
 
-export default function DinnerJourneyPanel({ onNext, onPrev, prevLabel }) {
+export default function DinnerJourneyPanel({ onNext, onPrev, prevLabel, onOpenStressRelief }) {
   const { lang, t } = useApp()
   const [activeTab, setActiveTab] = useState('emotion')
 
@@ -1172,6 +1107,52 @@ export default function DinnerJourneyPanel({ onNext, onPrev, prevLabel }) {
         @keyframes hj-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
         @keyframes hj-laser { 0% { top: 0%; opacity: .8; } 50% { top: 100%; opacity: 1; } 100% { top: 0%; opacity: .8; } }
         @media (max-width: 760px) { .hj-responsive-sheet { grid-template-columns: 1fr !important; } }
+        .dinner-phone-camera-panel { padding: clamp(20px, 3vw, 34px) clamp(10px, 2vw, 18px) 110px !important; }
+        .dinner-phone-camera-title { font-size: clamp(26px, 4.2vw, 42px) !important; }
+        .dinner-phone-frame {
+          width: 100% !important;
+          max-width: none !important;
+          border-width: clamp(7px, 1.1vw, 12px) !important;
+          border-radius: clamp(30px, 3.2vw, 52px) !important;
+        }
+        .dinner-phone-topbar { height: clamp(54px, 5.2vw, 66px) !important; }
+        .dinner-camera-action-topbar { gap: clamp(8px, 1.4vw, 18px); }
+        .dinner-camera-topbar-label {
+          flex: 1;
+          min-width: 0;
+          text-align: center;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .dinner-phone-camera-viewport {
+          height: clamp(430px, 52vw, 760px) !important;
+          max-height: min(76vh, 780px);
+        }
+        .dinner-phone-action-grid { grid-template-columns: minmax(0, 1fr) clamp(72px, 8vw, 96px) minmax(0, 1fr) !important; }
+        .dinner-phone-capture-button {
+          width: clamp(68px, 7vw, 86px) !important;
+          height: clamp(68px, 7vw, 86px) !important;
+          justify-self: center;
+        }
+        @media (min-width: 1024px) {
+          .dinner-phone-camera-panel { padding-left: clamp(18px, 3vw, 44px) !important; padding-right: clamp(18px, 3vw, 44px) !important; }
+          .dinner-phone-camera-viewport { height: clamp(560px, 48vw, 780px) !important; }
+        }
+        @media (max-width: 900px) {
+          .dinner-phone-camera-viewport { height: min(66vh, 660px) !important; min-height: 460px; }
+        }
+        @media (max-width: 560px) {
+          .dinner-phone-camera-panel { padding: 18px 6px 96px !important; }
+          .dinner-phone-frame { border-width: 6px !important; border-radius: 30px !important; }
+          .dinner-phone-topbar { height: 50px !important; padding: 0 10px !important; font-size: 13px; }
+          .dinner-camera-topbar-label { padding: 7px 10px !important; font-size: 11px !important; letter-spacing: .04em !important; }
+          .dinner-phone-camera-viewport { height: min(62vh, 540px) !important; min-height: 360px; }
+          .dinner-phone-controls { padding: 14px !important; }
+          .dinner-phone-action-grid { grid-template-columns: minmax(0, 1fr) 70px minmax(0, 1fr) !important; gap: 8px !important; }
+          .dinner-phone-capture-button { width: 64px !important; height: 64px !important; }
+          .dinner-phone-secondary-grid { grid-template-columns: 1fr !important; }
+        }
       `}</style>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap' }}>
         <div>
@@ -1184,7 +1165,7 @@ export default function DinnerJourneyPanel({ onNext, onPrev, prevLabel }) {
         </div>
       </div>
       <HealthJourneyTabs activeTab={activeTab} setActiveTab={setActiveTab} lang={lang} />
-      {activeTab === 'emotion' && <EmotionalCompanionView />}
+      {activeTab === 'emotion' && <EmotionalCompanionView onOpenStressRelief={onOpenStressRelief} />}
       {activeTab === 'meal' && <MealScanView />}
       {activeTab === 'medication' && <MedicationAssistantView />}
       {activeTab === 'faceDetector' && <MediaPipeDetectorView type="face" />}

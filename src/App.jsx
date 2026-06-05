@@ -23,12 +23,13 @@ import AdminPanel from './components/admin/AdminPanel.jsx'
 import PatientRecordPanel from './components/PatientRecordPanel.jsx'
 import Protein3DPanel from './components/Protein3DPanel.jsx'
 import AIHealthcareVisionPanel from './components/AIHealthcareVisionPanel.jsx'
+import StressReliefPanel from './components/StressReliefPanel.jsx'
 import UserProfilePanel from './components/UserProfilePanel.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 import { addNotification } from './lib/notifications.js'
 
 // Swarm panel replaces simulation; keep consensus as classic fallback
-const PANELS = ['healthJourney', 'lunchJourney', 'dinnerJourney', 'upload', 'imaging', 'checkin', 'family', 'record', 'familyRelationship', 'matrix3dBody', 'omnidirectional3dBody', 'twin', 'telemedicine', 'statAnalysis', 'swarm', 'consensus', 'protein3d', 'aiHealthcareVision']
+const PANELS = ['healthJourney', 'lunchJourney', 'dinnerJourney', 'upload', 'imaging', 'checkin', 'family', 'record', 'familyRelationship', 'matrix3dBody', 'omnidirectional3dBody', 'twin', 'telemedicine', 'statAnalysis', 'swarm', 'consensus', 'protein3d', 'aiHealthcareVision', 'stressRelief']
 
 export default function App() {
   const { user, loading } = useAuth()
@@ -71,6 +72,7 @@ export default function App() {
     consensus: `${t('consensus')} (Classic)`,
     protein3d: t('protein3d'),
     aiHealthcareVision: t('aiHealthcareVision'),
+    stressRelief: t('stressRelief'),
     profile: t('profile'),
   }
 
@@ -197,9 +199,9 @@ export default function App() {
             familyStorageOwnerId={familyStorageOwnerId}
             user={user}
           >
-            {active === 'healthJourney' && <HealthJourneyPanel onNext={goNext} />}
-            {active === 'lunchJourney' && <LunchJourneyPanel onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
-            {active === 'dinnerJourney' && <DinnerJourneyPanel onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
+            {active === 'healthJourney' && <HealthJourneyPanel onNext={goNext} onOpenStressRelief={() => setActive('stressRelief')} />}
+            {active === 'lunchJourney' && <LunchJourneyPanel onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} onOpenStressRelief={() => setActive('stressRelief')} />}
+            {active === 'dinnerJourney' && <DinnerJourneyPanel onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} onOpenStressRelief={() => setActive('stressRelief')} />}
             {active === 'upload'    && <UploadPanel        patientId="LXK-2024" onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} onSelectImage={handleSelectCompareFile} />}
             {active === 'imaging'   && <ImagingPanel       onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} compareImage={compareImage} uploadedImages={uploadedImages} onSelectCompareImage={setCompareImage} scrollTarget={imagingScrollTarget} onScrollTargetHandled={() => setImagingScrollTarget(null)} />}
             {active === 'checkin'   && <CheckinPanel       onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
@@ -214,7 +216,8 @@ export default function App() {
             {active === 'swarm'     && <SwarmConsensusPanel onReset={() => setActive('upload')} onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'consensus' && <ConsensusPanel     onReset={() => setActive('upload')} onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'protein3d' && <Protein3DPanel     onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
-            {active === 'aiHealthcareVision' && <AIHealthcareVisionPanel onPrev={goPrev} prevLabel={prevLabel} />}
+            {active === 'aiHealthcareVision' && <AIHealthcareVisionPanel onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
+            {active === 'stressRelief' && <StressReliefPanel onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'profile'   && <UserProfilePanel />}
             {active === 'admin'     && user?.isAdmin && <AdminPanel />}
             {active === 'admin'     && !user?.isAdmin && (
