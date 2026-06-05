@@ -1,7 +1,6 @@
 'use client';
-
-import { useState, useRef } from 'react';
-import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import React, { useState, useRef } from 'react';
+import { LineChart, Line, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 // ─── Gamification engine ────────────────────────────────────────────────────
 function calcXP(records) {
@@ -261,6 +260,7 @@ function HistoryTab({ records }) {
     fat: record.fat,
   }));
 
+function HistoryTab({ records }) {
   return (
     <div>
       <div className="section-title">Xu hướng 3 tháng</div>
@@ -460,6 +460,20 @@ export default function InBodyDashboard({ userId, initialRecords }) {
         .quest-bar { height: 4px; background: #e9ecef; border-radius: 2px; margin-top: 6px; overflow: hidden; }
         .quest-fill { height: 100%; border-radius: 2px; }
         .quest-reward { font-size: 11px; color: #BA7517; font-weight: 500; white-space: nowrap; }
+        .mini-chart { width: 100%; border: 1px solid #e9ecef; border-radius: 12px; background: #fff; padding: 10px; margin-bottom: 0.5rem; }
+        .mini-chart svg { width: 100%; height: 220px; display: block; }
+        .axis { stroke: #d7dde3; stroke-width: 1.5; }
+        .grid-line { stroke: #eef2f6; stroke-width: 1; }
+        .series { fill: none; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+        .series.muscle { stroke: #378ADD; }
+        .series.fat { stroke: #D85A30; }
+        .dot.muscle { fill: #378ADD; }
+        .dot.fat { fill: #D85A30; }
+        .chart-label { fill: #888; font-size: 11px; }
+        .chart-legend { display: flex; justify-content: center; gap: 14px; color: #666; font-size: 11px; }
+        .legend { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 4px; }
+        .legend.muscle { background: #378ADD; }
+        .legend.fat { background: #D85A30; }
         .hist-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid #f1f3f4; font-size: 12px; }
         .hist-date { color: #888; width: 85px; flex-shrink: 0; }
         .hist-weight { font-weight: 500; min-width: 55px; }
