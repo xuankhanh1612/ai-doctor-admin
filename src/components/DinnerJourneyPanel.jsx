@@ -743,8 +743,8 @@ function HealthJourneyTabs({ activeTab, setActiveTab, lang }) {
 }
 
 
-function EmotionalCompanionView() {
-  return <GPEmotionalCompanionView />
+function EmotionalCompanionView({ onOpenStressRelief }) {
+  return <GPEmotionalCompanionView onOpenStressRelief={onOpenStressRelief} />
 }
 
 function CompanionTile({ icon, color, title, subtitle }) {
@@ -785,8 +785,6 @@ function EveningPhoneCameraView({ mode }) {
     ? (lang === 'vi' ? 'AI Meal Camera' : 'AI Meal Camera')
     : (lang === 'vi' ? 'AI Medication Camera' : 'AI Medication Camera')
   const placeholderIcon = isMeal ? '🥗' : '💊'
-  const metricA = isMeal ? { label: 'Nutrition scan', value: capturedRecord ? 'Saved' : '320 kcal' } : { label: 'Pill scan', value: capturedRecord ? 'Saved' : '20mg' }
-  const metricB = isMeal ? { label: 'Care-plan fit', value: '96%' } : { label: 'Interaction', value: 'Low' }
   const label = isMeal ? 'Dinner meal camera snapshot' : 'Dinner medication camera snapshot'
 
   const stopCamera = useCallback(() => {
@@ -809,12 +807,11 @@ function EveningPhoneCameraView({ mode }) {
     const ctx = canvas.getContext('2d')
     ctx.clearRect(0, 0, canvas.width, canvas.height)
     if (overlayOnRef.current) {
-      const overlayMetrics = [metricA, metricB]
       drawEveningCameraOverlay(ctx, canvas.width, canvas.height, time, isMeal)
-      drawEveningMetricOverlay(ctx, canvas.width, canvas.height, overlayMetrics)
+      drawRealtimeTimestampOverlay(ctx, canvas.width, canvas.height, cameraTimestamp(lang))
     }
     rafRef.current = requestAnimationFrame(draw)
-  }, [isMeal, lang, metricA, metricB])
+  }, [isMeal, lang])
 
   const openCamera = useCallback(async (nextFacingMode = facingMode) => {
     if (!navigator.mediaDevices?.getUserMedia) {
@@ -865,10 +862,7 @@ function EveningPhoneCameraView({ mode }) {
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
     if (facingMode === 'user') ctx.setTransform(1, 0, 0, 1, 0, 0)
     if (overlayOnRef.current) {
-      const overlayMetrics = [metricA, metricB]
       drawEveningCameraOverlay(ctx, canvas.width, canvas.height, performance.now(), isMeal)
-      drawEveningMetricOverlay(ctx, canvas.width, canvas.height, overlayMetrics)
-    } else {
       drawRealtimeTimestampOverlay(ctx, canvas.width, canvas.height, cameraTimestamp(lang))
     }
 
@@ -894,7 +888,7 @@ function EveningPhoneCameraView({ mode }) {
         window.setTimeout(() => setRecording(false), 520)
       }
     }, 'image/jpeg', 0.92)
-  }, [cameraOpen, facingMode, isMeal, label, lang, metricA, metricB, mode, user])
+  }, [cameraOpen, facingMode, isMeal, label, lang, mode, user])
 
 
   const uploadLocalImage = useCallback(async (file) => {
@@ -949,10 +943,6 @@ function EveningPhoneCameraView({ mode }) {
         <div style={{ position: 'relative', height: 520, background: isMeal ? 'linear-gradient(135deg,#273f32,#9fb76d)' : 'linear-gradient(135deg,#2f3346,#667085)', overflow: 'hidden' }}>
           {cameraOpen ? <video ref={videoRef} autoPlay playsInline muted style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', transform: facingMode === 'user' ? 'scaleX(-1)' : 'none' }} /> : <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', color: 'rgba(255,255,255,0.72)', textAlign: 'center', padding: 24 }}><div style={{ fontSize: 74 }}>{placeholderIcon}</div><b>{lang === 'vi' ? 'Bấm mở camera để bắt đầu' : 'Open camera to start'}</b></div>}
           <canvas ref={canvasRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }} />
-          {overlayOn && <div style={{ position: 'absolute', left: 14, bottom: 18, display: 'grid', gap: 8 }}>
-            <DetectorMetric label={metricA.label} value={metricA.value} />
-            <DetectorMetric label={metricB.label} value={metricB.value} />
-          </div>}
         </div>
         <div style={{ padding: 18, background: 'rgba(14,18,30,0.98)' }}>
           <input
@@ -1024,34 +1014,6 @@ function drawEveningCameraOverlay(ctx, width, height, time, isMeal) {
   ctx.restore()
 }
 
-function drawEveningMetricOverlay(ctx, width, height, metrics) {
-  const pad = Math.max(18, Math.round(width * 0.035))
-  const boxW = Math.min(width * 0.48, 250)
-  const boxH = 58
-  const gap = 10
-  const startY = height - pad - (boxH * metrics.length) - (gap * (metrics.length - 1))
-
-  metrics.forEach((metric, index) => {
-    const y = startY + index * (boxH + gap)
-    ctx.save()
-    ctx.shadowColor = 'rgba(0,0,0,0.36)'
-    ctx.shadowBlur = 18
-    ctx.fillStyle = 'rgba(14,18,30,0.72)'
-    ctx.fillRect(pad, y, boxW, boxH)
-    ctx.shadowBlur = 0
-    ctx.strokeStyle = 'rgba(255,255,255,0.18)'
-    ctx.lineWidth = 2
-    ctx.strokeRect(pad, y, boxW, boxH)
-    ctx.fillStyle = '#fff'
-    ctx.font = `900 ${Math.max(16, width * 0.022)}px sans-serif`
-    ctx.fillText(metric.value, pad + 12, y + 25)
-    ctx.fillStyle = 'rgba(255,255,255,0.72)'
-    ctx.font = `800 ${Math.max(11, width * 0.015)}px sans-serif`
-    ctx.fillText(metric.label, pad + 12, y + 45)
-    ctx.restore()
-  })
-}
-
 function MealScanView() {
   return <EveningPhoneCameraView mode="meal" />
 }
@@ -1090,7 +1052,7 @@ function MedicationAssistantView() {
   return <EveningPhoneCameraView mode="medication" />
 }
 
-export default function DinnerJourneyPanel({ onNext, onPrev, prevLabel }) {
+export default function DinnerJourneyPanel({ onNext, onPrev, prevLabel, onOpenStressRelief }) {
   const { lang, t } = useApp()
   const [activeTab, setActiveTab] = useState('emotion')
 
@@ -1114,7 +1076,7 @@ export default function DinnerJourneyPanel({ onNext, onPrev, prevLabel }) {
         </div>
       </div>
       <HealthJourneyTabs activeTab={activeTab} setActiveTab={setActiveTab} lang={lang} />
-      {activeTab === 'emotion' && <EmotionalCompanionView />}
+      {activeTab === 'emotion' && <EmotionalCompanionView onOpenStressRelief={onOpenStressRelief} />}
       {activeTab === 'meal' && <MealScanView />}
       {activeTab === 'medication' && <MedicationAssistantView />}
       {activeTab === 'faceDetector' && <MediaPipeDetectorView type="face" />}

@@ -40,13 +40,13 @@ function MaterialIcon({ children, size = 22, style }) {
   return <span style={{ fontSize: size, lineHeight: 1, ...style }}>{children}</span>
 }
 
-function CompanionTile({ icon, color, title, subtitle }) {
+function CompanionTile({ icon, color, title, subtitle, onClick }) {
   return (
-    <div style={{ ...glass, padding: 24, borderRadius: 26 }}>
+    <button type="button" onClick={onClick} style={{ ...glass, padding: 24, borderRadius: 26, border: 'none', textAlign: 'left', cursor: onClick ? 'pointer' : 'default', fontFamily: 'inherit' }}>
       <div style={{ width: 42, height: 42, borderRadius: '50%', background: `${color}25`, display: 'grid', placeItems: 'center', color, marginBottom: 16, fontSize: 22 }}>{icon}</div>
       <h3 style={{ margin: 0, fontSize: 15, color: INK }}>{title}</h3>
       <p style={{ margin: '6px 0 0', color: MUTED, fontSize: 13 }}>{subtitle}</p>
-    </div>
+    </button>
   )
 }
 
@@ -58,7 +58,7 @@ function formatMessageTime(iso, lang) {
   }
 }
 
-export default function EmotionalCompanionView() {
+export default function EmotionalCompanionView({ onOpenStressRelief }) {
   const { lang } = useApp()
   const [chatPrompt, setChatPrompt] = useState('')
   const [chatMessages, setChatMessages] = useState(() => loadStoredChatMessages(lang))
@@ -112,7 +112,7 @@ export default function EmotionalCompanionView() {
         </section>
 
         <section style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 16, marginBottom: 28 }}>
-          <CompanionTile icon="📝" color={ATTENTION} title={lang === 'en' ? 'Stress journal' : 'Góc xả stress'} subtitle={lang === 'en' ? 'Write down any worries' : 'Viết ra mọi lo lắng của bạn'} />
+          <CompanionTile icon="📝" color={ATTENTION} title={lang === 'en' ? 'Stress journal' : 'Góc xả stress'} subtitle={lang === 'en' ? 'Open the immersive stress relief room' : 'Mở không gian xả stress chuyên sâu'} onClick={onOpenStressRelief} />
           <CompanionTile icon="💚" color={HEALTHY} title={lang === 'en' ? 'Affirmations' : 'Khẳng định'} subtitle={lang === 'en' ? 'Positive energy for today' : 'Năng lượng tích cực mỗi ngày'} />
           <div style={{ gridColumn: '1 / -1', padding: 24, borderRadius: 28, ...glass, position: 'relative', overflow: 'hidden' }}>
             <div style={{ position: 'relative', zIndex: 2 }}>
