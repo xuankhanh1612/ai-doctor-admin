@@ -4,6 +4,7 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
+  assetsInclude: ['**/*.PNG', '**/*.JPG', '**/*.JPEG', '**/*.HEIC'],
   build: {
     rollupOptions: {
       input: {
