@@ -55,6 +55,8 @@ export default function Sidebar({ active, onNavigate, openSignal = 0 }) {
     { id: 'protein3d', label: t('protein3d'),       step: '17' },
     { id: 'aiHealthcareVision', label: t('aiHealthcareVision'), step: '18' },
     { id: 'stressRelief', label: t('stressRelief'), step: '19' },
+    { id: 'aiHealthcareVisionControl', label: t('aiHealthcareVisionControl'), step: '20' },
+    { id: 'aiInbodyPortal', label: t('aiInbodyPortal'), step: '21' },
   ]
 
   const ADMIN_STEPS = user?.isAdmin ? [

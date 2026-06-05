@@ -23,13 +23,15 @@ import AdminPanel from './components/admin/AdminPanel.jsx'
 import PatientRecordPanel from './components/PatientRecordPanel.jsx'
 import Protein3DPanel from './components/Protein3DPanel.jsx'
 import AIHealthcareVisionPanel from './components/AIHealthcareVisionPanel.jsx'
+import AIHealthcareVisionControlPanel from './components/AIHealthcareVisionControlPanel.jsx'
+import AIInbodyPortalPanel from './components/AIInbodyPortalPanel.jsx'
 import StressReliefPanel from './components/StressReliefPanel.jsx'
 import UserProfilePanel from './components/UserProfilePanel.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 import { addNotification } from './lib/notifications.js'
 
 // Swarm panel replaces simulation; keep consensus as classic fallback
-const PANELS = ['healthJourney', 'lunchJourney', 'dinnerJourney', 'upload', 'imaging', 'checkin', 'family', 'record', 'familyRelationship', 'matrix3dBody', 'omnidirectional3dBody', 'twin', 'telemedicine', 'statAnalysis', 'swarm', 'consensus', 'protein3d', 'aiHealthcareVision', 'stressRelief']
+const PANELS = ['healthJourney', 'lunchJourney', 'dinnerJourney', 'upload', 'imaging', 'checkin', 'family', 'record', 'familyRelationship', 'matrix3dBody', 'omnidirectional3dBody', 'twin', 'telemedicine', 'statAnalysis', 'swarm', 'consensus', 'protein3d', 'aiHealthcareVision', 'stressRelief', 'aiHealthcareVisionControl', 'aiInbodyPortal']
 
 export default function App() {
   const { user, loading } = useAuth()
@@ -73,6 +75,8 @@ export default function App() {
     protein3d: t('protein3d'),
     aiHealthcareVision: t('aiHealthcareVision'),
     stressRelief: t('stressRelief'),
+    aiHealthcareVisionControl: t('aiHealthcareVisionControl'),
+    aiInbodyPortal: t('aiInbodyPortal'),
     profile: t('profile'),
   }
 
@@ -217,7 +221,9 @@ export default function App() {
             {active === 'consensus' && <ConsensusPanel     onReset={() => setActive('upload')} onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'protein3d' && <Protein3DPanel     onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'aiHealthcareVision' && <AIHealthcareVisionPanel onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
-            {active === 'stressRelief' && <StressReliefPanel onPrev={goPrev} prevLabel={prevLabel} />}
+            {active === 'stressRelief' && <StressReliefPanel onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
+            {active === 'aiHealthcareVisionControl' && <AIHealthcareVisionControlPanel onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
+            {active === 'aiInbodyPortal' && <AIInbodyPortalPanel onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'profile'   && <UserProfilePanel />}
             {active === 'admin'     && user?.isAdmin && <AdminPanel />}
             {active === 'admin'     && !user?.isAdmin && (
@@ -248,7 +254,7 @@ function GlobalBottomNav({ active, onOpenMainMenu, onNavigate }) {
   const items = [
     { id: 'health', label: 'Health', icon: '♿', action: onOpenMainMenu, active: ['healthJourney', 'lunchJourney', 'dinnerJourney'].includes(active) },
     { id: 'family', label: 'Community', icon: '👥', action: () => onNavigate('family'), active: active === 'family' },
-    { id: 'aiHealthcareVision', label: 'AI Scan', icon: '🧬', action: () => onNavigate('aiHealthcareVision'), active: active === 'aiHealthcareVision' },
+    { id: 'aiHealthcareVisionControl', label: 'AI Vision', icon: '🧬', action: () => onNavigate('aiHealthcareVisionControl'), active: active === 'aiHealthcareVisionControl' },
     { id: 'upload', label: 'Record', icon: '📄', action: () => onNavigate('upload'), active: active === 'upload' },
     { id: 'profile', label: 'Profile', icon: '👤', action: () => onNavigate('profile'), active: active === 'profile' },
   ]

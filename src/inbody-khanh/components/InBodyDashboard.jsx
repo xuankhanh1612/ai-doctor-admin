@@ -1,13 +1,7 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import { Line } from 'react-chartjs-2';
-import {
-  Chart as ChartJS, CategoryScale, LinearScale,
-  PointElement, LineElement, Tooltip, Legend
-} from 'chart.js';
-
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend);
+import { useState, useRef } from 'react';
+import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 // ─── Gamification engine ────────────────────────────────────────────────────
 function calcXP(records) {
@@ -261,35 +255,28 @@ function QuestsTab({ records }) {
 }
 
 function HistoryTab({ records }) {
-  const labels = records.map((r) => r.date.slice(5));
-  const chartData = {
-    labels,
-    datasets: [
-      {
-        label: 'Cơ bắp (kg)',
-        data: records.map((r) => r.muscle),
-        borderColor: '#378ADD',
-        backgroundColor: 'rgba(55,138,221,0.08)',
-        tension: 0.4,
-      },
-      {
-        label: 'Mỡ (%)',
-        data: records.map((r) => r.fat),
-        borderColor: '#D85A30',
-        backgroundColor: 'rgba(216,90,48,0.08)',
-        tension: 0.4,
-      },
-    ],
-  };
-  const options = {
-    responsive: true,
-    plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 11 } } } },
-    scales: { x: { grid: { display: false } } },
-  };
+  const chartData = records.map((record) => ({
+    label: record.date.slice(5),
+    muscle: record.muscle,
+    fat: record.fat,
+  }));
+
   return (
     <div>
       <div className="section-title">Xu hướng 3 tháng</div>
-      <Line data={chartData} options={options} />
+      <div className="history-chart">
+        <ResponsiveContainer width="100%" height={240}>
+          <LineChart data={chartData} margin={{ top: 8, right: 14, bottom: 6, left: -14 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#e9ecef" />
+            <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+            <YAxis tick={{ fontSize: 11 }} />
+            <Tooltip />
+            <Legend wrapperStyle={{ fontSize: 11 }} />
+            <Line type="monotone" name="Cơ bắp (kg)" dataKey="muscle" stroke="#378ADD" strokeWidth={3} dot={{ r: 3 }} />
+            <Line type="monotone" name="Mỡ (%)" dataKey="fat" stroke="#D85A30" strokeWidth={3} dot={{ r: 3 }} />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
       <div className="section-title" style={{ marginTop: '1rem' }}>Lịch sử đo</div>
       {records.map((r, i) => {
         const prev = records[i - 1];
@@ -437,6 +424,7 @@ export default function InBodyDashboard({ userId, initialRecords }) {
         .tab-btn.active { background: #fff; color: #111; font-weight: 500; border: 1px solid #e9ecef; }
         .tab-content { min-height: 300px; }
         .section-title { font-size: 11px; font-weight: 500; color: #888; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; }
+        .history-chart { height: 250px; width: 100%; margin-bottom: 0.5rem; }
         .upload-zone { border: 1.5px dashed #ccc; border-radius: 12px; padding: 2rem; text-align: center; cursor: pointer; transition: background 0.15s; margin-bottom: 1rem; }
         .upload-zone:hover { background: #f8f9fa; }
         .upload-icon { font-size: 32px; margin-bottom: 8px; }
