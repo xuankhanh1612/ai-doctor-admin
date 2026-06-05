@@ -7,14 +7,24 @@ const mediapipeExternal = [
   '@mediapipe/tasks-text',
 ]
 
+const externalizeMediapipe = {
+  name: 'externalize-mediapipe',
+  resolveId(id) {
+    if (mediapipeExternal.includes(id)) {
+      return { id, external: true }
+    }
+  },
+}
+
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), externalizeMediapipe],
   build: {
     rollupOptions: {
       external: mediapipeExternal,
     },
   },
   worker: {
+    plugins: () => [externalizeMediapipe],
     rollupOptions: {
       external: mediapipeExternal,
     },
