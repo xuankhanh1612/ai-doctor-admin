@@ -1057,3 +1057,44 @@ html, body, #root {
     height: 68vh;
   }
 }
+
+/* AI inbody Portal integration */
+.ai-inbody-portal-page {
+  min-height: 100%;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  background:
+    radial-gradient(circle at 12% 8%, rgba(29,158,117,0.16), transparent 32%),
+    radial-gradient(circle at 86% 16%, rgba(55,138,221,0.16), transparent 36%),
+    var(--bg2);
+}
+
+.ai-inbody-portal-card {
+  width: 100%;
+  max-width: 980px;
+  margin: 0 auto;
+  padding: clamp(16px, 3vw, 28px);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  background: rgba(255,255,255,0.94);
+  box-shadow: 0 24px 80px rgba(0,0,0,0.24);
+}
+
+.ai-inbody-portal-header {
+  max-width: 980px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+@media (max-width: 760px) {
+  .ai-inbody-portal-page {
+    padding: 14px;
+  }
+
+  .ai-inbody-portal-card {
+    padding: 14px;
+    border-radius: 18px;
+  }
+}
