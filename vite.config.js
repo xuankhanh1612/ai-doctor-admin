@@ -13,9 +13,7 @@ export default defineConfig({
     },
   },
   worker: {
-    rollupOptions: {
-      external: ['@mediapipe/tasks-vision', '@mediapipe/tasks-audio', '@mediapipe/tasks-text'],
-    },
+    format: 'es',
   },
   server: {
     proxy: {

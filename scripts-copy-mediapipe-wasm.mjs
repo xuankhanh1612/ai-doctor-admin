@@ -7,8 +7,29 @@ const packages = [
   '@mediapipe/tasks-text',
 ]
 
-const destDir = path.join('public', 'wasm')
-fs.mkdirSync(destDir, { recursive: true })
+function copyFile(srcFile, destFile) {
+  fs.mkdirSync(path.dirname(destFile), { recursive: true })
+  fs.copyFileSync(srcFile, destFile)
+  console.log(`Copied ${srcFile} -> ${destFile}`)
+}
+
+function copyDirectoryFiles(srcDir, destDir) {
+  if (!fs.existsSync(srcDir)) return
+
+  fs.mkdirSync(destDir, { recursive: true })
+  for (const file of fs.readdirSync(srcDir)) {
+    if (file.startsWith('.')) continue
+
+    const srcFile = path.join(srcDir, file)
+    const destFile = path.join(destDir, file)
+    if (fs.statSync(srcFile).isFile()) {
+      copyFile(srcFile, destFile)
+    }
+  }
+}
+
+const wasmDestDir = path.join('public', 'wasm')
+fs.mkdirSync(wasmDestDir, { recursive: true })
 
 for (const packageName of packages) {
   const candidates = [
@@ -21,12 +42,10 @@ for (const packageName of packages) {
     continue
   }
 
-  for (const file of fs.readdirSync(srcDir)) {
-    const srcFile = path.join(srcDir, file)
-    const destFile = path.join(destDir, file)
-    if (fs.statSync(srcFile).isFile()) {
-      fs.copyFileSync(srcFile, destFile)
-      console.log(`Copied ${srcFile} -> ${destFile}`)
-    }
-  }
+  copyDirectoryFiles(srcDir, wasmDestDir)
 }
+
+copyDirectoryFiles(
+  path.join('src', 'mediapipe-khanh', 'public'),
+  path.join('public', 'src', 'mediapipe-khanh')
+)
