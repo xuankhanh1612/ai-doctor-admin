@@ -81,10 +81,14 @@ export abstract class BaseVisionTask extends BaseTask {
     super.handleInitDone();
 
     if (this.video && this.video.srcObject && this.enableWebcamButton) {
-      this.setWebcamButtonLabel('close');
+//       this.setWebcamButtonLabel('close');
+//       this.enableWebcamButton.disabled = false;
+//     } else if (this.enableWebcamButton && this.enableWebcamButton.innerText !== 'Starting...') {
+//       this.setWebcamButtonLabel('open');
+      this.enableWebcamButton.innerText = 'Đóng camera';
       this.enableWebcamButton.disabled = false;
-    } else if (this.enableWebcamButton && this.enableWebcamButton.innerText !== 'Starting...') {
-      this.setWebcamButtonLabel('open');
+    } else if (this.enableWebcamButton && this.enableWebcamButton.innerText !== 'Đang mở...') {
+      this.enableWebcamButton.innerText = 'Mở camera';
       this.enableWebcamButton.disabled = false;
     }
 
@@ -270,6 +274,7 @@ export abstract class BaseVisionTask extends BaseTask {
       this.enableWebcamButton.disabled = true;
       if (!this.video || !this.video.srcObject) {
         this.setWebcamButtonLabel('initializing');
+        this.enableWebcamButton.innerText = 'Đang khởi tạo...';
       }
     }
     await super.initializeTask();
@@ -316,6 +321,7 @@ export abstract class BaseVisionTask extends BaseTask {
 
     if (this.enableWebcamButton) {
       this.setWebcamButtonLabel('starting');
+      this.enableWebcamButton.innerText = 'Đang mở...';
       this.enableWebcamButton.disabled = true;
     }
     const constraints = { video: true };
@@ -344,6 +350,7 @@ export abstract class BaseVisionTask extends BaseTask {
       this.updateStatus('Webcam running...');
       if (this.enableWebcamButton) {
         this.setWebcamButtonLabel('close');
+        this.enableWebcamButton.innerText = 'Đóng camera';
         this.enableWebcamButton.disabled = false;
       }
     } catch (err) {
@@ -351,6 +358,7 @@ export abstract class BaseVisionTask extends BaseTask {
       this.updateStatus('Camera error!');
       if (this.enableWebcamButton) {
         this.setWebcamButtonLabel('open');
+        this.enableWebcamButton.innerText = 'Mở camera';
         this.enableWebcamButton.disabled = false;
       }
     }
@@ -373,6 +381,7 @@ export abstract class BaseVisionTask extends BaseTask {
       const placeholder = document.getElementById('webcam-placeholder');
       if (placeholder) placeholder.style.display = 'flex';
       if (this.enableWebcamButton) this.setWebcamButtonLabel('open');
+      if (this.enableWebcamButton) this.enableWebcamButton.innerText = 'Mở camera';
       if (this.animationFrameId) cancelAnimationFrame(this.animationFrameId);
 
       if (this.canvasCtx && this.canvasElement) {

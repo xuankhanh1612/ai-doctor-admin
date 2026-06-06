@@ -1040,6 +1040,14 @@ Trả lời bằng tiếng Việt, ngắn gọn và rõ ràng. Nhắc nhở đâ
                 <MetaRow k={uploadText(lang, 'uploaded')} v={new Date(selected.uploadedAt).toLocaleString('vi-VN')} />
               </div>
 
+              {selected.fileType !== 'csv' && selected.fileType !== 'pdf' && (
+                <button onClick={convertSelectedInBodyImageToCsv} style={{
+                  marginTop: 12, width: '100%', padding: '11px 14px', borderRadius: 10, cursor: 'pointer',
+                  background: 'linear-gradient(135deg,rgba(179,255,95,0.22),rgba(0,229,255,0.12))', border: '1px solid rgba(179,255,95,0.35)',
+                  color: '#b3ff5f', fontSize: 12, fontWeight: 800,
+                }}>📈 Convert InBody Image thành .CSV</button>
+              )}
+
               {/* Notes */}
               <div style={{ marginTop: 12 }}>
                 <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', marginBottom: 6, fontFamily: 'monospace', letterSpacing: '0.08em' }}>

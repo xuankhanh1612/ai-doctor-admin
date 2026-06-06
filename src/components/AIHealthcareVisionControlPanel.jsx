@@ -5,8 +5,6 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { detectFileType, fileToBase64, fileToDataUrl, saveRecord } from '../lib/medicalStorage.js'
 import { notifyUpload } from '../hooks/useMedicalData.js'
 
-const MEDIAPIPE_APP_URL = '/src/mediapipe-khanh/index.html#/vision/object_detector'
-
 function cameraTimestamp(lang, date = new Date()) {
   return date.toLocaleString(lang === 'vi' ? 'vi-VN' : 'en-US', {
     year: 'numeric', month: '2-digit', day: '2-digit',
@@ -424,9 +422,6 @@ export default function AIHealthcareVisionControlPanel({ onNext, onPrev, prevLab
             </div>
           )}
         </div>
-        <a href={MEDIAPIPE_APP_URL} target="_blank" rel="noreferrer" className="ai-healthcare-vision-open-link">
-          {lang === 'vi' ? 'Mở MediaPipe ↗' : 'Open MediaPipe ↗'}
-        </a>
       </section>
 
       <section className="ai-healthcare-vision-frame-card" aria-label="AI Healthcare Vision Control MediaPipe app">
