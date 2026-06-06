@@ -164,10 +164,10 @@ export class MediaManager {
     this.isWorkerReady = ready;
     if (ready && this.enableWebcamButton) {
       if (this.video && this.video.srcObject) {
-        this.enableWebcamButton.innerText = 'Disable Webcam';
+        this.enableWebcamButton.innerText = 'Đóng camera';
         this.enableWebcamButton.disabled = false;
-      } else if (this.enableWebcamButton.innerText !== 'Starting...') {
-        this.enableWebcamButton.innerText = 'Enable Webcam';
+      } else if (this.enableWebcamButton.innerText !== 'Đang mở...') {
+        this.enableWebcamButton.innerText = 'Mở camera';
         this.enableWebcamButton.disabled = false;
       }
     }
@@ -178,7 +178,7 @@ export class MediaManager {
     if (this.video.srcObject) return;
 
     if (this.enableWebcamButton) {
-      this.enableWebcamButton.innerText = 'Starting...';
+      this.enableWebcamButton.innerText = 'Đang mở...';
       this.enableWebcamButton.disabled = true;
     }
 
@@ -192,7 +192,7 @@ export class MediaManager {
       const playAndPredict = () => {
         this.video.play().catch(console.error);
         if (this.enableWebcamButton) {
-          this.enableWebcamButton.innerText = 'Disable Webcam';
+          this.enableWebcamButton.innerText = 'Đóng camera';
           this.enableWebcamButton.disabled = false;
         }
         this.predictWebcam();
@@ -210,7 +210,7 @@ export class MediaManager {
     } catch (err) {
       console.error(err);
       if (this.enableWebcamButton) {
-        this.enableWebcamButton.innerText = 'Enable Webcam';
+        this.enableWebcamButton.innerText = 'Mở camera';
         this.enableWebcamButton.disabled = false;
       }
     }
@@ -222,7 +222,7 @@ export class MediaManager {
       stream.getTracks().forEach((t) => t.stop());
       this.video.srcObject = null;
       document.getElementById('webcam-placeholder')?.classList.remove('hidden');
-      if (this.enableWebcamButton) this.enableWebcamButton.innerText = 'Enable Webcam';
+      if (this.enableWebcamButton) this.enableWebcamButton.innerText = 'Mở camera';
       if (this.animationFrameId) cancelAnimationFrame(this.animationFrameId);
       if (persistState) {
         localStorage.setItem('mediapipe-webcam-active', 'false');
