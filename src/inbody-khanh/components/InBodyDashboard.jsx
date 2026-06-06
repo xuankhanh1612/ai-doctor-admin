@@ -576,7 +576,7 @@ function UploadTab({ onAnalysis, onViewMedicalRecord }) {
       {uploadRecordStatus && <div className="file-preview">{uploadRecordStatus}</div>}
       {savedUploadRecord && (
         <button type="button" className="inbody-medical-record-btn" onClick={onViewMedicalRecord}>
-          🟢 Xem hình tại Hồ Sơ Y Tế
+          Xem hình tại Medical Records
         </button>
       )}
       {file && (

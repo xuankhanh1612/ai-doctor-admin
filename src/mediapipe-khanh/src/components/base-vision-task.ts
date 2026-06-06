@@ -25,6 +25,8 @@ export abstract class BaseVisionTask extends BaseTask {
   protected canvasElement!: HTMLCanvasElement;
   protected canvasCtx!: CanvasRenderingContext2D;
   protected enableWebcamButton!: HTMLButtonElement;
+  protected currentFacingMode: 'user' | 'environment' = 'environment';
+  private uploadBridgeMessageHandler?: (event: MessageEvent) => void;
 
   protected lastVideoTimeSeconds = -1;
   protected lastTimestampMs = -1;
@@ -32,6 +34,7 @@ export abstract class BaseVisionTask extends BaseTask {
 
   public override async initialize() {
     this.container.innerHTML = this.options.template;
+    this.currentFacingMode = (localStorage.getItem('mediapipe-camera-facing-mode') as 'user' | 'environment') || 'environment';
 
     this.video = document.getElementById('webcam') as HTMLVideoElement;
     this.canvasElement = document.getElementById('output_canvas') as HTMLCanvasElement;
@@ -183,15 +186,62 @@ export abstract class BaseVisionTask extends BaseTask {
 
   protected setupUploadRecordControls() {
     this.setWebcamButtonLabel('open');
+    this.setupUploadBridgeMessages();
 
-    document.querySelectorAll<HTMLButtonElement>('#re-upload-btn').forEach((button) => {
-      button.innerHTML = '<span class="material-icons">upload</span> upload hình trong máy';
-    });
+    const reUploadButton = document.getElementById('re-upload-btn') as HTMLButtonElement | null;
+    if (reUploadButton) {
+      reUploadButton.innerHTML = '<span class="material-icons">upload</span> upload hình trong máy';
+      this.ensureImageSaveControls(reUploadButton);
+    }
 
     const webcamControls = document.getElementById('webcam-controls-container');
-    if (!webcamControls || document.getElementById('save-webcam-record-btn')) return;
+    if (!webcamControls) return;
 
     webcamControls.classList.add('webcam-controls');
+    this.ensureWebcamSwitchButton(webcamControls);
+    this.ensureWebcamSaveButton(webcamControls);
+    this.ensureViewUploadRecordsButton(webcamControls, 'webcam');
+  }
+
+  private setupUploadBridgeMessages() {
+    if (this.uploadBridgeMessageHandler) return;
+
+    this.uploadBridgeMessageHandler = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+
+      if (event.data?.type === 'AI_CLINIC_MEDIAPIPE_CAPTURE_SAVED') {
+        this.showUploadRecordsButton(event.data.captureKind, event.data.uploadPath);
+        this.updateStatus(`Đã lưu Upload Records: ${event.data.uploadPath || ''}`.trim());
+      }
+
+      if (event.data?.type === 'AI_CLINIC_MEDIAPIPE_CAPTURE_SAVE_FAILED') {
+        this.updateStatus(`Không lưu được Upload Records: ${event.data.message || ''}`.trim());
+      }
+    };
+
+    window.addEventListener('message', this.uploadBridgeMessageHandler);
+  }
+
+  private ensureWebcamSwitchButton(webcamControls: HTMLElement) {
+    if (document.getElementById('switch-camera-btn')) return;
+
+    const switchButton = document.createElement('button');
+    switchButton.id = 'switch-camera-btn';
+    switchButton.className = 'action-button secondary';
+    switchButton.type = 'button';
+    switchButton.innerHTML = '<span class="material-icons">flip_camera_ios</span> Đổi camera';
+    switchButton.addEventListener('click', () => this.switchCamera());
+
+    if (this.enableWebcamButton?.nextSibling) {
+      webcamControls.insertBefore(switchButton, this.enableWebcamButton.nextSibling);
+    } else {
+      webcamControls.appendChild(switchButton);
+    }
+  }
+
+  private ensureWebcamSaveButton(webcamControls: HTMLElement) {
+    if (document.getElementById('save-webcam-record-btn')) return;
+
     const saveButton = document.createElement('button');
     saveButton.id = 'save-webcam-record-btn';
     saveButton.className = 'action-button secondary';
@@ -199,6 +249,45 @@ export abstract class BaseVisionTask extends BaseTask {
     saveButton.innerHTML = '<span class="material-icons">save_alt</span> Lưu Upload Records';
     saveButton.addEventListener('click', () => this.captureWebcamToUploadRecords());
     webcamControls.appendChild(saveButton);
+  }
+
+  private ensureImageSaveControls(reUploadButton: HTMLButtonElement) {
+    if (!document.getElementById('save-image-record-btn')) {
+      const saveButton = document.createElement('button');
+      saveButton.id = 'save-image-record-btn';
+      saveButton.className = 'action-button secondary image-save-record';
+      saveButton.type = 'button';
+      saveButton.innerHTML = '<span class="material-icons">save_alt</span> Lưu Upload Records';
+      saveButton.addEventListener('click', () => this.captureImageToUploadRecords());
+      reUploadButton.insertAdjacentElement('afterend', saveButton);
+    }
+
+    const imageSaveButton = document.getElementById('save-image-record-btn') as HTMLButtonElement | null;
+    if (imageSaveButton) this.ensureViewUploadRecordsButton(imageSaveButton, 'image');
+  }
+
+  private ensureViewUploadRecordsButton(anchor: HTMLElement, captureKind: 'webcam' | 'image') {
+    const id = `view-${captureKind}-upload-records-btn`;
+    if (document.getElementById(id)) return;
+
+    const viewButton = document.createElement('button');
+    viewButton.id = id;
+    viewButton.className = 'action-button view-upload-records';
+    viewButton.type = 'button';
+    viewButton.style.display = 'none';
+    viewButton.innerHTML = '<span class="material-icons">folder_shared</span> Xem hình tại Medical Records';
+    viewButton.addEventListener('click', () => {
+      window.parent?.postMessage({ type: 'AI_CLINIC_OPEN_UPLOAD_RECORDS' }, window.location.origin);
+    });
+    anchor.insertAdjacentElement('afterend', viewButton);
+  }
+
+  private showUploadRecordsButton(captureKind: 'webcam' | 'image', uploadPath = '') {
+    const viewButton = document.getElementById(`view-${captureKind}-upload-records-btn`) as HTMLButtonElement | null;
+    if (!viewButton) return;
+
+    viewButton.style.display = 'flex';
+    viewButton.title = uploadPath;
   }
 
   protected captureWebcamToUploadRecords() {
@@ -229,6 +318,35 @@ export abstract class BaseVisionTask extends BaseTask {
       filename: `mediapipe_webcam_${new Date().toISOString().replace(/[:.]/g, '-')}.jpg`,
     }, window.location.origin);
     this.updateStatus('Đã gửi ảnh Webcam sang Upload Records.');
+  }
+
+  protected captureImageToUploadRecords() {
+    const testImage = document.getElementById('test-image') as HTMLImageElement | null;
+    const imageCanvas = document.getElementById('image-canvas') as HTMLCanvasElement | null;
+
+    if (!testImage || !testImage.src || !testImage.complete || testImage.naturalWidth === 0) {
+      this.updateStatus('Vui lòng upload hình trước khi lưu.');
+      return;
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = testImage.naturalWidth;
+    canvas.height = testImage.naturalHeight;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.drawImage(testImage, 0, 0, canvas.width, canvas.height);
+    if (imageCanvas?.width && imageCanvas?.height) {
+      ctx.drawImage(imageCanvas, 0, 0, canvas.width, canvas.height);
+    }
+
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+    window.parent?.postMessage({
+      type: 'AI_CLINIC_MEDIAPIPE_IMAGE_CAPTURE',
+      dataUrl,
+      filename: `mediapipe_image_${new Date().toISOString().replace(/[:.]/g, '-')}.jpg`,
+    }, window.location.origin);
+    this.updateStatus('Đang lưu hình Image tab vào Upload Records...');
   }
 
   protected setupImageUpload() {
@@ -324,7 +442,13 @@ export abstract class BaseVisionTask extends BaseTask {
       this.enableWebcamButton.innerText = 'Đang mở...';
       this.enableWebcamButton.disabled = true;
     }
-    const constraints = { video: true };
+    const constraints = {
+      video: {
+        facingMode: { ideal: this.currentFacingMode },
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+      },
+    };
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -369,6 +493,18 @@ export abstract class BaseVisionTask extends BaseTask {
       this.stopCam(true);
     } else {
       this.enableCam();
+    }
+  }
+
+  protected async switchCamera() {
+    this.currentFacingMode = this.currentFacingMode === 'user' ? 'environment' : 'user';
+    localStorage.setItem('mediapipe-camera-facing-mode', this.currentFacingMode);
+
+    if (this.video?.srcObject) {
+      this.stopCam(false);
+      await this.enableCam();
+    } else {
+      this.updateStatus(`Đã chọn camera ${this.currentFacingMode === 'user' ? 'trước' : 'sau'}. Bấm Mở camera để chạy.`);
     }
   }
 
@@ -443,6 +579,10 @@ export abstract class BaseVisionTask extends BaseTask {
 
   public override cleanup() {
     if (this.animationFrameId) cancelAnimationFrame(this.animationFrameId);
+    if (this.uploadBridgeMessageHandler) {
+      window.removeEventListener('message', this.uploadBridgeMessageHandler);
+      this.uploadBridgeMessageHandler = undefined;
+    }
     this.stopCam(false);
 
     if (this.canvasCtx && this.canvasElement) {
