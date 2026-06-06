@@ -628,6 +628,51 @@ export default function MedicalUploader({ patientId, onSelectImage }) {
     await loadRecords()
   }
 
+  async function saveCsvRecordFromText(csvText, filename, extra = {}) {
+    const file = new File([csvText], filename, { type: 'text/csv' })
+    const [dataUrl, base64Data] = await Promise.all([fileToDataUrl(file), fileToBase64(file)])
+    const record = {
+      id: `inbody_csv_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      filename,
+      name: filename,
+      fileType: 'csv',
+      type: 'csv',
+      mimeType: 'text/csv',
+      size: file.size,
+      uploadedAt: new Date().toISOString(),
+      dataUrl,
+      base64Data,
+      textContent: csvText,
+      notes: `InBody CSV · ${parseInBodyCsv(csvText).length} dòng dữ liệu`,
+      ownerEmail: user?.email || null,
+      ownerName: user?.name || '',
+      ownerAvatar: user?.avatar || '',
+      ownerProvider: user?.provider || '',
+      sourceModule: 'inbody-image-convert',
+      ...extra,
+    }
+    await saveRecord(record, { ownerEmail: user?.email })
+    notifyUpload()
+    await loadRecords()
+    setSelected(record)
+    setNotes(record.notes || '')
+    setView('detail')
+    return record
+  }
+
+  async function convertSelectedInBodyImageToCsv() {
+    if (!selected || selected.fileType === 'csv') return
+    const existingCsv = records.find(record => record.fileType === 'csv' && record.textContent)
+    const fallback = existingCsv ? parseInBodyCsv(recordText(existingCsv)).at(-1) : null
+    const converted = buildImageConvertedInBodyRecord({ analysis: selected.aiAnalysis, fallback, sourceName: selected.filename })
+    const csvText = recordsToInBodyCsv([converted])
+    const safeName = selected.filename.replace(/\.[^.]+$/, '').replace(/[^a-z0-9._-]+/gi, '_') || 'InBody_Image'
+    await saveCsvRecordFromText(csvText, `${safeName}_converted.csv`, {
+      notes: `Converted from InBody image: ${selected.filename}`,
+      convertedFromRecordId: selected.id,
+    })
+  }
+
   // ─── AI Analysis (gọi thẳng Anthropic API, stream) ─────────────────────
   async function analyzeWithAI(record) {
     if (!apiKey) { setShowApiInput(true); return }
@@ -1003,6 +1048,14 @@ Trả lời bằng tiếng Việt, ngắn gọn và rõ ràng. Nhắc nhở đâ
                 <MetaRow k={uploadText(lang, 'size')} v={formatBytes(selected.size)} />
                 <MetaRow k={uploadText(lang, 'uploaded')} v={new Date(selected.uploadedAt).toLocaleString('vi-VN')} />
               </div>
+
+              {selected.fileType !== 'csv' && selected.fileType !== 'pdf' && (
+                <button onClick={convertSelectedInBodyImageToCsv} style={{
+                  marginTop: 12, width: '100%', padding: '11px 14px', borderRadius: 10, cursor: 'pointer',
+                  background: 'linear-gradient(135deg,rgba(179,255,95,0.22),rgba(0,229,255,0.12))', border: '1px solid rgba(179,255,95,0.35)',
+                  color: '#b3ff5f', fontSize: 12, fontWeight: 800,
+                }}>📈 Convert InBody Image thành .CSV</button>
+              )}
 
               {/* Notes */}
               <div style={{ marginTop: 12 }}>
