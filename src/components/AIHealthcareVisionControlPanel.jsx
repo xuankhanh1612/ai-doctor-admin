@@ -378,8 +378,8 @@ export default function AIHealthcareVisionControlPanel({ onNext, onPrev, prevLab
           <h2>🧠 AI Healthcare Vision Control</h2>
           <p>
             {lang === 'vi'
-              ? 'Trang này chỉ dùng một Webcam duy nhất. Cụm điều khiển Camera được gắn trực tiếp vào khung Webcam để chụp ảnh, thêm lớp phủ AI và lưu ngay vào trang Upload Records.'
-              : 'This page uses one Webcam only. Camera controls are attached directly to the Webcam frame so snapshots can be captured with the AI overlay and saved into Upload Records.'}
+              ? 'Giữ toàn bộ MediaPipe Tasks bên dưới, đồng thời cụm điều khiển Camera riêng được gắn bao quanh Webcam để chụp và lưu hình ngay vào Upload Records.'
+              : 'All MediaPipe Tasks remain available below, while the attached Camera control cluster captures Webcam images and saves them into Upload Records.'}
           </p>
         </div>
       </section>
