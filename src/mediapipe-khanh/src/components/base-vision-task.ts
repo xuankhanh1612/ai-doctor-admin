@@ -206,7 +206,7 @@ export abstract class BaseVisionTask extends BaseTask {
     if (this.enableWebcamButton) {
       this.enableWebcamButton.disabled = true;
       if (!this.video || !this.video.srcObject) {
-        this.enableWebcamButton.innerText = 'Initializing...';
+        this.enableWebcamButton.innerText = 'Đang khởi tạo...';
       }
     }
     await super.initializeTask();

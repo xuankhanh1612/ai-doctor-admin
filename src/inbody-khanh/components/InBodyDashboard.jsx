@@ -1,5 +1,9 @@
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { LineChart, Line, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { useAuth } from '../../context/AuthContext.jsx';
+import { getAllRecords, saveRecord, detectFileType, fileToBase64, fileToDataUrl } from '../../lib/medicalStorage.js';
+import { notifyUpload } from '../../hooks/useMedicalData.js';
+import { buildImageConvertedInBodyRecord, recordsToInBodyCsv } from '../../lib/inbodyCsv.js';
 import standardInBodyCsv from '../DataInBody/InBody-20260508 3.csv?raw';
 import aiClinicInBodyRef from '../DataInBody/AIClinicInBody.PNG';
 import inBodyChartRef from '../DataInBody/IMG_2635.PNG';
@@ -343,12 +347,50 @@ function InBodyTrendPreview({ records }) {
 }
 
 function UploadTab({ onAnalysis }) {
+  const { user } = useAuth();
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [simulatedRecords, setSimulatedRecords] = useState([]);
+  const [uploadRecordStatus, setUploadRecordStatus] = useState('');
   const inputRef = useRef();
+
+
+  const saveUploadRecord = async (selectedFile, extra = {}) => {
+    const [dataUrl, base64Data] = await Promise.all([fileToDataUrl(selectedFile), fileToBase64(selectedFile)]);
+    const isCsv = selectedFile.name.toLowerCase().endsWith('.csv') || selectedFile.type === 'text/csv';
+    const textContent = isCsv ? await selectedFile.text() : '';
+    const record = {
+      id: `inbody_portal_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      filename: selectedFile.name,
+      name: selectedFile.name,
+      fileType: detectFileType(selectedFile.type, selectedFile.name),
+      type: detectFileType(selectedFile.type, selectedFile.name),
+      mimeType: selectedFile.type || (isCsv ? 'text/csv' : 'image/jpeg'),
+      size: selectedFile.size,
+      uploadedAt: new Date().toISOString(),
+      dataUrl,
+      base64Data,
+      textContent,
+      notes: isCsv ? `AI inbody Portal · ${parseInBodyCsv(textContent).length} dòng dữ liệu` : 'AI inbody Portal image upload',
+      ownerEmail: user?.email || null,
+      ownerName: user?.name || '',
+      ownerAvatar: user?.avatar || '',
+      ownerProvider: user?.provider || '',
+      sourceModule: 'ai-inbody-portal',
+      ...extra,
+    };
+    await saveRecord(record, { ownerEmail: user?.email, ownerName: user?.name, ownerAvatar: user?.avatar, ownerProvider: user?.provider });
+    notifyUpload();
+    setUploadRecordStatus(`Đã lưu vào Upload Records: ${record.filename}`);
+    return record;
+  };
+
+  const saveCsvTextToUploadRecords = async (csvText, filename, extra = {}) => {
+    const csvFile = new File([csvText], filename, { type: 'text/csv' });
+    return saveUploadRecord(csvFile, { sourceModule: 'ai-inbody-portal-summary', ...extra });
+  };
 
   const runSimulatedCsvAnalysis = (csvText, fileName = STANDARD_INBODY_FILE) => {
     const parsedRecords = parseInBodyCsv(csvText);
@@ -366,6 +408,8 @@ function UploadTab({ onAnalysis }) {
       setResult(null);
       setError(null);
       setSimulatedRecords([]);
+      setUploadRecordStatus('');
+      saveUploadRecord(f).catch((error) => setUploadRecordStatus(`Không lưu được Upload Records: ${error.message || error}`));
     }
   };
 
@@ -414,6 +458,38 @@ function UploadTab({ onAnalysis }) {
     setSimulatedRecords([]);
   };
 
+  const convertCurrentImageToCsv = async () => {
+    if (!file || file.name.toLowerCase().endsWith('.csv')) return;
+    const fallback = parseInBodyCsv(standardInBodyCsv).at(-1);
+    const record = buildImageConvertedInBodyRecord({ analysis: result, fallback, sourceName: file.name });
+    const csvText = recordsToInBodyCsv([record]);
+    const safeName = file.name.replace(/\.[^.]+$/, '').replace(/[^a-z0-9._-]+/gi, '_') || 'InBody_Image';
+    await saveCsvTextToUploadRecords(csvText, `${safeName}_converted.csv`, { notes: `Convert InBody Image thành .CSV từ ${file.name}` });
+    runSimulatedCsvAnalysis(csvText, `${safeName}_converted.csv`);
+  };
+
+  const summarizeAllInBodyRecords = async () => {
+    const ownerEmail = user?.email;
+    const allRecords = await getAllRecords({ ownerEmail, includeUnowned: false });
+    const parsed = [];
+    allRecords.forEach((record) => {
+      if (record.fileType !== 'csv') return;
+      const csvText = record.textContent || (record.base64Data ? atob(record.base64Data) : '');
+      parsed.push(...parseInBodyCsv(csvText));
+    });
+    if (simulatedRecords.length) parsed.push(...simulatedRecords);
+    const unique = Array.from(new Map(parsed.map(record => [record.rawDate, record])).values()).sort((a, b) => a.rawDate.localeCompare(b.rawDate));
+    if (!unique.length) {
+      setUploadRecordStatus('Chưa có dữ liệu InBody CSV để Summary.');
+      return;
+    }
+    const loginName = (user?.name || user?.email || 'Guest').replace(/[^a-z0-9._-]+/gi, '_');
+    const filename = `FullTrackInBody_${loginName}.CSV`;
+    const csvText = recordsToInBodyCsv(unique);
+    await saveCsvTextToUploadRecords(csvText, filename, { notes: `Summary All InBody Records · ${unique.length} dòng · ${user?.email || 'guest'}` });
+    runSimulatedCsvAnalysis(csvText, filename);
+  };
+
   return (
     <div>
       <div className="upload-zone" onClick={() => inputRef.current?.click()}>
@@ -428,12 +504,21 @@ function UploadTab({ onAnalysis }) {
       </div>
       <input
         ref={inputRef} type="file" hidden
-        accept=".pdf,.jpg,.jpeg,.png,.csv"
+        accept=".pdf,.jpg,.jpeg,.png,.heic,.heif,.csv,image/*"
         onChange={handleFile}
       />
-      <button type="button" className="sample-csv-btn" onClick={loadBundledStandardCsv}>
-        🧪 Nạp file mẫu chuẩn: {STANDARD_INBODY_FILE}
-      </button>
+      <div className="inbody-upload-actions">
+        <button type="button" className="sample-csv-btn" onClick={loadBundledStandardCsv}>
+          🧪 Nạp file mẫu chuẩn: {STANDARD_INBODY_FILE}
+        </button>
+        <button type="button" className="sample-csv-btn" onClick={() => inputRef.current?.click()}>
+          📤 upload file .csv / hình vào Upload Records
+        </button>
+        <button type="button" className="sample-csv-btn" onClick={summarizeAllInBodyRecords}>
+          📚 Summary All InBody Records
+        </button>
+      </div>
+      {uploadRecordStatus && <div className="file-preview">{uploadRecordStatus}</div>}
       {file && (
         <div className="file-preview">
           ✅ {file.name} ({(file.size / 1024).toFixed(0)} KB)
@@ -443,6 +528,11 @@ function UploadTab({ onAnalysis }) {
       <button className="analyze-btn" onClick={handleAnalyze} disabled={!file || loading}>
         {loading ? '⏳ Đang phân tích...' : '🧠 Phân tích AI với Claude'}
       </button>
+      {file && !file.name.toLowerCase().endsWith('.csv') && (
+        <button className="analyze-btn" onClick={convertCurrentImageToCsv} type="button">
+          📈 Convert InBody Image thành .CSV
+        </button>
+      )}
       {error && <div className="error-msg">{error}</div>}
       {result && (
         <div className="ai-result">
@@ -716,7 +806,8 @@ export default function InBodyDashboard({ userId, initialRecords }) {
         .badge-name { font-size: 10px; color: #666; line-height: 1.2; }
         .badge-progress-wrap { padding: 10px 14px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e9ecef; }
         .badge-progress-label { font-size: 12px; color: #666; margin-bottom: 6px; }
-        .sample-csv-btn { width: 100%; padding: 10px 12px; border: 1px solid #bbf7d0; background: #f0fdf4; color: #085041; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; margin: -4px 0 10px; }
+        .inbody-upload-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: -4px 0 10px; }
+        .sample-csv-btn { width: 100%; padding: 10px 12px; border: 1px solid #bbf7d0; background: #f0fdf4; color: #085041; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; margin: 0; }
         .standard-file-pill { display: inline-flex; margin-left: 8px; padding: 2px 8px; border-radius: 999px; background: #E1F5EE; color: #085041; font-size: 11px; font-weight: 700; }
         .inbody-simulated-charts { margin-top: 1rem; }
         .inbody-chart-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
@@ -736,6 +827,7 @@ export default function InBodyDashboard({ userId, initialRecords }) {
           .tab-bar { overflow-x: auto; }
           .tab-btn { min-width: 92px; }
           .inbody-chart-grid { grid-template-columns: 1fr; }
+          .inbody-upload-actions { grid-template-columns: 1fr; }
           .inbody-reference-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
           .inbody-reference-gallery { grid-template-columns: 1fr; }
           .inbody-reference-gallery img { height: 160px; }
