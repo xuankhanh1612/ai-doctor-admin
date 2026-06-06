@@ -152,6 +152,7 @@ export async function deleteRecord(id, options = {}) {
 export function detectFileType(mimeType, filename) {
   if (mimeType?.startsWith('video/')) return 'video'
   if (mimeType === 'application/pdf') return 'pdf'
+  if (mimeType === 'text/csv' || mimeType === 'application/vnd.ms-excel' || (filename || '').toLowerCase().endsWith('.csv')) return 'csv'
   const l = (filename || '').toLowerCase()
   if (l.match(/\bct\b|computed.tomography/)) return 'ct'
   if (l.match(/\bmri\b|magnetic.resonance/))  return 'mri'
@@ -160,11 +161,11 @@ export function detectFileType(mimeType, filename) {
 }
 
 export function fileTypeLabel(type) {
-  return { xray: 'X-Ray', ct: 'CT Scan', mri: 'MRI', pdf: 'PDF / Hồ sơ', photo: 'Ảnh chụp', video: 'Video' }[type] || type
+  return { xray: 'X-Ray', ct: 'CT Scan', mri: 'MRI', pdf: 'PDF / Hồ sơ', photo: 'Ảnh chụp', video: 'Video', csv: 'InBody CSV' }[type] || type
 }
 
 export function fileTypeIcon(type) {
-  return { xray: '🩻', ct: '🔬', mri: '🧲', pdf: '📄', photo: '📷', video: '🎥' }[type] || '📎'
+  return { xray: '🩻', ct: '🔬', mri: '🧲', pdf: '📄', photo: '📷', video: '🎥', csv: '📈' }[type] || '📎'
 }
 
 export function formatBytes(bytes) {

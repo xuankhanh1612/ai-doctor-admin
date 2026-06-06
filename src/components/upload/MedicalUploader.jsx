@@ -14,12 +14,13 @@ import {
   fileTypeIcon,
 } from '../../lib/medicalStorage.js'
 import { notifyUpload } from '../../hooks/useMedicalData.js'
+import { parseInBodyCsv, summarizeInBodyRecords } from '../../lib/inbodyCsv.js'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const TYPE_COLORS = {
-  xray: '#00e5ff', ct: '#9c6fff', mri: '#f48fb1', pdf: '#ffb74d', photo: '#00e676', video: '#83f7ff',
+  xray: '#00e5ff', ct: '#9c6fff', mri: '#f48fb1', pdf: '#ffb74d', photo: '#00e676', video: '#83f7ff', csv: '#b3ff5f',
 }
-const ACCEPT  = 'image/jpeg,image/png,image/webp,image/gif,application/pdf'
+const ACCEPT  = 'image/jpeg,image/png,image/webp,image/gif,application/pdf,text/csv,.csv'
 const MAX_MB  = 20
 
 
@@ -27,14 +28,14 @@ const UPLOADER_TEXT = {
   vi: {
     delete: 'Xóa', deleteWithIcon: '🗑 Xóa', confirmDelete: 'Xóa hồ sơ này?',
     fileTooLarge: 'File "{name}" quá lớn (tối đa {max}MB)', unsupportedType: 'Định dạng không hỗ trợ: {type}', readError: 'Lỗi khi đọc file. Vui lòng thử lại.', unknownError: 'Không xác định', errorPrefix: 'Lỗi',
-    title: 'Hồ Sơ Y Tế', subtitle: 'Upload X-Ray · CT · MRI · PDF · Ảnh hồ sơ · Lưu local vĩnh viễn', upload: 'Tải lên', camera: 'Camera', cameraStarting: 'Đang mở camera…', capturePhoto: 'Chụp ảnh', closeCamera: 'Đóng camera', cameraHelp: 'Camera thật đang mở. Canh khung hồ sơ rồi nhấn Chụp ảnh.', switchCamera: 'Đổi camera', overlay: 'Lớp phủ', aiDocumentScan: 'AI Document Scan', library: 'Thư viện',
-    apiKeyPrompt: 'Nhập Anthropic API key để phân tích AI (lưu local, không gửi server):', save: 'Lưu', processing: 'Đang xử lý file…', dragDrop: 'Kéo thả file vào đây', clickSelect: 'hoặc nhấn để chọn file', pdfRecord: 'PDF hồ sơ', photoRecord: 'Ảnh chụp', maxHint: 'Tối đa 20MB · JPG, PNG, WebP, PDF', recentRecords: 'Hồ sơ gần đây', viewAll: 'Xem tất cả {count} hồ sơ →', noRecords: 'Chưa có hồ sơ nào. Upload file đầu tiên!', backToLibrary: 'Quay lại thư viện', useForCompare: 'So sánh bên Compare →', type: 'Loại', size: 'Kích thước', uploaded: 'Upload', notes: 'GHI CHÚ', notesPlaceholder: 'Thêm ghi chú về hồ sơ này…', saveNotes: 'Lưu ghi chú', aiAnalysis: 'PHÂN TÍCH AI', aiAnalyzeHelp: 'Để AI phân tích hồ sơ này', analyzeWithClaude: 'Phân tích với Claude AI', requiresKey: 'Cần Anthropic API key', enterKey: 'Nhập key', claudeAnalyzing: 'Claude đang phân tích…', aiConfidence: 'Độ tin cậy AI', aiDisclaimer: 'Phân tích AI chỉ mang tính hỗ trợ, không thay thế chẩn đoán của bác sĩ.', reAnalyze: 'Phân tích lại',
+    title: 'Hồ Sơ Y Tế', subtitle: 'Upload X-Ray · CT · MRI · PDF · CSV InBody · Ảnh hồ sơ · Lưu local vĩnh viễn', upload: 'Tải lên', camera: 'Camera', cameraStarting: 'Đang mở camera…', capturePhoto: 'Chụp ảnh', closeCamera: 'Đóng camera', cameraHelp: 'Camera thật đang mở. Canh khung hồ sơ rồi nhấn Chụp ảnh.', switchCamera: 'Đổi camera', overlay: 'Lớp phủ', aiDocumentScan: 'AI Document Scan', library: 'Thư viện',
+    apiKeyPrompt: 'Nhập Anthropic API key để phân tích AI (lưu local, không gửi server):', save: 'Lưu', processing: 'Đang xử lý file…', dragDrop: 'Kéo thả file vào đây', clickSelect: 'hoặc nhấn để chọn file', pdfRecord: 'PDF hồ sơ', photoRecord: 'Ảnh chụp', maxHint: 'Tối đa 20MB · JPG, PNG, WebP, PDF, CSV InBody', recentRecords: 'Hồ sơ gần đây', viewAll: 'Xem tất cả {count} hồ sơ →', noRecords: 'Chưa có hồ sơ nào. Upload file đầu tiên!', backToLibrary: 'Quay lại thư viện', useForCompare: 'So sánh bên Compare →', type: 'Loại', size: 'Kích thước', uploaded: 'Upload', notes: 'GHI CHÚ', notesPlaceholder: 'Thêm ghi chú về hồ sơ này…', saveNotes: 'Lưu ghi chú', aiAnalysis: 'PHÂN TÍCH AI', aiAnalyzeHelp: 'Để AI phân tích hồ sơ này', analyzeWithClaude: 'Phân tích với Claude AI', requiresKey: 'Cần Anthropic API key', enterKey: 'Nhập key', claudeAnalyzing: 'Claude đang phân tích…', aiConfidence: 'Độ tin cậy AI', aiDisclaimer: 'Phân tích AI chỉ mang tính hỗ trợ, không thay thế chẩn đoán của bác sĩ.', reAnalyze: 'Phân tích lại',
   },
   en: {
     delete: 'Delete', deleteWithIcon: '🗑 Delete', confirmDelete: 'Delete this record?',
     fileTooLarge: 'File "{name}" is too large (max {max}MB)', unsupportedType: 'Unsupported file type: {type}', readError: 'Could not read the file. Please try again.', unknownError: 'Unknown', errorPrefix: 'Error',
-    title: 'Medical Records', subtitle: 'Upload X-Ray · CT · MRI · PDF · Images · Stored locally', upload: 'Upload', camera: 'Camera', cameraStarting: 'Opening camera…', capturePhoto: 'Capture photo', closeCamera: 'Close camera', cameraHelp: 'Live camera is open. Frame the record, then capture.', switchCamera: 'Switch camera', overlay: 'Overlay', aiDocumentScan: 'AI Document Scan', library: 'Library',
-    apiKeyPrompt: 'Enter Anthropic API key for AI analysis (stored locally):', save: 'Save', processing: 'Processing file…', dragDrop: 'Drag & drop files here', clickSelect: 'or click to select', pdfRecord: 'PDF record', photoRecord: 'Photo', maxHint: 'Max 20MB · JPG, PNG, WebP, PDF', recentRecords: 'Recent records', viewAll: 'View all {count} records →', noRecords: 'No records yet. Upload your first file!', backToLibrary: 'Back to library', useForCompare: 'Use for Compare →', type: 'Type', size: 'Size', uploaded: 'Uploaded', notes: 'NOTES', notesPlaceholder: 'Add notes about this record…', saveNotes: 'Save notes', aiAnalysis: 'AI ANALYSIS', aiAnalyzeHelp: 'Let AI analyze this medical file', analyzeWithClaude: 'Analyze with Claude AI', requiresKey: 'Requires Anthropic API key', enterKey: 'Enter key', claudeAnalyzing: 'Claude analyzing…', aiConfidence: 'AI Confidence', aiDisclaimer: "AI analysis is for support only and does not replace a doctor\'s diagnosis.", reAnalyze: 'Re-analyze',
+    title: 'Medical Records', subtitle: 'Upload X-Ray · CT · MRI · PDF · InBody CSV · Images · Stored locally', upload: 'Upload', camera: 'Camera', cameraStarting: 'Opening camera…', capturePhoto: 'Capture photo', closeCamera: 'Close camera', cameraHelp: 'Live camera is open. Frame the record, then capture.', switchCamera: 'Switch camera', overlay: 'Overlay', aiDocumentScan: 'AI Document Scan', library: 'Library',
+    apiKeyPrompt: 'Enter Anthropic API key for AI analysis (stored locally):', save: 'Save', processing: 'Processing file…', dragDrop: 'Drag & drop files here', clickSelect: 'or click to select', pdfRecord: 'PDF record', photoRecord: 'Photo', maxHint: 'Max 20MB · JPG, PNG, WebP, PDF, InBody CSV', recentRecords: 'Recent records', viewAll: 'View all {count} records →', noRecords: 'No records yet. Upload your first file!', backToLibrary: 'Back to library', useForCompare: 'Use for Compare →', type: 'Type', size: 'Size', uploaded: 'Uploaded', notes: 'NOTES', notesPlaceholder: 'Add notes about this record…', saveNotes: 'Save notes', aiAnalysis: 'AI ANALYSIS', aiAnalyzeHelp: 'Let AI analyze this medical file', analyzeWithClaude: 'Analyze with Claude AI', requiresKey: 'Requires Anthropic API key', enterKey: 'Enter key', claudeAnalyzing: 'Claude analyzing…', aiConfidence: 'AI Confidence', aiDisclaimer: "AI analysis is for support only and does not replace a doctor\'s diagnosis.", reAnalyze: 'Re-analyze',
   },
 }
 
@@ -132,6 +133,8 @@ function RecordThumb({ record, onClick, onDelete, lang }) {
           <div style={{ height: 90, background: 'rgba(131,247,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', color, fontSize: 28 }}>🎥</div>
         ) : record.mimeType === 'application/pdf' ? (
           <div style={{ height: 90, background: 'rgba(255,171,64,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28 }}>📄</div>
+        ) : record.fileType === 'csv' ? (
+          <div style={{ height: 90, background: 'linear-gradient(135deg,rgba(179,255,95,0.12),rgba(0,229,255,0.06))', display: 'flex', alignItems: 'center', justifyContent: 'center', color, fontSize: 28 }}>📈</div>
         ) : (
           <img src={record.dataUrl} alt={record.filename}
             style={{ width: '100%', height: 90, objectFit: 'cover' }} />
@@ -162,6 +165,8 @@ function RecordCard({ record, onClick, onDelete, lang }) {
       <div onClick={onClick}>
         {record.mimeType === 'application/pdf' ? (
           <div style={{ height: 130, background: 'rgba(255,171,64,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40 }}>📄</div>
+        ) : record.fileType === 'csv' ? (
+          <div style={{ height: 130, background: 'linear-gradient(135deg,rgba(179,255,95,0.12),rgba(0,229,255,0.06))', display: 'flex', alignItems: 'center', justifyContent: 'center', color, fontSize: 40 }}>📈</div>
         ) : (
           <img src={record.dataUrl} alt={record.filename}
             style={{ width: '100%', height: 130, objectFit: 'cover' }} />
@@ -198,6 +203,192 @@ function MetaRow({ k, v, vColor }) {
     <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
       <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>{k}</span>
       <span style={{ fontSize: 11, fontFamily: 'monospace', color: vColor || 'rgba(255,255,255,0.7)', maxWidth: '55%', textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v}</span>
+    </div>
+  )
+}
+
+
+function readFileText(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader()
+    r.onload = () => res(String(r.result || ''))
+    r.onerror = rej
+    r.readAsText(file, 'utf-8')
+  })
+}
+
+function isCsvFile(file) {
+  return file.type === 'text/csv' || file.type === 'application/vnd.ms-excel' || file.name?.toLowerCase().endsWith('.csv')
+}
+
+function isSupportedUploadFile(file) {
+  return file.type.startsWith('image/') || file.type === 'application/pdf' || isCsvFile(file)
+}
+
+function recordText(record) {
+  if (record.textContent) return record.textContent
+  if (!record.base64Data) return ''
+  try {
+    return decodeURIComponent(escape(atob(record.base64Data)))
+  } catch {
+    try { return atob(record.base64Data) } catch { return '' }
+  }
+}
+
+function formatMetric(value, unit = '', digits = 1) {
+  if (value === null || value === undefined || Number.isNaN(value)) return '-'
+  return `${Number(value).toFixed(digits).replace(/\.0$/, '')}${unit ? ` ${unit}` : ''}`
+}
+
+function InBodyMetricTile({ label, value, unit, delta, color = '#b3ff5f' }) {
+  const hasDelta = delta !== null && delta !== undefined && Number.isFinite(delta)
+  return (
+    <div style={{ background: 'rgba(255,255,255,0.035)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14, padding: 14 }}>
+      <div style={{ color: 'rgba(255,255,255,0.45)', fontSize: 11, marginBottom: 6 }}>{label}</div>
+      <div style={{ color: '#fff', fontSize: 24, fontWeight: 900 }}>{formatMetric(value, unit)}</div>
+      {hasDelta && (
+        <div style={{ color: delta >= 0 ? '#00e676' : '#ff7676', fontSize: 11, marginTop: 6, fontFamily: 'monospace' }}>
+          {delta >= 0 ? '+' : ''}{formatMetric(delta, unit)} {label === 'Tỷ lệ mỡ' ? 'so với lần đầu' : 'trend'}
+        </div>
+      )}
+      <div style={{ height: 3, background: `${color}66`, borderRadius: 99, marginTop: 10 }} />
+    </div>
+  )
+}
+
+function InBodyLineChart({ records, metric, label, unit, color }) {
+  const values = records.map(record => record[metric]).filter(value => value !== null && value !== undefined)
+  const min = Math.min(...values)
+  const max = Math.max(...values)
+  const range = max - min || 1
+  const width = 360
+  const height = 150
+  const pad = 28
+  const points = records.map((record, index) => {
+    const value = record[metric]
+    const x = records.length === 1 ? width / 2 : pad + (index * (width - pad * 2)) / (records.length - 1)
+    const y = value == null ? height - pad : pad + ((max - value) * (height - pad * 2)) / range
+    return { x, y, value, record }
+  })
+  const path = points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ')
+
+  return (
+    <div style={{ background: 'rgba(7,16,28,0.92)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16, padding: 14 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, marginBottom: 8 }}>
+        <div style={{ color: '#fff', fontWeight: 800, fontSize: 13 }}>{label}</div>
+        <div style={{ color, fontFamily: 'monospace', fontSize: 12 }}>{formatMetric(points.at(-1)?.value, unit)}</div>
+      </div>
+      <svg viewBox={`0 0 ${width} ${height}`} style={{ width: '100%', height: 150, overflow: 'visible' }} role="img" aria-label={label}>
+        <line x1={pad} x2={width - pad} y1={height - pad} y2={height - pad} stroke="rgba(255,255,255,0.14)" />
+        <line x1={pad} x2={pad} y1={pad} y2={height - pad} stroke="rgba(255,255,255,0.10)" />
+        {[0.25, 0.5, 0.75].map(tick => <line key={tick} x1={pad} x2={width - pad} y1={pad + tick * (height - pad * 2)} y2={pad + tick * (height - pad * 2)} stroke="rgba(255,255,255,0.05)" />)}
+        <path d={path} fill="none" stroke={color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+        {points.map((point, index) => (
+          <g key={`${metric}-${point.record.rawDate}`}>
+            <circle cx={point.x} cy={point.y} r="5" fill="#07101c" stroke={color} strokeWidth="3" />
+            <text x={point.x} y={height - 8} fill="rgba(255,255,255,0.45)" fontSize="10" textAnchor="middle">#{index + 1}</text>
+          </g>
+        ))}
+        <text x={pad - 6} y={pad + 4} fill="rgba(255,255,255,0.38)" fontSize="10" textAnchor="end">{formatMetric(max, unit)}</text>
+        <text x={pad - 6} y={height - pad + 4} fill="rgba(255,255,255,0.38)" fontSize="10" textAnchor="end">{formatMetric(min, unit)}</text>
+      </svg>
+      <div style={{ display: 'flex', justifyContent: 'space-between', color: 'rgba(255,255,255,0.38)', fontSize: 10 }}>
+        {records.map(record => <span key={`${metric}-date-${record.rawDate}`}>{record.date.slice(11) || record.shortDate}</span>)}
+      </div>
+    </div>
+  )
+}
+
+function InBodyCsvDashboard({ record }) {
+  const records = parseInBodyCsv(recordText(record))
+  const { first, latest, diff } = summarizeInBodyRecords(records)
+
+  if (!records.length) {
+    return <div style={{ padding: 30, color: 'rgba(255,255,255,0.55)' }}>Không đọc được dữ liệu InBody CSV.</div>
+  }
+
+  const charts = [
+    { metric: 'weight', label: 'Cân nặng theo thời gian', unit: 'kg', color: '#00e5ff' },
+    { metric: 'muscle', label: 'Cơ xương theo thời gian', unit: 'kg', color: '#9c6fff' },
+    { metric: 'fat', label: 'Tỷ lệ mỡ theo thời gian', unit: '%', color: '#ff7676' },
+    { metric: 'score', label: 'Điểm InBody theo thời gian', unit: '', color: '#b3ff5f' },
+  ]
+
+  return (
+    <div style={{ width: '100%', color: '#fff' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>
+        <div>
+          <div style={{ color: '#b3ff5f', fontSize: 11, fontFamily: 'monospace', letterSpacing: '0.08em' }}>INBODY CSV · {records.length} DÒNG DỮ LIỆU</div>
+          <h3 style={{ margin: '6px 0 0', fontSize: 22 }}>Đồ thị sức khoẻ theo thời gian</h3>
+          <div style={{ color: 'rgba(255,255,255,0.48)', fontSize: 12, marginTop: 4 }}>{first?.date} → {latest?.date}</div>
+        </div>
+        <div style={{ color: '#83f7ff', fontFamily: 'monospace', fontSize: 12, alignSelf: 'center' }}>Thiết bị {latest?.device || '-'}</div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,minmax(120px,1fr))', gap: 10, marginBottom: 14 }}>
+        <InBodyMetricTile label="Cân nặng" value={latest.weight} unit="kg" delta={diff('weight')} color="#00e5ff" />
+        <InBodyMetricTile label="Cơ xương" value={latest.muscle} unit="kg" delta={diff('muscle')} color="#9c6fff" />
+        <InBodyMetricTile label="Tỷ lệ mỡ" value={latest.fat} unit="%" delta={diff('fat')} color="#ff7676" />
+        <InBodyMetricTile label="Điểm InBody" value={latest.score} unit="" delta={diff('score')} color="#b3ff5f" />
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,minmax(240px,1fr))', gap: 12 }}>
+        {charts.map(chart => <InBodyLineChart key={chart.metric} records={records} {...chart} />)}
+      </div>
+
+      <div style={{ marginTop: 14, background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14, overflow: 'hidden' }}>
+        <div style={{ padding: '10px 12px', color: 'rgba(255,255,255,0.55)', fontSize: 11, fontFamily: 'monospace' }}>3 dòng dữ liệu gốc từ file CSV</div>
+        {records.map(row => (
+          <div key={row.rawDate} style={{ display: 'grid', gridTemplateColumns: '1.4fr repeat(6,1fr)', gap: 8, padding: '9px 12px', borderTop: '1px solid rgba(255,255,255,0.06)', fontSize: 11, color: 'rgba(255,255,255,0.72)' }}>
+            <span>{row.date}</span><span>{formatMetric(row.weight, 'kg')}</span><span>{formatMetric(row.muscle, 'kg')}</span><span>{formatMetric(row.fat, '%')}</span><span>BMI {formatMetric(row.bmi)}</span><span>Score {formatMetric(row.score, '', 0)}</span><span>ECW {formatMetric(row.ecwRatio, '', 3)}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+
+function CsvRecordInsights({ record }) {
+  const records = parseInBodyCsv(recordText(record))
+  const { latest, previous, diff } = summarizeInBodyRecords(records)
+  if (!records.length) return null
+  const prevWeight = latest?.weight != null && previous?.weight != null ? latest.weight - previous.weight : null
+  const prevFat = latest?.fat != null && previous?.fat != null ? latest.fat - previous.fat : null
+  const insights = [
+    `Đã lấy đúng ${records.length} dòng dữ liệu trong file CSV để dựng dashboard thời gian.`,
+    `Lần đo mới nhất: ${latest.date}, cân nặng ${formatMetric(latest.weight, 'kg')}, BMI ${formatMetric(latest.bmi)} và điểm InBody ${formatMetric(latest.score, '', 0)}.`,
+    `So với lần đầu: cân nặng ${diff('weight') >= 0 ? '+' : ''}${formatMetric(diff('weight'), 'kg')}, cơ xương ${diff('muscle') >= 0 ? '+' : ''}${formatMetric(diff('muscle'), 'kg')}, mỡ ${diff('fat') >= 0 ? '+' : ''}${formatMetric(diff('fat'), '%')}.`,
+    `So với lần trước: cân nặng ${prevWeight >= 0 ? '+' : ''}${formatMetric(prevWeight, 'kg')} · mỡ ${prevFat >= 0 ? '+' : ''}${formatMetric(prevFat, '%')}.`,
+  ]
+  const rows = [
+    ['BMR', formatMetric(latest.bmr, 'kcal', 0)],
+    ['Nước cơ thể', formatMetric(latest.water, 'L')],
+    ['Mỡ nội tạng', formatMetric(latest.visceralFatLevel, 'Level', 0)],
+    ['Protein', formatMetric(latest.protein, 'kg')],
+    ['Khoáng chất', formatMetric(latest.minerals, 'kg')],
+    ['Góc pha', formatMetric(latest.phaseAngle, '°')],
+  ]
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ background: 'rgba(179,255,95,0.06)', border: '1px solid rgba(179,255,95,0.18)', borderRadius: 14, padding: 18 }}>
+        <div style={{ color: '#b3ff5f', fontSize: 11, fontFamily: 'monospace', letterSpacing: '0.08em', marginBottom: 10 }}>CSV INBODY AUTO ANALYSIS</div>
+        <ul style={{ margin: 0, paddingLeft: 18, color: 'rgba(255,255,255,0.82)', fontSize: 13, lineHeight: 1.8 }}>
+          {insights.map(item => <li key={item}>{item}</li>)}
+        </ul>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,minmax(130px,1fr))', gap: 10 }}>
+        {rows.map(([label, value]) => (
+          <div key={label} style={{ background: 'rgba(255,255,255,0.035)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, padding: 12 }}>
+            <div style={{ color: 'rgba(255,255,255,0.42)', fontSize: 11 }}>{label}</div>
+            <div style={{ color: '#fff', fontWeight: 900, fontSize: 17, marginTop: 5 }}>{value}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{ padding: '10px 12px', background: 'rgba(255,183,77,0.08)', border: '1px solid rgba(255,183,77,0.2)', borderRadius: 8, fontSize: 11, color: 'rgba(255,183,77,0.85)' }}>
+        ⚠️ Dữ liệu CSV chỉ hỗ trợ theo dõi sức khoẻ và không thay thế tư vấn y khoa trực tiếp.
+      </div>
     </div>
   )
 }
@@ -269,8 +460,8 @@ export default function MedicalUploader({ patientId, onSelectImage }) {
         setError(uploadText(lang, 'fileTooLarge', { name: file.name, max: MAX_MB }))
         continue
       }
-      if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
-        setError(uploadText(lang, 'unsupportedType', { type: file.type }))
+      if (!isSupportedUploadFile(file)) {
+        setError(uploadText(lang, 'unsupportedType', { type: file.type || file.name }))
         continue
       }
 
@@ -282,9 +473,11 @@ export default function MedicalUploader({ patientId, onSelectImage }) {
           setUploadProgress(p => Math.min(p + 15, 85))
         }, 150)
 
-        const [dataUrl, base64Data] = await Promise.all([
+        const isCsv = isCsvFile(file)
+        const [dataUrl, base64Data, textContent] = await Promise.all([
           fileToDataUrl(file),
           fileToBase64(file),
+          isCsv ? readFileText(file) : Promise.resolve(''),
         ])
 
         clearInterval(progressInterval)
@@ -296,12 +489,13 @@ export default function MedicalUploader({ patientId, onSelectImage }) {
           name:       file.name,
           fileType:   detectFileType(file.type, file.name),
           type:       detectFileType(file.type, file.name),
-          mimeType:   file.type,
+          mimeType:   file.type || (isCsv ? 'text/csv' : 'image/jpeg'),
           size:       file.size,
           uploadedAt: new Date().toISOString(),
           dataUrl,
           base64Data,
-          notes:      '',
+          notes:      isCsv ? `InBody CSV · ${parseInBodyCsv(textContent).length} dòng dữ liệu` : '',
+          textContent,
           ownerEmail:  user?.email || null,
           ownerName:   user?.name || '',
           ownerAvatar: user?.avatar || '',
@@ -316,7 +510,7 @@ export default function MedicalUploader({ patientId, onSelectImage }) {
           setUploading(false)
           setUploadProgress(0)
           setSelected(record)
-          setNotes('')
+          setNotes(record.notes || '')
           setView('detail')
         }, 400)
 
@@ -653,7 +847,7 @@ Trả lời bằng tiếng Việt, ngắn gọn và rõ ràng. Nhắc nhở đâ
                   {uploadText(lang, 'clickSelect')}
                 </div>
                 <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
-                  {['X-Ray JPG/PNG', 'CT Scan', 'MRI', uploadText(lang, 'pdfRecord'), uploadText(lang, 'photoRecord')].map(label => (
+                  {['X-Ray JPG/PNG', 'CT Scan', 'MRI', uploadText(lang, 'pdfRecord'), 'InBody CSV', uploadText(lang, 'photoRecord')].map(label => (
                     <span key={label} style={{
                       padding: '4px 12px', borderRadius: 20, fontSize: 11,
                       background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
@@ -729,7 +923,7 @@ Trả lời bằng tiếng Việt, ngắn gọn và rõ ràng. Nhắc nhở đâ
             cursor: 'pointer', fontSize: 12, marginBottom: 20,
           }}>← {uploadText(lang, 'backToLibrary')}</button>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: selected.fileType === 'csv' ? 'minmax(0,1.35fr) minmax(320px,0.65fr)' : '1fr 1fr', gap: 20 }}>
             {/* Left: Preview */}
             <div>
               <div style={{
@@ -737,7 +931,11 @@ Trả lời bằng tiếng Việt, ngắn gọn và rõ ràng. Nhắc nhở đâ
                 border: '1px solid rgba(255,255,255,0.08)', marginBottom: 14,
                 minHeight: 280, display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>
-                {selected.mimeType?.startsWith('video/') ? (
+                {selected.fileType === 'csv' ? (
+                  <div style={{ width: '100%', padding: 14, boxSizing: 'border-box' }}>
+                    <InBodyCsvDashboard record={selected} />
+                  </div>
+                ) : selected.mimeType?.startsWith('video/') ? (
                   <video src={selected.dataUrl} controls style={{ maxWidth: '100%', maxHeight: 320, borderRadius: 8 }} />
                 ) : selected.mimeType === 'application/pdf' ? (
                   <div style={{ textAlign: 'center', padding: 32 }}>
@@ -807,7 +1005,9 @@ Trả lời bằng tiếng Việt, ngắn gọn và rõ ràng. Nhắc nhở đâ
                 {uploadText(lang, 'aiAnalysis')}
               </div>
 
-              {!selected.aiAnalysis && !analyzing && !analysisStream && (
+              {selected.fileType === 'csv' ? (
+                <CsvRecordInsights record={selected} />
+              ) : !selected.aiAnalysis && !analyzing && !analysisStream && (
                 <div style={{
                   background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.1)',
                   borderRadius: 14, padding: '40px 24px', textAlign: 'center', marginBottom: 14,
