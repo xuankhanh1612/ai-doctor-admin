@@ -87,6 +87,16 @@ function drawVisionControlOverlay(ctx, width, height, { lang, timestamp }) {
   ctx.restore()
 }
 
+
+function dataUrlToFile(dataUrl, filename) {
+  const [meta, base64] = dataUrl.split(',')
+  const mime = meta?.match(/data:(.*?);base64/)?.[1] || 'image/jpeg'
+  const binary = atob(base64 || '')
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i)
+  return new File([bytes], filename, { type: mime })
+}
+
 async function setCameraTorch(stream, enabled) {
   const track = stream?.getVideoTracks?.()[0]
   if (!track) return false
@@ -310,11 +320,11 @@ function VisionCameraControls() {
     <section className="ai-vision-camera-card" aria-label="AI Healthcare Vision camera controls">
       <div className="ai-vision-camera-copy">
         <div className="ai-healthcare-vision-kicker">CAMERA CONTROL · UPLOAD</div>
-        <h3>{lang === 'vi' ? '📱 Bộ điều khiển Camera như “buổi tối”' : '📱 Evening-style Camera controls'}</h3>
+        <h3>{lang === 'vi' ? '📷 Một Webcam + điều khiển gắn liền' : '📷 One Webcam + attached controls'}</h3>
         <p>
           {lang === 'vi'
-            ? 'Mở camera vật lý, chụp với lớp phủ AI, đổi camera trước/sau, bật flash nếu thiết bị hỗ trợ, hoặc upload ảnh trong máy. Ảnh được lưu vào trang Upload để xem lại.'
-            : 'Open the physical camera, capture with an AI overlay, switch front/rear cameras, toggle torch when supported, or upload a local image. Saved images appear in Upload.'}
+            ? 'Chỉ còn một khung Webcam. Các nút mở camera, chụp ảnh, lớp phủ, flash và lưu Upload Records nằm ngay dưới Webcam để thao tác nhanh.'
+            : 'There is only one Webcam frame. Open, capture, overlay, torch, and Upload Records saving controls sit directly under the Webcam.'}
         </p>
         {capturedRecord && (
           <div className="ai-vision-upload-path">
@@ -371,6 +381,31 @@ function VisionCameraControls() {
 
 export default function AIHealthcareVisionControlPanel({ onNext, onPrev, prevLabel }) {
   const { lang } = useApp()
+  const { user } = useAuth()
+  const [lastMediaPipeRecord, setLastMediaPipeRecord] = useState(null)
+
+  useEffect(() => {
+    const onMessage = async (event) => {
+      if (event.origin !== window.location.origin) return
+      if (event.data?.type !== 'AI_CLINIC_MEDIAPIPE_WEBCAM_CAPTURE') return
+      try {
+        const file = dataUrlToFile(
+          event.data.dataUrl,
+          event.data.filename || makeVisionFilename('mediapipe_webcam')
+        )
+        const record = await saveVisionControlImage(file, {
+          user,
+          lang,
+          label: lang === 'vi' ? 'Ảnh Webcam từ MediaPipe Tasks' : 'Webcam image from MediaPipe Tasks',
+        })
+        setLastMediaPipeRecord(record)
+      } catch (error) {
+        console.error('Could not save MediaPipe webcam capture:', error)
+      }
+    }
+    window.addEventListener('message', onMessage)
+    return () => window.removeEventListener('message', onMessage)
+  }, [lang, user])
 
   return (
     <div className="animate-fade ai-healthcare-vision-page">
@@ -380,16 +415,19 @@ export default function AIHealthcareVisionControlPanel({ onNext, onPrev, prevLab
           <h2>🧠 AI Healthcare Vision Control</h2>
           <p>
             {lang === 'vi'
-              ? 'Tích hợp trực tiếp source code mediapipe-khanh vào dự án để điều khiển các tác vụ MediaPipe: Object Detector, Face/Hand/Pose Landmarker, Image Segmenter, Audio/Text AI và các pipeline camera theo thời gian thực.'
-              : 'Integrates the mediapipe-khanh source directly into this project for MediaPipe control tasks: Object Detector, Face/Hand/Pose Landmarker, Image Segmenter, Audio/Text AI, and real-time camera pipelines.'}
+              ? 'Giữ toàn bộ MediaPipe Tasks trong một màn hình điều khiển. Cụm nút Camera được gắn quanh Webcam của MediaPipe để mở camera, lưu ảnh Webcam vào Upload Records và upload hình trong máy.'
+              : 'Keeps the full MediaPipe Tasks console. Camera controls are attached around the MediaPipe Webcam so users can open the camera, save Webcam captures into Upload Records, and upload local images.'}
           </p>
+          {lastMediaPipeRecord && (
+            <div className="ai-vision-upload-path" style={{ marginTop: 10 }}>
+              <b>{lang === 'vi' ? 'MediaPipe đã lưu:' : 'MediaPipe saved:'}</b> {lastMediaPipeRecord.uploadPath}
+            </div>
+          )}
         </div>
         <a href={MEDIAPIPE_APP_URL} target="_blank" rel="noreferrer" className="ai-healthcare-vision-open-link">
           {lang === 'vi' ? 'Mở MediaPipe ↗' : 'Open MediaPipe ↗'}
         </a>
       </section>
-
-      <VisionCameraControls />
 
       <section className="ai-healthcare-vision-frame-card" aria-label="AI Healthcare Vision Control MediaPipe app">
         <iframe
