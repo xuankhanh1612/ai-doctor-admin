@@ -3,7 +3,7 @@ import NavButtons from './NavButtons.jsx'
 import { useApp } from '../context/AppContext'
 import InBodyDashboard from '../inbody-khanh/components/InBodyDashboard.jsx'
 
-export default function AIInbodyPortalPanel({ onPrev, prevLabel }) {
+export default function AIInbodyPortalPanel({ onPrev, prevLabel, onViewMedicalRecord }) {
   const { lang } = useApp()
 
   return (
@@ -21,7 +21,7 @@ export default function AIInbodyPortalPanel({ onPrev, prevLabel }) {
       </section>
 
       <section className="ai-inbody-portal-card" aria-label="AI inbody Portal dashboard">
-        <InBodyDashboard userId="LXK-2024" />
+        <InBodyDashboard userId="LXK-2024" onViewMedicalRecord={onViewMedicalRecord} />
       </section>
 
       <NavButtons onPrev={onPrev} prevLabel={prevLabel} />

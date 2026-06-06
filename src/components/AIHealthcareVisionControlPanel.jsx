@@ -143,7 +143,7 @@ async function saveVisionControlImage(file, { user, lang, label }) {
   return record
 }
 
-function VisionCameraControls() {
+function VisionCameraControls({ onViewMedicalRecord }) {
   const { lang } = useApp()
   const { user } = useAuth()
   const videoRef = useRef(null)
@@ -369,9 +369,19 @@ function VisionCameraControls() {
           </div>
           <div className="ai-vision-secondary-actions">
             <button type="button" onClick={() => localInputRef.current?.click()} disabled={snapshotSaving}>{lang === 'vi' ? 'upload hình trong máy' : 'upload local image'}</button>
-            <button type="button" onClick={switchCamera} disabled={cameraStarting || snapshotSaving}>🔄 {lang === 'vi' ? 'Đổi camera' : 'Switch camera'}</button>
+            <button type="button" onClick={() => localInputRef.current?.click()} disabled={snapshotSaving}>{lang === 'vi' ? 'Lưu Upload Records' : 'Save Upload Records'}</button>
           </div>
-          {cameraOpen && <button type="button" className="ai-vision-close-camera" onClick={stopCamera} disabled={snapshotSaving}>{lang === 'vi' ? 'Đóng camera' : 'Close camera'}</button>}
+          {cameraOpen && (
+            <div className="ai-vision-secondary-actions compact">
+              <button type="button" className="ai-vision-close-camera" onClick={stopCamera} disabled={snapshotSaving}>{lang === 'vi' ? 'Đóng camera' : 'Close camera'}</button>
+              <button type="button" onClick={switchCamera} disabled={cameraStarting || snapshotSaving}>🔄 {lang === 'vi' ? 'Đổi camera' : 'Switch camera'}</button>
+            </div>
+          )}
+          {capturedRecord && (
+            <button type="button" className="ai-vision-medical-record-button" onClick={onViewMedicalRecord}>
+              🟢 {lang === 'vi' ? 'Xem hình tại Hồ Sơ Y Tế' : 'View image in Medical Record'}
+            </button>
+          )}
           <div className={`ai-vision-status ${recording ? 'recording' : ''}`}>{status}</div>
         </div>
       </div>
@@ -379,7 +389,7 @@ function VisionCameraControls() {
   )
 }
 
-export default function AIHealthcareVisionControlPanel({ onNext, onPrev, prevLabel }) {
+export default function AIHealthcareVisionControlPanel({ onNext, onPrev, prevLabel, onViewMedicalRecord }) {
   const { lang } = useApp()
   const { user } = useAuth()
   const [lastMediaPipeRecord, setLastMediaPipeRecord] = useState(null)
@@ -419,12 +429,19 @@ export default function AIHealthcareVisionControlPanel({ onNext, onPrev, prevLab
               : 'Keeps the full MediaPipe Tasks console. Camera controls are attached around the MediaPipe Webcam so users can open the camera, save Webcam captures into Upload Records, and upload local images.'}
           </p>
           {lastMediaPipeRecord && (
-            <div className="ai-vision-upload-path" style={{ marginTop: 10 }}>
-              <b>{lang === 'vi' ? 'MediaPipe đã lưu:' : 'MediaPipe saved:'}</b> {lastMediaPipeRecord.uploadPath}
-            </div>
+            <>
+              <div className="ai-vision-upload-path" style={{ marginTop: 10 }}>
+                <b>{lang === 'vi' ? 'MediaPipe đã lưu:' : 'MediaPipe saved:'}</b> {lastMediaPipeRecord.uploadPath}
+              </div>
+              <button type="button" className="ai-vision-medical-record-button inline" onClick={onViewMedicalRecord}>
+                🟢 {lang === 'vi' ? 'Xem hình tại Hồ Sơ Y Tế' : 'View image in Medical Record'}
+              </button>
+            </>
           )}
         </div>
       </section>
+
+      <VisionCameraControls onViewMedicalRecord={onViewMedicalRecord} />
 
       <section className="ai-healthcare-vision-frame-card" aria-label="AI Healthcare Vision Control MediaPipe app">
         <iframe
