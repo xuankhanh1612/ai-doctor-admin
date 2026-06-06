@@ -222,25 +222,40 @@ export abstract class BaseVisionTask extends BaseTask {
     window.addEventListener('message', this.uploadBridgeMessageHandler);
   }
 
+  private getWebcamControlsButtonHost(webcamControls: HTMLElement) {
+    const webcamButtonParent = this.enableWebcamButton?.parentElement as HTMLElement | null;
+    return webcamButtonParent && webcamControls.contains(webcamButtonParent) ? webcamButtonParent : webcamControls;
+  }
+
   private ensureWebcamSwitchButton(webcamControls: HTMLElement) {
     if (document.getElementById('switch-camera-btn')) return;
+
+    const buttonHost = this.getWebcamControlsButtonHost(webcamControls);
+    buttonHost.classList.add('webcam-controls');
 
     const switchButton = document.createElement('button');
     switchButton.id = 'switch-camera-btn';
     switchButton.className = 'action-button secondary';
     switchButton.type = 'button';
     switchButton.innerHTML = '<span class="material-icons">flip_camera_ios</span> Đổi camera';
-    switchButton.addEventListener('click', () => this.switchCamera());
+    switchButton.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      this.switchCamera();
+    });
 
-    if (this.enableWebcamButton?.nextSibling) {
-      webcamControls.insertBefore(switchButton, this.enableWebcamButton.nextSibling);
+    if (this.enableWebcamButton?.parentElement === buttonHost && this.enableWebcamButton.nextSibling) {
+      buttonHost.insertBefore(switchButton, this.enableWebcamButton.nextSibling);
     } else {
-      webcamControls.appendChild(switchButton);
+      buttonHost.appendChild(switchButton);
     }
   }
 
   private ensureWebcamSaveButton(webcamControls: HTMLElement) {
     if (document.getElementById('save-webcam-record-btn')) return;
+
+    const buttonHost = this.getWebcamControlsButtonHost(webcamControls);
+    buttonHost.classList.add('webcam-controls');
 
     const saveButton = document.createElement('button');
     saveButton.id = 'save-webcam-record-btn';
@@ -252,7 +267,7 @@ export abstract class BaseVisionTask extends BaseTask {
       event.stopPropagation();
       this.captureWebcamToUploadRecords();
     });
-    webcamControls.appendChild(saveButton);
+    buttonHost.appendChild(saveButton);
   }
 
   private ensureImageSaveControls(reUploadButton: HTMLButtonElement) {
@@ -365,10 +380,17 @@ export abstract class BaseVisionTask extends BaseTask {
     const testImage = document.getElementById('test-image') as HTMLImageElement;
     const dropzone = document.querySelector('.upload-dropzone') as HTMLElement;
     const dropzoneContent = document.querySelector('.dropzone-content') as HTMLElement;
+    const reUploadButton = document.getElementById('re-upload-btn') as HTMLButtonElement | null;
 
     if (testImage && testImage.src && dropzoneContent) {
       dropzoneContent.style.display = 'none';
     }
+
+    reUploadButton?.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      imageUpload?.click();
+    });
 
     if (dropzone) {
       dropzone.addEventListener('click', (e) => {
