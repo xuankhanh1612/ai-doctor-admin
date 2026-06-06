@@ -80,10 +80,10 @@ export abstract class BaseVisionTask extends BaseTask {
     super.handleInitDone();
 
     if (this.video && this.video.srcObject && this.enableWebcamButton) {
-      this.enableWebcamButton.innerText = 'Disable Webcam';
+      this.enableWebcamButton.innerText = 'Đóng camera';
       this.enableWebcamButton.disabled = false;
-    } else if (this.enableWebcamButton && this.enableWebcamButton.innerText !== 'Starting...') {
-      this.enableWebcamButton.innerText = 'Enable Webcam';
+    } else if (this.enableWebcamButton && this.enableWebcamButton.innerText !== 'Đang mở...') {
+      this.enableWebcamButton.innerText = 'Mở camera';
       this.enableWebcamButton.disabled = false;
     }
 
@@ -252,7 +252,7 @@ export abstract class BaseVisionTask extends BaseTask {
     if (this.video.srcObject) return;
 
     if (this.enableWebcamButton) {
-      this.enableWebcamButton.innerText = 'Starting...';
+      this.enableWebcamButton.innerText = 'Đang mở...';
       this.enableWebcamButton.disabled = true;
     }
     const constraints = { video: true };
@@ -280,14 +280,14 @@ export abstract class BaseVisionTask extends BaseTask {
       this.worker.postMessage({ type: 'SET_OPTIONS', runningMode: 'VIDEO' });
       this.updateStatus('Webcam running...');
       if (this.enableWebcamButton) {
-        this.enableWebcamButton.innerText = 'Disable Webcam';
+        this.enableWebcamButton.innerText = 'Đóng camera';
         this.enableWebcamButton.disabled = false;
       }
     } catch (err) {
       console.error(err);
       this.updateStatus('Camera error!');
       if (this.enableWebcamButton) {
-        this.enableWebcamButton.innerText = 'Enable Webcam';
+        this.enableWebcamButton.innerText = 'Mở camera';
         this.enableWebcamButton.disabled = false;
       }
     }
@@ -309,7 +309,7 @@ export abstract class BaseVisionTask extends BaseTask {
       this.video.srcObject = null;
       const placeholder = document.getElementById('webcam-placeholder');
       if (placeholder) placeholder.style.display = 'flex';
-      if (this.enableWebcamButton) this.enableWebcamButton.innerText = 'Enable Webcam';
+      if (this.enableWebcamButton) this.enableWebcamButton.innerText = 'Mở camera';
       if (this.animationFrameId) cancelAnimationFrame(this.animationFrameId);
 
       if (this.canvasCtx && this.canvasElement) {
