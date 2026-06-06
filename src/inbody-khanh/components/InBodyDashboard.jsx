@@ -8,6 +8,8 @@ import standardInBodyCsv from '../DataInBody/InBody-20260508 3.csv?raw';
 import aiClinicInBodyRef from '../DataInBody/AIClinicInBody.PNG';
 import inBodyChartRef from '../DataInBody/IMG_2635.PNG';
 import khanhInBodyRef from '../DataInBody/KhanhInBody.JPG';
+import inBodyMuscleScreenRef from '../DataInBody/IMG_2637.PNG';
+import inBodyFatScreenRef from '../DataInBody/IMG_2638.PNG';
 
 // ─── Gamification engine ────────────────────────────────────────────────────
 function calcXP(records) {
@@ -110,6 +112,11 @@ const INBODY_REFERENCE_IMAGES = [
   { src: khanhInBodyRef, label: 'KhanhInBody.JPG' },
 ];
 
+const INBODY_APP_SCREEN_TABS = [
+  { id: 'muscle', label: 'Khối lượng cơ', image: inBodyMuscleScreenRef, accent: '#1D9E75', summary: 'Màn hình Chi tiết · phân tích cơ từng bộ phận theo mẫu IMG_2637.PNG.' },
+  { id: 'fat', label: 'Mỡ trong cơ thể', image: inBodyFatScreenRef, accent: '#f05f78', summary: 'Màn hình Chi tiết · phân tích mỡ từng bộ phận theo mẫu IMG_2638.PNG.' },
+];
+
 function parseNumber(value) {
   if (value === undefined || value === null) return null;
   const normalized = String(value).replace(/\ufeff/g, '').replace(',', '.').trim();
@@ -147,6 +154,36 @@ function formatInBodyDate(raw) {
   const date = `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6, 8)}`;
   if (digits.length < 12) return date;
   return `${date} ${digits.slice(8, 10)}:${digits.slice(10, 12)}`;
+}
+
+function decodeBase64Text(base64Data) {
+  if (!base64Data) return '';
+  try {
+    const binary = atob(base64Data);
+    const bytes = Uint8Array.from(binary, char => char.charCodeAt(0));
+    return new TextDecoder('utf-8').decode(bytes);
+  } catch {
+    try { return atob(base64Data); } catch { return ''; }
+  }
+}
+
+function isSummaryAllInBodyRecord(record) {
+  return record?.fileType === 'csv' && (
+    record.sourceModule === 'ai-inbody-portal-summary' ||
+    String(record.notes || '').includes('Summary All InBody Records') ||
+    String(record.filename || '').startsWith('FullTrackInBody_')
+  );
+}
+
+async function loadLatestSummaryAllInBodyRecords(ownerEmail) {
+  const allRecords = await getAllRecords({ ownerEmail, includeUnowned: false });
+  const summaryRecord = allRecords
+    .filter(isSummaryAllInBodyRecord)
+    .sort((a, b) => String(b.uploadedAt || '').localeCompare(String(a.uploadedAt || '')))[0];
+  if (!summaryRecord) return null;
+  const csvText = summaryRecord.textContent || decodeBase64Text(summaryRecord.base64Data);
+  const parsedRecords = parseInBodyCsv(csvText);
+  return parsedRecords.length ? { record: summaryRecord, parsedRecords } : null;
 }
 
 function parseInBodyCsv(csvText) {
@@ -346,7 +383,7 @@ function InBodyTrendPreview({ records }) {
   );
 }
 
-function UploadTab({ onAnalysis }) {
+function UploadTab({ onAnalysis, onViewMedicalRecord }) {
   const { user } = useAuth();
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -354,6 +391,7 @@ function UploadTab({ onAnalysis }) {
   const [error, setError] = useState(null);
   const [simulatedRecords, setSimulatedRecords] = useState([]);
   const [uploadRecordStatus, setUploadRecordStatus] = useState('');
+  const [savedUploadRecord, setSavedUploadRecord] = useState(null);
   const inputRef = useRef();
 
 
@@ -383,6 +421,7 @@ function UploadTab({ onAnalysis }) {
     };
     await saveRecord(record, { ownerEmail: user?.email, ownerName: user?.name, ownerAvatar: user?.avatar, ownerProvider: user?.provider });
     notifyUpload();
+    setSavedUploadRecord(record);
     setUploadRecordStatus(`Đã lưu vào Upload Records: ${record.filename}`);
     return record;
   };
@@ -409,7 +448,20 @@ function UploadTab({ onAnalysis }) {
       setError(null);
       setSimulatedRecords([]);
       setUploadRecordStatus('');
+      setSavedUploadRecord(null);
       saveUploadRecord(f).catch((error) => setUploadRecordStatus(`Không lưu được Upload Records: ${error.message || error}`));
+    }
+  };
+
+  const saveCurrentFileToUploadRecords = async () => {
+    if (!file) {
+      setUploadRecordStatus('Vui lòng chọn file/hình trước khi lưu Upload Records.');
+      return;
+    }
+    try {
+      await saveUploadRecord(file);
+    } catch (error) {
+      setUploadRecordStatus(`Không lưu được Upload Records: ${error.message || error}`);
     }
   };
 
@@ -514,11 +566,19 @@ function UploadTab({ onAnalysis }) {
         <button type="button" className="sample-csv-btn" onClick={() => inputRef.current?.click()}>
           📤 upload file .csv / hình vào Upload Records
         </button>
+        <button type="button" className="sample-csv-btn" onClick={saveCurrentFileToUploadRecords} disabled={!file}>
+          💾 Lưu Upload Records
+        </button>
         <button type="button" className="sample-csv-btn" onClick={summarizeAllInBodyRecords}>
           📚 Summary All InBody Records
         </button>
       </div>
       {uploadRecordStatus && <div className="file-preview">{uploadRecordStatus}</div>}
+      {savedUploadRecord && (
+        <button type="button" className="inbody-medical-record-btn" onClick={onViewMedicalRecord}>
+          Xem hình tại Medical Records
+        </button>
+      )}
       {file && (
         <div className="file-preview">
           ✅ {file.name} ({(file.size / 1024).toFixed(0)} KB)
@@ -633,6 +693,47 @@ function HistoryTab({ records }) {
   );
 }
 
+function InBodyAppScreensTab() {
+  const [screen, setScreen] = useState(INBODY_APP_SCREEN_TABS[0]);
+
+  return (
+    <div className="inbody-app-screen-panel">
+      <div className="inbody-app-header">
+        <div className="inbody-logo-text">InBody</div>
+        <div className="inbody-app-chip">KhanhLX</div>
+        <div className="inbody-app-chip">TOUCH</div>
+        <div className="inbody-app-icon">▦</div>
+        <div className="inbody-app-icon">🔔</div>
+      </div>
+      <div className="inbody-app-nav">
+        <span>Trang tổng</span><b>Chi tiết</b><span>Thay đổi</span><span>Xếp hạng</span>
+      </div>
+      <div className="inbody-app-date">‹ <span>08.05.2026 (Th 6) 10:58</span> › <button type="button">🗑</button></div>
+      <div className="inbody-app-score"><b>Điểm InBody</b><strong>64 <small>Điểm</small></strong></div>
+      <div className="section-title">Phân tích từng bộ phận</div>
+      <div className="inbody-screen-tabs">
+        {INBODY_APP_SCREEN_TABS.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            className={screen.id === item.id ? 'active' : ''}
+            onClick={() => setScreen(item)}
+            style={{ '--screen-accent': item.accent }}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+      <div className="inbody-screen-summary" style={{ borderColor: screen.accent }}>
+        <b>{screen.label}</b><span>{screen.summary}</span>
+      </div>
+      <figure className="inbody-screen-figure">
+        <img src={screen.image} alt={screen.summary} />
+      </figure>
+    </div>
+  );
+}
+
 function BadgesTab({ records }) {
   const achievements = getAchievements(records);
   const unlocked = achievements.filter((a) => a.unlocked).length;
@@ -660,12 +761,29 @@ function BadgesTab({ records }) {
 }
 
 // ─── Main Dashboard ─────────────────────────────────────────────────────────
-export default function InBodyDashboard({ userId, initialRecords }) {
+export default function InBodyDashboard({ userId, initialRecords, onViewMedicalRecord }) {
+  const { user } = useAuth();
   const [records, setRecords] = useState(initialRecords || SAMPLE_RECORDS);
   const [tab, setTab] = useState('upload');
+  const [initialSummaryStatus, setInitialSummaryStatus] = useState('');
   const latest = records[records.length - 1];
   const prev = records[records.length - 2];
   const levelInfo = calcLevel(calcXP(records));
+
+  useEffect(() => {
+    let cancelled = false;
+    loadLatestSummaryAllInBodyRecords(user?.email)
+      .then((summary) => {
+        if (cancelled || !summary) return;
+        setRecords(summary.parsedRecords);
+        setTab('history');
+        setInitialSummaryStatus(`Đã nạp Lịch sử từ Summary All InBody Records gần nhất: ${summary.record.filename}`);
+      })
+      .catch((error) => {
+        if (!cancelled) setInitialSummaryStatus(`Không nạp được Summary All InBody Records: ${error.message || error}`);
+      });
+    return () => { cancelled = true; };
+  }, [user?.email]);
 
   const handleNewAnalysis = (analysis, parsedRecords) => {
     if (parsedRecords?.length) {
@@ -691,12 +809,14 @@ export default function InBodyDashboard({ userId, initialRecords }) {
     { id: 'upload', label: 'Scan', icon: '📤' },
     { id: 'quests', label: 'Nhiệm vụ', icon: '⚔️' },
     { id: 'history', label: 'Lịch sử', icon: '📈' },
+    { id: 'screens', label: 'Màn hình', icon: '📱' },
     { id: 'badges', label: 'Huy hiệu', icon: '🏅' },
   ];
 
   return (
     <div className="inbody-dashboard">
       <HeroCard levelInfo={levelInfo} latest={latest} />
+      {initialSummaryStatus && <div className="inbody-initial-summary-status">{initialSummaryStatus}</div>}
 
       <div className="metrics-grid">
         <MetricCard icon="⚖️" label="Cân nặng" value={latest?.weight} unit="kg"
@@ -725,9 +845,10 @@ export default function InBodyDashboard({ userId, initialRecords }) {
       </div>
 
       <div className="tab-content">
-        {tab === 'upload' && <UploadTab onAnalysis={handleNewAnalysis} />}
+        {tab === 'upload' && <UploadTab onAnalysis={handleNewAnalysis} onViewMedicalRecord={onViewMedicalRecord} />}
         {tab === 'quests' && <QuestsTab records={records} />}
         {tab === 'history' && <HistoryTab records={records} />}
+        {tab === 'screens' && <InBodyAppScreensTab />}
         {tab === 'badges' && <BadgesTab records={records} />}
       </div>
 
@@ -806,9 +927,11 @@ export default function InBodyDashboard({ userId, initialRecords }) {
         .badge-name { font-size: 10px; color: #666; line-height: 1.2; }
         .badge-progress-wrap { padding: 10px 14px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e9ecef; }
         .badge-progress-label { font-size: 12px; color: #666; margin-bottom: 6px; }
-        .inbody-upload-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: -4px 0 10px; }
+        .inbody-upload-actions { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: -4px 0 10px; }
         .sample-csv-btn { width: 100%; padding: 10px 12px; border: 1px solid #bbf7d0; background: #f0fdf4; color: #085041; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; margin: 0; }
         .standard-file-pill { display: inline-flex; margin-left: 8px; padding: 2px 8px; border-radius: 999px; background: #E1F5EE; color: #085041; font-size: 11px; font-weight: 700; }
+        .inbody-medical-record-btn { width: 100%; padding: 11px 12px; margin: 0 0 10px; border: 0; border-radius: 10px; background: linear-gradient(135deg, #16a34a, #22c55e); color: #fff; font-size: 14px; font-weight: 800; cursor: pointer; box-shadow: 0 12px 28px rgba(34,197,94,.24); }
+        .inbody-initial-summary-status { margin: -4px 0 12px; padding: 10px 12px; border-radius: 10px; border: 1px solid #bfdbfe; background: #eff6ff; color: #1d4ed8; font-size: 12px; font-weight: 700; }
         .inbody-simulated-charts { margin-top: 1rem; }
         .inbody-chart-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
         .inbody-chart-card { min-width: 0; padding: 12px; border: 1px solid #e9ecef; border-radius: 12px; background: #fff; }
@@ -822,12 +945,36 @@ export default function InBodyDashboard({ userId, initialRecords }) {
         .inbody-reference-gallery figure { margin: 0; overflow: hidden; border: 1px solid #e9ecef; border-radius: 12px; background: #fff; }
         .inbody-reference-gallery img { display: block; width: 100%; height: 120px; object-fit: cover; object-position: top; }
         .inbody-reference-gallery figcaption { padding: 7px 9px; color: #666; font-size: 10px; font-weight: 700; }
+        .inbody-app-screen-panel { padding: 14px; border: 1px solid #e5e7eb; border-radius: 18px; background: linear-gradient(180deg, #fff, #f8fafc); }
+        .inbody-app-header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+        .inbody-logo-text { margin-right: auto; font-size: 24px; font-weight: 900; color: #1f2937; letter-spacing: -.04em; }
+        .inbody-app-chip, .inbody-app-icon { padding: 7px 12px; border: 1px solid #e5e7eb; border-radius: 999px; background: #fff; color: #374151; font-size: 12px; font-weight: 800; }
+        .inbody-app-icon { width: 36px; height: 36px; padding: 0; display: grid; place-items: center; }
+        .inbody-app-nav { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; color: #c0c6cf; font-size: clamp(15px, 2.2vw, 24px); text-align: center; border-bottom: 1px solid #e5e7eb; padding-bottom: 8px; }
+        .inbody-app-nav b { color: #111827; border-bottom: 4px solid #111827; padding-bottom: 8px; }
+        .inbody-app-date { display: grid; grid-template-columns: 28px 1fr 28px 42px; align-items: center; gap: 8px; margin: 14px 0; color: #6b7280; font-weight: 700; }
+        .inbody-app-date span { padding: 11px 14px; border-radius: 999px; background: #fff; text-align: center; box-shadow: 0 8px 22px rgba(15,23,42,.06); }
+        .inbody-app-date button { border: 0; border-radius: 16px; background: #fff; min-height: 42px; cursor: pointer; box-shadow: 0 8px 22px rgba(15,23,42,.06); }
+        .inbody-app-score { display: flex; align-items: center; justify-content: space-between; padding: 18px 22px; margin-bottom: 18px; border-radius: 20px; background: #fff; box-shadow: 0 10px 24px rgba(15,23,42,.06); color: #5b6678; }
+        .inbody-app-score strong { font-size: 36px; color: #526078; }
+        .inbody-app-score small { font-size: 16px; font-weight: 600; }
+        .inbody-screen-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; padding: 6px; border-radius: 14px; background: #e9edf2; margin-bottom: 10px; }
+        .inbody-screen-tabs button { min-height: 48px; border: 0; border-radius: 10px; background: transparent; color: #6b7280; font-weight: 900; cursor: pointer; font-size: 14px; }
+        .inbody-screen-tabs button.active { background: #fff; color: #334155; box-shadow: 0 8px 20px rgba(15,23,42,.08), inset 0 -3px 0 var(--screen-accent); }
+        .inbody-screen-summary { display: flex; justify-content: space-between; gap: 10px; padding: 10px 12px; border-left: 4px solid; border-radius: 12px; background: #fff; color: #475569; font-size: 12px; margin-bottom: 10px; }
+        .inbody-screen-figure { margin: 0; border: 1px solid #e5e7eb; border-radius: 20px; overflow: hidden; background: #fff; }
+        .inbody-screen-figure img { display: block; width: 100%; max-height: 760px; object-fit: contain; object-position: top; background: #fff; }
         @media (max-width: 760px) {
           .hero-card { align-items: flex-start; }
           .tab-bar { overflow-x: auto; }
           .tab-btn { min-width: 92px; }
           .inbody-chart-grid { grid-template-columns: 1fr; }
           .inbody-upload-actions { grid-template-columns: 1fr; }
+          .inbody-app-header { flex-wrap: wrap; }
+          .inbody-app-nav { font-size: 14px; }
+          .inbody-app-date { grid-template-columns: 22px 1fr 22px; }
+          .inbody-app-date button { grid-column: 1 / -1; }
+          .inbody-screen-summary { flex-direction: column; }
           .inbody-reference-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
           .inbody-reference-gallery { grid-template-columns: 1fr; }
           .inbody-reference-gallery img { height: 160px; }
