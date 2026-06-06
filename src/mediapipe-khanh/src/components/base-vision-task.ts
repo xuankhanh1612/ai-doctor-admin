@@ -247,7 +247,11 @@ export abstract class BaseVisionTask extends BaseTask {
     saveButton.className = 'action-button secondary';
     saveButton.type = 'button';
     saveButton.innerHTML = '<span class="material-icons">save_alt</span> Lưu Upload Records';
-    saveButton.addEventListener('click', () => this.captureWebcamToUploadRecords());
+    saveButton.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      this.captureWebcamToUploadRecords();
+    });
     webcamControls.appendChild(saveButton);
   }
 
@@ -258,7 +262,11 @@ export abstract class BaseVisionTask extends BaseTask {
       saveButton.className = 'action-button secondary image-save-record';
       saveButton.type = 'button';
       saveButton.innerHTML = '<span class="material-icons">save_alt</span> Lưu Upload Records';
-      saveButton.addEventListener('click', () => this.captureImageToUploadRecords());
+      saveButton.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        this.captureImageToUploadRecords();
+      });
       reUploadButton.insertAdjacentElement('afterend', saveButton);
     }
 
@@ -276,7 +284,9 @@ export abstract class BaseVisionTask extends BaseTask {
     viewButton.type = 'button';
     viewButton.style.display = 'none';
     viewButton.innerHTML = '<span class="material-icons">folder_shared</span> Xem hình tại Medical Records';
-    viewButton.addEventListener('click', () => {
+    viewButton.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
       window.parent?.postMessage({ type: 'AI_CLINIC_OPEN_UPLOAD_RECORDS' }, window.location.origin);
     });
     anchor.insertAdjacentElement('afterend', viewButton);
@@ -362,6 +372,11 @@ export abstract class BaseVisionTask extends BaseTask {
 
     if (dropzone) {
       dropzone.addEventListener('click', (e) => {
+        const target = e.target as HTMLElement | null;
+        if (target?.closest('button, .action-button')) {
+          return;
+        }
+
         const previewContainer = dropzone.querySelector('.preview-container');
         if (previewContainer && previewContainer.contains(e.target as Node)) {
           return;
