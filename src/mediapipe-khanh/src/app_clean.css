@@ -744,7 +744,7 @@ video {
 }
 
 .cam-container > .action-button:hover {
-  transform: translateX(-50%);
+  transform: none;
 }
 
 .viewport.loading-model::after {
