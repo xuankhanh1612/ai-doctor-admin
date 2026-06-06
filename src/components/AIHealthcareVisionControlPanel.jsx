@@ -5,6 +5,8 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { detectFileType, fileToBase64, fileToDataUrl, saveRecord } from '../lib/medicalStorage.js'
 import { notifyUpload } from '../hooks/useMedicalData.js'
 
+const MEDIAPIPE_APP_URL = '/src/mediapipe-khanh/index.html#/vision/object_detector'
+
 function cameraTimestamp(lang, date = new Date()) {
   return date.toLocaleString(lang === 'vi' ? 'vi-VN' : 'en-US', {
     year: 'numeric', month: '2-digit', day: '2-digit',
@@ -83,6 +85,16 @@ function drawVisionControlOverlay(ctx, width, height, { lang, timestamp }) {
   ctx.font = `700 ${Math.max(11, width * 0.014)}px monospace`
   ctx.fillText(timestamp, labelX + 14, labelY + 44)
   ctx.restore()
+}
+
+
+function dataUrlToFile(dataUrl, filename) {
+  const [meta, base64] = dataUrl.split(',')
+  const mime = meta?.match(/data:(.*?);base64/)?.[1] || 'image/jpeg'
+  const binary = atob(base64 || '')
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i)
+  return new File([bytes], filename, { type: mime })
 }
 
 async function setCameraTorch(stream, enabled) {
@@ -369,6 +381,31 @@ function VisionCameraControls() {
 
 export default function AIHealthcareVisionControlPanel({ onNext, onPrev, prevLabel }) {
   const { lang } = useApp()
+  const { user } = useAuth()
+  const [lastMediaPipeRecord, setLastMediaPipeRecord] = useState(null)
+
+  useEffect(() => {
+    const onMessage = async (event) => {
+      if (event.origin !== window.location.origin) return
+      if (event.data?.type !== 'AI_CLINIC_MEDIAPIPE_WEBCAM_CAPTURE') return
+      try {
+        const file = dataUrlToFile(
+          event.data.dataUrl,
+          event.data.filename || makeVisionFilename('mediapipe_webcam')
+        )
+        const record = await saveVisionControlImage(file, {
+          user,
+          lang,
+          label: lang === 'vi' ? 'Ảnh Webcam từ MediaPipe Tasks' : 'Webcam image from MediaPipe Tasks',
+        })
+        setLastMediaPipeRecord(record)
+      } catch (error) {
+        console.error('Could not save MediaPipe webcam capture:', error)
+      }
+    }
+    window.addEventListener('message', onMessage)
+    return () => window.removeEventListener('message', onMessage)
+  }, [lang, user])
 
   return (
     <div className="animate-fade ai-healthcare-vision-page">
@@ -378,13 +415,26 @@ export default function AIHealthcareVisionControlPanel({ onNext, onPrev, prevLab
           <h2>🧠 AI Healthcare Vision Control</h2>
           <p>
             {lang === 'vi'
-              ? 'Giữ toàn bộ MediaPipe Tasks bên dưới, đồng thời cụm điều khiển Camera riêng được gắn bao quanh Webcam để chụp và lưu hình ngay vào Upload Records.'
-              : 'All MediaPipe Tasks remain available below, while the attached Camera control cluster captures Webcam images and saves them into Upload Records.'}
+              ? 'Giữ toàn bộ MediaPipe Tasks trong một màn hình điều khiển. Cụm nút Camera được gắn quanh Webcam của MediaPipe để mở camera, lưu ảnh Webcam vào Upload Records và upload hình trong máy.'
+              : 'Keeps the full MediaPipe Tasks console. Camera controls are attached around the MediaPipe Webcam so users can open the camera, save Webcam captures into Upload Records, and upload local images.'}
           </p>
+          {lastMediaPipeRecord && (
+            <div className="ai-vision-upload-path" style={{ marginTop: 10 }}>
+              <b>{lang === 'vi' ? 'MediaPipe đã lưu:' : 'MediaPipe saved:'}</b> {lastMediaPipeRecord.uploadPath}
+            </div>
+          )}
         </div>
       </section>
 
-      <VisionCameraControls />
+      <section className="ai-healthcare-vision-frame-card" aria-label="AI Healthcare Vision Control MediaPipe app">
+        <iframe
+          title="AI Healthcare Vision Control"
+          src={MEDIAPIPE_APP_URL}
+          className="ai-healthcare-vision-frame"
+          allow="camera; microphone; fullscreen; clipboard-read; clipboard-write"
+          referrerPolicy="strict-origin-when-cross-origin"
+        />
+      </section>
 
       <NavButtons onNext={onNext} nextLabel={`${lang === 'vi' ? 'Góc xả stress' : 'Stress Relief Corner'} →`} onPrev={onPrev} prevLabel={prevLabel} />
     </div>

@@ -1289,3 +1289,28 @@ video {
     object-fit: contain;
   }
 }
+
+/* AI Clinic upload bridge: keep MediaPipe Tasks while wrapping Webcam controls around the live preview. */
+#view-webcam .cam-container {
+  border: 1px solid rgba(0, 127, 139, 0.18);
+  border-radius: 18px;
+  padding: 18px;
+  background: linear-gradient(135deg, rgba(0, 127, 139, 0.08), rgba(103, 58, 183, 0.05));
+}
+
+#webcam-controls-container.webcam-controls {
+  margin: 12px auto 18px;
+  padding: 10px;
+  border: 1px solid rgba(0, 127, 139, 0.18);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: var(--shadow-sm);
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+#webcam-controls-container.webcam-controls .action-button {
+  margin-top: 0;
+  white-space: nowrap;
+}

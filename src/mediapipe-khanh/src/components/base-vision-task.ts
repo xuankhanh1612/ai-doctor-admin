@@ -44,6 +44,7 @@ export abstract class BaseVisionTask extends BaseTask {
     this.setupUI();
     this.setupViewToggle();
     this.setupImageUpload();
+    this.setupUploadRecordControls();
 
     // Child class hook
     this.onInitializeUI();
@@ -80,6 +81,10 @@ export abstract class BaseVisionTask extends BaseTask {
     super.handleInitDone();
 
     if (this.video && this.video.srcObject && this.enableWebcamButton) {
+//       this.setWebcamButtonLabel('close');
+//       this.enableWebcamButton.disabled = false;
+//     } else if (this.enableWebcamButton && this.enableWebcamButton.innerText !== 'Starting...') {
+//       this.setWebcamButtonLabel('open');
       this.enableWebcamButton.innerText = 'Đóng camera';
       this.enableWebcamButton.disabled = false;
     } else if (this.enableWebcamButton && this.enableWebcamButton.innerText !== 'Đang mở...') {
@@ -164,6 +169,68 @@ export abstract class BaseVisionTask extends BaseTask {
     }
   }
 
+
+  protected setWebcamButtonLabel(state: 'open' | 'close' | 'starting' | 'initializing') {
+    if (!this.enableWebcamButton) return;
+    const labels = {
+      open: '<span class="material-icons">videocam</span> Mở camera',
+      close: '<span class="material-icons">videocam_off</span> Đóng camera',
+      starting: '<span class="material-icons">hourglass_empty</span> Đang mở...',
+      initializing: '<span class="material-icons">hourglass_empty</span> Đang khởi tạo...',
+    };
+    this.enableWebcamButton.innerHTML = labels[state];
+  }
+
+  protected setupUploadRecordControls() {
+    this.setWebcamButtonLabel('open');
+
+    document.querySelectorAll<HTMLButtonElement>('#re-upload-btn').forEach((button) => {
+      button.innerHTML = '<span class="material-icons">upload</span> upload hình trong máy';
+    });
+
+    const webcamControls = document.getElementById('webcam-controls-container');
+    if (!webcamControls || document.getElementById('save-webcam-record-btn')) return;
+
+    webcamControls.classList.add('webcam-controls');
+    const saveButton = document.createElement('button');
+    saveButton.id = 'save-webcam-record-btn';
+    saveButton.className = 'action-button secondary';
+    saveButton.type = 'button';
+    saveButton.innerHTML = '<span class="material-icons">save_alt</span> Lưu Upload Records';
+    saveButton.addEventListener('click', () => this.captureWebcamToUploadRecords());
+    webcamControls.appendChild(saveButton);
+  }
+
+  protected captureWebcamToUploadRecords() {
+    if (!this.video || !this.video.srcObject || this.video.videoWidth === 0) {
+      this.updateStatus('Vui lòng mở camera trước khi lưu.');
+      return;
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = this.video.videoWidth || 1280;
+    canvas.height = this.video.videoHeight || 720;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.translate(canvas.width, 0);
+    ctx.scale(-1, 1);
+    ctx.drawImage(this.video, 0, 0, canvas.width, canvas.height);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+    if (this.canvasElement?.width && this.canvasElement?.height) {
+      ctx.drawImage(this.canvasElement, 0, 0, canvas.width, canvas.height);
+    }
+
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+    window.parent?.postMessage({
+      type: 'AI_CLINIC_MEDIAPIPE_WEBCAM_CAPTURE',
+      dataUrl,
+      filename: `mediapipe_webcam_${new Date().toISOString().replace(/[:.]/g, '-')}.jpg`,
+    }, window.location.origin);
+    this.updateStatus('Đã gửi ảnh Webcam sang Upload Records.');
+  }
+
   protected setupImageUpload() {
     const imageUpload = document.getElementById('image-upload') as HTMLInputElement;
     const imagePreviewContainer = document.getElementById('image-preview-container')!;
@@ -206,6 +273,7 @@ export abstract class BaseVisionTask extends BaseTask {
     if (this.enableWebcamButton) {
       this.enableWebcamButton.disabled = true;
       if (!this.video || !this.video.srcObject) {
+        this.setWebcamButtonLabel('initializing');
         this.enableWebcamButton.innerText = 'Đang khởi tạo...';
       }
     }
@@ -252,6 +320,7 @@ export abstract class BaseVisionTask extends BaseTask {
     if (this.video.srcObject) return;
 
     if (this.enableWebcamButton) {
+      this.setWebcamButtonLabel('starting');
       this.enableWebcamButton.innerText = 'Đang mở...';
       this.enableWebcamButton.disabled = true;
     }
@@ -280,6 +349,7 @@ export abstract class BaseVisionTask extends BaseTask {
       this.worker.postMessage({ type: 'SET_OPTIONS', runningMode: 'VIDEO' });
       this.updateStatus('Webcam running...');
       if (this.enableWebcamButton) {
+        this.setWebcamButtonLabel('close');
         this.enableWebcamButton.innerText = 'Đóng camera';
         this.enableWebcamButton.disabled = false;
       }
@@ -287,6 +357,7 @@ export abstract class BaseVisionTask extends BaseTask {
       console.error(err);
       this.updateStatus('Camera error!');
       if (this.enableWebcamButton) {
+        this.setWebcamButtonLabel('open');
         this.enableWebcamButton.innerText = 'Mở camera';
         this.enableWebcamButton.disabled = false;
       }
@@ -309,6 +380,7 @@ export abstract class BaseVisionTask extends BaseTask {
       this.video.srcObject = null;
       const placeholder = document.getElementById('webcam-placeholder');
       if (placeholder) placeholder.style.display = 'flex';
+      if (this.enableWebcamButton) this.setWebcamButtonLabel('open');
       if (this.enableWebcamButton) this.enableWebcamButton.innerText = 'Mở camera';
       if (this.animationFrameId) cancelAnimationFrame(this.animationFrameId);
 
