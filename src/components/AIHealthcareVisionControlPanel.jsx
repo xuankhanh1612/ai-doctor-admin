@@ -5,8 +5,6 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { detectFileType, fileToBase64, fileToDataUrl, saveRecord } from '../lib/medicalStorage.js'
 import { notifyUpload } from '../hooks/useMedicalData.js'
 
-const MEDIAPIPE_APP_URL = '/src/mediapipe-khanh/index.html#/vision/object_detector'
-
 function cameraTimestamp(lang, date = new Date()) {
   return date.toLocaleString(lang === 'vi' ? 'vi-VN' : 'en-US', {
     year: 'numeric', month: '2-digit', day: '2-digit',
@@ -387,16 +385,6 @@ export default function AIHealthcareVisionControlPanel({ onNext, onPrev, prevLab
       </section>
 
       <VisionCameraControls />
-
-      <section className="ai-healthcare-vision-frame-card" aria-label="AI Healthcare Vision Control MediaPipe app">
-        <iframe
-          title="AI Healthcare Vision Control"
-          src={MEDIAPIPE_APP_URL}
-          className="ai-healthcare-vision-frame"
-          allow="camera; microphone; fullscreen; clipboard-read; clipboard-write"
-          referrerPolicy="strict-origin-when-cross-origin"
-        />
-      </section>
 
       <NavButtons onNext={onNext} nextLabel={`${lang === 'vi' ? 'Góc xả stress' : 'Stress Relief Corner'} →`} onPrev={onPrev} prevLabel={prevLabel} />
     </div>
