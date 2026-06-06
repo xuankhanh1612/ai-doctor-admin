@@ -1253,7 +1253,8 @@ html, body, #root {
 
 .ai-vision-primary-actions button,
 .ai-vision-secondary-actions button,
-.ai-vision-close-camera {
+.ai-vision-close-camera,
+.ai-vision-medical-record-button {
   width: 100%;
   min-height: 48px;
   padding: 12px 14px;
@@ -1267,7 +1268,8 @@ html, body, #root {
 
 .ai-vision-primary-actions button:disabled,
 .ai-vision-secondary-actions button:disabled,
-.ai-vision-close-camera:disabled {
+.ai-vision-close-camera:disabled,
+.ai-vision-medical-record-button:disabled {
   cursor: wait;
   opacity: 0.66;
 }
@@ -1284,8 +1286,26 @@ html, body, #root {
 }
 
 .ai-vision-close-camera {
-  margin-top: 8px;
+  margin-top: 0;
   background: rgba(255,255,255,0.08);
+}
+
+.ai-vision-medical-record-button {
+  margin-top: 10px;
+  background: linear-gradient(135deg, #16a34a, #22c55e) !important;
+  color: #ffffff !important;
+  box-shadow: 0 14px 30px rgba(34,197,94,0.28);
+}
+
+.ai-vision-medical-record-button.inline {
+  width: auto;
+  min-height: 42px;
+  margin-top: 10px;
+  padding: 10px 16px;
+  border: 0;
+  border-radius: 999px;
+  font-weight: 900;
+  cursor: pointer;
 }
 
 .ai-vision-status {
@@ -1341,7 +1361,8 @@ html, body, #root {
 
   .ai-vision-primary-actions button,
   .ai-vision-secondary-actions button,
-  .ai-vision-close-camera {
+  .ai-vision-close-camera,
+  .ai-vision-medical-record-button {
     min-height: 44px;
     padding: 10px 9px;
     font-size: 12px;
