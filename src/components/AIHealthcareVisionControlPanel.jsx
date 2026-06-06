@@ -146,7 +146,7 @@ export default function AIHealthcareVisionControlPanel({ onNext, onPrev, prevLab
         </div>
       </section>
 
-      <VisionCameraControls onViewMedicalRecord={onViewMedicalRecord} />
+      {/* <VisionCameraControls onViewMedicalRecord={onViewMedicalRecord} /> */}
 
       <section className="ai-healthcare-vision-frame-card" aria-label="AI Healthcare Vision Control MediaPipe app">
         <iframe
