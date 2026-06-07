@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Bé Mèo Nước · Water Drink Tracker</title>
+    <title>Bé Mèo Nước · Học tập & Đố vui</title>
     <style>
       :root {
         --water: #0ea5e9;
@@ -11,7 +11,7 @@
         --mint: #ccfbf1;
         --ink: #0f172a;
         --muted: #64748b;
-        --card: rgba(255, 255, 255, 0.82);
+        --card: rgba(255, 255, 255, 0.84);
         --line: rgba(14, 165, 233, 0.2);
         font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       }
@@ -32,6 +32,43 @@
         margin: 0 auto;
         padding: 28px clamp(16px, 3vw, 32px) 36px;
       }
+
+      .tabs {
+        position: sticky;
+        top: 0;
+        z-index: 5;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+        margin-bottom: 18px;
+        padding: 10px;
+        border: 1px solid rgba(255, 255, 255, 0.76);
+        border-radius: 999px;
+        background: rgba(240, 249, 255, 0.86);
+        box-shadow: 0 18px 45px rgba(14, 165, 233, 0.13);
+        backdrop-filter: blur(18px);
+      }
+
+      .tab-btn {
+        border: none;
+        border-radius: 999px;
+        padding: 13px 16px;
+        background: transparent;
+        color: #64748b;
+        font-weight: 950;
+        cursor: pointer;
+        transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease, color 0.16s ease;
+      }
+      .tab-btn:hover { transform: translateY(-2px); }
+      .tab-btn.active {
+        color: #fff;
+        background: linear-gradient(135deg, var(--water), var(--aqua));
+        box-shadow: 0 16px 32px rgba(14, 165, 233, 0.28);
+      }
+
+      .tab-panel { display: none; }
+      .tab-panel.active { display: block; animation: fadeIn 0.24s ease; }
+      @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 
       .hero {
         display: grid;
@@ -79,12 +116,15 @@
         text-transform: uppercase;
       }
 
+      h1, h2, h3 { letter-spacing: -0.045em; }
       h1 {
         margin: 18px 0 10px;
         font-size: clamp(34px, 6vw, 68px);
         line-height: 0.92;
         letter-spacing: -0.07em;
       }
+      h2 { margin: 0; font-size: 28px; }
+      h3 { margin: 0 0 10px; font-size: 21px; }
 
       .gradient-text {
         background: linear-gradient(135deg, var(--water), var(--aqua));
@@ -101,40 +141,26 @@
         font-size: 16px;
       }
 
-      .cat {
-        width: min(210px, 42vw);
-        aspect-ratio: 1;
-        margin: 20px 0 0;
-        border-radius: 42% 42% 48% 48%;
-        background: linear-gradient(145deg, #fff, #dff7ff);
-        border: 6px solid rgba(14, 165, 233, 0.12);
-        display: grid;
-        place-items: center;
+      .cat-gallery {
         position: relative;
-        box-shadow: inset 0 -20px 38px rgba(14, 165, 233, 0.12), 0 20px 48px rgba(14, 165, 233, 0.18);
-        animation: float 4.5s ease-in-out infinite;
+        z-index: 1;
+        display: grid;
+        grid-template-columns: 1.25fr 0.75fr;
+        gap: 10px;
+        margin-top: 22px;
+        max-width: 560px;
       }
-
-      .cat::before,
-      .cat::after {
-        content: "";
-        position: absolute;
-        top: -14px;
-        width: 64px;
-        height: 64px;
-        background: #fff;
-        border: 6px solid rgba(14, 165, 233, 0.12);
-        transform: rotate(45deg);
-        z-index: -1;
+      .cat-photo {
+        width: 100%;
+        min-height: 142px;
+        object-fit: cover;
+        border-radius: 26px;
+        border: 5px solid rgba(255, 255, 255, 0.76);
+        box-shadow: 0 18px 36px rgba(14, 165, 233, 0.2);
+        background: #e0f2fe;
       }
-      .cat::before { left: 22px; }
-      .cat::after { right: 22px; }
-      .cat-face { font-size: 84px; filter: drop-shadow(0 8px 18px rgba(14, 165, 233, 0.18)); }
-
-      @keyframes float {
-        0%, 100% { transform: translateY(0); }
-        50% { transform: translateY(-10px); }
-      }
+      .cat-photo.tall { height: 100%; }
+      .cat-stack { display: grid; gap: 10px; }
 
       .tracker {
         padding: 24px;
@@ -143,16 +169,17 @@
         gap: 18px;
       }
 
-      .stats {
+      .stats, .actions, .learning-grid, .quiz-layout {
         display: grid;
-        grid-template-columns: repeat(3, 1fr);
         gap: 10px;
       }
+      .stats { grid-template-columns: repeat(3, 1fr); }
+      .actions { grid-template-columns: repeat(4, 1fr); }
 
-      .stat {
+      .stat, .mini-card, .answer, .tip-card {
         border-radius: 20px;
         border: 1px solid var(--line);
-        background: rgba(255, 255, 255, 0.64);
+        background: rgba(255, 255, 255, 0.66);
         padding: 14px;
       }
       .stat strong { display: block; font-size: 22px; color: #0369a1; }
@@ -198,16 +225,8 @@
         background: rgba(255, 255, 255, 0.46);
         animation: wave 2.8s ease-in-out infinite;
       }
-      @keyframes wave {
-        0%, 100% { transform: translateX(-8px); }
-        50% { transform: translateX(8px); }
-      }
+      @keyframes wave { 0%, 100% { transform: translateX(-8px); } 50% { transform: translateX(8px); } }
 
-      .actions {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 8px;
-      }
       button {
         border: none;
         border-radius: 999px;
@@ -222,23 +241,16 @@
         color: #fff;
         box-shadow: 0 16px 32px rgba(14, 165, 233, 0.28);
       }
-      .ghost {
-        background: rgba(14, 165, 233, 0.1);
-        color: #0369a1;
-      }
+      .ghost { background: rgba(14, 165, 233, 0.1); color: #0369a1; }
 
-      .chat-card {
-        margin-top: 18px;
-        padding: 18px;
-      }
-      .chat-header {
+      .chat-card, .learning-card, .quiz-card { margin-top: 18px; padding: 18px; }
+      .chat-header, .section-header, .quiz-top {
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 12px;
         margin-bottom: 14px;
       }
-      .chat-header h2 { margin: 0; font-size: 24px; letter-spacing: -0.03em; }
       .chat-log {
         height: 330px;
         overflow-y: auto;
@@ -258,23 +270,9 @@
         font-size: 14px;
         white-space: pre-wrap;
       }
-      .bot {
-        align-self: flex-start;
-        background: #fff;
-        border: 1px solid rgba(14, 165, 233, 0.18);
-        border-bottom-left-radius: 6px;
-      }
-      .user {
-        align-self: flex-end;
-        background: linear-gradient(135deg, var(--water), var(--aqua));
-        color: #fff;
-        border-bottom-right-radius: 6px;
-      }
-      .composer {
-        display: flex;
-        gap: 10px;
-        margin-top: 12px;
-      }
+      .bot { align-self: flex-start; background: #fff; border: 1px solid rgba(14, 165, 233, 0.18); border-bottom-left-radius: 6px; }
+      .user { align-self: flex-end; background: linear-gradient(135deg, var(--water), var(--aqua)); color: #fff; border-bottom-right-radius: 6px; }
+      .composer { display: flex; gap: 10px; margin-top: 12px; }
       input {
         flex: 1;
         border: 1px solid var(--line);
@@ -285,79 +283,260 @@
         background: rgba(255, 255, 255, 0.9);
         color: var(--ink);
       }
-      .quick {
-        display: flex;
-        gap: 8px;
-        flex-wrap: wrap;
-        margin-top: 12px;
-      }
+      .quick { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
       .quick button { padding: 9px 12px; font-size: 12px; }
 
+      .learning-grid { grid-template-columns: minmax(280px, 0.92fr) minmax(320px, 1.08fr); }
+      .flashcard {
+        min-height: 275px;
+        display: grid;
+        place-items: center;
+        text-align: center;
+        border-radius: 30px;
+        padding: 26px;
+        color: #075985;
+        background: linear-gradient(145deg, #f0f9ff, #ecfeff);
+        border: 1px solid rgba(14, 165, 233, 0.22);
+        box-shadow: inset 0 -24px 52px rgba(14, 165, 233, 0.08);
+      }
+      .flashcard .emoji { font-size: 48px; display: block; margin-bottom: 10px; }
+      .flashcard p { margin: 8px 0 0; color: #475569; line-height: 1.65; font-weight: 650; }
+      .flash-actions { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 12px; }
+      .nutrient-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+      .mini-card strong, .tip-card strong { color: #0369a1; display: block; margin-bottom: 4px; }
+      .mini-card p, .tip-card p { margin: 0; color: var(--muted); line-height: 1.55; font-size: 14px; }
+      .infographic-stack { display: grid; gap: 12px; }
+      .info-card {
+        border-radius: 22px;
+        background: rgba(255, 255, 255, 0.9);
+        border: 1px solid var(--line);
+        border-top: 5px solid #10b981;
+        padding: 16px;
+        box-shadow: 0 12px 34px rgba(14, 165, 233, 0.08);
+      }
+      .info-card h3 { font-size: 16px; margin-bottom: 6px; color: #0f172a; }
+      .info-card p { margin: 0 0 12px; color: var(--muted); line-height: 1.55; font-size: 14px; }
+      .infographic-chart-container { position: relative; width: 100%; min-height: 210px; }
+      .infographic-chart-container.tall { min-height: 260px; }
+      .info-note { margin-top: 10px; padding: 11px 12px; border-radius: 16px; font-size: 13px; line-height: 1.5; font-weight: 750; }
+      .note-blue { background: #eff6ff; color: #1d4ed8; }
+      .note-cyan { background: #ecfeff; color: #0e7490; }
+      .note-amber { background: #fffbeb; color: #92400e; }
+      .note-green { background: #ecfdf5; color: #047857; }
+      .note-red { background: #fff1f2; color: #be123c; }
+      .process-list { display: grid; gap: 9px; }
+      .process-step { padding: 12px; border-radius: 16px; background: #f8fafc; border-left: 5px solid #38bdf8; color: #334155; line-height: 1.55; font-size: 14px; }
+      .study-image-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 14px; }
+      .study-image-grid figure { margin: 0; border-radius: 22px; overflow: hidden; background: #fff; border: 1px solid var(--line); }
+      .study-image-grid img { width: 100%; height: 120px; object-fit: cover; display: block; }
+      .study-image-grid figcaption { padding: 9px 10px; color: #0369a1; font-size: 12px; font-weight: 850; }
+
+      .quiz-layout { grid-template-columns: minmax(320px, 0.8fr) minmax(320px, 1.2fr); }
+      .quiz-mascot { width: 100%; height: 430px; object-fit: cover; border-radius: 30px; border: 6px solid rgba(255,255,255,0.8); box-shadow: 0 18px 38px rgba(14,165,233,0.18); }
+      .progress { height: 12px; border-radius: 999px; background: rgba(14, 165, 233, 0.12); overflow: hidden; margin: 10px 0 18px; }
+      .progress span { display: block; height: 100%; width: 0%; background: linear-gradient(135deg, var(--water), var(--aqua)); transition: width 0.22s ease; }
+      .answers { display: grid; gap: 10px; }
+      .answer { width: 100%; text-align: left; color: var(--ink); background: #fff; border: 2px solid rgba(14, 165, 233, 0.16); border-radius: 18px; }
+      .answer.correct { border-color: #22c55e; background: #f0fdf4; color: #166534; }
+      .answer.wrong { border-color: #fb7185; background: #fff1f2; color: #be123c; }
+      .answer[disabled] { cursor: default; opacity: 0.95; }
+      .explain { display: none; margin-top: 14px; padding: 14px; border-radius: 20px; background: #f0f9ff; border: 1px solid var(--line); color: #075985; line-height: 1.6; font-weight: 700; }
+      .explain.show { display: block; }
+      .result { display: none; text-align: center; padding: 28px; border-radius: 28px; background: rgba(240, 253, 250, 0.88); border: 1px solid rgba(20,184,166,0.24); }
+      .result.show { display: block; }
+
       @media (max-width: 880px) {
-        .hero { grid-template-columns: 1fr; }
-        .stats, .actions { grid-template-columns: repeat(2, 1fr); }
+        .hero, .learning-grid, .quiz-layout { grid-template-columns: 1fr; }
+        .stats, .actions, .nutrient-list { grid-template-columns: repeat(2, 1fr); }
+        .study-image-grid { grid-template-columns: repeat(2, 1fr); }
         .msg { max-width: 92%; }
+        .tabs { border-radius: 26px; grid-template-columns: 1fr; }
+        .quiz-mascot { height: 280px; }
       }
     </style>
   </head>
   <body>
     <main class="shell">
-      <section class="hero">
-        <article class="card intro">
-          <span class="badge">💧 Hydration companion</span>
-          <h1>Bé Mèo Nước<br /><span class="gradient-text">nhắc bạn uống nước</span></h1>
-          <p class="lead">
-            Bé Mèo Nước là chatbot theo dõi uống nước thân thiện: ghi nhanh số ml, xem tiến độ trong ngày,
-            nhận lời nhắc nhẹ nhàng và hỏi đáp về thói quen uống nước. Nội dung chỉ mang tính hỗ trợ sức khoẻ hằng ngày,
-            không thay thế tư vấn y khoa.
-          </p>
-          <div class="cat" aria-label="Bé Mèo Nước"><div class="cat-face">🐱💧</div></div>
-        </article>
+      <nav class="tabs" aria-label="Bé Mèo Nước tabs">
+        <button class="tab-btn active" data-tab="tracker">Nhật ký & Chat</button>
+        <button class="tab-btn" data-tab="study">Học tập ✨</button>
+        <button class="tab-btn" data-tab="quiz">Đố vui 🧠</button>
+      </nav>
 
-        <aside class="card tracker" aria-label="Water drink tracker">
-          <div class="stats">
-            <div class="stat"><strong id="totalMl">0</strong><span>ml hôm nay</span></div>
-            <div class="stat"><strong id="goalMl">2000</strong><span>ml mục tiêu</span></div>
-            <div class="stat"><strong id="percent">0%</strong><span>hoàn thành</span></div>
+      <section id="tab-tracker" class="tab-panel active">
+        <section class="hero">
+          <article class="card intro">
+            <span class="badge">💧 Hydration companion</span>
+            <h1>Bé Mèo Nước<br /><span class="gradient-text">nhắc bạn uống nước</span></h1>
+            <p class="lead">
+              Bé Mèo Nước là chatbot theo dõi uống nước thân thiện: ghi nhanh số ml, xem tiến độ trong ngày,
+              nhận lời nhắc nhẹ nhàng và hỏi đáp về thói quen uống nước. Nội dung chỉ mang tính hỗ trợ sức khoẻ hằng ngày,
+              không thay thế tư vấn y khoa.
+            </p>
+            <div class="cat-gallery" aria-label="Thư viện Bé Mèo Nước">
+              <img class="cat-photo tall" src="__MEO_NUOC_AI__" alt="Bé Mèo Nước AI" />
+              <div class="cat-stack">
+                <img class="cat-photo" src="__MEO_BU_AI__" alt="Bé Mèo Bù Nước AI" />
+                <img class="cat-photo" src="__MEO_NHAY_MAT__" alt="Bé Mèo nháy mắt" />
+              </div>
+            </div>
+          </article>
+
+          <aside class="card tracker" aria-label="Water drink tracker">
+            <div class="stats">
+              <div class="stat"><strong id="totalMl">0</strong><span>ml hôm nay</span></div>
+              <div class="stat"><strong id="goalMl">2000</strong><span>ml mục tiêu</span></div>
+              <div class="stat"><strong id="percent">0%</strong><span>hoàn thành</span></div>
+            </div>
+            <div class="bottle"><div id="waterFill" class="water-fill"></div></div>
+            <div class="actions">
+              <button class="primary" data-add="150">+150 ml</button>
+              <button class="primary" data-add="250">+250 ml</button>
+              <button class="primary" data-add="350">+350 ml</button>
+              <button class="primary" data-add="500">+500 ml</button>
+            </div>
+            <div class="actions">
+              <button class="ghost" id="setGoal1800">Mục tiêu 1800</button>
+              <button class="ghost" id="setGoal2000">Mục tiêu 2000</button>
+              <button class="ghost" id="setGoal2500">Mục tiêu 2500</button>
+              <button class="ghost" id="resetDay">Reset ngày</button>
+            </div>
+          </aside>
+        </section>
+
+        <section class="card chat-card" aria-label="Bé Mèo Nước chatbot">
+          <div class="chat-header">
+            <div>
+              <span class="badge">🐾 Chat bot</span>
+              <h2>Bé Mèo Nước</h2>
+            </div>
+            <button class="ghost" id="clearChat">Xoá chat</button>
           </div>
-          <div class="bottle"><div id="waterFill" class="water-fill"></div></div>
-          <div class="actions">
-            <button class="primary" data-add="150">+150 ml</button>
-            <button class="primary" data-add="250">+250 ml</button>
-            <button class="primary" data-add="350">+350 ml</button>
-            <button class="primary" data-add="500">+500 ml</button>
+          <div class="chat-log" id="chatLog"></div>
+          <div class="quick">
+            <button class="ghost" data-prompt="Bé Mèo ơi hôm nay tôi nên uống bao nhiêu nước?">Nên uống bao nhiêu?</button>
+            <button class="ghost" data-prompt="Nhắc tôi uống nước nhẹ nhàng nhé">Nhắc uống nước</button>
+            <button class="ghost" data-prompt="Tôi vừa uống 250ml">Tôi vừa uống 250ml</button>
+            <button class="ghost" data-prompt="Tôi bị quên uống nước thì làm sao?">Hay quên uống nước</button>
           </div>
-          <div class="actions">
-            <button class="ghost" id="setGoal1800">Mục tiêu 1800</button>
-            <button class="ghost" id="setGoal2000">Mục tiêu 2000</button>
-            <button class="ghost" id="setGoal2500">Mục tiêu 2500</button>
-            <button class="ghost" id="resetDay">Reset ngày</button>
-          </div>
-        </aside>
+          <form class="composer" id="chatForm">
+            <input id="chatInput" autocomplete="off" placeholder="Nhắn với Bé Mèo Nước... ví dụ: Tôi vừa uống 300ml" />
+            <button class="primary" type="submit">Gửi ↑</button>
+          </form>
+        </section>
       </section>
 
-      <section class="card chat-card" aria-label="Bé Mèo Nước chatbot">
-        <div class="chat-header">
-          <div>
-            <span class="badge">🐾 Chat bot</span>
-            <h2>Bé Mèo Nước</h2>
+      <section id="tab-study" class="tab-panel">
+        <section class="card learning-card">
+          <div class="section-header">
+            <div>
+              <span class="badge">✨ Học tập từ bản cũ</span>
+              <h2>Vitamin, khoáng chất & thói quen uống nước</h2>
+            </div>
+            <button class="ghost" id="flipCard">Lật thẻ</button>
           </div>
-          <button class="ghost" id="clearChat">Xoá chat</button>
-        </div>
-        <div class="chat-log" id="chatLog"></div>
-        <div class="quick">
-          <button class="ghost" data-prompt="Bé Mèo ơi hôm nay tôi nên uống bao nhiêu nước?">Nên uống bao nhiêu?</button>
-          <button class="ghost" data-prompt="Nhắc tôi uống nước nhẹ nhàng nhé">Nhắc uống nước</button>
-          <button class="ghost" data-prompt="Tôi vừa uống 250ml">Tôi vừa uống 250ml</button>
-          <button class="ghost" data-prompt="Tôi bị quên uống nước thì làm sao?">Hay quên uống nước</button>
-        </div>
-        <form class="composer" id="chatForm">
-          <input id="chatInput" autocomplete="off" placeholder="Nhắn với Bé Mèo Nước... ví dụ: Tôi vừa uống 300ml" />
-          <button class="primary" type="submit">Gửi ↑</button>
-        </form>
+          <div class="learning-grid">
+            <article>
+              <div class="flashcard" id="flashcard" aria-live="polite"></div>
+              <div class="flash-actions">
+                <button class="ghost" id="prevCard">← Thẻ trước</button>
+                <strong id="cardCounter">1 / 25</strong>
+                <button class="primary" id="nextCard">Thẻ sau →</button>
+              </div>
+            </article>
+            <article class="infographic-stack">
+              <div class="section-header" style="margin-bottom: 2px;">
+                <div>
+                  <span class="badge">📊 Cẩm nang</span>
+                  <h2>Cẩm Nang Dinh Dưỡng Trực Quan</h2>
+                </div>
+              </div>
+
+              <div class="info-card" style="border-top-color: #3b82f6;">
+                <h3>💧 Phân Loại Vitamin Cốt Lõi</h3>
+                <p>Vitamins được chia làm nhóm tan trong dầu (A, D, E, K - tích trữ lâu) và nhóm tan trong nước (B, C - dễ đào thải).</p>
+                <div class="infographic-chart-container"><canvas id="vitaminDonutChart"></canvas></div>
+                <div class="info-note note-blue">💡 <strong>Mẹo:</strong> Ăn kèm chất béo lành mạnh (dầu ô liu, bơ) để hấp thụ tốt Vitamin A, D, E, K.</div>
+              </div>
+
+              <div class="info-card" style="border-top-color: #06b6d4;">
+                <h3>🌊 Khoáng Chất Trong Nước</h3>
+                <p>Hàm lượng điện giải và vi khoáng trung bình có trong 1 lít nước khoáng tự nhiên giúp tối ưu các hoạt động sống cơ thể.</p>
+                <div class="infographic-chart-container"><canvas id="waterMineralsChart"></canvas></div>
+                <div class="info-note note-cyan">💡 <strong>Sự thật:</strong> Nước khoáng chứa Canxi, Magie, Kali hỗ trợ bù điện giải rất nhanh khi vận động.</div>
+              </div>
+
+              <div class="info-card" style="border-top-color: #f59e0b;">
+                <h3>🥗 Bản Đồ Khoáng Chất Theo Thực Phẩm</h3>
+                <p>Sự phân bổ đa dạng của các khoáng chất thiết yếu trên 3 nhóm thực phẩm tiêu biểu hàng ngày.</p>
+                <div class="infographic-chart-container tall"><canvas id="foodRadarChart"></canvas></div>
+                <div class="info-note note-amber">🥩 <strong>Thịt & Hải sản:</strong> Giàu Sắt sinh học và Kẽm miễn dịch.</div>
+                <div class="info-note note-green">🥦 <strong>Rau, hạt:</strong> Cung cấp dồi dào Magie thần kinh và Kali.</div>
+                <div class="info-note note-blue">🥛 <strong>Sữa & phô mai:</strong> Nguồn bổ sung Canxi cấu trúc tốt nhất.</div>
+              </div>
+
+              <div class="info-card" style="border-top-color: #ef4444;">
+                <h3>🩸 Hành Trình Chuyển Hóa Sắt</h3>
+                <div class="process-list">
+                  <div class="process-step" style="border-left-color: #f87171;"><strong>1. Nạp Vào:</strong> Sắt Heme từ động vật dễ hấp thu tốt hơn sắt Non-Heme từ thực vật.</div>
+                  <div class="process-step" style="border-left-color: #fb923c;"><strong>2. Xúc Tác:</strong> Vitamin C (cam, chanh) biến đổi môi trường ruột, tăng hấp thu sắt gấp 3 lần.</div>
+                  <div class="process-step" style="border-left-color: #60a5fa;"><strong>3. Tổng Hợp:</strong> Sắt được chuyển đến tủy xương sản xuất Hemoglobin cấu tạo hồng cầu.</div>
+                  <div class="process-step" style="border-left-color: #34d399;"><strong>4. Vận Chuyển:</strong> Hồng cầu mang oxy đi nuôi toàn bộ các tế bào và cơ quan.</div>
+                </div>
+              </div>
+            </article>
+          </div>
+          <div class="study-image-grid" aria-label="Tất cả hình Bé Mèo Nước">
+            <figure><img src="__MEO_NUOC_AI__" alt="Mèo nước AI" /><figcaption>Mèo nước AI nhắc uống nước.</figcaption></figure>
+            <figure><img src="__MEO_BU_AI__" alt="Mèo bù nước AI" /><figcaption>Mèo bù nước cổ vũ đủ ml.</figcaption></figure>
+            <figure><img src="__MEO_NHAY_MAT__" alt="Mèo nháy mắt" /><figcaption>Mèo nháy mắt tạo động lực.</figcaption></figure>
+            <figure><img src="__ROBOT_TU_THE_1__" alt="Robot nhắc tư thế 1" /><figcaption>Robot nhắc học đúng tư thế.</figcaption></figure>
+            <figure><img src="__ROBOT_TU_THE_2__" alt="Robot nhắc tư thế 2" /><figcaption>Robot đồng hành học tập.</figcaption></figure>
+          </div>
+        </section>
+      </section>
+
+      <section id="tab-quiz" class="tab-panel">
+        <section class="card quiz-card">
+          <div class="section-header">
+            <div>
+              <span class="badge">🧠 Đố vui từ bản cũ</span>
+              <h2>Thử tài Bé Mèo Nước</h2>
+            </div>
+            <button class="ghost" id="restartQuiz">Chơi lại</button>
+          </div>
+          <div class="quiz-layout">
+            <aside>
+              <img class="quiz-mascot" src="__ROBOT_TU_THE_2__" alt="Robot học tập cùng Bé Mèo Nước" />
+              <div class="tip-card" style="margin-top: 12px;"><strong>💡 Cách chơi</strong><p>Chọn đáp án, đọc giải thích, rồi bấm câu tiếp theo. Bé Mèo sẽ cộng điểm và gửi lời cổ vũ ở cuối vòng.</p></div>
+            </aside>
+            <article>
+              <div id="quizPlay">
+                <div class="quiz-top">
+                  <strong id="quizProgressText">Câu 1 / 10</strong>
+                  <button class="ghost" id="showHint">💡 Gợi ý</button>
+                </div>
+                <div class="progress"><span id="quizProgressBar"></span></div>
+                <h3 id="questionText"></h3>
+                <div class="answers" id="answers"></div>
+                <div class="explain" id="explainBox"></div>
+                <div class="quick">
+                  <button class="primary" id="nextQuestion" style="display: none;">Câu tiếp theo →</button>
+                </div>
+              </div>
+              <div class="result" id="quizResult">
+                <div style="font-size: 54px;">🏆</div>
+                <h2>Hoàn thành!</h2>
+                <p id="scoreText" class="lead" style="margin: 10px auto;"></p>
+                <button class="primary" id="restartQuizResult">Chơi lại từ đầu</button>
+              </div>
+            </article>
+          </div>
+        </section>
       </section>
     </main>
 
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
       const STORAGE_KEY = 'be-meo-nuoc-water-state-v1';
       const CHAT_KEY = 'be-meo-nuoc-chat-v1';
@@ -365,6 +544,53 @@
       const defaultState = { date: today, total: 0, goal: 2000 };
       let state = loadState();
       let messages = loadMessages();
+      let activeCard = 0;
+      let cardFlipped = false;
+      let activeQuestion = 0;
+      let quizScore = 0;
+      let answered = false;
+      let chartsInitialized = false;
+
+      const flashcards = [
+        { icon: '🥕', title: 'Vitamin A', back: 'Duy trì thị lực, tăng cường miễn dịch và bảo vệ da. Có trong cà rốt, gan, bí đỏ.' },
+        { icon: '🍊', title: 'Vitamin C', back: 'Chống oxy hóa, tổng hợp collagen và làm lành vết thương. Có trong cam, ổi, ớt chuông.' },
+        { icon: '☀️', title: 'Vitamin D', back: 'Hấp thụ canxi duy trì xương chắc khóa. Có trong cá hồi, trứng và ánh nắng mặt trời.' },
+        { icon: '🥑', title: 'Vitamin E', back: 'Bảo vệ màng tế bào, tốt cho tim mạch. Có trong hạt hướng dương, bơ, dầu ô liu.' },
+        { icon: '🥬', title: 'Vitamin K', back: 'Đóng vai trò quan trọng trong đông máu và xương. Có trong rau cải bó xôi, súp lơ xanh.' },
+        { icon: '🌾', title: 'Vitamin B1 (Thiamine)', back: 'Chuyển hóa năng lượng và hỗ trợ thần kinh. Có trong ngũ cốc nguyên hạt, thịt lợn.' },
+        { icon: '🤰', title: 'Vitamin B9 (Axit Folic)', back: 'Cần thiết cho phân chia tế bào, hình thành DNA. Rất quan trọng cho bà bầu.' },
+        { icon: '🐟', title: 'Vitamin B12', back: 'Sản sinh hồng cầu và duy trì hệ thần kinh. Có trong thịt, cá, sữa.' },
+        { icon: '🥛', title: 'Canxi (Calcium)', back: 'Cấu tạo xương, răng và hỗ trợ co cơ. Có trong sữa, tôm cua, phô mai.' },
+        { icon: '🩸', title: 'Sắt (Iron)', back: 'Thành phần của hemoglobin vận chuyển oxy. Có trong thịt bò, gan, các loại đậu.' },
+        { icon: '🦪', title: 'Kẽm (Zinc)', back: 'Hỗ trợ hệ miễn dịch và phát triển vị giác. Có trong hàu, hải sản, thịt đỏ.' },
+        { icon: '🌰', title: 'Magie (Magnesium)', back: 'Ổn định thần kinh và cơ bắp. Có trong hạt điều, socola đen, rau xanh.' },
+        { icon: '🍌', title: 'Kali (Potassium)', back: 'Điều hòa huyết áp và hoạt động của tim. Có trong chuối, nước dừa, khoai lang.' },
+        { icon: '🧂', title: 'I-ốt (Iodine)', back: 'Cần thiết cho tuyến giáp và trí não. Có trong muối i-ốt, rong biển.' },
+        { icon: '🥚', title: 'Vitamin B2 (Riboflavin)', back: 'Hỗ trợ sản xuất năng lượng và chức năng tế bào. Có trong trứng, sữa.' },
+        { icon: '🍗', title: 'Vitamin B3 (Niacin)', back: 'Tốt cho tiêu hóa và làn da. Có trong ức gà, cá ngừ.' },
+        { icon: '🍄', title: 'Vitamin B5', back: 'Giúp cơ thể phân giải chất béo. Có trong nấm, ngũ cốc.' },
+        { icon: '🧠', title: 'Vitamin B6', back: 'Cần cho sự phát triển trí não. Có trong chuối, thịt gà.' },
+        { icon: '💅', title: 'Vitamin B7 (Biotin)', back: 'Duy trì sức khỏe tóc và móng. Có trong lòng đỏ trứng, quả óc chó.' },
+        { icon: '🦴', title: 'Phốt pho', back: 'Hỗ trợ xây dựng xương và lọc chất thải ở thận. Có trong thịt, cá.' },
+        { icon: '💦', title: 'Natri (Sodium)', back: 'Cân bằng chất lỏng cơ thể. Cần bổ sung vừa đủ từ muối ăn.' },
+        { icon: '🥜', title: 'Đồng (Copper)', back: 'Giúp cơ thể hấp thụ sắt. Có trong nội tạng động vật, hạt vỏ cứng.' },
+        { icon: '🍵', title: 'Mangan', back: 'Hỗ trợ hình thành xương và chuyển hóa. Có trong trà, ngũ cốc.' },
+        { icon: '🐟', title: 'Selen', back: 'Chống oxy hóa mạnh mẽ. Có trong quả hạch Brazil, cá ngừ.' },
+        { icon: '🌊', title: 'Bicarbonate', back: 'Duy trì độ pH ổn định cho máu. Thường có trong nước khoáng tự nhiên.' }
+      ];
+
+      const quizQuestions = [
+        { q: 'Loại vitamin nào được biết đến rộng rãi với vai trò duy trì thị lực, bảo vệ da và có nhiều trong cà rốt, bí đỏ?', a: ['Vitamin C', 'Vitamin A', 'Vitamin D', 'Vitamin E'], correct: 1, hint: 'Đây là loại vitamin tan trong dầu, bổ mắt.', explain: 'Vitamin A đóng vai trò cốt lõi cho tế bào võng mạc mắt và biểu mô da, chứa nhiều tiền chất beta-carotene trong rau củ màu cam.' },
+        { q: 'Khi bạn bị thương, loại vitamin nào giúp cơ thể tổng hợp collagen thúc đẩy quá trình làm lành vết thương, đồng thời chống oxy hóa mạnh mẽ?', a: ['Vitamin B12', 'Vitamin C', 'Vitamin K', 'Vitamin B3'], correct: 1, hint: 'Loại vitamin này có vị chua đặc trưng, có nhiều trong cam, ổi.', explain: 'Vitamin C là chất xúc tác bắt buộc để cơ thể tạo ra collagen, giúp nối liền các mô tổn thương và mạch máu.' },
+        { q: 'Cơ thể người có thể tự tổng hợp loại vitamin nào dưới tác động của ánh nắng mặt trời buổi sớm?', a: ['Vitamin D', 'Vitamin A', 'Vitamin E', 'Vitamin K'], correct: 0, hint: 'Thiếu hụt loại vitamin ánh nắng này sẽ làm giảm khả năng hấp thụ canxi.', explain: 'Tia UVB trong ánh nắng mặt trời khi tiếp xúc với da sẽ kích hoạt tiền chất để chuyển hóa thành Vitamin D hoạt tính.' },
+        { q: 'Đối với phụ nữ mang thai, loại vitamin nhóm B nào cực kỳ quan trọng trong việc phân chia tế bào và phòng ngừa dị tật ống thần kinh bẩm sinh?', a: ['Vitamin B1', 'Vitamin B5', 'Vitamin B9 (Axit Folic)', 'Vitamin B7'], correct: 2, hint: 'Loại vitamin này còn có tên gọi phổ biến khác là Axit Folic.', explain: 'Axit Folic (B9) đóng vai trò cốt lõi trong việc sao chép DNA và hình thành hệ thống thần kinh trung ương của bào thai.' },
+        { q: 'Khoáng chất nào chiếm khối lượng lớn nhất trong hệ xương và răng của con người, giúp duy trì cấu trúc cơ thể vững chắc?', a: ['Sắt (Iron)', 'Kẽm (Zinc)', 'Canxi (Calcium)', 'Magie (Magnesium)'], correct: 2, hint: 'Sữa, tôm cua và phô mai là những nguồn cung cấp dồi dào chất này.', explain: 'Hơn 99% lượng Canxi trong cơ thể được lưu trữ tại xương và răng, tạo nên độ cứng và mật độ xương lý tưởng.' },
+        { q: 'Nếu cơ thể thiếu hụt khoáng chất Sắt (Iron), con người dễ mắc phải hội chứng hay căn bệnh nào sau đây?', a: ['Bệnh bướu cổ', 'Bệnh thiếu máu, mệt mỏi', 'Loãng xương', 'Mất vị giác'], correct: 1, hint: 'Sắt là thành phần chính giúp tạo ra màu đỏ của tế bào hồng cầu.', explain: 'Sắt là thành phần cấu tạo nên Hemoglobin trong hồng cầu, thiếu sắt làm giảm khả năng vận chuyển oxy đi nuôi các cơ quan.' },
+        { q: 'Loại khoáng chất nào đóng vai trò cốt lõi trong việc tổng hợp hormone tuyến giáp, giúp ngăn ngừa bệnh bướu cổ?', a: ['Natri (Sodium)', 'Kali (Potassium)', 'I-ốt (Iodine)', 'Selen'], correct: 2, hint: 'Gia vị muối ăn hằng ngày của chúng ta thường được bổ sung thêm chất này.', explain: 'Tuyến giáp cần I-ốt để sản xuất hormone thyroxine điều hòa chuyển hóa; thiếu chất này khiến tuyến giáp phình to gây bướu cổ.' },
+        { q: 'Khi bạn tập thể dục cường độ cao bị đổ mồ hôi nhiều và bị chuột rút (co cơ đột ngột), cơ thể bạn đang báo động thiếu hụt điện giải nào?', a: ['Đồng (Copper)', 'Phốt pho', 'Mangan', 'Kali (Potassium)'], correct: 3, hint: 'Chuối và nước dừa là hai nguồn thực phẩm tự nhiên tuyệt vời giúp bù đắp nhanh chất này.', explain: 'Kali cùng với natri điều phối sự co bóp cơ bắp và dẫn truyền xung thần kinh; mất kali qua mồ hôi dễ gây co cơ.' },
+        { q: 'Biotin (hay còn gọi là Vitamin B7) được các tín đồ làm đẹp vô cùng ưa chuộng vì công dụng chính nào sau đây?', a: ['Duy trì sức khỏe của tóc và móng', 'Tăng cường thị lực ban đêm', 'Hỗ trợ đông máu', 'Giúp cơ thể hấp thụ Canxi'], correct: 0, hint: 'Nhiều loại dầu gội đầu ngăn rụng tóc thường quảng cáo chứa chất này.', explain: 'Biotin kích thích sản xuất keratin – thành phần cấu tạo chính nên sợi tóc và các lớp móng tay cứng cáp.' },
+        { q: 'Cơ thể người trưởng thành có khoảng 60% - 70% là nước. Nước đóng vai trò môi trường dung môi tốt nhất cho nhóm chất nào?', a: ['Chỉ các Vitamin tan trong dầu (A, D, E, K)', 'Các Vitamin tan trong nước (nhóm B, C) và khoáng chất điện giải', 'Tất cả các loại chất lỏng không phân cực', 'Nước không hòa tan bất kỳ loại vitamin nào'], correct: 1, hint: 'Hãy nhớ tới lý do tại sao ứng dụng khuyên bạn uống nước đều để hấp thụ dinh dưỡng.', explain: 'Nước vận chuyển các vitamin nhóm B, C và phân rã các khoáng chất thành ion điện giải để tế bào dễ dàng hấp thu.' }
+      ];
 
       const totalMl = document.getElementById('totalMl');
       const goalMl = document.getElementById('goalMl');
@@ -372,6 +598,17 @@
       const waterFill = document.getElementById('waterFill');
       const chatLog = document.getElementById('chatLog');
       const chatInput = document.getElementById('chatInput');
+      const flashcard = document.getElementById('flashcard');
+      const cardCounter = document.getElementById('cardCounter');
+      const questionText = document.getElementById('questionText');
+      const answers = document.getElementById('answers');
+      const explainBox = document.getElementById('explainBox');
+      const nextQuestion = document.getElementById('nextQuestion');
+      const quizProgressText = document.getElementById('quizProgressText');
+      const quizProgressBar = document.getElementById('quizProgressBar');
+      const quizPlay = document.getElementById('quizPlay');
+      const quizResult = document.getElementById('quizResult');
+      const scoreText = document.getElementById('scoreText');
 
       function loadState() {
         try {
@@ -383,9 +620,7 @@
         }
       }
 
-      function saveState() {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-      }
+      function saveState() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
 
       function loadMessages() {
         try {
@@ -395,8 +630,12 @@
         return [{ role: 'bot', text: 'Meo meo 💧 Bé Mèo Nước đây! Hôm nay mình cùng uống nước đều hơn nha. Bạn có thể nhắn: “Tôi vừa uống 250ml”.' }];
       }
 
-      function saveMessages() {
-        localStorage.setItem(CHAT_KEY, JSON.stringify(messages.slice(-80)));
+      function saveMessages() { localStorage.setItem(CHAT_KEY, JSON.stringify(messages.slice(-80))); }
+
+      function switchTab(tab) {
+        document.querySelectorAll('.tab-btn').forEach((button) => button.classList.toggle('active', button.dataset.tab === tab));
+        document.querySelectorAll('.tab-panel').forEach((panel) => panel.classList.toggle('active', panel.id === `tab-${tab}`));
+        if (tab === 'study') initInfographicCharts();
       }
 
       function renderState() {
@@ -431,23 +670,11 @@
       function botReply(text) {
         const lower = text.toLowerCase();
         const mlMatch = lower.match(/(\d{2,4})\s*(ml|mili|milliliter)?/);
-        if (mlMatch && /(uống|drink|vừa|them|thêm|ghi|add)/i.test(lower)) {
-          return addWater(Number(mlMatch[1]));
-        }
-        if (/(bao nhiêu|mục tiêu|goal|nên uống)/i.test(lower)) {
-          return `Mục tiêu mặc định của Bé Mèo là ${state.goal}ml/ngày. Bạn có thể chia thành 6–8 lần uống nhỏ, ưu tiên uống đều trong ngày thay vì dồn vào buổi tối nha 💧`;
-        }
-        if (/(quên|nhắc|remind|reminder)/i.test(lower)) {
-          return 'Mẹo của Bé Mèo: để ly nước ngay cạnh bàn, uống vài ngụm sau khi thức dậy, trước bữa ăn và sau mỗi 45–60 phút làm việc. Meo meo, uống một ngụm ngay bây giờ nhé! 🐱';
-        }
-        if (/(reset|xóa|xoá)/i.test(lower)) {
-          state.total = 0;
-          renderState();
-          return 'Bé Mèo đã reset lượng nước hôm nay về 0ml rồi nha.';
-        }
-        if (/(đạt|tiến độ|progress|hôm nay)/i.test(lower)) {
-          return `Tiến độ hôm nay: ${state.total}/${state.goal}ml, tương đương ${Math.min(100, Math.round((state.total / state.goal) * 100))}%. Cố lên, Bé Mèo cổ vũ bạn!`;
-        }
+        if (mlMatch && /(uống|drink|vừa|them|thêm|ghi|add)/i.test(lower)) return addWater(Number(mlMatch[1]));
+        if (/(bao nhiêu|mục tiêu|goal|nên uống)/i.test(lower)) return `Mục tiêu mặc định của Bé Mèo là ${state.goal}ml/ngày. Bạn có thể chia thành 6–8 lần uống nhỏ, ưu tiên uống đều trong ngày thay vì dồn vào buổi tối nha 💧`;
+        if (/(quên|nhắc|remind|reminder)/i.test(lower)) return 'Mẹo của Bé Mèo: để ly nước ngay cạnh bàn, uống vài ngụm sau khi thức dậy, trước bữa ăn và sau mỗi 45–60 phút làm việc. Meo meo, uống một ngụm ngay bây giờ nhé! 🐱';
+        if (/(reset|xóa|xoá)/i.test(lower)) { state.total = 0; renderState(); return 'Bé Mèo đã reset lượng nước hôm nay về 0ml rồi nha.'; }
+        if (/(đạt|tiến độ|progress|hôm nay)/i.test(lower)) return `Tiến độ hôm nay: ${state.total}/${state.goal}ml, tương đương ${Math.min(100, Math.round((state.total / state.goal) * 100))}%. Cố lên, Bé Mèo cổ vũ bạn!`;
         return 'Bé Mèo nghe nè 🐱💧 Bạn có thể nói “Tôi vừa uống 250ml”, hỏi “hôm nay nên uống bao nhiêu?”, hoặc nhờ Bé Mèo gợi ý cách nhớ uống nước.';
       }
 
@@ -459,37 +686,6 @@
         renderChat();
       }
 
-      document.querySelectorAll('[data-add]').forEach((button) => {
-        button.addEventListener('click', () => {
-          const amount = Number(button.dataset.add);
-          messages.push({ role: 'bot', text: addWater(amount) });
-          renderChat();
-        });
-      });
-
-      document.querySelectorAll('[data-prompt]').forEach((button) => {
-        button.addEventListener('click', () => sendMessage(button.dataset.prompt));
-      });
-
-      document.getElementById('setGoal1800').addEventListener('click', () => setGoal(1800));
-      document.getElementById('setGoal2000').addEventListener('click', () => setGoal(2000));
-      document.getElementById('setGoal2500').addEventListener('click', () => setGoal(2500));
-      document.getElementById('resetDay').addEventListener('click', () => {
-        state.total = 0;
-        renderState();
-        messages.push({ role: 'bot', text: 'Bé Mèo đã reset lượng nước hôm nay. Mình bắt đầu lại nhẹ nhàng nha 💧' });
-        renderChat();
-      });
-      document.getElementById('clearChat').addEventListener('click', () => {
-        messages = [{ role: 'bot', text: 'Chat đã được làm mới. Bé Mèo Nước vẫn ở đây để nhắc bạn uống nước nha 🐱💧' }];
-        renderChat();
-      });
-      document.getElementById('chatForm').addEventListener('submit', (event) => {
-        event.preventDefault();
-        sendMessage(chatInput.value);
-        chatInput.value = '';
-      });
-
       function setGoal(goal) {
         state.goal = goal;
         renderState();
@@ -497,8 +693,159 @@
         renderChat();
       }
 
+      function renderCard() {
+        const card = flashcards[activeCard];
+        flashcard.innerHTML = cardFlipped
+          ? `<div><span class="emoji">${card.icon}</span><h3>${card.title}</h3><p>${card.back}</p><small>Nhấn “Lật thẻ” để xem mặt trước</small></div>`
+          : `<div><span class="emoji">${card.icon}</span><h3>${card.title}</h3><p>Nhấn “Lật thẻ” để xem giải thích, hoặc chuyển sang thẻ tiếp theo.</p></div>`;
+        cardCounter.textContent = `${activeCard + 1} / ${flashcards.length}`;
+      }
+
+      function renderQuestion() {
+        answered = false;
+        const current = quizQuestions[activeQuestion];
+        quizProgressText.textContent = `Câu ${activeQuestion + 1} / ${quizQuestions.length}`;
+        quizProgressBar.style.width = `${((activeQuestion + 1) / quizQuestions.length) * 100}%`;
+        questionText.textContent = current.q;
+        answers.innerHTML = '';
+        explainBox.className = 'explain';
+        explainBox.textContent = '';
+        nextQuestion.style.display = 'none';
+        current.a.forEach((answer, index) => {
+          const button = document.createElement('button');
+          button.className = 'answer';
+          button.textContent = answer;
+          button.addEventListener('click', () => chooseAnswer(index));
+          answers.appendChild(button);
+        });
+      }
+
+      function chooseAnswer(index) {
+        if (answered) return;
+        answered = true;
+        const current = quizQuestions[activeQuestion];
+        [...answers.children].forEach((button, answerIndex) => {
+          button.disabled = true;
+          if (answerIndex === current.correct) button.classList.add('correct');
+          if (answerIndex === index && index !== current.correct) button.classList.add('wrong');
+        });
+        if (index === current.correct) quizScore += 1;
+        explainBox.textContent = current.explain;
+        explainBox.classList.add('show');
+        nextQuestion.style.display = 'inline-flex';
+      }
+
+      function showHint() {
+        const current = quizQuestions[activeQuestion];
+        explainBox.textContent = `Gợi ý: ${current.hint}`;
+        explainBox.classList.add('show');
+      }
+
+      function goNextQuestion() {
+        if (activeQuestion < quizQuestions.length - 1) {
+          activeQuestion += 1;
+          renderQuestion();
+          return;
+        }
+        quizPlay.style.display = 'none';
+        quizResult.classList.add('show');
+        const feedback = quizScore === quizQuestions.length
+          ? 'Tuyệt cú mèo! Bạn là chuyên gia nước và vi chất của Bé Mèo rồi 🏆'
+          : quizScore >= 4
+            ? 'Rất tốt nha! Ôn lại flashcard thêm chút nữa là hoàn hảo ✨'
+            : 'Không sao cả, học lại tab Học tập rồi thử lần nữa nhé 💧';
+        scoreText.textContent = `Bạn đạt ${quizScore}/${quizQuestions.length} điểm. ${feedback}`;
+      }
+
+      function restartQuiz() {
+        activeQuestion = 0;
+        quizScore = 0;
+        quizPlay.style.display = 'block';
+        quizResult.classList.remove('show');
+        renderQuestion();
+      }
+
+      function wrapLabel(label) {
+        if (label.length <= 14) return label;
+        const words = label.split(' ');
+        const lines = [];
+        let currentLine = '';
+        words.forEach((word) => {
+          if ((currentLine + word).length > 14) {
+            if (currentLine.length > 0) lines.push(currentLine.trim());
+            currentLine = word + ' ';
+          } else {
+            currentLine += word + ' ';
+          }
+        });
+        if (currentLine.trim().length > 0) lines.push(currentLine.trim());
+        return lines.length > 1 ? lines : lines[0];
+      }
+
+      function initInfographicCharts() {
+        if (chartsInitialized || !window.Chart) return;
+        chartsInitialized = true;
+        const commonTooltip = {
+          padding: 10,
+          titleFont: { size: 12, family: 'Inter, sans-serif', weight: 'bold' },
+          bodyFont: { size: 11, family: 'Inter, sans-serif' },
+          cornerRadius: 8,
+          backgroundColor: 'rgba(30, 41, 59, 0.95)'
+        };
+
+        new Chart(document.getElementById('vitaminDonutChart').getContext('2d'), {
+          type: 'doughnut',
+          data: {
+            labels: ['Tan trong dầu (A,D,E,K)', 'Tan trong nước (B,C)'].map(wrapLabel),
+            datasets: [{ data: [4, 9], backgroundColor: ['#f59e0b', '#3b82f6'], borderWidth: 2, borderColor: '#ffffff' }]
+          },
+          options: { responsive: true, maintainAspectRatio: false, cutout: '60%', plugins: { legend: { position: 'bottom', labels: { padding: 10, font: { size: 11, family: 'Inter' } } }, tooltip: commonTooltip } }
+        });
+
+        new Chart(document.getElementById('waterMineralsChart').getContext('2d'), {
+          type: 'bar',
+          data: {
+            labels: ['Canxi (Xương)', 'Magie (Cơ)', 'Natri (Điện giải)', 'Kali (Tim)', 'Bicarbonate'].map(wrapLabel),
+            datasets: [{ data: [85, 45, 30, 15, 95], backgroundColor: '#06b6d4', borderRadius: 4 }]
+          },
+          options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { display: false } }, x: { grid: { display: false }, ticks: { font: { size: 10, family: 'Inter' }, color: '#64748b' } } }, plugins: { legend: { display: false }, tooltip: commonTooltip } }
+        });
+
+        new Chart(document.getElementById('foodRadarChart').getContext('2d'), {
+          type: 'radar',
+          data: {
+            labels: ['Canxi', 'Sắt', 'Kẽm', 'Magie', 'Kali'].map(wrapLabel),
+            datasets: [
+              { label: 'Thịt & Hải Sản', data: [20, 95, 90, 40, 60], backgroundColor: 'rgba(239, 68, 68, 0.15)', borderColor: 'rgb(239, 68, 68)', borderWidth: 1.5, pointRadius: 2 },
+              { label: 'Sữa & Từ Sữa', data: [95, 10, 30, 20, 50], backgroundColor: 'rgba(59, 130, 246, 0.15)', borderColor: 'rgb(59, 130, 246)', borderWidth: 1.5, pointRadius: 2 },
+              { label: 'Rau Quả & Hạt', data: [40, 50, 45, 90, 85], backgroundColor: 'rgba(16, 185, 129, 0.15)', borderColor: 'rgb(16, 185, 129)', borderWidth: 1.5, pointRadius: 2 }
+            ]
+          },
+          options: { responsive: true, maintainAspectRatio: false, scales: { r: { angleLines: { color: '#f1f5f9' }, grid: { color: '#e2e8f0' }, pointLabels: { font: { size: 10, family: 'Inter', weight: '600' }, color: '#475569' }, ticks: { display: false } } }, plugins: { legend: { position: 'top', labels: { boxWidth: 10, font: { size: 10, family: 'Inter' }, padding: 8 } }, tooltip: commonTooltip } }
+        });
+      }
+
+      document.querySelectorAll('.tab-btn').forEach((button) => button.addEventListener('click', () => switchTab(button.dataset.tab)));
+      document.querySelectorAll('[data-add]').forEach((button) => button.addEventListener('click', () => { messages.push({ role: 'bot', text: addWater(Number(button.dataset.add)) }); renderChat(); }));
+      document.querySelectorAll('[data-prompt]').forEach((button) => button.addEventListener('click', () => sendMessage(button.dataset.prompt)));
+      document.getElementById('setGoal1800').addEventListener('click', () => setGoal(1800));
+      document.getElementById('setGoal2000').addEventListener('click', () => setGoal(2000));
+      document.getElementById('setGoal2500').addEventListener('click', () => setGoal(2500));
+      document.getElementById('resetDay').addEventListener('click', () => { state.total = 0; renderState(); messages.push({ role: 'bot', text: 'Bé Mèo đã reset lượng nước hôm nay. Mình bắt đầu lại nhẹ nhàng nha 💧' }); renderChat(); });
+      document.getElementById('clearChat').addEventListener('click', () => { messages = [{ role: 'bot', text: 'Chat đã được làm mới. Bé Mèo Nước vẫn ở đây để nhắc bạn uống nước nha 🐱💧' }]; renderChat(); });
+      document.getElementById('chatForm').addEventListener('submit', (event) => { event.preventDefault(); sendMessage(chatInput.value); chatInput.value = ''; });
+      document.getElementById('flipCard').addEventListener('click', () => { cardFlipped = !cardFlipped; renderCard(); });
+      document.getElementById('prevCard').addEventListener('click', () => { activeCard = (activeCard - 1 + flashcards.length) % flashcards.length; cardFlipped = false; renderCard(); });
+      document.getElementById('nextCard').addEventListener('click', () => { activeCard = (activeCard + 1) % flashcards.length; cardFlipped = false; renderCard(); });
+      document.getElementById('showHint').addEventListener('click', showHint);
+      document.getElementById('nextQuestion').addEventListener('click', goNextQuestion);
+      document.getElementById('restartQuiz').addEventListener('click', restartQuiz);
+      document.getElementById('restartQuizResult').addEventListener('click', restartQuiz);
+
       renderState();
       renderChat();
+      renderCard();
+      renderQuestion();
     </script>
   </body>
 </html>
