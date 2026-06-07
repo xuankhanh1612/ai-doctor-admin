@@ -769,8 +769,8 @@ function HealthJourneyTabs({ activeTab, setActiveTab, lang }) {
 }
 
 
-function EmotionalCompanionView({ onOpenStressRelief }) {
-  return <GPEmotionalCompanionView onOpenStressRelief={onOpenStressRelief} />
+function EmotionalCompanionView({ onOpenStressRelief, onOpenInBody }) {
+  return <GPEmotionalCompanionView onOpenStressRelief={onOpenStressRelief} onOpenInBody={onOpenInBody} />
 }
 
 function CompanionTile({ icon, color, title, subtitle }) {
@@ -1095,7 +1095,7 @@ function MedicationAssistantView() {
   return <EveningPhoneCameraView mode="medication" />
 }
 
-export default function DinnerJourneyPanel({ onNext, onPrev, prevLabel, onOpenStressRelief }) {
+export default function DinnerJourneyPanel({ onNext, onPrev, prevLabel, onOpenStressRelief, onOpenInBody }) {
   const { lang, t } = useApp()
   const [activeTab, setActiveTab] = useState('emotion')
 
@@ -1165,7 +1165,7 @@ export default function DinnerJourneyPanel({ onNext, onPrev, prevLabel, onOpenSt
         </div>
       </div>
       <HealthJourneyTabs activeTab={activeTab} setActiveTab={setActiveTab} lang={lang} />
-      {activeTab === 'emotion' && <EmotionalCompanionView onOpenStressRelief={onOpenStressRelief} />}
+      {activeTab === 'emotion' && <EmotionalCompanionView onOpenStressRelief={onOpenStressRelief} onOpenInBody={onOpenInBody} />}
       {activeTab === 'meal' && <MealScanView />}
       {activeTab === 'medication' && <MedicationAssistantView />}
       {activeTab === 'faceDetector' && <MediaPipeDetectorView type="face" />}

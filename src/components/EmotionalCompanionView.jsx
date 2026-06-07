@@ -58,7 +58,7 @@ function formatMessageTime(iso, lang) {
   }
 }
 
-export default function EmotionalCompanionView({ onOpenStressRelief }) {
+export default function EmotionalCompanionView({ onOpenStressRelief, onOpenInBody }) {
   const { lang } = useApp()
   const [chatPrompt, setChatPrompt] = useState('')
   const [chatMessages, setChatMessages] = useState(() => loadStoredChatMessages(lang))
@@ -113,7 +113,7 @@ export default function EmotionalCompanionView({ onOpenStressRelief }) {
 
         <section style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 16, marginBottom: 28 }}>
           <CompanionTile icon="📝" color={ATTENTION} title={lang === 'en' ? 'Stress journal' : 'Góc xả stress'} subtitle={lang === 'en' ? 'Open the immersive stress relief room' : 'Mở không gian xả stress chuyên sâu'} onClick={onOpenStressRelief} />
-          <CompanionTile icon="💚" color={HEALTHY} title={lang === 'en' ? 'Affirmations' : 'Khẳng định'} subtitle={lang === 'en' ? 'Positive energy for today' : 'Năng lượng tích cực mỗi ngày'} />
+          <CompanionTile icon="💚" color={HEALTHY} title={lang === 'en' ? 'Affirmations' : 'Khẳng định'} subtitle={lang === 'en' ? 'Open the InBody portal' : 'Mở cổng InBody'} onClick={onOpenInBody} />
           <div style={{ gridColumn: '1 / -1', padding: 24, borderRadius: 28, ...glass, position: 'relative', overflow: 'hidden' }}>
             <div style={{ position: 'relative', zIndex: 2 }}>
               <span style={{ display: 'inline-block', padding: '5px 12px', borderRadius: 999, background: 'rgba(0,88,188,0.10)', color: BLUE, fontSize: 12, fontWeight: 800, marginBottom: 14 }}>{lang === 'en' ? 'Suggested activity' : 'Hoạt động đề xuất'}</span>
