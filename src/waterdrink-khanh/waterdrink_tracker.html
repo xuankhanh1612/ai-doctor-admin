@@ -1,0 +1,572 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bé Mèo Nước · Water Drink Tracker</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #07111f;
+      --card: rgba(255,255,255,0.08);
+      --card-strong: rgba(255,255,255,0.13);
+      --line: rgba(180,235,255,0.22);
+      --text: #eefaff;
+      --muted: rgba(238,250,255,0.72);
+      --cyan: #5de7ff;
+      --blue: #3b82f6;
+      --pink: #ff8cc6;
+      --green: #67e8a5;
+      --yellow: #ffe08a;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 12% 14%, rgba(93,231,255,0.25), transparent 30%),
+        radial-gradient(circle at 86% 10%, rgba(255,140,198,0.16), transparent 32%),
+        radial-gradient(circle at 55% 92%, rgba(103,232,165,0.15), transparent 30%),
+        linear-gradient(135deg, #07111f 0%, #08243a 52%, #081827 100%);
+      overflow-x: hidden;
+    }
+
+    .app {
+      width: min(1180px, calc(100% - 28px));
+      margin: 0 auto;
+      padding: 28px 0;
+      display: grid;
+      grid-template-columns: minmax(280px, 0.92fr) minmax(320px, 1.28fr);
+      gap: 18px;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      background: linear-gradient(145deg, rgba(255,255,255,0.12), rgba(255,255,255,0.05));
+      box-shadow: 0 24px 90px rgba(0,0,0,0.32);
+      border-radius: 28px;
+      backdrop-filter: blur(18px);
+    }
+
+    .hero {
+      padding: 24px;
+      min-height: 720px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: auto -80px -110px auto;
+      width: 260px;
+      height: 260px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(93,231,255,0.20), transparent 68%);
+      pointer-events: none;
+    }
+
+    .bot-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      width: fit-content;
+      padding: 9px 13px;
+      border-radius: 999px;
+      border: 1px solid rgba(93,231,255,0.28);
+      color: var(--cyan);
+      background: rgba(93,231,255,0.10);
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(34px, 5.4vw, 64px);
+      line-height: .92;
+      letter-spacing: -.06em;
+    }
+
+    .gradient-text {
+      color: transparent;
+      background: linear-gradient(90deg, var(--cyan), #d7f9ff, var(--pink));
+      -webkit-background-clip: text;
+      background-clip: text;
+    }
+
+    .subcopy {
+      color: var(--muted);
+      line-height: 1.7;
+      font-size: 14px;
+      margin: 0;
+    }
+
+    .cat-card {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 14px;
+      align-items: center;
+      padding: 14px;
+      background: rgba(0,0,0,0.20);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 22px;
+    }
+
+    .cat-avatar {
+      width: 76px;
+      height: 76px;
+      border-radius: 24px;
+      display: grid;
+      place-items: center;
+      font-size: 42px;
+      background: linear-gradient(145deg, rgba(93,231,255,0.30), rgba(255,140,198,0.22));
+      box-shadow: inset 0 0 28px rgba(255,255,255,0.12), 0 16px 36px rgba(0,0,0,0.25);
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-top: auto;
+      z-index: 1;
+    }
+
+    .metric {
+      border-radius: 18px;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.10);
+      padding: 14px;
+    }
+
+    .metric strong {
+      display: block;
+      font-size: 22px;
+      color: #fff;
+      margin-bottom: 4px;
+    }
+
+    .metric span { color: var(--muted); font-size: 12px; }
+
+    .water-visual {
+      position: relative;
+      height: 230px;
+      border-radius: 28px;
+      overflow: hidden;
+      background: rgba(0,0,0,0.20);
+      border: 1px solid rgba(93,231,255,0.24);
+      z-index: 1;
+    }
+
+    .water-fill {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 0%;
+      background: linear-gradient(180deg, rgba(93,231,255,0.80), rgba(59,130,246,0.86));
+      transition: height .55s cubic-bezier(.2,.8,.2,1);
+    }
+
+    .water-fill::before,
+    .water-fill::after {
+      content: "";
+      position: absolute;
+      left: -10%;
+      top: -18px;
+      width: 120%;
+      height: 40px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.28);
+      animation: wave 4s ease-in-out infinite;
+    }
+
+    .water-fill::after {
+      opacity: .45;
+      animation-delay: -1.6s;
+      transform: translateX(8%);
+    }
+
+    @keyframes wave {
+      0%, 100% { transform: translateX(-4%) scaleY(.72); }
+      50% { transform: translateX(4%) scaleY(1); }
+    }
+
+    .water-label {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      padding: 18px;
+      text-shadow: 0 2px 20px rgba(0,0,0,0.55);
+    }
+
+    .water-label strong { font-size: 36px; display: block; }
+    .water-label span { color: rgba(255,255,255,0.82); font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+
+    .chat {
+      min-height: 720px;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      overflow: hidden;
+    }
+
+    .chat-header {
+      padding: 18px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.10);
+      background: rgba(0,0,0,0.16);
+    }
+
+    .chat-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .mini-avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 15px;
+      display: grid;
+      place-items: center;
+      background: rgba(93,231,255,0.14);
+      border: 1px solid rgba(93,231,255,0.24);
+      font-size: 25px;
+    }
+
+    .chat-title h2 { margin: 0; font-size: 18px; }
+    .chat-title p { margin: 2px 0 0; color: var(--muted); font-size: 12px; }
+
+    .pill {
+      border: 1px solid rgba(103,232,165,0.28);
+      color: var(--green);
+      background: rgba(103,232,165,0.10);
+      border-radius: 999px;
+      padding: 7px 10px;
+      font-size: 11px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .messages {
+      padding: 18px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      scroll-behavior: smooth;
+    }
+
+    .message {
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+      max-width: 88%;
+    }
+
+    .message.user {
+      margin-left: auto;
+      flex-direction: row-reverse;
+    }
+
+    .bubble {
+      padding: 12px 14px;
+      border-radius: 18px;
+      line-height: 1.55;
+      font-size: 14px;
+      border: 1px solid rgba(255,255,255,0.10);
+      white-space: pre-wrap;
+    }
+
+    .bot .bubble {
+      background: rgba(255,255,255,0.09);
+      border-bottom-left-radius: 6px;
+    }
+
+    .user .bubble {
+      background: linear-gradient(135deg, rgba(93,231,255,0.34), rgba(59,130,246,0.42));
+      border-bottom-right-radius: 6px;
+    }
+
+    .bubble-avatar {
+      width: 30px;
+      height: 30px;
+      border-radius: 11px;
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+      background: rgba(255,255,255,0.10);
+      border: 1px solid rgba(255,255,255,0.10);
+    }
+
+    .quick-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      padding: 0 18px 12px;
+    }
+
+    .quick-actions button,
+    .composer button,
+    .amounts button {
+      border: 0;
+      color: #062033;
+      background: linear-gradient(135deg, var(--cyan), #c4f7ff);
+      border-radius: 999px;
+      padding: 10px 13px;
+      font-weight: 900;
+      cursor: pointer;
+      box-shadow: 0 12px 30px rgba(93,231,255,0.16);
+    }
+
+    .quick-actions button.secondary,
+    .amounts button {
+      color: var(--text);
+      background: rgba(255,255,255,0.10);
+      border: 1px solid rgba(255,255,255,0.12);
+      box-shadow: none;
+    }
+
+    .composer-wrap {
+      border-top: 1px solid rgba(255,255,255,0.10);
+      background: rgba(0,0,0,0.16);
+      padding: 14px;
+    }
+
+    .amounts {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+
+    .composer {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+    }
+
+    input {
+      width: 100%;
+      border: 1px solid rgba(255,255,255,0.14);
+      outline: none;
+      border-radius: 18px;
+      padding: 13px 14px;
+      color: var(--text);
+      background: rgba(255,255,255,0.08);
+      font: inherit;
+    }
+
+    input::placeholder { color: rgba(238,250,255,0.48); }
+
+    @media (max-width: 860px) {
+      .app { grid-template-columns: 1fr; }
+      .hero, .chat { min-height: auto; }
+      .chat { height: 760px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="panel hero" aria-label="Bé Mèo Nước hydration dashboard">
+      <div class="bot-badge">💧 AI Hydration Buddy</div>
+      <div>
+        <h1>Bé Mèo <span class="gradient-text">Nước</span></h1>
+        <p class="subcopy">Bé Mèo Nước nhắc bạn uống nước nhẹ nhàng, ghi nhận từng ly và gợi ý nhịp uống phù hợp trong ngày. Nội dung chỉ mang tính hỗ trợ lối sống, không thay thế tư vấn y khoa.</p>
+      </div>
+
+      <div class="cat-card">
+        <div class="cat-avatar">🐱</div>
+        <div>
+          <strong>Meo meo, mình cùng uống nước nha!</strong>
+          <p class="subcopy" style="margin-top: 4px">Mục tiêu mặc định: 2.000 ml/ngày. Bạn có thể hỏi Bé Mèo cách chia lịch uống nước theo buổi.</p>
+        </div>
+      </div>
+
+      <div class="water-visual">
+        <div id="waterFill" class="water-fill"></div>
+        <div class="water-label">
+          <div>
+            <strong id="percentText">0%</strong>
+            <span id="progressText">0 / 2000 ml hôm nay</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="metrics">
+        <div class="metric"><strong id="cupsText">0</strong><span>lần ghi nhận</span></div>
+        <div class="metric"><strong id="leftText">2000ml</strong><span>còn lại tới mục tiêu</span></div>
+        <div class="metric"><strong id="streakText">1</strong><span>ngày theo dõi</span></div>
+        <div class="metric"><strong id="moodText">Khởi động</strong><span>trạng thái Bé Mèo</span></div>
+      </div>
+    </section>
+
+    <section class="panel chat" aria-label="Chat bot Bé Mèo Nước">
+      <header class="chat-header">
+        <div class="chat-title">
+          <div class="mini-avatar">🐱</div>
+          <div>
+            <h2>Bé Mèo Nước</h2>
+            <p>Chat bot nhắc uống nước · phản hồi tức thì</p>
+          </div>
+        </div>
+        <div class="pill">ONLINE</div>
+      </header>
+
+      <div id="messages" class="messages"></div>
+
+      <div>
+        <div class="quick-actions">
+          <button data-ask="schedule">Chia lịch uống nước</button>
+          <button class="secondary" data-ask="benefit">Vì sao cần uống nước?</button>
+          <button class="secondary" data-ask="reset">Reset hôm nay</button>
+        </div>
+        <div class="composer-wrap">
+          <div class="amounts">
+            <button type="button" data-add="100">+100ml</button>
+            <button type="button" data-add="250">+250ml</button>
+            <button type="button" data-add="500">+500ml</button>
+            <button type="button" data-add="750">+750ml</button>
+          </div>
+          <form id="chatForm" class="composer">
+            <input id="chatInput" autocomplete="off" placeholder="Nhắn Bé Mèo Nước... VD: mình uống 300ml" />
+            <button type="submit">Gửi</button>
+          </form>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const STORAGE_KEY = 'be-meo-nuoc-tracker-v1';
+    const goal = 2000;
+    const messagesEl = document.getElementById('messages');
+    const inputEl = document.getElementById('chatInput');
+    const formEl = document.getElementById('chatForm');
+
+    let state = loadState();
+
+    function todayKey() {
+      return new Date().toISOString().slice(0, 10);
+    }
+
+    function loadState() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+        if (saved.date === todayKey()) return { amount: saved.amount || 0, cups: saved.cups || 0, date: saved.date };
+      } catch (error) {}
+      return { amount: 0, cups: 0, date: todayKey() };
+    }
+
+    function saveState() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+
+    function updateDashboard() {
+      const percent = Math.min(100, Math.round((state.amount / goal) * 100));
+      document.getElementById('waterFill').style.height = percent + '%';
+      document.getElementById('percentText').textContent = percent + '%';
+      document.getElementById('progressText').textContent = `${state.amount} / ${goal} ml hôm nay`;
+      document.getElementById('cupsText').textContent = state.cups;
+      document.getElementById('leftText').textContent = Math.max(0, goal - state.amount) + 'ml';
+      document.getElementById('moodText').textContent = percent >= 100 ? 'Hoàn thành' : percent >= 70 ? 'Sắp đạt' : percent >= 35 ? 'Ổn định' : 'Khởi động';
+    }
+
+    function addMessage(role, text) {
+      const row = document.createElement('div');
+      row.className = `message ${role}`;
+      const avatar = document.createElement('div');
+      avatar.className = 'bubble-avatar';
+      avatar.textContent = role === 'bot' ? '🐱' : '🙂';
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble';
+      bubble.textContent = text;
+      row.appendChild(avatar);
+      row.appendChild(bubble);
+      messagesEl.appendChild(row);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    function addWater(amount) {
+      state.amount = Math.max(0, state.amount + amount);
+      state.cups += amount > 0 ? 1 : 0;
+      saveState();
+      updateDashboard();
+      const percent = Math.min(100, Math.round((state.amount / goal) * 100));
+      if (percent >= 100) {
+        addMessage('bot', `Meo tuyệt vời! Bạn đã đạt ${state.amount}ml rồi. Từ giờ hãy uống từng ngụm nhỏ khi khát thôi nha 💧`);
+      } else {
+        addMessage('bot', `Bé Mèo đã ghi nhận +${amount}ml. Hôm nay bạn đạt ${percent}% mục tiêu, còn ${Math.max(0, goal - state.amount)}ml nữa nha.`);
+      }
+    }
+
+    function botReply(text) {
+      const lower = text.toLowerCase();
+      const amountMatch = lower.match(/(\d{2,4})\s*(ml|mili|milliliter)?/);
+      if (amountMatch && /uống|nuoc|nước|ml|them|thêm|ghi/.test(lower)) {
+        addWater(Number(amountMatch[1]));
+        return;
+      }
+      if (/reset|xóa|xoá|làm lại/.test(lower)) {
+        resetDay();
+        return;
+      }
+      if (/lịch|chia|schedule|nhắc/.test(lower)) {
+        addMessage('bot', 'Lịch gợi ý của Bé Mèo: 300ml sau khi thức dậy, 400ml buổi sáng, 500ml quanh bữa trưa, 500ml buổi chiều, 300ml trước 20:00. Nếu bác sĩ dặn hạn chế nước thì ưu tiên theo bác sĩ nha.');
+        return;
+      }
+      if (/lợi|vì sao|benefit|tác dụng/.test(lower)) {
+        addMessage('bot', 'Uống đủ nước hỗ trợ tỉnh táo, tiêu hoá, vận chuyển dưỡng chất và điều hoà thân nhiệt. Mẹo nhỏ: uống từng ngụm đều trong ngày sẽ dễ hơn uống dồn một lần đó meo 💧');
+        return;
+      }
+      addMessage('bot', 'Bé Mèo nghe nè! Bạn có thể nhắn “mình uống 300ml”, bấm các nút +ml, hoặc hỏi “chia lịch uống nước” để mình gợi ý nha 🐱💧');
+    }
+
+    function resetDay() {
+      state = { amount: 0, cups: 0, date: todayKey() };
+      saveState();
+      updateDashboard();
+      addMessage('bot', 'Bé Mèo đã reset số nước hôm nay. Mình bắt đầu lại nhẹ nhàng nha!');
+    }
+
+    document.querySelectorAll('[data-add]').forEach(button => {
+      button.addEventListener('click', () => addWater(Number(button.dataset.add)));
+    });
+
+    document.querySelectorAll('[data-ask]').forEach(button => {
+      button.addEventListener('click', () => {
+        const type = button.dataset.ask;
+        if (type === 'reset') resetDay();
+        if (type === 'schedule') botReply('chia lịch uống nước');
+        if (type === 'benefit') botReply('vì sao cần uống nước');
+      });
+    });
+
+    formEl.addEventListener('submit', event => {
+      event.preventDefault();
+      const text = inputEl.value.trim();
+      if (!text) return;
+      addMessage('user', text);
+      inputEl.value = '';
+      setTimeout(() => botReply(text), 220);
+    });
+
+    updateDashboard();
+    addMessage('bot', 'Meo meo, mình là Bé Mèo Nước! Hôm nay bạn uống được bao nhiêu ml rồi? Bấm nhanh +250ml hoặc nhắn cho mình nha.');
+  </script>
+</body>
+</html>

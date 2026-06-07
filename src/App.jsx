@@ -26,12 +26,13 @@ import AIHealthcareVisionPanel from './components/AIHealthcareVisionPanel.jsx'
 import AIHealthcareVisionControlPanel from './components/AIHealthcareVisionControlPanel.jsx'
 import AIInbodyPortalPanel from './components/AIInbodyPortalPanel.jsx'
 import StressReliefPanel from './components/StressReliefPanel.jsx'
+import WaterDrinkChatbotPanel from './components/WaterDrinkChatbotPanel.jsx'
 import UserProfilePanel from './components/UserProfilePanel.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 import { addNotification } from './lib/notifications.js'
 
 // Swarm panel replaces simulation; keep consensus as classic fallback
-const PANELS = ['healthJourney', 'lunchJourney', 'dinnerJourney', 'upload', 'imaging', 'checkin', 'family', 'record', 'familyRelationship', 'matrix3dBody', 'omnidirectional3dBody', 'twin', 'telemedicine', 'statAnalysis', 'swarm', 'consensus', 'protein3d', 'aiHealthcareVision', 'aiHealthcareVisionControl', 'stressRelief', 'aiInbodyPortal']
+const PANELS = ['healthJourney', 'lunchJourney', 'dinnerJourney', 'upload', 'imaging', 'checkin', 'family', 'record', 'familyRelationship', 'matrix3dBody', 'omnidirectional3dBody', 'twin', 'telemedicine', 'statAnalysis', 'swarm', 'consensus', 'protein3d', 'aiHealthcareVision', 'aiHealthcareVisionControl', 'waterDrinkChatbot', 'stressRelief', 'aiInbodyPortal']
 
 export default function App() {
   const { user, loading } = useAuth()
@@ -75,6 +76,7 @@ export default function App() {
     protein3d: t('protein3d'),
     aiHealthcareVision: t('aiHealthcareVision'),
     aiHealthcareVisionControl: t('aiHealthcareVisionControl'),
+    waterDrinkChatbot: t('waterDrinkChatbot'),
     stressRelief: t('stressRelief'),
     aiInbodyPortal: t('aiInbodyPortal'),
     profile: t('profile'),
@@ -222,6 +224,7 @@ export default function App() {
             {active === 'protein3d' && <Protein3DPanel     onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'aiHealthcareVision' && <AIHealthcareVisionPanel onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'aiHealthcareVisionControl' && <AIHealthcareVisionControlPanel onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} onViewMedicalRecord={() => setActive('upload')} />}
+            {active === 'waterDrinkChatbot' && <WaterDrinkChatbotPanel onNext={goNext} nextLabel={`${t('stressRelief')} →`} onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'stressRelief' && <StressReliefPanel onNext={goNext} nextLabel={`${t('aiInbodyPortal')} →`} onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'aiInbodyPortal' && <AIInbodyPortalPanel onPrev={goPrev} prevLabel={prevLabel} onViewMedicalRecord={() => setActive('upload')} />}
             {active === 'profile'   && <UserProfilePanel />}

@@ -76,10 +76,10 @@ class InteractiveSegmenterTask extends BaseVisionTask {
       let x = clickX / rect.width;
       const y = clickY / rect.height;
 
-      // The WebCam feed visually mirrors logic, so X must be flipped.
-      // Image mode natively aligns, so no X flip is necessary.
-      if (source === 'webcam') {
-        x = 1 - x; // Adjust for mirrored CSS transform: rotateY(180deg)
+      // Only the front/user camera is visually mirrored by CSS. Keep rear-camera
+      // clicks aligned with the raw frozen canvas so the mask appears where the user clicked.
+      if (source === 'webcam' && this.shouldMirrorWebcamCapture()) {
+        x = 1 - x;
       }
 
       this.updateStatus('Segmenting...');
@@ -116,6 +116,22 @@ class InteractiveSegmenterTask extends BaseVisionTask {
 
   // Interactive Segmenter responds to CLI clicks, not continuous video frames
   protected override async predictWebcam() {}
+
+  protected override getWebcamCaptureBaseSource(): CanvasImageSource | null {
+    if (this.isFrozen && this.webcamCapture?.width && this.webcamCapture?.height) {
+      return this.webcamCapture;
+    }
+
+    return super.getWebcamCaptureBaseSource();
+  }
+
+  protected override getWebcamCaptureOverlayCanvases(): HTMLCanvasElement[] {
+    if (this.isFrozen && this.webcamOverlay?.width && this.webcamOverlay?.height) {
+      return [this.webcamOverlay];
+    }
+
+    return [];
+  }
 
   protected override async detectImage(_: HTMLImageElement) {
     if (this.runningMode !== 'IMAGE') this.runningMode = 'IMAGE';
