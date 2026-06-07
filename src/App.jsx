@@ -25,13 +25,14 @@ import Protein3DPanel from './components/Protein3DPanel.jsx'
 import AIHealthcareVisionPanel from './components/AIHealthcareVisionPanel.jsx'
 import AIHealthcareVisionControlPanel from './components/AIHealthcareVisionControlPanel.jsx'
 import AIInbodyPortalPanel from './components/AIInbodyPortalPanel.jsx'
+import WaterDrinkChatbotPanel from './components/WaterDrinkChatbotPanel.jsx'
 import StressReliefPanel from './components/StressReliefPanel.jsx'
 import UserProfilePanel from './components/UserProfilePanel.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 import { addNotification } from './lib/notifications.js'
 
 // Swarm panel replaces simulation; keep consensus as classic fallback
-const PANELS = ['healthJourney', 'lunchJourney', 'dinnerJourney', 'upload', 'imaging', 'checkin', 'family', 'record', 'familyRelationship', 'matrix3dBody', 'omnidirectional3dBody', 'twin', 'telemedicine', 'statAnalysis', 'swarm', 'consensus', 'protein3d', 'aiHealthcareVision', 'aiHealthcareVisionControl', 'stressRelief', 'aiInbodyPortal']
+const PANELS = ['healthJourney', 'lunchJourney', 'dinnerJourney', 'upload', 'imaging', 'checkin', 'family', 'record', 'familyRelationship', 'matrix3dBody', 'omnidirectional3dBody', 'twin', 'telemedicine', 'statAnalysis', 'swarm', 'consensus', 'protein3d', 'aiHealthcareVision', 'aiHealthcareVisionControl', 'stressRelief', 'aiInbodyPortal', 'waterDrinkChatbot']
 
 export default function App() {
   const { user, loading } = useAuth()
@@ -77,6 +78,7 @@ export default function App() {
     aiHealthcareVisionControl: t('aiHealthcareVisionControl'),
     stressRelief: t('stressRelief'),
     aiInbodyPortal: t('aiInbodyPortal'),
+    waterDrinkChatbot: t('waterDrinkChatbot'),
     profile: t('profile'),
   }
 
@@ -224,6 +226,7 @@ export default function App() {
             {active === 'aiHealthcareVisionControl' && <AIHealthcareVisionControlPanel onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} onViewMedicalRecord={() => setActive('upload')} />}
             {active === 'stressRelief' && <StressReliefPanel onNext={goNext} nextLabel={`${t('aiInbodyPortal')} →`} onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'aiInbodyPortal' && <AIInbodyPortalPanel onPrev={goPrev} prevLabel={prevLabel} onViewMedicalRecord={() => setActive('upload')} />}
+            {active === 'waterDrinkChatbot' && <WaterDrinkChatbotPanel onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'profile'   && <UserProfilePanel />}
             {active === 'admin'     && user?.isAdmin && <AdminPanel />}
             {active === 'admin'     && !user?.isAdmin && (
@@ -257,6 +260,7 @@ function GlobalBottomNav({ active, onOpenMainMenu, onNavigate }) {
     { id: 'aiHealthcareVision', label: 'AI Scan', icon: '🧬', action: () => onNavigate('aiHealthcareVision'), active: active === 'aiHealthcareVision' || active === 'aiHealthcareVisionControl' },
     { id: 'upload', label: 'Record', icon: '📄', action: () => onNavigate('upload'), active: active === 'upload' },
     { id: 'profile', label: 'Profile', icon: '👤', action: () => onNavigate('profile'), active: active === 'profile' },
+    { id: 'waterDrinkChatbot', label: 'Water', icon: '🐱', action: () => onNavigate('waterDrinkChatbot'), active: active === 'waterDrinkChatbot' },
   ]
 
   return (
@@ -265,7 +269,7 @@ function GlobalBottomNav({ active, onOpenMainMenu, onNavigate }) {
       style={{
         position: 'fixed', left: '50%', bottom: 14, transform: 'translateX(-50%)', zIndex: 180,
         width: 'min(calc(100vw - 24px), 560px)', minHeight: 72,
-        display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: 4,
+        display: 'grid', gridTemplateColumns: 'repeat(6, minmax(0, 1fr))', gap: 4,
         padding: '8px 10px calc(8px + env(safe-area-inset-bottom))', borderRadius: 24,
         border: `1px solid ${isDark ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.10)'}`,
         background: isDark ? 'rgba(8,12,26,0.90)' : 'rgba(255,255,255,0.92)',
