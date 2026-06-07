@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bé Nước - Uống Nước & Học Tập AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Quicksand', sans-serif; }
+        .glass-container {
+            width: 120px;
+            height: 160px;
+            border: 6px solid #bfdbfe;
+            border-top: none;
+            border-radius: 0 0 40px 40px;
+            position: relative;
+            overflow: hidden;
+            background-color: #eff6ff;
+            box-shadow: inset 0 -10px 20px rgba(0,0,0,0.05);
+        }
+        .water-fill {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: linear-gradient(180deg, #60a5fa 0%, #3b82f6 100%);
+            transition: height 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 0 0 34px 34px;
+        }
+        .water-fill::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 10px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            transform: translateY(-50%);
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 100%;
+            height: 160px;
+        }
+        .infographic-chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 100%;
+            height: 260px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-8px); }
+            100% { transform: translateY(0px); }
+        }
+        .floating-emoji { animation: float 3s ease-in-out infinite; }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Flashcard Flip Styles */
+        .flashcard-inner {
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+            cursor: pointer;
+            position: relative;
+        }
+        .flashcard-inner.flipped {
+            transform: rotateY(180deg);
+        }
+        .flashcard-front, .flashcard-back {
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        .flashcard-back {
+            transform: rotateY(180deg);
+        }
+        .info-card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
+            padding: 16px;
+            margin-bottom: 16px;
+            border-top: 4px solid #10b981;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-tr from-blue-50 to-indigo-100 text-gray-800 min-h-screen flex items-center justify-center p-2 sm:p-4">
+    <div class="max-w-md w-full bg-white rounded-[40px] shadow-2xl overflow-hidden relative border border-white">
+
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-blue-100 to-indigo-100 p-5 text-center rounded-b-[40px] shadow-sm relative z-10 border-b-4 border-white">
+            <h1 class="text-xl font-bold text-blue-600 mb-0.5 flex items-center justify-center gap-2">
+                Bé Nước 💧 <span class="bg-indigo-500 text-white text-[9px] uppercase font-extrabold px-2 py-0.5 rounded-full tracking-wider">Health & Learning</span>
+            </h1>
+            <p class="text-[10px] text-blue-500 font-semibold italic">Uống đủ nước, học điều hay mỗi ngày!</p>
+        </div>
+
+        <!-- Tabs Navigation -->
+        <div class="flex justify-around bg-gray-50/80 p-1.5 mx-3 mt-4 rounded-2xl border border-gray-100 space-x-0.5">
+            <button id="tab-tracker-btn" onclick="switchTab('tracker')" class="flex-1 py-1.5 text-[11px] font-bold rounded-xl transition-all text-blue-600 bg-white shadow-sm">
+                Nhật Ký
+            </button>
+            <button id="tab-study-btn" onclick="switchTab('study')" class="flex-1 py-1.5 text-[11px] font-bold rounded-xl transition-all text-gray-400 hover:text-gray-600">
+                Học Tập ✨
+            </button>
+            <button id="tab-quiz-btn" onclick="switchTab('quiz')" class="flex-1 py-1.5 text-[11px] font-bold rounded-xl transition-all text-gray-400 hover:text-gray-600">
+                Đố Vui 🧠
+            </button>
+            <button id="tab-ai-btn" onclick="switchTab('ai')" class="flex-1 py-1.5 text-[11px] font-bold rounded-xl transition-all text-gray-400 hover:text-gray-600">
+                Bé Nước AI
+            </button>
+        </div>
+
+        <!-- TAB 1: TRACKER -->
+        <div id="tab-tracker" class="p-6 transition-opacity duration-300">
+            <p class="text-center text-[11px] text-gray-400 mb-4 font-medium uppercase tracking-widest">Mục tiêu: <span id="goal-display" class="font-bold text-blue-500">2000</span> ml</p>
+            <div class="flex justify-center mb-5">
+                <div class="glass-container cursor-pointer transition transform hover:scale-105" onclick="addWater(250)">
+                    <div id="water-level" class="water-fill" style="height: 0%;"></div>
+                </div>
+            </div>
+            <div class="text-center mb-5">
+                <h2 class="text-3xl font-bold text-gray-800 flex items-baseline justify-center gap-1">
+                    <span id="current-display">0</span>
+                    <span class="text-sm text-gray-400 font-medium">/ 2000ml</span>
+                </h2>
+                <div id="motivational-message" class="mt-3 text-xs font-bold text-gray-500 bg-gray-100 inline-block px-5 py-2 rounded-full floating-emoji shadow-sm">
+                    Bắt đầu ngày mới thôi! ☀️
+                </div>
+            </div>
+            <div class="grid grid-cols-3 gap-3 mb-6">
+                <button onclick="addWater(250)" class="bg-blue-50 text-blue-600 font-bold py-3 rounded-2xl border-2 border-white shadow-sm flex flex-col items-center">
+                    <span class="text-xl">🥤</span> <span class="text-[10px]">250ml</span>
+                </button>
+                <button onclick="addWater(500)" class="bg-blue-50 text-blue-600 font-bold py-3 rounded-2xl border-2 border-white shadow-sm flex flex-col items-center">
+                    <span class="text-xl">🧋</span> <span class="text-[10px]">500ml</span>
+                </button>
+                <button onclick="openCustomAdd()" class="bg-gray-50 text-gray-600 font-bold py-3 rounded-2xl border-2 border-white shadow-sm flex flex-col items-center">
+                    <span class="text-xl">✍️</span> <span class="text-[10px]">Nhập</span>
+                </button>
+            </div>
+            <div class="bg-blue-50/40 rounded-[30px] p-4 border-2 border-white">
+                <div class="chart-container"><canvas id="historyChart"></canvas></div>
+            </div>
+        </div>
+
+        <!-- TAB 2: STUDY (INTEGRATED WITH NUTRIENT INFOGRAPHIC) -->
+        <div id="tab-study" class="p-4 hidden transition-opacity duration-300 max-h-[550px] overflow-y-auto scrollbar-hide">
+            <h3 class="text-center text-xs font-bold text-indigo-500 uppercase tracking-widest mb-4">Vitamin & Khoáng Chất 🧬</h3>
+            
+            <!-- Flashcard Section -->
+            <div class="relative w-full h-52 perspective-1000 mb-4">
+                <div id="flashcard-container" class="flashcard-inner w-full h-full" onclick="flipCard()">
+                    <div class="flashcard-front bg-gradient-to-br from-indigo-50 to-blue-50 border-4 border-white rounded-[32px] shadow-lg flex flex-col items-center justify-center p-4 text-center">
+                        <span class="text-2xl mb-2">💡</span>
+                        <h4 id="card-front-text" class="text-lg font-bold text-indigo-700">Tên Vitamin</h4>
+                        <p class="text-[9px] text-gray-400 mt-2 uppercase font-bold tracking-tighter">Nhấn để xem đáp án</p>
+                    </div>
+                    <div class="flashcard-back bg-white border-4 border-indigo-50 rounded-[32px] shadow-lg flex flex-col items-center justify-center p-4 text-center">
+                        <p id="card-back-text" class="text-xs font-semibold text-gray-700 leading-relaxed">Công dụng và nguồn gốc thực phẩm.</p>
+                        <p class="text-[9px] text-indigo-400 mt-2 font-bold">Xong rồi! Tiếp tục thôi!</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Flashcard Controllers -->
+            <div class="flex items-center justify-between mb-6 px-4">
+                <button onclick="prevCard()" class="w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-200 transition text-sm">❮</button>
+                <div class="text-center">
+                    <span id="card-counter" class="text-xs font-bold text-gray-400 italic">1 / 25</span>
+                </div>
+                <button onclick="nextCard()" class="w-9 h-9 bg-indigo-500 rounded-full flex items-center justify-center text-white shadow-md hover:bg-indigo-600 transition text-sm">❯</button>
+            </div>
+
+            <!-- Integrated Infographic Data Layout -->
+            <div class="border-t border-gray-100 pt-4 space-y-4">
+                <h4 class="text-center text-xs font-bold text-emerald-600 uppercase tracking-wider mb-2">Cẩm Nang Dinh Dưỡng Trực Quan 📊</h4>
+                
+                <!-- Section 1: Vitamin Donut -->
+                <div class="info-card" style="border-top-color: #3b82f6;">
+                    <h5 class="text-xs font-bold text-gray-800 mb-1 flex items-center gap-1">💧 Phân Loại Vitamin Cốt Lõi</h5>
+                    <p class="text-[11px] text-gray-500 mb-3">Vitamins được chia làm nhóm tan trong dầu (A, D, E, K - tích trữ lâu) và nhóm tan trong nước (B, C - dễ đào thải).</p>
+                    <div class="infographic-chart-container h-[200px]">
+                        <canvas id="vitaminDonutChart"></canvas>
+                    </div>
+                    <div class="mt-2 bg-blue-50 p-2.5 rounded-xl text-[10px] text-blue-800">
+                        💡 <strong>Mẹo:</strong> Ăn kèm chất béo lành mạnh (dầu ô liu, bơ) để hấp thụ tốt Vitamin A, D, E, K.
+                    </div>
+                </div>
+
+                <!-- Section 2: Minerals in Water -->
+                <div class="info-card" style="border-top-color: #06b6d4;">
+                    <h5 class="text-xs font-bold text-gray-800 mb-1 flex items-center gap-1">🌊 Khoáng Chất Trong Nước</h5>
+                    <p class="text-[11px] text-gray-500 mb-3">Hàm lượng điện giải và vi khoáng trung bình có trong 1 lít nước khoáng tự nhiên giúp tối ưu các hoạt động sống cơ thể.</p>
+                    <div class="infographic-chart-container h-[180px]">
+                        <canvas id="waterMineralsChart"></canvas>
+                    </div>
+                    <div class="mt-2 bg-cyan-50 p-2.5 rounded-xl text-[10px] text-cyan-800">
+                        💡 <strong>Sự thật:</strong> Nước khoáng chứa Canxi, Magie, Kali hỗ trợ bù điện giải rất nhanh khi vận động.
+                    </div>
+                </div>
+
+                <!-- Section 3: Mineral Radar Chart -->
+                <div class="info-card" style="border-top-color: #f59e0b;">
+                    <h5 class="text-xs font-bold text-gray-800 mb-1 flex items-center gap-1">🥗 Bản Đồ Khoáng Chất Theo Thực Phẩm</h5>
+                    <p class="text-[11px] text-gray-500 mb-3">Sự phân bổ đa dạng của các khoáng chất thiết yếu trên 3 nhóm thực phẩm tiêu biểu hàng ngày.</p>
+                    <div class="infographic-chart-container h-[240px]">
+                        <canvas id="foodRadarChart"></canvas>
+                    </div>
+                    <div class="mt-2 space-y-1 text-[10px]">
+                        <div class="bg-amber-50 p-2 rounded-lg text-amber-900">🥩 <strong>Thịt & Hải sản:</strong> Giàu Sắt sinh học và Kẽm miễn dịch.</div>
+                        <div class="bg-green-50 p-2 rounded-lg text-green-900">🥦 <strong>Rau, hạt:</strong> Cung cấp dồi dào Magie thần kinh và Kali.</div>
+                        <div class="bg-blue-50 p-2 rounded-lg text-blue-900">🥛 <strong>Sữa & phô mai:</strong> Nguồn bổ sung Canxi cấu trúc tốt nhất.</div>
+                    </div>
+                </div>
+
+                <!-- Section 4: Iron Absorption Process -->
+                <div class="info-card" style="border-top-color: #ef4444;">
+                    <h5 class="text-xs font-bold text-gray-800 mb-2 flex items-center gap-1">🩸 Hành Trình Chuyển Hóa Sắt</h5>
+                    <div class="space-y-2 text-[11px]">
+                        <div class="bg-red-50 p-2.5 rounded-xl border-l-4 border-red-400">
+                            <strong class="text-red-800">1. Nạp Vào:</strong> Sắt Heme từ động vật dễ hấp thu tốt hơn sắt Non-Heme từ thực vật.
+                        </div>
+                        <div class="bg-orange-50 p-2.5 rounded-xl border-l-4 border-orange-400">
+                            <strong class="text-orange-800">2. Xúc Tác:</strong> Vitamin C (cam, chanh) biến đổi môi trường ruột, tăng hấp thu sắt gấp 3 lần.
+                        </div>
+                        <div class="bg-blue-50 p-2.5 rounded-xl border-l-4 border-blue-400">
+                            <strong class="text-blue-800">3. Tổng Hợp:</strong> Sắt được chuyển đến tủy xương sản xuất Hemoglobin cấu tạo hồng cầu.
+                        </div>
+                        <div class="bg-emerald-50 p-2.5 rounded-xl border-l-4 border-emerald-400">
+                            <strong class="text-emerald-800">4. Vận Chuyển:</strong> Hồng cầu mang oxy đi nuôi toàn bộ các tế bào và cơ quan.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: QUIZ -->
+        <div id="tab-quiz" class="p-6 hidden transition-opacity duration-300">
+            <div id="quiz-play-screen">
+                <div class="flex justify-between items-center mb-3">
+                    <span id="quiz-progress-text" class="text-xs font-bold text-indigo-500 uppercase tracking-wider">Câu hỏi: 1/10</span>
+                    <button onclick="showQuizHint()" class="text-xs font-bold text-amber-500 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200 hover:bg-amber-100 transition flex items-center gap-1">
+                        💡 Gợi ý
+                    </button>
+                </div>
+                
+                <div class="w-full bg-gray-100 h-2 rounded-full mb-5 overflow-hidden">
+                    <div id="quiz-progress-bar" class="bg-indigo-500 h-full transition-all duration-300" style="width: 10%;"></div>
+                </div>
+
+                <div id="quiz-hint-box" class="hidden mb-4 p-3 bg-amber-50/80 border border-amber-200 rounded-xl text-[11px] text-amber-800 italic"></div>
+
+                <div class="bg-gradient-to-br from-indigo-50/50 to-purple-50/50 border-2 border-white rounded-2xl p-4 mb-4 shadow-sm">
+                    <p id="quiz-question-text" class="text-xs font-bold text-gray-800 leading-relaxed">Nội dung câu hỏi sẽ hiển thị ở đây?</p>
+                </div>
+
+                <div id="quiz-options-container" class="space-y-2 mb-4"></div>
+
+                <div id="quiz-explanation-box" class="hidden p-3 rounded-xl text-[11px] mb-4 leading-relaxed"></div>
+
+                <button id="quiz-next-btn" onclick="nextQuizQuestion()" class="hidden w-full bg-indigo-500 text-white text-xs font-bold py-3 rounded-xl shadow-md hover:bg-indigo-600 transition text-center">
+                    Câu tiếp theo ❯
+                </button>
+            </div>
+
+            <div id="quiz-result-screen" class="hidden text-center py-6">
+                <span class="text-5xl block mb-4">🏆</span>
+                <h4 class="text-xl font-bold text-indigo-700 mb-1">Hoàn Thành Thử Thách!</h4>
+                <p class="text-xs text-gray-400 mb-4">Bạn đã xuất sắc ôn tập kiến thức cơ thể</p>
+                
+                <div class="bg-indigo-50 rounded-2xl p-4 max-w-xs mx-auto border border-indigo-100 mb-6">
+                    <p class="text-xs font-semibold text-gray-500 uppercase">Điểm số của bạn</p>
+                    <p class="text-4xl font-extrabold text-indigo-600 my-1"><span id="quiz-score-display">0</span>/10</p>
+                    <p id="quiz-feedback-text" class="text-[11px] text-indigo-500 font-medium mt-1">Tuyệt vời ông mặt trời!</p>
+                </div>
+
+                <button onclick="restartQuiz()" class="bg-indigo-500 text-white text-xs font-bold px-6 py-3 rounded-xl shadow-md hover:bg-indigo-600 transition">
+                    Làm lại bài Quiz 🔄
+                </button>
+            </div>
+        </div>
+
+        <!-- TAB 4: AI CHAT -->
+        <div id="tab-ai" class="p-6 hidden transition-opacity duration-300">
+            <div class="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-3xl p-4 border-2 border-white shadow-sm mb-4">
+                <h3 class="font-bold text-indigo-700 text-xs mb-3 flex items-center gap-1">🧮 Tính lượng nước khuyên dùng</h3>
+                <div class="grid grid-cols-2 gap-2 mb-3">
+                    <input type="number" id="ai-weight" class="bg-white border border-gray-200 rounded-xl px-2 py-2 text-xs font-bold text-gray-700" placeholder="Cân nặng (kg)">
+                    <select id="ai-activity" class="bg-white border border-gray-200 rounded-xl px-2 py-2 text-xs font-bold text-gray-700">
+                        <option value="ít">Ít vận động</option>
+                        <option value="vừa">Vừa (30-60p)</option>
+                        <option value="nhiều">Vận động mạnh</option>
+                    </select>
+                </div>
+                <button onclick="calculateAIGoal()" id="ai-calc-btn" class="w-full bg-indigo-500 text-white text-[10px] font-bold py-2.5 rounded-xl shadow-md">✨ Tính mục tiêu ngay</button>
+            </div>
+            <div id="chat-messages" class="h-48 overflow-y-auto mb-2 text-[11px] space-y-2 pr-1 scrollbar-hide bg-gray-50/50 p-3 rounded-2xl border border-gray-100">
+                <div class="bg-blue-100 text-blue-800 p-2.5 rounded-2xl rounded-tl-none max-w-[90%]">Chào bạn! Cần Bé Nước AI tư vấn gì không nè?</div>
+            </div>
+            <div class="flex gap-2">
+                <input type="text" id="chat-input" onkeypress="handleChatKey(event)" class="flex-1 bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none" placeholder="Hỏi Bé Nước...">
+                <button onclick="sendChatMessage()" class="bg-indigo-500 text-white font-bold px-4 rounded-xl text-xs shadow-md">Gửi</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Nhập Nước Tùy Chỉnh -->
+    <div id="custom-modal" class="fixed inset-0 bg-blue-900/40 backdrop-blur-sm flex items-center justify-center hidden z-50 p-4">
+        <div class="bg-white p-6 rounded-[30px] w-full max-w-xs shadow-2xl">
+            <h3 class="text-sm font-bold text-blue-600 mb-4 text-center">Bạn vừa uống bao nhiêu ml? 💧</h3>
+            <input type="number" id="custom-amount" class="w-full bg-blue-50 border-2 border-blue-100 rounded-2xl px-4 py-4 text-center text-2xl font-bold text-blue-600 mb-6" placeholder="0">
+            <div class="flex gap-3">
+                <button onclick="closeCustomAdd()" class="flex-1 bg-gray-100 text-gray-500 font-bold py-3 rounded-2xl text-xs">Hủy</button>
+                <button onclick="addCustomWater()" class="flex-1 bg-blue-500 text-white font-bold py-3 rounded-2xl text-xs shadow-md">Thêm</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // State Management
+        let appState = {
+            goal: 2000,
+            current: 0,
+            history: [
+                { day: 'T2', amount: 1200 }, { day: 'T3', amount: 1800 },
+                { day: 'T4', amount: 1500 }, { day: 'T5', amount: 2100 },
+                { day: 'T6', amount: 1900 }, { day: 'T7', amount: 800 },
+                { day: 'CN', amount: 0 }
+            ],
+            flashcards: [
+                { f: "Vitamin A", b: "Duy trì thị lực, tăng cường miễn dịch và bảo vệ da. Có trong cà rốt, gan, bí đỏ." },
+                { f: "Vitamin C", b: "Chống oxy hóa, tổng hợp collagen và làm lành vết thương. Có trong cam, ổi, ớt chuông." },
+                { f: "Vitamin D", b: "Hấp thụ canxi duy trì xương chắc khóa. Có trong cá hồi, trứng và ánh nắng mặt trời." },
+                { f: "Vitamin E", b: "Bảo vệ màng tế bào, tốt cho tim mạch. Có trong hạt hướng dương, bơ, dầu ô liu." },
+                { f: "Vitamin K", b: "Đóng vai trò quan trọng trong đông máu và xương. Có trong rau cải bó xôi, súp lơ xanh." },
+                { f: "Vitamin B1 (Thiamine)", b: "Chuyển hóa năng lượng và hỗ trợ thần kinh. Có trong ngũ cốc nguyên hạt, thịt lợn." },
+                { f: "Vitamin B9 (Axit Folic)", b: "Cần thiết cho phân chia tế bào, hình thành DNA. Rất quan trọng cho bà bầu." },
+                { f: "Vitamin B12", b: "Sản sinh hồng cầu và duy trì hệ thần kinh. Có trong thịt, cá, sữa." },
+                { f: "Canxi (Calcium)", b: "Cấu tạo xương, răng và hỗ trợ co cơ. Có trong sữa, tôm cua, phô mai." },
+                { f: "Sắt (Iron)", b: "Thành phần của hemoglobin vận chuyển oxy. Có trong thịt bò, gan, các loại đậu." },
+                { f: "Kẽm (Zinc)", b: "Hỗ trợ hệ miễn dịch và phát triển vị giác. Có trong hàu, hải sản, thịt đỏ." },
+                { f: "Magie (Magnesium)", b: "Ổn định thần kinh và cơ bắp. Có trong hạt điều, socola đen, rau xanh." },
+                { f: "Kali (Potassium)", b: "Điều hòa huyết áp và hoạt động của tim. Có trong chuối, nước dừa, khoai lang." },
+                { f: "I-ốt (Iodine)", b: "Cần thiết cho tuyến giáp và trí não. Có trong muối i-ốt, rong biển." },
+                { f: "Vitamin B2 (Riboflavin)", b: "Hỗ trợ sản xuất năng lượng và chức năng tế bào. Có trong trứng, sữa." },
+                { f: "Vitamin B3 (Niacin)", b: "Tốt cho tiêu hóa và làn da. Có trong ức gà, cá ngừ." },
+                { f: "Vitamin B5", b: "Giúp cơ thể phân giải chất béo. Có trong nấm, ngũ cốc." },
+                { f: "Vitamin B6", b: "Cần cho sự phát triển trí não. Có trong chuối, thịt gà." },
+                { f: "Vitamin B7 (Biotin)", b: "Duy trì sức khỏe tóc và móng. Có trong lòng đỏ trứng, quả óc chó." },
+                { f: "Phốt pho", b: "Hỗ trợ xây dựng xương và lọc chất thải ở thận. Có trong thịt, cá." },
+                { f: "Natri (Sodium)", b: "Cân bằng chất lỏng cơ thể. Cần bổ sung vừa đủ từ muối ăn." },
+                { f: "Đồng (Copper)", b: "Giúp cơ thể hấp thụ sắt. Có trong nội tạng động vật, hạt vỏ cứng." },
+                { f: "Mangan", b: "Hỗ trợ hình thành xương và chuyển hóa. Có trong trà, ngũ cốc." },
+                { f: "Selen", b: "Chống oxy hóa mạnh mẽ. Có trong quả hạch Brazil, cá ngừ." },
+                { f: "Bicarbonate", b: "Duy trì độ pH ổn định cho máu. Thường có trong nước khoáng tự nhiên." }
+            ],
+            currentCardIndex: 0,
+            
+            // Quiz Questions Array
+            quizQuestions: [
+                {
+                    q: "Loại vitamin nào được biết đến rộng rãi với vai trò duy trì thị lực, bảo vệ da và có nhiều trong cà rốt, bí đỏ?",
+                    options: ["Vitamin C", "Vitamin A", "Vitamin D", "Vitamin E"],
+                    correct: 1,
+                    hint: "Đây là loại vitamin tan trong dầu, bổ mắt.",
+                    explain: "Vitamin A đóng vai trò cốt lõi cho tế bào võng mạc mắt và biểu mô da, chứa nhiều tiền chất beta-carotene trong rau củ màu cam."
+                },
+                {
+                    q: "Khi bạn bị thương, loại vitamin nào giúp cơ thể tổng hợp collagen thúc đẩy quá trình làm lành vết thương, đồng thời chống oxy hóa mạnh mẽ?",
+                    options: ["Vitamin B12", "Vitamin C", "Vitamin K", "Vitamin B3"],
+                    correct: 1,
+                    hint: "Loại vitamin này có vị chua đặc trưng, có nhiều trong cam, ổi.",
+                    explain: "Vitamin C là chất xúc tác bắt buộc để cơ thể tạo ra collagen, giúp nối liền các mô tổn thương và mạch máu."
+                },
+                {
+                    q: "Cơ thể người có thể tự tổng hợp loại vitamin nào dưới tác động của ánh nắng mặt trời buổi sớm?",
+                    options: ["Vitamin D", "Vitamin A", "Vitamin E", "Vitamin K"],
+                    correct: 0,
+                    hint: "Thiếu hụt loại vitamin 'ánh nắng' này sẽ làm giảm khả năng hấp thụ canxi.",
+                    explain: "Tia UVB trong ánh nắng mặt trời khi tiếp xúc với da sẽ kích hoạt tiền chất để chuyển hóa thành Vitamin D hoạt tính."
+                },
+                {
+                    q: "Đối với phụ nữ mang thai, loại vitamin nhóm B nào cực kỳ quan trọng trong việc phân chia tế bào và phòng ngừa dị tật ống thần kinh bẩm sinh?",
+                    options: ["Vitamin B1", "Vitamin B5", "Vitamin B9 (Axit Folic)", "Vitamin B7"],
+                    correct: 2,
+                    hint: "Loại vitamin này còn có tên gọi phổ biến khác là Axit Folic.",
+                    explain: "Axit Folic (B9) đóng vai trò cốt lõi trong việc sao chép DNA và hình thành hệ thống thần kinh trung ương của bào thai."
+                },
+                {
+                    q: "Khoáng chất nào chiếm khối lượng lớn nhất trong hệ xương và răng của con người, giúp duy trì cấu trúc cơ thể vững chắc?",
+                    options: ["Sắt (Iron)", "Kẽm (Zinc)", "Canxi (Calcium)", "Magie (Magnesium)"],
+                    correct: 2,
+                    hint: "Sữa, tôm cua và phô mai là những nguồn cung cấp dồi dào chất này.",
+                    explain: "Hơn 99% lượng Canxi trong cơ thể được lưu trữ tại xương và răng, tạo nên độ cứng và mật độ xương lý tưởng."
+                },
+                {
+                    q: "Nếu cơ thể thiếu hụt khoáng chất Sắt (Iron), con người dễ mắc phải hội chứng hay căn bệnh nào sau đây?",
+                    options: ["Bệnh bướu cổ", "Bệnh thiếu máu, mệt mỏi", "Loãng xương", "Mất vị giác"],
+                    correct: 1,
+                    hint: "Sắt là thành phần chính giúp tạo ra màu đỏ của tế bào hồng cầu.",
+                    explain: "Sắt là thành phần cấu tạo nên Hemoglobin trong hồng cầu, thiếu sắt làm giảm khả năng vận chuyển oxy đi nuôi các cơ quan."
+                },
+                {
+                    q: "Loại khoáng chất nào đóng vai trò cốt lõi trong việc tổng hợp hormone tuyến giáp, giúp ngăn ngừa bệnh bướu cổ?",
+                    options: ["Natri (Sodium)", "Kali (Potassium)", "I-ốt (Iodine)", "Selen"],
+                    correct: 2,
+                    hint: "Gia vị muối ăn hằng ngày của chúng ta thường được bổ sung thêm chất này.",
+                    explain: "Tuyến giáp cần I-ốt để sản xuất hormone thyroxine điều hòa chuyển hóa; thiếu chất này khiến tuyến giáp phình to gây bướu cổ."
+                },
+                {
+                    q: "Khi bạn tập thể dục cường độ cao bị đổ mồ hôi nhiều và bị chuột rút (co cơ đột ngột), cơ thể bạn đang báo động thiếu hụt điện giải nào?",
+                    options: ["Đồng (Copper)", "Phốt pho", "Mangan", "Kali (Potassium)"],
+                    correct: 3,
+                    hint: "Chuối và nước dừa là hai nguồn thực phẩm tự nhiên tuyệt vời giúp bù đắp nhanh chất này.",
+                    explain: "Kali cùng với natri điều phối sự co bóp cơ bắp và dẫn truyền xung thần kinh; mất kali qua mồ hôi dễ gây co cơ."
+                },
+                {
+                    q: "Biotin (hay còn gọi là Vitamin B7) được các tín đồ làm đẹp vô cùng ưa chuộng vì công dụng chính nào sau đây?",
+                    options: ["Duy trì sức khỏe của tóc và móng", "Tăng cường thị lực ban đêm", "Hỗ trợ đông máu", "Giúp cơ thể hấp thụ Canxi"],
+                    correct: 0,
+                    hint: "Nhiều loại dầu gội đầu ngăn rụng tóc thường quảng cáo chứa chất này.",
+                    explain: "Biotin kích thích sản xuất keratin – thành phần cấu tạo chính nên sợi tóc và các lớp móng tay cứng cáp."
+                },
+                {
+                    q: "Cơ thể người trưởng thành có khoảng 60% - 70% là nước. Nước đóng vai trò môi trường dung môi tốt nhất cho nhóm chất nào?",
+                    options: ["Chỉ các Vitamin tan trong dầu (A, D, E, K)", "Các Vitamin tan trong nước (nhóm B, C) và khoáng chất điện giải", "Tất cả các loại chất lỏng không phân cực", "Nước không hòa tan bất kỳ loại vitamin nào"],
+                    correct: 1,
+                    hint: "Hãy nhớ tới lý do tại sao ứng dụng khuyên bạn uống nước đều để hấp thụ dinh dưỡng.",
+                    explain: "Nước vận chuyển các vitamin nhóm B, C và phân rã các khoáng chất thành ion điện giải để tế bào dễ dàng hấp thu."
+                }
+            ],
+            currentQuizIndex: 0,
+            quizScore: 0,
+            quizAnswered: false
+        };
+
+        // Charts Global Pointers
+        let myChart = null;
+        let donutChartObj = null;
+        let barChartObj = null;
+        let radarChartObj = null;
+
+        window.onload = () => {
+            const saved = localStorage.getItem('beNuocState_v2');
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                appState.goal = parsed.goal || 2000;
+                appState.current = parsed.current || 0;
+            }
+            updateUI();
+            initTrackerChart();
+            renderFlashcard();
+            renderQuizQuestion();
+            initInfographicCharts();
+        };
+
+        function saveState() {
+            localStorage.setItem('beNuocState_v2', JSON.stringify({goal: appState.goal, current: appState.current}));
+        }
+
+        // Tab Switching
+        function switchTab(tab) {
+            ['tracker', 'study', 'quiz', 'ai'].forEach(t => {
+                document.getElementById(`tab-${t}`).classList.add('hidden');
+                document.getElementById(`tab-${t}-btn`).className = "flex-1 py-1.5 text-[11px] font-bold rounded-xl transition-all text-gray-400 hover:text-gray-600";
+            });
+            document.getElementById(`tab-${tab}`).classList.remove('hidden');
+            let activeColor = 'text-blue-600';
+            if(tab === 'study' || tab === 'quiz') activeColor = 'text-indigo-600';
+            document.getElementById(`tab-${tab}-btn`).className = `flex-1 py-1.5 text-[11px] font-bold rounded-xl transition-all ${activeColor} bg-white shadow-sm`;
+        }
+
+        // Water Tracker Business Logic
+        function addWater(amount) {
+            appState.current += amount;
+            appState.history[6].amount = appState.current;
+            updateUI();
+            updateTrackerChart();
+            saveState();
+        }
+
+        function updateUI() {
+            document.getElementById('current-display').innerText = appState.current;
+            document.getElementById('goal-display').innerText = appState.goal;
+            document.querySelector('#current-display + span').innerText = `/ ${appState.goal}ml`;
+            let p = Math.min((appState.current / appState.goal) * 100, 100);
+            document.getElementById('water-level').style.height = `${p}%`;
+        }
+
+        function openCustomAdd() { document.getElementById('custom-modal').classList.remove('hidden'); }
+        function closeCustomAdd() { document.getElementById('custom-modal').classList.add('hidden'); }
+        function addCustomWater() {
+            const val = parseInt(document.getElementById('custom-amount').value);
+            if (val) addWater(val);
+            closeCustomAdd();
+        }
+
+        // Tab Tracker Line-Bar Chart Init
+        function initTrackerChart() {
+            const ctx = document.getElementById('historyChart').getContext('2d');
+            myChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: appState.history.map(i => i.day),
+                    datasets: [{
+                        data: appState.history.map(i => i.amount),
+                        backgroundColor: '#93c5fd', borderRadius: 6
+                    }]
+                },
+                options: { 
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { display: false }, x: { grid: { display: false } } }
+                }
+            });
+        }
+
+        function updateTrackerChart() {
+            if (myChart) {
+                myChart.data.datasets[0].data = appState.history.map(i => i.amount);
+                myChart.update();
+            }
+        }
+
+        // Flashcard Interactions
+        function renderFlashcard() {
+            const card = appState.flashcards[appState.currentCardIndex];
+            document.getElementById('flashcard-container').classList.remove('flipped');
+            document.getElementById('card-front-text').innerText = card.f;
+            document.getElementById('card-back-text').innerText = card.b;
+            document.getElementById('card-counter').innerText = `${appState.currentCardIndex + 1} / ${appState.flashcards.length}`;
+        }
+
+        function flipCard() { document.getElementById('flashcard-container').classList.toggle('flipped'); }
+        function nextCard() { appState.currentCardIndex = (appState.currentCardIndex + 1) % appState.flashcards.length; renderFlashcard(); }
+        function prevCard() { appState.currentCardIndex = (appState.currentCardIndex - 1 + appState.flashcards.length) % appState.flashcards.length; renderFlashcard(); }
+
+        // Quiz System Interaction
+        function renderQuizQuestion() {
+            appState.quizAnswered = false;
+            document.getElementById('quiz-hint-box').classList.add('hidden');
+            document.getElementById('quiz-explanation-box').classList.add('hidden');
+            document.getElementById('quiz-next-btn').classList.add('hidden');
+
+            const currentQuestion = appState.quizQuestions[appState.currentQuizIndex];
+            document.getElementById('quiz-progress-text').innerText = `Câu hỏi: ${appState.currentQuizIndex + 1}/10`;
+            document.getElementById('quiz-progress-bar').style.width = `${(appState.currentQuizIndex + 1) * 10}%`;
+            document.getElementById('quiz-question-text').innerText = currentQuestion.q;
+            
+            const container = document.getElementById('quiz-options-container');
+            container.innerHTML = '';
+            currentQuestion.options.forEach((option, index) => {
+                const btn = document.createElement('button');
+                btn.className = "w-full text-left bg-gray-50 border-2 border-gray-100 hover:bg-indigo-50/50 hover:border-indigo-100 transition p-3 rounded-xl text-xs font-semibold text-gray-700 flex items-center justify-between";
+                btn.innerHTML = `<span>${option}</span>`;
+                btn.onclick = () => selectQuizOption(index, btn);
+                container.appendChild(btn);
+            });
+        }
+
+        function showQuizHint() {
+            if (appState.quizAnswered) return;
+            document.getElementById('quiz-hint-box').innerText = appState.quizQuestions[appState.currentQuizIndex].hint;
+            document.getElementById('quiz-hint-box').classList.toggle('hidden');
+        }
+
+        function selectQuizOption(selectedIndex, selectedBtn) {
+            if (appState.quizAnswered) return;
+            appState.quizAnswered = true;
+
+            const currentQuestion = appState.quizQuestions[appState.currentQuizIndex];
+            const buttons = document.getElementById('quiz-options-container').getElementsByTagName('button');
+            
+            if (selectedIndex === currentQuestion.correct) {
+                selectedBtn.className = "w-full text-left bg-green-50 border-2 border-green-400 p-3 rounded-xl text-xs font-bold text-green-700 flex items-center justify-between";
+                selectedBtn.innerHTML += "<span>✅</span>";
+                appState.quizScore++;
+            } else {
+                selectedBtn.className = "w-full text-left bg-red-50 border-2 border-red-300 p-3 rounded-xl text-xs font-bold text-red-700 flex items-center justify-between";
+                selectedBtn.innerHTML += "<span>❌</span>";
+                buttons[currentQuestion.correct].className = "w-full text-left bg-green-50 border-2 border-green-300 p-3 rounded-xl text-xs font-bold text-green-700 flex items-center justify-between";
+            }
+
+            const explainBox = document.getElementById('quiz-explanation-box');
+            explainBox.innerText = currentQuestion.explain;
+            explainBox.className = selectedIndex === currentQuestion.correct ? 
+                "p-3 rounded-xl text-[11px] mb-4 leading-relaxed bg-green-50/50 text-green-800 border border-green-100" : 
+                "p-3 rounded-xl text-[11px] mb-4 leading-relaxed bg-red-50/50 text-red-800 border border-red-100";
+            explainBox.classList.remove('hidden');
+            document.getElementById('quiz-next-btn').classList.remove('hidden');
+        }
+
+        function nextQuizQuestion() {
+            if (appState.currentQuizIndex < appState.quizQuestions.length - 1) {
+                appState.currentQuizIndex++;
+                renderQuizQuestion();
+            } else {
+                document.getElementById('quiz-play-screen').classList.add('hidden');
+                document.getElementById('quiz-result-screen').classList.remove('hidden');
+                document.getElementById('quiz-score-display').innerText = appState.quizScore;
+                
+                const feedbackText = document.getElementById('quiz-feedback-text');
+                if (appState.quizScore === 10) feedbackText.innerText = "Tuyệt cú mèo! Bạn là chuyên gia vi chất thực thụ đó! 🏆";
+                else if (appState.quizScore >= 7) feedbackText.innerText = "Rất tốt nha! Bạn nắm kiến thức siêu vững vàng luôn. ✨";
+                else if (appState.quizScore >= 5) feedbackText.innerText = "Khá ổn nè! Uống thêm nước rồi ôn tập tiếp nha! 💧";
+                else feedbackText.innerText = "Đừng buồn nha, đọc lại Flashcard rồi thử sức lại nè! 💪";
+            }
+        }
+
+        function restartQuiz() {
+            appState.currentQuizIndex = 0; appState.quizScore = 0;
+            document.getElementById('quiz-result-screen').classList.add('hidden');
+            document.getElementById('quiz-play-screen').classList.remove('hidden');
+            renderQuizQuestion();
+        }
+
+        // AI Feature Functions
+        function calculateAIGoal() {
+            const w = document.getElementById('ai-weight').value;
+            if (!w) return alert("Nhập cân nặng đã nè!");
+            appState.goal = parseInt(w) * 35;
+            updateUI(); saveState();
+            alert(`Bé Nước AI gợi ý bạn nên uống ${appState.goal}ml mỗi ngày nha! ✨`);
+        }
+
+        function sendChatMessage() {
+            const inp = document.getElementById('chat-input');
+            const msg = inp.value.trim(); if (!msg) return;
+            const chat = document.getElementById('chat-messages');
+            chat.innerHTML += `<div class="bg-indigo-500 text-white p-2 rounded-xl ml-auto max-w-[80%] text-right">${msg}</div>`;
+            inp.value = "";
+            setTimeout(() => {
+                chat.innerHTML += `<div class="bg-blue-100 text-blue-800 p-2 rounded-xl max-w-[80%]">Cảm ơn bạn đã hỏi nha! Bạn nhớ uống nước đều để hấp thu các vi chất tốt nhất nhé! 💧</div>`;
+                chat.scrollTop = chat.scrollHeight;
+            }, 600);
+        }
+        function handleChatKey(e) { if (e.key === 'Enter') sendChatMessage(); }
+
+        // TEXT WRAPPER FOR INFOGRAPHIC CHARTS LABELS
+        function wrapLabel(label) {
+            if (label.length <= 14) return label;
+            let words = label.split(' '); let lines = []; let currentLine = '';
+            for (let i = 0; i < words.length; i++) {
+                if ((currentLine + words[i]).length > 14) {
+                    if (currentLine.length > 0) lines.push(currentLine.trim());
+                    currentLine = words[i] + ' ';
+                } else { currentLine += words[i] + ' '; }
+            }
+            if (currentLine.trim().length > 0) lines.push(currentLine.trim());
+            return lines.length > 1 ? lines : lines[0];
+        }
+
+        // INITIALIZE COMPONENT CHARTS FROM INFOGRAPHIC DATA
+        function initInfographicCharts() {
+            const commonTooltip = {
+                padding: 10,
+                titleFont: { size: 12, family: "'Quicksand', sans-serif", weight: 'bold' },
+                bodyFont: { size: 11, family: "'Quicksand', sans-serif" },
+                cornerRadius: 8,
+                backgroundColor: 'rgba(30, 41, 59, 0.95)'
+            };
+
+            // Donut Chart
+            const ctxDonut = document.getElementById('vitaminDonutChart').getContext('2d');
+            donutChartObj = new Chart(ctxDonut, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Tan trong dầu (A,D,E,K)', 'Tan trong nước (B,C)'].map(wrapLabel),
+                    datasets: [{
+                        data: [4, 9],
+                        backgroundColor: ['#f59e0b', '#3b82f6'],
+                        borderWidth: 2, borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false, cutout: '60%',
+                    plugins: {
+                        legend: { position: 'bottom', labels: { padding: 10, font: { size: 10, family: "'Quicksand'" } } },
+                        tooltip: commonTooltip
+                    }
+                }
+            });
+
+            // Bar Chart
+            const ctxBar = document.getElementById('waterMineralsChart').getContext('2d');
+            barChartObj = new Chart(ctxBar, {
+                type: 'bar',
+                data: {
+                    labels: ['Canxi (Xương)', 'Magie (Cơ)', 'Natri (Điện giải)', 'Kali (Tim)', 'Bicarbonate'].map(wrapLabel),
+                    datasets: [{
+                        data: [85, 45, 30, 15, 95],
+                        backgroundColor: '#06b6d4', borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { display: false } },
+                        x: { grid: { display: false }, ticks: { font: { size: 9, family: "'Quicksand'" }, color: '#64748b' } }
+                    },
+                    plugins: { legend: { display: false }, tooltip: commonTooltip }
+                }
+            });
+
+            // Radar Chart
+            const ctxRadar = document.getElementById('foodRadarChart').getContext('2d');
+            radarChartObj = new Chart(ctxRadar, {
+                type: 'radar',
+                data: {
+                    labels: ['Canxi', 'Sắt', 'Kẽm', 'Magie', 'Kali'].map(wrapLabel),
+                    datasets: [
+                        {
+                            label: 'Thịt & Hải Sản', data: [20, 95, 90, 40, 60],
+                            backgroundColor: 'rgba(239, 68, 68, 0.15)', borderColor: 'rgb(239, 68, 68)', borderWidth: 1.5, pointRadius: 2
+                        },
+                        {
+                            label: 'Sữa & Từ Sữa', data: [95, 10, 30, 20, 50],
+                            backgroundColor: 'rgba(59, 130, 246, 0.15)', borderColor: 'rgb(59, 130, 246)', borderWidth: 1.5, pointRadius: 2
+                        },
+                        {
+                            label: 'Rau Quả & Hạt', data: [40, 50, 45, 90, 85],
+                            backgroundColor: 'rgba(16, 185, 129, 0.15)', borderColor: 'rgb(16, 185, 129)', borderWidth: 1.5, pointRadius: 2
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            angleLines: { color: '#f1f5f9' }, grid: { color: '#e2e8f0' },
+                            pointLabels: { font: { size: 9, family: "'Quicksand'", weight: '600' }, color: '#475569' },
+                            ticks: { display: false }
+                        }
+                    },
+                    plugins: {
+                        legend: { position: 'top', labels: { boxWidth: 10, font: { size: 9, family: "'Quicksand'" }, padding: 8 } },
+                        tooltip: commonTooltip
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
