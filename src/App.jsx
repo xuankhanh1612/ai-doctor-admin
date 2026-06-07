@@ -203,9 +203,9 @@ export default function App() {
             familyStorageOwnerId={familyStorageOwnerId}
             user={user}
           >
-            {active === 'healthJourney' && <HealthJourneyPanel onNext={goNext} onOpenStressRelief={() => setActive('stressRelief')} onOpenInBody={() => setActive('aiInbodyPortal')} />}
-            {active === 'lunchJourney' && <LunchJourneyPanel onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} onOpenStressRelief={() => setActive('stressRelief')} onOpenInBody={() => setActive('aiInbodyPortal')} />}
-            {active === 'dinnerJourney' && <DinnerJourneyPanel onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} onOpenStressRelief={() => setActive('stressRelief')} onOpenInBody={() => setActive('aiInbodyPortal')} />}
+            {active === 'healthJourney' && <HealthJourneyPanel onNext={goNext} onOpenStressRelief={() => setActive('stressRelief')} onOpenInBody={() => setActive('aiInbodyPortal')} onViewMedicalRecord={() => setActive('upload')} />}
+            {active === 'lunchJourney' && <LunchJourneyPanel onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} onOpenStressRelief={() => setActive('stressRelief')} onOpenInBody={() => setActive('aiInbodyPortal')} onViewMedicalRecord={() => setActive('upload')} />}
+            {active === 'dinnerJourney' && <DinnerJourneyPanel onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} onOpenStressRelief={() => setActive('stressRelief')} onOpenInBody={() => setActive('aiInbodyPortal')} onViewMedicalRecord={() => setActive('upload')} />}
             {active === 'upload'    && <UploadPanel        patientId="LXK-2024" onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} onSelectImage={handleSelectCompareFile} />}
             {active === 'imaging'   && <ImagingPanel       onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} compareImage={compareImage} uploadedImages={uploadedImages} onSelectCompareImage={setCompareImage} scrollTarget={imagingScrollTarget} onScrollTargetHandled={() => setImagingScrollTarget(null)} />}
             {active === 'checkin'   && <CheckinPanel       onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
@@ -215,7 +215,7 @@ export default function App() {
             {active === 'matrix3dBody' && <Matrix3DBodyPanel onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'omnidirectional3dBody' && <Omnidirectional3DBodyPanel onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'twin'      && <TwinPanel          onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
-            {active === 'telemedicine' && <TelemedicinePanel onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
+            {active === 'telemedicine' && <TelemedicinePanel onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} onViewMedicalRecord={() => setActive('upload')} />}
             {active === 'statAnalysis' && <StatisticalAnalysisPanel onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'swarm'     && <SwarmConsensusPanel onReset={() => setActive('upload')} onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'consensus' && <ConsensusPanel     onReset={() => setActive('upload')} onPrev={goPrev} prevLabel={prevLabel} />}

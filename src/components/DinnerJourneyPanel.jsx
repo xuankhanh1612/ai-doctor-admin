@@ -220,7 +220,7 @@ async function saveJourneyImageFile(file, { mode, user, lang, label }) {
   return record
 }
 
-function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUploaded, onCapturedPreview }) {
+function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, onUploaded, onCapturedPreview, onViewMedicalRecord }) {
   const { lang } = useApp()
   const { user } = useAuth()
   const localInputRef = useRef(null)
@@ -501,7 +501,7 @@ function DetectorMetric({ label, value }) {
   return <div style={{ background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.16)', borderRadius: 12, padding: '9px 10px', color: '#fff', fontSize: 12 }}><b>{value}</b><br/><span style={{ opacity: .72 }}>{label}</span></div>
 }
 
-function MediaPipeDetectorView({ type }) {
+function MediaPipeDetectorView({ type, onViewMedicalRecord }) {
   const { lang } = useApp()
   const { user } = useAuth()
   const isBody = type === 'body'
@@ -728,6 +728,7 @@ function MediaPipeDetectorView({ type }) {
             <button onClick={switchCamera} disabled={cameraStarting || snapshotSaving} style={{ ...secondaryAction(), background: 'rgba(255,255,255,0.10)', color: '#fff' }}>🔄 {lang === 'vi' ? 'Đổi camera' : 'Switch camera'}</button>
           </div>
           {cameraOpen && <button onClick={stopCamera} disabled={snapshotSaving} style={{ ...secondaryAction(), width: '100%', marginTop: 8, background: 'rgba(255,255,255,0.08)', color: '#fff' }}>{lang === 'vi' ? 'Đóng camera' : 'Close camera'}</button>}
+          {onViewMedicalRecord && <button type="button" onClick={onViewMedicalRecord} disabled={snapshotSaving} style={{ ...primaryAction(), width: '100%', marginTop: 8, background: 'linear-gradient(135deg, #16a34a, #22c55e)', boxShadow: '0 14px 30px rgba(34,197,94,0.24)' }}>{lang === 'vi' ? 'Xem hình tại Medical Records' : 'View image in Medical Records'}</button>}
           <div style={{ marginTop: 12, color: '#83f7ff', fontSize: 12, fontWeight: 800 }}>{status}</div>
         </div>
       </div>
@@ -787,7 +788,7 @@ function roundButton(bg, color) {
   return { width: 42, height: 42, borderRadius: '50%', border: 'none', background: bg, color, display: 'grid', placeItems: 'center', cursor: 'pointer', fontSize: 20, flexShrink: 0 }
 }
 
-function EveningPhoneCameraView({ mode }) {
+function EveningPhoneCameraView({ mode, onViewMedicalRecord }) {
   const { lang } = useApp()
   const { user } = useAuth()
   const isMeal = mode === 'meal'
@@ -1005,6 +1006,7 @@ function EveningPhoneCameraView({ mode }) {
             <button onClick={switchCamera} disabled={cameraStarting || snapshotSaving} style={{ ...secondaryAction(), background: 'rgba(255,255,255,0.10)', color: '#fff' }}>🔄 {lang === 'vi' ? 'Đổi camera' : 'Switch camera'}</button>
           </div>
           {cameraOpen && <button onClick={stopCamera} disabled={snapshotSaving} style={{ ...secondaryAction(), width: '100%', marginTop: 8, background: 'rgba(255,255,255,0.08)', color: '#fff' }}>{lang === 'vi' ? 'Đóng camera' : 'Close camera'}</button>}
+          {onViewMedicalRecord && <button type="button" onClick={onViewMedicalRecord} disabled={snapshotSaving} style={{ ...primaryAction(), width: '100%', marginTop: 8, background: 'linear-gradient(135deg, #16a34a, #22c55e)', boxShadow: '0 14px 30px rgba(34,197,94,0.24)' }}>{lang === 'vi' ? 'Xem hình tại Medical Records' : 'View image in Medical Records'}</button>}
           {capturedRecord && <div style={{ marginTop: 12, padding: 12, borderRadius: 14, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.84)', fontSize: 12, lineHeight: 1.5 }}><b>{isMeal ? 'Bữa ăn vừa chụp' : 'Ảnh thuốc vừa chụp'}</b><br />{capturedRecord.uploadPath}</div>}
           <div style={{ marginTop: 12, color: '#83f7ff', fontSize: 12, fontWeight: 800 }}>{status}</div>
         </div>
@@ -1057,8 +1059,8 @@ function drawEveningCameraOverlay(ctx, width, height, time, isMeal) {
   ctx.restore()
 }
 
-function MealScanView() {
-  return <EveningPhoneCameraView mode="meal" />
+function MealScanView({ onViewMedicalRecord }) {
+  return <EveningPhoneCameraView mode="meal" onViewMedicalRecord={onViewMedicalRecord} />
 }
 
 function floatingPillButton() {
@@ -1091,11 +1093,11 @@ function secondaryAction() {
   return { width: '100%', padding: '16px 18px', borderRadius: 14, border: 'none', background: '#e3e2e6', color: INK, fontWeight: 800, cursor: 'pointer' }
 }
 
-function MedicationAssistantView() {
-  return <EveningPhoneCameraView mode="medication" />
+function MedicationAssistantView({ onViewMedicalRecord }) {
+  return <EveningPhoneCameraView mode="medication" onViewMedicalRecord={onViewMedicalRecord} />
 }
 
-export default function DinnerJourneyPanel({ onNext, onPrev, prevLabel, onOpenStressRelief, onOpenInBody }) {
+export default function DinnerJourneyPanel({ onNext, onPrev, prevLabel, onOpenStressRelief, onOpenInBody, onViewMedicalRecord }) {
   const { lang, t } = useApp()
   const [activeTab, setActiveTab] = useState('emotion')
 
@@ -1166,10 +1168,10 @@ export default function DinnerJourneyPanel({ onNext, onPrev, prevLabel, onOpenSt
       </div>
       <HealthJourneyTabs activeTab={activeTab} setActiveTab={setActiveTab} lang={lang} />
       {activeTab === 'emotion' && <EmotionalCompanionView onOpenStressRelief={onOpenStressRelief} onOpenInBody={onOpenInBody} />}
-      {activeTab === 'meal' && <MealScanView />}
-      {activeTab === 'medication' && <MedicationAssistantView />}
-      {activeTab === 'faceDetector' && <MediaPipeDetectorView type="face" />}
-      {activeTab === 'bodyDetector' && <MediaPipeDetectorView type="body" />}
+      {activeTab === 'meal' && <MealScanView onViewMedicalRecord={onViewMedicalRecord} />}
+      {activeTab === 'medication' && <MedicationAssistantView onViewMedicalRecord={onViewMedicalRecord} />}
+      {activeTab === 'faceDetector' && <MediaPipeDetectorView type="face" onViewMedicalRecord={onViewMedicalRecord} />}
+      {activeTab === 'bodyDetector' && <MediaPipeDetectorView type="body" onViewMedicalRecord={onViewMedicalRecord} />}
       <NavButtons onNext={onNext} nextLabel={`${t('uploadRecords')} →`} onPrev={onPrev} prevLabel={prevLabel} />
     </div>
   )
