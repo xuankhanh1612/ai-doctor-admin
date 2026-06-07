@@ -278,7 +278,7 @@ async function saveJourneyImageFile(file, { mode, user, lang, label }) {
   return record
 }
 
-function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, showHelperDetails = true, onUploaded, onCapturedPreview, onCameraState = null, backgroundCamera = false }) {
+function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, showHelperDetails = true, onUploaded, onCapturedPreview, onCameraState = null, backgroundCamera = false, onViewMedicalRecord }) {
   const { lang } = useApp()
   const { user } = useAuth()
   const localInputRef = useRef(null)
@@ -537,6 +537,11 @@ function JourneyCameraUploader({ mode, captureLabel, uploadLabel, helper, showHe
         {lang === 'vi' ? 'upload hình trong máy' : 'upload local image'}
       </button>}
       {!backgroundCamera && preview && <button disabled={uploading} onClick={resetCapture} style={{ ...secondaryAction(), background: '#fff0f0', color: '#93000a' }}>{lang === 'vi' ? 'Quét lại' : 'Scan again'}</button>}
+      {onViewMedicalRecord && (
+        <button type="button" disabled={uploading} onClick={onViewMedicalRecord} style={{ ...primaryAction(), background: 'linear-gradient(135deg, #16a34a, #22c55e)', boxShadow: '0 14px 30px rgba(34,197,94,0.24)' }}>
+          {lang === 'vi' ? 'Xem hình tại Medical Records' : 'View image in Medical Records'}
+        </button>
+      )}
       {showHelperDetails && (
         <div style={{ fontSize: 11, color: mode === 'meal' ? MUTED : 'rgba(29,29,31,0.62)', lineHeight: 1.45 }}>
           {helper}<br />{lang === 'vi' ? 'Thư mục user:' : 'User folder:'} <b>{virtualFolder}</b>
@@ -650,7 +655,7 @@ function DetectorMetric({ label, value }) {
   )
 }
 
-function MediaPipeDetectorView({ type }) {
+function MediaPipeDetectorView({ type, onViewMedicalRecord }) {
   const { lang } = useApp()
   const { user } = useAuth()
   const isBody = type === 'body'
@@ -862,6 +867,7 @@ function MediaPipeDetectorView({ type }) {
           showHelperDetails={false}
           onCameraState={handleBackgroundCameraState}
           backgroundCamera
+          onViewMedicalRecord={onViewMedicalRecord}
         />
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
           <SheetToggleButton open={sheetOpen} onClick={() => setSheetOpen(open => !open)} lang={lang} />
@@ -950,7 +956,7 @@ function MedicationRealtimeOverlay() {
   )
 }
 
-function MealScanView() {
+function MealScanView({ onViewMedicalRecord }) {
   const { lang } = useApp()
   const [flash, setFlash] = useState(false)
   const [capturedRecord, setCapturedRecord] = useState(null)
@@ -1009,6 +1015,7 @@ function MealScanView() {
           onCapturedPreview={setCapturedRecord}
           onCameraState={handleCameraState}
           backgroundCamera
+          onViewMedicalRecord={onViewMedicalRecord}
         />
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
           <SheetToggleButton open={sheetOpen} onClick={() => setSheetOpen(open => !open)} lang={lang} />
@@ -1118,7 +1125,7 @@ function secondaryAction() {
   return { width: '100%', padding: '16px 18px', borderRadius: 14, border: 'none', background: '#e3e2e6', color: INK, fontWeight: 800, cursor: 'pointer' }
 }
 
-function MedicationAssistantView() {
+function MedicationAssistantView({ onViewMedicalRecord }) {
   const { lang } = useApp()
   const [flash, setFlash] = useState(false)
   const [capturedRecord, setCapturedRecord] = useState(null)
@@ -1181,6 +1188,7 @@ function MedicationAssistantView() {
           onCapturedPreview={setCapturedRecord}
           onCameraState={handleCameraState}
           backgroundCamera
+          onViewMedicalRecord={onViewMedicalRecord}
         />
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
           <SheetToggleButton open={sheetOpen} onClick={() => setSheetOpen(open => !open)} lang={lang} />
@@ -1190,7 +1198,7 @@ function MedicationAssistantView() {
   )
 }
 
-export default function HealthJourneyPanel({ onNext, onPrev, prevLabel, nextLabel, onOpenStressRelief, onOpenInBody }) {
+export default function HealthJourneyPanel({ onNext, onPrev, prevLabel, nextLabel, onOpenStressRelief, onOpenInBody, onViewMedicalRecord }) {
   const { lang, t } = useApp()
   const [activeTab, setActiveTab] = useState('emotion')
 
@@ -1215,10 +1223,10 @@ export default function HealthJourneyPanel({ onNext, onPrev, prevLabel, nextLabe
       </div>
       <HealthJourneyTabs activeTab={activeTab} setActiveTab={setActiveTab} lang={lang} />
       {activeTab === 'emotion' && <EmotionalCompanionView onOpenStressRelief={onOpenStressRelief} onOpenInBody={onOpenInBody} />}
-      {activeTab === 'meal' && <MealScanView />}
-      {activeTab === 'medication' && <MedicationAssistantView />}
-      {activeTab === 'faceDetector' && <MediaPipeDetectorView type="face" />}
-      {activeTab === 'bodyDetector' && <MediaPipeDetectorView type="body" />}
+      {activeTab === 'meal' && <MealScanView onViewMedicalRecord={onViewMedicalRecord} />}
+      {activeTab === 'medication' && <MedicationAssistantView onViewMedicalRecord={onViewMedicalRecord} />}
+      {activeTab === 'faceDetector' && <MediaPipeDetectorView type="face" onViewMedicalRecord={onViewMedicalRecord} />}
+      {activeTab === 'bodyDetector' && <MediaPipeDetectorView type="body" onViewMedicalRecord={onViewMedicalRecord} />}
       {(onNext || onPrev) && (
         <NavButtons
           onNext={onNext}

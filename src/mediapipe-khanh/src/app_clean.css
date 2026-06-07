@@ -1330,3 +1330,130 @@ video {
 #view-image-upload-records-btn {
   margin-top: 15px;
 }
+
+/* AI Clinic responsive frame polish */
+@media (min-width: 769px) {
+  .app-container {
+    background: linear-gradient(135deg, #eef2f7, #f8fafc);
+  }
+
+  .task-container {
+    gap: 18px;
+    padding: 18px;
+  }
+
+  .sidebar,
+  .controls-panel,
+  .output-panel {
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    border-radius: 28px;
+    box-shadow: 0 24px 70px rgba(15, 23, 42, 0.10);
+  }
+
+  .sidebar,
+  .controls-panel {
+    max-height: calc(100vh - 36px);
+  }
+
+  .output-panel {
+    padding: clamp(16px, 2vw, 28px);
+  }
+}
+
+@media (max-width: 1180px) {
+  :root { --sidebar-width: 220px; --controls-width: 280px; }
+
+  .output-header {
+    height: auto;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .view-tab {
+    padding: 8px 14px;
+  }
+}
+
+@media (max-width: 900px) {
+  body { overflow: auto; }
+
+  .app-container,
+  #app {
+    min-height: 100vh;
+    height: auto;
+  }
+
+  .task-container {
+    flex-direction: column;
+    min-height: 100vh;
+    height: auto;
+  }
+
+  .sidebar {
+    display: none !important;
+  }
+
+  .controls-panel {
+    width: 100%;
+    max-height: none;
+    border-right: none;
+    border-bottom: 1px solid var(--border-color);
+    padding: 14px;
+  }
+
+  .output-panel {
+    min-height: 68vh;
+    height: auto;
+    overflow: visible;
+    padding: 14px;
+  }
+
+  .viewport {
+    min-height: 54vh;
+    padding: 14px 0;
+  }
+
+  .video-wrapper,
+  .upload-dropzone {
+    max-width: min(100%, 680px);
+  }
+
+  .webcam-controls {
+    width: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 560px) {
+  .controls-panel,
+  .output-panel {
+    padding: 12px;
+  }
+
+  .output-header h2 {
+    font-size: 1.2rem;
+  }
+
+  .view-tabs,
+  .webcam-controls {
+    width: 100%;
+    overflow-x: auto;
+  }
+
+  .view-tab,
+  .action-button {
+    min-height: 44px;
+    font-size: 0.86rem;
+    white-space: nowrap;
+  }
+
+  .viewport {
+    border-radius: 20px;
+  }
+
+  .video-wrapper {
+    width: 100%;
+    max-height: 58vh;
+  }
+}

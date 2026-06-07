@@ -233,7 +233,8 @@ function LivestreamScanOverlay({ timestamp, capturedAt }) {
   )
 }
 
-function TelemedicineCameraPanel() {
+function TelemedicineCameraPanel({ onViewMedicalRecord }) {
+  const { lang } = useApp()
   const { user } = useAuth()
   const videoRef = useRef(null)
   const streamRef = useRef(null)
@@ -432,7 +433,8 @@ function TelemedicineCameraPanel() {
         <button type="button" onClick={captureMoment} disabled={!cameraOpen || videoSaving} style={telemedicineCameraButton(false)}>{videoSaving ? 'Đang ghi…' : '📸 Ghi giờ'}</button>
       </div>
       {savingStatus && <div style={{ marginTop: 10, color: savingStatus.startsWith('Đã') ? 'var(--green)' : 'var(--cyan)', fontSize: 12, fontWeight: 800 }}>{savingStatus}</div>}
-      {cameraOpen && <button type="button" onClick={stopCamera} style={{ ...telemedicineCameraButton(false), width: '100%', marginTop: 10 }}>Đóng camera</button>}
+      {cameraOpen && <button type="button" onClick={stopCamera} style={{ ...telemedicineCameraButton(false), width: '100%', marginTop: 10 }}>{lang === 'vi' ? 'Đóng camera' : 'Close camera'}</button>}
+      {onViewMedicalRecord && <button type="button" onClick={onViewMedicalRecord} style={{ ...telemedicineCameraButton(true), width: '100%', marginTop: 10, background: 'linear-gradient(135deg, #16a34a, #22c55e)', border: '0', color: '#fff', boxShadow: '0 14px 30px rgba(34,197,94,0.24)' }}>{lang === 'vi' ? 'Xem hình tại Medical Records' : 'View image in Medical Records'}</button>}
     </div>
   )
 }
@@ -451,7 +453,7 @@ function telemedicineCameraButton(active) {
   }
 }
 
-export default function TelemedicinePanel({ onNext, onPrev, prevLabel }) {
+export default function TelemedicinePanel({ onNext, onPrev, prevLabel, onViewMedicalRecord }) {
   const { t } = useApp()
   const onlineHumans = HUMAN_DOCTORS.filter(d => d.status === 'online').length
   const onlineAgents = AI_DOCTORS.filter(d => d.status === 'online').length
@@ -479,7 +481,7 @@ export default function TelemedicinePanel({ onNext, onPrev, prevLabel }) {
         </div>
       </div>
 
-      <TelemedicineCameraPanel />
+      <TelemedicineCameraPanel onViewMedicalRecord={onViewMedicalRecord} />
 
       <div className="telemedicine-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.35fr) minmax(320px, 0.65fr)', gap: 16 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
