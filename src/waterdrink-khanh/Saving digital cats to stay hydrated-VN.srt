@@ -1,0 +1,275 @@
+1
+00:00:00,001 --> 00:00:06,259
+Bạn có biết cảm giác vào khoảng 2 giờ chiều khi bạn đang nhìn chằm chằm vào màn hình và đột nhiên cảm thấy như não mình đang lội qua vũng mật ong không?
+
+2
+00:00:06,759 --> 00:00:10,280
+Bạn chớp mắt và bảng tính trông chỉ như một mớ số mờ ảo.
+
+3
+00:00:10,639 --> 00:00:13,980
+Ừ, ý tôi là, hầu hết chúng ta chỉ cố gắng chịu đựng hoặc đi pha thêm một ly cà phê nữa.
+
+4
+00:00:13,980 --> 00:00:19,900
+Đúng vậy, nhưng hôm nay trong bài phân tích chuyên sâu này, chúng ta sẽ xem xét cách các nhà phát triển đang âm thầm khắc phục chính xác cảm giác đó.
+
+5
+00:00:20,580 --> 00:00:26,260
+Về cơ bản, họ đang lén lút tích hợp các công cụ theo dõi sức khỏe được game hóa vào các bảng điều khiển quản trị y tế đầy áp lực,
+
+6
+00:00:26,840 --> 00:00:30,040
+cụ thể là hệ thống quản trị A-Doctor.
+
+7
+00:00:30,160 --> 00:00:35,000
+Và chúng ta sẽ cùng khám phá xem một thú cưng kỹ thuật số thực sự có thể là bí quyết tăng năng suất tối ưu dành cho bạn như thế nào.
+
+8
+00:00:35,000 --> 00:00:38,620
+Vậy để bắt đầu, chúng tôi đã tìm thấy một sự thật sinh lý học đáng ngạc nhiên.
+
+9
+00:00:39,080 --> 00:00:44,520
+Chỉ cần lượng nước trong cơ thể giảm từ 1% đến 2% cũng làm suy giảm nghiêm trọng khả năng tập trung và phản xạ của bạn.
+
+10
+00:00:44,820 --> 00:00:48,960
+Giống như vận hành một máy chủ cao cấp với quạt làm mát bị hỏng.
+
+11
+00:00:49,120 --> 00:00:50,420
+Mọi thứ đều chậm lại.
+
+12
+00:00:50,560 --> 00:00:55,320
+Chính xác, bởi vì não bộ thực sự phải vật lộn để gửi tín hiệu điện qua các khớp thần kinh của nó.
+
+13
+00:00:55,320 --> 00:01:00,760
+Giống như mất gói dữ liệu trên kết nối mạng, phải không? Dữ liệu có sẵn, nhưng kết nối liên tục bị ngắt.
+
+14
+00:01:01,200 --> 00:01:20,164
+Đúng vậy, điều này dẫn đến sự suy giảm nhận thức nghiêm trọng. Giờ hãy đặt sự tập trung suy giảm đó vào môi trường bảng điều khiển y tế, nơi các nhà quản trị đang đưa ra những quyết định quan trọng dưới áp lực rất lớn. Vậy nên trong những tình huống đó, nhu cầu sinh học cơ bản là điều đầu tiên bị bỏ qua. Chính xác. Và bạn có thể hỏi, tại sao không sử dụng một thông báo bật lên nói rằng
+
+15
+00:01:20,244 --> 00:01:21,344
+bạn biết đấy, hãy uống nước?
+
+16
+00:01:21,484 --> 00:01:22,924
+Vì các cửa sổ bật lên rất phiền phức.
+
+17
+00:01:23,224 --> 00:01:26,044
+Hoàn toàn đúng. Bạn ngay lập tức nhấp vào đóng để loại bỏ nó.
+
+18
+00:01:26,924 --> 00:01:30,504
+Các nhà phát triển nhận ra rằng họ không thể chỉ sử dụng các cảnh báo tiêu chuẩn nếu họ thực sự muốn
+
+19
+00:01:30,504 --> 00:01:33,384
+thay đổi hành vi. Họ cần phải làm cho nó mang tính cảm xúc.
+
+20
+00:01:33,564 --> 00:01:37,004
+Đúng vậy. Vì vậy, họ đã đánh giá một vài mô hình mã nguồn mở cho việc này.
+
+21
+00:01:37,204 --> 00:01:43,584
+Có Aura, sử dụng hình ảnh thú cưng sức khỏe vẽ tay, và K.O.Y., sử dụng nghệ thuật pixel theo phong cách Tamagotchi.
+
+22
+00:01:43,684 --> 00:01:46,544
+Đúng vậy, và K.O.Y. cực kỳ hiệu quả vì nó năng động.
+
+23
+00:01:46,824 --> 00:01:50,704
+Sức khỏe của linh vật giảm khoảng 5% mỗi giờ.
+
+24
+00:01:50,904 --> 00:01:54,324
+Vì vậy, nếu bạn uống đủ nước, bạn sẽ thấy biểu tượng cảm xúc mèo bác sĩ đang nhảy nhót và nói, tuyệt vời.
+
+25
+00:01:54,324 --> 00:02:00,544
+Nhưng nếu bạn bỏ bê nó, nó sẽ biến thành hình đầu lâu xương chéo đang cầu xin, bạn biết đấy, hãy cứu tôi.
+
+26
+00:02:00,684 --> 00:02:01,364
+Khoan đã, chờ chút.
+
+27
+00:02:01,404 --> 00:02:05,684
+Chẳng phải việc chăm sóc một con mèo kỹ thuật số đang khóc sẽ làm người quản trị bận rộn mất tập trung hơn sao?
+
+28
+00:02:05,944 --> 00:02:06,204
+Tôi không biết.
+
+29
+00:02:06,204 --> 00:02:07,904
+Nghe có vẻ hoàn toàn ngược đời, tôi biết.
+
+30
+00:02:08,283 --> 00:02:12,224
+Nhưng việc nhìn thấy sự tiến triển đó bằng mắt thường tạo ra một phần thưởng tâm lý tức thì.
+
+31
+00:02:12,344 --> 00:02:16,424
+Ồ, vậy là nó biến một việc nhàm chán thành một vòng lặp hành vi tích cực.
+
+32
+00:02:16,544 --> 00:02:16,924
+Chính xác.
+
+33
+00:02:17,204 --> 00:02:18,384
+Bạn không chỉ uống nước.
+
+34
+00:02:18,384 --> 00:02:31,628
+Bạn chủ động giải cứu người bạn nhỏ trên màn hình của mình. Nó chạm đúng vào sự đồng cảm của chúng ta. Được rồi, giải pháp tâm lý có hiệu quả nhưng việc cố gắng xây dựng thú cưng kỹ thuật số sống động này trên đám mây
+
+35
+00:02:31,628 --> 00:02:36,968
+Nền tảng Next.js trên Vercel đã gây ra một trở ngại kỹ thuật khá hài hước.
+
+36
+00:02:36,968 --> 00:02:42,668
+Một sự trớ trêu kỹ thuật tột cùng. Các nhà phát triển gặp phải một lỗi, theo đúng nghĩa đen là lỗi không khớp về quá trình cấp phát dữ liệu (hydration mismatch).
+
+37
+00:02:42,828 --> 00:02:44,068
+Thật không thể tin nổi.
+
+38
+00:02:44,188 --> 00:02:48,208
+Thật sự không thể. Ý tôi là, trong phát triển web, quá trình cấp phát dữ liệu (hydration) là khi cấu trúc cơ bản của
+
+39
+00:02:48,208 --> 00:02:53,088
+trang web được điền đầy dữ liệu tương tác. Đúng vậy. Vì vậy, sự không khớp xảy ra khi máy chủ
+
+40
+00:02:53,088 --> 00:02:58,168
+gửi xuống một phiên bản, nhưng trình duyệt của bạn lại có dữ liệu thời gian thực khác. Đúng vậy. Vì vậy, cơ thể con người
+
+41
+00:02:58,168 --> 00:03:03,168
+cần được cung cấp nước đầy đủ và ứng dụng cần được cập nhật mã nguồn để giữ cho dữ liệu đồng bộ.
+
+42
+00:03:03,648 --> 00:03:07,408
+Nếu máy chủ nghĩ rằng con mèo đang hạnh phúc, nhưng trình duyệt cục bộ của bạn biết rằng nó đang hấp hối. Toàn bộ
+
+43
+00:03:07,408 --> 00:03:12,128
+ứng dụng sẽ bị lỗi. Chính xác. Vậy làm thế nào để khắc phục mà không làm sập ứng dụng mỗi khi ai đó đăng nhập?
+
+44
+00:03:12,128 --> 00:03:17,628
+một cốc nước? Đó là một cách khắc phục khéo léo. Họ sử dụng nhập khẩu động. Về cơ bản, họ đã nói với máy chủ
+
+45
+00:03:17,628 --> 00:03:22,688
+tự lo việc của mình bằng cách tắt kết xuất phía máy chủ bằng một lệnh gọi là
+
+46
+00:03:22,688 --> 00:03:27,968
+thành thật sai. Có nghĩa là máy chủ chính thậm chí không cố gắng đoán sức khỏe của thú cưng. Chính xác.
+
+47
+00:03:28,188 --> 00:03:46,332
+Thay vào đó, chúng lưu trữ sức khỏe thú cưng bằng bộ nhớ cục bộ, về cơ bản là bộ nhớ ngắn của trình duyệt. À, vậy là nó lưu dữ liệu ngay trên máy tính của bạn mà không cần liên tục gửi yêu cầu đến máy chủ. Vâng, và thêm vào đó là việc chúng sử dụng các biểu tượng cảm xúc hệ thống nhẹ thay vì các tệp hình ảnh cồng kềnh, và ứng dụng Vercel vẫn hoạt động cực nhanh. Đó là một
+
+48
+00:03:46,332 --> 00:03:52,192
+một giải pháp thay thế vô cùng thanh lịch, nhưng, bạn biết đấy, ngay cả khi mã nguồn hoàn hảo, lịch trình của con người vẫn
+
+49
+00:03:52,192 --> 00:03:57,252
+rất lộn xộn. Điều này trở thành vấn đề thực sự đối với nhân viên y tế làm ca đêm. Hầu hết các ứng dụng tiêu chuẩn đều được mã hóa cứng
+
+50
+00:03:57,252 --> 00:03:59,132
+để đặt lại mục tiêu hàng ngày của bạn vào lúc nửa đêm.
+
+51
+00:03:59,452 --> 00:04:01,752
+Đúng vậy, điều này hoàn toàn phá vỡ chuỗi động lực của bạn
+
+52
+00:04:01,752 --> 00:04:03,132
+ngay giữa ca làm việc.
+
+53
+00:04:03,472 --> 00:04:06,532
+Để khắc phục điều đó, bảng điều khiển sử dụng các giới hạn ngày có thể cấu hình.
+
+54
+00:04:07,192 --> 00:04:10,252
+Bằng cách chuyển thời gian đặt lại sang 4 giờ sáng,
+
+55
+00:04:10,812 --> 00:04:12,752
+hệ thống tôn trọng lịch trình linh hoạt.
+
+56
+00:04:13,112 --> 00:04:16,212
+Vậy là giờ bạn đã hiểu được tâm lý phức tạp
+
+57
+00:04:16,212 --> 00:04:20,072
+và kiến ​​trúc đám mây cần thiết chỉ để khiến ai đó
+
+58
+00:04:20,072 --> 00:04:22,052
+uống một cốc nước tại bàn làm việc của họ.
+
+59
+00:04:22,432 --> 00:04:24,252
+Điều này thực sự cho thấy chúng ta còn phải đi một chặng đường dài
+
+60
+00:04:24,252 --> 00:04:27,552
+để tích hợp sự an lành cơ bản của chúng ta vào các công cụ.
+
+61
+00:04:27,752 --> 00:04:29,272
+Chúng tôi sẽ để lại cho bạn điều này để suy ngẫm.
+
+62
+00:04:29,872 --> 00:04:33,692
+Nếu chúng ta cần đến sự thao túng cảm xúc của một con mèo kỹ thuật số đang hấp hối
+
+63
+00:04:33,692 --> 00:04:37,352
+chỉ để nhớ đến nhu cầu sinh học cơ bản nhất của chúng ta, đó là uống nước,
+
+64
+00:04:37,531 --> 00:04:40,932
+điều đó nói lên điều gì về việc công việc trên màn hình hiện đại đã khiến chúng ta xa rời chính cơ thể mình đến mức nào?
+
+65
+00:04:40,932 --> 00:04:42,392
+đã khiến chúng ta tách rời khỏi cơ thể mình?
+
+66
+00:04:42,531 --> 00:04:43,012
+Thật điên rồ.
+
+67
+00:04:43,352 --> 00:04:45,552
+Lần tới khi bạn cảm thấy đầu óc mình như đang lội qua mật mía,
+
+68
+00:04:45,692 --> 00:04:46,752
+có lẽ bạn không cần thêm cà phê nữa.
+
+69
+00:04:46,972 --> 00:04:48,152
+Có lẽ bạn chỉ cần cứu con mèo thôi.
