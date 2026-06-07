@@ -117,6 +117,22 @@ class InteractiveSegmenterTask extends BaseVisionTask {
   // Interactive Segmenter responds to CLI clicks, not continuous video frames
   protected override async predictWebcam() {}
 
+  protected override getWebcamCaptureBaseSource(): CanvasImageSource | null {
+    if (this.isFrozen && this.webcamCapture?.width && this.webcamCapture?.height) {
+      return this.webcamCapture;
+    }
+
+    return super.getWebcamCaptureBaseSource();
+  }
+
+  protected override getWebcamCaptureOverlayCanvases(): HTMLCanvasElement[] {
+    if (this.isFrozen && this.webcamOverlay?.width && this.webcamOverlay?.height) {
+      return [this.webcamOverlay];
+    }
+
+    return [];
+  }
+
   protected override async detectImage(_: HTMLImageElement) {
     if (this.runningMode !== 'IMAGE') this.runningMode = 'IMAGE';
     this.isWorkerReady = true;
