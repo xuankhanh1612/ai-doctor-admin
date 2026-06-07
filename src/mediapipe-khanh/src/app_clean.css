@@ -497,7 +497,7 @@ video {
   width: 100%;
   height: 100%;
   object-fit: contain;
-  transform: rotateY(180deg);
+  transform: none;
   grid-area: 1 / 1;
 }
 
@@ -510,7 +510,17 @@ video {
   position: relative;
   opacity: 1;
   transition: opacity 0.2s;
+  transform: none;
+}
+
+.video-wrapper.facing-user video,
+.video-wrapper.facing-user canvas {
   transform: rotateY(180deg);
+}
+
+.video-wrapper.facing-environment video,
+.video-wrapper.facing-environment canvas {
+  transform: none;
 }
 
 #output_canvas {
