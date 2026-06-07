@@ -307,6 +307,25 @@
       .mini-card p, .tip-card p { margin: 0; color: var(--muted); line-height: 1.55; font-size: 14px; }
       .water-map { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 12px; }
       .water-map div { padding: 12px 8px; border-radius: 18px; background: #eff6ff; text-align: center; color: #0369a1; font-weight: 950; font-size: 12px; }
+      .infographic-section { margin-top: 18px; padding-top: 18px; border-top: 1px solid rgba(14, 165, 233, 0.16); display: grid; gap: 14px; }
+      .infographic-title { margin: 0; text-align: center; color: #059669; text-transform: uppercase; letter-spacing: 0.08em; font-size: 13px; font-weight: 950; }
+      .info-card { background: rgba(255,255,255,0.86); border: 1px solid rgba(14,165,233,0.14); border-top: 5px solid #10b981; border-radius: 22px; box-shadow: 0 12px 30px rgba(14,165,233,0.08); padding: 16px; }
+      .info-card h3 { margin: 0 0 6px; font-size: 16px; color: #0f172a; }
+      .info-card p { margin: 0 0 12px; color: var(--muted); line-height: 1.6; font-size: 14px; }
+      .chart-box { position: relative; height: 230px; border-radius: 20px; background: linear-gradient(180deg, #ffffff, #f8fafc); border: 1px solid rgba(148,163,184,0.18); padding: 10px; }
+      .chart-box.small { height: 190px; }
+      .chart-box.tall { height: 270px; }
+      .chart-box canvas { width: 100%; height: 100%; display: block; }
+      .info-note { margin-top: 10px; padding: 12px; border-radius: 16px; background: #eff6ff; color: #1e40af; font-size: 13px; line-height: 1.5; }
+      .food-notes, .iron-steps { display: grid; gap: 8px; margin-top: 10px; }
+      .food-notes div, .iron-steps div { padding: 11px 12px; border-radius: 15px; font-size: 13px; line-height: 1.5; }
+      .food-meat { background: #fffbeb; color: #92400e; }
+      .food-plant { background: #ecfdf5; color: #065f46; }
+      .food-dairy { background: #eff6ff; color: #1e40af; }
+      .iron-red { background: #fff1f2; color: #991b1b; border-left: 5px solid #f87171; }
+      .iron-orange { background: #fff7ed; color: #9a3412; border-left: 5px solid #fb923c; }
+      .iron-blue { background: #eff6ff; color: #1e3a8a; border-left: 5px solid #60a5fa; }
+      .iron-green { background: #ecfdf5; color: #065f46; border-left: 5px solid #34d399; }
       .study-image-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 14px; }
       .study-image-grid figure { margin: 0; border-radius: 22px; overflow: hidden; background: #fff; border: 1px solid var(--line); }
       .study-image-grid img { width: 100%; height: 120px; object-fit: cover; display: block; }
@@ -330,6 +349,7 @@
         .hero, .learning-grid, .quiz-layout { grid-template-columns: 1fr; }
         .stats, .actions, .nutrient-list { grid-template-columns: repeat(2, 1fr); }
         .study-image-grid { grid-template-columns: repeat(2, 1fr); }
+        .chart-box, .chart-box.small, .chart-box.tall { height: 220px; }
         .msg { max-width: 92%; }
         .tabs { border-radius: 26px; grid-template-columns: 1fr; }
         .quiz-mascot { height: 280px; }
@@ -421,7 +441,7 @@
               <div class="flashcard" id="flashcard" aria-live="polite"></div>
               <div class="flash-actions">
                 <button class="ghost" id="prevCard">← Thẻ trước</button>
-                <strong id="cardCounter">1 / 6</strong>
+                <strong id="cardCounter">1 / 25</strong>
                 <button class="primary" id="nextCard">Thẻ sau →</button>
               </div>
             </article>
@@ -439,9 +459,48 @@
                 <div>Kali<br />tim</div>
                 <div>Nước<br />vận chuyển</div>
               </div>
-              <div class="tip-card" style="margin-top: 12px;"><strong>📊 Cẩm nang trực quan</strong><p>Tab Học tập được dựng lại từ source cũ với thẻ ghi nhớ, infographic dinh dưỡng và toàn bộ hình trong thư mục waterdrink-khanh để Bé Mèo Nước sinh động hơn.</p></div>
+              <div class="tip-card" style="margin-top: 12px;"><strong>📊 Cẩm nang trực quan</strong><p>Tab Học tập được dựng lại từ source cũ với đủ 25 thẻ ghi nhớ và toàn bộ phần Cẩm Nang Dinh Dưỡng Trực Quan để Bé Mèo Nước sinh động hơn.</p></div>
             </article>
           </div>
+
+          <div class="infographic-section" aria-label="Cẩm Nang Dinh Dưỡng Trực Quan">
+            <h3 class="infographic-title">Cẩm Nang Dinh Dưỡng Trực Quan 📊</h3>
+            <section class="info-card" style="border-top-color: #3b82f6;">
+              <h3>💧 Phân Loại Vitamin Cốt Lõi</h3>
+              <p>Vitamins được chia làm nhóm tan trong dầu (A, D, E, K - tích trữ lâu) và nhóm tan trong nước (B, C - dễ đào thải).</p>
+              <div class="chart-box"><canvas id="vitaminDonutChart" aria-label="Biểu đồ phân loại vitamin"></canvas></div>
+              <div class="info-note">💡 <strong>Mẹo:</strong> Ăn kèm chất béo lành mạnh (dầu ô liu, bơ) để hấp thụ tốt Vitamin A, D, E, K.</div>
+            </section>
+
+            <section class="info-card" style="border-top-color: #06b6d4;">
+              <h3>🌊 Khoáng Chất Trong Nước</h3>
+              <p>Hàm lượng điện giải và vi khoáng trung bình có trong 1 lít nước khoáng tự nhiên giúp tối ưu các hoạt động sống cơ thể.</p>
+              <div class="chart-box small"><canvas id="waterMineralsChart" aria-label="Biểu đồ khoáng chất trong nước"></canvas></div>
+              <div class="info-note" style="background:#ecfeff;color:#155e75;">💡 <strong>Sự thật:</strong> Nước khoáng chứa Canxi, Magie, Kali hỗ trợ bù điện giải rất nhanh khi vận động.</div>
+            </section>
+
+            <section class="info-card" style="border-top-color: #f59e0b;">
+              <h3>🥗 Bản Đồ Khoáng Chất Theo Thực Phẩm</h3>
+              <p>Sự phân bổ đa dạng của các khoáng chất thiết yếu trên 3 nhóm thực phẩm tiêu biểu hàng ngày.</p>
+              <div class="chart-box tall"><canvas id="foodRadarChart" aria-label="Biểu đồ radar khoáng chất theo thực phẩm"></canvas></div>
+              <div class="food-notes">
+                <div class="food-meat">🥩 <strong>Thịt & Hải sản:</strong> Giàu Sắt sinh học và Kẽm miễn dịch.</div>
+                <div class="food-plant">🥦 <strong>Rau, hạt:</strong> Cung cấp dồi dào Magie thần kinh và Kali.</div>
+                <div class="food-dairy">🥛 <strong>Sữa & phô mai:</strong> Nguồn bổ sung Canxi cấu trúc tốt nhất.</div>
+              </div>
+            </section>
+
+            <section class="info-card" style="border-top-color: #ef4444;">
+              <h3>🩸 Hành Trình Chuyển Hóa Sắt</h3>
+              <div class="iron-steps">
+                <div class="iron-red"><strong>1. Nạp Vào:</strong> Sắt Heme từ động vật dễ hấp thu tốt hơn sắt Non-Heme từ thực vật.</div>
+                <div class="iron-orange"><strong>2. Xúc Tác:</strong> Vitamin C (cam, chanh) biến đổi môi trường ruột, tăng hấp thu sắt gấp 3 lần.</div>
+                <div class="iron-blue"><strong>3. Tổng Hợp:</strong> Sắt được chuyển đến tủy xương sản xuất Hemoglobin cấu tạo hồng cầu.</div>
+                <div class="iron-green"><strong>4. Vận Chuyển:</strong> Hồng cầu mang oxy đi nuôi toàn bộ các tế bào và cơ quan.</div>
+              </div>
+            </section>
+          </div>
+
           <div class="study-image-grid" aria-label="Tất cả hình Bé Mèo Nước">
             <figure><img src="__MEO_NUOC_AI__" alt="Mèo nước AI" /><figcaption>Mèo nước AI nhắc uống nước.</figcaption></figure>
             <figure><img src="__MEO_BU_AI__" alt="Mèo bù nước AI" /><figcaption>Mèo bù nước cổ vũ đủ ml.</figcaption></figure>
@@ -506,12 +565,31 @@
       let answered = false;
 
       const flashcards = [
-        { icon: '💧', title: 'Nước là dung môi vận chuyển', back: 'Nước đưa chất dinh dưỡng đến tế bào, hỗ trợ điều hoà thân nhiệt và giúp cơ thể đào thải chất cặn.' },
-        { icon: '🍊', title: 'Vitamin C hỗ trợ hấp thu sắt', back: 'Ăn cam, ổi, dâu hoặc rau giàu vitamin C cùng bữa có sắt sẽ giúp cơ thể hấp thu sắt hiệu quả hơn.' },
-        { icon: '🥛', title: 'Canxi cần cho xương', back: 'Canxi có nhiều trong sữa, sữa chua, phô mai, cá nhỏ ăn cả xương và một số loại rau xanh.' },
-        { icon: '🥦', title: 'Magie giúp cơ thư giãn', back: 'Magie có trong rau xanh, hạt, đậu và ngũ cốc nguyên hạt; uống nước đều giúp cân bằng điện giải khi vận động.' },
-        { icon: '☀️', title: 'Vitamin D đồng hành với canxi', back: 'Vitamin D giúp cơ thể hấp thu canxi. Tắm nắng phù hợp và ăn cá béo, trứng là cách bổ sung tự nhiên.' },
-        { icon: '🐱', title: 'Uống từng ngụm nhỏ', back: 'Chia nước thành nhiều lần trong ngày tốt hơn uống dồn. Bé Mèo gợi ý uống sau khi thức dậy, trước bữa ăn và sau học tập.' }
+        { icon: '👁️', title: 'Vitamin A', back: 'Duy trì thị lực, tăng cường miễn dịch và bảo vệ da. Có trong cà rốt, gan, bí đỏ.' },
+        { icon: '🍊', title: 'Vitamin C', back: 'Chống oxy hóa, tổng hợp collagen và làm lành vết thương. Có trong cam, ổi, ớt chuông.' },
+        { icon: '☀️', title: 'Vitamin D', back: 'Hấp thụ canxi duy trì xương chắc khóa. Có trong cá hồi, trứng và ánh nắng mặt trời.' },
+        { icon: '🥑', title: 'Vitamin E', back: 'Bảo vệ màng tế bào, tốt cho tim mạch. Có trong hạt hướng dương, bơ, dầu ô liu.' },
+        { icon: '🥬', title: 'Vitamin K', back: 'Đóng vai trò quan trọng trong đông máu và xương. Có trong rau cải bó xôi, súp lơ xanh.' },
+        { icon: '🌾', title: 'Vitamin B1 (Thiamine)', back: 'Chuyển hóa năng lượng và hỗ trợ thần kinh. Có trong ngũ cốc nguyên hạt, thịt lợn.' },
+        { icon: '🤰', title: 'Vitamin B9 (Axit Folic)', back: 'Cần thiết cho phân chia tế bào, hình thành DNA. Rất quan trọng cho bà bầu.' },
+        { icon: '🩸', title: 'Vitamin B12', back: 'Sản sinh hồng cầu và duy trì hệ thần kinh. Có trong thịt, cá, sữa.' },
+        { icon: '🥛', title: 'Canxi (Calcium)', back: 'Cấu tạo xương, răng và hỗ trợ co cơ. Có trong sữa, tôm cua, phô mai.' },
+        { icon: '🥩', title: 'Sắt (Iron)', back: 'Thành phần của hemoglobin vận chuyển oxy. Có trong thịt bò, gan, các loại đậu.' },
+        { icon: '🦪', title: 'Kẽm (Zinc)', back: 'Hỗ trợ hệ miễn dịch và phát triển vị giác. Có trong hàu, hải sản, thịt đỏ.' },
+        { icon: '🍫', title: 'Magie (Magnesium)', back: 'Ổn định thần kinh và cơ bắp. Có trong hạt điều, socola đen, rau xanh.' },
+        { icon: '🍌', title: 'Kali (Potassium)', back: 'Điều hòa huyết áp và hoạt động của tim. Có trong chuối, nước dừa, khoai lang.' },
+        { icon: '🌊', title: 'I-ốt (Iodine)', back: 'Cần thiết cho tuyến giáp và trí não. Có trong muối i-ốt, rong biển.' },
+        { icon: '🥚', title: 'Vitamin B2 (Riboflavin)', back: 'Hỗ trợ sản xuất năng lượng và chức năng tế bào. Có trong trứng, sữa.' },
+        { icon: '🐟', title: 'Vitamin B3 (Niacin)', back: 'Tốt cho tiêu hóa và làn da. Có trong ức gà, cá ngừ.' },
+        { icon: '🍄', title: 'Vitamin B5', back: 'Giúp cơ thể phân giải chất béo. Có trong nấm, ngũ cốc.' },
+        { icon: '🍗', title: 'Vitamin B6', back: 'Cần cho sự phát triển trí não. Có trong chuối, thịt gà.' },
+        { icon: '💅', title: 'Vitamin B7 (Biotin)', back: 'Duy trì sức khỏe tóc và móng. Có trong lòng đỏ trứng, quả óc chó.' },
+        { icon: '🦴', title: 'Phốt pho', back: 'Hỗ trợ xây dựng xương và lọc chất thải ở thận. Có trong thịt, cá.' },
+        { icon: '🧂', title: 'Natri (Sodium)', back: 'Cân bằng chất lỏng cơ thể. Cần bổ sung vừa đủ từ muối ăn.' },
+        { icon: '🌰', title: 'Đồng (Copper)', back: 'Giúp cơ thể hấp thụ sắt. Có trong nội tạng động vật, hạt vỏ cứng.' },
+        { icon: '🍵', title: 'Mangan', back: 'Hỗ trợ hình thành xương và chuyển hóa. Có trong trà, ngũ cốc.' },
+        { icon: '🌰', title: 'Selen', back: 'Chống oxy hóa mạnh mẽ. Có trong quả hạch Brazil, cá ngừ.' },
+        { icon: '💧', title: 'Bicarbonate', back: 'Duy trì độ pH ổn định cho máu. Thường có trong nước khoáng tự nhiên.' }
       ];
 
       const quizQuestions = [
@@ -566,6 +644,181 @@
       function switchTab(tab) {
         document.querySelectorAll('.tab-btn').forEach((button) => button.classList.toggle('active', button.dataset.tab === tab));
         document.querySelectorAll('.tab-panel').forEach((panel) => panel.classList.toggle('active', panel.id === `tab-${tab}`));
+        if (tab === 'study') window.requestAnimationFrame(drawInfographicCharts);
+      }
+
+      function setupCanvas(canvas) {
+        const rect = canvas.getBoundingClientRect();
+        const ratio = window.devicePixelRatio || 1;
+        canvas.width = Math.max(1, Math.floor(rect.width * ratio));
+        canvas.height = Math.max(1, Math.floor(rect.height * ratio));
+        const ctx = canvas.getContext('2d');
+        ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+        return { ctx, width: rect.width, height: rect.height };
+      }
+
+      function drawInfographicCharts() {
+        drawVitaminDonut();
+        drawWaterMinerals();
+        drawFoodRadar();
+      }
+
+      function drawVitaminDonut() {
+        const canvas = document.getElementById('vitaminDonutChart');
+        if (!canvas) return;
+        const { ctx, width, height } = setupCanvas(canvas);
+        const cx = width * 0.34;
+        const cy = height * 0.5;
+        const radius = Math.min(width, height) * 0.34;
+        const data = [
+          { label: 'Tan trong dầu (A,D,E,K)', value: 4, color: '#f59e0b' },
+          { label: 'Tan trong nước (B,C)', value: 9, color: '#3b82f6' }
+        ];
+        const total = data.reduce((sum, item) => sum + item.value, 0);
+        let start = -Math.PI / 2;
+        ctx.clearRect(0, 0, width, height);
+        data.forEach((item) => {
+          const angle = (item.value / total) * Math.PI * 2;
+          ctx.beginPath();
+          ctx.moveTo(cx, cy);
+          ctx.arc(cx, cy, radius, start, start + angle);
+          ctx.closePath();
+          ctx.fillStyle = item.color;
+          ctx.fill();
+          start += angle;
+        });
+        ctx.beginPath();
+        ctx.arc(cx, cy, radius * 0.56, 0, Math.PI * 2);
+        ctx.fillStyle = '#fff';
+        ctx.fill();
+        ctx.fillStyle = '#0369a1';
+        ctx.font = '800 18px Inter, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('13', cx, cy - 2);
+        ctx.font = '700 11px Inter, sans-serif';
+        ctx.fillStyle = '#64748b';
+        ctx.fillText('vitamin', cx, cy + 15);
+        ctx.textAlign = 'left';
+        data.forEach((item, index) => {
+          const y = cy - 28 + index * 44;
+          ctx.fillStyle = item.color;
+          ctx.fillRect(width * 0.62, y - 10, 16, 16);
+          ctx.fillStyle = '#334155';
+          ctx.font = '800 12px Inter, sans-serif';
+          ctx.fillText(item.label, width * 0.62 + 24, y + 2);
+          ctx.fillStyle = '#64748b';
+          ctx.font = '700 11px Inter, sans-serif';
+          ctx.fillText(`${item.value} loại`, width * 0.62 + 24, y + 18);
+        });
+      }
+
+      function drawWaterMinerals() {
+        const canvas = document.getElementById('waterMineralsChart');
+        if (!canvas) return;
+        const { ctx, width, height } = setupCanvas(canvas);
+        const labels = ['Canxi', 'Magie', 'Natri', 'Kali', 'Bicarbonate'];
+        const values = [85, 45, 30, 15, 95];
+        const max = 100;
+        const left = 28;
+        const bottom = height - 34;
+        const chartHeight = height - 58;
+        const barWidth = (width - left - 18) / values.length - 10;
+        ctx.clearRect(0, 0, width, height);
+        ctx.strokeStyle = '#e2e8f0';
+        ctx.lineWidth = 1;
+        for (let i = 0; i <= 3; i += 1) {
+          const y = bottom - (chartHeight / 3) * i;
+          ctx.beginPath();
+          ctx.moveTo(left, y);
+          ctx.lineTo(width - 10, y);
+          ctx.stroke();
+        }
+        values.forEach((value, index) => {
+          const x = left + index * (barWidth + 10) + 5;
+          const h = (value / max) * chartHeight;
+          const gradient = ctx.createLinearGradient(0, bottom - h, 0, bottom);
+          gradient.addColorStop(0, '#67e8f9');
+          gradient.addColorStop(1, '#06b6d4');
+          ctx.fillStyle = gradient;
+          ctx.beginPath();
+          ctx.roundRect(x, bottom - h, barWidth, h, 7);
+          ctx.fill();
+          ctx.fillStyle = '#0369a1';
+          ctx.font = '800 11px Inter, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(value, x + barWidth / 2, bottom - h - 6);
+          ctx.fillStyle = '#64748b';
+          ctx.font = '700 10px Inter, sans-serif';
+          ctx.fillText(labels[index], x + barWidth / 2, bottom + 18);
+        });
+      }
+
+      function drawFoodRadar() {
+        const canvas = document.getElementById('foodRadarChart');
+        if (!canvas) return;
+        const { ctx, width, height } = setupCanvas(canvas);
+        const labels = ['Canxi', 'Sắt', 'Kẽm', 'Magie', 'Kali'];
+        const datasets = [
+          { label: 'Thịt & Hải Sản', data: [20, 95, 90, 40, 60], stroke: '#ef4444', fill: 'rgba(239,68,68,0.16)' },
+          { label: 'Sữa & Từ Sữa', data: [95, 10, 30, 20, 50], stroke: '#3b82f6', fill: 'rgba(59,130,246,0.16)' },
+          { label: 'Rau Quả & Hạt', data: [40, 50, 45, 90, 85], stroke: '#10b981', fill: 'rgba(16,185,129,0.16)' }
+        ];
+        const cx = width * 0.5;
+        const cy = height * 0.52;
+        const radius = Math.min(width, height) * 0.3;
+        ctx.clearRect(0, 0, width, height);
+        ctx.textAlign = 'center';
+        for (let ring = 1; ring <= 4; ring += 1) {
+          ctx.beginPath();
+          labels.forEach((_, index) => {
+            const angle = -Math.PI / 2 + index * (Math.PI * 2 / labels.length);
+            const r = radius * ring / 4;
+            const x = cx + Math.cos(angle) * r;
+            const y = cy + Math.sin(angle) * r;
+            if (index === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+          });
+          ctx.closePath();
+          ctx.strokeStyle = '#e2e8f0';
+          ctx.stroke();
+        }
+        labels.forEach((label, index) => {
+          const angle = -Math.PI / 2 + index * (Math.PI * 2 / labels.length);
+          const x = cx + Math.cos(angle) * radius;
+          const y = cy + Math.sin(angle) * radius;
+          ctx.beginPath();
+          ctx.moveTo(cx, cy);
+          ctx.lineTo(x, y);
+          ctx.strokeStyle = '#eef2f7';
+          ctx.stroke();
+          ctx.fillStyle = '#475569';
+          ctx.font = '800 11px Inter, sans-serif';
+          ctx.fillText(label, cx + Math.cos(angle) * (radius + 22), cy + Math.sin(angle) * (radius + 18));
+        });
+        datasets.forEach((set) => {
+          ctx.beginPath();
+          set.data.forEach((value, index) => {
+            const angle = -Math.PI / 2 + index * (Math.PI * 2 / labels.length);
+            const r = radius * value / 100;
+            const x = cx + Math.cos(angle) * r;
+            const y = cy + Math.sin(angle) * r;
+            if (index === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+          });
+          ctx.closePath();
+          ctx.fillStyle = set.fill;
+          ctx.strokeStyle = set.stroke;
+          ctx.lineWidth = 2;
+          ctx.fill();
+          ctx.stroke();
+        });
+        datasets.forEach((set, index) => {
+          const x = 18 + index * (width / 3);
+          ctx.fillStyle = set.stroke;
+          ctx.fillRect(x, 10, 12, 12);
+          ctx.fillStyle = '#334155';
+          ctx.font = '700 10px Inter, sans-serif';
+          ctx.textAlign = 'left';
+          ctx.fillText(set.label, x + 17, 20);
+        });
       }
 
       function renderState() {
@@ -716,6 +969,8 @@
       renderChat();
       renderCard();
       renderQuestion();
+      drawInfographicCharts();
+      window.addEventListener('resize', drawInfographicCharts);
     </script>
   </body>
 </html>
