@@ -2,11 +2,21 @@ import React, { useMemo } from 'react'
 import { useApp } from '../context/AppContext'
 // @ts-ignore Vite raw HTML import
 import waterDrinkTrackerHtml from '../waterdrink-khanh/waterdrink_tracker.html?raw'
+import meoNuocAiUrl from '../waterdrink-khanh/MeoNuocAI.JPG'
+import meoBuAiUrl from '../waterdrink-khanh/MeoBuAI.JPG'
+import meoNhayMatUrl from '../waterdrink-khanh/MeoNhayMat.JPG'
+import robotTuThe1Url from '../waterdrink-khanh/Robot-mang-giong-noi-nguoi-thuong-ren-hoc-sinh-ngoi-dung-tu-the-1.jpg'
+import robotTuThe2Url from '../waterdrink-khanh/Robot-mang-giong-noi-nguoi-thuong-ren-hoc-sinh-ngoi-dung-tu-the-2.jpg'
 
 export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel }) {
   const { theme } = useApp()
   const isDark = theme === 'dark'
-  const html = useMemo(() => waterDrinkTrackerHtml, [])
+  const html = useMemo(() => waterDrinkTrackerHtml
+    .replaceAll('__MEO_NUOC_AI__', meoNuocAiUrl)
+    .replaceAll('__MEO_BU_AI__', meoBuAiUrl)
+    .replaceAll('__MEO_NHAY_MAT__', meoNhayMatUrl)
+    .replaceAll('__ROBOT_TU_THE_1__', robotTuThe1Url)
+    .replaceAll('__ROBOT_TU_THE_2__', robotTuThe2Url), [])
 
   return (
     <div style={{ minHeight: '100%', background: isDark ? '#050b18' : '#eef8ff', padding: '22px clamp(14px, 3vw, 28px) 36px' }}>
@@ -26,7 +36,7 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel }) {
           <iframe
             title="Bé Mèo Nước chatbot"
             srcDoc={html}
-            style={{ width: '100%', minHeight: '820px', border: 0, display: 'block', background: '#eef8ff' }}
+            style={{ width: '100%', minHeight: '1180px', border: 0, display: 'block', background: '#eef8ff' }}
             sandbox="allow-scripts allow-same-origin allow-forms"
           />
         </div>
