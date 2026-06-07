@@ -2,11 +2,21 @@ import React, { useMemo } from 'react'
 import { useApp } from '../context/AppContext'
 // @ts-ignore Vite raw HTML import
 import waterDrinkTrackerHtml from '../waterdrink-khanh/waterdrink_tracker.html?raw'
+import meoBuAiUrl from '../waterdrink-khanh/MeoBuAI.JPG'
+import meoNuocAiUrl from '../waterdrink-khanh/MeoNuocAI.JPG'
+import meoNhayMatUrl from '../waterdrink-khanh/MeoNhayMat.JPG'
+import robotPostureOneUrl from '../waterdrink-khanh/Robot-mang-giong-noi-nguoi-thuong-ren-hoc-sinh-ngoi-dung-tu-the-1.jpg'
+import robotPostureTwoUrl from '../waterdrink-khanh/Robot-mang-giong-noi-nguoi-thuong-ren-hoc-sinh-ngoi-dung-tu-the-2.jpg'
 
 export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel }) {
   const { theme } = useApp()
   const isDark = theme === 'dark'
-  const html = useMemo(() => waterDrinkTrackerHtml, [])
+  const html = useMemo(() => waterDrinkTrackerHtml
+    .replaceAll('__MEOBU_AI__', meoBuAiUrl)
+    .replaceAll('__MEONUOC_AI__', meoNuocAiUrl)
+    .replaceAll('__MEONHAYMAT__', meoNhayMatUrl)
+    .replaceAll('__ROBOT_POSTURE_1__', robotPostureOneUrl)
+    .replaceAll('__ROBOT_POSTURE_2__', robotPostureTwoUrl), [])
 
   return (
     <div style={{ minHeight: '100%', background: isDark ? '#050b18' : '#eef8ff', padding: '22px clamp(14px, 3vw, 28px) 36px' }}>

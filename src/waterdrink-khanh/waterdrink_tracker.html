@@ -293,10 +293,251 @@
       }
       .quick button { padding: 9px 12px; font-size: 12px; }
 
+
+      .learning-card {
+        margin-top: 18px;
+        padding: 20px;
+      }
+      .section-title {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
+        margin-bottom: 16px;
+      }
+      .section-title h2 {
+        margin: 8px 0 0;
+        font-size: clamp(24px, 4vw, 38px);
+        line-height: 1;
+        letter-spacing: -0.05em;
+      }
+      .section-title p {
+        margin: 6px 0 0;
+        color: var(--muted);
+        line-height: 1.6;
+        max-width: 720px;
+      }
+      .learn-tabs {
+        display: inline-flex;
+        gap: 8px;
+        padding: 6px;
+        border-radius: 999px;
+        background: rgba(224, 242, 254, 0.78);
+        border: 1px solid var(--line);
+      }
+      .learn-tab {
+        background: transparent;
+        color: #0369a1;
+        box-shadow: none;
+      }
+      .learn-tab.active {
+        background: #fff;
+        color: #0f766e;
+        box-shadow: 0 12px 24px rgba(14, 165, 233, 0.14);
+      }
+      .learn-panel[hidden] { display: none; }
+      .study-grid {
+        display: grid;
+        grid-template-columns: minmax(280px, 0.85fr) minmax(0, 1.15fr);
+        gap: 16px;
+      }
+      .spotlight-card, .flashcard, .info-card, .quiz-box, .result-box {
+        border: 1px solid var(--line);
+        border-radius: 26px;
+        background: rgba(255, 255, 255, 0.72);
+        padding: 16px;
+      }
+      .spotlight-card {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .image-frame {
+        overflow: hidden;
+        border-radius: 22px;
+        border: 1px solid rgba(14, 165, 233, 0.18);
+        background: #e0f2fe;
+      }
+      .image-frame img {
+        display: block;
+        width: 100%;
+        height: 240px;
+        object-fit: cover;
+      }
+      .image-caption {
+        margin: 0;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.55;
+      }
+      .gallery {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(120px, 1fr));
+        gap: 10px;
+        margin-top: 14px;
+      }
+      .gallery figure {
+        margin: 0;
+        overflow: hidden;
+        border-radius: 20px;
+        border: 1px solid rgba(14, 165, 233, 0.16);
+        background: #fff;
+      }
+      .gallery img {
+        width: 100%;
+        height: 120px;
+        object-fit: cover;
+        display: block;
+      }
+      .gallery figcaption {
+        padding: 8px 9px;
+        color: #075985;
+        font-size: 11px;
+        font-weight: 900;
+      }
+      .flashcard {
+        min-height: 254px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        background: linear-gradient(145deg, rgba(255,255,255,0.9), rgba(224,242,254,0.8));
+      }
+      .flashcard-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        color: #0369a1;
+        font-weight: 900;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+      .flashcard h3 {
+        margin: 18px 0 8px;
+        font-size: clamp(28px, 5vw, 46px);
+        letter-spacing: -0.06em;
+      }
+      .flashcard p {
+        color: var(--muted);
+        line-height: 1.65;
+        margin: 0;
+      }
+      .flash-controls {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-top: 16px;
+      }
+      .info-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        margin-top: 14px;
+      }
+      .info-card h4 {
+        margin: 0 0 8px;
+        color: #0369a1;
+      }
+      .info-card p, .info-card li {
+        color: var(--muted);
+        line-height: 1.6;
+        font-size: 13px;
+      }
+      .info-card ul {
+        margin: 0;
+        padding-left: 18px;
+      }
+      .quiz-layout {
+        display: grid;
+        grid-template-columns: minmax(250px, 0.75fr) minmax(0, 1.25fr);
+        gap: 16px;
+        align-items: stretch;
+      }
+      .quiz-box h3 {
+        margin: 10px 0 12px;
+        font-size: clamp(22px, 3vw, 34px);
+        letter-spacing: -0.04em;
+      }
+      .quiz-progress {
+        height: 10px;
+        border-radius: 999px;
+        overflow: hidden;
+        background: rgba(14, 165, 233, 0.12);
+        margin: 12px 0 16px;
+      }
+      .quiz-progress span {
+        display: block;
+        height: 100%;
+        width: 10%;
+        border-radius: inherit;
+        background: linear-gradient(135deg, var(--water), var(--aqua));
+        transition: width 0.25s ease;
+      }
+      .quiz-options {
+        display: grid;
+        gap: 10px;
+      }
+      .quiz-option {
+        width: 100%;
+        border-radius: 18px;
+        background: rgba(240, 249, 255, 0.88);
+        color: var(--ink);
+        text-align: left;
+        border: 1px solid var(--line);
+        box-shadow: none;
+      }
+      .quiz-option.correct { background: #dcfce7; color: #166534; border-color: #86efac; }
+      .quiz-option.wrong { background: #fee2e2; color: #991b1b; border-color: #fca5a5; }
+      .quiz-help, .quiz-explain {
+        margin-top: 12px;
+        border-radius: 18px;
+        padding: 12px 14px;
+        color: #075985;
+        background: rgba(224, 242, 254, 0.78);
+        border: 1px solid var(--line);
+        line-height: 1.55;
+        font-size: 13px;
+      }
+      .quiz-explain.good { background: #dcfce7; color: #166534; border-color: #86efac; }
+      .quiz-explain.bad { background: #fee2e2; color: #991b1b; border-color: #fca5a5; }
+      .quiz-help[hidden], .quiz-explain[hidden], .result-box[hidden], #quizPlay[hidden] { display: none; }
+      .quiz-actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-top: 14px;
+      }
+      .result-box {
+        text-align: center;
+      }
+      .result-score {
+        font-size: clamp(44px, 7vw, 76px);
+        font-weight: 1000;
+        letter-spacing: -0.08em;
+        color: #0369a1;
+        margin: 10px 0;
+      }
+      .resource-note {
+        border-radius: 22px;
+        padding: 14px;
+        background: rgba(204, 251, 241, 0.58);
+        border: 1px solid rgba(20, 184, 166, 0.22);
+        color: #115e59;
+        line-height: 1.6;
+        font-size: 13px;
+      }
+
       @media (max-width: 880px) {
-        .hero { grid-template-columns: 1fr; }
-        .stats, .actions { grid-template-columns: repeat(2, 1fr); }
+        .hero, .study-grid, .quiz-layout { grid-template-columns: 1fr; }
+        .stats, .actions, .info-grid { grid-template-columns: repeat(2, 1fr); }
+        .gallery { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
         .msg { max-width: 92%; }
+      }
+      @media (max-width: 560px) {
+        .stats, .actions, .info-grid { grid-template-columns: 1fr; }
+        .image-frame img { height: 190px; }
       }
     </style>
   </head>
@@ -335,6 +576,90 @@
           </div>
         </aside>
       </section>
+
+      <section class="card learning-card" aria-label="Bé Mèo Nước học tập và đố vui">
+        <div class="section-title">
+          <div>
+            <span class="badge">✨ Góc học tập từ source cũ</span>
+            <h2>Học với <span class="gradient-text">Bé Mèo Nước</span></h2>
+            <p>Hai tab “Học tập” và “Đố vui” được dựng lại từ <strong>waterdrink_tracker_Learn.html</strong>, kết hợp toàn bộ hình trong thư mục <strong>src/waterdrink-khanh/</strong> để nội dung sinh động hơn.</p>
+          </div>
+          <div class="learn-tabs" role="tablist" aria-label="Tab học tập Bé Mèo Nước">
+            <button class="learn-tab active" id="studyTabButton" type="button" role="tab" aria-selected="true" aria-controls="studyTab" data-learn-tab="study">Học tập ✨</button>
+            <button class="learn-tab" id="quizTabButton" type="button" role="tab" aria-selected="false" aria-controls="quizTab" data-learn-tab="quiz">Đố vui 🧠</button>
+          </div>
+        </div>
+
+        <div id="studyTab" class="learn-panel" role="tabpanel" aria-labelledby="studyTabButton">
+          <div class="study-grid">
+            <article class="spotlight-card">
+              <div class="image-frame"><img src="__MEONUOC_AI__" alt="Bé Mèo Nước AI nhắc uống nước" /></div>
+              <p class="image-caption"><strong>Bé Mèo Nước</strong> giúp biến thói quen uống nước thành nhiệm vụ nhỏ, vui và dễ nhớ trong ngày.</p>
+              <div class="resource-note">💧 Mẹo nhanh: đặt ly nước cạnh bàn, uống vài ngụm sau khi thức dậy, trước bữa ăn và sau mỗi 45–60 phút học tập/làm việc.</div>
+            </article>
+
+            <article class="flashcard" aria-live="polite">
+              <div class="flashcard-top">
+                <span>Flashcard vitamin & khoáng chất</span>
+                <span id="flashCounter">1 / 25</span>
+              </div>
+              <div>
+                <h3 id="flashTitle">Vitamin A</h3>
+                <p id="flashBody">Duy trì thị lực, tăng cường miễn dịch và bảo vệ da. Có trong cà rốt, gan, bí đỏ.</p>
+              </div>
+              <div class="flash-controls">
+                <button class="ghost" type="button" id="prevFlash">← Thẻ trước</button>
+                <button class="primary" type="button" id="nextFlash">Thẻ tiếp →</button>
+              </div>
+            </article>
+          </div>
+
+          <div class="gallery" aria-label="Tất cả hình trong thư mục waterdrink-khanh">
+            <figure><img src="__MEONUOC_AI__" alt="Mèo Nước AI" /><figcaption>MeoNuocAI.JPG</figcaption></figure>
+            <figure><img src="__MEOBU_AI__" alt="Mèo Bự AI" /><figcaption>MeoBuAI.JPG</figcaption></figure>
+            <figure><img src="__MEONHAYMAT__" alt="Mèo nháy mắt" /><figcaption>MeoNhayMat.JPG</figcaption></figure>
+            <figure><img src="__ROBOT_POSTURE_1__" alt="Robot nhắc học sinh ngồi đúng tư thế 1" /><figcaption>Robot tư thế 1</figcaption></figure>
+            <figure><img src="__ROBOT_POSTURE_2__" alt="Robot nhắc học sinh ngồi đúng tư thế 2" /><figcaption>Robot tư thế 2</figcaption></figure>
+          </div>
+
+          <div class="info-grid">
+            <article class="info-card"><h4>💧 Vitamin tan trong nước</h4><p>Nhóm B và C cần được bổ sung đều vì cơ thể dễ đào thải qua nước. Uống nước hợp lý giúp vận chuyển các chất này tốt hơn.</p></article>
+            <article class="info-card"><h4>🥑 Vitamin tan trong dầu</h4><p>A, D, E, K hấp thụ tốt hơn khi bữa ăn có chất béo lành mạnh như bơ, dầu ô liu, hạt hoặc cá béo.</p></article>
+            <article class="info-card"><h4>🤖 Tư thế học tập</h4><p>Hai hình robot trong thư mục được dùng để nhắc bạn vừa uống nước, vừa ngồi thẳng và nghỉ mắt định kỳ.</p></article>
+          </div>
+        </div>
+
+        <div id="quizTab" class="learn-panel" role="tabpanel" aria-labelledby="quizTabButton" hidden>
+          <div class="quiz-layout">
+            <article class="spotlight-card">
+              <div class="image-frame"><img src="__MEOBU_AI__" alt="Bé Mèo cổ vũ phần đố vui" /></div>
+              <p class="image-caption"><strong>Đố vui 10 câu</strong> dùng lại bộ câu hỏi vitamin, khoáng chất và vai trò của nước từ source cũ.</p>
+              <div class="resource-note">🐱 Chọn đáp án, xem giải thích, dùng gợi ý khi cần rồi thử lại để ghi nhớ lâu hơn.</div>
+            </article>
+            <div>
+              <div id="quizPlay" class="quiz-box">
+                <span class="badge" id="quizProgressText">Câu hỏi 1 / 10</span>
+                <div class="quiz-progress" aria-hidden="true"><span id="quizProgressBar"></span></div>
+                <h3 id="quizQuestion">Câu hỏi sẽ hiển thị ở đây.</h3>
+                <div class="quiz-options" id="quizOptions"></div>
+                <div class="quiz-help" id="quizHint" hidden></div>
+                <div class="quiz-explain" id="quizExplain" hidden></div>
+                <div class="quiz-actions">
+                  <button class="ghost" type="button" id="showHint">Xem gợi ý</button>
+                  <button class="primary" type="button" id="nextQuiz" hidden>Câu tiếp →</button>
+                </div>
+              </div>
+              <div id="quizResult" class="result-box" hidden>
+                <div class="image-frame"><img src="__MEONHAYMAT__" alt="Bé Mèo chúc mừng kết quả đố vui" /></div>
+                <p class="result-score"><span id="quizScore">0</span>/10</p>
+                <p id="quizFeedback" class="lead">Tuyệt vời!</p>
+                <button class="primary" type="button" id="restartQuiz">Chơi lại</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
 
       <section class="card chat-card" aria-label="Bé Mèo Nước chatbot">
         <div class="chat-header">
@@ -490,6 +815,157 @@
         chatInput.value = '';
       });
 
+
+
+      const flashcards = [
+        { f: "Vitamin A", b: "Duy trì thị lực, tăng cường miễn dịch và bảo vệ da. Có trong cà rốt, gan, bí đỏ." },
+        { f: "Vitamin C", b: "Chống oxy hóa, tổng hợp collagen và làm lành vết thương. Có trong cam, ổi, ớt chuông." },
+        { f: "Vitamin D", b: "Hấp thụ canxi duy trì xương chắc khỏe. Có trong cá hồi, trứng và ánh nắng mặt trời." },
+        { f: "Vitamin E", b: "Bảo vệ màng tế bào, tốt cho tim mạch. Có trong hạt hướng dương, bơ, dầu ô liu." },
+        { f: "Vitamin K", b: "Đóng vai trò quan trọng trong đông máu và xương. Có trong rau cải bó xôi, súp lơ xanh." },
+        { f: "Vitamin B1 (Thiamine)", b: "Chuyển hóa năng lượng và hỗ trợ thần kinh. Có trong ngũ cốc nguyên hạt, thịt lợn." },
+        { f: "Vitamin B9 (Axit Folic)", b: "Cần thiết cho phân chia tế bào, hình thành DNA. Rất quan trọng cho bà bầu." },
+        { f: "Vitamin B12", b: "Sản sinh hồng cầu và duy trì hệ thần kinh. Có trong thịt, cá, sữa." },
+        { f: "Canxi (Calcium)", b: "Cấu tạo xương, răng và hỗ trợ co cơ. Có trong sữa, tôm cua, phô mai." },
+        { f: "Sắt (Iron)", b: "Thành phần của hemoglobin vận chuyển oxy. Có trong thịt bò, gan, các loại đậu." },
+        { f: "Kẽm (Zinc)", b: "Hỗ trợ hệ miễn dịch và phát triển vị giác. Có trong hàu, hải sản, thịt đỏ." },
+        { f: "Magie (Magnesium)", b: "Ổn định thần kinh và cơ bắp. Có trong hạt điều, socola đen, rau xanh." },
+        { f: "Kali (Potassium)", b: "Điều hòa huyết áp và hoạt động của tim. Có trong chuối, nước dừa, khoai lang." },
+        { f: "I-ốt (Iodine)", b: "Cần thiết cho tuyến giáp và trí não. Có trong muối i-ốt, rong biển." },
+        { f: "Vitamin B2 (Riboflavin)", b: "Hỗ trợ sản xuất năng lượng và chức năng tế bào. Có trong trứng, sữa." },
+        { f: "Vitamin B3 (Niacin)", b: "Tốt cho tiêu hóa và làn da. Có trong ức gà, cá ngừ." },
+        { f: "Vitamin B5", b: "Giúp cơ thể phân giải chất béo. Có trong nấm, ngũ cốc." },
+        { f: "Vitamin B6", b: "Cần cho sự phát triển trí não. Có trong chuối, thịt gà." },
+        { f: "Vitamin B7 (Biotin)", b: "Duy trì sức khỏe tóc và móng. Có trong lòng đỏ trứng, quả óc chó." },
+        { f: "Phốt pho", b: "Hỗ trợ xây dựng xương và lọc chất thải ở thận. Có trong thịt, cá." },
+        { f: "Natri (Sodium)", b: "Cân bằng chất lỏng cơ thể. Cần bổ sung vừa đủ từ muối ăn." },
+        { f: "Đồng (Copper)", b: "Giúp cơ thể hấp thụ sắt. Có trong nội tạng động vật, hạt vỏ cứng." },
+        { f: "Mangan", b: "Hỗ trợ hình thành xương và chuyển hóa. Có trong trà, ngũ cốc." },
+        { f: "Selen", b: "Chống oxy hóa mạnh mẽ. Có trong quả hạch Brazil, cá ngừ." },
+        { f: "Bicarbonate", b: "Duy trì độ pH ổn định cho máu. Thường có trong nước khoáng tự nhiên." }
+      ];
+      const quizQuestions = [
+        { q: "Loại vitamin nào được biết đến rộng rãi với vai trò duy trì thị lực, bảo vệ da và có nhiều trong cà rốt, bí đỏ?", options: ["Vitamin C", "Vitamin A", "Vitamin D", "Vitamin E"], correct: 1, hint: "Đây là loại vitamin tan trong dầu, bổ mắt.", explain: "Vitamin A đóng vai trò cốt lõi cho tế bào võng mạc mắt và biểu mô da, chứa nhiều tiền chất beta-carotene trong rau củ màu cam." },
+        { q: "Khi bạn bị thương, loại vitamin nào giúp cơ thể tổng hợp collagen thúc đẩy quá trình làm lành vết thương, đồng thời chống oxy hóa mạnh mẽ?", options: ["Vitamin B12", "Vitamin C", "Vitamin K", "Vitamin B3"], correct: 1, hint: "Loại vitamin này có vị chua đặc trưng, có nhiều trong cam, ổi.", explain: "Vitamin C là chất xúc tác bắt buộc để cơ thể tạo ra collagen, giúp nối liền các mô tổn thương và mạch máu." },
+        { q: "Cơ thể người có thể tự tổng hợp loại vitamin nào dưới tác động của ánh nắng mặt trời buổi sớm?", options: ["Vitamin D", "Vitamin A", "Vitamin E", "Vitamin K"], correct: 0, hint: "Thiếu hụt loại vitamin 'ánh nắng' này sẽ làm giảm khả năng hấp thụ canxi.", explain: "Tia UVB trong ánh nắng mặt trời khi tiếp xúc với da sẽ kích hoạt tiền chất để chuyển hóa thành Vitamin D hoạt tính." },
+        { q: "Đối với phụ nữ mang thai, loại vitamin nhóm B nào cực kỳ quan trọng trong việc phân chia tế bào và phòng ngừa dị tật ống thần kinh bẩm sinh?", options: ["Vitamin B1", "Vitamin B5", "Vitamin B9 (Axit Folic)", "Vitamin B7"], correct: 2, hint: "Loại vitamin này còn có tên gọi phổ biến khác là Axit Folic.", explain: "Axit Folic (B9) đóng vai trò cốt lõi trong việc sao chép DNA và hình thành hệ thống thần kinh trung ương của bào thai." },
+        { q: "Khoáng chất nào chiếm khối lượng lớn nhất trong hệ xương và răng của con người, giúp duy trì cấu trúc cơ thể vững chắc?", options: ["Sắt (Iron)", "Kẽm (Zinc)", "Canxi (Calcium)", "Magie (Magnesium)"], correct: 2, hint: "Sữa, tôm cua và phô mai là những nguồn cung cấp dồi dào chất này.", explain: "Hơn 99% lượng Canxi trong cơ thể được lưu trữ tại xương và răng, tạo nên độ cứng và mật độ xương lý tưởng." },
+        { q: "Nếu cơ thể thiếu hụt khoáng chất Sắt (Iron), con người dễ mắc phải hội chứng hay căn bệnh nào sau đây?", options: ["Bệnh bướu cổ", "Bệnh thiếu máu, mệt mỏi", "Loãng xương", "Mất vị giác"], correct: 1, hint: "Sắt là thành phần chính giúp tạo ra màu đỏ của tế bào hồng cầu.", explain: "Sắt là thành phần cấu tạo nên Hemoglobin trong hồng cầu, thiếu sắt làm giảm khả năng vận chuyển oxy đi nuôi các cơ quan." },
+        { q: "Loại khoáng chất nào đóng vai trò cốt lõi trong việc tổng hợp hormone tuyến giáp, giúp ngăn ngừa bệnh bướu cổ?", options: ["Natri (Sodium)", "Kali (Potassium)", "I-ốt (Iodine)", "Selen"], correct: 2, hint: "Gia vị muối ăn hằng ngày của chúng ta thường được bổ sung thêm chất này.", explain: "Tuyến giáp cần I-ốt để sản xuất hormone thyroxine điều hòa chuyển hóa; thiếu chất này khiến tuyến giáp phình to gây bướu cổ." },
+        { q: "Khi bạn tập thể dục cường độ cao bị đổ mồ hôi nhiều và bị chuột rút (co cơ đột ngột), cơ thể bạn đang báo động thiếu hụt điện giải nào?", options: ["Đồng (Copper)", "Phốt pho", "Mangan", "Kali (Potassium)"], correct: 3, hint: "Chuối và nước dừa là hai nguồn thực phẩm tự nhiên tuyệt vời giúp bù đắp nhanh chất này.", explain: "Kali cùng với natri điều phối sự co bóp cơ bắp và dẫn truyền xung thần kinh; mất kali qua mồ hôi dễ gây co cơ." },
+        { q: "Biotin (hay còn gọi là Vitamin B7) được các tín đồ làm đẹp vô cùng ưa chuộng vì công dụng chính nào sau đây?", options: ["Duy trì sức khỏe của tóc và móng", "Tăng cường thị lực ban đêm", "Hỗ trợ đông máu", "Giúp cơ thể hấp thụ Canxi"], correct: 0, hint: "Nhiều loại dầu gội đầu ngăn rụng tóc thường quảng cáo chứa chất này.", explain: "Biotin kích thích sản xuất keratin – thành phần cấu tạo chính nên sợi tóc và các lớp móng tay cứng cáp." },
+        { q: "Cơ thể người trưởng thành có khoảng 60% - 70% là nước. Nước đóng vai trò môi trường dung môi tốt nhất cho nhóm chất nào?", options: ["Chỉ các Vitamin tan trong dầu (A, D, E, K)", "Các Vitamin tan trong nước (nhóm B, C) và khoáng chất điện giải", "Tất cả các loại chất lỏng không phân cực", "Nước không hòa tan bất kỳ loại vitamin nào"], correct: 1, hint: "Hãy nhớ tới lý do tại sao ứng dụng khuyên bạn uống nước đều để hấp thụ dinh dưỡng.", explain: "Nước vận chuyển các vitamin nhóm B, C và phân rã các khoáng chất thành ion điện giải để tế bào dễ dàng hấp thu." }
+      ];
+      let currentFlash = 0;
+      let currentQuiz = 0;
+      let quizScore = 0;
+      let quizAnswered = false;
+
+      function switchLearnTab(tab) {
+        document.getElementById('studyTab').hidden = tab !== 'study';
+        document.getElementById('quizTab').hidden = tab !== 'quiz';
+        document.querySelectorAll('[data-learn-tab]').forEach((button) => {
+          const active = button.dataset.learnTab === tab;
+          button.classList.toggle('active', active);
+          button.setAttribute('aria-selected', String(active));
+        });
+      }
+
+      function renderFlashcard() {
+        const card = flashcards[currentFlash];
+        document.getElementById('flashTitle').textContent = card.f;
+        document.getElementById('flashBody').textContent = card.b;
+        document.getElementById('flashCounter').textContent = `${currentFlash + 1} / ${flashcards.length}`;
+      }
+
+      function renderQuizQuestion() {
+        quizAnswered = false;
+        const question = quizQuestions[currentQuiz];
+        document.getElementById('quizProgressText').textContent = `Câu hỏi ${currentQuiz + 1} / ${quizQuestions.length}`;
+        document.getElementById('quizProgressBar').style.width = `${((currentQuiz + 1) / quizQuestions.length) * 100}%`;
+        document.getElementById('quizQuestion').textContent = question.q;
+        document.getElementById('quizHint').hidden = true;
+        document.getElementById('quizHint').textContent = question.hint;
+        document.getElementById('quizExplain').hidden = true;
+        document.getElementById('nextQuiz').hidden = true;
+        const options = document.getElementById('quizOptions');
+        options.innerHTML = '';
+        question.options.forEach((option, index) => {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'quiz-option';
+          button.textContent = option;
+          button.addEventListener('click', () => selectQuizOption(index, button));
+          options.appendChild(button);
+        });
+      }
+
+      function selectQuizOption(selectedIndex, selectedButton) {
+        if (quizAnswered) return;
+        quizAnswered = true;
+        const question = quizQuestions[currentQuiz];
+        const buttons = Array.from(document.querySelectorAll('.quiz-option'));
+        buttons.forEach((button, index) => {
+          button.disabled = true;
+          if (index === question.correct) button.classList.add('correct');
+        });
+        if (selectedIndex === question.correct) {
+          quizScore += 1;
+          selectedButton.textContent += ' ✅';
+        } else {
+          selectedButton.classList.add('wrong');
+          selectedButton.textContent += ' ❌';
+        }
+        const explain = document.getElementById('quizExplain');
+        explain.textContent = question.explain;
+        explain.className = `quiz-explain ${selectedIndex === question.correct ? 'good' : 'bad'}`;
+        explain.hidden = false;
+        document.getElementById('nextQuiz').hidden = false;
+      }
+
+      function showQuizResult() {
+        document.getElementById('quizPlay').hidden = true;
+        document.getElementById('quizResult').hidden = false;
+        document.getElementById('quizScore').textContent = quizScore;
+        const feedback = document.getElementById('quizFeedback');
+        if (quizScore === quizQuestions.length) feedback.textContent = 'Tuyệt cú mèo! Bạn là chuyên gia vi chất thực thụ đó! 🏆';
+        else if (quizScore >= 7) feedback.textContent = 'Rất tốt nha! Bạn nắm kiến thức siêu vững vàng luôn. ✨';
+        else if (quizScore >= 5) feedback.textContent = 'Khá ổn nè! Uống thêm nước rồi ôn tập tiếp nha! 💧';
+        else feedback.textContent = 'Đừng buồn nha, đọc lại flashcard rồi thử sức lại nè! 💪';
+      }
+
+      function restartQuiz() {
+        currentQuiz = 0;
+        quizScore = 0;
+        document.getElementById('quizResult').hidden = true;
+        document.getElementById('quizPlay').hidden = false;
+        renderQuizQuestion();
+      }
+
+      document.querySelectorAll('[data-learn-tab]').forEach((button) => {
+        button.addEventListener('click', () => switchLearnTab(button.dataset.learnTab));
+      });
+      document.getElementById('prevFlash').addEventListener('click', () => {
+        currentFlash = (currentFlash - 1 + flashcards.length) % flashcards.length;
+        renderFlashcard();
+      });
+      document.getElementById('nextFlash').addEventListener('click', () => {
+        currentFlash = (currentFlash + 1) % flashcards.length;
+        renderFlashcard();
+      });
+      document.getElementById('showHint').addEventListener('click', () => {
+        if (!quizAnswered) document.getElementById('quizHint').hidden = !document.getElementById('quizHint').hidden;
+      });
+      document.getElementById('nextQuiz').addEventListener('click', () => {
+        if (currentQuiz < quizQuestions.length - 1) {
+          currentQuiz += 1;
+          renderQuizQuestion();
+        } else {
+          showQuizResult();
+        }
+      });
+      document.getElementById('restartQuiz').addEventListener('click', restartQuiz);
+
       function setGoal(goal) {
         state.goal = goal;
         renderState();
@@ -497,6 +973,8 @@
         renderChat();
       }
 
+      renderFlashcard();
+      renderQuizQuestion();
       renderState();
       renderChat();
     </script>
