@@ -317,14 +317,17 @@ export abstract class BaseVisionTask extends BaseTask {
   }
 
   protected captureWebcamToUploadRecords() {
-    if (!this.video || !this.video.srcObject || this.video.videoWidth === 0) {
+    const baseSource = this.getWebcamCaptureBaseSource();
+    const baseDimensions = baseSource ? this.getCaptureSourceDimensions(baseSource) : { width: 0, height: 0 };
+
+    if (!baseSource || !baseDimensions.width || !baseDimensions.height || !this.video?.srcObject) {
       this.updateStatus('Vui lòng mở camera trước khi lưu.');
       return;
     }
 
     const canvas = document.createElement('canvas');
-    canvas.width = this.video.videoWidth || 1280;
-    canvas.height = this.video.videoHeight || 720;
+    canvas.width = baseDimensions.width || 1280;
+    canvas.height = baseDimensions.height || 720;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
@@ -333,11 +336,14 @@ export abstract class BaseVisionTask extends BaseTask {
       ctx.scale(-1, 1);
     }
 
-    ctx.drawImage(this.video, 0, 0, canvas.width, canvas.height);
+    this.drawCaptureLayer(ctx, baseSource, canvas.width, canvas.height);
 
-    if (this.canvasElement?.width && this.canvasElement?.height) {
-      ctx.drawImage(this.canvasElement, 0, 0, canvas.width, canvas.height);
-    }
+    const overlayCanvases = this.getWebcamCaptureOverlayCanvases();
+    overlayCanvases.forEach((overlayCanvas) => {
+      if (overlayCanvas?.width && overlayCanvas?.height) {
+        this.drawCaptureLayer(ctx, overlayCanvas, canvas.width, canvas.height);
+      }
+    });
 
     ctx.setTransform(1, 0, 0, 1, 0, 0);
 
@@ -489,6 +495,43 @@ export abstract class BaseVisionTask extends BaseTask {
 
   protected shouldMirrorWebcamCapture() {
     return this.currentFacingMode === 'user';
+  }
+
+  protected getWebcamCaptureBaseSource(): CanvasImageSource | null {
+    return this.video || null;
+  }
+
+  protected getWebcamCaptureOverlayCanvases(): HTMLCanvasElement[] {
+    return this.canvasElement ? [this.canvasElement] : [];
+  }
+
+  private getCaptureSourceDimensions(source: CanvasImageSource) {
+    if (source instanceof HTMLVideoElement) {
+      return { width: source.videoWidth, height: source.videoHeight };
+    }
+
+    if (source instanceof HTMLImageElement) {
+      return { width: source.naturalWidth, height: source.naturalHeight };
+    }
+
+    return { width: source.width as number, height: source.height as number };
+  }
+
+  private drawCaptureLayer(
+    ctx: CanvasRenderingContext2D,
+    source: CanvasImageSource,
+    width: number,
+    height: number
+  ) {
+    const element = source instanceof Element ? source : null;
+    const opacity = element ? Number.parseFloat(window.getComputedStyle(element).opacity || '1') : 1;
+
+    ctx.save();
+    if (Number.isFinite(opacity)) {
+      ctx.globalAlpha = Math.max(0, Math.min(1, opacity));
+    }
+    ctx.drawImage(source, 0, 0, width, height);
+    ctx.restore();
   }
 
   private buildCameraConstraints(exactFacingMode = false): MediaStreamConstraints {

@@ -149,6 +149,10 @@ class ImageSegmenterTask extends BaseVisionTask {
     this.updateLegend();
   }
 
+  protected override getWebcamCaptureOverlayCanvases(): HTMLCanvasElement[] {
+    return this.overlayCanvas ? [this.overlayCanvas] : [];
+  }
+
   protected override handleWorkerMessage(event: MessageEvent) {
     const { type } = event.data;
 

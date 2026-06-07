@@ -1,0 +1,665 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Bé Mèo Nước · Water Drink Chatbot</title>
+  <style>
+    :root {
+      --bg: #eefaff;
+      --bg2: #dff7ff;
+      --card: rgba(255, 255, 255, 0.82);
+      --card2: rgba(255, 255, 255, 0.58);
+      --primary: #00a8d8;
+      --primary2: #38d6ff;
+      --accent: #22c55e;
+      --warn: #f59e0b;
+      --danger: #ef4444;
+      --ink: #133047;
+      --muted: #587084;
+      --line: rgba(0, 120, 170, 0.16);
+      --shadow: 0 24px 70px rgba(0, 95, 145, 0.18);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 12% 8%, rgba(56, 214, 255, 0.38), transparent 28%),
+        radial-gradient(circle at 88% 18%, rgba(34, 197, 94, 0.22), transparent 28%),
+        linear-gradient(135deg, var(--bg), var(--bg2));
+    }
+
+    button, input { font: inherit; }
+
+    .app {
+      width: min(1180px, calc(100vw - 28px));
+      margin: 0 auto;
+      padding: 26px 0 34px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(260px, 0.95fr) minmax(320px, 1.25fr);
+      gap: 18px;
+      align-items: stretch;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      background: var(--card);
+      border-radius: 28px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+      overflow: hidden;
+    }
+
+    .profile {
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      min-height: 680px;
+    }
+
+    .cat-card {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      padding: 16px;
+      border-radius: 24px;
+      background: linear-gradient(135deg, rgba(255,255,255,0.92), rgba(224,248,255,0.76));
+      border: 1px solid var(--line);
+    }
+
+    .cat-avatar {
+      width: 88px;
+      height: 88px;
+      border-radius: 28px;
+      display: grid;
+      place-items: center;
+      font-size: 54px;
+      background: linear-gradient(145deg, #ffffff, #bff0ff);
+      box-shadow: inset 0 -10px 24px rgba(0,168,216,0.16), 0 12px 30px rgba(0,168,216,0.16);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(28px, 4vw, 48px);
+      line-height: 0.98;
+      letter-spacing: -0.05em;
+    }
+
+    .subtitle {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-weight: 700;
+      line-height: 1.45;
+    }
+
+    .goal-box {
+      margin-top: 18px;
+      padding: 18px;
+      border-radius: 24px;
+      background: rgba(255,255,255,0.64);
+      border: 1px solid var(--line);
+    }
+
+    .goal-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .goal-row label {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .goal-input {
+      width: 118px;
+      border: 1px solid var(--line);
+      background: white;
+      color: var(--ink);
+      border-radius: 16px;
+      padding: 10px 12px;
+      font-weight: 900;
+      text-align: center;
+      outline: none;
+    }
+
+    .progress-ring {
+      width: 220px;
+      height: 220px;
+      margin: 18px auto 8px;
+      position: relative;
+      display: grid;
+      place-items: center;
+    }
+
+    .progress-ring svg {
+      position: absolute;
+      inset: 0;
+      transform: rotate(-90deg);
+    }
+
+    .progress-ring circle {
+      fill: none;
+      stroke-width: 16;
+      stroke-linecap: round;
+    }
+
+    .progress-ring .track { stroke: rgba(0,168,216,0.12); }
+    .progress-ring .bar {
+      stroke: url(#waterGradient);
+      stroke-dasharray: 628;
+      stroke-dashoffset: 628;
+      transition: stroke-dashoffset 0.45s ease;
+    }
+
+    .progress-text { text-align: center; z-index: 1; }
+    .progress-text strong { display: block; font-size: 42px; letter-spacing: -0.05em; }
+    .progress-text span { display: block; margin-top: 2px; color: var(--muted); font-weight: 800; }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .stat {
+      padding: 14px;
+      border-radius: 20px;
+      background: var(--card2);
+      border: 1px solid var(--line);
+    }
+
+    .stat small { color: var(--muted); font-weight: 800; }
+    .stat b { display: block; margin-top: 4px; font-size: 22px; }
+
+    .chat {
+      display: flex;
+      flex-direction: column;
+      min-height: 680px;
+    }
+
+    .chat-header {
+      padding: 20px 22px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255,255,255,0.66);
+    }
+
+    .identity { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .mini-cat {
+      width: 48px; height: 48px; border-radius: 16px; display: grid; place-items: center;
+      background: linear-gradient(145deg, #ffffff, #c8f4ff); font-size: 30px; flex: 0 0 auto;
+    }
+    .identity b { display: block; font-size: 18px; }
+    .identity small { color: var(--muted); font-weight: 800; }
+
+    .badge {
+      padding: 9px 12px;
+      border-radius: 999px;
+      background: rgba(34,197,94,0.12);
+      color: #15803d;
+      font-weight: 900;
+      white-space: nowrap;
+      font-size: 12px;
+    }
+
+    .messages {
+      flex: 1;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      overflow-y: auto;
+      max-height: 478px;
+      scroll-behavior: smooth;
+    }
+
+    .msg {
+      max-width: min(84%, 560px);
+      padding: 13px 15px;
+      border-radius: 22px;
+      line-height: 1.48;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+      animation: pop 0.2s ease both;
+      white-space: pre-wrap;
+    }
+
+    @keyframes pop { from { transform: translateY(4px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+    .bot {
+      align-self: flex-start;
+      background: white;
+      border-bottom-left-radius: 7px;
+      border: 1px solid var(--line);
+    }
+
+    .user {
+      align-self: flex-end;
+      background: linear-gradient(135deg, var(--primary), var(--primary2));
+      color: white;
+      border-bottom-right-radius: 7px;
+    }
+
+    .quick-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 0 20px 14px;
+    }
+
+    .chip {
+      border: 1px solid rgba(0,168,216,0.22);
+      color: #087da0;
+      background: rgba(255,255,255,0.72);
+      border-radius: 999px;
+      padding: 9px 12px;
+      cursor: pointer;
+      font-weight: 850;
+      transition: transform 0.15s, background 0.15s;
+    }
+    .chip:hover { transform: translateY(-1px); background: white; }
+
+    .composer {
+      padding: 16px;
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 10px;
+      border-top: 1px solid var(--line);
+      background: rgba(255,255,255,0.66);
+    }
+
+    .composer input {
+      min-width: 0;
+      border: 1px solid var(--line);
+      background: white;
+      color: var(--ink);
+      border-radius: 18px;
+      padding: 13px 14px;
+      outline: none;
+      font-weight: 750;
+    }
+
+    .primary-btn, .send-btn {
+      border: 0;
+      border-radius: 18px;
+      color: white;
+      background: linear-gradient(135deg, var(--primary), var(--primary2));
+      font-weight: 950;
+      padding: 13px 15px;
+      cursor: pointer;
+      box-shadow: 0 12px 24px rgba(0,168,216,0.22);
+    }
+
+    .send-btn { min-width: 58px; }
+
+    .secondary-btn {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      color: var(--ink);
+      background: white;
+      font-weight: 950;
+      padding: 13px 15px;
+      cursor: pointer;
+    }
+
+    .history {
+      margin-top: 18px;
+      flex: 1;
+      min-height: 0;
+    }
+
+    .history-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .drops {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 7px;
+    }
+
+    .drop {
+      aspect-ratio: 1;
+      border-radius: 14px 14px 18px 18px;
+      display: grid;
+      place-items: center;
+      background: rgba(0,168,216,0.10);
+      color: rgba(0,120,170,0.42);
+      font-size: 18px;
+      font-weight: 950;
+      border: 1px solid rgba(0,168,216,0.10);
+    }
+
+    .drop.done {
+      background: linear-gradient(145deg, #4ddcff, #00a8d8);
+      color: white;
+      border-color: transparent;
+      box-shadow: 0 8px 18px rgba(0,168,216,0.20);
+    }
+
+    @media (max-width: 860px) {
+      .hero { grid-template-columns: 1fr; }
+      .profile, .chat { min-height: auto; }
+      .messages { max-height: 430px; }
+    }
+
+    @media (max-width: 560px) {
+      .app { width: min(100vw - 18px, 1180px); padding-top: 12px; }
+      .profile, .chat-header, .messages { padding-left: 14px; padding-right: 14px; }
+      .composer { grid-template-columns: 1fr; }
+      .badge { display: none; }
+      .msg { max-width: 92%; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="hero" aria-label="Bé Mèo Nước chatbot">
+      <aside class="panel profile">
+        <div class="cat-card">
+          <div class="cat-avatar" aria-hidden="true">🐱💧</div>
+          <div>
+            <h1>Bé Mèo Nước</h1>
+            <p class="subtitle">Chat bot nhắc uống nước, ghi nhận từng ly và động viên bạn đạt mục tiêu mỗi ngày.</p>
+          </div>
+        </div>
+
+        <div class="goal-box">
+          <div class="goal-row">
+            <label for="goalInput">Mục tiêu hôm nay</label>
+            <input id="goalInput" class="goal-input" type="number" min="250" step="50" value="2000" />
+          </div>
+          <div class="progress-ring" role="img" aria-label="Tiến độ uống nước">
+            <svg viewBox="0 0 240 240" aria-hidden="true">
+              <defs>
+                <linearGradient id="waterGradient" x1="0" x2="1" y1="0" y2="1">
+                  <stop offset="0" stop-color="#38d6ff" />
+                  <stop offset="1" stop-color="#00a8d8" />
+                </linearGradient>
+              </defs>
+              <circle class="track" cx="120" cy="120" r="100"></circle>
+              <circle id="progressBar" class="bar" cx="120" cy="120" r="100"></circle>
+            </svg>
+            <div class="progress-text">
+              <strong id="percentText">0%</strong>
+              <span id="mlText">0 / 2000 ml</span>
+            </div>
+          </div>
+          <button id="add250Btn" class="primary-btn" type="button" style="width:100%">+ 250 ml · Mèo uống cùng bạn</button>
+          <div class="stats">
+            <div class="stat"><small>Số ly</small><b id="cupText">0 ly</b></div>
+            <div class="stat"><small>Chuỗi ngày</small><b id="streakText">0 ngày</b></div>
+          </div>
+        </div>
+
+        <div class="history">
+          <div class="history-title">
+            <span>7 ngày gần đây</span>
+            <span id="todayText">Hôm nay</span>
+          </div>
+          <div id="drops" class="drops"></div>
+        </div>
+      </aside>
+
+      <section class="panel chat">
+        <header class="chat-header">
+          <div class="identity">
+            <div class="mini-cat" aria-hidden="true">🐾</div>
+            <div>
+              <b>Bé Mèo Nước</b>
+              <small>Online · nhắc uống nước thân thiện</small>
+            </div>
+          </div>
+          <span id="moodBadge" class="badge">Đang chờ bạn uống nước</span>
+        </header>
+
+        <div id="messages" class="messages" aria-live="polite"></div>
+
+        <div class="quick-actions" aria-label="Hành động nhanh">
+          <button class="chip" type="button" data-quick="drink">💧 Tôi vừa uống 250 ml</button>
+          <button class="chip" type="button" data-quick="goal">🎯 Gợi ý mục tiêu</button>
+          <button class="chip" type="button" data-quick="tip">🐱 Mẹo uống nước</button>
+          <button class="chip" type="button" data-quick="reset">↺ Reset hôm nay</button>
+        </div>
+
+        <form id="composer" class="composer">
+          <input id="messageInput" autocomplete="off" placeholder="Nhắn với Bé Mèo Nước, ví dụ: 'tôi uống 500 ml'..." />
+          <button class="secondary-btn" id="remindBtn" type="button">Nhắc tôi</button>
+          <button class="send-btn" type="submit">Gửi</button>
+        </form>
+      </section>
+    </section>
+  </main>
+
+  <script>
+    const STORAGE_KEY = 'be_meo_nuoc_tracker_v1';
+    const todayKey = () => new Date().toISOString().slice(0, 10);
+    const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+
+    const defaultState = () => ({
+      goal: 2000,
+      days: {},
+      messages: [],
+      reminderMinutes: 60
+    });
+
+    const loadState = () => {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+        return parsed && typeof parsed === 'object' ? { ...defaultState(), ...parsed } : defaultState();
+      } catch (_) {
+        return defaultState();
+      }
+    };
+
+    let state = loadState();
+    const els = {
+      goalInput: document.getElementById('goalInput'),
+      progressBar: document.getElementById('progressBar'),
+      percentText: document.getElementById('percentText'),
+      mlText: document.getElementById('mlText'),
+      cupText: document.getElementById('cupText'),
+      streakText: document.getElementById('streakText'),
+      moodBadge: document.getElementById('moodBadge'),
+      drops: document.getElementById('drops'),
+      messages: document.getElementById('messages'),
+      input: document.getElementById('messageInput'),
+      todayText: document.getElementById('todayText')
+    };
+
+    const persist = () => localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    const currentDay = () => state.days[todayKey()] || { amount: 0, entries: [] };
+
+    const setCurrentDay = (day) => {
+      state.days[todayKey()] = day;
+      persist();
+      render();
+    };
+
+    const botLines = [
+      'Meo meo 💧 Bé Mèo Nước đây! Mỗi lần bạn uống nước, hãy nhắn cho mình để mình ghi lại nha.',
+      'Bạn có thể bấm “+ 250 ml” hoặc nhắn “tôi uống 500 ml”. Mèo sẽ tính tiến độ cho bạn.'
+    ];
+
+    const saveMessage = (role, text) => {
+      state.messages.push({ role, text, at: Date.now() });
+      state.messages = state.messages.slice(-40);
+      persist();
+      renderMessages();
+    };
+
+    const botSay = (text) => saveMessage('bot', text);
+    const userSay = (text) => saveMessage('user', text);
+
+    const addWater = (amount) => {
+      const safeAmount = clamp(Number(amount) || 250, 50, 3000);
+      const day = currentDay();
+      day.amount = (day.amount || 0) + safeAmount;
+      day.entries = [...(day.entries || []), { amount: safeAmount, at: Date.now() }];
+      setCurrentDay(day);
+
+      const percent = Math.round((day.amount / state.goal) * 100);
+      if (percent >= 100) {
+        botSay(`Tuyệt vời quá! Bạn đã uống ${day.amount} ml và đạt mục tiêu hôm nay rồi 🎉🐱`);
+      } else if (percent >= 75) {
+        botSay(`Giỏi lắm! Bạn đã đạt ${percent}%. Chỉ còn ${Math.max(0, state.goal - day.amount)} ml nữa thôi 💙`);
+      } else {
+        botSay(`Mèo đã ghi ${safeAmount} ml cho bạn. Hôm nay bạn đang ở mức ${percent}% nha 💧`);
+      }
+    };
+
+    const resetToday = () => {
+      state.days[todayKey()] = { amount: 0, entries: [] };
+      persist();
+      render();
+      botSay('Mèo đã reset lượng nước hôm nay. Mình bắt đầu lại nhẹ nhàng nha 🐾');
+    };
+
+    const calcStreak = () => {
+      let streak = 0;
+      const cursor = new Date();
+      for (let i = 0; i < 60; i += 1) {
+        const key = cursor.toISOString().slice(0, 10);
+        const day = state.days[key];
+        if (day && day.amount >= state.goal) streak += 1;
+        else break;
+        cursor.setDate(cursor.getDate() - 1);
+      }
+      return streak;
+    };
+
+    const render = () => {
+      const day = currentDay();
+      const amount = day.amount || 0;
+      const percent = clamp(Math.round((amount / state.goal) * 100), 0, 100);
+      const circumference = 628;
+      els.goalInput.value = state.goal;
+      els.progressBar.style.strokeDashoffset = String(circumference - (circumference * percent / 100));
+      els.percentText.textContent = `${percent}%`;
+      els.mlText.textContent = `${amount} / ${state.goal} ml`;
+      els.cupText.textContent = `${Math.round(amount / 250)} ly`;
+      els.streakText.textContent = `${calcStreak()} ngày`;
+      els.moodBadge.textContent = percent >= 100 ? 'Hoàn thành mục tiêu 🎉' : percent >= 60 ? 'Sắp cán đích rồi 💧' : 'Đang chờ bạn uống nước';
+      els.todayText.textContent = new Date().toLocaleDateString('vi-VN', { weekday: 'short', day: '2-digit', month: '2-digit' });
+      renderDrops();
+      renderMessages();
+    };
+
+    const renderDrops = () => {
+      els.drops.innerHTML = '';
+      const cursor = new Date();
+      cursor.setDate(cursor.getDate() - 6);
+      for (let i = 0; i < 7; i += 1) {
+        const key = cursor.toISOString().slice(0, 10);
+        const day = state.days[key];
+        const done = day && day.amount >= state.goal;
+        const div = document.createElement('div');
+        div.className = `drop${done ? ' done' : ''}`;
+        div.title = `${cursor.toLocaleDateString('vi-VN')}: ${day?.amount || 0} ml`;
+        div.textContent = done ? '✓' : '💧';
+        els.drops.appendChild(div);
+        cursor.setDate(cursor.getDate() + 1);
+      }
+    };
+
+    const renderMessages = () => {
+      if (!state.messages.length) {
+        state.messages = botLines.map((text, index) => ({ role: 'bot', text, at: Date.now() + index }));
+        persist();
+      }
+      els.messages.innerHTML = '';
+      state.messages.forEach((message) => {
+        const div = document.createElement('div');
+        div.className = `msg ${message.role}`;
+        div.textContent = message.text;
+        els.messages.appendChild(div);
+      });
+      els.messages.scrollTop = els.messages.scrollHeight;
+    };
+
+    const replyTo = (text) => {
+      const lower = text.toLowerCase();
+      const amountMatch = lower.match(/(\d{2,4})\s*(ml|mili|mililit)?/);
+      if (amountMatch) {
+        addWater(Number(amountMatch[1]));
+        return;
+      }
+      if (lower.includes('uống') || lower.includes('drink')) {
+        addWater(250);
+        return;
+      }
+      if (lower.includes('mục tiêu') || lower.includes('goal')) {
+        const suggested = Math.max(1800, Math.round(state.goal / 250) * 250);
+        botSay(`Mèo gợi ý mục tiêu ${suggested}–${suggested + 500} ml/ngày nếu bạn không có hạn chế y khoa. Bạn có thể đổi ô mục tiêu bên trái nha.`);
+        return;
+      }
+      if (lower.includes('mẹo') || lower.includes('tip')) {
+        botSay('Mẹo của Mèo: đặt chai nước trong tầm mắt, uống 3–5 ngụm sau mỗi cuộc họp, và uống thêm một ly nhỏ sau khi đi bộ nha 🐱💧');
+        return;
+      }
+      botSay('Mèo nghe nè! Nếu bạn muốn ghi nước, hãy nhắn số ml như “250 ml” hoặc “tôi uống 500 ml” nha.');
+    };
+
+    document.getElementById('add250Btn').addEventListener('click', () => addWater(250));
+    document.getElementById('composer').addEventListener('submit', (event) => {
+      event.preventDefault();
+      const text = els.input.value.trim();
+      if (!text) return;
+      els.input.value = '';
+      userSay(text);
+      window.setTimeout(() => replyTo(text), 220);
+    });
+
+    document.querySelectorAll('[data-quick]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const action = button.getAttribute('data-quick');
+        if (action === 'drink') addWater(250);
+        if (action === 'goal') botSay('Bạn có thể bắt đầu với 2000 ml/ngày. Nếu vận động nhiều hoặc trời nóng, hãy tăng nhẹ và theo dõi cảm giác cơ thể nha.');
+        if (action === 'tip') botSay('Mẹo nhanh: uống 1 ly sau khi thức dậy, 1 ly trước bữa trưa, 1 ly giữa chiều và 1 ly trước 20h để không bị khát muộn nha 💧');
+        if (action === 'reset') resetToday();
+      });
+    });
+
+    els.goalInput.addEventListener('change', () => {
+      state.goal = clamp(Number(els.goalInput.value) || 2000, 250, 6000);
+      persist();
+      render();
+      botSay(`Mèo đã đổi mục tiêu hôm nay thành ${state.goal} ml 🎯`);
+    });
+
+    document.getElementById('remindBtn').addEventListener('click', () => {
+      botSay('Mèo nhắc nhẹ: tới giờ uống vài ngụm nước rồi đó. Nếu bạn vừa uống, bấm +250 ml nha 🐱');
+      if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission();
+      }
+    });
+
+    render();
+  </script>
+</body>
+</html>

@@ -57,6 +57,7 @@ export default function Sidebar({ active, onNavigate, openSignal = 0 }) {
     { id: 'aiHealthcareVisionControl', label: t('aiHealthcareVisionControl'), step: '19' },
     { id: 'stressRelief', label: t('stressRelief'), step: '20' },
     { id: 'aiInbodyPortal', label: t('aiInbodyPortal'), step: '21' },
+    { id: 'waterDrinkChatbot', label: t('waterDrinkChatbot'), step: '22' },
   ]
 
   const ADMIN_STEPS = user?.isAdmin ? [
