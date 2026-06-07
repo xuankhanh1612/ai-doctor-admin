@@ -943,7 +943,7 @@ export default function InBodyDashboard({ userId, initialRecords, onViewMedicalR
         .inbody-reference-strip span { display: block; margin-top: 3px; font-size: 12px; font-weight: 700; color: #111827; }
         .inbody-reference-gallery { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 10px; }
         .inbody-reference-gallery figure { margin: 0; overflow: hidden; border: 1px solid #e9ecef; border-radius: 12px; background: #fff; }
-        .inbody-reference-gallery img { display: block; width: 100%; height: 120px; object-fit: cover; object-position: top; }
+        .inbody-reference-gallery img { display: block; width: 100%; height: clamp(360px, 68vh, 980px); object-fit: contain; object-position: top; background: #fff; }
         .inbody-reference-gallery figcaption { padding: 7px 9px; color: #666; font-size: 10px; font-weight: 700; }
         .inbody-app-screen-panel { padding: 14px; border: 1px solid #e5e7eb; border-radius: 18px; background: linear-gradient(180deg, #fff, #f8fafc); }
         .inbody-app-header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
@@ -977,7 +977,7 @@ export default function InBodyDashboard({ userId, initialRecords, onViewMedicalR
           .inbody-screen-summary { flex-direction: column; }
           .inbody-reference-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
           .inbody-reference-gallery { grid-template-columns: 1fr; }
-          .inbody-reference-gallery img { height: 160px; }
+          .inbody-reference-gallery img { height: clamp(420px, 74vh, 980px); }
           .hist-row { flex-wrap: wrap; }
         }
 

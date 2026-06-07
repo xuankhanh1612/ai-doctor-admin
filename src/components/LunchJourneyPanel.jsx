@@ -2,7 +2,7 @@ import React from 'react'
 import HealthJourneyPanel from './HealthJourneyPanel.jsx'
 import { useApp } from '../context/AppContext.jsx'
 
-export default function LunchJourneyPanel({ onNext, onPrev, prevLabel, onOpenStressRelief, onOpenInBody }) {
+export default function LunchJourneyPanel({ onNext, onPrev, prevLabel, onOpenStressRelief, onOpenInBody, onViewMedicalRecord }) {
   const { t } = useApp()
 
   return (
@@ -13,6 +13,7 @@ export default function LunchJourneyPanel({ onNext, onPrev, prevLabel, onOpenStr
       prevLabel={prevLabel}
       onOpenStressRelief={onOpenStressRelief}
       onOpenInBody={onOpenInBody}
+      onViewMedicalRecord={onViewMedicalRecord}
     />
   )
 }

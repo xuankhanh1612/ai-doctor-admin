@@ -42,6 +42,7 @@ export abstract class BaseVisionTask extends BaseTask {
       this.canvasCtx = this.canvasElement.getContext('2d')!;
     }
     this.enableWebcamButton = document.getElementById('webcamButton') as HTMLButtonElement;
+    this.updateCameraFacingPresentation();
 
     this.initWorker();
     this.setupUI();
@@ -327,14 +328,18 @@ export abstract class BaseVisionTask extends BaseTask {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    ctx.translate(canvas.width, 0);
-    ctx.scale(-1, 1);
+    if (this.shouldMirrorWebcamCapture()) {
+      ctx.translate(canvas.width, 0);
+      ctx.scale(-1, 1);
+    }
+
     ctx.drawImage(this.video, 0, 0, canvas.width, canvas.height);
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
 
     if (this.canvasElement?.width && this.canvasElement?.height) {
       ctx.drawImage(this.canvasElement, 0, 0, canvas.width, canvas.height);
     }
+
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
 
     const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
     window.parent?.postMessage({
@@ -470,7 +475,43 @@ export abstract class BaseVisionTask extends BaseTask {
     );
   }
 
-  protected async enableCam() {
+  protected getVideoWrapper() {
+    return this.video?.closest('.video-wrapper') as HTMLElement | null;
+  }
+
+  protected updateCameraFacingPresentation() {
+    const wrapper = this.getVideoWrapper();
+    if (!wrapper) return;
+
+    wrapper.classList.toggle('facing-user', this.currentFacingMode === 'user');
+    wrapper.classList.toggle('facing-environment', this.currentFacingMode !== 'user');
+  }
+
+  protected shouldMirrorWebcamCapture() {
+    return this.currentFacingMode === 'user';
+  }
+
+  private buildCameraConstraints(exactFacingMode = false): MediaStreamConstraints {
+    return {
+      video: {
+        facingMode: exactFacingMode ? { exact: this.currentFacingMode } : { ideal: this.currentFacingMode },
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+      },
+    };
+  }
+
+  private async openCameraStream(exactFacingMode = false) {
+    try {
+      return await navigator.mediaDevices.getUserMedia(this.buildCameraConstraints(exactFacingMode));
+    } catch (error) {
+      if (!exactFacingMode) throw error;
+      console.warn('Exact facingMode unavailable, falling back to ideal facingMode.', error);
+      return navigator.mediaDevices.getUserMedia(this.buildCameraConstraints(false));
+    }
+  }
+
+  protected async enableCam(exactFacingMode = false) {
     if (!this.worker || !this.video) return;
     if (this.video.srcObject) return;
 
@@ -479,16 +520,15 @@ export abstract class BaseVisionTask extends BaseTask {
       this.enableWebcamButton.innerText = 'Đang mở...';
       this.enableWebcamButton.disabled = true;
     }
-    const constraints = {
-      video: {
-        facingMode: { ideal: this.currentFacingMode },
-        width: { ideal: 1280 },
-        height: { ideal: 720 },
-      },
-    };
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      const stream = await this.openCameraStream(exactFacingMode);
+      const trackFacingMode = stream.getVideoTracks()[0]?.getSettings?.().facingMode;
+      if (trackFacingMode === 'user' || trackFacingMode === 'environment') {
+        this.currentFacingMode = trackFacingMode;
+        localStorage.setItem('mediapipe-camera-facing-mode', this.currentFacingMode);
+      }
+      this.updateCameraFacingPresentation();
       this.video.srcObject = stream;
       const placeholder = document.getElementById('webcam-placeholder');
       if (placeholder) placeholder.style.display = 'none';
@@ -534,12 +574,15 @@ export abstract class BaseVisionTask extends BaseTask {
   }
 
   protected async switchCamera() {
-    this.currentFacingMode = this.currentFacingMode === 'user' ? 'environment' : 'user';
+    const nextFacingMode = this.currentFacingMode === 'user' ? 'environment' : 'user';
+    this.currentFacingMode = nextFacingMode;
     localStorage.setItem('mediapipe-camera-facing-mode', this.currentFacingMode);
+    this.updateCameraFacingPresentation();
 
     if (this.video?.srcObject) {
+      this.updateStatus(`Đang đổi sang camera ${this.currentFacingMode === 'user' ? 'trước' : 'sau'}...`);
       this.stopCam(false);
-      await this.enableCam();
+      await this.enableCam(true);
     } else {
       this.updateStatus(`Đã chọn camera ${this.currentFacingMode === 'user' ? 'trước' : 'sau'}. Bấm Mở camera để chạy.`);
     }
@@ -551,6 +594,7 @@ export abstract class BaseVisionTask extends BaseTask {
       const tracks = stream.getTracks();
       tracks.forEach((track) => track.stop());
       this.video.srcObject = null;
+      this.updateCameraFacingPresentation();
       const placeholder = document.getElementById('webcam-placeholder');
       if (placeholder) placeholder.style.display = 'flex';
       if (this.enableWebcamButton) this.setWebcamButtonLabel('open');

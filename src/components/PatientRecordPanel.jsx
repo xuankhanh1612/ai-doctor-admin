@@ -880,9 +880,6 @@ export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selected
           }}>
             {consensusLoading ? '⟳ ' + (lang === 'vi' ? 'Đang chạy…' : 'Running…') : '🤖 ' + t('runConsensus')}
           </button>
-          {onNext && (
-            <NavButtons onNext={onNext} nextLabel={`${t('familyRelationship')} →`} onPrev={onPrev} prevLabel={prevLabel} style={{ marginTop: 0 }} />
-          )}
         </div>
       </div>
 
@@ -1311,6 +1308,9 @@ export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selected
         </div>
         {renderSection(activeSection, sectionData)}
       </div>
+      {onNext && (
+        <NavButtons onNext={onNext} nextLabel={`${t('familyRelationship')} →`} onPrev={onPrev} prevLabel={prevLabel} style={{ marginTop: 4 }} />
+      )}
     </div>
   )
 }
