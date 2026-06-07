@@ -2,11 +2,21 @@ import React, { useMemo } from 'react'
 import { useApp } from '../context/AppContext'
 // @ts-ignore Vite raw HTML import
 import waterDrinkTrackerHtml from '../waterdrink-khanh/waterdrink_tracker.html?raw'
+import meoNuocAi from '../waterdrink-khanh/MeoNuocAI.JPG'
+import meoBuAi from '../waterdrink-khanh/MeoBuAI.JPG'
+import meoNhayMat from '../waterdrink-khanh/MeoNhayMat.JPG'
+import robotTuThe1 from '../waterdrink-khanh/Robot-mang-giong-noi-nguoi-thuong-ren-hoc-sinh-ngoi-dung-tu-the-1.jpg'
+import robotTuThe2 from '../waterdrink-khanh/Robot-mang-giong-noi-nguoi-thuong-ren-hoc-sinh-ngoi-dung-tu-the-2.jpg'
 
 export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel }) {
   const { theme } = useApp()
   const isDark = theme === 'dark'
-  const html = useMemo(() => waterDrinkTrackerHtml, [])
+  const html = useMemo(() => waterDrinkTrackerHtml
+    .replaceAll('__MEONUOC_AI__', meoNuocAi)
+    .replaceAll('__MEOBU_AI__', meoBuAi)
+    .replaceAll('__MEONHAYMAT__', meoNhayMat)
+    .replaceAll('__ROBOT_TUTHE_1__', robotTuThe1)
+    .replaceAll('__ROBOT_TUTHE_2__', robotTuThe2), [meoNuocAi, meoBuAi, meoNhayMat, robotTuThe1, robotTuThe2])
 
   return (
     <div style={{ minHeight: '100%', background: isDark ? '#050b18' : '#eef8ff', padding: '22px clamp(14px, 3vw, 28px) 36px' }}>
