@@ -32,7 +32,7 @@ const isPdfRecord = (file) =>
   file?.type === 'pdf' ||
   file?.filename?.toLowerCase()?.endsWith('.pdf')
 
-export default function ImagingPanel({ onNext, onPrev, prevLabel, compareImage, uploadedImages = [], onSelectCompareImage, scrollTarget, onScrollTargetHandled }) {
+export default function ImagingPanel({ onNext, nextLabel, onPrev, prevLabel, compareImage, uploadedImages = [], onSelectCompareImage, scrollTarget, onScrollTargetHandled }) {
   const { t } = useApp()
   const { user } = useAuth()
   const [activeSlice, setActiveSlice] = useState(4)
@@ -324,7 +324,7 @@ export default function ImagingPanel({ onNext, onPrev, prevLabel, compareImage, 
 
       <div ref={endRef} />
 
-      <NavButtons onNext={onNext} nextLabel={`${t('checkin')} →`} onPrev={onPrev} prevLabel={prevLabel} />
+      <NavButtons onNext={onNext} nextLabel={nextLabel || t('checkin')} onPrev={onPrev} prevLabel={prevLabel} />
     </div>
   )
 }

@@ -26,7 +26,7 @@ function MatrixCard({ title, children, accent = 'var(--cyan)' }) {
   )
 }
 
-export default function Matrix3DBodyPanel({ onNext, onPrev, prevLabel }) {
+export default function Matrix3DBodyPanel({ onNext, nextLabel, onPrev, prevLabel }) {
   const inputRef = useRef(null)
   const [scan, setScan] = useState(DEFAULT_XRAY)
   const [fileName, setFileName] = useState('Demo chest X-ray · Mediplus reference')
@@ -158,7 +158,7 @@ export default function Matrix3DBodyPanel({ onNext, onPrev, prevLabel }) {
         </MatrixCard>
       </div>
 
-      <NavButtons onNext={onNext} nextLabel="Tiếp tục tới Omnidirectional 3D Body →" onPrev={onPrev} prevLabel={prevLabel} />
+      <NavButtons onNext={onNext} nextLabel={nextLabel || 'Omnidirectional 3D Body'} onPrev={onPrev} prevLabel={prevLabel} />
     </div>
   )
 }

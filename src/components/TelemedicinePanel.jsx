@@ -453,7 +453,7 @@ function telemedicineCameraButton(active) {
   }
 }
 
-export default function TelemedicinePanel({ onNext, onPrev, prevLabel, onViewMedicalRecord }) {
+export default function TelemedicinePanel({ onNext, nextLabel, onPrev, prevLabel, onViewMedicalRecord }) {
   const { t } = useApp()
   const onlineHumans = HUMAN_DOCTORS.filter(d => d.status === 'online').length
   const onlineAgents = AI_DOCTORS.filter(d => d.status === 'online').length
@@ -512,7 +512,7 @@ export default function TelemedicinePanel({ onNext, onPrev, prevLabel, onViewMed
         </div>
       </div>
 
-      <NavButtons onNext={onNext} nextLabel={`${t('statAnalysis')} →`} onPrev={onPrev} prevLabel={prevLabel} />
+      <NavButtons onNext={onNext} nextLabel={nextLabel || t('statAnalysis')} onPrev={onPrev} prevLabel={prevLabel} />
     </div>
   )
 }

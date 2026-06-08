@@ -73,7 +73,7 @@ async function saveVisionControlImage(file, { user, lang, label }) {
   return record
 }
 
-export default function AIHealthcareVisionControlPanel({ onNext, onPrev, prevLabel, onViewMedicalRecord }) {
+export default function AIHealthcareVisionControlPanel({ onNext, nextLabel, onPrev, prevLabel, onViewMedicalRecord }) {
   const { lang } = useApp()
   const { user } = useAuth()
   const [lastMediaPipeRecord, setLastMediaPipeRecord] = useState(null)
@@ -158,7 +158,7 @@ export default function AIHealthcareVisionControlPanel({ onNext, onPrev, prevLab
         />
       </section>
 
-      <NavButtons onNext={onNext} nextLabel={`${lang === 'vi' ? 'Góc xả stress' : 'Stress Relief Corner'} →`} onPrev={onPrev} prevLabel={prevLabel} />
+      <NavButtons onNext={onNext} nextLabel={nextLabel || (lang === 'vi' ? 'Góc xả stress' : 'Stress Relief Corner')} onPrev={onPrev} prevLabel={prevLabel} />
     </div>
   )
 }

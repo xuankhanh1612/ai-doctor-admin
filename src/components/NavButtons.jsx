@@ -1,45 +1,45 @@
 // src/components/NavButtons.jsx
-// Reusable bottom navigation row: Next + Back pinned to the bottom viewport area.
+// Reusable page-to-page navigation row rendered at the bottom of each panel.
 
 import React from 'react'
 
+const cleanPageLabel = (label) => String(label || '')
+  .replace(/^(←|→)\s*/u, '')
+  .replace(/\s*(←|→)$/u, '')
+  .replace(/^(Tiếp tục tới|Continue to|Go to|Tới|Đến)\s+/iu, '')
+  .trim()
+
 export default function NavButtons({ onNext, nextLabel, onPrev, prevLabel, style }) {
+  const safePrevLabel = cleanPageLabel(prevLabel)
+  const safeNextLabel = cleanPageLabel(nextLabel)
+
   return (
-    <div className="screen-nav-buttons" style={style}>
-      {/* Next button */}
-      {onNext && (
-        <button
-          type="button"
-          onClick={onNext}
-          className="screen-nav-button screen-nav-button-next"
-          onMouseEnter={e => e.currentTarget.style.opacity = '0.82'}
-          onMouseLeave={e => e.currentTarget.style.opacity = '1'}
-        >
-          {nextLabel || '→'}
-        </button>
-      )}
-
-      {/* Spacer when no next button */}
-      {!onNext && <span />}
-
-      {/* Back button — only when there is a previous panel */}
-      {onPrev && prevLabel && (
+    <div className="screen-nav-buttons" style={style} aria-label="Page navigation controls">
+      {onPrev && safePrevLabel ? (
         <button
           type="button"
           onClick={onPrev}
           className="screen-nav-button screen-nav-button-prev"
-          onMouseEnter={e => {
-            e.currentTarget.style.background = 'var(--surface2, rgba(255,255,255,0.06))'
-            e.currentTarget.style.color = 'var(--text, #e8f0f8)'
-          }}
-          onMouseLeave={e => {
-            e.currentTarget.style.background = 'transparent'
-            e.currentTarget.style.color = 'var(--text2, rgba(232,240,248,0.55))'
-          }}
+          aria-label={`Quay lại ${safePrevLabel}`}
+          title={`Quay lại ${safePrevLabel}`}
         >
-          ← {prevLabel}
+          <span aria-hidden="true">←</span>
+          <span>{safePrevLabel}</span>
         </button>
-      )}
+      ) : <span className="screen-nav-spacer" />}
+
+      {onNext && safeNextLabel ? (
+        <button
+          type="button"
+          onClick={onNext}
+          className="screen-nav-button screen-nav-button-next"
+          aria-label={`Đi tới ${safeNextLabel}`}
+          title={`Đi tới ${safeNextLabel}`}
+        >
+          <span>{safeNextLabel}</span>
+          <span aria-hidden="true">→</span>
+        </button>
+      ) : <span className="screen-nav-spacer" />}
     </div>
   )
 }

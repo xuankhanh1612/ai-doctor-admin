@@ -82,7 +82,7 @@ export default function GlobalAIChatbot({ activePanelLabel }) {
 
   if (!open) {
     return (
-      <button type="button" onClick={() => setOpen(true)} style={styles.fab} aria-label="Mở chatbot AI chung">
+      <button type="button" onClick={() => setOpen(true)} className="global-ai-chatbot-fab" style={styles.fab} aria-label="Mở chatbot AI chung">
         <span style={styles.fabIcon}>🤗</span>
         <span>
           <strong>AI Chat</strong>
@@ -93,7 +93,7 @@ export default function GlobalAIChatbot({ activePanelLabel }) {
   }
 
   return (
-    <section style={styles.panel} aria-label="Chatbot AI chung">
+    <section className="global-ai-chatbot-panel" style={styles.panel} aria-label="Chatbot AI chung">
       <header style={styles.header}>
         <div>
           <div style={styles.title}>🤗 Chatbot AI chung</div>

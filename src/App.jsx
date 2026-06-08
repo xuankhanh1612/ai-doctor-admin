@@ -171,8 +171,11 @@ export default function App() {
     }
   }, [active, updateScrollControls])
 
-  const prevPanel = PANELS[PANELS.indexOf(active) - 1]
+  const activePanelIndex = PANELS.indexOf(active)
+  const prevPanel = PANELS[activePanelIndex - 1]
+  const nextPanel = PANELS[activePanelIndex + 1]
   const prevLabel = prevPanel ? panelLabels[prevPanel] : null
+  const nextLabel = nextPanel ? panelLabels[nextPanel] : null
 
   if (loading) {
     return (
@@ -208,29 +211,29 @@ export default function App() {
             familyStorageOwnerId={familyStorageOwnerId}
             user={user}
           >
-            {active === 'healthJourney' && <HealthJourneyPanel onNext={goNext} onOpenStressRelief={() => setActive('stressRelief')} onOpenInBody={() => setActive('aiInbodyPortal')} onViewMedicalRecord={() => setActive('upload')} />}
-            {active === 'lunchJourney' && <LunchJourneyPanel onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} onOpenStressRelief={() => setActive('stressRelief')} onOpenInBody={() => setActive('aiInbodyPortal')} onViewMedicalRecord={() => setActive('upload')} />}
-            {active === 'dinnerJourney' && <DinnerJourneyPanel onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} onOpenStressRelief={() => setActive('stressRelief')} onOpenInBody={() => setActive('aiInbodyPortal')} onViewMedicalRecord={() => setActive('upload')} />}
-            {active === 'upload'    && <UploadPanel        patientId="LXK-2024" onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} onSelectImage={handleSelectCompareFile} />}
-            {active === 'imaging'   && <ImagingPanel       onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} compareImage={compareImage} uploadedImages={uploadedImages} onSelectCompareImage={setCompareImage} scrollTarget={imagingScrollTarget} onScrollTargetHandled={() => setImagingScrollTarget(null)} />}
-            {active === 'checkin'   && <CheckinPanel       onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
-            {active === 'family'    && <FamilyTreePanel    patientId="LXK-2024" storageOwnerId={familyStorageOwnerId} onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} onViewRecord={navigateToRecord} />}
-            {active === 'familyRelationship' && <FamilyMedicalRelationshipPanel patientId="LXK-2024" storageOwnerId={familyStorageOwnerId} onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
-            {active === 'record'    && <PatientRecordPanel onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} selectedMember={selectedMember} storageOwnerId={familyStorageOwnerId} onBackToPatient={() => setSelectedMember(null)} />}
-            {active === 'matrix3dBody' && <Matrix3DBodyPanel onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
-            {active === 'omnidirectional3dBody' && <Omnidirectional3DBodyPanel onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
-            {active === 'twin'      && <TwinPanel          onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
-            {active === 'telemedicine' && <TelemedicinePanel onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} onViewMedicalRecord={() => setActive('upload')} />}
-            {active === 'statAnalysis' && <StatisticalAnalysisPanel onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
-            {active === 'swarm'     && <SwarmConsensusPanel onReset={() => setActive('upload')} onPrev={goPrev} prevLabel={prevLabel} />}
-            {active === 'consensus' && <ConsensusPanel     onReset={() => setActive('upload')} onPrev={goPrev} prevLabel={prevLabel} />}
-            {active === 'protein3d' && <Protein3DPanel     onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
-            {active === 'aiHealthcareVision' && <AIHealthcareVisionPanel onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
-            {active === 'aiHealthcareVisionControl' && <AIHealthcareVisionControlPanel onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} onViewMedicalRecord={() => setActive('upload')} />}
-            {active === 'stressRelief' && <StressReliefPanel onNext={goNext} nextLabel={`${t('aiInbodyPortal')} →`} onPrev={goPrev} prevLabel={prevLabel} />}
-            {active === 'aiInbodyPortal' && <AIInbodyPortalPanel onNext={goNext} nextLabel={`${t('waterDrinkChatBot')} →`} onPrev={goPrev} prevLabel={prevLabel} onViewMedicalRecord={() => setActive('upload')} />}
-            {active === 'waterDrinkChatBot' && <WaterDrinkChatBotPanel onNext={goNext} nextLabel="Print Portal →" onPrev={goPrev} prevLabel={prevLabel} />}
-            {active === 'printPortal' && <PrintCenter />}
+            {active === 'healthJourney' && <HealthJourneyPanel onNext={goNext} nextLabel={nextLabel} onOpenStressRelief={() => setActive('stressRelief')} onOpenInBody={() => setActive('aiInbodyPortal')} onViewMedicalRecord={() => setActive('upload')} />}
+            {active === 'lunchJourney' && <LunchJourneyPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} onOpenStressRelief={() => setActive('stressRelief')} onOpenInBody={() => setActive('aiInbodyPortal')} onViewMedicalRecord={() => setActive('upload')} />}
+            {active === 'dinnerJourney' && <DinnerJourneyPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} onOpenStressRelief={() => setActive('stressRelief')} onOpenInBody={() => setActive('aiInbodyPortal')} onViewMedicalRecord={() => setActive('upload')} />}
+            {active === 'upload'    && <UploadPanel        patientId="LXK-2024" onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} onSelectImage={handleSelectCompareFile} />}
+            {active === 'imaging'   && <ImagingPanel       onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} compareImage={compareImage} uploadedImages={uploadedImages} onSelectCompareImage={setCompareImage} scrollTarget={imagingScrollTarget} onScrollTargetHandled={() => setImagingScrollTarget(null)} />}
+            {active === 'checkin'   && <CheckinPanel       onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} />}
+            {active === 'family'    && <FamilyTreePanel    patientId="LXK-2024" nextLabel={nextLabel} storageOwnerId={familyStorageOwnerId} onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} onViewRecord={navigateToRecord} />}
+            {active === 'familyRelationship' && <FamilyMedicalRelationshipPanel patientId="LXK-2024" nextLabel={nextLabel} storageOwnerId={familyStorageOwnerId} onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} />}
+            {active === 'record'    && <PatientRecordPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} selectedMember={selectedMember} storageOwnerId={familyStorageOwnerId} onBackToPatient={() => setSelectedMember(null)} />}
+            {active === 'matrix3dBody' && <Matrix3DBodyPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} />}
+            {active === 'omnidirectional3dBody' && <Omnidirectional3DBodyPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} />}
+            {active === 'twin'      && <TwinPanel          onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} />}
+            {active === 'telemedicine' && <TelemedicinePanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} onViewMedicalRecord={() => setActive('upload')} />}
+            {active === 'statAnalysis' && <StatisticalAnalysisPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} />}
+            {active === 'swarm'     && <SwarmConsensusPanel onReset={() => setActive('upload')} onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} />}
+            {active === 'consensus' && <ConsensusPanel     onReset={() => setActive('upload')} onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} />}
+            {active === 'protein3d' && <Protein3DPanel     onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} />}
+            {active === 'aiHealthcareVision' && <AIHealthcareVisionPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} />}
+            {active === 'aiHealthcareVisionControl' && <AIHealthcareVisionControlPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} onViewMedicalRecord={() => setActive('upload')} />}
+            {active === 'stressRelief' && <StressReliefPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} />}
+            {active === 'aiInbodyPortal' && <AIInbodyPortalPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} onViewMedicalRecord={() => setActive('upload')} />}
+            {active === 'waterDrinkChatBot' && <WaterDrinkChatBotPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} />}
+            {active === 'printPortal' && <PrintCenter onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'profile'   && <UserProfilePanel />}
             {active === 'admin'     && user?.isAdmin && <AdminPanel />}
             {active === 'admin'     && !user?.isAdmin && (
