@@ -1,7 +1,5 @@
 import React, { useMemo, useRef, useState } from 'react'
 import { useApp } from '../context/AppContext'
-import chatbotKnowledge from '../aichatbot/tichhop_chatbot_ai.md?raw'
-import chatbotHtmlTemplate from '../aichatbot/tichhop_chatbot_ai.html?raw'
 import {
   CHATBOT_MODEL,
   CHATBOT_RUNTIME,
@@ -9,6 +7,7 @@ import {
   CHATBOT_TASK,
   buildFallbackReply,
   generateTransformersReply,
+  getDeterministicFallbackReply,
 } from '../lib/huggingFaceTransformersChat.js'
 
 const quickPrompts = [
@@ -28,7 +27,7 @@ export default function GlobalAIChatbot({ activePanelLabel }) {
   const [messages, setMessages] = useState(() => [{
     id: 'hello',
     role: 'assistant',
-    text: `Xin chào! Tôi là chatbot AI chung của Consensus Doctor. Runtime chính là ${CHATBOT_RUNTIME} dùng pipeline('${CHATBOT_TASK}', '${CHATBOT_MODEL}') chạy trực tiếp trong trình duyệt. Bạn có thể hỏi về tải hồ sơ, phân tích ảnh, InBody, gia phả bệnh lý hoặc Print Portal.`,
+    text: `Xin chào! Tôi là trợ lý AI chung của Consensus Doctor. Tôi có thể chào hỏi, trả lời câu hỏi phổ thông về trải nghiệm sử dụng website và hướng dẫn tải hồ sơ, phân tích ảnh, InBody, gia phả bệnh lý hoặc Print Portal.`,
   }])
   const scrollRef = useRef(null)
 
@@ -48,14 +47,21 @@ export default function GlobalAIChatbot({ activePanelLabel }) {
     setBusy(true)
     pushMessage({ role: 'user', text: question })
 
+    const deterministicAnswer = getDeterministicFallbackReply(question, activePanelLabel)
+    if (deterministicAnswer) {
+      pushMessage({ role: 'assistant', text: deterministicAnswer })
+      setMode('quick-guide')
+      setStatus('Hướng dẫn website · phản hồi nhanh')
+      setBusy(false)
+      return
+    }
+
     try {
       setStatus(`Đang tải/chạy ${CHATBOT_RUNTIME} · ${CHATBOT_MODEL} · ${CHATBOT_TASK}`)
       setMode('transformers-loading')
       const answer = await generateTransformersReply({
         question,
         activePanelLabel,
-        knowledgeBase: chatbotKnowledge,
-        htmlTemplate: chatbotHtmlTemplate,
         history: messages,
         onProgress: (progress) => {
           if (progress?.status) setStatus(`${progress.status} ${progress.file || ''}`.trim())
@@ -98,7 +104,7 @@ export default function GlobalAIChatbot({ activePanelLabel }) {
 
       <div style={styles.metaRow}>
         <span style={styles.badge}>{getModeLabel(mode)}</span>
-        <span style={styles.current}>{CHATBOT_RUNTIME_DETAIL}</span>
+        <span style={styles.current}>{CHATBOT_RUNTIME_DETAIL} · {CHATBOT_MODEL} · {CHATBOT_TASK}</span>
         <span style={styles.current}>Mục hiện tại: {activePanelLabel || 'Website'}</span>
       </div>
 
@@ -209,6 +215,7 @@ function createStyles(isDark) {
 
 function getModeLabel(mode) {
   if (mode === 'transformers') return 'Transformers.js'
+  if (mode === 'quick-guide') return 'Website guide'
   if (mode === 'fallback') return 'Safe fallback'
   return 'Browser pipeline'
 }
