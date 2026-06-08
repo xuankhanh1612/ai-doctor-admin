@@ -8,7 +8,7 @@ import meoNuocAiUrl from '../waterdrink-khanh/MeoNuocAI.JPG'
 import robotTuThe1Url from '../waterdrink-khanh/Robot-mang-giong-noi-nguoi-thuong-ren-hoc-sinh-ngoi-dung-tu-the-1.jpg'
 import robotTuThe2Url from '../waterdrink-khanh/Robot-mang-giong-noi-nguoi-thuong-ren-hoc-sinh-ngoi-dung-tu-the-2.jpg'
 
-export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel }) {
+export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, nextLabel }) {
   const { theme } = useApp()
   const isDark = theme === 'dark'
   const html = useMemo(() => waterDrinkTrackerHtml
@@ -27,7 +27,7 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel }) {
           </button>
           {onNext && (
             <button type="button" onClick={onNext} style={navButton(isDark, true)}>
-              Tiếp theo →
+              {nextLabel || 'Tiếp theo →'}
             </button>
           )}
         </div>
