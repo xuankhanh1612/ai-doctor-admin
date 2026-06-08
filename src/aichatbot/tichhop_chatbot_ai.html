@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tích hợp Chatbot AI · Consensus Doctor</title>
+  <style>
+    :root { font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #102033; background: #eef6ff; }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 24px; }
+    .chatbot-demo { width: min(720px, 100%); background: #fff; border: 1px solid #cfe0f5; border-radius: 24px; box-shadow: 0 28px 80px rgba(15, 76, 129, 0.18); overflow: hidden; }
+    .chatbot-head { padding: 18px 22px; color: #fff; background: linear-gradient(135deg, #0f4c81, #14b8a6); }
+    .chatbot-head h1 { margin: 0; font-size: 20px; }
+    .chatbot-head p { margin: 6px 0 0; opacity: 0.86; font-size: 13px; }
+    .chatbot-log { min-height: 280px; padding: 18px; display: grid; gap: 12px; background: #f8fbff; }
+    .msg { max-width: 82%; padding: 12px 14px; border-radius: 16px; font-size: 14px; line-height: 1.55; white-space: pre-wrap; }
+    .bot { justify-self: start; color: #123; background: #fff; border: 1px solid #dbeafe; }
+    .user { justify-self: end; color: #fff; background: #0f4c81; }
+    form { display: flex; gap: 10px; padding: 16px; border-top: 1px solid #dbeafe; background: #fff; }
+    input { flex: 1; border: 1px solid #cbd5e1; border-radius: 14px; padding: 12px 14px; font: inherit; }
+    button { border: 0; border-radius: 14px; padding: 0 18px; font-weight: 800; color: #fff; background: #0f4c81; cursor: pointer; }
+    .status { padding: 0 18px 16px; color: #64748b; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <section class="chatbot-demo">
+    <header class="chatbot-head">
+      <h1>🤗 Chatbot AI chung</h1>
+      <p>Ví dụ tích hợp Hugging Face Transformers.js cho Consensus Doctor.</p>
+    </header>
+    <main id="log" class="chatbot-log">
+      <div class="msg bot">Xin chào! Tôi có thể hướng dẫn bạn sử dụng Upload Records, AI Healthcare Vision, AI InBody Portal và Print Portal.</div>
+    </main>
+    <form id="form">
+      <input id="input" placeholder="Nhập câu hỏi về website..." autocomplete="off" />
+      <button type="submit">Gửi</button>
+    </form>
+    <div id="status" class="status">Model sẽ được tải từ Hugging Face khi người dùng gửi câu hỏi đầu tiên.</div>
+  </section>
+  <script type="module">
+    import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1';
+
+    env.allowLocalModels = false;
+    env.useBrowserCache = true;
+
+    const log = document.getElementById('log');
+    const form = document.getElementById('form');
+    const input = document.getElementById('input');
+    const status = document.getElementById('status');
+    let pipePromise;
+
+    function addMessage(text, role) {
+      const node = document.createElement('div');
+      node.className = `msg ${role}`;
+      node.textContent = text;
+      log.appendChild(node);
+      log.scrollTop = log.scrollHeight;
+    }
+
+    function getPipe() {
+      if (!pipePromise) {
+        status.textContent = 'Đang tải Xenova/flan-t5-small bằng Transformers.js...';
+        pipePromise = pipeline('text2text-generation', 'Xenova/flan-t5-small');
+      }
+      return pipePromise;
+    }
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const question = input.value.trim();
+      if (!question) return;
+      input.value = '';
+      addMessage(question, 'user');
+      try {
+        const generator = await getPipe();
+        const prompt = `Bạn là trợ lý website Consensus Doctor. Trả lời tiếng Việt ngắn gọn. Câu hỏi: ${question}`;
+        const output = await generator(prompt, { max_new_tokens: 120 });
+        addMessage(output?.[0]?.generated_text || 'Tôi chưa tạo được câu trả lời, vui lòng thử lại.', 'bot');
+        status.textContent = 'Đang chạy bằng Hugging Face Transformers.js trong trình duyệt.';
+      } catch (error) {
+        console.error(error);
+        addMessage('Hiện chưa tải được model. Bạn có thể hỏi về Upload Records, AI Healthcare Vision, AI InBody Portal hoặc Print Portal.', 'bot');
+        status.textContent = 'Không tải được model, đang dùng phản hồi dự phòng.';
+      }
+    });
+  </script>
+</body>
+</html>

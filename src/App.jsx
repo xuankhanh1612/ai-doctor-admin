@@ -3,6 +3,7 @@ import { useAuth } from './context/AuthContext'
 import { useApp } from './context/AppContext'
 import Topbar from './components/Topbar.jsx'
 import Sidebar from './components/Sidebar.jsx'
+import GlobalAIChatbot from './components/GlobalAIChatbot.jsx'
 import ImagingPanel from './components/ImagingPanel.jsx'
 import CheckinPanel from './components/CheckinPanel.jsx'
 import TwinPanel from './components/TwinPanel.jsx'
@@ -27,12 +28,13 @@ import AIHealthcareVisionControlPanel from './components/AIHealthcareVisionContr
 import AIInbodyPortalPanel from './components/AIInbodyPortalPanel.jsx'
 import WaterDrinkChatBotPanel from './components/WaterDrinkChatBotPanel.jsx'
 import StressReliefPanel from './components/StressReliefPanel.jsx'
+import PrintCenter from './print/PrintCenter.jsx'
 import UserProfilePanel from './components/UserProfilePanel.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 import { addNotification } from './lib/notifications.js'
 
 // Swarm panel replaces simulation; keep consensus as classic fallback
-const PANELS = ['healthJourney', 'lunchJourney', 'dinnerJourney', 'upload', 'imaging', 'checkin', 'family', 'record', 'familyRelationship', 'matrix3dBody', 'omnidirectional3dBody', 'twin', 'telemedicine', 'statAnalysis', 'swarm', 'consensus', 'protein3d', 'aiHealthcareVision', 'aiHealthcareVisionControl', 'stressRelief', 'aiInbodyPortal', 'waterDrinkChatBot']
+const PANELS = ['healthJourney', 'lunchJourney', 'dinnerJourney', 'upload', 'imaging', 'checkin', 'family', 'record', 'familyRelationship', 'matrix3dBody', 'omnidirectional3dBody', 'twin', 'telemedicine', 'statAnalysis', 'swarm', 'consensus', 'protein3d', 'aiHealthcareVision', 'aiHealthcareVisionControl', 'stressRelief', 'aiInbodyPortal', 'waterDrinkChatBot', 'printPortal']
 
 export default function App() {
   const { user, loading } = useAuth()
@@ -79,6 +81,7 @@ export default function App() {
     stressRelief: t('stressRelief'),
     aiInbodyPortal: t('aiInbodyPortal'),
     waterDrinkChatBot: t('waterDrinkChatBot'),
+    printPortal: 'Print Portal',
     profile: t('profile'),
   }
 
@@ -226,7 +229,8 @@ export default function App() {
             {active === 'aiHealthcareVisionControl' && <AIHealthcareVisionControlPanel onNext={goNext} onPrev={goPrev} prevLabel={prevLabel} onViewMedicalRecord={() => setActive('upload')} />}
             {active === 'stressRelief' && <StressReliefPanel onNext={goNext} nextLabel={`${t('aiInbodyPortal')} →`} onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'aiInbodyPortal' && <AIInbodyPortalPanel onNext={goNext} nextLabel={`${t('waterDrinkChatBot')} →`} onPrev={goPrev} prevLabel={prevLabel} onViewMedicalRecord={() => setActive('upload')} />}
-            {active === 'waterDrinkChatBot' && <WaterDrinkChatBotPanel onPrev={goPrev} prevLabel={prevLabel} />}
+            {active === 'waterDrinkChatBot' && <WaterDrinkChatBotPanel onNext={goNext} nextLabel="Print Portal →" onPrev={goPrev} prevLabel={prevLabel} />}
+            {active === 'printPortal' && <PrintCenter />}
             {active === 'profile'   && <UserProfilePanel />}
             {active === 'admin'     && user?.isAdmin && <AdminPanel />}
             {active === 'admin'     && !user?.isAdmin && (
@@ -245,6 +249,7 @@ export default function App() {
           onOpenMainMenu={openMainMenu}
           onNavigate={(id) => setActive(id)}
         />
+        <GlobalAIChatbot activePanelLabel={panelLabels[active] || active} />
       </div>
     </div>
   )
