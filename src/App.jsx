@@ -3,6 +3,7 @@ import { useAuth } from './context/AuthContext'
 import { useApp } from './context/AppContext'
 import Topbar from './components/Topbar.jsx'
 import Sidebar from './components/Sidebar.jsx'
+import GlobalAIChatbot from './components/GlobalAIChatbot.jsx'
 import ImagingPanel from './components/ImagingPanel.jsx'
 import CheckinPanel from './components/CheckinPanel.jsx'
 import TwinPanel from './components/TwinPanel.jsx'
@@ -248,6 +249,7 @@ export default function App() {
           onOpenMainMenu={openMainMenu}
           onNavigate={(id) => setActive(id)}
         />
+        <GlobalAIChatbot activePanelLabel={panelLabels[active] || active} />
       </div>
     </div>
   )
