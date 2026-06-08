@@ -10,6 +10,15 @@ import inBodyChartRef from '../DataInBody/IMG_2635.PNG';
 import khanhInBodyRef from '../DataInBody/KhanhInBody.JPG';
 import inBodyMuscleScreenRef from '../DataInBody/IMG_2637.PNG';
 import inBodyFatScreenRef from '../DataInBody/IMG_2638.PNG';
+import rankingFriendsRef from '../DataInBody/IMG_2651.PNG';
+import rankingConnectRef from '../DataInBody/IMG_2652.PNG';
+import rankingWeightRef from '../DataInBody/IMG_2653.PNG';
+import rankingTotalRef from '../DataInBody/IMG_2654.PNG';
+import rankingDeviceRef from '../DataInBody/IMG_2655.PNG';
+import rankingScoreDailyRef from '../DataInBody/IMG_2656.PNG';
+import rankingFatDailyRef from '../DataInBody/IMG_2657.PNG';
+import challengeRoadMapRef from '../DataInBody/RoadMap.png';
+import challengeJourneyRef from '../DataInBody/HanhTrinh3.png';
 
 // ─── Gamification engine ────────────────────────────────────────────────────
 function calcXP(records) {
@@ -115,6 +124,106 @@ const INBODY_REFERENCE_IMAGES = [
 const INBODY_APP_SCREEN_TABS = [
   { id: 'muscle', label: 'Khối lượng cơ', image: inBodyMuscleScreenRef, accent: '#1D9E75', summary: 'Màn hình Chi tiết · phân tích cơ từng bộ phận theo mẫu IMG_2637.PNG.' },
   { id: 'fat', label: 'Mỡ trong cơ thể', image: inBodyFatScreenRef, accent: '#f05f78', summary: 'Màn hình Chi tiết · phân tích mỡ từng bộ phận theo mẫu IMG_2638.PNG.' },
+];
+
+const RANKING_REFERENCE_IMAGES = [
+  { src: rankingFriendsRef, label: 'Bạn bè · IMG_2651.PNG' },
+  { src: rankingConnectRef, label: 'Kết bạn · IMG_2652.PNG' },
+  { src: rankingWeightRef, label: 'Cân nặng của tôi · IMG_2653.PNG' },
+  { src: rankingTotalRef, label: 'Tổng · IMG_2654.PNG' },
+  { src: rankingDeviceRef, label: 'Cùng thiết bị · IMG_2655.PNG' },
+  { src: rankingScoreDailyRef, label: 'Điểm hằng ngày · IMG_2656.PNG' },
+  { src: rankingFatDailyRef, label: 'Tỷ lệ mỡ hằng ngày · IMG_2657.PNG' },
+];
+
+const RANKING_GROUPS = [
+  {
+    id: 'total',
+    label: 'Tổng',
+    info: 'Dựa trên tất cả các báo cáo sức khỏe của người dùng InBody trên cùng một quốc gia. Bảng xếp hạng tuần cài lại lúc 00:00 thứ hai, hằng ngày cài lại lúc 00:00 mỗi ngày.',
+    title: 'Xếp hạng điểm InBody hằng tuần',
+    rows: [
+      { rank: 1, name: 'Kathy', value: '137Điểm' },
+      { rank: 2, name: '4444', value: '119Điểm' },
+      { rank: 3, name: '3118', value: '114Điểm' },
+      { rank: 4, name: 'jonah5663', value: '111Điểm' },
+      { rank: 4, name: '6899', value: '111Điểm' },
+      { rank: 6, name: 'FattyBoyz', value: '110Điểm' },
+      { rank: 7, name: '0962', value: '109Điểm' },
+    ],
+  },
+  {
+    id: 'device',
+    label: 'Cùng thiết bị',
+    info: 'Dựa trên các báo cáo về sức khỏe của những người dùng cùng loại thiết bị chuyên nghiệp. Nếu chưa có dữ liệu tuần này, hệ thống nhắc người dùng kiểm tra InBody tại cơ sở chuyên nghiệp.',
+    title: 'Xếp hạng điểm InBody hằng ngày',
+    empty: 'Hôm nay không có kết quả từ cuộc kiểm tra InBody. Hãy đi kiểm tra InBody tại một cơ sở chuyên nghiệp ngay bây giờ và kiểm tra xếp hạng của bạn!',
+    rows: [],
+  },
+  {
+    id: 'weight',
+    label: 'Cân nặng của tôi',
+    info: 'Dựa trên thiết bị chuyên dụng, báo cáo sức khỏe của người dùng có cân nặng giống bạn. Kết quả có thể mất khoảng 10 phút để phản ánh vào bảng xếp hạng.',
+    title: 'Xếp hạng điểm InBody hằng tuần',
+    rows: [
+      { rank: 1, name: 'Kathy', value: '137Điểm' },
+      { rank: 2, name: 'JIA', value: '95Điểm', photo: true },
+      { rank: 2, name: '8418', value: '95Điểm' },
+      { rank: 4, name: '5254', value: '94Điểm' },
+      { rank: 4, name: '4396', value: '94Điểm' },
+      { rank: 6, name: 'Tim', value: '93Điểm' },
+      { rank: 6, name: 'High', value: '93Điểm', photo: true },
+    ],
+  },
+  {
+    id: 'friends',
+    label: 'Bạn bè',
+    info: 'Xếp hạng bạn bè trên InBody có thể đặt riêng tư hoặc công khai. Danh sách hiện có một hồ sơ của bạn và nút Kết bạn để mô phỏng luồng IMG_2651-IMG_2652.',
+    title: 'Xếp hạng bạn bè trên InBody',
+    friendMode: true,
+    rows: [{ rank: 1, name: 'Tôi', value: '64Điểm', photo: true }],
+  },
+];
+
+const DAILY_SCORE_ROWS = [
+  { rank: 1, name: '8418', value: '95Điểm' },
+  { rank: 2, name: '6315', value: '91Điểm' },
+  { rank: 2, name: '0671', value: '91Điểm' },
+  { rank: 2, name: '9844', value: '91Điểm' },
+  { rank: 2, name: '7022', value: '91Điểm' },
+  { rank: 6, name: '9076', value: '90Điểm' },
+  { rank: 6, name: 'Carmen', value: '90Điểm', photo: true },
+  { rank: 6, name: 'Subho', value: '90Điểm', photo: true },
+  { rank: 10, name: '4142', value: '89Điểm' },
+];
+
+const BODY_FAT_ROWS = [
+  { rank: 1, name: 'Giri', value: '5.1%' },
+  { rank: 2, name: '6100', value: '6.5%' },
+  { rank: 3, name: '8418', value: '6.7%' },
+  { rank: 4, name: '6588', value: '6.9%' },
+  { rank: 5, name: '0591', value: '7.3%' },
+  { rank: 6, name: '3195', value: '8%' },
+  { rank: 7, name: 'harsh@saa', value: '9.4%', photo: true },
+  { rank: 8, name: '8678', value: '10.1%' },
+  { rank: 9, name: 'Jerry', value: '10.6%' },
+  { rank: 10, name: '3132', value: '11.9%' },
+];
+
+const CHALLENGE_PROGRAMS = [
+  { icon: '🧬', name: 'Inflammation Control Program', state: 'Đang thực hiện', progress: 63, reward: '5,000 HLT', tag: 'Epic' },
+  { icon: '🥗', name: 'Gut Health Optimization', state: 'Chưa bắt đầu', progress: 0, reward: '3,300 HLT', tag: 'Rare' },
+  { icon: '💪', name: 'IL-6 Protein Optimization', state: 'Đang mở', progress: 18, reward: '5,000 HLT', tag: 'Epic' },
+  { icon: '🌙', name: 'Longevity Support', state: 'Chưa bắt đầu', progress: 0, reward: '4,000 HLT', tag: 'Legendary' },
+];
+
+const CHALLENGE_DAILY_TASKS = [
+  { icon: '🚶', name: 'Đi bộ 8,000 bước', xp: 300, done: true },
+  { icon: '🧘', name: 'Thiền 15 phút', xp: 300, done: true },
+  { icon: '💧', name: 'Uống đủ nước', xp: 200, done: true },
+  { icon: '📚', name: 'Đọc sách 20 trang', xp: 120, done: false },
+  { icon: '🍬', name: 'No Sugar Challenge', xp: 150, done: true },
+  { icon: '📝', name: 'Journal Reflection', xp: 100, done: false },
 ];
 
 function parseNumber(value) {
@@ -734,6 +843,191 @@ function InBodyAppScreensTab() {
   );
 }
 
+function RankingHeader({ latest }) {
+  return (
+    <div className="ranking-hero">
+      <div className="ranking-topline">
+        <span className="ranking-logo">InBody</span>
+        <span>Trang tổng</span>
+        <span>Chi tiết</span>
+        <span>Thay đổi</span>
+        <b>Xếp hạng</b>
+      </div>
+      <div className="ranking-scoreline">
+        <span>Điểm InBody của tôi</span>
+        <strong>{latest?.score ?? 64}<small>Điểm</small></strong>
+      </div>
+      <div className="ranking-filter-row">
+        <button type="button">Nam giới / Cùng độ tuổi(40~50Tuổi) ▾</button>
+        <span>Top 94%</span>
+      </div>
+      <p>Thiết bị chăm sóc sức khỏe tại nhà, dữ liệu nhập thủ công chỉ phản ánh trong bảng xếp hạng bạn bè.</p>
+    </div>
+  );
+}
+
+function RankingRows({ rows, compact = false }) {
+  return (
+    <div className={compact ? 'ranking-list compact' : 'ranking-list'}>
+      {rows.map((row, index) => (
+        <div key={`${row.name}-${index}`} className="ranking-row">
+          <span className="ranking-rank">{row.rank}</span>
+          <span className="ranking-new">NEW</span>
+          <span className={row.photo ? 'ranking-avatar photo' : 'ranking-avatar'}>{row.photo ? '👤' : ''}</span>
+          <span className="ranking-name">{row.name}</span>
+          <strong>{row.value}</strong>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function RankingsTab({ latest }) {
+  const [group, setGroup] = useState(RANKING_GROUPS[0]);
+  const [showConnect, setShowConnect] = useState(false);
+
+  return (
+    <div className="ranking-panel">
+      <RankingHeader latest={latest} />
+      <div className="ranking-pill-tabs">
+        {RANKING_GROUPS.map((item) => (
+          <button key={item.id} type="button" className={group.id === item.id ? 'active' : ''} onClick={() => setGroup(item)}>
+            {item.label}
+          </button>
+        ))}
+      </div>
+      <div className="ranking-body-card">
+        <div className="ranking-info"><span>i</span>{group.info}</div>
+        {group.friendMode && (
+          <div className="ranking-privacy-row">
+            <h3>{group.title}</h3>
+            <span>Riêng tư</span><button type="button" aria-label="Đổi riêng tư công khai" /><b>Công khai</b>
+          </div>
+        )}
+        {!group.friendMode && (
+          <div className="ranking-section-heading">
+            <h3>{group.title}</h3>
+            <div><b>Tổng</b><span>Nam giới</span><span>Nữ giới</span></div>
+          </div>
+        )}
+        {group.empty ? <div className="ranking-empty">{group.empty}</div> : <RankingRows rows={group.rows} compact={group.friendMode} />}
+        {group.friendMode && (
+          <button type="button" className="ranking-connect-btn" onClick={() => setShowConnect(!showConnect)}>
+            {showConnect ? 'Đóng kết bạn' : 'Kết bạn'}
+          </button>
+        )}
+        {showConnect && (
+          <div className="ranking-connect-card">
+            <div className="ranking-connect-title">‹ <b>Kết bạn</b></div>
+            <h3>Yêu cầu kết bạn</h3>
+            <div className="ranking-input">Số điện thoại di động</div>
+            <div className="ranking-input">Tên</div>
+            <button type="button">Gửi yêu cầu</button>
+            <h3>Danh sách bạn bè</h3>
+            <p>Không có bạn bè.</p>
+          </div>
+        )}
+        <div className="ranking-section-heading secondary">
+          <h3>Xếp hạng điểm InBody hằng ngày</h3>
+          <div><b>Tổng</b><span>Nam giới</span><span>Nữ giới</span></div>
+        </div>
+        <RankingRows rows={DAILY_SCORE_ROWS} />
+        <div className="ranking-section-heading secondary">
+          <h3>Xếp hạng tỷ lệ mỡ trong cơ thể hằng ngày</h3>
+          <div><b>Nam giới</b><span>Nữ giới</span></div>
+        </div>
+        <RankingRows rows={BODY_FAT_ROWS} />
+        <a className="ranking-opt-out" href="#ranking-opt-out">Không tham gia vào việc xếp hạng.</a>
+      </div>
+      <details className="inbody-reference-details">
+        <summary>Ảnh tham chiếu IMG_2651.PNG → IMG_2657.PNG</summary>
+        <div className="inbody-reference-gallery ranking-gallery">
+          {RANKING_REFERENCE_IMAGES.map((image) => (
+            <figure key={image.label}><img src={image.src} alt={image.label} /><figcaption>{image.label}</figcaption></figure>
+          ))}
+        </div>
+      </details>
+    </div>
+  );
+}
+
+function ChallengeTab({ records, levelInfo }) {
+  const latest = records[records.length - 1];
+  const completedTasks = CHALLENGE_DAILY_TASKS.filter((task) => task.done).length;
+  return (
+    <div className="challenge-panel">
+      <div className="challenge-hero">
+        <div>
+          <span className="challenge-kicker">AI CLINIC · HEALTH UNIVERSE</span>
+          <h2>Thử Thách InBody Warrior</h2>
+          <p>Biến dữ liệu InBody thành hành trình nhiệm vụ: upload, AI phân tích, chọn phác đồ, nhận bounty và mở khóa thành tựu như RoadMap + Hành Trình.</p>
+        </div>
+        <div className="challenge-level-card">
+          <span>Lv. {levelInfo.level}</span>
+          <b>{levelInfo.xp.toLocaleString()} XP</b>
+          <div className="challenge-xp"><i style={{ width: `${levelInfo.progress}%` }} /></div>
+          <small>{levelInfo.progress}% tới level kế tiếp</small>
+        </div>
+      </div>
+      <div className="challenge-grid">
+        <section className="challenge-card overview">
+          <div className="challenge-card-head"><span>04</span><b>Dashboard Bệnh nhân</b></div>
+          <div className="challenge-stats">
+            <div><small>Sức khỏe</small><b>{latest?.score ?? 72}</b></div>
+            <div><small>Nhiệm vụ</small><b>{completedTasks}</b></div>
+            <div><small>Token</small><b>4,250 HLT</b></div>
+            <div><small>Cấp độ</small><b>{levelInfo.level}</b></div>
+          </div>
+          <div className="challenge-radar">
+            <span>Miễn dịch 72</span><span>Trao đổi chất 65</span><span>Tinh thần 68</span><span>Giấc ngủ 75</span><span>Tim mạch 80</span>
+          </div>
+        </section>
+        <section className="challenge-card upload-flow">
+          <div className="challenge-card-head"><span>InBody</span><b>Upload kết quả InBody</b></div>
+          <img src={aiClinicInBodyRef} alt="AIClinicInBody reference" />
+          <button type="button">Phân tích ngay</button>
+        </section>
+        <section className="challenge-card programs">
+          <div className="challenge-card-head"><span>09</span><b>Challenge / Bounty Marketplace</b></div>
+          {CHALLENGE_PROGRAMS.map((program) => (
+            <div key={program.name} className="challenge-program">
+              <span>{program.icon}</span>
+              <div><b>{program.name}</b><small>{program.state} · {program.reward}</small><i><em style={{ width: `${program.progress}%` }} /></i></div>
+              <strong>{program.tag}</strong>
+            </div>
+          ))}
+        </section>
+        <section className="challenge-card daily">
+          <div className="challenge-card-head"><span>55</span><b>Nhiệm vụ hôm nay</b></div>
+          {CHALLENGE_DAILY_TASKS.map((task) => (
+            <div key={task.name} className={task.done ? 'challenge-task done' : 'challenge-task'}>
+              <span>{task.icon}</span><b>{task.name}</b><small>+{task.xp} XP</small><em>{task.done ? '✓' : '○'}</em>
+            </div>
+          ))}
+        </section>
+        <section className="challenge-card story">
+          <div className="challenge-card-head"><span>09</span><b>Hành trình Story Mode</b></div>
+          <div className="story-map">
+            <div className="story-node active">Day 1</div><div className="story-line" /><div className="story-node active">Day 7</div><div className="story-line" /><div className="story-node locked">Boss</div>
+          </div>
+          <p>Chapter 1 · The Awakening · 60%</p>
+          <button type="button">Nhận nhiệm vụ kế tiếp</button>
+        </section>
+        <section className="challenge-card leaderboard-mini">
+          <div className="challenge-card-head"><span>15</span><b>Bảng xếp hạng</b></div>
+          {['Titan', 'Shadow', 'Phoenix', 'Samurai', 'You'].map((name, index) => (
+            <div key={name}><span>{index + 1}</span><b>{name}</b><small>XP {index === 4 ? '7,540' : (18450 - index * 2210).toLocaleString()}</small></div>
+          ))}
+        </section>
+      </div>
+      <div className="challenge-reference-grid">
+        <figure><img src={challengeRoadMapRef} alt="RoadMap Health Universe" /><figcaption>RoadMap.png · screen map thử thách/bounty</figcaption></figure>
+        <figure><img src={challengeJourneyRef} alt="HanhTrinh3 Neuro Quest" /><figcaption>HanhTrinh3.png · hành trình chiến binh</figcaption></figure>
+      </div>
+    </div>
+  );
+}
+
 function BadgesTab({ records }) {
   const achievements = getAchievements(records);
   const unlocked = achievements.filter((a) => a.unlocked).length;
@@ -810,6 +1104,8 @@ export default function InBodyDashboard({ userId, initialRecords, onViewMedicalR
     { id: 'quests', label: 'Nhiệm vụ', icon: '⚔️' },
     { id: 'history', label: 'Lịch sử', icon: '📈' },
     { id: 'screens', label: 'Màn hình', icon: '📱' },
+    { id: 'rankings', label: 'Xếp Hạng', icon: '🏆' },
+    { id: 'challenges', label: 'Thử Thách', icon: '🚀' },
     { id: 'badges', label: 'Huy hiệu', icon: '🏅' },
   ];
 
@@ -849,6 +1145,8 @@ export default function InBodyDashboard({ userId, initialRecords, onViewMedicalR
         {tab === 'quests' && <QuestsTab records={records} />}
         {tab === 'history' && <HistoryTab records={records} />}
         {tab === 'screens' && <InBodyAppScreensTab />}
+        {tab === 'rankings' && <RankingsTab latest={latest} />}
+        {tab === 'challenges' && <ChallengeTab records={records} levelInfo={levelInfo} />}
         {tab === 'badges' && <BadgesTab records={records} />}
       </div>
 
@@ -964,6 +1262,98 @@ export default function InBodyDashboard({ userId, initialRecords, onViewMedicalR
         .inbody-screen-summary { display: flex; justify-content: space-between; gap: 10px; padding: 10px 12px; border-left: 4px solid; border-radius: 12px; background: #fff; color: #475569; font-size: 12px; margin-bottom: 10px; }
         .inbody-screen-figure { margin: 0; border: 1px solid #e5e7eb; border-radius: 20px; overflow: hidden; background: #fff; }
         .inbody-screen-figure img { display: block; width: 100%; max-height: 760px; object-fit: contain; object-position: top; background: #fff; }
+        .ranking-panel { border-radius: 22px; overflow: hidden; background: #fff; border: 1px solid #e5e7eb; }
+        .ranking-hero { padding: 24px 24px 30px; color: #fff; background: linear-gradient(135deg, #ed3d68 0%, #8d358e 100%); }
+        .ranking-topline { display: grid; grid-template-columns: 1.1fr repeat(4, minmax(0, .8fr)); align-items: center; gap: 12px; color: rgba(255,255,255,.48); font-size: clamp(14px, 2.3vw, 22px); font-weight: 800; }
+        .ranking-logo { justify-self: start; color: #fff; font-size: clamp(22px, 3vw, 34px); font-weight: 950; letter-spacing: -.05em; }
+        .ranking-topline b { justify-self: end; padding: 10px 20px; border-radius: 999px; background: #fff; color: #6f287e; }
+        .ranking-scoreline { display: flex; justify-content: flex-end; align-items: baseline; gap: 14px; margin-top: 26px; font-size: 20px; font-weight: 700; }
+        .ranking-scoreline strong { font-size: clamp(52px, 8vw, 82px); line-height: .9; }
+        .ranking-scoreline small { font-size: 20px; margin-left: 6px; }
+        .ranking-filter-row { display: flex; align-items: center; justify-content: flex-end; gap: 18px; margin-top: 10px; font-size: clamp(20px, 3vw, 34px); font-weight: 700; }
+        .ranking-filter-row button { border: 0; border-radius: 999px; padding: 12px 20px; color: #fff; background: rgba(82, 28, 86, .48); font-size: clamp(14px, 2vw, 22px); cursor: pointer; }
+        .ranking-hero p { margin: 26px 0 0 auto; max-width: 760px; text-align: right; font-size: clamp(13px, 1.8vw, 20px); line-height: 1.35; }
+        .ranking-pill-tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: -22px; position: relative; z-index: 1; }
+        .ranking-pill-tabs button { min-height: 70px; border: 0; border-radius: 26px 26px 0 0; background: rgba(176, 69, 148, .74); color: rgba(255,255,255,.42); font-size: clamp(15px, 2.2vw, 28px); font-weight: 900; cursor: pointer; }
+        .ranking-pill-tabs button.active { background: #fff; color: #111; }
+        .ranking-body-card { padding: 22px 28px 34px; background: #fff; }
+        .ranking-info { display: flex; gap: 12px; padding: 18px 22px; border-radius: 18px; background: #f0f2f5; color: #111; font-size: clamp(13px, 1.8vw, 20px); line-height: 1.35; }
+        .ranking-info span { width: 24px; height: 24px; display: inline-grid; place-items: center; flex: 0 0 24px; border-radius: 50%; background: #315bd7; color: #fff; font-weight: 900; }
+        .ranking-section-heading, .ranking-privacy-row { display: flex; justify-content: space-between; align-items: center; gap: 14px; margin: 26px 0 12px; color: #4b5563; }
+        .ranking-section-heading.secondary { margin-top: 34px; }
+        .ranking-section-heading h3, .ranking-privacy-row h3 { margin: 0; max-width: 440px; color: #4b5563; font-size: clamp(20px, 2.8vw, 34px); line-height: 1.1; }
+        .ranking-section-heading div { display: flex; gap: 8px; font-size: clamp(14px, 2vw, 22px); white-space: nowrap; }
+        .ranking-section-heading b, .ranking-privacy-row b { color: #c72f43; }
+        .ranking-list { display: grid; gap: 8px; }
+        .ranking-row { display: grid; grid-template-columns: 46px 64px 58px minmax(0, 1fr) auto; align-items: center; gap: 10px; min-height: 72px; color: #4b5563; font-size: clamp(17px, 2.2vw, 28px); }
+        .ranking-list.compact .ranking-row { padding: 12px 22px; border-radius: 999px; background: #f4f4f5; }
+        .ranking-rank, .ranking-row strong { font-weight: 900; font-size: clamp(22px, 3vw, 38px); }
+        .ranking-new { color: #c72f43; font-size: clamp(12px, 1.7vw, 19px); }
+        .ranking-avatar { width: 52px; height: 52px; border-radius: 50%; background: linear-gradient(#e8e9eb, #ddd); display: grid; place-items: center; color: #bfc3ca; overflow: hidden; }
+        .ranking-avatar.photo { background: radial-gradient(circle at 35% 25%, #f6d7a8, #5274c9 44%, #1b2550 70%); }
+        .ranking-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .ranking-privacy-row { justify-content: flex-start; }
+        .ranking-privacy-row h3 { margin-right: auto; color: #374151; }
+        .ranking-privacy-row button { width: 86px; height: 44px; border: 0; border-radius: 999px; background: #bf263b; position: relative; }
+        .ranking-privacy-row button::after { content: ''; position: absolute; right: 5px; top: 5px; width: 34px; height: 34px; border-radius: 50%; background: #fff; }
+        .ranking-empty { margin: 18px -28px 8px; padding: 32px 28px; border-radius: 14px; background: #f8f8f8; color: #94a3b8; font-size: clamp(18px, 2.4vw, 30px); line-height: 1.35; }
+        .ranking-connect-btn { width: 100%; margin-top: clamp(22px, 8vw, 120px); min-height: 60px; border: 0; border-radius: 999px; background: #1f2433; color: #fff; font-size: 24px; font-weight: 900; cursor: pointer; }
+        .ranking-connect-card { margin-top: 18px; padding: 22px; border-radius: 22px; border: 1px solid #e5e7eb; background: #fff; box-shadow: 0 18px 40px rgba(15,23,42,.08); }
+        .ranking-connect-title { display: flex; justify-content: space-between; color: #1f2433; font-size: 18px; }
+        .ranking-connect-card h3 { font-size: 24px; margin: 24px 0 16px; }
+        .ranking-input { padding: 18px 8px; border-bottom: 1px solid #e5e7eb; color: #c4c7cc; font-size: 20px; }
+        .ranking-connect-card button { width: 100%; margin: 18px 0; padding: 16px; border: 0; border-radius: 8px; background: #d69396; color: #fff; font-size: 20px; font-weight: 900; }
+        .ranking-connect-card p { text-align: center; color: #8b8b8b; font-size: 20px; padding: 28px 0; }
+        .ranking-opt-out { display: inline-block; margin-top: 24px; color: #94a3b8; font-size: 22px; }
+        .inbody-reference-details { margin-top: 14px; padding: 14px; border: 1px solid #e5e7eb; border-radius: 16px; background: #f8fafc; }
+        .inbody-reference-details summary { cursor: pointer; font-size: 12px; font-weight: 800; color: #475569; }
+        .ranking-gallery { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+        .ranking-gallery img { height: clamp(320px, 58vh, 680px); }
+        .challenge-panel { padding: 16px; border-radius: 22px; color: #e5f0ff; background: radial-gradient(circle at 20% 0%, rgba(116,58,213,.32), transparent 32%), linear-gradient(135deg, #07111f, #030812 68%, #09061b); border: 1px solid rgba(148,163,184,.22); }
+        .challenge-hero { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 16px; padding: 22px; border-radius: 20px; background: rgba(15, 23, 42, .78); border: 1px solid rgba(148,163,184,.18); }
+        .challenge-kicker { color: #67e8f9; font-size: 12px; font-weight: 900; letter-spacing: .12em; }
+        .challenge-hero h2 { margin: 8px 0; font-size: clamp(28px, 5vw, 52px); line-height: 1; background: linear-gradient(90deg, #64d9ff, #9f5cff, #2dd4bf); -webkit-background-clip: text; color: transparent; }
+        .challenge-hero p { max-width: 760px; margin: 0; color: #cbd5e1; line-height: 1.55; }
+        .challenge-level-card { padding: 18px; border-radius: 18px; background: linear-gradient(160deg, rgba(79,70,229,.55), rgba(15,23,42,.72)); border: 1px solid rgba(125, 92, 255, .45); }
+        .challenge-level-card span, .challenge-level-card small { color: #a5b4fc; font-size: 12px; font-weight: 800; }
+        .challenge-level-card b { display: block; margin: 6px 0 12px; font-size: 30px; }
+        .challenge-xp { height: 10px; border-radius: 999px; overflow: hidden; background: rgba(148,163,184,.18); }
+        .challenge-xp i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #38bdf8, #2dd4bf, #a855f7); }
+        .challenge-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-top: 14px; }
+        .challenge-card { min-width: 0; padding: 16px; border-radius: 18px; background: rgba(15,23,42,.74); border: 1px solid rgba(148,163,184,.16); box-shadow: inset 0 1px 0 rgba(255,255,255,.04); }
+        .challenge-card-head { display: flex; gap: 10px; align-items: center; margin-bottom: 14px; }
+        .challenge-card-head span { padding: 5px 8px; border-radius: 9px; background: rgba(124,58,237,.22); color: #a78bfa; font-size: 11px; font-weight: 900; }
+        .challenge-card-head b { font-size: 16px; }
+        .challenge-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+        .challenge-stats div, .challenge-radar, .leaderboard-mini div { padding: 12px; border-radius: 12px; background: rgba(30,41,59,.64); }
+        .challenge-stats small { color: #93c5fd; font-size: 11px; }
+        .challenge-stats b { display: block; margin-top: 4px; font-size: 22px; }
+        .challenge-radar { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 12px; color: #cbd5e1; font-size: 12px; }
+        .upload-flow img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; object-position: top; border-radius: 12px; opacity: .9; border: 1px solid rgba(148,163,184,.18); }
+        .upload-flow button, .story button { width: 100%; margin-top: 12px; border: 0; border-radius: 10px; padding: 12px; color: #fff; font-weight: 900; background: linear-gradient(90deg, #2563eb, #7c3aed); }
+        .challenge-program { display: grid; grid-template-columns: 34px 1fr auto; gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(148,163,184,.12); }
+        .challenge-program div b, .challenge-program div small { display: block; }
+        .challenge-program div small { color: #94a3b8; margin: 3px 0 6px; }
+        .challenge-program i { display: block; height: 6px; border-radius: 999px; background: rgba(148,163,184,.14); overflow: hidden; }
+        .challenge-program em { display: block; height: 100%; background: linear-gradient(90deg, #10b981, #8b5cf6); }
+        .challenge-program strong { color: #fbbf24; font-size: 11px; }
+        .challenge-task { display: grid; grid-template-columns: 30px 1fr auto 24px; gap: 8px; align-items: center; padding: 9px; border-radius: 10px; margin-bottom: 7px; background: rgba(30,41,59,.58); }
+        .challenge-task small { color: #22c55e; }
+        .challenge-task em { color: #64748b; font-style: normal; }
+        .challenge-task.done em { color: #22c55e; }
+        .story-map { display: grid; grid-template-columns: 70px 1fr 70px 1fr 70px; align-items: center; margin: 18px 0; }
+        .story-node { display: grid; place-items: center; min-height: 54px; border-radius: 50%; background: rgba(59,130,246,.2); border: 1px solid #38bdf8; color: #e0f2fe; font-weight: 900; font-size: 12px; }
+        .story-node.active { box-shadow: 0 0 24px rgba(34,211,238,.35); }
+        .story-node.locked { border-color: #64748b; color: #94a3b8; }
+        .story-line { height: 2px; background: linear-gradient(90deg, #38bdf8, #8b5cf6); }
+        .story p { color: #cbd5e1; }
+        .leaderboard-mini div { display: grid; grid-template-columns: 26px 1fr auto; gap: 8px; margin-bottom: 8px; align-items: center; }
+        .leaderboard-mini div:nth-child(6) { border: 1px solid rgba(244,114,182,.55); }
+        .leaderboard-mini small { color: #c4b5fd; }
+        .challenge-reference-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; }
+        .challenge-reference-grid figure { margin: 0; overflow: hidden; border-radius: 16px; border: 1px solid rgba(148,163,184,.22); background: rgba(15,23,42,.86); }
+        .challenge-reference-grid img { display: block; width: 100%; max-height: 580px; object-fit: contain; object-position: top; background: #050b17; }
+        .challenge-reference-grid figcaption { padding: 10px 12px; color: #cbd5e1; font-size: 12px; font-weight: 800; }
         @media (max-width: 760px) {
           .hero-card { align-items: flex-start; }
           .tab-bar { overflow-x: auto; }
@@ -979,6 +1369,19 @@ export default function InBodyDashboard({ userId, initialRecords, onViewMedicalR
           .inbody-reference-gallery { grid-template-columns: 1fr; }
           .inbody-reference-gallery img { height: clamp(420px, 74vh, 980px); }
           .hist-row { flex-wrap: wrap; }
+          .ranking-topline { grid-template-columns: 1fr 1fr; font-size: 13px; }
+          .ranking-logo { grid-column: 1 / -1; }
+          .ranking-topline b { justify-self: stretch; text-align: center; }
+          .ranking-scoreline, .ranking-filter-row, .ranking-hero p { justify-content: flex-start; text-align: left; }
+          .ranking-filter-row { flex-direction: column; align-items: flex-start; gap: 8px; }
+          .ranking-pill-tabs { overflow-x: auto; grid-template-columns: repeat(4, minmax(150px, 1fr)); }
+          .ranking-body-card { padding: 18px 16px 28px; }
+          .ranking-section-heading, .ranking-privacy-row { align-items: flex-start; flex-direction: column; }
+          .ranking-row { grid-template-columns: 34px 42px 44px minmax(0, 1fr) auto; min-height: 58px; gap: 7px; }
+          .ranking-avatar { width: 42px; height: 42px; }
+          .ranking-empty { margin-left: -16px; margin-right: -16px; }
+          .challenge-hero, .challenge-grid, .challenge-reference-grid { grid-template-columns: 1fr; }
+          .challenge-stats { grid-template-columns: repeat(2, 1fr); }
         }
 
       `}</style>
