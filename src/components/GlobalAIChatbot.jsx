@@ -1,10 +1,6 @@
 import React, { useMemo, useRef, useState } from 'react'
 import { useApp } from '../context/AppContext'
 import {
-  CHATBOT_MODEL,
-  CHATBOT_RUNTIME,
-  CHATBOT_RUNTIME_DETAIL,
-  CHATBOT_TASK,
   buildFallbackReply,
   generateTransformersReply,
   getDeterministicFallbackReply,
@@ -57,24 +53,24 @@ export default function GlobalAIChatbot({ activePanelLabel }) {
     }
 
     try {
-      setStatus(`Đang tải/chạy ${CHATBOT_RUNTIME} · ${CHATBOT_MODEL} · ${CHATBOT_TASK}`)
+      setStatus('Đang chuẩn bị phản hồi tiếng Việt an toàn...')
       setMode('transformers-loading')
       const answer = await generateTransformersReply({
         question,
         activePanelLabel,
         history: messages,
         onProgress: (progress) => {
-          if (progress?.status) setStatus(`${progress.status} ${progress.file || ''}`.trim())
+          if (progress?.status) setStatus('Đang chuẩn bị phản hồi tiếng Việt an toàn...')
         },
       })
       pushMessage({ role: 'assistant', text: answer || buildFallbackReply(question, activePanelLabel) })
       setMode('transformers')
-      setStatus(`${CHATBOT_RUNTIME} · ${CHATBOT_MODEL} · ${CHATBOT_TASK}`)
+      setStatus('Sẵn sàng hỗ trợ · tiếng Việt có dấu')
     } catch (error) {
       console.error('Global chatbot Transformers.js error:', error)
       pushMessage({ role: 'assistant', text: buildFallbackReply(question, activePanelLabel) })
       setMode('fallback')
-      setStatus('Không tải được model/CDN, đang dùng phản hồi dự phòng an toàn')
+      setStatus('Đang dùng phản hồi dự phòng an toàn')
     } finally {
       setBusy(false)
     }
@@ -82,7 +78,7 @@ export default function GlobalAIChatbot({ activePanelLabel }) {
 
   if (!open) {
     return (
-      <button type="button" onClick={() => setOpen(true)} style={styles.fab} aria-label="Mở chatbot AI chung">
+      <button type="button" onClick={() => setOpen(true)} className="global-ai-chatbot-fab" style={styles.fab} aria-label="Mở chatbot AI chung">
         <span style={styles.fabIcon}>🤗</span>
         <span>
           <strong>AI Chat</strong>
@@ -93,7 +89,7 @@ export default function GlobalAIChatbot({ activePanelLabel }) {
   }
 
   return (
-    <section style={styles.panel} aria-label="Chatbot AI chung">
+    <section className="global-ai-chatbot-panel" style={styles.panel} aria-label="Chatbot AI chung">
       <header style={styles.header}>
         <div>
           <div style={styles.title}>🤗 Chatbot AI chung</div>
@@ -104,7 +100,7 @@ export default function GlobalAIChatbot({ activePanelLabel }) {
 
       <div style={styles.metaRow}>
         <span style={styles.badge}>{getModeLabel(mode)}</span>
-        <span style={styles.current}>{CHATBOT_RUNTIME_DETAIL} · {CHATBOT_MODEL} · {CHATBOT_TASK}</span>
+        <span style={styles.current}>Trợ lý website · phản hồi tiếng Việt an toàn</span>
         <span style={styles.current}>Mục hiện tại: {activePanelLabel || 'Website'}</span>
       </div>
 
@@ -216,8 +212,8 @@ function createStyles(isDark) {
 }
 
 function getModeLabel(mode) {
-  if (mode === 'transformers') return 'Transformers.js'
+  if (mode === 'transformers') return 'Tiếng Việt an toàn'
   if (mode === 'quick-guide') return 'Website guide'
   if (mode === 'fallback') return 'Safe fallback'
-  return 'Browser pipeline'
+  return 'Trợ lý website'
 }

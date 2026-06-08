@@ -13,7 +13,8 @@ const EMERGENCY_TERMS = ['dau nguc', 'kho tho', 'ngat', 'co giat', 'yeu liet', '
 const FALLBACK_ROUTES = [
   { terms: ['chatbot', 'tro ly', 'tra loi', 'trai nghiem', 'su dung', 'pho thong', 'thiet ke', 'runtime', 'huggingface', 'hugging face', 'transformers'], reply: () => 'Đúng vậy — chatbot được thiết kế như một trợ lý chung cho website: có thể chào người dùng, trả lời câu hỏi phổ thông về trải nghiệm sử dụng và hướng dẫn thao tác trong Consensus Doctor. Khi phần AI trong trình duyệt chưa ổn định, chatbot tự chuyển sang phản hồi dự phòng an toàn để tránh trả lời sai hoặc bị lỗi dấu tiếng Việt.' },
   { terms: ['chao', 'hello', 'xin chao'], reply: () => 'Xin chào! Tôi là trợ lý AI chung của Consensus Doctor. Tôi có thể chào hỏi, giải thích cách dùng website, hướng dẫn tải hồ sơ, xem InBody, dùng AI Healthcare Vision, tạo gia phả bệnh lý và in tài liệu trong Print Portal.' },
-  { terms: ['dau bung', 'dau dau', 'dau lung', 'met moi', 'trieu chung', 'benh', 'kham bac si'], reply: () => 'Tôi có thể hỗ trợ thông tin chung, nhưng không thể chẩn đoán thay bác sĩ. Nếu bạn đang đau bụng hoặc có triệu chứng kéo dài, hãy ghi lại vị trí đau, mức độ đau, thời điểm bắt đầu, triệu chứng kèm theo và liên hệ bác sĩ/cơ sở y tế để được đánh giá. Nếu đau dữ dội, sốt cao, nôn nhiều, đi ngoài ra máu, ngất hoặc khó thở, hãy đi cấp cứu ngay.' },
+  { terms: ['nhuc rang', 'dau rang', 'rang dau', 'rang ham', 'sau rang', 'nha khoa', 'tooth', 'toothache'], reply: () => 'Bạn đang nhức răng thì nên đặt lịch khám nha khoa để tìm nguyên nhân như sâu răng, viêm lợi, viêm tuỷ hoặc răng khôn. Trong lúc chờ khám, bạn có thể súc miệng nước muối ấm, giữ vệ sinh răng miệng, tránh đồ quá nóng/lạnh/ngọt và ghi lại vị trí đau, mức độ đau, thời điểm bắt đầu. Nếu đau dữ dội, sưng mặt, sốt, chảy mủ, khó há miệng hoặc khó thở/nuốt, hãy đi khám cấp cứu ngay. Tôi chỉ hỗ trợ thông tin chung, không thay thế bác sĩ/nha sĩ.' },
+  { terms: ['dau bung', 'dau dau', 'dau lung', 'met moi', 'trieu chung', 'benh', 'kham bac si', 'toi thay dau', 'toi bi dau', 'nhuc', 'dau '], reply: () => 'Tôi có thể hỗ trợ thông tin chung, nhưng không thể chẩn đoán thay bác sĩ. Bạn nên ghi lại vị trí đau/khó chịu, mức độ, thời điểm bắt đầu, triệu chứng kèm theo và thuốc đang dùng; nếu triệu chứng kéo dài hoặc nặng hơn, hãy liên hệ bác sĩ/cơ sở y tế để được đánh giá. Nếu đau dữ dội, sốt cao, nôn nhiều, đi ngoài ra máu, ngất, khó thở hoặc có dấu hiệu nguy hiểm, hãy đi cấp cứu ngay.' },
   { terms: ['upload', 'tai', 'ho so', 'pdf', 'anh', 'dicom'], reply: () => 'Bạn có thể vào Upload Records để tải PDF, ảnh, DICOM hoặc tài liệu khám bệnh. Sau khi tải lên, hệ thống sẽ lưu hồ sơ và có thể chuyển sang AI Healthcare Vision để xem/so sánh hình ảnh.' },
   { terms: ['print', 'in ', 'in an', 'portal'], reply: () => 'Bạn hãy mở Print Portal ở cuối menu bệnh nhân. Tại đó có thể chọn loại tài liệu như kết quả khám bệnh, cây gia phả bệnh hoặc kết quả InBody, sau đó bấm “In ngay”.' },
   { terms: ['inbody', 'co the', 'bmi', 'mo', 'can nang'], reply: () => 'AI InBody Portal giúp xem chỉ số thành phần cơ thể như cân nặng, cơ, mỡ và các gợi ý theo dõi. Nếu cần in báo cáo, hãy chuyển đến Print Portal.' },
@@ -112,8 +113,10 @@ function isLowQualityReply(answer, question) {
   const normalizedQuestion = normalizeForMatch(question)
   const suspiciousFragments = [
     '@huggingfunn',
+    'chatbot ai chung ca website',
     'chatbotai',
     'chatbot chn',
+    'chao hi',
     'co du',
     'cong ngch',
     'consensss',
@@ -137,13 +140,15 @@ function isLowQualityReply(answer, question) {
     'tr li bng',
     'tr li tr li',
     'tr li i tr li',
+    'vai tr',
     'xenova/flan',
   ]
 
   if (suspiciousFragments.some(fragment => normalizedAnswer.includes(fragment))) return true
   if (/\b(\S+)(?:\s+\1){3,}\b/i.test(normalizedAnswer)) return true
   if (/\b([a-z]{1,3}\s+[a-z]{1,3})(?:\s+\1){2,}\b/i.test(normalizedAnswer)) return true
-  if (/^\s*(kien thuc|ngu canh|html|markdown|model|runtime)\b/i.test(normalizedAnswer)) return true
+  if (/^\s*(kien thuc|ngu canh|html|markdown|model|runtime|vai tr)\b/i.test(normalizedAnswer)) return true
+  if (/\b(hi|ngi|tr|ca)\b/.test(normalizedAnswer) && /\b(chatbot|website|consensus|vai|chao)\b/.test(normalizedAnswer)) return true
 
   const words = normalizedAnswer.split(/\s+/).filter(Boolean)
   const shortWordRatio = words.length ? words.filter(word => word.length <= 2).length / words.length : 0

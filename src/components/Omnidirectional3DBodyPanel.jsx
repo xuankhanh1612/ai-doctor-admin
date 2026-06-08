@@ -34,7 +34,7 @@ function Flow({ steps, variant = 'mvp' }) {
   )
 }
 
-export default function Omnidirectional3DBodyPanel({ onNext, onPrev, prevLabel }) {
+export default function Omnidirectional3DBodyPanel({ onNext, nextLabel, onPrev, prevLabel }) {
   return (
     <div className="omni3d-page animate-fade">
       <section className="omni3d-hero">
@@ -125,7 +125,7 @@ export default function Omnidirectional3DBodyPanel({ onNext, onPrev, prevLabel }
         </OmniCard>
       </div>
 
-      <NavButtons onNext={onNext} nextLabel="Tiếp tục tới Digital Twin →" onPrev={onPrev} prevLabel={prevLabel} />
+      <NavButtons onNext={onNext} nextLabel={nextLabel || 'Digital Twin'} onPrev={onPrev} prevLabel={prevLabel} />
     </div>
   )
 }

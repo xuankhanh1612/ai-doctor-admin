@@ -1230,7 +1230,7 @@ export default function HealthJourneyPanel({ onNext, onPrev, prevLabel, nextLabe
       {(onNext || onPrev) && (
         <NavButtons
           onNext={onNext}
-          nextLabel={nextLabel || `${t('lunchJourney')} →`}
+          nextLabel={nextLabel || t('lunchJourney')}
           onPrev={onPrev}
           prevLabel={prevLabel}
         />
