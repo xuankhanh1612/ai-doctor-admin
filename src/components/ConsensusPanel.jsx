@@ -210,7 +210,7 @@ function CompareGrid({ allResults }) {
 
 // ── Main panel ────────────────────────────────────────────────────────────
 
-export default function ConsensusPanel({ onReset, onPrev, prevLabel }) {
+export default function ConsensusPanel({ onReset, onNext, nextLabel, onPrev, prevLabel }) {
   const { t } = useApp()
   const {
     phase, agentStates, consensusResult, run, reset,
@@ -438,7 +438,7 @@ export default function ConsensusPanel({ onReset, onPrev, prevLabel }) {
                   fontFamily: 'var(--font-display)',
                 }}>{t('rerunConsensus')}</button>
               </div>
-              <NavButtons onPrev={onPrev} prevLabel={prevLabel} />
+              <NavButtons onNext={onNext} nextLabel={nextLabel} onPrev={onPrev} prevLabel={prevLabel} />
             </div>
           )}
         </>

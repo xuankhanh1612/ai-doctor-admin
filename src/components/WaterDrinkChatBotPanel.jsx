@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react'
+import NavButtons from './NavButtons.jsx'
 import { useApp } from '../context/AppContext'
 // @ts-ignore Vite raw HTML import
 import waterDrinkTrackerHtml from '../waterdrink-khanh/waterdrink_tracker.html?raw'
@@ -21,16 +22,12 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
   return (
     <div style={{ minHeight: '100%', background: isDark ? '#050b18' : '#eef8ff', padding: '22px clamp(14px, 3vw, 28px) 36px' }}>
       <div style={{ maxWidth: 1180, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-          <button type="button" onClick={onPrev} style={navButton(isDark)}>
-            ← {prevLabel || 'Quay lại'}
-          </button>
-          {onNext && (
-            <button type="button" onClick={onNext} style={navButton(isDark, true)}>
-              {nextLabel || 'Tiếp theo →'}
-            </button>
-          )}
-        </div>
+        <NavButtons
+          onNext={onNext}
+          nextLabel={nextLabel || 'Print Portal'}
+          onPrev={onPrev}
+          prevLabel={prevLabel}
+        />
 
         <div style={{ borderRadius: 28, overflow: 'hidden', border: `1px solid ${isDark ? 'rgba(125,211,252,0.26)' : 'rgba(14,165,233,0.24)'}`, boxShadow: isDark ? '0 24px 70px rgba(0,0,0,0.42)' : '0 24px 70px rgba(14,165,233,0.18)', background: '#fff' }}>
           <iframe

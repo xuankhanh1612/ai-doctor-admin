@@ -484,7 +484,7 @@ function MemberFormModal({ mode, initialForm, onSave, onClose, lang, isDark, c, 
 }
 
 // ─── Main Component ────────────────────────────────────────────────────────
-export default function FamilyTreePanel({ patientId, storageOwnerId = 'guest', onNext, onPrev, prevLabel, onViewRecord }) {
+export default function FamilyTreePanel({ patientId, storageOwnerId = 'guest', onNext, nextLabel, onPrev, prevLabel, onViewRecord }) {
   const { theme, lang, t } = useApp()
   const { user } = useAuth()
   const isDark    = theme === 'dark'
@@ -813,7 +813,7 @@ export default function FamilyTreePanel({ patientId, storageOwnerId = 'guest', o
       </div>
 
       {/* ── Navigation ─────────────────────────────────────────────────────── */}
-      <NavButtons onNext={onNext} nextLabel={`${t('patientRecord')} →`} onPrev={onPrev} prevLabel={prevLabel} />
+      <NavButtons onNext={onNext} nextLabel={nextLabel || t('patientRecord')} onPrev={onPrev} prevLabel={prevLabel} />
 
       {/* ── Add / Edit Modal ─────────────────────────────────────────────────── */}
       {modal && (

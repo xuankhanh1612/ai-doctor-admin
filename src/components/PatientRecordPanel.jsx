@@ -641,7 +641,7 @@ function ConsensusCard({ result, method, color }) {
 // ─── Main component ────────────────────────────────────────────────────────
 const METHOD_COLORS = { bayesian: 'var(--cyan)', weighted: 'var(--violet)', majority: 'var(--green)', graph: 'var(--amber)' }
 
-export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selectedMember, storageOwnerId = 'guest', onBackToPatient }) {
+export default function PatientRecordPanel({ onNext, nextLabel, onPrev, prevLabel, selectedMember, storageOwnerId = 'guest', onBackToPatient }) {
   const { theme, t, lang } = useApp()
   const { user } = useAuth()
   const isDark = theme === 'dark'
@@ -1309,7 +1309,7 @@ export default function PatientRecordPanel({ onNext, onPrev, prevLabel, selected
         {renderSection(activeSection, sectionData)}
       </div>
       {onNext && (
-        <NavButtons onNext={onNext} nextLabel={`${t('familyRelationship')} →`} onPrev={onPrev} prevLabel={prevLabel} style={{ marginTop: 4 }} />
+        <NavButtons onNext={onNext} nextLabel={nextLabel || t('familyRelationship')} onPrev={onPrev} prevLabel={prevLabel} style={{ marginTop: 4 }} />
       )}
     </div>
   )

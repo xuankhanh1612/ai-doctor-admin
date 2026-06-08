@@ -17,7 +17,7 @@ const ROADMAP = [
   { label: 'Response confirmed · Month 3', desc: 'Continue maintenance · Adjust dose PRN',          color: 'var(--green)'  },
 ]
 
-export default function SimulationPanel({ onNext, onPrev, prevLabel }) {
+export default function SimulationPanel({ onNext, nextLabel, onPrev, prevLabel }) {
   const { t } = useApp()
   const [scenario, setScenario] = useState('B')
   const [months, setMonths] = useState(6)
@@ -111,7 +111,7 @@ export default function SimulationPanel({ onNext, onPrev, prevLabel }) {
         </div>
       </Card>
 
-      <NavButtons onNext={onNext} nextLabel={t('submitConsensus')} onPrev={onPrev} prevLabel={prevLabel} />
+      <NavButtons onNext={onNext} nextLabel={nextLabel || t('submitConsensus')} onPrev={onPrev} prevLabel={prevLabel} />
     </div>
   )
 }

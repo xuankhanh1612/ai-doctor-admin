@@ -1097,7 +1097,7 @@ function MedicationAssistantView({ onViewMedicalRecord }) {
   return <EveningPhoneCameraView mode="medication" onViewMedicalRecord={onViewMedicalRecord} />
 }
 
-export default function DinnerJourneyPanel({ onNext, onPrev, prevLabel, onOpenStressRelief, onOpenInBody, onViewMedicalRecord }) {
+export default function DinnerJourneyPanel({ onNext, nextLabel, onPrev, prevLabel, onOpenStressRelief, onOpenInBody, onViewMedicalRecord }) {
   const { lang, t } = useApp()
   const [activeTab, setActiveTab] = useState('emotion')
 
@@ -1172,7 +1172,7 @@ export default function DinnerJourneyPanel({ onNext, onPrev, prevLabel, onOpenSt
       {activeTab === 'medication' && <MedicationAssistantView onViewMedicalRecord={onViewMedicalRecord} />}
       {activeTab === 'faceDetector' && <MediaPipeDetectorView type="face" onViewMedicalRecord={onViewMedicalRecord} />}
       {activeTab === 'bodyDetector' && <MediaPipeDetectorView type="body" onViewMedicalRecord={onViewMedicalRecord} />}
-      <NavButtons onNext={onNext} nextLabel={`${t('uploadRecords')} →`} onPrev={onPrev} prevLabel={prevLabel} />
+      <NavButtons onNext={onNext} nextLabel={nextLabel || t('uploadRecords')} onPrev={onPrev} prevLabel={prevLabel} />
     </div>
   )
 }

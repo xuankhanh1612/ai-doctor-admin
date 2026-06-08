@@ -718,7 +718,7 @@ function createCustomDataset(pair, index) {
   }
 }
 
-export default function StatisticalAnalysisPanel({ onNext, onPrev, prevLabel }) {
+export default function StatisticalAnalysisPanel({ onNext, nextLabel, onPrev, prevLabel }) {
   const { t } = useApp()
   const { user } = useAuth()
   const [selectedDatasetId, setSelectedDatasetId] = useState(DATASETS[0].id)
@@ -897,7 +897,7 @@ export default function StatisticalAnalysisPanel({ onNext, onPrev, prevLabel }) 
         </div>
       </div>
 
-      <NavButtons onNext={onNext} nextLabel={`${t('swarmCouncil')} →`} onPrev={onPrev} prevLabel={prevLabel} />
+      <NavButtons onNext={onNext} nextLabel={nextLabel || t('swarmCouncil')} onPrev={onPrev} prevLabel={prevLabel} />
     </div>
   )
 }

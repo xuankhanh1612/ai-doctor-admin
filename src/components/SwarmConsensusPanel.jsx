@@ -657,7 +657,7 @@ function AgentRow({ agent, vote, debating, lang }) {
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
-export default function SwarmConsensusPanel({ onReset, onPrev, prevLabel }) {
+export default function SwarmConsensusPanel({ onReset, onNext, nextLabel, onPrev, prevLabel }) {
   const { t, theme, lang } = useApp()
   const isDark = theme === 'dark'
   const canvasRef  = useRef(null)
@@ -1097,7 +1097,7 @@ export default function SwarmConsensusPanel({ onReset, onPrev, prevLabel }) {
           }}>↺ {sText(lang, 'rerun')}</button>
         )}
       </div>
-      <NavButtons onPrev={onPrev} prevLabel={prevLabel} />
+      <NavButtons onNext={onNext} nextLabel={nextLabel} onPrev={onPrev} prevLabel={prevLabel} />
     </div>
   )
 }
