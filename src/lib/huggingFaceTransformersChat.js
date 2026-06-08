@@ -1,11 +1,13 @@
-const TRANSFORMERS_CDN = 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1'
+const TRANSFORMERS_MODULE_URL = 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1'
 const MODEL_ID = 'Xenova/flan-t5-small'
 const TASK = 'text2text-generation'
 
 let generatorPromise = null
 
 export const CHATBOT_MODEL = MODEL_ID
+export const CHATBOT_TASK = TASK
 export const CHATBOT_RUNTIME = 'Hugging Face Transformers.js'
+export const CHATBOT_RUNTIME_DETAIL = '@huggingface/transformers pipeline() chạy trực tiếp trong trình duyệt'
 
 export function resetChatbotModel() {
   generatorPromise = null
@@ -13,7 +15,7 @@ export function resetChatbotModel() {
 
 async function loadGenerator(onProgress) {
   if (!generatorPromise) {
-    generatorPromise = import(/* @vite-ignore */ TRANSFORMERS_CDN).then(async ({ pipeline, env }) => {
+    generatorPromise = import(/* @vite-ignore */ TRANSFORMERS_MODULE_URL).then(async ({ pipeline, env }) => {
       env.allowLocalModels = false
       env.useBrowserCache = true
       return pipeline(TASK, MODEL_ID, {
@@ -33,6 +35,8 @@ export async function generateTransformersReply({ question, activePanelLabel, kn
   const compactKnowledge = `${knowledgeBase}\n\nHTML template summary:\n${htmlTemplate.slice(0, 1200)}`.slice(0, 3600)
   const prompt = [
     'Bạn là chatbot AI chung của website Consensus Doctor.',
+    'Runtime chính của bạn là Hugging Face Transformers.js (@huggingface/transformers) chạy trực tiếp trong trình duyệt bằng API pipeline(), tương tự thư viện Python huggingface/transformers.',
+    `Model mặc định: ${MODEL_ID}; tác vụ: ${TASK}.`,
     'Trả lời bằng tiếng Việt thân thiện, tối đa 5 ý.',
     'Ưu tiên hướng dẫn thao tác trong website. Không chẩn đoán hoặc kê đơn thay bác sĩ.',
     `Màn hình hiện tại: ${activePanelLabel || 'Không rõ'}.`,
@@ -81,5 +85,5 @@ export function buildFallbackReply(question, activePanelLabel = '') {
   const matched = routes.find(route => route.terms.some(term => normalized.includes(term)))
   if (matched) return matched.reply
 
-  return `Tôi là chatbot chung của Consensus Doctor${activePanelLabel ? `, hiện bạn đang ở mục ${activePanelLabel}` : ''}. Bạn có thể hỏi tôi cách tải hồ sơ, phân tích ảnh y tế, xem InBody, tạo gia phả bệnh lý hoặc in tài liệu trong Print Portal. Lưu ý: tôi chỉ hỗ trợ thông tin chung và không thay thế tư vấn của bác sĩ.`
+  return `Tôi là chatbot chung của Consensus Doctor${activePanelLabel ? `, hiện bạn đang ở mục ${activePanelLabel}` : ''}. Runtime chính là Hugging Face Transformers.js với pipeline('${TASK}', '${MODEL_ID}') chạy trong trình duyệt; khi model/CDN chưa tải được, tôi dùng bộ phản hồi dự phòng an toàn. Bạn có thể hỏi cách tải hồ sơ, phân tích ảnh y tế, xem InBody, tạo gia phả bệnh lý hoặc in tài liệu trong Print Portal. Lưu ý: tôi chỉ hỗ trợ thông tin chung và không thay thế tư vấn của bác sĩ.`
 }
