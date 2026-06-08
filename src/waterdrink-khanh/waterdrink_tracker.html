@@ -175,6 +175,38 @@
       }
       .stats { grid-template-columns: repeat(3, 1fr); }
       .actions { grid-template-columns: repeat(4, 1fr); }
+      .hydration-calendar {
+        padding: 14px;
+        border-radius: 24px;
+        border: 1px solid var(--line);
+        background: rgba(240, 249, 255, 0.76);
+      }
+      .calendar-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 10px; margin-bottom: 10px; }
+      .calendar-head h3 { margin: 0; font-size: 17px; color: #0369a1; }
+      .calendar-head p { margin: 4px 0 0; color: var(--muted); font-size: 12px; font-weight: 800; }
+      .calendar-streak { color: #0f766e; font-size: 12px; font-weight: 950; white-space: nowrap; }
+      .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 7px; }
+      .calendar-day {
+        min-height: 48px;
+        border-radius: 15px;
+        border: 1px solid rgba(14, 165, 233, 0.14);
+        background: rgba(255, 255, 255, 0.82);
+        color: #64748b;
+        display: grid;
+        place-items: center;
+        gap: 2px;
+        padding: 6px 2px;
+        font-weight: 950;
+        font-size: 12px;
+      }
+      .calendar-day small { color: inherit; font-size: 9px; font-weight: 800; }
+      .calendar-day.done { background: linear-gradient(135deg, rgba(14,165,233,0.92), rgba(20,184,166,0.92)); color: #fff; box-shadow: 0 10px 22px rgba(14,165,233,0.22); }
+      .calendar-day.partial { background: #e0f2fe; color: #0369a1; }
+      .calendar-day.today { outline: 3px solid rgba(14, 165, 233, 0.24); }
+      .calendar-legend { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; color: var(--muted); font-size: 11px; font-weight: 850; }
+      .legend-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 4px; vertical-align: -1px; background: #fff; border: 1px solid var(--line); }
+      .legend-dot.partial { background: #e0f2fe; }
+      .legend-dot.done { background: linear-gradient(135deg, var(--water), var(--aqua)); }
 
       .stat, .mini-card, .answer, .tip-card {
         border-radius: 20px;
@@ -348,6 +380,7 @@
       @media (max-width: 880px) {
         .hero, .learning-grid, .quiz-layout { grid-template-columns: 1fr; }
         .stats, .actions, .nutrient-list { grid-template-columns: repeat(2, 1fr); }
+        .calendar-grid { grid-template-columns: repeat(7, minmax(34px, 1fr)); gap: 6px; }
         .study-image-grid { grid-template-columns: repeat(2, 1fr); }
         .chart-box, .chart-box.small, .chart-box.tall { height: 220px; }
         .msg { max-width: 92%; }
@@ -401,6 +434,21 @@
               <button class="ghost" id="setGoal2000">Mục tiêu 2000</button>
               <button class="ghost" id="setGoal2500">Mục tiêu 2500</button>
               <button class="ghost" id="resetDay">Reset ngày</button>
+            </div>
+            <div class="hydration-calendar" aria-label="Calendar 31 ngày duy trì uống nước">
+              <div class="calendar-head">
+                <div>
+                  <h3>Calendar 31 ngày uống nước</h3>
+                  <p>Tracking daily: xanh đậm là đạt mục tiêu, xanh nhạt là đã uống.</p>
+                </div>
+                <strong class="calendar-streak" id="calendarStreak">0 ngày đạt</strong>
+              </div>
+              <div class="calendar-grid" id="hydrationCalendar"></div>
+              <div class="calendar-legend">
+                <span><i class="legend-dot done"></i>Đạt mục tiêu</span>
+                <span><i class="legend-dot partial"></i>Đã uống</span>
+                <span><i class="legend-dot"></i>Chưa ghi</span>
+              </div>
             </div>
           </aside>
         </section>
@@ -555,7 +603,7 @@
       const STORAGE_KEY = 'be-meo-nuoc-water-state-v1';
       const CHAT_KEY = 'be-meo-nuoc-chat-v1';
       const today = new Date().toISOString().slice(0, 10);
-      const defaultState = { date: today, total: 0, goal: 2000 };
+      const defaultState = { date: today, total: 0, goal: 2000, history: {} };
       let state = loadState();
       let messages = loadMessages();
       let activeCard = 0;
@@ -598,7 +646,26 @@
         { q: 'Uống nước thế nào thường tốt hơn cho thói quen hằng ngày?', a: ['Uống dồn vào buổi tối', 'Chia đều nhiều lần trong ngày', 'Chỉ uống khi rất khát'], correct: 1, hint: 'Bé Mèo thích các ngụm nhỏ đều đặn.', explain: 'Chia nước đều trong ngày giúp cơ thể duy trì cân bằng nước ổn định và tránh quên uống.' },
         { q: 'Vitamin C giúp hấp thu khoáng chất nào tốt hơn?', a: ['Sắt', 'Canxi', 'Natri'], correct: 0, hint: 'Khoáng chất liên quan đến hồng cầu.', explain: 'Vitamin C hỗ trợ tăng hấp thu sắt, đặc biệt là sắt từ nguồn thực vật.' },
         { q: 'Khi học lâu, mẹo nào giúp Bé Mèo nhắc bạn uống nước?', a: ['Để ly nước cạnh bàn', 'Cất nước thật xa', 'Không uống trong giờ học'], correct: 0, hint: 'Thấy ly nước là nhớ uống.', explain: 'Đặt ly nước cạnh bàn là tín hiệu trực quan giúp bạn uống vài ngụm sau mỗi khoảng học tập.' },
-        { q: 'Magie và kali thường được xếp vào nhóm hỗ trợ điều gì?', a: ['Điện giải, cơ và tim', 'Chỉ màu da', 'Chỉ chiều cao trong một ngày'], correct: 0, hint: 'Liên quan đến vận động và nhịp cơ thể.', explain: 'Magie và kali là các chất điện giải hỗ trợ hoạt động cơ bắp, thần kinh và nhịp tim.' }
+        { q: 'Magie và kali thường được xếp vào nhóm hỗ trợ điều gì?', a: ['Điện giải, cơ và tim', 'Chỉ màu da', 'Chỉ chiều cao trong một ngày'], correct: 0, hint: 'Liên quan đến vận động và nhịp cơ thể.', explain: 'Magie và kali là các chất điện giải hỗ trợ hoạt động cơ bắp, thần kinh và nhịp tim.' },
+        { q: 'Dấu hiệu nào có thể gợi ý bạn nên uống nước sớm hơn?', a: ['Môi khô và nước tiểu sẫm màu', 'Mắt nhìn rõ hơn', 'Tóc dài nhanh trong vài phút'], correct: 0, hint: 'Liên quan đến cảm giác khô và màu nước tiểu.', explain: 'Môi khô, khát hoặc nước tiểu sẫm màu có thể là tín hiệu cơ thể cần bổ sung nước.' },
+        { q: 'Uống một lượng nước nhỏ ngay sau khi thức dậy giúp gì?', a: ['Khởi động thói quen trong ngày', 'Thay thế hoàn toàn bữa sáng', 'Làm mất nhu cầu ngủ'], correct: 0, hint: 'Đây là một tín hiệu thói quen buổi sáng.', explain: 'Một ly nước nhỏ buổi sáng giúp bạn bắt đầu nhịp uống nước đều hơn, nhưng không thay thế bữa ăn hoặc giấc ngủ.' },
+        { q: 'Đồ uống nhiều đường nên được dùng thế nào?', a: ['Dùng thay nước lọc cả ngày', 'Hạn chế và ưu tiên nước lọc', 'Uống càng nhiều càng tốt'], correct: 1, hint: 'Bé Mèo chọn phương án nhẹ đường.', explain: 'Nước lọc vẫn là lựa chọn chính; đồ uống nhiều đường nên hạn chế để tránh nạp năng lượng rỗng quá mức.' },
+        { q: 'Vitamin D hỗ trợ hấp thu khoáng chất nào cho xương?', a: ['Canxi', 'Sắt', 'Đồng'], correct: 0, hint: 'Khoáng chất này có nhiều trong sữa.', explain: 'Vitamin D giúp cơ thể hấp thu canxi hiệu quả hơn, hỗ trợ xương và răng chắc khỏe.' },
+        { q: 'Kẽm thường hỗ trợ nhóm chức năng nào?', a: ['Miễn dịch và vị giác', 'Chỉ tốc độ chạy của đồng hồ', 'Đổi màu mắt ngay lập tức'], correct: 0, hint: 'Liên quan đến đề kháng.', explain: 'Kẽm tham gia vào hoạt động miễn dịch, lành thương và cảm nhận vị giác.' },
+        { q: 'Nếu vận động hoặc đổ mồ hôi nhiều, bạn nên làm gì?', a: ['Bổ sung nước đều hơn', 'Không uống gì đến tối', 'Chỉ ăn bánh kẹo'], correct: 0, hint: 'Mồ hôi làm mất nước.', explain: 'Khi vận động, cơ thể mất nước qua mồ hôi nên cần uống bù từng ngụm phù hợp.' },
+        { q: 'Nước khoáng có thể cung cấp thêm nhóm chất nào?', a: ['Một số khoáng chất', 'Chỉ vitamin A', 'Chất xơ hòa tan'], correct: 0, hint: 'Tên gọi đã có chữ khoáng.', explain: 'Một số loại nước khoáng tự nhiên có thể chứa canxi, magie, bicarbonate hoặc natri ở mức khác nhau.' },
+        { q: 'Vitamin K nổi bật với vai trò nào?', a: ['Đông máu và sức khỏe xương', 'Tạo vị ngọt cho nước', 'Làm lạnh cơ thể ngay lập tức'], correct: 0, hint: 'Có trong rau lá xanh.', explain: 'Vitamin K tham gia vào quá trình đông máu và hỗ trợ chuyển hóa xương.' },
+        { q: 'Vitamin B12 thường có nhiều trong nhóm thực phẩm nào?', a: ['Thịt, cá, trứng, sữa', 'Chỉ nước lọc', 'Chỉ đường tinh luyện'], correct: 0, hint: 'Thường từ nguồn động vật.', explain: 'Vitamin B12 có nhiều trong thực phẩm nguồn động vật và cần thiết cho hồng cầu, hệ thần kinh.' },
+        { q: 'Thói quen nào giúp theo dõi uống nước chính xác hơn?', a: ['Ghi lại mỗi lần uống', 'Đoán đại vào cuối tuần', 'Không cần quan tâm mục tiêu'], correct: 0, hint: 'Tracking daily cần ghi nhận thường xuyên.', explain: 'Ghi lại từng lần uống giúp bạn nhìn rõ tiến độ hằng ngày và duy trì chuỗi thói quen.' },
+        { q: 'Natri là chất điện giải nhưng cần lưu ý điều gì?', a: ['Dùng vừa đủ, tránh quá nhiều muối', 'Càng mặn càng tốt', 'Không liên quan cân bằng nước'], correct: 0, hint: 'Quá nhiều muối không tốt.', explain: 'Natri hỗ trợ cân bằng dịch, nhưng ăn quá mặn có thể không có lợi cho sức khỏe lâu dài.' },
+        { q: 'I-ốt cần thiết cho cơ quan nào?', a: ['Tuyến giáp', 'Móng tay', 'Tóc trong một ngày'], correct: 0, hint: 'Liên quan đến hormone chuyển hóa.', explain: 'I-ốt là thành phần cần thiết để tuyến giáp tạo hormone điều hòa chuyển hóa.' },
+        { q: 'Bé Mèo khuyên chia mục tiêu 2000ml thành khoảng mấy lần nhỏ?', a: ['6–8 lần', '1 lần duy nhất trước ngủ', 'Không lần nào'], correct: 0, hint: 'Nhiều lần nhỏ dễ duy trì hơn.', explain: 'Chia mục tiêu thành 6–8 lần uống nhỏ giúp giảm quên và tránh dồn nước vào một thời điểm.' },
+        { q: 'Khi dùng nhắc nhở uống nước, thời điểm nào hợp lý?', a: ['Sau 45–60 phút học/làm việc', 'Mỗi 5 giây', 'Chỉ lúc đã rất khát'], correct: 0, hint: 'Khoảng nghỉ vừa phải.', explain: 'Nhắc sau 45–60 phút là mốc dễ gắn với nghỉ ngắn, vận động nhẹ và uống vài ngụm nước.' },
+        { q: 'Vitamin E nổi bật với đặc tính nào?', a: ['Chống oxy hóa', 'Là chất điện giải chính', 'Tạo khí oxy trong nước'], correct: 0, hint: 'Liên quan bảo vệ tế bào.', explain: 'Vitamin E là chất chống oxy hóa, hỗ trợ bảo vệ màng tế bào.' },
+        { q: 'Folate hay vitamin B9 đặc biệt quan trọng trong quá trình nào?', a: ['Phân chia tế bào', 'Làm nước có ga', 'Đổi nhóm máu'], correct: 0, hint: 'Rất được nhắc đến trong thai kỳ.', explain: 'Folate cần cho tổng hợp DNA và phân chia tế bào, đặc biệt quan trọng trước và trong thai kỳ.' },
+        { q: 'Kali có nhiều trong thực phẩm nào sau đây?', a: ['Chuối và khoai lang', 'Kẹo cứng', 'Dầu ăn tinh luyện'], correct: 0, hint: 'Một loại trái cây màu vàng.', explain: 'Chuối, khoai lang và một số rau củ là nguồn kali quen thuộc hỗ trợ điện giải.' },
+        { q: 'Mục tiêu uống nước cá nhân nên được điều chỉnh theo yếu tố nào?', a: ['Vận động, thời tiết và nhu cầu cơ thể', 'Màu áo hôm nay', 'Số lượng tab trình duyệt'], correct: 0, hint: 'Nóng và vận động nhiều có thể cần hơn.', explain: 'Nhu cầu nước thay đổi theo vận động, thời tiết, chế độ ăn và tình trạng sức khỏe cá nhân.' },
+        { q: 'Cách nào giúp Bé Mèo nhận diện nhanh bạn vừa uống nước trong chat?', a: ['Nhắn “Tôi vừa uống 250ml”', 'Gửi một câu không có số ml', 'Chỉ gửi emoji mèo'], correct: 0, hint: 'Có số ml cụ thể.', explain: 'Khi tin nhắn có số ml và nội dung đã uống, chatbot sẽ cộng lượng nước vào tiến độ hôm nay.' }
       ];
 
       const totalMl = document.getElementById('totalMl');
@@ -618,18 +685,28 @@
       const quizPlay = document.getElementById('quizPlay');
       const quizResult = document.getElementById('quizResult');
       const scoreText = document.getElementById('scoreText');
+      const hydrationCalendar = document.getElementById('hydrationCalendar');
+      const calendarStreak = document.getElementById('calendarStreak');
 
       function loadState() {
         try {
           const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
-          if (!parsed || parsed.date !== today) return { ...defaultState, goal: parsed?.goal || 2000 };
-          return { ...defaultState, ...parsed };
+          if (!parsed) return { ...defaultState };
+          const history = { ...(parsed.history || {}) };
+          if (parsed.date) {
+            history[parsed.date] = { total: parsed.total || 0, goal: parsed.goal || 2000 };
+          }
+          if (parsed.date !== today) return { ...defaultState, goal: parsed.goal || 2000, history };
+          return { ...defaultState, ...parsed, history };
         } catch (error) {
           return { ...defaultState };
         }
       }
 
-      function saveState() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+      function saveState() {
+        state.history = { ...(state.history || {}), [today]: { total: state.total, goal: state.goal } };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      }
 
       function loadMessages() {
         try {
@@ -828,6 +905,39 @@
         percent.textContent = pct + '%';
         waterFill.style.height = pct + '%';
         saveState();
+        renderHydrationCalendar();
+      }
+
+
+      function formatCalendarDate(date) {
+        return date.toISOString().slice(0, 10);
+      }
+
+      function renderHydrationCalendar() {
+        if (!hydrationCalendar || !calendarStreak) return;
+        hydrationCalendar.innerHTML = '';
+        const days = [];
+        for (let index = 30; index >= 0; index -= 1) {
+          const date = new Date(today + 'T00:00:00');
+          date.setDate(date.getDate() - index);
+          days.push(date);
+        }
+        let completedDays = 0;
+        days.forEach((date) => {
+          const key = formatCalendarDate(date);
+          const entry = (state.history || {})[key] || { total: 0, goal: state.goal };
+          const total = Number(entry.total) || 0;
+          const goal = Number(entry.goal) || state.goal;
+          const done = total >= goal;
+          const partial = total > 0 && !done;
+          if (done) completedDays += 1;
+          const cell = document.createElement('div');
+          cell.className = `calendar-day${done ? ' done' : ''}${partial ? ' partial' : ''}${key === today ? ' today' : ''}`;
+          cell.title = `${key}: ${total}/${goal}ml`;
+          cell.innerHTML = `<span>${date.getDate()}</span><small>${done ? '✓' : total ? Math.round((total / goal) * 100) + '%' : '—'}</small>`;
+          hydrationCalendar.appendChild(cell);
+        });
+        calendarStreak.textContent = `${completedDays}/31 ngày đạt`;
       }
 
       function renderChat() {
