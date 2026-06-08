@@ -21,7 +21,7 @@ const AI_SUGGESTIONS = {
   ],
 }
 
-export default function UploadPanel({ patientId, onNext, onPrev, prevLabel, onSelectImage }) {
+export default function UploadPanel({ patientId, onNext, nextLabel, onPrev, prevLabel, onSelectImage }) {
   const { t, lang, theme } = useApp()
   const isDark = theme === 'dark'
 
@@ -127,7 +127,7 @@ export default function UploadPanel({ patientId, onNext, onPrev, prevLabel, onSe
       <div style={{ padding: '16px 28px', borderTop: `1px solid ${c.border}` }}>
         <NavButtons
           onNext={onNext}
-          nextLabel={`${t('imaging')} →`}
+          nextLabel={nextLabel || t('imaging')}
           onPrev={onPrev}
           prevLabel={prevLabel}
         />

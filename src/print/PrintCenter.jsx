@@ -4,6 +4,7 @@ import React, { useState, useRef, useCallback } from 'react';
 import ExamResultTemplate from './templates/ExamResultTemplate';
 import PedigreeTemplate from './templates/PedigreeTemplate';
 import InBodyTemplate from './templates/InBodyTemplate';
+import NavButtons from '../components/NavButtons.jsx';
 import { mockExamResult, mockPedigree, mockInBody, clinicInfo } from './mockData';
 
 // ─── usePrint hook ────────────────────────────────────────────────────────────
@@ -100,7 +101,7 @@ const TABS = [
   },
 ];
 
-export default function PrintCenter() {
+export default function PrintCenter({ onPrev, prevLabel }) {
   const [activeTab, setActiveTab] = useState('exam');
   const printRef = useRef(null);
 
@@ -185,6 +186,9 @@ export default function PrintCenter() {
               </div>
             </div>
           </div>
+        </div>
+        <div style={{ padding: '0 28px' }}>
+          <NavButtons onPrev={onPrev} prevLabel={prevLabel} />
         </div>
       </div>
     </>

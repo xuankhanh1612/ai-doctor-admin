@@ -192,7 +192,7 @@ function RiskBar({ cluster }) {
   )
 }
 
-export default function FamilyRelationInferencePanel({ patientId = 'LXK-2024', storageOwnerId = 'guest', onNext, onPrev, prevLabel, embedded = false, title = null }) {
+export default function FamilyRelationInferencePanel({ patientId = 'LXK-2024', storageOwnerId = 'guest', onNext, nextLabel, onPrev, prevLabel, embedded = false, title = null }) {
   const { theme, lang } = useApp()
   const isDark = theme === 'dark'
   const [activeStage, setActiveStage] = useState(0)
@@ -321,7 +321,7 @@ export default function FamilyRelationInferencePanel({ patientId = 'LXK-2024', s
           ))}
         </div>
 
-        {!embedded && <NavButtons onNext={onNext} nextLabel={lang === 'vi' ? 'Tiếp tục tới Hồ sơ bệnh nhân →' : 'Continue to Patient Record →'} onPrev={onPrev} prevLabel={prevLabel} style={{ marginTop: 22 }} />}
+        {!embedded && <NavButtons onNext={onNext} nextLabel={nextLabel || (lang === 'vi' ? 'Hồ sơ bệnh nhân' : 'Patient Record')} onPrev={onPrev} prevLabel={prevLabel} style={{ marginTop: 22 }} />}
       </div>
     </div>
   )

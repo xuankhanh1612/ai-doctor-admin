@@ -3,7 +3,7 @@ import NavButtons from './NavButtons.jsx'
 
 const PROTEIN_3D_URL = 'https://protein3d-lego-khanh.vercel.app/'
 
-export default function Protein3DPanel({ onNext, onPrev, prevLabel }) {
+export default function Protein3DPanel({ onNext, nextLabel, onPrev, prevLabel }) {
   return (
     <div className="protein3d-page animate-fade">
       <section className="protein3d-hero">
@@ -30,7 +30,7 @@ export default function Protein3DPanel({ onNext, onPrev, prevLabel }) {
         />
       </section>
 
-      <NavButtons onNext={onNext} nextLabel="Tiếp tục tới AI Healthcare Vision →" onPrev={onPrev} prevLabel={prevLabel} />
+      <NavButtons onNext={onNext} nextLabel={nextLabel || 'AI Healthcare Vision'} onPrev={onPrev} prevLabel={prevLabel} />
     </div>
   )
 }

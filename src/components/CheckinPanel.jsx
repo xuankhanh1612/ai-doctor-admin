@@ -48,7 +48,7 @@ const Card = ({ title, children }) => (
   </div>
 )
 
-export default function CheckinPanel({ onNext, onPrev, prevLabel }) {
+export default function CheckinPanel({ onNext, nextLabel, onPrev, prevLabel }) {
   const { t, lang } = useApp()
   const [symptomPrompt, setSymptomPrompt] = useState('')
   const [chatMessages, setChatMessages] = useState(() => loadStoredChatMessages(lang))
@@ -420,7 +420,7 @@ export default function CheckinPanel({ onNext, onPrev, prevLabel }) {
         ))}
       </Card>
 
-      <NavButtons onNext={onNext} nextLabel={`${t('familyTree')} →`} onPrev={onPrev} prevLabel={prevLabel} />
+      <NavButtons onNext={onNext} nextLabel={nextLabel || t('familyTree')} onPrev={onPrev} prevLabel={prevLabel} />
     </div>
   )
 }
