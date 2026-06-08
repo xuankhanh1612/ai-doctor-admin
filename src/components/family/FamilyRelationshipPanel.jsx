@@ -115,7 +115,7 @@ function buildSimulation(members) {
   }
 }
 
-export default function FamilyRelationshipPanel({ patientId = 'LXK-2024', storageOwnerId = 'guest', onNext, onPrev, prevLabel, embedded = false, title = null }) {
+export default function FamilyRelationshipPanel({ patientId = 'LXK-2024', storageOwnerId = 'guest', onNext, nextLabel, onPrev, prevLabel, embedded = false, title = null }) {
   const { theme, lang, t } = useApp()
   const isDark = theme === 'dark'
   const [activeStage, setActiveStage] = useState('graph')
@@ -255,7 +255,7 @@ export default function FamilyRelationshipPanel({ patientId = 'LXK-2024', storag
         </Card>
       </section>
 
-      {!embedded && <NavButtons onNext={onNext} nextLabel={`${t('patientRecord')} →`} onPrev={onPrev} prevLabel={prevLabel} />}
+      {!embedded && <NavButtons onNext={onNext} nextLabel={nextLabel || t('patientRecord')} onPrev={onPrev} prevLabel={prevLabel} />}
     </div>
   )
 }

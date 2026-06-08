@@ -892,26 +892,30 @@ html, body, #root {
 
 /* Bottom screen-to-screen navigation */
 .screen-nav-buttons {
-  position: sticky;
-  bottom: 0;
-  z-index: 70;
+  position: fixed;
+  left: clamp(18px, 18vw, 340px);
+  right: clamp(420px, 31vw, 500px);
+  bottom: calc(94px + env(safe-area-inset-bottom));
+  z-index: 170;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  width: 100%;
-  margin-top: auto;
-  padding: 14px 0 calc(14px + env(safe-area-inset-bottom));
-  background: linear-gradient(180deg, transparent, var(--bg2, #080c1a) 22%, var(--bg2, #080c1a));
-  backdrop-filter: blur(10px);
+  pointer-events: none;
 }
 
 .screen-nav-button {
-  border-radius: 10px;
+  min-height: 44px;
+  max-width: min(280px, 42vw);
+  border-radius: 999px;
   cursor: pointer;
   font-family: inherit;
-  transition: opacity 0.2s, background 0.18s, color 0.18s, transform 0.18s;
+  transition: opacity 0.2s, background 0.18s, color 0.18s, transform 0.18s, box-shadow 0.18s;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: auto;
+  box-shadow: 0 16px 42px rgba(0, 0, 0, 0.24);
 }
 
 .screen-nav-button:hover {
@@ -924,30 +928,44 @@ html, body, #root {
   background: linear-gradient(135deg, var(--cyan2, #00b8cc), var(--violet2, #6b3fd4));
   color: #fff;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .screen-nav-button-prev {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 10px 18px;
+  padding: 11px 18px;
   border: 1px solid var(--border2, rgba(255,255,255,0.14));
-  background: transparent;
-  color: var(--text2, rgba(232,240,248,0.55));
+  background: var(--surface, rgba(8,12,26,0.86));
+  color: var(--text2, rgba(232,240,248,0.78));
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 650;
+  backdrop-filter: blur(14px);
+}
+
+.screen-nav-button-prev:hover {
+  background: var(--surface2, rgba(255,255,255,0.08));
+  color: var(--text, #e8f0f8);
+}
+
+@media (max-width: 1100px) {
+  .screen-nav-buttons {
+    left: 18px;
+    right: 18px;
+    bottom: calc(96px + env(safe-area-inset-bottom));
+  }
 }
 
 @media (max-width: 640px) {
   .screen-nav-buttons {
     gap: 8px;
-    padding-top: 12px;
+    bottom: calc(92px + env(safe-area-inset-bottom));
   }
 
   .screen-nav-button {
-    min-height: 44px;
     flex: 1 1 0;
+    max-width: none;
     white-space: normal;
   }
 }

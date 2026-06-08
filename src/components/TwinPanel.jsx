@@ -32,7 +32,7 @@ const BiometricBar = ({ label, value, color }) => (
   </div>
 )
 
-export default function TwinPanel({ onNext, onPrev, prevLabel }) {
+export default function TwinPanel({ onNext, nextLabel, onPrev, prevLabel }) {
   const { t } = useApp()
   const [count, setCount] = useState(0)
 
@@ -119,7 +119,7 @@ export default function TwinPanel({ onNext, onPrev, prevLabel }) {
         <BiometricBar label="Drug response"   value={PATIENT.biomarkers.drugResponse}  color="var(--violet)" />
       </Card>
 
-      <NavButtons onNext={onNext} nextLabel={`${t('telemedicine')} →`} onPrev={onPrev} prevLabel={prevLabel} />
+      <NavButtons onNext={onNext} nextLabel={nextLabel || t('telemedicine')} onPrev={onPrev} prevLabel={prevLabel} />
     </div>
   )
 }

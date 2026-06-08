@@ -149,7 +149,7 @@ function getStageStatus(index, activeStage) {
   return 'pending'
 }
 
-export default function FamilyMedicalRelationshipPanel({ patientId = PATIENT_ID, storageOwnerId = 'guest', onNext, onPrev, prevLabel }) {
+export default function FamilyMedicalRelationshipPanel({ patientId = PATIENT_ID, storageOwnerId = 'guest', onNext, nextLabel, onPrev, prevLabel }) {
   const { theme, lang, t } = useApp()
   const isDark = theme === 'dark'
   const [activeStage, setActiveStage] = useState(0)
@@ -409,7 +409,7 @@ export default function FamilyMedicalRelationshipPanel({ patientId = PATIENT_ID,
         </>
       )}
 
-      <NavButtons onNext={onNext} nextLabel={`${t('matrix3dBody')} →`} onPrev={onPrev} prevLabel={prevLabel} />
+      <NavButtons onNext={onNext} nextLabel={nextLabel || t('matrix3dBody')} onPrev={onPrev} prevLabel={prevLabel} />
     </div>
   )
 }

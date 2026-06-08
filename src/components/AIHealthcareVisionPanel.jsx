@@ -4,7 +4,7 @@ import { useApp } from '../context/AppContext'
 
 const VISION_URL = 'https://god-eyes-khanh.vercel.app/'
 
-export default function AIHealthcareVisionPanel({ onNext, onPrev, prevLabel }) {
+export default function AIHealthcareVisionPanel({ onNext, nextLabel, onPrev, prevLabel }) {
   const { lang } = useApp()
 
   return (
@@ -34,7 +34,7 @@ export default function AIHealthcareVisionPanel({ onNext, onPrev, prevLabel }) {
         />
       </section>
 
-      <NavButtons onNext={onNext} nextLabel={`${lang === 'vi' ? 'Góc xả stress' : 'Stress Relief Corner'} →`} onPrev={onPrev} prevLabel={prevLabel} />
+      <NavButtons onNext={onNext} nextLabel={nextLabel || (lang === 'vi' ? 'Góc xả stress' : 'Stress Relief Corner')} onPrev={onPrev} prevLabel={prevLabel} />
     </div>
   )
 }

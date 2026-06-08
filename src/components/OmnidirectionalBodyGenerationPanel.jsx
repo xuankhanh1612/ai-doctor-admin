@@ -36,7 +36,7 @@ function Pipeline({ steps, className = '' }) {
   )
 }
 
-export default function OmnidirectionalBodyGenerationPanel({ onNext, onPrev, prevLabel }) {
+export default function OmnidirectionalBodyGenerationPanel({ onNext, nextLabel, onPrev, prevLabel }) {
   return (
     <div className="omni-page animate-fade">
       <div className="omni-hero">
@@ -146,7 +146,7 @@ export default function OmnidirectionalBodyGenerationPanel({ onNext, onPrev, pre
         </OmniCard>
       </div>
 
-      <NavButtons onNext={onNext} nextLabel="Tiếp tục tới Digital Twin →" onPrev={onPrev} prevLabel={prevLabel} />
+      <NavButtons onNext={onNext} nextLabel={nextLabel || 'Digital Twin'} onPrev={onPrev} prevLabel={prevLabel} />
     </div>
   )
 }

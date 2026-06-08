@@ -1,6 +1,7 @@
 // PrintCenter.jsx — Trang quản lý in tài liệu y tế
 // Đặt vào src/pages/PrintCenter.jsx hoặc src/components/PrintCenter.jsx
 import React, { useState, useRef, useCallback } from 'react';
+import NavButtons from '../components/NavButtons.jsx';
 import ExamResultTemplate from './templates/ExamResultTemplate';
 import PedigreeTemplate from './templates/PedigreeTemplate';
 import InBodyTemplate from './templates/InBodyTemplate';
@@ -100,7 +101,7 @@ const TABS = [
   },
 ];
 
-export default function PrintCenter() {
+export default function PrintCenter({ onPrev, prevLabel }) {
   const [activeTab, setActiveTab] = useState('exam');
   const printRef = useRef(null);
 
@@ -187,6 +188,7 @@ export default function PrintCenter() {
           </div>
         </div>
       </div>
+      <NavButtons onPrev={onPrev} prevLabel={prevLabel} />
     </>
   );
 }

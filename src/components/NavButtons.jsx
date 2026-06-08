@@ -1,45 +1,34 @@
 // src/components/NavButtons.jsx
-// Reusable bottom navigation row: Next + Back pinned to the bottom viewport area.
+// Reusable page navigation: previous + next buttons fixed near the bottom.
 
 import React from 'react'
 
 export default function NavButtons({ onNext, nextLabel, onPrev, prevLabel, style }) {
+  if (!onNext && !(onPrev && prevLabel)) return null
+
   return (
-    <div className="screen-nav-buttons" style={style}>
-      {/* Next button */}
-      {onNext && (
-        <button
-          type="button"
-          onClick={onNext}
-          className="screen-nav-button screen-nav-button-next"
-          onMouseEnter={e => e.currentTarget.style.opacity = '0.82'}
-          onMouseLeave={e => e.currentTarget.style.opacity = '1'}
-        >
-          {nextLabel || '→'}
-        </button>
-      )}
-
-      {/* Spacer when no next button */}
-      {!onNext && <span />}
-
-      {/* Back button — only when there is a previous panel */}
-      {onPrev && prevLabel && (
+    <div className="screen-nav-buttons" style={style} aria-label="Điều hướng trang">
+      {onPrev && prevLabel ? (
         <button
           type="button"
           onClick={onPrev}
           className="screen-nav-button screen-nav-button-prev"
-          onMouseEnter={e => {
-            e.currentTarget.style.background = 'var(--surface2, rgba(255,255,255,0.06))'
-            e.currentTarget.style.color = 'var(--text, #e8f0f8)'
-          }}
-          onMouseLeave={e => {
-            e.currentTarget.style.background = 'transparent'
-            e.currentTarget.style.color = 'var(--text2, rgba(232,240,248,0.55))'
-          }}
+          aria-label={`Lùi lại ${prevLabel}`}
         >
           ← {prevLabel}
         </button>
-      )}
+      ) : <span aria-hidden="true" />}
+
+      {onNext && nextLabel ? (
+        <button
+          type="button"
+          onClick={onNext}
+          className="screen-nav-button screen-nav-button-next"
+          aria-label={`Sang ${nextLabel}`}
+        >
+          {nextLabel} →
+        </button>
+      ) : <span aria-hidden="true" />}
     </div>
   )
 }
