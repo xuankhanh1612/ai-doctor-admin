@@ -1471,3 +1471,461 @@ html, body, #root {
     border-radius: 22px;
   }
 }
+
+/* Health Journey Game */
+.health-game-shell {
+  min-height: 100%;
+  padding: clamp(18px, 3vw, 34px);
+  background:
+    radial-gradient(circle at 12% 0%, rgba(0,229,255,0.18), transparent 30%),
+    radial-gradient(circle at 88% 12%, rgba(156,111,255,0.22), transparent 28%),
+    linear-gradient(135deg, #050816 0%, #07111f 46%, #100820 100%);
+  color: #eef7ff;
+}
+
+.health-game-hero,
+.health-game-card,
+.health-game-top-nav {
+  border: 1px solid rgba(0,229,255,0.18);
+  background: linear-gradient(180deg, rgba(7,18,35,0.86), rgba(3,8,18,0.92));
+  box-shadow: 0 22px 70px rgba(0,0,0,0.34), inset 0 1px 0 rgba(255,255,255,0.05);
+}
+
+.health-game-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 520px);
+  gap: 18px;
+  align-items: stretch;
+  max-width: 1320px;
+  margin: 0 auto 18px;
+  padding: 18px;
+  border-radius: 28px;
+  overflow: hidden;
+}
+
+.health-game-brand {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.health-game-logo {
+  width: 76px;
+  height: 76px;
+  display: grid;
+  place-items: center;
+  border-radius: 24px;
+  background: radial-gradient(circle, rgba(0,229,255,0.28), rgba(80,30,210,0.28));
+  border: 1px solid rgba(0,229,255,0.34);
+  font-size: 38px;
+}
+
+.health-game-brand p,
+.health-game-card small,
+.health-game-muted,
+.health-game-card p {
+  color: rgba(232,240,248,0.68);
+}
+
+.health-game-brand h1 {
+  margin: 2px 0 4px;
+  font-size: clamp(28px, 5vw, 54px);
+  line-height: 0.95;
+  letter-spacing: -0.04em;
+  background: linear-gradient(90deg, #00e5ff, #9c6fff, #f48fb1);
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+.health-game-brand span,
+.health-game-hero-card span {
+  display: block;
+  max-width: 720px;
+  color: rgba(232,240,248,0.74);
+}
+
+.health-game-hero-card {
+  display: grid;
+  grid-template-columns: 150px 1fr;
+  gap: 14px;
+  align-items: center;
+  min-width: 0;
+}
+
+.health-game-hero-card img {
+  width: 150px;
+  height: 100px;
+  object-fit: cover;
+  object-position: top left;
+  border-radius: 18px;
+  border: 1px solid rgba(255,255,255,0.12);
+}
+
+.health-game-top-nav {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: grid;
+  grid-template-columns: repeat(11, minmax(80px, 1fr));
+  gap: 8px;
+  max-width: 1320px;
+  margin: 0 auto 18px;
+  padding: 10px;
+  border-radius: 24px;
+  overflow-x: auto;
+}
+
+.health-game-top-nav button,
+.health-game-card button {
+  border: 1px solid rgba(0,229,255,0.22);
+  border-radius: 16px;
+  background: rgba(255,255,255,0.04);
+  color: #e8f0f8;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 800;
+}
+
+.health-game-top-nav button {
+  min-height: 68px;
+  padding: 9px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+
+.health-game-top-nav button span { font-size: 22px; }
+.health-game-top-nav button small { color: inherit; white-space: nowrap; }
+.health-game-top-nav button.is-active {
+  background: linear-gradient(135deg, rgba(0,102,255,0.45), rgba(128,36,255,0.48));
+  color: #fff;
+  border-color: rgba(0,229,255,0.70);
+  box-shadow: 0 0 28px rgba(0,229,255,0.20);
+}
+
+.health-game-grid,
+.health-game-profile-layout {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  max-width: 1320px;
+  margin: 0 auto;
+}
+
+.health-game-grid-main { grid-template-columns: 1.2fr 1fr 1fr; }
+.health-game-profile-layout { grid-template-columns: 0.95fr 1.45fr; }
+.health-game-wide { grid-column: span 2; }
+
+.health-game-card {
+  position: relative;
+  min-height: 230px;
+  padding: 18px;
+  border-radius: 24px;
+  overflow: hidden;
+}
+
+.health-game-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(135deg, rgba(0,229,255,0.10), transparent 30%, rgba(156,111,255,0.08));
+}
+
+.health-game-card > * { position: relative; }
+.health-game-card h2,
+.health-game-card h3 { margin-bottom: 8px; }
+.health-game-card code { color: #00e5ff; }
+.health-game-card button { padding: 12px 18px; background: linear-gradient(135deg, #1557ff, #8224ff); }
+
+.health-game-warrior-card {
+  min-height: 430px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 14px;
+}
+
+.health-game-avatar-ring {
+  width: 152px;
+  height: 152px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: conic-gradient(from 180deg, #00e5ff, #9c6fff, #f48fb1, #00e5ff);
+  box-shadow: 0 0 48px rgba(156,111,255,0.34);
+  padding: 4px;
+}
+
+.health-game-avatar-ring span {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #061225;
+  font-size: 70px;
+}
+
+.health-game-avatar-ring.small { width: 72px; height: 72px; flex: 0 0 auto; }
+.health-game-avatar-ring.small span { font-size: 34px; }
+
+.health-game-progress {
+  width: 100%;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.08);
+  overflow: hidden;
+}
+
+.health-game-progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #00e5ff, #9c6fff);
+  animation: grow-bar 0.9s ease both;
+}
+
+.health-game-currencies,
+.health-game-kpis,
+.health-game-stage-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.health-game-currencies span,
+.health-game-kpis span,
+.health-game-stage-row span {
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.06);
+  color: rgba(232,240,248,0.82);
+}
+
+.health-game-radar {
+  position: relative;
+  min-height: 310px;
+  margin-top: 14px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, rgba(0,229,255,0.15) 0 2px, transparent 3px),
+    repeating-radial-gradient(circle, rgba(0,229,255,0.13) 0 1px, transparent 1px 56px),
+    conic-gradient(from 30deg, rgba(0,229,255,0.12), rgba(156,111,255,0.16), rgba(0,230,118,0.10), rgba(0,229,255,0.12));
+}
+
+.health-game-radar span {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  transform: translate(-50%, -50%);
+  padding: 6px 8px;
+  border-radius: 999px;
+  background: rgba(4,6,15,0.78);
+  border: 1px solid rgba(0,229,255,0.24);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.health-game-list,
+.health-game-list li {
+  list-style: none;
+}
+
+.health-game-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.health-game-list li,
+.health-game-mission,
+.health-game-rank {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 16px;
+  background: rgba(255,255,255,0.04);
+}
+
+.health-game-list li span { font-size: 22px; }
+.health-game-list b,
+.health-game-mission em { color: #00e676; font-style: normal; }
+.health-game-mission { grid-template-columns: 1fr auto auto; margin-top: 10px; }
+.health-game-mission div span { display: block; color: rgba(232,240,248,0.62); font-size: 12px; }
+.health-game-mission.done { border-color: rgba(0,230,118,0.22); }
+.health-game-mission.active { border-color: rgba(0,229,255,0.26); }
+.health-game-mission.todo { opacity: 0.74; }
+
+.health-game-chest-row {
+  display: flex;
+  justify-content: center;
+  gap: 28px;
+  margin: 24px 0;
+  font-size: 54px;
+}
+
+.health-game-chapter {
+  border-color: color-mix(in srgb, var(--chapter-color), transparent 58%);
+}
+.health-game-chapter small { color: var(--chapter-color); font-weight: 900; }
+
+.health-game-ai-orb {
+  min-height: 330px;
+  display: grid;
+  place-items: center;
+  text-align: center;
+}
+.health-game-ai-orb div {
+  width: 150px;
+  height: 150px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 2px solid rgba(0,229,255,0.5);
+  background: radial-gradient(circle, rgba(0,229,255,0.35), rgba(39,21,148,0.5));
+  box-shadow: 0 0 60px rgba(0,229,255,0.24);
+  font-size: 44px;
+  font-weight: 900;
+}
+
+.health-game-shop-item { text-align: center; }
+.health-game-shop-item div { font-size: 58px; margin: 12px 0; }
+
+.health-game-profile-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.health-game-profile-stats,
+.health-game-ocr-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.health-game-profile-stats span,
+.health-game-ocr-grid div {
+  padding: 12px;
+  border-radius: 16px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: rgba(232,240,248,0.70);
+}
+
+.health-game-profile-stats b,
+.health-game-ocr-grid strong {
+  display: block;
+  color: #fff;
+  font-size: 24px;
+}
+
+.health-game-profile-concept {
+  width: 100%;
+  margin-top: 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(255,255,255,0.10);
+}
+
+.health-game-ocr-layout {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 14px;
+  align-items: stretch;
+  margin-top: 14px;
+}
+
+.health-game-scan-frame {
+  position: relative;
+  min-height: 300px;
+  display: grid;
+  place-items: center;
+  border: 1px dashed rgba(0,229,255,0.32);
+  border-radius: 18px;
+  background: rgba(0,229,255,0.05);
+  overflow: hidden;
+}
+
+.health-game-scan-frame img {
+  max-width: 100%;
+  max-height: 300px;
+  object-fit: contain;
+}
+
+.health-game-scan-fallback {
+  position: absolute;
+  padding: 10px 12px;
+  border-radius: 999px;
+  background: rgba(4,6,15,0.84);
+  border: 1px solid rgba(0,229,255,0.26);
+  color: rgba(232,240,248,0.78);
+  font-size: 12px;
+}
+
+.health-game-ocr-grid div span {
+  display: block;
+  margin-top: 6px;
+  color: rgba(232,240,248,0.60);
+  font-size: 12px;
+}
+
+.health-game-chart {
+  height: 260px;
+  display: flex;
+  align-items: end;
+  gap: 14px;
+  padding: 18px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(0,229,255,0.08), rgba(255,255,255,0.03));
+}
+
+.health-game-chart span {
+  flex: 1;
+  min-height: 20%;
+  border-radius: 999px 999px 6px 6px;
+  background: linear-gradient(180deg, #9c6fff, #00e5ff);
+}
+
+.health-game-detail-card {
+  max-width: 920px;
+  min-height: 420px;
+  margin: 0 auto;
+}
+.health-game-detail-card .health-game-progress { margin: 26px 0; }
+.health-game-rank { grid-template-columns: 60px 1fr auto; margin-top: 10px; }
+.health-game-rank b { color: #ffb74d; }
+.health-game-rank em { color: #00e5ff; font-style: normal; }
+.health-game-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; margin: 22px 0; }
+.health-game-days span { padding: 12px 8px; border-radius: 14px; background: rgba(255,255,255,0.05); text-align: center; }
+.health-game-days b { display: block; margin-top: 8px; font-size: 20px; }
+.health-game-days .done { color: #00e5ff; }
+.health-game-big-chest { text-align: center; font-size: 118px; filter: drop-shadow(0 0 30px rgba(255,183,77,0.3)); }
+.health-game-reward { text-align: center; }
+
+@media (max-width: 1100px) {
+  .health-game-hero,
+  .health-game-grid-main,
+  .health-game-profile-layout,
+  .health-game-ocr-layout { grid-template-columns: 1fr; }
+  .health-game-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .health-game-wide { grid-column: span 1; }
+  .health-game-top-nav { grid-template-columns: repeat(11, minmax(94px, 1fr)); }
+}
+
+@media (max-width: 640px) {
+  .health-game-shell { padding: 14px; }
+  .health-game-hero-card { grid-template-columns: 1fr; }
+  .health-game-grid { grid-template-columns: 1fr; }
+  .health-game-profile-stats,
+  .health-game-ocr-grid,
+  .health-game-days { grid-template-columns: 1fr; }
+}
