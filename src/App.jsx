@@ -30,11 +30,12 @@ import WaterDrinkChatBotPanel from './components/WaterDrinkChatBotPanel.jsx'
 import StressReliefPanel from './components/StressReliefPanel.jsx'
 import PrintCenter from './print/PrintCenter.jsx'
 import UserProfilePanel from './components/UserProfilePanel.jsx'
+import HealthJourneyGamePanel from './components/HealthJourneyGamePanel.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 import { addNotification } from './lib/notifications.js'
 
 // Swarm panel replaces simulation; keep consensus as classic fallback
-const PANELS = ['healthJourney', 'lunchJourney', 'dinnerJourney', 'upload', 'imaging', 'checkin', 'family', 'record', 'familyRelationship', 'matrix3dBody', 'omnidirectional3dBody', 'twin', 'telemedicine', 'statAnalysis', 'swarm', 'consensus', 'protein3d', 'aiHealthcareVision', 'aiHealthcareVisionControl', 'stressRelief', 'aiInbodyPortal', 'waterDrinkChatBot', 'printPortal']
+const PANELS = ['healthJourney', 'lunchJourney', 'dinnerJourney', 'upload', 'imaging', 'checkin', 'family', 'record', 'familyRelationship', 'matrix3dBody', 'omnidirectional3dBody', 'twin', 'telemedicine', 'statAnalysis', 'swarm', 'consensus', 'protein3d', 'aiHealthcareVision', 'aiHealthcareVisionControl', 'stressRelief', 'aiInbodyPortal', 'waterDrinkChatBot', 'printPortal', 'healthJourneyGame']
 
 export default function App() {
   const { user, loading } = useAuth()
@@ -82,6 +83,7 @@ export default function App() {
     aiInbodyPortal: t('aiInbodyPortal'),
     waterDrinkChatBot: t('waterDrinkChatBot'),
     printPortal: 'Print Portal',
+    healthJourneyGame: 'Health Journey Game',
     profile: t('profile'),
   }
 
@@ -233,7 +235,8 @@ export default function App() {
             {active === 'stressRelief' && <StressReliefPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'aiInbodyPortal' && <AIInbodyPortalPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} onViewMedicalRecord={() => setActive('upload')} />}
             {active === 'waterDrinkChatBot' && <WaterDrinkChatBotPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} />}
-            {active === 'printPortal' && <PrintCenter onPrev={goPrev} prevLabel={prevLabel} />}
+            {active === 'printPortal' && <PrintCenter onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} />}
+            {active === 'healthJourneyGame' && <HealthJourneyGamePanel onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'profile'   && <UserProfilePanel />}
             {active === 'admin'     && user?.isAdmin && <AdminPanel />}
             {active === 'admin'     && !user?.isAdmin && (
