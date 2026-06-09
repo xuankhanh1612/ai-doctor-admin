@@ -59,6 +59,7 @@ export default function Sidebar({ active, onNavigate, openSignal = 0 }) {
     { id: 'aiInbodyPortal', label: t('aiInbodyPortal'), step: '21' },
     { id: 'waterDrinkChatBot', label: t('waterDrinkChatBot'), step: '22' },
     { id: 'printPortal', label: 'Print Portal', step: '23' },
+    { id: 'healthJourneyGame', label: t('healthJourneyGame'), step: '24' },
   ]
 
   const ADMIN_STEPS = user?.isAdmin ? [
