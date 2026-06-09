@@ -1471,3 +1471,133 @@ html, body, #root {
     border-radius: 22px;
   }
 }
+
+/* Health Journey Game embedded menu */
+.health-journey-game-page {
+  min-height: 100%;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  background:
+    radial-gradient(circle at 18% 12%, rgba(139,92,246,0.18), transparent 34%),
+    radial-gradient(circle at 84% 18%, rgba(0,229,255,0.16), transparent 36%),
+    var(--bg2);
+}
+
+.health-journey-game-header,
+.health-journey-game-frame-card {
+  width: 100%;
+  max-width: 1120px;
+  margin: 0 auto;
+}
+
+.health-journey-game-screen-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+  max-width: 420px;
+}
+
+.health-journey-game-screen-list span {
+  padding: 8px 10px;
+  border: 1px solid rgba(0,229,255,0.22);
+  border-radius: 999px;
+  background: rgba(0,229,255,0.08);
+  color: #b8f6ff;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.health-journey-game-frame-card {
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 28px;
+  background: rgba(6,10,24,0.84);
+  box-shadow: 0 28px 90px rgba(0,0,0,0.35);
+}
+
+.health-journey-game-frame {
+  display: block;
+  width: 100%;
+  height: min(820px, calc(100vh - 230px));
+  min-height: 680px;
+  border: 0;
+  background: #050816;
+}
+
+.inbody-app-html-panel {
+  padding: 0;
+  overflow: hidden;
+}
+
+.inbody-app-html-copy {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 16px;
+  border-bottom: 1px solid #e5e7eb;
+  background: #fff;
+}
+
+.inbody-app-html-copy p {
+  margin: 4px 0 0;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.inbody-app-html-copy code {
+  padding: 2px 5px;
+  border-radius: 6px;
+  background: #f1f5f9;
+  color: #334155;
+}
+
+.inbody-app-html-copy a {
+  flex-shrink: 0;
+  color: #2563eb;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.inbody-app-html-frame {
+  display: block;
+  width: 100%;
+  height: min(820px, 78vh);
+  min-height: 680px;
+  border: 0;
+  background: #f4f4f6;
+}
+
+@media (max-width: 760px) {
+  .health-journey-game-page {
+    padding: 14px;
+  }
+
+  .health-journey-game-header {
+    align-items: stretch;
+  }
+
+  .health-journey-game-screen-list {
+    justify-content: flex-start;
+  }
+
+  .health-journey-game-frame-card {
+    border-radius: 20px;
+  }
+
+  .health-journey-game-frame,
+  .inbody-app-html-frame {
+    height: calc(100vh - 210px);
+    min-height: 620px;
+  }
+
+  .inbody-app-html-copy {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

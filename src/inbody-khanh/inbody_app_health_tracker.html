@@ -2255,168 +2255,150 @@ document.getElementById('manualInputModal').addEventListener('click', function(e
   if (e.target === this) closeManualInput();
 });
 
-// Init
-switchTab('trangTong', document.querySelectorAll('.tab-btn')[0]);
-</script>
-</body>
-</html>
 
-// ===== CSV DATA (from InBody-20260508 3.csv equivalent) =====
-const csvData = [
-  { date: '08.05.26', weight: 74.3, muscle: 27.8, fat: 24.1, fatPct: 32.4, bmi: 27.3, visceral: 10, bmr: 1455, water: 36.6, protein: 9.6, mineral: 3.38 },
-  { date: '08.05', weight: 74.3, muscle: 27.6, fat: 24.4, fatPct: 32.9, bmi: 27.3, visceral: 11, bmr: 1447, water: 36.9, protein: 9.6, mineral: 3.37 },
-  { date: '08.05', weight: 74.5, muscle: 27.7, fat: 24.5, fatPct: 32.8, bmi: 27.4, visceral: 10, bmr: 1451, water: 36.6, protein: 9.6, mineral: 3.38 },
-  { date: '08.05', weight: 71.9, muscle: 27.5, fat: 22.5, fatPct: 31.2, bmi: 26.4, visceral: 9, bmr: 1438, water: 36.7, protein: 9.7, mineral: 3.39 },
-  { date: '07.06', weight: 72.3, muscle: 27.0, fat: 23.6, fatPct: 32.6, bmi: 26.6, visceral: 10, bmr: 1444, water: 36.3, protein: 9.6, mineral: 3.38 },
-  { date: '07.06', weight: 72.5, muscle: 27.6, fat: 22.8, fatPct: 31.4, bmi: 26.6, visceral: 9, bmr: 1444, water: 35.7, protein: 9.5, mineral: 3.36 },
-  { date: '07.06', weight: 71.0, muscle: 27.0, fat: 21.3, fatPct: 30.0, bmi: 26.1, visceral: 9, bmr: 1444, water: 36.5, protein: 9.8, mineral: 3.40, isLatest: true },
-];
-const latestData = csvData[csvData.length - 1];
+// ===== APPLE HEALTH REAL DATA VISUALIZATION =====
+const APPLE_HEALTH_STORAGE_KEY = 'ai_doctor_apple_health_days';
 
-// ===== TAB SWITCHING =====
-function switchTab(tabId, btn) {
-  if (isOnPage) {
-    isOnPage = false;
-    pageHistory = [];
-  }
-  
-  // Deactivate all tabs and screens
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  document.querySelectorAll('.screen').forEach(s => {
-    s.classList.remove('active', 'prev');
-  });
-  
-  if (btn) btn.classList.add('active');
-  
-  const screen = document.getElementById('screen-' + tabId);
-  if (screen) screen.classList.add('active');
-  
-  currentTab = tabId;
-  showMainNav();
-  
-  // Update bottom nav
-  const bottomHome = document.getElementById('bottomHome');
-  document.querySelectorAll('.bottom-btn').forEach(b => b.classList.remove('active'));
-  if (tabId === 'trangTong') bottomHome.classList.add('active');
+function formatAppleHealthNumber(value, digits = 0) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return '—';
+  return number.toLocaleString('vi-VN', { maximumFractionDigits: digits, minimumFractionDigits: digits });
 }
 
-// ===== PAGE NAVIGATION =====
-function navigateToPage(pageId) {
-  const allScreens = document.querySelectorAll('.screen');
-  allScreens.forEach(s => {
-    if (s.classList.contains('active')) {
-      s.classList.add('prev');
-      s.classList.remove('active');
-    }
-  });
-  
-  const target = document.getElementById('page-' + pageId);
-  if (target) {
-    target.classList.remove('prev');
-    target.classList.add('active');
-    target.scrollTop = 0;
-    pageHistory.push(pageId);
-    isOnPage = true;
-  }
-  
-  // Hide top nav for sub-pages
-  document.getElementById('topNav').style.display = 'none';
+function formatAppleHealthDate(date) {
+  if (!date) return '—';
+  const parts = String(date).slice(0, 10).split('-');
+  if (parts.length !== 3) return date;
+  return `${parts[2]}.${parts[1]}.${parts[0]}`;
 }
 
-function goBack() {
-  pageHistory.pop();
-  
-  if (pageHistory.length === 0) {
-    isOnPage = false;
-    document.getElementById('topNav').style.display = '';
-    
-    // Restore current tab
-    document.querySelectorAll('.screen').forEach(s => {
-      s.classList.remove('active', 'prev');
-    });
-    const screen = document.getElementById('screen-' + currentTab);
-    if (screen) screen.classList.add('active');
-  } else {
-    const prevPage = pageHistory[pageHistory.length - 1];
-    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-    document.getElementById('page-' + prevPage).classList.add('active');
+function getLatestAppleHealthRecord(records) {
+  return [...records].filter(Boolean).sort((a, b) => String(a.date || '').localeCompare(String(b.date || ''))).at(-1);
+}
+
+function getPreviousAppleHealthRecord(records, latestDate) {
+  return [...records]
+    .filter(record => record && record.date && record.date !== latestDate)
+    .sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')))
+    .at(-1);
+}
+
+function metricValue(record, key) {
+  return record?.appleHealth?.[key] ?? record?.[key] ?? null;
+}
+
+function updateMetricCard(index, value, unit, changeText, changeClass = '') {
+  const card = document.querySelectorAll('#screen-trangTong .metric-card')[index];
+  if (!card || value === null || value === undefined) return;
+  const valueEl = card.querySelector('.metric-value');
+  const changeEl = card.querySelector('.metric-change');
+  if (valueEl) valueEl.innerHTML = `${value} <span class="metric-unit">${unit}</span>`;
+  if (changeEl && changeText) {
+    changeEl.className = `metric-change ${changeClass}`.trim();
+    changeEl.textContent = changeText;
   }
 }
 
-function showMainNav() {
-  document.getElementById('topNav').style.display = '';
+function updateAppleHealthVisuals(records) {
+  if (!Array.isArray(records) || !records.length) return;
+  const latest = getLatestAppleHealthRecord(records);
+  if (!latest) return;
+  const previous = getPreviousAppleHealthRecord(records, latest.date);
+  const steps = metricValue(latest, 'steps') || 0;
+  const activeEnergy = metricValue(latest, 'activeEnergy') || 0;
+  const exerciseMinutes = metricValue(latest, 'exerciseMinutes') || 0;
+  const distance = metricValue(latest, 'distance') || 0;
+  const heartRate = metricValue(latest, 'heartRate') || metricValue(latest, 'restingHeartRate');
+  const weight = metricValue(latest, 'weight');
+  const fat = metricValue(latest, 'fat');
+  const muscle = metricValue(latest, 'muscle');
+  const bmi = metricValue(latest, 'bmi');
+  const water = metricValue(latest, 'water');
+  const score = latest.score || Math.min(100, Math.max(40, 50 + Math.round(steps / 500) + Math.round(exerciseMinutes / 3)));
+
+  const appleDate = document.querySelector('#screen-trangTong .apple-health-date');
+  if (appleDate) appleDate.textContent = `${formatAppleHealthDate(latest.date)} · ${records.length.toLocaleString('vi-VN')} ngày thật`;
+
+  const badge = document.querySelector('#screen-trangTong .apple-health-badge');
+  if (badge) badge.innerHTML = '<div class="apple-health-dot"></div> Đã đồng bộ iPhone';
+
+  const scoreNumber = document.querySelector('#screen-trangTong .score-number');
+  if (scoreNumber) scoreNumber.textContent = Math.round(score);
+  const scoreDate = document.querySelector('#screen-trangTong .score-date');
+  if (scoreDate) scoreDate.textContent = `${formatAppleHealthDate(latest.date)} · Apple Health`;
+  const scoreTrend = document.querySelector('#screen-trangTong .score-trend');
+  if (scoreTrend && previous?.score) {
+    const delta = Math.round(score - previous.score);
+    scoreTrend.textContent = `${delta >= 0 ? '▲ +' : '▼ '}${delta} từ Apple Health trước đó`;
+  }
+
+  const stepPct = Math.min(100, Math.round((steps / 10000) * 100));
+  const exercisePct = Math.min(100, Math.round((exerciseMinutes / 30) * 100));
+  const energyPct = Math.min(100, Math.round((activeEnergy / 500) * 100));
+  const items = document.getElementById('appleHealthItems');
+  if (items) {
+    items.innerHTML = `
+      <div class="ah-item">
+        <div class="ah-item-icon">👣</div>
+        <div class="ah-item-label"><div class="ah-item-name">Bước</div><div style="width:100%;height:4px;background:#eee;border-radius:4px;margin-top:4px"><div style="width:${stepPct}%;height:100%;background:var(--teal);border-radius:4px"></div></div></div>
+        <div class="ah-item-value">${formatAppleHealthNumber(steps)}<span style="font-size:11px;font-weight:400"> /10000</span></div>
+      </div>
+      <div class="ah-item">
+        <div class="ah-item-icon">❤️</div>
+        <div class="ah-item-label"><div class="ah-item-name">Heart Rate</div><div class="ah-item-sub">${heartRate ? 'Trung bình từ Apple Health hôm nay' : 'Chưa có dữ liệu nhịp tim trong ngày này'}</div></div>
+        <div class="ah-item-value">${heartRate ? `${formatAppleHealthNumber(heartRate)}<span style="font-size:11px;font-weight:400"> bpm</span>` : '—'}</div>
+      </div>
+      <div class="ah-item">
+        <div class="ah-item-icon">🔥</div>
+        <div class="ah-item-label"><div class="ah-item-name">Active Energy</div><div style="width:100%;height:4px;background:#eee;border-radius:4px;margin-top:4px"><div style="width:${energyPct}%;height:100%;background:var(--pink);border-radius:4px"></div></div></div>
+        <div class="ah-item-value">${formatAppleHealthNumber(activeEnergy)}<span style="font-size:11px;font-weight:400"> kcal</span></div>
+      </div>
+      <div class="ah-item">
+        <div class="ah-item-icon">🏋️</div>
+        <div class="ah-item-label"><div class="ah-item-name">Hồ sơ tập luyện</div><div style="width:100%;height:4px;background:#eee;border-radius:4px;margin-top:4px"><div style="width:${exercisePct}%;height:100%;background:#888;border-radius:4px"></div></div></div>
+        <div class="ah-item-value">${formatAppleHealthNumber(exerciseMinutes)}<span style="font-size:11px;font-weight:400"> phút</span></div>
+      </div>
+      <div class="ah-item">
+        <div class="ah-item-icon">📍</div>
+        <div class="ah-item-label"><div class="ah-item-name">Đi/chạy</div><div class="ah-item-sub">Quãng đường từ iPhone/Apple Watch</div></div>
+        <div class="ah-item-value">${formatAppleHealthNumber(distance, 2)}<span style="font-size:11px;font-weight:400"> km</span></div>
+      </div>
+    `;
+  }
+
+  const weightChange = previous?.weight && weight ? `${weight >= previous.weight ? '▲ +' : '▼ '}${formatAppleHealthNumber(weight - previous.weight, 1)} so với ngày trước` : 'Apple Health iPhone';
+  const fatChange = previous?.fat && fat ? `${fat >= previous.fat ? '▲ +' : '▼ '}${formatAppleHealthNumber(fat - previous.fat, 1)}% so với ngày trước` : 'Apple Health iPhone';
+  updateMetricCard(0, weight ? formatAppleHealthNumber(weight, 1) : null, 'kg', weightChange, weight && previous?.weight && weight <= previous.weight ? 'good' : 'warn');
+  updateMetricCard(1, bmi ? formatAppleHealthNumber(bmi, 1) : null, 'kg/m²', 'Từ Apple Health', 'warn');
+  updateMetricCard(2, fat ? formatAppleHealthNumber(fat, 1) : null, '%', fatChange, fat && previous?.fat && fat <= previous.fat ? 'good' : 'bad');
+  updateMetricCard(3, muscle ? formatAppleHealthNumber(muscle, 1) : null, 'kg', 'Lean body mass từ Apple Health', 'good');
+
+  const waterLegend = document.querySelector('.bc-legend .bc-item:first-child');
+  if (waterLegend && water) waterLegend.innerHTML = `<div class="bc-dot" style="background:var(--blue)"></div>Nước ${formatAppleHealthNumber(water, 1)}L`;
 }
 
-// ===== RADAR TAB =====
-function switchRadar(type, btn) {
-  document.querySelectorAll('.radar-tab').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  document.getElementById('radarMuscle').style.display = type === 'muscle' ? 'flex' : 'none';
-  document.getElementById('radarFat').style.display = type === 'fat' ? 'flex' : 'none';
-  if (type === 'fat') document.getElementById('radarFat').style.flexDirection = 'column';
-}
-
-// ===== SUB TABS =====
-function switchSubTab(contentId, btn, className) {
-  const parent = btn.closest('.screen') || document.body;
-  parent.querySelectorAll('.' + className).forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  
-  // Show/hide content
-  if (contentId === 'bpResult') {
-    document.getElementById('bpResult').style.display = '';
-    document.getElementById('bpChart').style.display = 'none';
-  } else if (contentId === 'bpChart') {
-    document.getElementById('bpResult').style.display = 'none';
-    document.getElementById('bpChart').style.display = '';
+function loadStoredAppleHealthVisuals() {
+  try {
+    const records = JSON.parse(localStorage.getItem(APPLE_HEALTH_STORAGE_KEY) || '[]');
+    updateAppleHealthVisuals(records);
+  } catch (error) {
+    console.warn('Unable to load Apple Health visuals:', error);
   }
 }
 
-// ===== RANK TAB =====
-function switchRankTab(tabId, btn) {
-  document.querySelectorAll('.rank-sub-tab').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-}
+window.addEventListener('message', function(event) {
+  const payload = event.data;
+  if (!payload || payload.type !== 'APPLE_HEALTH_DAYS_SYNC' || !Array.isArray(payload.records)) return;
+  updateAppleHealthVisuals(payload.records);
+});
 
-// ===== FILTER =====
-function setFilter(btn, label) {
-  const parent = btn.closest('div');
-  parent.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-}
-
-// ===== MANUAL INPUT =====
-function openManualInput() {
-  document.getElementById('manualInputModal').classList.add('open');
-}
-function closeManualInput() {
-  document.getElementById('manualInputModal').classList.remove('open');
-}
-
-// ===== DATE NAV =====
-const dates = ['08.05.2026 (T5) 10:12', '08.05.2026 (T5) 14:33', '08.05.2026 (T5) 17:45', '07.06.2026 (CN) 11:20', '07.06.2026 (CN) 14:05', '07.06.2026 (CN) 16:52'];
-let dateIdx = dates.length - 1;
-function changeDate(dir) {
-  dateIdx = Math.max(0, Math.min(dates.length - 1, dateIdx + dir));
-  document.querySelector('.nav-date').textContent = dates[dateIdx];
-}
-
-// ===== METRIC DETAIL =====
-function showMetricDetail(metric) {
-  const names = { weight: 'Cân nặng', bmi: 'BMI', fat: 'Tỷ lệ mỡ', muscle: 'Khối lượng cơ xương' };
-  switchTab('thayDoi', document.querySelectorAll('.tab-btn')[2]);
-  const tabBtn = document.querySelectorAll('.tab-btn')[2];
-  tabBtn.classList.add('active');
-  setTimeout(() => { document.querySelector('#screen-thayDoi').scrollTop = 200; }, 100);
-}
-
-// Close modal on backdrop click
-document.getElementById('manualInputModal').addEventListener('click', function(e) {
-  if (e.target === this) closeManualInput();
+window.addEventListener('storage', function(event) {
+  if (event.key === APPLE_HEALTH_STORAGE_KEY) loadStoredAppleHealthVisuals();
 });
 
 // Init
 switchTab('trangTong', document.querySelectorAll('.tab-btn')[0]);
+loadStoredAppleHealthVisuals();
 </script>
 </body>
 </html>

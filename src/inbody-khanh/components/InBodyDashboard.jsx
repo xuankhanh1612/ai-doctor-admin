@@ -8,8 +8,6 @@ import standardInBodyCsv from '../DataInBody/InBody-20260508 3.csv?raw';
 import aiClinicInBodyRef from '../DataInBody/AIClinicInBody.PNG';
 import inBodyChartRef from '../DataInBody/IMG_2635.PNG';
 import khanhInBodyRef from '../DataInBody/KhanhInBody.JPG';
-import inBodyMuscleScreenRef from '../DataInBody/IMG_2637.PNG';
-import inBodyFatScreenRef from '../DataInBody/IMG_2638.PNG';
 import rankingFriendsRef from '../DataInBody/IMG_2651.PNG';
 import rankingConnectRef from '../DataInBody/IMG_2652.PNG';
 import rankingWeightRef from '../DataInBody/IMG_2653.PNG';
@@ -19,6 +17,9 @@ import rankingScoreDailyRef from '../DataInBody/IMG_2656.PNG';
 import rankingFatDailyRef from '../DataInBody/IMG_2657.PNG';
 import challengeRoadMapRef from '../DataInBody/RoadMap.png';
 import challengeJourneyRef from '../DataInBody/HanhTrinh3.png';
+import inbodyAppHealthTrackerUrl from '../inbody_app_health_tracker.html?url';
+
+const APPLE_HEALTH_STORAGE_KEY = 'ai_doctor_apple_health_days';
 
 // ─── Gamification engine ────────────────────────────────────────────────────
 function calcXP(records) {
@@ -119,11 +120,6 @@ const INBODY_REFERENCE_IMAGES = [
   { src: aiClinicInBodyRef, label: 'AIClinicInBody.PNG' },
   { src: inBodyChartRef, label: 'IMG_2635.PNG' },
   { src: khanhInBodyRef, label: 'KhanhInBody.JPG' },
-];
-
-const INBODY_APP_SCREEN_TABS = [
-  { id: 'muscle', label: 'Khối lượng cơ', image: inBodyMuscleScreenRef, accent: '#1D9E75', summary: 'Màn hình Chi tiết · phân tích cơ từng bộ phận theo mẫu IMG_2637.PNG.' },
-  { id: 'fat', label: 'Mỡ trong cơ thể', image: inBodyFatScreenRef, accent: '#f05f78', summary: 'Màn hình Chi tiết · phân tích mỡ từng bộ phận theo mẫu IMG_2638.PNG.' },
 ];
 
 const RANKING_REFERENCE_IMAGES = [
@@ -232,6 +228,146 @@ function parseNumber(value) {
   if (!normalized || normalized === '-') return null;
   const parsed = Number.parseFloat(normalized);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+
+const APPLE_HEALTH_METRICS = {
+  HKQuantityTypeIdentifierBodyMass: { key: 'weight', mode: 'latest' },
+  HKQuantityTypeIdentifierLeanBodyMass: { key: 'muscle', mode: 'latest' },
+  HKQuantityTypeIdentifierBodyFatPercentage: { key: 'fat', mode: 'latest', percent: true },
+  HKQuantityTypeIdentifierBodyMassIndex: { key: 'bmi', mode: 'latest' },
+  HKQuantityTypeIdentifierDietaryWater: { key: 'water', mode: 'sum', water: true },
+  HKQuantityTypeIdentifierStepCount: { key: 'steps', mode: 'sum' },
+  HKQuantityTypeIdentifierActiveEnergyBurned: { key: 'activeEnergy', mode: 'sum' },
+  HKQuantityTypeIdentifierAppleExerciseTime: { key: 'exerciseMinutes', mode: 'sum' },
+  HKQuantityTypeIdentifierDistanceWalkingRunning: { key: 'distance', mode: 'sum', distance: true },
+  HKQuantityTypeIdentifierHeartRate: { key: 'heartRate', mode: 'average' },
+  HKQuantityTypeIdentifierRestingHeartRate: { key: 'restingHeartRate', mode: 'average' },
+};
+
+function dateKeyFromAppleHealth(value) {
+  const raw = String(value || '');
+  const directDate = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (directDate) return directDate[0];
+  const date = new Date(value || Date.now());
+  if (Number.isNaN(date.getTime())) return new Date().toISOString().slice(0, 10);
+  return date.toISOString().slice(0, 10);
+}
+
+function normalizeAppleHealthValue(value, unit, config) {
+  const parsed = parseNumber(value);
+  if (parsed === null) return null;
+  if (config?.percent && String(unit || '').includes('%') && parsed <= 1) return +(parsed * 100).toFixed(1);
+  if (config?.water && String(unit || '').toLowerCase() === 'ml') return +(parsed / 1000).toFixed(2);
+  if (config?.distance && String(unit || '').toLowerCase() === 'm') return +(parsed / 1000).toFixed(2);
+  return parsed;
+}
+
+function getAppleHealthDay(dayMap, day) {
+  if (!dayMap.has(day)) {
+    dayMap.set(day, {
+      date: day,
+      sourceModule: 'apple-health',
+      appleHealth: {},
+      _latestAt: {},
+      _average: {},
+    });
+  }
+  return dayMap.get(day);
+}
+
+function applyAppleHealthMetric(day, key, value, mode, endDate) {
+  if (value === null) return;
+  if (mode === 'sum') {
+    day.appleHealth[key] = +((day.appleHealth[key] || 0) + value).toFixed(2);
+    return;
+  }
+  if (mode === 'average') {
+    const avg = day._average[key] || { total: 0, count: 0 };
+    avg.total += value;
+    avg.count += 1;
+    day._average[key] = avg;
+    day.appleHealth[key] = +(avg.total / avg.count).toFixed(1);
+    return;
+  }
+  const currentLatestAt = day._latestAt[key] || '';
+  if (!currentLatestAt || String(endDate || '').localeCompare(currentLatestAt) >= 0) {
+    day._latestAt[key] = String(endDate || '');
+    day.appleHealth[key] = value;
+  }
+}
+
+function parseAppleHealthExportXml(xmlText) {
+  const doc = new DOMParser().parseFromString(xmlText, 'application/xml');
+  if (doc.querySelector('parsererror')) throw new Error('File XML Apple Health không hợp lệ. Hãy chọn đúng export.xml từ app Sức khỏe.');
+
+  const dayMap = new Map();
+  doc.querySelectorAll('Record').forEach((record) => {
+    const type = record.getAttribute('type');
+    const metric = APPLE_HEALTH_METRICS[type];
+    if (!metric) return;
+    const value = normalizeAppleHealthValue(record.getAttribute('value'), record.getAttribute('unit'), metric);
+    const endDate = record.getAttribute('endDate') || record.getAttribute('startDate');
+    const day = getAppleHealthDay(dayMap, dateKeyFromAppleHealth(endDate));
+    applyAppleHealthMetric(day, metric.key, value, metric.mode, endDate);
+  });
+
+  return Array.from(dayMap.values())
+    .map(({ _latestAt, _average, ...day }) => day)
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+function normalizeAppleHealthJson(payload) {
+  const source = Array.isArray(payload) ? payload : (payload?.records || payload?.days || payload?.data || []);
+  if (!Array.isArray(source)) return [];
+  return source.map((entry) => ({
+    date: String(entry.date || entry.day || entry.startDate || new Date().toISOString()).slice(0, 10),
+    sourceModule: 'apple-health',
+    appleHealth: {
+      weight: parseNumber(entry.weight ?? entry.bodyMass),
+      muscle: parseNumber(entry.muscle ?? entry.leanBodyMass),
+      fat: normalizeAppleHealthValue(entry.fat ?? entry.bodyFatPercentage, '%', { percent: true }),
+      bmi: parseNumber(entry.bmi),
+      water: normalizeAppleHealthValue(entry.water ?? entry.dietaryWater, entry.waterUnit || 'L', { water: true }),
+      steps: parseNumber(entry.steps ?? entry.stepCount),
+      activeEnergy: parseNumber(entry.activeEnergy ?? entry.activeEnergyBurned),
+      exerciseMinutes: parseNumber(entry.exerciseMinutes ?? entry.appleExerciseTime),
+      distance: parseNumber(entry.distance ?? entry.distanceWalkingRunning),
+      heartRate: parseNumber(entry.heartRate),
+      restingHeartRate: parseNumber(entry.restingHeartRate),
+    },
+  })).filter(day => day.date);
+}
+
+function buildAppleHealthDashboardRecords(appleDays, fallbackRecord = {}) {
+  return appleDays.map((day) => {
+    const metrics = day.appleHealth || {};
+    const steps = metrics.steps || 0;
+    const activityScore = Math.min(20, Math.round(steps / 500));
+    const exerciseScore = Math.min(10, Math.round((metrics.exerciseMinutes || 0) / 3));
+    const bodyScore = metrics.fat ? Math.max(0, Math.min(20, Math.round(20 - Math.abs(metrics.fat - 22) * 0.8))) : 10;
+
+    return {
+      date: day.date,
+      sourceModule: 'apple-health',
+      device: 'Apple Health iPhone',
+      weight: metrics.weight ?? fallbackRecord.weight ?? 0,
+      muscle: metrics.muscle ?? fallbackRecord.muscle ?? fallbackRecord.skeletalMuscle ?? 0,
+      skeletalMuscle: metrics.muscle ?? fallbackRecord.skeletalMuscle ?? fallbackRecord.muscle ?? 0,
+      fat: metrics.fat ?? fallbackRecord.fat ?? 0,
+      water: metrics.water ?? fallbackRecord.water ?? 0,
+      bmi: metrics.bmi ?? fallbackRecord.bmi ?? 0,
+      score: Math.min(100, Math.max(40, 50 + activityScore + exerciseScore + bodyScore)),
+      appleHealth: metrics,
+    };
+  });
+}
+
+function mergeRecordsByDate(baseRecords, incomingRecords) {
+  const merged = new Map();
+  baseRecords.forEach(record => merged.set(record.date, record));
+  incomingRecords.forEach(record => merged.set(record.date, { ...(merged.get(record.date) || {}), ...record }));
+  return Array.from(merged.values()).sort((a, b) => String(a.date).localeCompare(String(b.date)));
 }
 
 function parseCsvLine(line) {
@@ -802,43 +938,149 @@ function HistoryTab({ records }) {
   );
 }
 
-function InBodyAppScreensTab() {
-  const [screen, setScreen] = useState(INBODY_APP_SCREEN_TABS[0]);
+function InBodyAppScreensTab({ onAppleHealthImport, latest }) {
+  const [appleStatus, setAppleStatus] = useState('Sẵn sàng nhận dữ liệu thật từ Apple Health trên iPhone.');
+  const [applePreview, setApplePreview] = useState([]);
+  const [latestAppleRecords, setLatestAppleRecords] = useState([]);
+  const inbodyFrameRef = useRef(null);
+  const nativeBridge = typeof window !== 'undefined' && (
+    window.webkit?.messageHandlers?.appleHealth ||
+    window.webkit?.messageHandlers?.healthKit
+  );
+
+  const pushAppleHealthToInBodyFrame = (records = latestAppleRecords) => {
+    const frameWindow = inbodyFrameRef.current?.contentWindow;
+    if (!frameWindow || !records.length) return;
+    frameWindow.postMessage({ source: 'ai-doctor-admin', type: 'APPLE_HEALTH_DAYS_SYNC', records }, '*');
+  };
+
+  const importAppleHealthDays = (days, sourceLabel = 'Apple Health') => {
+    if (!days.length) throw new Error('Không tìm thấy dữ liệu Apple Health được hỗ trợ trong file đã chọn.');
+    const dashboardRecords = buildAppleHealthDashboardRecords(days, latest);
+    onAppleHealthImport?.(dashboardRecords);
+    setLatestAppleRecords(dashboardRecords);
+    try { localStorage.setItem(APPLE_HEALTH_STORAGE_KEY, JSON.stringify(dashboardRecords)); } catch {}
+    window.setTimeout(() => pushAppleHealthToInBodyFrame(dashboardRecords), 0);
+    setApplePreview(dashboardRecords.slice(-5).reverse());
+    setAppleStatus(`Đã đồng bộ ${dashboardRecords.length} ngày dữ liệu thật từ ${sourceLabel} vào dashboard InBody và Trang tổng Apple Health.`);
+  };
+
+  const handleAppleHealthFile = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setAppleStatus(`Đang đọc ${file.name} từ iPhone...`);
+    try {
+      if (file.name.toLowerCase().endsWith('.zip')) {
+        throw new Error('Apple Health xuất mặc định thành export.zip. Trên iPhone hãy chạm file ZIP trong Files → Uncompress/Giải nén → chọn file apple_health_export/export.xml.');
+      }
+      const text = await file.text();
+      const isJson = file.name.toLowerCase().endsWith('.json') || file.type.includes('json');
+      const days = isJson ? normalizeAppleHealthJson(JSON.parse(text)) : parseAppleHealthExportXml(text);
+      importAppleHealthDays(days, file.name);
+    } catch (error) {
+      setApplePreview([]);
+      setAppleStatus(error.message || 'Không đồng bộ được Apple Health.');
+    } finally {
+      event.target.value = '';
+    }
+  };
+
+  const handleNativeAppleHealthSync = () => {
+    const bridge = window.webkit?.messageHandlers?.appleHealth || window.webkit?.messageHandlers?.healthKit;
+    if (!bridge) {
+      setAppleStatus('Safari/web không cho đọc HealthKit trực tiếp. Trên iPhone hãy mở Sức khỏe → avatar → Xuất tất cả dữ liệu sức khỏe → chọn file export.xml tại đây. Nếu app được bọc bằng iOS native, hãy gắn WKWebView messageHandler tên appleHealth hoặc healthKit.');
+      return;
+    }
+    bridge.postMessage({
+      type: 'REQUEST_APPLE_HEALTH_SYNC',
+      metrics: Object.keys(APPLE_HEALTH_METRICS),
+      rangeDays: 365,
+    });
+    setAppleStatus('Đã gửi yêu cầu tới HealthKit native bridge trên iPhone. Đang chờ dữ liệu trả về...');
+  };
+
+  useEffect(() => {
+    try {
+      const storedRecords = JSON.parse(localStorage.getItem(APPLE_HEALTH_STORAGE_KEY) || '[]');
+      if (Array.isArray(storedRecords) && storedRecords.length) {
+        setLatestAppleRecords(storedRecords);
+        setApplePreview(storedRecords.slice(-5).reverse());
+        setAppleStatus(`Đã nạp ${storedRecords.length} ngày Apple Health đã đồng bộ trước đó cho Trang tổng.`);
+      }
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    const handleNativeMessage = (event) => {
+      const payload = event.data || event.detail;
+      if (!payload || payload.source !== 'apple-health') return;
+      try {
+        importAppleHealthDays(normalizeAppleHealthJson(payload), 'HealthKit native bridge');
+      } catch (error) {
+        setAppleStatus(error.message || 'Không nhận được dữ liệu từ HealthKit native bridge.');
+      }
+    };
+    window.addEventListener('message', handleNativeMessage);
+    window.addEventListener('apple-health-data', handleNativeMessage);
+    return () => {
+      window.removeEventListener('message', handleNativeMessage);
+      window.removeEventListener('apple-health-data', handleNativeMessage);
+    };
+  }, [latest, onAppleHealthImport]);
 
   return (
-    <div className="inbody-app-screen-panel">
-      <div className="inbody-app-header">
-        <div className="inbody-logo-text">InBody</div>
-        <div className="inbody-app-chip">KhanhLX</div>
-        <div className="inbody-app-chip">TOUCH</div>
-        <div className="inbody-app-icon">▦</div>
-        <div className="inbody-app-icon">🔔</div>
-      </div>
-      <div className="inbody-app-nav">
-        <span>Trang tổng</span><b>Chi tiết</b><span>Thay đổi</span><span>Xếp hạng</span>
-      </div>
-      <div className="inbody-app-date">‹ <span>08.05.2026 (Th 6) 10:58</span> › <button type="button">🗑</button></div>
-      <div className="inbody-app-score"><b>Điểm InBody</b><strong>64 <small>Điểm</small></strong></div>
-      <div className="section-title">Phân tích từng bộ phận</div>
-      <div className="inbody-screen-tabs">
-        {INBODY_APP_SCREEN_TABS.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            className={screen.id === item.id ? 'active' : ''}
-            onClick={() => setScreen(item)}
-            style={{ '--screen-accent': item.accent }}
-          >
-            {item.label}
+    <div className="inbody-app-screen-panel inbody-app-html-panel">
+      <div className="apple-health-card">
+        <div className="apple-health-copy">
+          <div className="apple-health-icon"></div>
+          <div>
+            <div className="section-title">Apple Health thật từ iPhone</div>
+            <h3>Đồng bộ Apple Health vào tab Hình ảnh</h3>
+            <p>
+              Nhập file <b>export.xml</b> trong gói export.zip xuất trực tiếp từ app <b>Sức khỏe</b> trên iPhone để lấy cân nặng,
+              % mỡ, lean body mass, BMI, nước, bước chân, năng lượng, vận động và nhịp tim.
+            </p>
+          </div>
+        </div>
+        <div className="apple-health-actions">
+          <label className="apple-health-file-btn">
+            Chọn export.xml từ iPhone
+            <input type="file" accept=".xml,text/xml,application/xml,.json,application/json,.zip,application/zip" onChange={handleAppleHealthFile} />
+          </label>
+          <button type="button" onClick={handleNativeAppleHealthSync} className={nativeBridge ? 'bridge-ready' : ''}>
+            {nativeBridge ? 'Kết nối HealthKit native' : 'Kiểm tra Apple Health' }
           </button>
-        ))}
+        </div>
+        <div className="apple-health-status">{appleStatus}</div>
+        {applePreview.length > 0 && (
+          <div className="apple-health-preview">
+            {applePreview.map((record) => (
+              <div key={record.date}>
+                <b>{record.date}</b>
+                <span>{record.appleHealth?.steps ? `${Math.round(record.appleHealth.steps).toLocaleString()} bước` : 'Apple Health'}</span>
+                <span>{record.weight ? `${record.weight}kg` : '—'}</span>
+                <span>{record.fat ? `${record.fat}% mỡ` : '—'}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
-      <div className="inbody-screen-summary" style={{ borderColor: screen.accent }}>
-        <b>{screen.label}</b><span>{screen.summary}</span>
+
+      <div className="inbody-app-html-copy">
+        <div>
+          <div className="section-title">Hình ảnh InBody app</div>
+          <p>Nguồn hiển thị đã được thay bằng file HTML gốc <code>src/inbody-khanh/inbody_app_health_tracker.html</code>.</p>
+        </div>
+        <a href={inbodyAppHealthTrackerUrl} target="_blank" rel="noreferrer">Mở toàn màn hình ↗</a>
       </div>
-      <figure className="inbody-screen-figure">
-        <img src={screen.image} alt={screen.summary} />
-      </figure>
+      <iframe
+        ref={inbodyFrameRef}
+        title="InBody app health tracker"
+        src={inbodyAppHealthTrackerUrl}
+        className="inbody-app-html-frame"
+        loading="lazy"
+        onLoad={() => pushAppleHealthToInBodyFrame()}
+      />
     </div>
   );
 }
@@ -1103,7 +1345,7 @@ export default function InBodyDashboard({ userId, initialRecords, onViewMedicalR
     { id: 'upload', label: 'Scan', icon: '📤' },
     { id: 'quests', label: 'Nhiệm vụ', icon: '⚔️' },
     { id: 'history', label: 'Lịch sử', icon: '📈' },
-    { id: 'screens', label: 'Màn hình', icon: '📱' },
+    { id: 'screens', label: 'Hình ảnh', icon: '🖼️' },
     { id: 'rankings', label: 'Xếp Hạng', icon: '🏆' },
     { id: 'challenges', label: 'Thử Thách', icon: '🚀' },
     { id: 'badges', label: 'Huy hiệu', icon: '🏅' },
@@ -1144,7 +1386,7 @@ export default function InBodyDashboard({ userId, initialRecords, onViewMedicalR
         {tab === 'upload' && <UploadTab onAnalysis={handleNewAnalysis} onViewMedicalRecord={onViewMedicalRecord} />}
         {tab === 'quests' && <QuestsTab records={records} />}
         {tab === 'history' && <HistoryTab records={records} />}
-        {tab === 'screens' && <InBodyAppScreensTab />}
+        {tab === 'screens' && <InBodyAppScreensTab latest={latest} onAppleHealthImport={(appleRecords) => setRecords(prevRecords => mergeRecordsByDate(prevRecords, appleRecords))} />}
         {tab === 'rankings' && <RankingsTab latest={latest} />}
         {tab === 'challenges' && <ChallengeTab records={records} levelInfo={levelInfo} />}
         {tab === 'badges' && <BadgesTab records={records} />}
@@ -1244,6 +1486,21 @@ export default function InBodyDashboard({ userId, initialRecords, onViewMedicalR
         .inbody-reference-gallery img { display: block; width: 100%; height: clamp(360px, 68vh, 980px); object-fit: contain; object-position: top; background: #fff; }
         .inbody-reference-gallery figcaption { padding: 7px 9px; color: #666; font-size: 10px; font-weight: 700; }
         .inbody-app-screen-panel { padding: 14px; border: 1px solid #e5e7eb; border-radius: 18px; background: linear-gradient(180deg, #fff, #f8fafc); }
+        .apple-health-card { margin-bottom: 14px; padding: clamp(14px, 2.4vw, 22px); border-radius: 22px; border: 1px solid rgba(17,24,39,.12); background: radial-gradient(circle at 8% 0%, rgba(17,24,39,.10), transparent 30%), linear-gradient(135deg, #ffffff, #f1f5f9); box-shadow: 0 18px 45px rgba(15,23,42,.10); }
+        .apple-health-copy { display: flex; gap: 14px; align-items: flex-start; }
+        .apple-health-icon { width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center; flex-shrink: 0; color: #fff; background: linear-gradient(135deg, #111827, #475569); font-size: 24px; box-shadow: 0 12px 28px rgba(15,23,42,.25); }
+        .apple-health-copy h3 { margin: 0 0 6px; color: #111827; font-size: clamp(18px, 2vw, 24px); }
+        .apple-health-copy p { margin: 0; color: #475569; font-size: 13px; line-height: 1.6; }
+        .apple-health-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+        .apple-health-actions button, .apple-health-file-btn { display: inline-flex; align-items: center; justify-content: center; min-height: 42px; padding: 10px 14px; border-radius: 12px; border: 0; cursor: pointer; font-weight: 900; font-size: 13px; }
+        .apple-health-file-btn { color: #fff; background: linear-gradient(135deg, #111827, #2563eb); box-shadow: 0 12px 24px rgba(37,99,235,.22); }
+        .apple-health-file-btn input { display: none; }
+        .apple-health-actions button { color: #111827; background: #fff; border: 1px solid #dbe3ef; }
+        .apple-health-actions button.bridge-ready { color: #065f46; background: #ecfdf5; border-color: #a7f3d0; }
+        .apple-health-status { margin-top: 12px; padding: 10px 12px; border-radius: 12px; color: #1e3a8a; background: #eff6ff; border: 1px solid #bfdbfe; font-size: 12px; font-weight: 700; line-height: 1.5; }
+        .apple-health-preview { display: grid; gap: 6px; margin-top: 12px; }
+        .apple-health-preview div { display: grid; grid-template-columns: 1fr repeat(3, auto); gap: 8px; align-items: center; padding: 8px 10px; border-radius: 10px; background: rgba(255,255,255,.78); border: 1px solid #e2e8f0; color: #475569; font-size: 12px; }
+        .apple-health-preview b { color: #111827; }
         .inbody-app-header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
         .inbody-logo-text { margin-right: auto; font-size: 24px; font-weight: 900; color: #1f2937; letter-spacing: -.04em; }
         .inbody-app-chip, .inbody-app-icon { padding: 7px 12px; border: 1px solid #e5e7eb; border-radius: 999px; background: #fff; color: #374151; font-size: 12px; font-weight: 800; }
