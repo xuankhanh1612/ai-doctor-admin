@@ -16,6 +16,7 @@ import ConsensusPanel from './components/ConsensusPanel.jsx'
 import SwarmConsensusPanel from './components/SwarmConsensusPanel.jsx'
 import UploadPanel from './components/upload/UploadPanel.jsx'
 import HealthJourneyPanel from './components/HealthJourneyPanel.jsx'
+import HealthJourneyGamePanel from './components/HealthJourneyGamePanel.jsx'
 import LunchJourneyPanel from './components/LunchJourneyPanel.jsx'
 import DinnerJourneyPanel from './components/DinnerJourneyPanel.jsx'
 import FamilyTreePanel from './components/family/FamilyTreePanel.jsx'
@@ -34,12 +35,12 @@ import LoginPage from './pages/LoginPage.jsx'
 import { addNotification } from './lib/notifications.js'
 
 // Swarm panel replaces simulation; keep consensus as classic fallback
-const PANELS = ['healthJourney', 'lunchJourney', 'dinnerJourney', 'upload', 'imaging', 'checkin', 'family', 'record', 'familyRelationship', 'matrix3dBody', 'omnidirectional3dBody', 'twin', 'telemedicine', 'statAnalysis', 'swarm', 'consensus', 'protein3d', 'aiHealthcareVision', 'aiHealthcareVisionControl', 'stressRelief', 'aiInbodyPortal', 'waterDrinkChatBot', 'printPortal']
+const PANELS = ['healthJourneyGame', 'healthJourney', 'lunchJourney', 'dinnerJourney', 'upload', 'imaging', 'checkin', 'family', 'record', 'familyRelationship', 'matrix3dBody', 'omnidirectional3dBody', 'twin', 'telemedicine', 'statAnalysis', 'swarm', 'consensus', 'protein3d', 'aiHealthcareVision', 'aiHealthcareVisionControl', 'stressRelief', 'aiInbodyPortal', 'waterDrinkChatBot', 'printPortal']
 
 export default function App() {
   const { user, loading } = useAuth()
   const { theme, t } = useApp()
-  const [active, setActive]               = useState('healthJourney')
+  const [active, setActive]               = useState('healthJourneyGame')
   const [selectedMember, setSelectedMember] = useState(null)
   const [compareImage, setCompareImage] = useState(null)
   const [uploadedImages, setUploadedImages] = useState([])
@@ -59,6 +60,7 @@ export default function App() {
   }, [user?.email])
 
   const panelLabels = {
+    healthJourneyGame: 'Health Journey Game',
     healthJourney: t('healthJourney'),
     lunchJourney: t('lunchJourney'),
     dinnerJourney: t('dinnerJourney'),
@@ -87,7 +89,7 @@ export default function App() {
 
   const navigateToRecord = (member) => { setSelectedMember(member); setActive('record') }
   const openMainMenu = useCallback(() => {
-    setActive('healthJourney')
+    setActive('healthJourneyGame')
     window.setTimeout(() => setSidebarOpenSignal(signal => signal + 1), 0)
   }, [])
 
@@ -211,6 +213,7 @@ export default function App() {
             familyStorageOwnerId={familyStorageOwnerId}
             user={user}
           >
+            {active === 'healthJourneyGame' && <HealthJourneyGamePanel onNext={goNext} nextLabel={nextLabel} />}
             {active === 'healthJourney' && <HealthJourneyPanel onNext={goNext} nextLabel={nextLabel} onOpenStressRelief={() => setActive('stressRelief')} onOpenInBody={() => setActive('aiInbodyPortal')} onViewMedicalRecord={() => setActive('upload')} />}
             {active === 'lunchJourney' && <LunchJourneyPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} onOpenStressRelief={() => setActive('stressRelief')} onOpenInBody={() => setActive('aiInbodyPortal')} onViewMedicalRecord={() => setActive('upload')} />}
             {active === 'dinnerJourney' && <DinnerJourneyPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} onOpenStressRelief={() => setActive('stressRelief')} onOpenInBody={() => setActive('aiInbodyPortal')} onViewMedicalRecord={() => setActive('upload')} />}
@@ -263,7 +266,7 @@ function GlobalBottomNav({ active, onOpenMainMenu, onNavigate }) {
   const { theme } = useApp()
   const isDark = theme === 'dark'
   const items = [
-    { id: 'health', label: 'Health', icon: '♿', action: onOpenMainMenu, active: ['healthJourney', 'lunchJourney', 'dinnerJourney'].includes(active) },
+    { id: 'health', label: 'Health', icon: '♿', action: onOpenMainMenu, active: ['healthJourneyGame', 'healthJourney', 'lunchJourney', 'dinnerJourney'].includes(active) },
     { id: 'family', label: 'Community', icon: '👥', action: () => onNavigate('family'), active: active === 'family' },
     { id: 'aiHealthcareVision', label: 'AI Scan', icon: '🧬', action: () => onNavigate('aiHealthcareVision'), active: active === 'aiHealthcareVision' || active === 'aiHealthcareVisionControl' },
     { id: 'upload', label: 'Record', icon: '📄', action: () => onNavigate('upload'), active: active === 'upload' },
