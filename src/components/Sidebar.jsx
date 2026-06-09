@@ -36,6 +36,7 @@ export default function Sidebar({ active, onNavigate, openSignal = 0 }) {
   const surface2 = isDark ? 'rgba(255,255,255,0.06)'  : 'rgba(0,0,0,0.06)'
 
   const STEPS = [
+    { id: 'healthJourneyGame', label: 'Health Journey Game', step: '00' },
     { id: 'healthJourney', label: t('healthJourney'), step: '01' },
     { id: 'lunchJourney', label: t('lunchJourney'), step: '02' },
     { id: 'dinnerJourney', label: t('dinnerJourney'), step: '03' },
