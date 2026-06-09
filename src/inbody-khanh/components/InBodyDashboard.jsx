@@ -8,8 +8,6 @@ import standardInBodyCsv from '../DataInBody/InBody-20260508 3.csv?raw';
 import aiClinicInBodyRef from '../DataInBody/AIClinicInBody.PNG';
 import inBodyChartRef from '../DataInBody/IMG_2635.PNG';
 import khanhInBodyRef from '../DataInBody/KhanhInBody.JPG';
-import inBodyMuscleScreenRef from '../DataInBody/IMG_2637.PNG';
-import inBodyFatScreenRef from '../DataInBody/IMG_2638.PNG';
 import rankingFriendsRef from '../DataInBody/IMG_2651.PNG';
 import rankingConnectRef from '../DataInBody/IMG_2652.PNG';
 import rankingWeightRef from '../DataInBody/IMG_2653.PNG';
@@ -19,6 +17,7 @@ import rankingScoreDailyRef from '../DataInBody/IMG_2656.PNG';
 import rankingFatDailyRef from '../DataInBody/IMG_2657.PNG';
 import challengeRoadMapRef from '../DataInBody/RoadMap.png';
 import challengeJourneyRef from '../DataInBody/HanhTrinh3.png';
+import inbodyAppHealthTrackerUrl from '../inbody_app_health_tracker.html?url';
 
 // ─── Gamification engine ────────────────────────────────────────────────────
 function calcXP(records) {
@@ -119,11 +118,6 @@ const INBODY_REFERENCE_IMAGES = [
   { src: aiClinicInBodyRef, label: 'AIClinicInBody.PNG' },
   { src: inBodyChartRef, label: 'IMG_2635.PNG' },
   { src: khanhInBodyRef, label: 'KhanhInBody.JPG' },
-];
-
-const INBODY_APP_SCREEN_TABS = [
-  { id: 'muscle', label: 'Khối lượng cơ', image: inBodyMuscleScreenRef, accent: '#1D9E75', summary: 'Màn hình Chi tiết · phân tích cơ từng bộ phận theo mẫu IMG_2637.PNG.' },
-  { id: 'fat', label: 'Mỡ trong cơ thể', image: inBodyFatScreenRef, accent: '#f05f78', summary: 'Màn hình Chi tiết · phân tích mỡ từng bộ phận theo mẫu IMG_2638.PNG.' },
 ];
 
 const RANKING_REFERENCE_IMAGES = [
@@ -803,42 +797,21 @@ function HistoryTab({ records }) {
 }
 
 function InBodyAppScreensTab() {
-  const [screen, setScreen] = useState(INBODY_APP_SCREEN_TABS[0]);
-
   return (
-    <div className="inbody-app-screen-panel">
-      <div className="inbody-app-header">
-        <div className="inbody-logo-text">InBody</div>
-        <div className="inbody-app-chip">KhanhLX</div>
-        <div className="inbody-app-chip">TOUCH</div>
-        <div className="inbody-app-icon">▦</div>
-        <div className="inbody-app-icon">🔔</div>
+    <div className="inbody-app-screen-panel inbody-app-html-panel">
+      <div className="inbody-app-html-copy">
+        <div>
+          <div className="section-title">Hình ảnh InBody app</div>
+          <p>Nguồn hiển thị đã được thay bằng file HTML gốc <code>src/inbody-khanh/inbody_app_health_tracker.html</code>.</p>
+        </div>
+        <a href={inbodyAppHealthTrackerUrl} target="_blank" rel="noreferrer">Mở toàn màn hình ↗</a>
       </div>
-      <div className="inbody-app-nav">
-        <span>Trang tổng</span><b>Chi tiết</b><span>Thay đổi</span><span>Xếp hạng</span>
-      </div>
-      <div className="inbody-app-date">‹ <span>08.05.2026 (Th 6) 10:58</span> › <button type="button">🗑</button></div>
-      <div className="inbody-app-score"><b>Điểm InBody</b><strong>64 <small>Điểm</small></strong></div>
-      <div className="section-title">Phân tích từng bộ phận</div>
-      <div className="inbody-screen-tabs">
-        {INBODY_APP_SCREEN_TABS.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            className={screen.id === item.id ? 'active' : ''}
-            onClick={() => setScreen(item)}
-            style={{ '--screen-accent': item.accent }}
-          >
-            {item.label}
-          </button>
-        ))}
-      </div>
-      <div className="inbody-screen-summary" style={{ borderColor: screen.accent }}>
-        <b>{screen.label}</b><span>{screen.summary}</span>
-      </div>
-      <figure className="inbody-screen-figure">
-        <img src={screen.image} alt={screen.summary} />
-      </figure>
+      <iframe
+        title="InBody app health tracker"
+        src={inbodyAppHealthTrackerUrl}
+        className="inbody-app-html-frame"
+        loading="lazy"
+      />
     </div>
   );
 }
@@ -1103,7 +1076,7 @@ export default function InBodyDashboard({ userId, initialRecords, onViewMedicalR
     { id: 'upload', label: 'Scan', icon: '📤' },
     { id: 'quests', label: 'Nhiệm vụ', icon: '⚔️' },
     { id: 'history', label: 'Lịch sử', icon: '📈' },
-    { id: 'screens', label: 'Màn hình', icon: '📱' },
+    { id: 'screens', label: 'Hình ảnh', icon: '🖼️' },
     { id: 'rankings', label: 'Xếp Hạng', icon: '🏆' },
     { id: 'challenges', label: 'Thử Thách', icon: '🚀' },
     { id: 'badges', label: 'Huy hiệu', icon: '🏅' },
