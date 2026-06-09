@@ -19,6 +19,8 @@ import challengeRoadMapRef from '../DataInBody/RoadMap.png';
 import challengeJourneyRef from '../DataInBody/HanhTrinh3.png';
 import inbodyAppHealthTrackerUrl from '../inbody_app_health_tracker.html?url';
 
+const APPLE_HEALTH_STORAGE_KEY = 'ai_doctor_apple_health_days';
+
 // ─── Gamification engine ────────────────────────────────────────────────────
 function calcXP(records) {
   let xp = 0;
@@ -238,12 +240,15 @@ const APPLE_HEALTH_METRICS = {
   HKQuantityTypeIdentifierStepCount: { key: 'steps', mode: 'sum' },
   HKQuantityTypeIdentifierActiveEnergyBurned: { key: 'activeEnergy', mode: 'sum' },
   HKQuantityTypeIdentifierAppleExerciseTime: { key: 'exerciseMinutes', mode: 'sum' },
-  HKQuantityTypeIdentifierDistanceWalkingRunning: { key: 'distance', mode: 'sum' },
+  HKQuantityTypeIdentifierDistanceWalkingRunning: { key: 'distance', mode: 'sum', distance: true },
   HKQuantityTypeIdentifierHeartRate: { key: 'heartRate', mode: 'average' },
   HKQuantityTypeIdentifierRestingHeartRate: { key: 'restingHeartRate', mode: 'average' },
 };
 
 function dateKeyFromAppleHealth(value) {
+  const raw = String(value || '');
+  const directDate = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (directDate) return directDate[0];
   const date = new Date(value || Date.now());
   if (Number.isNaN(date.getTime())) return new Date().toISOString().slice(0, 10);
   return date.toISOString().slice(0, 10);
@@ -254,6 +259,7 @@ function normalizeAppleHealthValue(value, unit, config) {
   if (parsed === null) return null;
   if (config?.percent && String(unit || '').includes('%') && parsed <= 1) return +(parsed * 100).toFixed(1);
   if (config?.water && String(unit || '').toLowerCase() === 'ml') return +(parsed / 1000).toFixed(2);
+  if (config?.distance && String(unit || '').toLowerCase() === 'm') return +(parsed / 1000).toFixed(2);
   return parsed;
 }
 
@@ -935,17 +941,28 @@ function HistoryTab({ records }) {
 function InBodyAppScreensTab({ onAppleHealthImport, latest }) {
   const [appleStatus, setAppleStatus] = useState('Sẵn sàng nhận dữ liệu thật từ Apple Health trên iPhone.');
   const [applePreview, setApplePreview] = useState([]);
+  const [latestAppleRecords, setLatestAppleRecords] = useState([]);
+  const inbodyFrameRef = useRef(null);
   const nativeBridge = typeof window !== 'undefined' && (
     window.webkit?.messageHandlers?.appleHealth ||
     window.webkit?.messageHandlers?.healthKit
   );
 
+  const pushAppleHealthToInBodyFrame = (records = latestAppleRecords) => {
+    const frameWindow = inbodyFrameRef.current?.contentWindow;
+    if (!frameWindow || !records.length) return;
+    frameWindow.postMessage({ source: 'ai-doctor-admin', type: 'APPLE_HEALTH_DAYS_SYNC', records }, '*');
+  };
+
   const importAppleHealthDays = (days, sourceLabel = 'Apple Health') => {
     if (!days.length) throw new Error('Không tìm thấy dữ liệu Apple Health được hỗ trợ trong file đã chọn.');
     const dashboardRecords = buildAppleHealthDashboardRecords(days, latest);
     onAppleHealthImport?.(dashboardRecords);
+    setLatestAppleRecords(dashboardRecords);
+    try { localStorage.setItem(APPLE_HEALTH_STORAGE_KEY, JSON.stringify(dashboardRecords)); } catch {}
+    window.setTimeout(() => pushAppleHealthToInBodyFrame(dashboardRecords), 0);
     setApplePreview(dashboardRecords.slice(-5).reverse());
-    setAppleStatus(`Đã đồng bộ ${dashboardRecords.length} ngày dữ liệu thật từ ${sourceLabel} vào dashboard InBody.`);
+    setAppleStatus(`Đã đồng bộ ${dashboardRecords.length} ngày dữ liệu thật từ ${sourceLabel} vào dashboard InBody và Trang tổng Apple Health.`);
   };
 
   const handleAppleHealthFile = async (event) => {
@@ -981,6 +998,17 @@ function InBodyAppScreensTab({ onAppleHealthImport, latest }) {
     });
     setAppleStatus('Đã gửi yêu cầu tới HealthKit native bridge trên iPhone. Đang chờ dữ liệu trả về...');
   };
+
+  useEffect(() => {
+    try {
+      const storedRecords = JSON.parse(localStorage.getItem(APPLE_HEALTH_STORAGE_KEY) || '[]');
+      if (Array.isArray(storedRecords) && storedRecords.length) {
+        setLatestAppleRecords(storedRecords);
+        setApplePreview(storedRecords.slice(-5).reverse());
+        setAppleStatus(`Đã nạp ${storedRecords.length} ngày Apple Health đã đồng bộ trước đó cho Trang tổng.`);
+      }
+    } catch {}
+  }, []);
 
   useEffect(() => {
     const handleNativeMessage = (event) => {
@@ -1046,10 +1074,12 @@ function InBodyAppScreensTab({ onAppleHealthImport, latest }) {
         <a href={inbodyAppHealthTrackerUrl} target="_blank" rel="noreferrer">Mở toàn màn hình ↗</a>
       </div>
       <iframe
+        ref={inbodyFrameRef}
         title="InBody app health tracker"
         src={inbodyAppHealthTrackerUrl}
         className="inbody-app-html-frame"
         loading="lazy"
+        onLoad={() => pushAppleHealthToInBodyFrame()}
       />
     </div>
   );
