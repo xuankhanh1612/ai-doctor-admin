@@ -1,0 +1,2422 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>InBody Health Tracker - KhanhLX</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  :root {
+    --pink: #e8567c;
+    --pink-dark: #c0395f;
+    --pink-light: #f7c5d3;
+    --teal: #3eb8a0;
+    --teal-dark: #2d9a85;
+    --bg: #f5f5f7;
+    --white: #ffffff;
+    --text: #1a1a2e;
+    --text-2: #555;
+    --text-3: #888;
+    --border: #e0e0e0;
+    --good: #3eb8a0;
+    --warn: #f0a800;
+    --bad: #e8567c;
+    --blue: #4a90d9;
+    --card-radius: 16px;
+    --safe-bottom: env(safe-area-inset-bottom, 16px);
+  }
+  html, body {
+    width: 100%; max-width: 430px; margin: 0 auto;
+    height: 100dvh; overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg); color: var(--text);
+  }
+  
+  /* APP SHELL */
+  #app { 
+    width: 100%; height: 100dvh; 
+    display: flex; flex-direction: column;
+    position: relative; overflow: hidden;
+  }
+  
+  /* TOP NAV */
+  .top-nav {
+    background: var(--white); 
+    padding: 12px 16px 0;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    z-index: 100;
+  }
+  .brand-row {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .brand { font-size: 22px; font-weight: 700; color: var(--text); letter-spacing: -0.5px; }
+  .brand span { color: var(--pink); }
+  .brand-actions { display: flex; gap: 8px; align-items: center; }
+  .badge-btn {
+    background: #f0f0f4; border: none; border-radius: 20px;
+    padding: 6px 12px; font-size: 13px; font-weight: 600; color: var(--text);
+    cursor: pointer;
+  }
+  .icon-btn {
+    background: none; border: none; cursor: pointer;
+    font-size: 20px; color: var(--text-2); padding: 4px;
+  }
+  .tab-row {
+    display: flex; gap: 0;
+  }
+  .tab-btn {
+    flex: 1; background: none; border: none;
+    padding: 8px 4px 10px; font-size: 14px; font-weight: 500;
+    color: var(--text-3); cursor: pointer; text-align: center;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+  }
+  .tab-btn.active { color: var(--text); border-bottom-color: var(--text); font-weight: 600; }
+  
+  /* SCREENS */
+  .screens { flex: 1; overflow: hidden; position: relative; }
+  .screen {
+    position: absolute; inset: 0;
+    overflow-y: auto; overflow-x: hidden;
+    transform: translateX(100%);
+    transition: transform 0.3s ease;
+    background: var(--bg);
+    -webkit-overflow-scrolling: touch;
+  }
+  .screen.active { transform: translateX(0); }
+  .screen.prev { transform: translateX(-100%); }
+  
+  /* BOTTOM NAV */
+  .bottom-nav {
+    background: var(--white); border-top: 1px solid var(--border);
+    display: flex; justify-content: space-around; align-items: center;
+    padding: 8px 0 max(8px, var(--safe-bottom));
+    flex-shrink: 0; z-index: 100;
+  }
+  .bottom-btn {
+    background: none; border: none; cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    font-size: 10px; color: var(--text-3); padding: 4px 16px;
+    transition: color 0.2s;
+  }
+  .bottom-btn.active { color: var(--pink); }
+  .bottom-btn .icon { font-size: 22px; }
+  
+  /* CARDS */
+  .card {
+    background: var(--white); border-radius: var(--card-radius);
+    padding: 16px; margin: 12px 12px 0;
+    box-shadow: 0 2px 8px rgba(0,0,0,.06);
+  }
+  .card:last-child { margin-bottom: 12px; }
+  .card-title { font-size: 14px; font-weight: 600; color: var(--text-2); margin-bottom: 10px; }
+  
+  /* TRANG TỔNG - OVERVIEW */
+  .score-hero {
+    background: linear-gradient(135deg, var(--pink) 0%, #c0395f 50%, #8b2252 100%);
+    margin: 12px 12px 0; border-radius: var(--card-radius);
+    padding: 20px; color: white; position: relative; overflow: hidden;
+  }
+  .score-hero::before {
+    content: ''; position: absolute; top: -40px; right: -40px;
+    width: 160px; height: 160px; border-radius: 50%;
+    background: rgba(255,255,255,.1);
+  }
+  .score-hero-label { font-size: 13px; opacity: 0.85; margin-bottom: 4px; }
+  .score-number { font-size: 64px; font-weight: 800; line-height: 1; }
+  .score-sub { font-size: 18px; font-weight: 400; opacity: 0.9; }
+  .score-date { font-size: 12px; opacity: 0.7; margin-top: 6px; }
+  .score-trend { 
+    display: inline-flex; align-items: center; gap: 4px;
+    background: rgba(255,255,255,.2); border-radius: 12px;
+    padding: 4px 10px; font-size: 13px; font-weight: 600; margin-top: 8px;
+  }
+  
+  /* KEY METRICS GRID */
+  .metrics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 12px 12px 0; }
+  .metric-card {
+    background: var(--white); border-radius: var(--card-radius);
+    padding: 14px; box-shadow: 0 2px 8px rgba(0,0,0,.06);
+    cursor: pointer; transition: transform 0.15s;
+  }
+  .metric-card:active { transform: scale(0.97); }
+  .metric-label { font-size: 12px; color: var(--text-3); margin-bottom: 4px; }
+  .metric-value { font-size: 22px; font-weight: 700; color: var(--text); }
+  .metric-unit { font-size: 12px; font-weight: 400; color: var(--text-3); }
+  .metric-change { 
+    font-size: 11px; margin-top: 4px;
+    display: flex; align-items: center; gap: 3px;
+  }
+  .metric-change.good { color: var(--good); }
+  .metric-change.bad { color: var(--bad); }
+  .metric-change.neutral { color: var(--text-3); }
+  .metric-bar-wrap { height: 4px; background: #eee; border-radius: 4px; margin-top: 8px; }
+  .metric-bar { height: 100%; border-radius: 4px; background: var(--teal); }
+  
+  /* SECTION HEADERS */
+  .section-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 12px 8px;
+  }
+  .section-title { font-size: 16px; font-weight: 700; color: var(--text); }
+  .see-all { font-size: 13px; color: var(--pink); font-weight: 500; background: none; border: none; cursor: pointer; }
+  
+  /* BODY COMPOSITION BAR */
+  .body-comp-bar {
+    display: flex; height: 12px; border-radius: 8px; overflow: hidden; margin: 10px 0;
+  }
+  .bc-water { background: var(--blue); }
+  .bc-protein { background: var(--teal); }
+  .bc-mineral { background: #a0c070; }
+  .bc-fat { background: var(--pink); }
+  .bc-legend { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  .bc-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-2); }
+  .bc-dot { width: 8px; height: 8px; border-radius: 50%; }
+  
+  /* BLOOD PRESSURE CARD */
+  .bp-card { cursor: pointer; }
+  .bp-reading { 
+    display: flex; align-items: baseline; gap: 8px; margin: 8px 0;
+  }
+  .bp-value { font-size: 32px; font-weight: 700; }
+  .bp-sep { font-size: 24px; color: var(--text-3); }
+  .bp-unit { font-size: 12px; color: var(--text-3); margin-top: auto; }
+  .bp-status { 
+    display: inline-block; padding: 4px 12px; border-radius: 20px;
+    font-size: 12px; font-weight: 600;
+  }
+  .bp-status.warn { background: #fff3e0; color: #e65100; }
+  .bp-status.good { background: #e8f5e9; color: #2e7d32; }
+  
+  /* WORKOUT CARD */
+  .workout-card { cursor: pointer; }
+  .workout-progress { 
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .workout-kcal { font-size: 20px; font-weight: 700; }
+  .workout-goal { font-size: 13px; color: var(--text-3); }
+  .progress-bar { height: 8px; background: #eee; border-radius: 4px; overflow: hidden; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, var(--teal), var(--good)); border-radius: 4px; }
+  
+  /* GOAL SECTION */
+  .goal-item { 
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px; cursor: pointer; border-radius: 12px;
+    transition: background 0.15s;
+  }
+  .goal-item:active { background: var(--bg); }
+  .goal-icon { font-size: 24px; }
+  .goal-label { font-size: 15px; font-weight: 500; }
+  .goal-active { color: var(--text); }
+  .goal-inactive { color: var(--text-3); }
+  .goal-cta {
+    margin: 8px 12px; padding: 16px; border-radius: var(--card-radius);
+    background: var(--teal); color: white; border: none; 
+    font-size: 15px; font-weight: 600; width: calc(100% - 24px);
+    cursor: pointer; display: block;
+  }
+  
+  /* CHI TIẾT */
+  .detail-date-nav {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px; background: var(--white); border-bottom: 1px solid var(--border);
+  }
+  .nav-arrow { background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text-2); padding: 4px 8px; }
+  .nav-date { font-size: 14px; font-weight: 500; }
+  
+  .inbody-score-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 16px; background: var(--white); margin: 0 0 2px;
+  }
+  .ib-score-label { font-size: 15px; font-weight: 600; }
+  .ib-score-badge { 
+    background: #eee; border-radius: 12px; padding: 2px 8px;
+    font-size: 12px; font-weight: 600; color: var(--good); margin-left: 6px;
+  }
+  .ib-score-val { font-size: 28px; font-weight: 800; }
+  .ib-score-pts { font-size: 13px; color: var(--text-3); }
+  
+  /* RADAR CHART */
+  .radar-section { padding: 16px 12px; background: var(--white); margin: 2px 0; }
+  .radar-tabs { display: flex; background: #f0f0f4; border-radius: 10px; padding: 3px; margin-bottom: 16px; }
+  .radar-tab { 
+    flex: 1; text-align: center; padding: 8px; font-size: 13px; font-weight: 500;
+    border-radius: 8px; cursor: pointer; color: var(--text-3); background: none; border: none;
+    transition: all 0.2s;
+  }
+  .radar-tab.active { background: var(--white); color: var(--text); font-weight: 600; box-shadow: 0 1px 4px rgba(0,0,0,.12); }
+  
+  .body-diagram-container { position: relative; display: flex; align-items: center; justify-content: center; height: 220px; }
+  .body-svg { width: 120px; height: 180px; opacity: 0.7; }
+  .body-label {
+    position: absolute; font-size: 11px; font-weight: 600;
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+  }
+  .body-label .pct { font-size: 13px; }
+  .body-label .status { font-size: 10px; }
+  .label-top { top: 10px; left: 50%; transform: translateX(-50%); text-align: center; }
+  .label-left { left: 0; top: 50%; transform: translateY(-50%); text-align: right; }
+  .label-right { right: 0; top: 50%; transform: translateY(-50%); text-align: left; }
+  .label-bot-left { bottom: 20px; left: 0; text-align: right; }
+  .label-bot-right { bottom: 20px; right: 0; text-align: left; }
+  .status-normal { color: var(--teal); }
+  .status-high { color: var(--pink); }
+  
+  .segment-values { display: flex; flex-direction: column; gap: 6px; min-width: 110px; }
+  .seg-item { 
+    background: var(--bg); border-radius: 8px; padding: 8px 10px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .seg-name { font-size: 11px; color: var(--text-3); }
+  .seg-val { font-size: 15px; font-weight: 700; }
+  .seg-chg { font-size: 10px; color: var(--good); margin-left: 4px; }
+  .seg-chg.neg { color: var(--pink); }
+  
+  /* BODY ANALYSIS BARS */
+  .analysis-item { padding: 14px 16px; border-bottom: 1px solid var(--border); cursor: pointer; }
+  .analysis-label { font-size: 14px; color: var(--text-2); margin-bottom: 4px; display: flex; justify-content: space-between; align-items: center; }
+  .analysis-value { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+  .analysis-change { font-size: 12px; color: var(--good); }
+  .analysis-change.neg { color: var(--pink); }
+  .range-bar { height: 8px; background: linear-gradient(90deg, #4a90d9 0%, var(--teal) 40%, var(--teal) 60%, #f0a800 80%, var(--pink) 100%); border-radius: 4px; position: relative; }
+  .range-indicator { position: absolute; top: -3px; width: 14px; height: 14px; background: var(--text); border-radius: 50%; border: 2px solid white; transform: translateX(-50%); }
+  .range-labels { display: flex; justify-content: space-between; font-size: 10px; color: var(--text-3); margin-top: 4px; }
+  
+  /* BODY BALANCE */
+  .balance-item { padding: 12px 16px; border-bottom: 1px solid var(--border); }
+  .balance-label { font-size: 13px; color: var(--text-3); margin-bottom: 6px; }
+  .balance-status { 
+    display: inline-block; padding: 5px 14px; border-radius: 20px;
+    font-size: 13px; font-weight: 600; background: #e8f5e9; color: var(--teal);
+  }
+  
+  /* THAY ĐỔI */
+  .change-filters { display: flex; gap: 8px; padding: 12px; overflow-x: auto; }
+  .filter-btn {
+    background: var(--white); border: 1px solid var(--border); border-radius: 20px;
+    padding: 6px 14px; font-size: 13px; white-space: nowrap; cursor: pointer; color: var(--text-2);
+  }
+  .filter-btn.active { background: var(--pink); border-color: var(--pink); color: white; font-weight: 600; }
+  
+  .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; }
+  .toggle-label { font-size: 14px; font-weight: 500; }
+  .toggle-switch { 
+    width: 48px; height: 28px; background: var(--good); border-radius: 14px;
+    position: relative; cursor: pointer; border: none;
+  }
+  .toggle-switch::after {
+    content: ''; position: absolute; left: 3px; top: 3px;
+    width: 22px; height: 22px; background: white; border-radius: 50%;
+    transition: left 0.2s;
+  }
+  .toggle-switch.off { background: #ddd; }
+  .toggle-switch.off::after { left: 23px; }
+  
+  .chart-card { background: var(--white); border-radius: var(--card-radius); margin: 8px 12px 0; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+  .chart-title { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+  .chart-current { 
+    background: rgba(0,0,0,.06); border-radius: 8px; padding: 4px 10px;
+    font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; margin-bottom: 10px;
+  }
+  .chart-area { height: 100px; position: relative; overflow: visible; }
+  
+  /* SVG LINE CHART */
+  .chart-svg { width: 100%; height: 90px; overflow: visible; }
+  .chart-x-labels { display: flex; justify-content: space-between; margin-top: 4px; }
+  .chart-x-label { font-size: 10px; color: var(--text-3); text-align: center; }
+  
+  /* XẾP HẠNG */
+  .rank-hero {
+    background: linear-gradient(135deg, #8b2252 0%, var(--pink) 100%);
+    padding: 24px 16px; color: white; text-align: center;
+    position: relative; overflow: hidden;
+  }
+  .rank-hero::before {
+    content: ''; position: absolute; bottom: -30px; right: -30px;
+    width: 120px; height: 120px; border-radius: 50%; background: rgba(255,255,255,.1);
+  }
+  .rank-my-score { font-size: 48px; font-weight: 800; }
+  .rank-my-label { font-size: 14px; opacity: 0.85; margin-bottom: 4px; }
+  .rank-pts-label { font-size: 18px; opacity: 0.8; }
+  .rank-top {
+    background: rgba(255,255,255,.2); backdrop-filter: blur(4px);
+    border-radius: 20px; padding: 6px 16px; display: inline-block;
+    font-size: 14px; font-weight: 700; margin-top: 12px;
+  }
+  
+  .rank-filter-row { padding: 12px; display: flex; gap: 8px; align-items: center; }
+  .rank-filter-select { 
+    flex: 1; padding: 10px 14px; border: 1px solid var(--border); border-radius: 20px;
+    font-size: 13px; background: var(--white); color: var(--text); appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%23888' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 12px center;
+    padding-right: 30px;
+  }
+  
+  .rank-sub-tabs { display: flex; gap: 0; padding: 0 12px 12px; }
+  .rank-sub-tab { 
+    flex: 1; text-align: center; padding: 8px; font-size: 13px; font-weight: 500;
+    background: none; border: none; cursor: pointer; color: var(--text-3);
+    border-bottom: 2px solid transparent;
+  }
+  .rank-sub-tab.active { color: var(--text); border-bottom-color: var(--text); font-weight: 600; }
+  
+  .rank-notice { margin: 0 12px 8px; background: #f0f4ff; border-radius: 10px; padding: 12px; font-size: 12px; color: var(--text-2); display: flex; gap: 8px; }
+  .rank-notice-icon { font-size: 16px; flex-shrink: 0; }
+  
+  .rank-section-label { font-size: 15px; font-weight: 700; padding: 8px 12px 4px; display: flex; justify-content: space-between; align-items: center; }
+  .rank-gend-toggle { display: flex; gap: 8px; }
+  .rank-gend-btn { font-size: 12px; color: var(--text-3); background: none; border: none; cursor: pointer; font-weight: 500; }
+  .rank-gend-btn.active { color: var(--pink); font-weight: 700; }
+  
+  .leaderboard-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 16px; border-bottom: 1px solid var(--border);
+    background: var(--white);
+  }
+  .lb-rank { font-size: 16px; font-weight: 700; width: 24px; text-align: center; color: var(--text-2); }
+  .lb-new { font-size: 10px; color: var(--pink); font-weight: 700; background: #ffe0e8; border-radius: 4px; padding: 1px 5px; }
+  .lb-avatar { width: 36px; height: 36px; border-radius: 50%; background: #ddd; overflow: hidden; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+  .lb-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .lb-name { flex: 1; font-size: 14px; font-weight: 500; }
+  .lb-score { font-size: 16px; font-weight: 700; }
+  .lb-pts { font-size: 11px; color: var(--text-3); }
+  
+  /* BLOOD PRESSURE DETAIL PAGE */
+  .sub-page { background: var(--bg); min-height: 100%; }
+  .sub-header {
+    background: var(--white); display: flex; align-items: center;
+    padding: 14px 16px; border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 50;
+  }
+  .sub-back { background: none; border: none; cursor: pointer; font-size: 20px; margin-right: 12px; color: var(--text); }
+  .sub-title { font-size: 17px; font-weight: 600; }
+  
+  .sub-tabs { display: flex; background: var(--white); border-bottom: 1px solid var(--border); }
+  .sub-tab { flex: 1; text-align: center; padding: 12px; font-size: 14px; font-weight: 500; color: var(--text-3); border-bottom: 2px solid transparent; background: none; border: none; cursor: pointer; }
+  .sub-tab.active { color: var(--text); border-bottom-color: var(--text); font-weight: 600; }
+  
+  .bp-result-card { background: var(--white); margin: 12px; border-radius: var(--card-radius); padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+  .bp-date-label { font-size: 13px; font-weight: 700; color: var(--text-2); margin-bottom: 12px; }
+  .bp-main-reading { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+  .bp-systolic { font-size: 40px; font-weight: 800; color: var(--bad); }
+  .bp-slash { font-size: 28px; color: var(--text-3); }
+  .bp-diastolic { font-size: 40px; font-weight: 800; }
+  .bp-unit-label { font-size: 13px; color: var(--text-3); margin-top: 6px; }
+  .bp-heart-rate { display: flex; align-items: center; gap: 8px; font-size: 28px; font-weight: 700; }
+  .heart-icon { color: var(--pink); font-size: 20px; }
+  .bpm-label { font-size: 13px; color: var(--text-3); margin-top: 4px; }
+  
+  /* BP GAUGE */
+  .bp-gauge { margin: 16px 0 0; }
+  .gauge-title { font-size: 13px; font-weight: 600; color: var(--text-2); margin-bottom: 8px; }
+  .gauge-levels { border-radius: 12px; overflow: hidden; }
+  .gauge-level { display: flex; align-items: center; padding: 8px 12px; font-size: 13px; font-weight: 500; color: white; position: relative; }
+  .gauge-level.level-1 { background: #2e7d32; }
+  .gauge-level.level-2 { background: #66bb6a; }
+  .gauge-level.level-3 { background: #ffa726; }
+  .gauge-level.level-4 { background: #ef5350; }
+  .gauge-level.level-5 { background: #b71c1c; }
+  .gauge-threshold { position: absolute; right: 12px; font-size: 12px; opacity: 0.85; }
+  .gauge-indicator { width: 12px; height: 12px; background: white; border-radius: 50%; border: 2px solid rgba(0,0,0,.2); margin-right: 8px; }
+  
+  /* MANUAL INPUT */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,.5);
+    z-index: 200; display: flex; align-items: flex-end; justify-content: center;
+    opacity: 0; pointer-events: none; transition: opacity 0.3s;
+  }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+  .modal-sheet {
+    background: var(--white); border-radius: 20px 20px 0 0;
+    width: 100%; max-width: 430px; padding: 0 0 max(20px, var(--safe-bottom));
+    transform: translateY(100%); transition: transform 0.3s ease;
+    max-height: 90vh; overflow-y: auto;
+  }
+  .modal-overlay.open .modal-sheet { transform: translateY(0); }
+  .modal-handle { width: 40px; height: 4px; background: #ddd; border-radius: 2px; margin: 12px auto 0; }
+  .modal-title { font-size: 18px; font-weight: 700; padding: 16px 16px 8px; display: flex; justify-content: space-between; }
+  .modal-close { background: none; border: none; font-size: 22px; cursor: pointer; color: var(--text-3); }
+  .modal-date { padding: 4px 16px 12px; border-bottom: 1px solid var(--border); }
+  .modal-date-label { font-size: 13px; color: var(--text-3); margin-bottom: 4px; }
+  .modal-date-value { font-size: 15px; font-weight: 600; }
+  .modal-date-edit { color: var(--blue); font-size: 14px; background: none; border: none; cursor: pointer; margin-left: 8px; }
+  .modal-section-label { font-size: 13px; color: var(--text-3); padding: 12px 16px 4px; }
+  .modal-input-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 16px; border-bottom: 1px solid var(--border);
+  }
+  .modal-input-label { font-size: 15px; }
+  .modal-input-right { display: flex; align-items: center; gap: 8px; }
+  .modal-input-value { font-size: 18px; font-weight: 600; }
+  .modal-input-unit { font-size: 14px; color: var(--text-3); }
+  .modal-input-del { background: none; border: none; font-size: 18px; color: var(--text-3); cursor: pointer; }
+  .modal-note { padding: 8px 16px 16px; font-size: 12px; color: var(--text-3); }
+  .modal-confirm {
+    margin: 0 12px; width: calc(100% - 24px);
+    background: var(--text); color: white; border: none; border-radius: 12px;
+    padding: 16px; font-size: 16px; font-weight: 600; cursor: pointer;
+    transition: background 0.2s;
+  }
+  .modal-confirm:active { background: #333; }
+  
+  /* SETTINGS PAGE */
+  .settings-section { margin: 12px; }
+  .settings-title { font-size: 13px; color: var(--text-3); font-weight: 600; padding: 8px 4px 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .settings-item {
+    background: var(--white); padding: 14px 16px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    cursor: pointer;
+  }
+  .settings-item:first-of-type { border-radius: 12px 12px 0 0; }
+  .settings-item:last-of-type { border-radius: 0 0 12px 12px; border-bottom: none; }
+  .settings-item-label { font-size: 15px; }
+  .settings-item-value { font-size: 14px; color: var(--text-3); }
+  .settings-chevron { color: var(--text-3); font-size: 16px; }
+  
+  /* ACTION BUTTONS ROW */
+  .action-btn-row {
+    display: flex; gap: 10px; margin: 10px 12px 0;
+  }
+  .action-btn {
+    flex: 1; background: var(--white); border: 1.5px solid var(--border);
+    border-radius: 14px; padding: 13px 10px; font-size: 14px; font-weight: 600;
+    cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
+    transition: background 0.15s, transform 0.1s;
+    box-shadow: 0 2px 8px rgba(0,0,0,.05);
+  }
+  .action-btn:active { transform: scale(0.97); background: var(--bg); }
+  .action-btn.share-btn { color: var(--text); }
+  .action-btn.add-btn { color: var(--pink); border-color: var(--pink-light); }
+  
+  /* APPLE HEALTH SECTION */
+  .apple-health-section {
+    margin: 10px 12px 0; background: var(--white); border-radius: var(--card-radius);
+    box-shadow: 0 2px 8px rgba(0,0,0,.06); overflow: hidden;
+  }
+  .apple-health-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 14px; cursor: pointer;
+  }
+  .apple-health-left { display: flex; align-items: center; gap: 10px; }
+  .apple-health-icon { 
+    width: 32px; height: 32px; background: linear-gradient(135deg, #ff6b6b, #ff8e53);
+    border-radius: 8px; display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+  .apple-health-title { font-size: 14px; font-weight: 600; }
+  .apple-health-date { font-size: 12px; color: var(--text-3); margin-top: 1px; }
+  .apple-health-badge {
+    background: #e8f5e9; color: var(--teal); font-size: 11px; font-weight: 700;
+    border-radius: 10px; padding: 2px 8px; display: flex; align-items: center; gap: 4px;
+  }
+  .apple-health-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--teal); }
+  .apple-health-items { border-top: 1px solid var(--border); }
+  .ah-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 14px; border-bottom: 1px solid var(--border);
+  }
+  .ah-item:last-child { border-bottom: none; }
+  .ah-item-icon { font-size: 22px; width: 30px; text-align: center; }
+  .ah-item-label { flex: 1; }
+  .ah-item-name { font-size: 14px; font-weight: 500; }
+  .ah-item-sub { font-size: 12px; color: var(--text-3); }
+  .ah-item-value { font-size: 15px; font-weight: 700; color: var(--text); }
+  
+  /* ADD TEST MODAL */
+  .add-test-choice { padding: 8px 0 4px; }
+  .add-test-option {
+    display: flex; align-items: center; gap: 14px;
+    padding: 16px 20px; border-bottom: 1px solid var(--border);
+    cursor: pointer; transition: background 0.15s;
+  }
+  .add-test-option:active { background: var(--bg); }
+  .add-test-option:last-child { border-bottom: none; }
+  .add-test-option-icon { font-size: 22px; width: 32px; text-align: center; }
+  .add-test-option-text { font-size: 16px; font-weight: 500; }
+  .add-test-register { padding: 16px 20px; font-size: 14px; color: var(--blue); cursor: pointer; }
+  
+  /* BLOOD PRESSURE INPUT */
+  .bp-input-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 16px; border-bottom: 1px solid var(--border);
+  }
+  .bp-input-label { font-size: 15px; }
+  .bp-input-right { display: flex; align-items: center; gap: 8px; }
+  .bp-number-input {
+    width: 80px; border: none; text-align: right; font-size: 18px; font-weight: 600;
+    color: var(--text); background: transparent; outline: none;
+  }
+  .bp-input-unit { font-size: 14px; color: var(--text-3); }
+  .bp-note-area {
+    width: 100%; border: 1.5px solid var(--border); border-radius: 10px;
+    padding: 12px; font-size: 14px; resize: none; outline: none;
+    font-family: inherit; color: var(--text); background: var(--white);
+    margin: 0 16px; width: calc(100% - 32px);
+  }
+  .bp-note-area:focus { border-color: var(--blue); }
+  
+  /* INBODY INPUT FIELDS - interactive version */
+  .mi-input-field {
+    background: transparent; border: none; text-align: right;
+    font-size: 18px; font-weight: 600; color: var(--text);
+    width: 80px; outline: none;
+  }
+
+  /* SHARE SCREEN */
+  .share-screen {
+    position: fixed; inset: 0; z-index: 300;
+    background: #000; display: flex; flex-direction: column;
+    opacity: 0; pointer-events: none; transition: opacity 0.3s;
+    max-width: 430px; left: 50%; transform: translateX(-50%);
+  }
+  .share-screen.open { opacity: 1; pointer-events: all; }
+  .share-top-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 52px 16px 12px; position: absolute; top: 0; left: 0; right: 0; z-index: 10;
+    background: linear-gradient(to bottom, rgba(0,0,0,.5) 0%, transparent 100%);
+  }
+  .share-back-btn {
+    background: none; border: none; cursor: pointer;
+    font-size: 28px; color: white; line-height: 1; padding: 4px;
+  }
+  .share-done-btn {
+    background: none; border: none; cursor: pointer;
+    font-size: 16px; font-weight: 600; color: #ff375f; padding: 4px 8px;
+  }
+  .share-camera-area {
+    flex: 1; position: relative; overflow: hidden; background: #1a1a1a;
+  }
+  .share-bg-img {
+    width: 100%; height: 100%; object-fit: cover;
+    opacity: 0.85;
+  }
+  .share-overlay-card {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+    background: rgba(255,255,255,0.88); backdrop-filter: blur(8px);
+    border-radius: 16px; padding: 16px 20px; width: 82%; max-width: 320px;
+    box-shadow: 0 8px 32px rgba(0,0,0,.3);
+  }
+  .share-overlay-logo { font-size: 16px; font-weight: 700; margin-bottom: 2px; }
+  .share-overlay-logo span { color: var(--pink); }
+  .share-overlay-date { font-size: 11px; color: var(--text-3); margin-bottom: 12px; }
+  .share-metric-row { 
+    display: flex; gap: 0; margin-bottom: 10px; padding-bottom: 10px;
+    border-bottom: 1px solid rgba(0,0,0,.08);
+  }
+  .share-metric-row:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+  .share-metric-item { flex: 1; }
+  .share-metric-name { font-size: 10px; color: var(--text-3); margin-bottom: 2px; }
+  .share-metric-val { font-size: 17px; font-weight: 700; }
+  .share-metric-unit { font-size: 10px; color: var(--text-3); }
+  .share-metric-delta { font-size: 10px; color: var(--teal); margin-top: 1px; }
+  .share-metric-delta.neg { color: var(--pink); }
+  .share-range-bar { height: 5px; background: #eee; border-radius: 3px; margin-top: 4px; overflow: hidden; }
+  .share-range-fill { height: 100%; background: var(--pink); border-radius: 3px; }
+  .share-range-fill.good { background: var(--teal); }
+  
+  .share-controls {
+    position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .share-ctrl-btn {
+    width: 44px; height: 44px; border-radius: 50%; background: rgba(50,50,50,.75);
+    border: none; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    font-size: 18px; color: white; backdrop-filter: blur(4px);
+  }
+  
+  .share-bottom {
+    background: var(--white); padding: 12px 0 max(20px, var(--safe-bottom));
+  }
+  .share-mode-row {
+    display: flex; justify-content: center; gap: 32px; padding: 8px 0 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .share-mode-btn {
+    background: none; border: none; cursor: pointer;
+    font-size: 14px; color: var(--text-3); padding: 4px 8px;
+    position: relative;
+  }
+  .share-mode-btn.active { color: var(--text); font-weight: 600; }
+  .share-mode-btn.active::after {
+    content: ''; position: absolute; bottom: -13px; left: 50%; transform: translateX(-50%);
+    width: 6px; height: 6px; background: var(--text); border-radius: 50%;
+  }
+  .share-shutter-row {
+    display: flex; align-items: center; justify-content: center; gap: 32px; padding: 16px 0 4px;
+  }
+  .share-shutter-btn {
+    width: 68px; height: 68px; border-radius: 50%; background: var(--white);
+    border: 3px solid #333; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; font-weight: 600; color: var(--text);
+    box-shadow: 0 2px 12px rgba(0,0,0,.15);
+    transition: transform 0.1s;
+  }
+  .share-shutter-btn:active { transform: scale(0.93); }
+  .share-side-btn {
+    width: 42px; height: 42px; border-radius: 50%; background: #f0f0f4;
+    border: none; cursor: pointer; font-size: 18px;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s;
+  }
+  .share-side-btn:active { background: #e0e0e8; }
+  
+  /* Color BG mode grid */
+  .share-bg-colors {
+    display: flex; gap: 8px; padding: 12px 16px; flex-wrap: wrap;
+    overflow-x: auto;
+  }
+  .bg-color-swatch {
+    width: 48px; height: 48px; border-radius: 12px; cursor: pointer; flex-shrink: 0;
+    border: 3px solid transparent; transition: border-color 0.15s, transform 0.1s;
+  }
+  .bg-color-swatch.active { border-color: var(--text); transform: scale(1.08); }
+  
+  /* Frame selector in color mode */
+  .share-frame-section { padding: 0 12px 8px; }
+  .share-frame-label { font-size: 13px; font-weight: 600; margin-bottom: 8px; color: var(--text-2); }
+  .share-frame-row { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
+  .frame-option {
+    width: 72px; height: 72px; border-radius: 12px; flex-shrink: 0;
+    border: 2.5px solid var(--border); cursor: pointer; overflow: hidden;
+    background: var(--white); display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 600; color: var(--text-3);
+    transition: border-color 0.15s, transform 0.1s;
+  }
+  .frame-option.active { border-color: var(--text); transform: scale(1.04); }
+  .frame-option-check { 
+    width: 100%; height: 100%; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 4px;
+    background: #444; color: white; border-radius: 10px;
+  }
+
+  /* PROFILE PAGE */
+  .profile-avatar-section {
+    display: flex; flex-direction: column; align-items: center;
+    padding: 32px 16px 24px; background: var(--white);
+  }
+  .profile-avatar-wrap { position: relative; margin-bottom: 16px; }
+  .profile-avatar {
+    width: 80px; height: 80px; border-radius: 50%; overflow: hidden;
+    background: linear-gradient(135deg, #e8567c, #4a90d9);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 32px; font-weight: 700; color: white;
+  }
+  .profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .profile-current-badge {
+    background: #e8f5e9; color: var(--teal); font-size: 11px; font-weight: 600;
+    border-radius: 10px; padding: 3px 10px; margin-bottom: 4px;
+  }
+  .profile-name { font-size: 22px; font-weight: 700; margin-bottom: 0; }
+  .profile-list { margin: 12px; }
+  .profile-user-item {
+    background: var(--white); border-radius: var(--card-radius);
+    padding: 14px 16px; display: flex; align-items: center; gap: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.06); margin-bottom: 2px; cursor: pointer;
+  }
+  .profile-user-radio {
+    width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--text);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .profile-user-radio.selected::after {
+    content: ''; width: 10px; height: 10px; border-radius: 50%; background: var(--text);
+  }
+  .profile-user-avatar-sm {
+    width: 40px; height: 40px; border-radius: 50%; overflow: hidden; background: #ddd;
+    display: flex; align-items: center; justify-content: center; font-size: 18px;
+  }
+  .profile-user-name { flex: 1; font-size: 15px; font-weight: 500; }
+  .profile-user-role { font-size: 12px; color: var(--text-3); }
+  .profile-edit-btn { background: none; border: none; cursor: pointer; font-size: 18px; color: var(--text-3); }
+  .profile-secondary-section { padding: 0 12px; }
+  .profile-secondary-title { font-size: 14px; font-weight: 600; color: var(--text-3); padding: 16px 4px 8px; display: flex; justify-content: space-between; }
+  .profile-add-user {
+    background: var(--white); border-radius: var(--card-radius);
+    padding: 16px; text-align: center; font-size: 15px; font-weight: 500;
+    color: var(--text); cursor: pointer; border: none; width: 100%;
+    box-shadow: 0 2px 8px rgba(0,0,0,.06);
+  }
+  .profile-info-note {
+    display: flex; gap: 10px; padding: 12px 4px; font-size: 12px; color: var(--text-3);
+    line-height: 1.4;
+  }
+
+  /* USER DETAIL PAGE */
+  .user-detail-avatar { 
+    display: flex; flex-direction: column; align-items: center; 
+    padding: 28px 16px 16px; background: var(--white);
+  }
+  .user-detail-avatar-circle {
+    width: 72px; height: 72px; border-radius: 50%; overflow: hidden; position: relative;
+    background: linear-gradient(135deg, #e8567c, #4a90d9);
+    display: flex; align-items: center; justify-content: center; font-size: 28px; color: white;
+  }
+  .user-detail-avatar-circle img { width: 100%; height: 100%; object-fit: cover; }
+  .ud-add-icon {
+    position: absolute; bottom: 0; right: 0;
+    width: 22px; height: 22px; border-radius: 50%; background: var(--white);
+    border: 2px solid var(--border); display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; color: var(--text);
+  }
+  .ud-section-label { font-size: 12px; font-weight: 700; color: var(--text-3); padding: 14px 16px 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .ud-item {
+    background: var(--white); padding: 14px 16px;
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid var(--border); cursor: pointer;
+  }
+  .ud-item-label { font-size: 15px; }
+  .ud-item-value { font-size: 14px; color: var(--text-3); display: flex; align-items: center; gap: 6px; }
+  .ud-chevron { color: var(--text-3); }
+
+  /* ADD USER FORM */
+  .add-user-section-label { font-size: 13px; color: var(--text-3); padding: 16px 16px 6px; }
+  .add-user-warning { font-size: 12px; color: var(--blue); padding: 0 16px 8px; line-height: 1.4; }
+  .add-user-input {
+    background: var(--white); margin: 0 12px; border-radius: 12px;
+    border: 1.5px solid var(--border); padding: 14px 16px; font-size: 16px;
+    color: var(--text); outline: none; width: calc(100% - 24px); font-family: inherit;
+    display: block;
+  }
+  .add-user-input:focus { border-color: var(--blue); }
+  .add-user-input::placeholder { color: var(--text-3); }
+  .gender-btns { display: flex; gap: 10px; padding: 0 12px 12px; }
+  .gender-btn {
+    flex: 1; padding: 14px; border-radius: 12px; border: 1.5px solid var(--border);
+    background: var(--white); font-size: 15px; cursor: pointer; transition: all 0.15s;
+  }
+  .gender-btn.active { border-color: var(--text); background: var(--text); color: white; font-weight: 600; }
+  .date-input-row { display: flex; gap: 0; margin: 0 12px; background: var(--white); border-radius: 12px; border: 1.5px solid var(--border); overflow: hidden; }
+  .date-seg { flex: 1; padding: 14px 0; text-align: center; font-size: 15px; color: var(--text-3); border: none; background: transparent; outline: none; }
+  .date-dot { padding: 14px 0; font-size: 15px; color: var(--text-3); line-height: 1; display: flex; align-items: center; }
+  .terms-row { display: flex; align-items: center; gap: 10px; margin: 12px 16px; cursor: pointer; }
+  .terms-check { font-size: 18px; }
+  .terms-text { flex: 1; font-size: 14px; color: var(--text); }
+  .terms-arrow { font-size: 16px; color: var(--text-3); }
+
+  /* SCROLLBAR HIDE */
+  .screen::-webkit-scrollbar { display: none; }
+  .screen { scrollbar-width: none; }
+  
+  /* ANIMATIONS */
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.7} }
+  .pulse { animation: pulse 2s infinite; }
+  
+  /* CHART TOOLTIP */
+  .chart-dot { cursor: pointer; transition: r 0.15s; }
+  .chart-dot:hover { r: 6; }
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- TOP NAV -->
+  <div class="top-nav" id="topNav">
+    <div class="brand-row">
+      <div class="brand">In<span>Body</span></div>
+      <div class="brand-actions">
+        <button class="badge-btn" id="profileBtn" onclick="navigateToPage('profile')">KhanhLX</button>
+        <button class="badge-btn" id="deviceBtn">TOUCH</button>
+        <button class="icon-btn">⊞</button>
+        <button class="icon-btn">🔔</button>
+      </div>
+    </div>
+    <div class="tab-row">
+      <button class="tab-btn active" onclick="switchTab('trangTong', this)">Trang tổng</button>
+      <button class="tab-btn" onclick="switchTab('chiTiet', this)">Chi tiết</button>
+      <button class="tab-btn" onclick="switchTab('thayDoi', this)">Thay đổi</button>
+      <button class="tab-btn" onclick="switchTab('xepHang', this)">Xếp hạng</button>
+    </div>
+  </div>
+  
+  <!-- SCREENS CONTAINER -->
+  <div class="screens">
+  
+    <!-- ===== TRANG TỔNG ===== -->
+    <div class="screen active" id="screen-trangTong">
+      <div style="height:8px"></div>
+      
+      <!-- Score Hero -->
+      <div class="score-hero" onclick="switchTab('chiTiet', document.querySelectorAll('.tab-btn')[1])" style="cursor:pointer">
+        <div class="score-hero-label">Điểm InBody của tôi</div>
+        <div style="display:flex;align-items:baseline;gap:8px">
+          <div class="score-number">65</div>
+          <div class="score-sub">Điểm</div>
+        </div>
+        <div class="score-trend">▲ +2 từ lần trước</div>
+        <div class="score-date">07.06.2026 (CN) 16:52</div>
+      </div>
+      
+      <!-- Action Buttons Row -->
+      <div class="action-btn-row">
+        <button class="action-btn share-btn" onclick="openShareScreen()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+          Chia sẻ
+        </button>
+        <button class="action-btn add-btn" onclick="openAddTestModal()">
+          <span style="font-size:16px;font-weight:700">+</span> Thêm Kiểm Tra
+        </button>
+      </div>
+      
+      <!-- Apple Health Section -->
+      <div class="apple-health-section">
+        <div class="apple-health-header" onclick="toggleAppleHealth()">
+          <div class="apple-health-left">
+            <div class="apple-health-icon">🍎</div>
+            <div>
+              <div class="apple-health-title">Apple Health</div>
+              <div class="apple-health-date">08.05.2026</div>
+            </div>
+          </div>
+          <div class="apple-health-badge"><div class="apple-health-dot"></div> Đã kết nối</div>
+        </div>
+        <div class="apple-health-items" id="appleHealthItems">
+          <div class="ah-item">
+            <div class="ah-item-icon">👣</div>
+            <div class="ah-item-label">
+              <div class="ah-item-name">Bước</div>
+              <div style="width:100%;height:4px;background:#eee;border-radius:4px;margin-top:4px"><div style="width:0%;height:100%;background:var(--teal);border-radius:4px"></div></div>
+            </div>
+            <div class="ah-item-value" style="color:var(--text-3)">0<span style="font-size:11px;font-weight:400"> /10000</span></div>
+          </div>
+          <div class="ah-item">
+            <div class="ah-item-icon">❤️</div>
+            <div class="ah-item-label">
+              <div class="ah-item-name">Heart Rate</div>
+              <div class="ah-item-sub">Hôm nay là một ngày hồi hộp biết bao</div>
+            </div>
+          </div>
+          <div class="ah-item">
+            <div class="ah-item-icon">🌙</div>
+            <div class="ah-item-label">
+              <div class="ah-item-name">Giấc ngủ</div>
+              <div class="ah-item-sub">Bạn ngủ ngon không?</div>
+            </div>
+          </div>
+          <div class="ah-item">
+            <div class="ah-item-icon">🏋️</div>
+            <div class="ah-item-label">
+              <div class="ah-item-name">Hồ sơ tập luyện</div>
+              <div style="width:100%;height:4px;background:#eee;border-radius:4px;margin-top:4px"><div style="width:60%;height:100%;background:#888;border-radius:4px"></div></div>
+            </div>
+            <div class="ah-item-value">1444<span style="font-size:11px;font-weight:400">/2394 kcal</span></div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Key Metrics Grid -->
+      <div class="metrics-grid">
+        <div class="metric-card" onclick="showMetricDetail('weight')">
+          <div class="metric-label">Cân nặng</div>
+          <div class="metric-value">71.0 <span class="metric-unit">kg</span></div>
+          <div class="metric-change good">▼ -1.5 so với tháng trước</div>
+          <div class="metric-bar-wrap"><div class="metric-bar" style="width:60%;background:var(--teal)"></div></div>
+        </div>
+        <div class="metric-card" onclick="showMetricDetail('bmi')">
+          <div class="metric-label">BMI</div>
+          <div class="metric-value">26.1 <span class="metric-unit">kg/m²</span></div>
+          <div class="metric-change warn" style="color:var(--warn)">● Thừa cân nhẹ</div>
+          <div class="metric-bar-wrap"><div class="metric-bar" style="width:70%;background:var(--warn)"></div></div>
+        </div>
+        <div class="metric-card" onclick="showMetricDetail('fat')">
+          <div class="metric-label">Tỷ lệ mỡ</div>
+          <div class="metric-value">30.0 <span class="metric-unit">%</span></div>
+          <div class="metric-change bad">▼ -2.4% so với tháng trước</div>
+          <div class="metric-bar-wrap"><div class="metric-bar" style="width:75%;background:var(--pink)"></div></div>
+        </div>
+        <div class="metric-card" onclick="showMetricDetail('muscle')">
+          <div class="metric-label">Khối lượng cơ</div>
+          <div class="metric-value">27.0 <span class="metric-unit">kg</span></div>
+          <div class="metric-change good">▲ -0.8 so với tháng trước</div>
+          <div class="metric-bar-wrap"><div class="metric-bar" style="width:65%"></div></div>
+        </div>
+      </div>
+      
+      <!-- Body Composition Bar -->
+      <div class="card">
+        <div class="card-title">Thành phần cơ thể</div>
+        <div class="body-comp-bar">
+          <div class="bc-water" style="width:51%"></div>
+          <div class="bc-protein" style="width:14%"></div>
+          <div class="bc-mineral" style="width:5%"></div>
+          <div class="bc-fat" style="width:30%"></div>
+        </div>
+        <div class="bc-legend">
+          <div class="bc-item"><div class="bc-dot" style="background:var(--blue)"></div>Nước 36.5L</div>
+          <div class="bc-item"><div class="bc-dot" style="background:var(--teal)"></div>Protein 9.8kg</div>
+          <div class="bc-item"><div class="bc-dot" style="background:#a0c070"></div>Khoáng 3.40kg</div>
+          <div class="bc-item"><div class="bc-dot" style="background:var(--pink)"></div>Mỡ 21.3kg</div>
+        </div>
+      </div>
+      
+      <!-- Blood Pressure Card -->
+      <div class="card bp-card" onclick="navigateToPage('bloodPressure')">
+        <div class="card-title">Hồ sơ huyết áp →</div>
+        <div class="bp-reading">
+          <span class="bp-value" style="color:var(--bad)">110</span>
+          <span class="bp-sep">/</span>
+          <span class="bp-value">96</span>
+          <span class="bp-unit">mmHg</span>
+          <span style="margin-left:auto;display:flex;align-items:center;gap:6px">
+            <span style="font-size:16px;color:var(--pink)">❤</span>
+            <span style="font-size:20px;font-weight:700">69</span>
+            <span style="font-size:11px;color:var(--text-3)">BPM</span>
+          </span>
+        </div>
+        <span class="bp-status warn">⚠ Tăng huyết áp độ 1</span>
+      </div>
+      
+      <!-- Workout Card -->
+      <div class="card workout-card" onclick="navigateToPage('workout')">
+        <div class="card-title">Hồ sơ tập luyện →</div>
+        <div class="workout-progress">
+          <div>
+            <div class="workout-kcal">1,444 <span style="font-size:13px;font-weight:400;color:var(--text-3)">/ 2,394 kcal</span></div>
+            <div style="font-size:12px;color:var(--text-3);margin-top:2px">Tỷ lệ trao đổi chất cơ bản</div>
+          </div>
+          <div style="font-size:32px">🏋️</div>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill" style="width:60%"></div>
+        </div>
+      </div>
+      
+      <!-- Visceral Fat -->
+      <div class="card">
+        <div class="card-title">Mức độ chất béo nội tạng</div>
+        <div style="display:flex;align-items:center;gap:16px">
+          <div style="font-size:48px;font-weight:800;color:var(--warn)">9</div>
+          <div>
+            <div style="font-size:13px;color:var(--text-3)">Mức</div>
+            <div style="font-size:14px;font-weight:600;color:var(--warn)">⚠ Cần theo dõi</div>
+            <div style="font-size:12px;color:var(--text-3);margin-top:4px">Giới hạn an toàn: ≤ 9</div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Goal Section -->
+      <div class="section-header">
+        <div class="section-title">Mục tiêu của bạn là gì?</div>
+      </div>
+      <div class="card" style="padding:8px">
+        <div class="goal-item" onclick="alert('Đang thiết lập mục tiêu tăng cơ xương...')">
+          <span class="goal-icon">🌿</span>
+          <span class="goal-label goal-active">Tăng cơ xương</span>
+        </div>
+        <div class="goal-item" onclick="alert('Đang thiết lập mục tiêu giảm mỡ...')">
+          <span class="goal-icon">🧅</span>
+          <span class="goal-label goal-inactive">Giảm mỡ trong cơ thể</span>
+        </div>
+        <div class="goal-item">
+          <span class="goal-icon" style="opacity:0.4">🌿</span>
+          <span class="goal-label goal-inactive">Tăng cơ xương, giảm mỡ trong cơ thể</span>
+        </div>
+      </div>
+      <button class="goal-cta" onclick="alert('Đặt mục tiêu và xây dựng thành phần cơ thể mong muốn')">
+        Đặt mục tiêu và xây dựng thành phần cơ thể mong muốn
+      </button>
+      
+      <div style="height:12px"></div>
+    </div>
+    
+    <!-- ===== CHI TIẾT ===== -->
+    <div class="screen" id="screen-chiTiet">
+      <!-- Date Navigation -->
+      <div class="detail-date-nav">
+        <button class="nav-arrow" onclick="changeDate(-1)">‹</button>
+        <div class="nav-date">07.06.2026 (CN) 16:52</div>
+        <button class="nav-arrow" onclick="changeDate(1)">›</button>
+        <button style="background:none;border:none;cursor:pointer;font-size:18px;color:var(--text-3)">🗑</button>
+      </div>
+      
+      <!-- InBody Score -->
+      <div class="inbody-score-row">
+        <div>
+          <span class="ib-score-label">Điểm InBody</span>
+          <span class="ib-score-badge">+2</span>
+        </div>
+        <div style="display:flex;align-items:baseline;gap:4px">
+          <span class="ib-score-val">65</span>
+          <span class="ib-score-pts">Điểm</span>
+        </div>
+      </div>
+      
+      <!-- Radar/Segment Analysis -->
+      <div class="radar-section">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <div style="font-size:16px;font-weight:700">Phân tích từng bộ phận</div>
+          <button style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--blue)">⬆</button>
+        </div>
+        <div class="radar-tabs">
+          <button class="radar-tab active" id="muscleTab" onclick="switchRadar('muscle', this)">Khối lượng cơ</button>
+          <button class="radar-tab" id="fatTab" onclick="switchRadar('fat', this)">Mỡ trong cơ thể</button>
+        </div>
+        
+        <!-- Muscle tab content -->
+        <div id="radarMuscle" style="display:flex;gap:12px;align-items:center">
+          <div class="body-diagram-container" style="flex:1;height:200px;position:relative">
+            <svg class="body-svg" viewBox="0 0 80 140" fill="none">
+              <ellipse cx="40" cy="12" rx="11" ry="12" fill="#ccd" opacity="0.7"/>
+              <rect x="26" y="24" width="28" height="40" rx="6" fill="#aac" opacity="0.7"/>
+              <rect x="12" y="26" width="12" height="36" rx="5" fill="#99b" opacity="0.7"/>
+              <rect x="56" y="26" width="12" height="36" rx="5" fill="#99b" opacity="0.7"/>
+              <rect x="26" y="64" width="12" height="44" rx="5" fill="#aac" opacity="0.7"/>
+              <rect x="42" y="64" width="12" height="44" rx="5" fill="#aac" opacity="0.7"/>
+            </svg>
+            <div class="body-label label-top"><span class="pct status-normal">92.4%</span><span class="status status-normal">Bình thường</span><span>Thân hình</span></div>
+            <div class="body-label label-left"><span>Cánh tay trái</span><span class="pct status-normal">85.9%</span><span class="status status-normal">Bình thường</span></div>
+            <div class="body-label label-right"><span>Cánh tay phải</span><span class="pct status-normal">89.7%</span><span class="status status-normal">Bình thường</span></div>
+            <div class="body-label label-bot-left"><span>Chân trái</span><span class="pct status-normal">93.7%</span><span class="status status-normal">Bình thường</span></div>
+            <div class="body-label label-bot-right"><span>Chân phải</span><span class="pct status-normal">91.8%</span><span class="status status-normal">Bình thường</span></div>
+          </div>
+          <div class="segment-values">
+            <div class="seg-item"><div><div class="seg-name">Thân hình</div><div class="seg-val">22.2 <span style="font-size:11px">kg</span></div></div><span class="seg-chg">+0.4</span></div>
+            <div class="seg-item"><div><div class="seg-name">Cánh tay trái</div><div class="seg-val">2.58 <span style="font-size:11px">kg</span></div></div><span class="seg-chg">+0.09</span></div>
+            <div class="seg-item"><div><div class="seg-name">Cánh tay phải</div><div class="seg-val">2.70 <span style="font-size:11px">kg</span></div></div><span class="seg-chg">+0.07</span></div>
+            <div class="seg-item"><div><div class="seg-name">Chân trái</div><div class="seg-val">7.83 <span style="font-size:11px">kg</span></div></div><span class="seg-chg">+0.09</span></div>
+            <div class="seg-item"><div><div class="seg-name">Chân phải</div><div class="seg-val">7.68 <span style="font-size:11px">kg</span></div></div><span class="seg-chg">+0.07</span></div>
+          </div>
+        </div>
+        
+        <!-- Fat tab content -->
+        <div id="radarFat" style="display:none;flex-direction:column;gap:12px">
+          <div style="display:flex;gap:12px;align-items:center">
+            <div style="flex:1;text-align:center">
+              <div style="font-size:13px;color:var(--pink);font-weight:600;margin-bottom:4px">309.5% · Trên BT</div>
+              <div style="font-size:11px;color:var(--text-3)">Thân hình</div>
+            </div>
+          </div>
+          <div class="segment-values" style="flex-direction:row;flex-wrap:wrap;min-width:unset">
+            <div class="seg-item" style="flex:1;min-width:calc(50% - 4px)"><div><div class="seg-name">Thân hình</div><div class="seg-val" style="color:var(--pink)">11.7 kg</div></div><span class="seg-chg neg">-0.4</span></div>
+            <div class="seg-item" style="flex:1;min-width:calc(50% - 4px)"><div><div class="seg-name">Cánh tay trái</div><div class="seg-val" style="color:var(--pink)">1.6 kg</div></div><span class="seg-chg neg">-0.1</span></div>
+            <div class="seg-item" style="flex:1;min-width:calc(50% - 4px)"><div><div class="seg-name">Cánh tay phải</div><div class="seg-val" style="color:var(--pink)">1.5 kg</div></div><span class="seg-chg neg">-0.1</span></div>
+            <div class="seg-item" style="flex:1;min-width:calc(50% - 4px)"><div><div class="seg-name">Chân trái</div><div class="seg-val" style="color:var(--pink)">3.4 kg</div></div><span class="seg-chg neg">-0.2</span></div>
+            <div class="seg-item" style="flex:1;min-width:calc(50% - 4px)"><div><div class="seg-name">Chân phải</div><div class="seg-val" style="color:var(--pink)">3.4 kg</div></div><span class="seg-chg neg">-0.1</span></div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Body Balance Section -->
+      <div style="background:var(--white);margin:2px 0;padding:16px">
+        <div style="font-size:16px;font-weight:700;margin-bottom:12px">Đánh giá cân bằng cơ thể</div>
+        <div class="balance-item"><div class="balance-label">Phần trên</div><span class="balance-status">Cân bằng</span></div>
+        <div class="balance-item"><div class="balance-label">Phần dưới</div><span class="balance-status">Cân bằng</span></div>
+        <div class="balance-item" style="border-bottom:none"><div class="balance-label">Trên-Dưới</div><span class="balance-status">Cân bằng</span></div>
+      </div>
+      
+      <!-- Body Composition Analysis -->
+      <div style="background:var(--white);margin:2px 0;padding:16px">
+        <div style="font-size:16px;font-weight:700;margin-bottom:8px">Phân tích thành phần cơ thể</div>
+        
+        <div class="analysis-item" onclick="navigateToPage('proteinDetail')">
+          <div class="analysis-label">Protein <span>›</span></div>
+          <div class="analysis-value">9.8 <span style="font-size:14px;font-weight:400;color:var(--text-3)">kg</span></div>
+          <div class="analysis-change">+0.2</div>
+          <div class="range-bar"><div class="range-indicator" style="left:45%"></div></div>
+          <div class="range-labels"><span>Dưới</span><span>Bình thường</span><span>Trên</span></div>
+        </div>
+        
+        <div class="analysis-item" onclick="navigateToPage('mineralDetail')">
+          <div class="analysis-label">Khoáng chất <span>›</span></div>
+          <div class="analysis-value">3.40 <span style="font-size:14px;font-weight:400;color:var(--text-3)">kg</span></div>
+          <div class="analysis-change">+0.02</div>
+          <div class="range-bar"><div class="range-indicator" style="left:45%"></div></div>
+          <div class="range-labels"><span>Dưới</span><span>Bình thường</span><span>Trên</span></div>
+        </div>
+        
+        <div class="analysis-item" onclick="navigateToPage('boneDetail')">
+          <div class="analysis-label">Hàm lượng khoáng trong xương <span>›</span></div>
+          <div class="analysis-value">2.84 <span style="font-size:14px;font-weight:400;color:var(--text-3)">kg</span></div>
+          <div class="analysis-change">+0.04</div>
+          <div class="range-bar"><div class="range-indicator" style="left:45%"></div></div>
+          <div class="range-labels"><span>Dưới</span><span>Bình thường</span><span>Trên</span></div>
+        </div>
+        
+        <div class="analysis-item">
+          <div class="analysis-label">Khối lượng tế bào cơ thể <span>›</span></div>
+          <div class="analysis-value">32.5 <span style="font-size:14px;font-weight:400;color:var(--text-3)">kg</span></div>
+          <div class="analysis-change">+0.6</div>
+          <div class="range-bar"><div class="range-indicator" style="left:48%"></div></div>
+          <div class="range-labels"><span>Dưới</span><span>Bình thường</span><span>Trên</span></div>
+        </div>
+        
+        <div class="analysis-item">
+          <div class="analysis-label">Chỉ số khối cơ xương <span>›</span></div>
+          <div class="analysis-value">7.6 <span style="font-size:14px;font-weight:400;color:var(--text-3)">kg/m²</span></div>
+          <div class="analysis-change">+0.1</div>
+          <div class="range-bar"><div class="range-indicator" style="left:50%"></div></div>
+          <div class="range-labels"><span>Dưới</span><span>Bình thường</span><span>Trên</span></div>
+        </div>
+        
+        <div class="analysis-item" style="border-bottom:none">
+          <div class="analysis-label">Góc pha toàn bộ cơ thể <span>›</span></div>
+          <div class="analysis-value">6.0 <span style="font-size:14px;font-weight:400;color:var(--text-3)">°</span></div>
+          <div class="analysis-change" style="color:var(--text-3)">0.0</div>
+        </div>
+      </div>
+      
+      <!-- Export -->
+      <div style="padding:16px 12px;display:flex;justify-content:center">
+        <button onclick="alert('Xuất dữ liệu PDF')" style="display:flex;align-items:center;gap:8px;background:none;border:none;color:var(--pink);font-size:15px;font-weight:600;cursor:pointer">
+          ⬇ Xuất dữ liệu
+        </button>
+      </div>
+      
+      <div style="height:12px"></div>
+    </div>
+    
+    <!-- ===== THAY ĐỔI ===== -->
+    <div class="screen" id="screen-thayDoi">
+      <!-- Filters -->
+      <div class="change-filters">
+        <button class="filter-btn active" onclick="setFilter(this, '08.05.26 ~ Gần đây')">08.05.26 ~ Gần đây ▾</button>
+        <button class="filter-btn" onclick="setFilter(this, 'Tất cả các thiết bị')">Tất cả các thiết bị ▾</button>
+      </div>
+      
+      <div class="toggle-row">
+        <span class="toggle-label">Gần đây</span>
+        <button class="toggle-switch" onclick="this.classList.toggle('off')" id="recentToggle"></button>
+        <span style="margin-left:8px;font-size:14px;color:var(--text-3)">Tổng</span>
+        <button onclick="alert('Cài đặt các mục hiển thị')" style="margin-left:auto;background:none;border:none;cursor:pointer;font-size:13px;color:var(--text-3);display:flex;align-items:center;gap:4px">⚙ Cài đặt các mục hiển thị</button>
+      </div>
+      
+      <!-- InBody Score Chart -->
+      <div class="chart-card">
+        <div class="chart-title">Điểm InBody <span style="font-size:13px;font-weight:400;color:var(--text-3)">(Điểm)</span></div>
+        <div class="chart-current">07.06.26 16:52 &nbsp; <strong>65Điểm</strong></div>
+        <svg class="chart-svg" viewBox="0 0 320 80">
+          <defs><linearGradient id="gIB" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#e8567c" stop-opacity="0.2"/><stop offset="100%" stop-color="#e8567c" stop-opacity="0"/></linearGradient></defs>
+          <polyline points="10,48 57,48 104,56 151,48 198,40 245,52 292,40" fill="none" stroke="#ccc" stroke-width="2"/>
+          <path d="M10,48 L57,48 L104,56 L151,48 L198,40 L245,52 L292,40 L292,80 L10,80 Z" fill="url(#gIB)" opacity="0.5"/>
+          <circle cx="10" cy="48" r="4" fill="#888"/><text x="10" y="44" text-anchor="middle" font-size="9" fill="#888">64</text>
+          <circle cx="57" cy="48" r="4" fill="#888"/><text x="57" y="44" text-anchor="middle" font-size="9" fill="#888">64</text>
+          <circle cx="104" cy="56" r="4" fill="#888"/><text x="104" y="52" text-anchor="middle" font-size="9" fill="#888">63</text>
+          <circle cx="151" cy="48" r="4" fill="#888"/><text x="151" y="44" text-anchor="middle" font-size="9" fill="#888">64</text>
+          <circle cx="198" cy="40" r="4" fill="var(--pink)"/><text x="198" y="36" text-anchor="middle" font-size="9" fill="var(--pink)">65</text>
+          <circle cx="245" cy="52" r="4" fill="var(--pink)"/><text x="245" y="48" text-anchor="middle" font-size="9" fill="var(--pink)">63</text>
+          <circle cx="292" cy="40" r="5" fill="var(--pink)" stroke="white" stroke-width="2"/><text x="292" y="36" text-anchor="middle" font-size="9" fill="var(--pink)" font-weight="bold">65</text>
+        </svg>
+        <div class="chart-x-labels">
+          <span class="chart-x-label">08.05.26</span><span class="chart-x-label">08.05</span><span class="chart-x-label">08.05</span><span class="chart-x-label">08.05</span><span class="chart-x-label">07.06</span><span class="chart-x-label">07.06</span><span class="chart-x-label">07.06</span>
+        </div>
+      </div>
+      
+      <!-- Weight Chart -->
+      <div class="chart-card">
+        <div class="chart-title">Cân nặng <span style="font-size:13px;font-weight:400;color:var(--text-3)">(kg)</span></div>
+        <div class="chart-current">09.06.26 15:54 &nbsp; <strong>71.0kg</strong></div>
+        <svg class="chart-svg" viewBox="0 0 320 80">
+          <polyline points="10,20 57,20 104,18 151,38 198,34 245,22 292,42" fill="none" stroke="#ccc" stroke-width="2"/>
+          <circle cx="10" cy="20" r="4" fill="var(--pink)"/><text x="10" y="16" text-anchor="middle" font-size="9" fill="var(--pink)">74.3</text>
+          <circle cx="57" cy="20" r="4" fill="var(--pink)"/><text x="57" y="16" text-anchor="middle" font-size="9" fill="var(--pink)">74.3</text>
+          <circle cx="104" cy="18" r="4" fill="var(--pink)"/><text x="104" y="14" text-anchor="middle" font-size="9" fill="var(--pink)">74.5</text>
+          <circle cx="151" cy="38" r="4" fill="var(--pink)"/><text x="151" y="34" text-anchor="middle" font-size="9" fill="var(--pink)">71.9</text>
+          <circle cx="198" cy="34" r="4" fill="var(--pink)"/><text x="198" y="30" text-anchor="middle" font-size="9" fill="var(--pink)">72.3</text>
+          <circle cx="245" cy="22" r="4" fill="var(--pink)"/><text x="245" y="18" text-anchor="middle" font-size="9" fill="var(--pink)">72.5</text>
+          <circle cx="292" cy="42" r="5" fill="var(--pink)" stroke="white" stroke-width="2"/><text x="292" y="38" text-anchor="middle" font-size="9" fill="var(--pink)" font-weight="bold">71.0</text>
+        </svg>
+        <div class="chart-x-labels">
+          <span class="chart-x-label">08.05</span><span class="chart-x-label">08.05</span><span class="chart-x-label">08.05</span><span class="chart-x-label">07.06</span><span class="chart-x-label">07.06</span><span class="chart-x-label">07.06</span><span class="chart-x-label">09.06</span>
+        </div>
+      </div>
+      
+      <!-- Muscle Chart -->
+      <div class="chart-card">
+        <div class="chart-title">Khối lượng cơ xương <span style="font-size:13px;font-weight:400;color:var(--text-3)">(kg)</span></div>
+        <div class="chart-current">09.06.26 15:54 &nbsp; <strong>27.0kg</strong></div>
+        <svg class="chart-svg" viewBox="0 0 320 80">
+          <polyline points="10,28 57,32 104,30 151,34 198,40 245,28 292,40" fill="none" stroke="#ccc" stroke-width="2"/>
+          <circle cx="10" cy="28" r="4" fill="var(--teal)"/><text x="10" y="24" text-anchor="middle" font-size="9" fill="var(--teal)">27.8</text>
+          <circle cx="57" cy="32" r="4" fill="var(--teal)"/><text x="57" y="28" text-anchor="middle" font-size="9" fill="var(--teal)">27.6</text>
+          <circle cx="104" cy="30" r="4" fill="var(--teal)"/><text x="104" y="26" text-anchor="middle" font-size="9" fill="var(--teal)">27.7</text>
+          <circle cx="151" cy="34" r="4" fill="var(--teal)"/><text x="151" y="30" text-anchor="middle" font-size="9" fill="var(--teal)">27.5</text>
+          <circle cx="198" cy="40" r="4" fill="var(--teal)"/><text x="198" y="36" text-anchor="middle" font-size="9" fill="var(--teal)">27.0</text>
+          <circle cx="245" cy="28" r="4" fill="var(--teal)"/><text x="245" y="24" text-anchor="middle" font-size="9" fill="var(--teal)">27.6</text>
+          <circle cx="292" cy="40" r="5" fill="var(--teal)" stroke="white" stroke-width="2"/><text x="292" y="36" text-anchor="middle" font-size="9" fill="var(--teal)" font-weight="bold">27.0</text>
+        </svg>
+        <div class="chart-x-labels">
+          <span class="chart-x-label">08.05</span><span class="chart-x-label">08.05</span><span class="chart-x-label">08.05</span><span class="chart-x-label">07.06</span><span class="chart-x-label">07.06</span><span class="chart-x-label">07.06</span><span class="chart-x-label">09.06</span>
+        </div>
+      </div>
+      
+      <!-- Body Fat Chart -->
+      <div class="chart-card">
+        <div class="chart-title">Khối lượng mỡ trong cơ thể <span style="font-size:13px;font-weight:400;color:var(--text-3)">(kg)</span></div>
+        <div class="chart-current">09.06.26 15:54 &nbsp; <strong>21.3kg</strong></div>
+        <svg class="chart-svg" viewBox="0 0 320 80">
+          <polyline points="10,20 57,16 104,14 151,28 198,22 245,24 292,38" fill="none" stroke="#ccc" stroke-width="2"/>
+          <circle cx="10" cy="20" r="4" fill="var(--pink)"/><text x="10" y="16" text-anchor="middle" font-size="9" fill="var(--pink)">24.1</text>
+          <circle cx="57" cy="16" r="4" fill="var(--pink)"/><text x="57" y="12" text-anchor="middle" font-size="9" fill="var(--pink)">24.4</text>
+          <circle cx="104" cy="14" r="4" fill="var(--pink)"/><text x="104" y="10" text-anchor="middle" font-size="9" fill="var(--pink)">24.5</text>
+          <circle cx="151" cy="28" r="4" fill="var(--pink)"/><text x="151" y="24" text-anchor="middle" font-size="9" fill="var(--pink)">22.5</text>
+          <circle cx="198" cy="22" r="4" fill="var(--pink)"/><text x="198" y="18" text-anchor="middle" font-size="9" fill="var(--pink)">23.6</text>
+          <circle cx="245" cy="24" r="4" fill="var(--pink)"/><text x="245" y="20" text-anchor="middle" font-size="9" fill="var(--pink)">22.8</text>
+          <circle cx="292" cy="38" r="5" fill="var(--pink)" stroke="white" stroke-width="2"/><text x="292" y="34" text-anchor="middle" font-size="9" fill="var(--pink)" font-weight="bold">21.3</text>
+        </svg>
+        <div class="chart-x-labels">
+          <span class="chart-x-label">08.05</span><span class="chart-x-label">08.05</span><span class="chart-x-label">08.05</span><span class="chart-x-label">07.06</span><span class="chart-x-label">07.06</span><span class="chart-x-label">07.06</span><span class="chart-x-label">09.06</span>
+        </div>
+      </div>
+      
+      <!-- BMI Chart -->
+      <div class="chart-card">
+        <div class="chart-title">BMI <span style="font-size:13px;font-weight:400;color:var(--text-3)">(kg/m²)</span></div>
+        <div class="chart-current">09.06.26 15:54 &nbsp; <strong>26.1kg/m²</strong></div>
+        <svg class="chart-svg" viewBox="0 0 320 80">
+          <polyline points="10,20 57,20 104,18 151,36 198,34 245,34 292,42" fill="none" stroke="#ccc" stroke-width="2"/>
+          <circle cx="10" cy="20" r="4" fill="var(--warn)"/><text x="10" y="16" text-anchor="middle" font-size="9" fill="var(--warn)">27.3</text>
+          <circle cx="57" cy="20" r="4" fill="var(--warn)"/><text x="57" y="16" text-anchor="middle" font-size="9" fill="var(--warn)">27.3</text>
+          <circle cx="104" cy="18" r="4" fill="var(--warn)"/><text x="104" y="14" text-anchor="middle" font-size="9" fill="var(--warn)">27.4</text>
+          <circle cx="151" cy="36" r="4" fill="var(--warn)"/><text x="151" y="32" text-anchor="middle" font-size="9" fill="var(--warn)">26.4</text>
+          <circle cx="198" cy="34" r="4" fill="var(--warn)"/><text x="198" y="30" text-anchor="middle" font-size="9" fill="var(--warn)">26.6</text>
+          <circle cx="245" cy="34" r="4" fill="var(--warn)"/><text x="245" y="30" text-anchor="middle" font-size="9" fill="var(--warn)">26.6</text>
+          <circle cx="292" cy="42" r="5" fill="var(--warn)" stroke="white" stroke-width="2"/><text x="292" y="38" text-anchor="middle" font-size="9" fill="var(--warn)" font-weight="bold">26.1</text>
+        </svg>
+        <div class="chart-x-labels">
+          <span class="chart-x-label">08.05</span><span class="chart-x-label">08.05</span><span class="chart-x-label">08.05</span><span class="chart-x-label">07.06</span><span class="chart-x-label">07.06</span><span class="chart-x-label">07.06</span><span class="chart-x-label">09.06</span>
+        </div>
+      </div>
+      
+      <!-- Fat % Chart -->
+      <div class="chart-card">
+        <div class="chart-title">Tỷ lệ mỡ cơ thể <span style="font-size:13px;font-weight:400;color:var(--text-3)">(%)</span></div>
+        <div class="chart-current">09.06.26 15:54 &nbsp; <strong>30.0%</strong></div>
+        <svg class="chart-svg" viewBox="0 0 320 80">
+          <polyline points="10,28 57,20 104,22 151,36 198,24 245,32 292,40" fill="none" stroke="#ccc" stroke-width="2"/>
+          <circle cx="10" cy="28" r="4" fill="var(--pink)"/><text x="10" y="24" text-anchor="middle" font-size="9" fill="var(--pink)">32.4</text>
+          <circle cx="57" cy="20" r="4" fill="var(--pink)"/><text x="57" y="16" text-anchor="middle" font-size="9" fill="var(--pink)">32.9</text>
+          <circle cx="104" cy="22" r="4" fill="var(--pink)"/><text x="104" y="18" text-anchor="middle" font-size="9" fill="var(--pink)">32.8</text>
+          <circle cx="151" cy="36" r="4" fill="var(--pink)"/><text x="151" y="32" text-anchor="middle" font-size="9" fill="var(--pink)">31.2</text>
+          <circle cx="198" cy="24" r="4" fill="var(--pink)"/><text x="198" y="20" text-anchor="middle" font-size="9" fill="var(--pink)">32.6</text>
+          <circle cx="245" cy="32" r="4" fill="var(--pink)"/><text x="245" y="28" text-anchor="middle" font-size="9" fill="var(--pink)">31.4</text>
+          <circle cx="292" cy="40" r="5" fill="var(--pink)" stroke="white" stroke-width="2"/><text x="292" y="36" text-anchor="middle" font-size="9" fill="var(--pink)" font-weight="bold">30.0</text>
+        </svg>
+        <div class="chart-x-labels">
+          <span class="chart-x-label">08.05</span><span class="chart-x-label">08.05</span><span class="chart-x-label">08.05</span><span class="chart-x-label">07.06</span><span class="chart-x-label">07.06</span><span class="chart-x-label">07.06</span><span class="chart-x-label">09.06</span>
+        </div>
+      </div>
+      
+      <!-- Visceral Fat Chart -->
+      <div class="chart-card">
+        <div class="chart-title">Mức độ chất béo nội tạng <span style="font-size:13px;font-weight:400;color:var(--text-3)">(Level)</span></div>
+        <div class="chart-current">09.06.26 15:54 &nbsp; <strong>9Level</strong></div>
+        <svg class="chart-svg" viewBox="0 0 320 80">
+          <polyline points="10,40 57,20 104,40 151,52 198,40 245,52 292,52" fill="none" stroke="#ccc" stroke-width="2"/>
+          <circle cx="10" cy="40" r="4" fill="var(--pink)"/><text x="10" y="36" text-anchor="middle" font-size="9" fill="var(--pink)">10</text>
+          <circle cx="57" cy="20" r="4" fill="var(--pink)"/><text x="57" y="16" text-anchor="middle" font-size="9" fill="var(--pink)">11</text>
+          <circle cx="104" cy="40" r="4" fill="var(--pink)"/><text x="104" y="36" text-anchor="middle" font-size="9" fill="var(--pink)">10</text>
+          <circle cx="151" cy="52" r="4" fill="var(--teal)"/><text x="151" y="48" text-anchor="middle" font-size="9" fill="var(--teal)">9</text>
+          <circle cx="198" cy="40" r="4" fill="var(--pink)"/><text x="198" y="36" text-anchor="middle" font-size="9" fill="var(--pink)">10</text>
+          <circle cx="245" cy="52" r="4" fill="var(--teal)"/><text x="245" y="48" text-anchor="middle" font-size="9" fill="var(--teal)">9</text>
+          <circle cx="292" cy="52" r="5" fill="var(--teal)" stroke="white" stroke-width="2"/><text x="292" y="48" text-anchor="middle" font-size="9" fill="var(--teal)" font-weight="bold">9</text>
+        </svg>
+        <div class="chart-x-labels">
+          <span class="chart-x-label">08.05</span><span class="chart-x-label">08.05</span><span class="chart-x-label">08.05</span><span class="chart-x-label">07.06</span><span class="chart-x-label">07.06</span><span class="chart-x-label">07.06</span><span class="chart-x-label">09.06</span>
+        </div>
+      </div>
+      
+      <!-- Metabolism Chart -->
+      <div class="chart-card">
+        <div class="chart-title">Tỷ lệ trao đổi chất cơ bản <span style="font-size:13px;font-weight:400;color:var(--text-3)">(kcal)</span></div>
+        <div class="chart-current">09.06.26 15:54 &nbsp; <strong>1444kcal</strong></div>
+        <svg class="chart-svg" viewBox="0 0 320 80">
+          <polyline points="10,20 57,28 104,22 151,44 198,38 245,38 292,38" fill="none" stroke="#ccc" stroke-width="2"/>
+          <circle cx="10" cy="20" r="4" fill="var(--teal)"/><text x="10" y="16" text-anchor="middle" font-size="9" fill="var(--teal)">1455</text>
+          <circle cx="57" cy="28" r="4" fill="var(--teal)"/><text x="57" y="24" text-anchor="middle" font-size="9" fill="var(--teal)">1447</text>
+          <circle cx="104" cy="22" r="4" fill="var(--teal)"/><text x="104" y="18" text-anchor="middle" font-size="9" fill="var(--teal)">1451</text>
+          <circle cx="151" cy="44" r="4" fill="var(--pink)"/><text x="151" y="40" text-anchor="middle" font-size="9" fill="var(--pink)">1422</text>
+          <circle cx="198" cy="38" r="4" fill="var(--teal)"/><text x="198" y="34" text-anchor="middle" font-size="9" fill="var(--teal)">1444</text>
+          <circle cx="245" cy="38" r="4" fill="var(--teal)"/><text x="245" y="34" text-anchor="middle" font-size="9" fill="var(--teal)">1444</text>
+          <circle cx="292" cy="38" r="5" fill="var(--teal)" stroke="white" stroke-width="2"/><text x="292" y="34" text-anchor="middle" font-size="9" fill="var(--teal)" font-weight="bold">1444</text>
+        </svg>
+        <div class="chart-x-labels">
+          <span class="chart-x-label">08.05</span><span class="chart-x-label">08.05</span><span class="chart-x-label">08.05</span><span class="chart-x-label">07.06</span><span class="chart-x-label">07.06</span><span class="chart-x-label">07.06</span><span class="chart-x-label">09.06</span>
+        </div>
+      </div>
+      
+      <div style="height:12px"></div>
+    </div>
+    
+    <!-- ===== XẾP HẠNG ===== -->
+    <div class="screen" id="screen-xepHang">
+      <!-- Rank Hero -->
+      <div class="rank-hero">
+        <div class="rank-my-label">Điểm InBody của tôi</div>
+        <div style="display:flex;align-items:baseline;justify-content:center;gap:8px">
+          <div class="rank-my-score">65</div>
+          <div class="rank-pts-label">Điểm</div>
+        </div>
+        <div class="rank-top">Top 92%</div>
+      </div>
+      
+      <!-- Filter -->
+      <div class="rank-filter-row">
+        <select class="rank-filter-select">
+          <option>Nam giới / Cùng độ tuổi (40~50 Tuổi)</option>
+          <option>Tất cả giới tính</option>
+          <option>Nam giới / Tất cả độ tuổi</option>
+        </select>
+      </div>
+      
+      <!-- Info Notice -->
+      <div class="rank-notice">
+        <span class="rank-notice-icon">ℹ</span>
+        <div>Dựa trên tất cả các báo cáo sức khỏe của người dùng InBody trên cùng một quốc gia. Bảng xếp hạng hàng tuần cập nhật lúc 00:00 thứ hai. Bảng xếp hạng hàng ngày cập nhật lúc 00:00 hàng ngày.</div>
+      </div>
+      
+      <!-- Sub Tabs -->
+      <div class="rank-sub-tabs">
+        <button class="rank-sub-tab active" onclick="switchRankTab('tong', this)">Tổng</button>
+        <button class="rank-sub-tab" onclick="switchRankTab('thietbi', this)">Cùng thiết bị</button>
+        <button class="rank-sub-tab" onclick="switchRankTab('canNang', this)">Cân nặng của tôi</button>
+        <button class="rank-sub-tab" onclick="switchRankTab('banbe', this)">Bạn bè</button>
+      </div>
+      
+      <!-- Leaderboard -->
+      <div class="rank-section-label">
+        Xếp hạng điểm InBody hàng tuần
+        <div class="rank-gend-toggle">
+          <button class="rank-gend-btn active" onclick="this.parentNode.querySelectorAll('button').forEach(b=>b.classList.remove('active')); this.classList.add('active')">Tổng</button>
+          <button class="rank-gend-btn" onclick="this.parentNode.querySelectorAll('button').forEach(b=>b.classList.remove('active')); this.classList.add('active')">Nam giới</button>
+          <button class="rank-gend-btn" onclick="this.parentNode.querySelectorAll('button').forEach(b=>b.classList.remove('active')); this.classList.add('active')">Nữ giới</button>
+        </div>
+      </div>
+      
+      <div style="background:var(--white)">
+        <div class="leaderboard-item">
+          <div class="lb-rank">1</div><div class="lb-new">NEW</div>
+          <div class="lb-avatar">🏃</div>
+          <div class="lb-name">B!RD</div>
+          <div><div class="lb-score">109</div><div class="lb-pts">Điểm</div></div>
+        </div>
+        <div class="leaderboard-item">
+          <div class="lb-rank">2</div><div class="lb-new">NEW</div>
+          <div class="lb-avatar">👤</div>
+          <div class="lb-name">2253</div>
+          <div><div class="lb-score">107</div><div class="lb-pts">Điểm</div></div>
+        </div>
+        <div class="leaderboard-item">
+          <div class="lb-rank">2</div><div class="lb-new">NEW</div>
+          <div class="lb-avatar">👤</div>
+          <div class="lb-name">0485</div>
+          <div><div class="lb-score">107</div><div class="lb-pts">Điểm</div></div>
+        </div>
+        <div class="leaderboard-item">
+          <div class="lb-rank">4</div><div class="lb-new">NEW</div>
+          <div class="lb-avatar">👤</div>
+          <div class="lb-name">8109</div>
+          <div><div class="lb-score">106</div><div class="lb-pts">Điểm</div></div>
+        </div>
+        <div class="leaderboard-item">
+          <div class="lb-rank">5</div><div class="lb-new">NEW</div>
+          <div class="lb-avatar">👤</div>
+          <div class="lb-name">2080</div>
+          <div><div class="lb-score">105</div><div class="lb-pts">Điểm</div></div>
+        </div>
+        <div class="leaderboard-item">
+          <div class="lb-rank">5</div><div class="lb-new">NEW</div>
+          <div class="lb-avatar">👤</div>
+          <div class="lb-name">6496</div>
+          <div><div class="lb-score">105</div><div class="lb-pts">Điểm</div></div>
+        </div>
+        <div class="leaderboard-item">
+          <div class="lb-rank">5</div><div class="lb-new">NEW</div>
+          <div class="lb-avatar">👤</div>
+          <div class="lb-name">5717</div>
+          <div><div class="lb-score">105</div><div class="lb-pts">Điểm</div></div>
+        </div>
+        <!-- My rank highlighted -->
+        <div class="leaderboard-item" style="background:#fff0f4">
+          <div class="lb-rank" style="color:var(--pink)">92%</div><div style="width:32px"></div>
+          <div class="lb-avatar" style="background:var(--pink-light)">K</div>
+          <div class="lb-name" style="font-weight:700;color:var(--pink)">KhanhLX (Bạn)</div>
+          <div><div class="lb-score" style="color:var(--pink)">65</div><div class="lb-pts">Điểm</div></div>
+        </div>
+      </div>
+      
+      <div style="height:12px"></div>
+    </div>
+    
+    <!-- ===== BLOOD PRESSURE PAGE ===== -->
+    <div class="screen" id="page-bloodPressure">
+      <div class="sub-header">
+        <button class="sub-back" onclick="goBack()">‹</button>
+        <div class="sub-title">Huyết áp</div>
+      </div>
+      
+      <div class="sub-tabs">
+        <button class="sub-tab active" onclick="switchSubTab('bpResult', this, 'sub-tab')">Kết quả huyết áp</button>
+        <button class="sub-tab" onclick="switchSubTab('bpChart', this, 'sub-tab')">Biểu đồ thay đổi</button>
+      </div>
+      
+      <!-- BP Result Content -->
+      <div id="bpResult">
+        <div class="bp-result-card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+            <div>
+              <div style="font-size:13px;color:var(--text-3)">Tối đa &nbsp;&nbsp;&nbsp; Tối thiểu &nbsp;&nbsp;&nbsp; Nhịp tim</div>
+              <div class="bp-main-reading">
+                <span class="bp-systolic">110</span>
+                <span class="bp-slash">/</span>
+                <span class="bp-diastolic">96</span>
+                <span style="margin:0 4px;color:var(--pink);font-size:18px">❤</span>
+                <span class="bp-heart-rate">69</span>
+              </div>
+              <div class="bp-unit-label">mmHg &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; mmHg &nbsp;&nbsp; bpm</div>
+            </div>
+            <div style="font-size:13px;font-weight:600;text-align:right;color:var(--text-2)">09.06.2026<br>15:58</div>
+          </div>
+          
+          <!-- Gauge -->
+          <div class="bp-gauge">
+            <div class="gauge-title">Tâm trương</div>
+            <div class="gauge-levels">
+              <div class="gauge-level level-5">Tăng huyết áp độ 3 <span class="gauge-threshold">≥120</span></div>
+              <div class="gauge-level level-4">Tăng huyết áp độ 2 <span class="gauge-threshold">110-119</span></div>
+              <div class="gauge-level level-3">
+                <div class="gauge-indicator"></div>
+                Tăng huyết áp độ 1 <span class="gauge-threshold">100-109</span>
+              </div>
+              <div class="gauge-level level-2" style="color:#333">Bình thường cao <span class="gauge-threshold">90-99</span></div>
+              <div class="gauge-level level-1" style="color:#333">Bình thường <span class="gauge-threshold">85-89</span></div>
+              <div class="gauge-level" style="background:var(--teal);color:white">Tối ưu <span class="gauge-threshold">&lt;85</span></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-3);margin-top:4px;padding:0 4px">
+              <span>120</span><span>130</span><span>140</span><span>160</span><span>180</span><span>200</span>
+              <span style="font-weight:600;color:var(--text)">Tâm thu</span>
+            </div>
+          </div>
+          
+          <div style="margin-top:12px;padding:12px;background:var(--bg);border-radius:10px;font-size:13px;color:var(--text-2)">
+            Khánh đo huyết áp bằng máy đo vật lý
+          </div>
+        </div>
+      </div>
+      
+      <!-- BP Chart Content -->
+      <div id="bpChart" style="display:none">
+        <div style="display:flex;gap:8px;padding:12px;overflow-x:auto">
+          <button class="filter-btn active" onclick="setFilter(this,'7 lần')">7 lần gần nhất</button>
+          <button class="filter-btn" onclick="setFilter(this,'tuần')">Hàng tuần</button>
+          <button class="filter-btn" onclick="setFilter(this,'tháng')">Hàng tháng</button>
+        </div>
+        
+        <div class="chart-card">
+          <div class="chart-title">Huyết áp tối đa/tối thiểu</div>
+          <svg class="chart-svg" viewBox="0 0 300 80" style="height:80px">
+            <text x="10" y="40" font-size="9" fill="var(--pink)" font-weight="bold">110</text>
+            <text x="10" y="52" font-size="9" fill="#888">96</text>
+            <circle cx="10" cy="44" r="3" fill="var(--pink)"/>
+          </svg>
+          <div class="chart-x-labels">
+            <span class="chart-x-label">09.06</span>
+          </div>
+        </div>
+        
+        <div class="chart-card">
+          <div class="chart-title">Xác nhận kết quả đo huyết áp</div>
+          <div style="height:8px"></div>
+          <!-- Mini gauge -->
+          <div class="gauge-levels" style="font-size:12px">
+            <div class="gauge-level level-5" style="padding:6px 10px">Tăng huyết áp độ 3</div>
+            <div class="gauge-level level-4" style="padding:6px 10px">Tăng huyết áp độ 2</div>
+            <div class="gauge-level level-3" style="padding:6px 10px"><div class="gauge-indicator"></div>Tăng huyết áp độ 1</div>
+            <div class="gauge-level level-2" style="padding:6px 10px;color:#333">Bình thường cao</div>
+            <div class="gauge-level level-1" style="padding:6px 10px;color:#333">Bình thường</div>
+            <div class="gauge-level" style="padding:6px 10px;background:var(--teal);color:white">Tối ưu</div>
+          </div>
+        </div>
+      </div>
+      
+      <div style="height:12px"></div>
+    </div>
+    
+    <!-- ===== MANUAL INPUT ===== -->
+    <div class="screen" id="page-manualInput">
+      <div class="sub-header">
+        <button class="sub-back" onclick="goBack()">‹</button>
+        <div class="sub-title">Nhập thủ công kết quả InBody</div>
+      </div>
+      
+      <div style="padding:16px">
+        <div class="modal-date-label">Ngày và giờ kiểm tra</div>
+        <div style="display:flex;align-items:center;margin-bottom:16px">
+          <span class="modal-date-value">09.06.2026</span>
+          <button class="modal-date-edit">Chỉnh sửa</button>
+        </div>
+        <div class="modal-section-label" style="padding:0;margin-bottom:8px">Thêm kiểm tra</div>
+      </div>
+      
+      <div style="background:var(--white)">
+        <div class="modal-input-row">
+          <span class="modal-input-label">Cân nặng</span>
+          <span class="modal-input-right"><span class="modal-input-value" contenteditable>72.5</span><span class="modal-input-unit">kg</span><button class="modal-input-del">✕</button></span>
+        </div>
+        <div class="modal-input-row">
+          <span class="modal-input-label">Chiều cao</span>
+          <span class="modal-input-right"><span class="modal-input-value" contenteditable>165.0</span><span class="modal-input-unit">cm</span><button class="modal-input-del">✕</button></span>
+        </div>
+        <div class="modal-input-row">
+          <span class="modal-input-label">Tỷ lệ mỡ cơ thể</span>
+          <span class="modal-input-right"><span class="modal-input-value" contenteditable>31.4</span><span class="modal-input-unit">%</span><button class="modal-input-del">✕</button></span>
+        </div>
+        <div class="modal-input-row">
+          <span class="modal-input-label">Khối lượng cơ xương</span>
+          <span class="modal-input-right"><span class="modal-input-value" contenteditable>27.6</span><span class="modal-input-unit">kg</span><button class="modal-input-del">✕</button></span>
+        </div>
+        <div class="modal-input-row">
+          <span class="modal-input-label">Mức độ chất béo nội tạng</span>
+          <span class="modal-input-right"><span class="modal-input-value" contenteditable>9</span><span class="modal-input-unit">Lv</span><button class="modal-input-del">✕</button></span>
+        </div>
+      </div>
+      
+      <div style="padding:12px;font-size:12px;color:var(--text-3)">
+        Khi nhập thủ công, có thể phát sinh lỗi nhỏ do dữ liệu dấu thập phân không được thể hiện trên bảng kết quả.
+      </div>
+      
+      <div style="padding:0 12px 24px">
+        <button onclick="alert('Đã lưu dữ liệu thủ công!'); goBack()" class="modal-confirm">Xác nhận</button>
+      </div>
+    </div>
+    
+    <!-- ===== SETTINGS PAGE ===== -->
+    <div class="screen" id="page-settings">
+      <div class="sub-header">
+        <button class="sub-back" onclick="goBack()">‹</button>
+        <div class="sub-title">Tùy chỉnh trang tổng quan</div>
+      </div>
+      
+      <div style="padding:12px;font-size:13px;color:var(--text-3)">
+        Bạn có thể đặt và thay đổi thứ tự các mục hiển thị trên trang tổng quan.
+      </div>
+      
+      <div class="settings-section">
+        <div class="settings-title">Các mục hiển thị</div>
+        <div class="settings-item"><span class="settings-item-label">☰ Điểm InBody</span><span class="settings-chevron">›</span></div>
+        <div class="settings-item"><span class="settings-item-label">☰ Thành phần cơ thể</span><span class="settings-chevron">›</span></div>
+        <div class="settings-item"><span class="settings-item-label">☰ Hồ sơ huyết áp</span><span class="settings-chevron">›</span></div>
+        <div class="settings-item"><span class="settings-item-label">☰ Hồ sơ tập luyện</span><span class="settings-chevron">›</span></div>
+        <div class="settings-item"><span class="settings-item-label">☰ Mục tiêu</span><span class="settings-chevron">›</span></div>
+      </div>
+      
+      <div class="settings-section">
+        <div class="settings-title">Tài khoản</div>
+        <div class="settings-item"><span class="settings-item-label">Tên người dùng</span><span class="settings-item-value">KhanhLX</span></div>
+        <div class="settings-item"><span class="settings-item-label">Thiết bị</span><span class="settings-item-value">TOUCH</span></div>
+        <div class="settings-item"><span class="settings-item-label">Đồng bộ Apple Sức khỏe</span><span class="settings-item-value">Bật ›</span></div>
+      </div>
+      
+      <div style="height:24px"></div>
+    </div>
+    
+  </div><!-- /screens -->
+  
+  <!-- BOTTOM NAV -->
+  <div class="bottom-nav">
+    <button class="bottom-btn active" id="bottomHome" onclick="showMainNav(); switchTab('trangTong', document.querySelectorAll('.tab-btn')[0])">
+      <span class="icon">🏠</span><span>Tổng quan</span>
+    </button>
+    <button class="bottom-btn" onclick="navigateToPage('bloodPressure')">
+      <span class="icon">🩸</span><span>Huyết áp</span>
+    </button>
+    <button class="bottom-btn" onclick="openManualInput()" style="position:relative">
+      <span style="position:absolute;top:-16px;left:50%;transform:translateX(-50%);background:var(--pink);border-radius:50%;width:52px;height:52px;display:flex;align-items:center;justify-content:center;font-size:26px;box-shadow:0 4px 16px rgba(232,86,124,.4);border:3px solid var(--bg)">+</span>
+      <span style="margin-top:20px;font-size:10px">Nhập</span>
+    </button>
+    <button class="bottom-btn" onclick="switchTab('thayDoi', document.querySelectorAll('.tab-btn')[2]); showMainNav()">
+      <span class="icon">📈</span><span>Thay đổi</span>
+    </button>
+    <button class="bottom-btn" onclick="navigateToPage('settings')">
+      <span class="icon">⚙️</span><span>Cài đặt</span>
+    </button>
+  </div>
+</div>
+
+<!-- MANUAL INPUT MODAL (alternative slide-up) -->
+<div class="modal-overlay" id="manualInputModal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">
+      Nhập thủ công kết quả kiểm tra InBody
+      <button class="modal-close" onclick="closeManualInput()">×</button>
+    </div>
+    <div class="modal-date">
+      <div class="modal-date-label">Ngày và giờ kiểm tra</div>
+      <div>
+        <span class="modal-date-value">09.06.2026</span>
+        <button class="modal-date-edit">Chỉnh sửa</button>
+      </div>
+    </div>
+    <div class="modal-section-label">Thêm kiểm tra</div>
+    <div class="modal-input-row">
+      <span class="modal-input-label">Cân nặng</span>
+      <span class="modal-input-right"><span class="modal-input-value">72.5</span><span class="modal-input-unit">kg</span><button class="modal-input-del">✕</button></span>
+    </div>
+    <div class="modal-input-row">
+      <span class="modal-input-label">Chiều cao</span>
+      <span class="modal-input-right"><span class="modal-input-value">165.0</span><span class="modal-input-unit">cm</span><button class="modal-input-del">✕</button></span>
+    </div>
+    <div class="modal-input-row">
+      <span class="modal-input-label">Tỷ lệ mỡ cơ thể</span>
+      <span class="modal-input-right"><span class="modal-input-value">31.4</span><span class="modal-input-unit">%</span><button class="modal-input-del">✕</button></span>
+    </div>
+    <div class="modal-input-row">
+      <span class="modal-input-label">Khối lượng cơ xương</span>
+      <span class="modal-input-right"><span class="modal-input-value">27.6</span><span class="modal-input-unit">kg</span><button class="modal-input-del">✕</button></span>
+    </div>
+    <div class="modal-input-row">
+      <span class="modal-input-label">Mức độ chất béo nội tạng</span>
+      <span class="modal-input-right"><span class="modal-input-value">9</span><span class="modal-input-unit">Lv</span><button class="modal-input-del">✕</button></span>
+    </div>
+    <div class="modal-note">Khi nhập thủ công, có thể phát sinh lỗi nhỏ do dữ liệu dấu thập phân không được thể hiện trên bảng kết quả.</div>
+    <button class="modal-confirm" onclick="alert('Đã lưu!'); closeManualInput()">Xác nhận</button>
+  </div>
+</div>
+
+<!-- ===== ADD TEST MODAL ===== -->
+<div class="modal-overlay" id="addTestModal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">
+      Bạn muốn lưu lại bài kiểm tra như thế nào?
+      <button class="modal-close" onclick="closeAddTestModal()">×</button>
+    </div>
+    <div style="font-size:13px;color:var(--text-3);padding:0 16px 12px">Không có thiết bị nào có thể thực hiện kiểm tra InBody.</div>
+    <div class="add-test-choice">
+      <div class="add-test-option" onclick="closeAddTestModal(); openBpInputModal()">
+        <div class="add-test-option-icon">💧</div>
+        <div class="add-test-option-text">Nhập thủ công số đo huyết áp</div>
+      </div>
+      <div class="add-test-option" onclick="closeAddTestModal(); alert('Quét mã QR')">
+        <div class="add-test-option-icon">⊞</div>
+        <div class="add-test-option-text">Quét mã QR</div>
+      </div>
+      <div class="add-test-option" onclick="closeAddTestModal(); openManualInput()">
+        <div class="add-test-option-icon">📋</div>
+        <div class="add-test-option-text">Nhập thủ công kết quả kiểm tra InBody</div>
+      </div>
+    </div>
+    <div class="add-test-register" onclick="alert('Đăng ký thiết bị InBody mới')">Đăng ký thiết bị InBody mới.</div>
+  </div>
+</div>
+
+<!-- ===== BLOOD PRESSURE INPUT MODAL ===== -->
+<div class="modal-overlay" id="bpInputModal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">
+      Nhập thủ công số đo huyết áp
+      <button class="modal-close" onclick="closeBpInputModal()">×</button>
+    </div>
+    <div class="modal-date">
+      <div class="modal-date-label">Ngày và giờ kiểm tra</div>
+      <div>
+        <span class="modal-date-value">09.06.2026</span>
+        <button class="modal-date-edit">Chỉnh sửa</button>
+      </div>
+    </div>
+    <div class="modal-section-label">Thêm kiểm tra</div>
+    <div class="bp-input-row">
+      <span class="bp-input-label">Huyết áp tối đa</span>
+      <div class="bp-input-right">
+        <input class="bp-number-input" type="number" placeholder="—" id="bpSystolic">
+        <span class="bp-input-unit">mmHg</span>
+      </div>
+    </div>
+    <div class="bp-input-row">
+      <span class="bp-input-label">Huyết áp tối thiểu</span>
+      <div class="bp-input-right">
+        <input class="bp-number-input" type="number" placeholder="—" id="bpDiastolic">
+        <span class="bp-input-unit">mmHg</span>
+      </div>
+    </div>
+    <div class="bp-input-row" style="border-bottom:none">
+      <span class="bp-input-label">Nhịp tim</span>
+      <div class="bp-input-right">
+        <input class="bp-number-input" type="number" placeholder="—" id="bpHeart">
+        <span class="bp-input-unit">bpm</span>
+      </div>
+    </div>
+    <div class="modal-section-label">Nhận xét</div>
+    <textarea class="bp-note-area" rows="3" placeholder="Nhập ghi chú..."></textarea>
+    <div style="height:16px"></div>
+    <button class="modal-confirm" onclick="closeBpInputModal(); alert('Đã lưu huyết áp!')">Xác nhận</button>
+    <div style="height:8px"></div>
+  </div>
+</div>
+
+<!-- ===== SHARE SCREEN ===== -->
+<div class="share-screen" id="shareScreen">
+  <!-- Top bar -->
+  <div class="share-top-bar">
+    <button class="share-back-btn" onclick="closeShareScreen()">‹</button>
+    <button class="share-done-btn" id="shareDoneBtn" onclick="shareCapture()">Hoàn Thành</button>
+  </div>
+  
+  <!-- Camera/Image area -->
+  <div class="share-camera-area" id="shareCameraArea">
+    <!-- Background: camera feed sim or color -->
+    <div id="shareBgLayer" style="position:absolute;inset:0;background:linear-gradient(160deg,#c8a882,#9b7d6a);transition:background 0.3s"></div>
+    
+    <!-- Overlay card -->
+    <div class="share-overlay-card" id="shareOverlayCard">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+        <div>
+          <div class="share-overlay-logo">In<span>Body</span></div>
+          <div class="share-overlay-date">09.06.2026 · 15:54 · KhanhLX</div>
+        </div>
+      </div>
+      <div class="share-metric-row">
+        <div class="share-metric-item">
+          <div class="share-metric-name">Cân nặng</div>
+          <div><span class="share-metric-val">71.0</span><span class="share-metric-unit"> kg</span></div>
+          <div class="share-metric-delta">-1.5</div>
+          <div class="share-range-bar"><div class="share-range-fill" style="width:55%"></div></div>
+        </div>
+      </div>
+      <div class="share-metric-row">
+        <div class="share-metric-item">
+          <div class="share-metric-name">Khối lượng cơ xương</div>
+          <div><span class="share-metric-val">27.0</span><span class="share-metric-unit"> kg</span></div>
+          <div class="share-metric-delta" style="color:var(--text-3)">-0.6</div>
+          <div class="share-range-bar"><div class="share-range-fill good" style="width:48%"></div></div>
+        </div>
+      </div>
+      <div class="share-metric-row">
+        <div class="share-metric-item">
+          <div class="share-metric-name">Khối lượng mỡ trong cơ thể</div>
+          <div><span class="share-metric-val">21.3</span><span class="share-metric-unit"> kg</span></div>
+          <div class="share-metric-delta neg">-1.5</div>
+          <div class="share-range-bar"><div class="share-range-fill" style="width:60%"></div></div>
+        </div>
+      </div>
+      <div class="share-metric-row">
+        <div class="share-metric-item">
+          <div class="share-metric-name">BMI</div>
+          <div><span class="share-metric-val">26.1</span><span class="share-metric-unit"> kg/m²</span></div>
+          <div class="share-metric-delta neg">-0.5</div>
+          <div class="share-range-bar"><div class="share-range-fill" style="width:62%"></div></div>
+        </div>
+      </div>
+      <div class="share-metric-row">
+        <div class="share-metric-item">
+          <div class="share-metric-name">Tỷ lệ mỡ cơ thể</div>
+          <div><span class="share-metric-val">30.0</span><span class="share-metric-unit"> %</span></div>
+          <div class="share-metric-delta neg">-1.4</div>
+          <div class="share-range-bar"><div class="share-range-fill" style="width:65%"></div></div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Side controls (shown in camera mode) -->
+    <div class="share-controls" id="shareControls">
+      <button class="share-ctrl-btn" onclick="switchShareMode('camera')" title="Xoay">↻</button>
+      <button class="share-ctrl-btn" title="Flash">⚡</button>
+      <button class="share-ctrl-btn" onclick="switchBgColorMode()" title="Màu nền">🌙</button>
+      <button class="share-ctrl-btn" title="Chỉnh sửa">✎</button>
+    </div>
+  </div>
+  
+  <!-- Bottom controls -->
+  <div class="share-bottom" id="shareBottom">
+    <!-- MODE: chụp ảnh (camera) -->
+    <div id="shareCameraControls">
+      <div class="share-mode-row">
+        <button class="share-mode-btn" onclick="switchShareSubMode('color')">màu nền</button>
+        <button class="share-mode-btn active" onclick="switchShareSubMode('camera')">chụp ảnh</button>
+        <button class="share-mode-btn" onclick="switchShareSubMode('gallery')">tập ảnh</button>
+      </div>
+      <div class="share-shutter-row">
+        <button class="share-side-btn" onclick="document.getElementById('galleryInput').click()">🖼</button>
+        <button class="share-shutter-btn" onclick="shareCapture()">+−</button>
+        <button class="share-side-btn">%</button>
+      </div>
+      <input type="file" id="galleryInput" accept="image/*" style="display:none" onchange="loadGalleryImage(event)">
+    </div>
+    
+    <!-- MODE: màu nền (color) -->
+    <div id="shareColorControls" style="display:none">
+      <div class="share-mode-row">
+        <button class="share-mode-btn active" onclick="switchShareSubMode('color')">màu nền</button>
+        <button class="share-mode-btn" onclick="switchShareSubMode('camera')">chụp ảnh</button>
+        <button class="share-mode-btn" onclick="switchShareSubMode('gallery')">tập ảnh</button>
+      </div>
+      <div class="share-bg-colors">
+        <div class="bg-color-swatch active" style="background:#ffb3c6" onclick="setBgColor('#ffb3c6',this)"></div>
+        <div class="bg-color-swatch" style="background:#ffd6a5" onclick="setBgColor('#ffd6a5',this)"></div>
+        <div class="bg-color-swatch" style="background:#caffbf" onclick="setBgColor('#caffbf',this)"></div>
+        <div class="bg-color-swatch" style="background:#9bf6ff" onclick="setBgColor('#9bf6ff',this)"></div>
+        <div class="bg-color-swatch" style="background:#a0c4ff" onclick="setBgColor('#a0c4ff',this)"></div>
+        <div class="bg-color-swatch" style="background:#bdb2ff" onclick="setBgColor('#bdb2ff',this)"></div>
+        <div class="bg-color-swatch" style="background:#ffc6ff" onclick="setBgColor('#ffc6ff',this)"></div>
+        <div class="bg-color-swatch" style="background:#ffffff;border:1.5px solid #ddd" onclick="setBgColor('#ffffff',this)"></div>
+        <div class="bg-color-swatch" style="background:#1a1a2e" onclick="setBgColor('#1a1a2e',this)"></div>
+      </div>
+      <div class="share-frame-section">
+        <div class="share-frame-label">lựa chọn khung</div>
+        <div class="share-frame-row">
+          <div class="frame-option active" onclick="selectFrame(this)">
+            <div class="frame-option-check"><span style="font-size:18px">✓</span><span>+−</span></div>
+          </div>
+          <div class="frame-option" onclick="selectFrame(this)" style="font-size:16px">⏱🌿🏆</div>
+          <div class="frame-option" onclick="selectFrame(this)" style="font-size:20px">%</div>
+          <div class="frame-option" onclick="selectFrame(this)" style="font-size:20px">—+—</div>
+          <div class="frame-option" onclick="selectFrame(this)" style="font-size:20px">📈</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== PROFILE PAGE ===== -->
+<div class="screen" id="page-profile">
+  <div class="sub-page">
+    <div class="sub-header">
+      <button class="sub-back" onclick="goBack()">‹</button>
+      <div class="sub-title">Cài đặt người dùng</div>
+    </div>
+    <div class="profile-avatar-section">
+      <div class="profile-avatar-wrap">
+        <div class="profile-avatar">K</div>
+      </div>
+      <div class="profile-current-badge">Người dùng hiện tại</div>
+      <div class="profile-name">KhanhLX</div>
+    </div>
+    <div class="profile-list">
+      <div class="profile-user-item" onclick="navigateToPage('userDetail')">
+        <div class="profile-user-radio selected"></div>
+        <div class="profile-user-avatar-sm">K</div>
+        <div style="flex:1">
+          <div class="profile-user-name">KhanhLX</div>
+          <div class="profile-user-role">Người dùng chính</div>
+        </div>
+        <button class="profile-edit-btn" onclick="event.stopPropagation();navigateToPage('userDetail')">✎</button>
+      </div>
+    </div>
+    <div class="profile-secondary-section">
+      <div class="profile-secondary-title">
+        Người dùng phụ <span style="color:var(--text-3);font-weight:400">0/8</span>
+      </div>
+      <button class="profile-add-user" onclick="navigateToPage('addUser')">+ Thêm</button>
+      <div class="profile-info-note">
+        <span>ⓘ</span>
+        <span>Người dùng phụ chỉ có thể kiểm tra InBody trên InBodyDial.</span>
+      </div>
+      <div class="profile-info-note">
+        <span>ⓘ</span>
+        <div>
+          <strong>Sử dụng tính năng Máy tính Phát triển Tăng trưởng</strong><br>
+          Nếu bạn đăng ký con từ 3~19 tuổi, nhập chiều cao và cân nặng bạn có thể xem và quản lý sự tăng trưởng của con theo &lt;Tiêu chuẩn biểu đồ tăng trưởng năm 2017 của trẻ em và thanh thiếu niên&gt;.
+        </div>
+      </div>
+    </div>
+    <div style="height:20px"></div>
+  </div>
+</div>
+
+<!-- ===== USER DETAIL PAGE ===== -->
+<div class="screen" id="page-userDetail">
+  <div class="sub-page">
+    <div class="sub-header">
+      <button class="sub-back" onclick="goBack()">‹</button>
+      <div class="sub-title">Người sử dụng</div>
+    </div>
+    <div class="user-detail-avatar">
+      <div class="user-detail-avatar-circle" style="position:relative">
+        K
+        <div class="ud-add-icon">+</div>
+      </div>
+    </div>
+    <div class="ud-section-label">Thông tin cơ bản</div>
+    <div class="ud-item"><span class="ud-item-label">Nickname</span><span class="ud-item-value">KhanhLX <span class="ud-chevron">›</span></span></div>
+    <div class="ud-item"><span class="ud-item-label">Quốc gia</span><span class="ud-item-value">Việt Nam</span></div>
+    <div class="ud-item"><span class="ud-item-label">Số điện thoại di động</span><span class="ud-item-value">+84907514020 <span class="ud-chevron">›</span></span></div>
+    <div class="ud-item"><span class="ud-item-label">Email</span><span class="ud-item-value">xuankhanh1612@gmail.com <span class="ud-chevron">›</span></span></div>
+    <div class="ud-item" style="border-bottom:none"><span class="ud-item-label">đổi mật khẩu</span><span class="ud-item-value"><span class="ud-chevron">›</span></span></div>
+    <div class="ud-section-label">Thông tin thêm</div>
+    <div class="ud-item"><span class="ud-item-label">Giới tính</span><span class="ud-item-value">Nam giới <span class="ud-chevron">›</span></span></div>
+    <div class="ud-item"><span class="ud-item-label">Ngày Sinh</span><span class="ud-item-value">16.12.1982 (43) <span class="ud-chevron">›</span></span></div>
+    <div class="ud-item" style="border-bottom:none"><span class="ud-item-label">Chiều cao</span><span class="ud-item-value">165.0cm <span class="ud-chevron">›</span></span></div>
+    <div style="height:20px"></div>
+  </div>
+</div>
+
+<!-- ===== ADD USER PAGE ===== -->
+<div class="screen" id="page-addUser">
+  <div class="sub-page">
+    <div class="sub-header">
+      <button class="sub-back" onclick="goBack()">‹</button>
+      <div class="sub-title">Thêm người dùng</div>
+    </div>
+    <div class="add-user-section-label">Biệt danh từ mới</div>
+    <input class="add-user-input" type="text" placeholder="Tạo một biệt danh">
+    <div class="add-user-section-label">Giới tính</div>
+    <div class="add-user-warning">Ảnh hưởng đến kết quả xét nghiệm theo giới tính.<br>Vui lòng kiểm tra lại một lần nữa và nhập chính xác</div>
+    <div class="gender-btns">
+      <button class="gender-btn" onclick="selectGender(this)">Nữ giới</button>
+      <button class="gender-btn" onclick="selectGender(this)">Nam giới</button>
+    </div>
+    <div class="add-user-section-label">Ngày Sinh</div>
+    <div class="add-user-warning">Ảnh hưởng đến kết quả xét nghiệm theo Ngày tháng năm sinh.<br>Vui lòng kiểm tra lại một lần nữa và nhập chính xác</div>
+    <div class="date-input-row">
+      <input class="date-seg" type="number" placeholder="DD" min="1" max="31">
+      <span class="date-dot">.</span>
+      <input class="date-seg" type="number" placeholder="MM" min="1" max="12">
+      <span class="date-dot">.</span>
+      <input class="date-seg" type="number" placeholder="YYYY" min="1900" max="2026">
+    </div>
+    <div style="height:12px"></div>
+    <div class="add-user-section-label">Chiều cao</div>
+    <div class="add-user-warning">Chiều cao 1cm có ảnh hưởng lớn đến kết quả xét nghiệm.<br>Vui lòng kiểm tra lại một lần nữa và nhập chính xác</div>
+    <input class="add-user-input" type="number" placeholder="Nhập chiều cao(cm)">
+    <div class="add-user-section-label" style="padding-top:16px">Đồng ý với Điều khoản và Điều kiện</div>
+    <div class="add-user-warning">Vui lòng đồng ý với nội dung sau để cung cấp dịch vụ</div>
+    <div class="terms-row">
+      <span class="terms-check">✓</span>
+      <span class="terms-text">Vui lòng đồng ý với Điều khoản dịch vụ.</span>
+      <span class="terms-arrow">›</span>
+    </div>
+    <div style="height:16px"></div>
+    <button class="modal-confirm" style="margin:0 12px;width:calc(100% - 24px)" onclick="goBack(); alert('Đã thêm người dùng!')">Xác nhận</button>
+    <div style="height:24px"></div>
+  </div>
+</div>
+
+<script>
+// ===== STATE =====
+let currentTab = 'trangTong';
+let pageHistory = [];
+let isOnPage = false;
+let shareSubMode = 'camera';
+
+// ===== CSV DATA (from InBody-20260508 3.csv equivalent) =====
+const csvData = [
+  { date: '08.05.26', weight: 74.3, muscle: 27.8, fat: 24.1, fatPct: 32.4, bmi: 27.3, visceral: 10, bmr: 1455, water: 36.6, protein: 9.6, mineral: 3.38 },
+  { date: '08.05', weight: 74.3, muscle: 27.6, fat: 24.4, fatPct: 32.9, bmi: 27.3, visceral: 11, bmr: 1447, water: 36.9, protein: 9.6, mineral: 3.37 },
+  { date: '08.05', weight: 74.5, muscle: 27.7, fat: 24.5, fatPct: 32.8, bmi: 27.4, visceral: 10, bmr: 1451, water: 36.6, protein: 9.6, mineral: 3.38 },
+  { date: '08.05', weight: 71.9, muscle: 27.5, fat: 22.5, fatPct: 31.2, bmi: 26.4, visceral: 9, bmr: 1438, water: 36.7, protein: 9.7, mineral: 3.39 },
+  { date: '07.06', weight: 72.3, muscle: 27.0, fat: 23.6, fatPct: 32.6, bmi: 26.6, visceral: 10, bmr: 1444, water: 36.3, protein: 9.6, mineral: 3.38 },
+  { date: '07.06', weight: 72.5, muscle: 27.6, fat: 22.8, fatPct: 31.4, bmi: 26.6, visceral: 9, bmr: 1444, water: 35.7, protein: 9.5, mineral: 3.36 },
+  { date: '07.06', weight: 71.0, muscle: 27.0, fat: 21.3, fatPct: 30.0, bmi: 26.1, visceral: 9, bmr: 1444, water: 36.5, protein: 9.8, mineral: 3.40, isLatest: true },
+];
+const latestData = csvData[csvData.length - 1];
+
+// ===== TAB SWITCHING =====
+function switchTab(tabId, btn) {
+  if (isOnPage) {
+    isOnPage = false;
+    pageHistory = [];
+  }
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.screen').forEach(s => { s.classList.remove('active', 'prev'); });
+  if (btn) btn.classList.add('active');
+  const screen = document.getElementById('screen-' + tabId);
+  if (screen) screen.classList.add('active');
+  currentTab = tabId;
+  showMainNav();
+  const bottomHome = document.getElementById('bottomHome');
+  document.querySelectorAll('.bottom-btn').forEach(b => b.classList.remove('active'));
+  if (tabId === 'trangTong') bottomHome.classList.add('active');
+}
+
+// ===== PAGE NAVIGATION =====
+function navigateToPage(pageId) {
+  const allScreens = document.querySelectorAll('.screen');
+  allScreens.forEach(s => {
+    if (s.classList.contains('active')) {
+      s.classList.add('prev');
+      s.classList.remove('active');
+    }
+  });
+  const target = document.getElementById('page-' + pageId);
+  if (target) {
+    target.classList.remove('prev');
+    target.classList.add('active');
+    target.scrollTop = 0;
+    pageHistory.push(pageId);
+    isOnPage = true;
+  }
+  document.getElementById('topNav').style.display = 'none';
+}
+
+function goBack() {
+  pageHistory.pop();
+  if (pageHistory.length === 0) {
+    isOnPage = false;
+    document.getElementById('topNav').style.display = '';
+    document.querySelectorAll('.screen').forEach(s => { s.classList.remove('active', 'prev'); });
+    const screen = document.getElementById('screen-' + currentTab);
+    if (screen) screen.classList.add('active');
+  } else {
+    const prevPage = pageHistory[pageHistory.length - 1];
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById('page-' + prevPage).classList.add('active');
+  }
+}
+
+function showMainNav() { document.getElementById('topNav').style.display = ''; }
+
+// ===== RADAR TAB =====
+function switchRadar(type, btn) {
+  document.querySelectorAll('.radar-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('radarMuscle').style.display = type === 'muscle' ? 'flex' : 'none';
+  document.getElementById('radarFat').style.display = type === 'fat' ? 'flex' : 'none';
+  if (type === 'fat') document.getElementById('radarFat').style.flexDirection = 'column';
+}
+
+// ===== SUB TABS =====
+function switchSubTab(contentId, btn, className) {
+  const parent = btn.closest('.screen') || document.body;
+  parent.querySelectorAll('.' + className).forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  if (contentId === 'bpResult') {
+    document.getElementById('bpResult').style.display = '';
+    document.getElementById('bpChart').style.display = 'none';
+  } else if (contentId === 'bpChart') {
+    document.getElementById('bpResult').style.display = 'none';
+    document.getElementById('bpChart').style.display = '';
+  }
+}
+
+// ===== RANK TAB =====
+function switchRankTab(tabId, btn) {
+  document.querySelectorAll('.rank-sub-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+// ===== FILTER =====
+function setFilter(btn, label) {
+  const parent = btn.closest('div');
+  parent.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+// ===== MANUAL INPUT (InBody) =====
+function openManualInput() {
+  document.getElementById('manualInputModal').classList.add('open');
+}
+function closeManualInput() {
+  document.getElementById('manualInputModal').classList.remove('open');
+}
+
+// ===== ADD TEST MODAL =====
+function openAddTestModal() {
+  document.getElementById('addTestModal').classList.add('open');
+}
+function closeAddTestModal() {
+  document.getElementById('addTestModal').classList.remove('open');
+}
+document.getElementById('addTestModal').addEventListener('click', function(e) {
+  if (e.target === this) closeAddTestModal();
+});
+
+// ===== BP INPUT MODAL =====
+function openBpInputModal() {
+  document.getElementById('bpInputModal').classList.add('open');
+}
+function closeBpInputModal() {
+  document.getElementById('bpInputModal').classList.remove('open');
+}
+document.getElementById('bpInputModal').addEventListener('click', function(e) {
+  if (e.target === this) closeBpInputModal();
+});
+
+// ===== APPLE HEALTH TOGGLE =====
+function toggleAppleHealth() {
+  const items = document.getElementById('appleHealthItems');
+  items.style.display = items.style.display === 'none' ? '' : 'none';
+}
+
+// ===== SHARE SCREEN =====
+function openShareScreen() {
+  document.getElementById('shareScreen').classList.add('open');
+  switchShareSubMode('camera');
+}
+function closeShareScreen() {
+  document.getElementById('shareScreen').classList.remove('open');
+}
+function shareCapture() {
+  // Simulate a save/share action
+  const btn = document.getElementById('shareDoneBtn');
+  btn.textContent = '✓ Đã lưu!';
+  setTimeout(() => {
+    btn.textContent = 'Hoàn Thành';
+    closeShareScreen();
+  }, 1200);
+}
+
+function switchShareSubMode(mode) {
+  shareSubMode = mode;
+  const cameraCtrl = document.getElementById('shareCameraControls');
+  const colorCtrl = document.getElementById('shareColorControls');
+  const controls = document.getElementById('shareControls');
+  
+  if (mode === 'camera') {
+    cameraCtrl.style.display = '';
+    colorCtrl.style.display = 'none';
+    controls.style.display = '';
+    // Restore cam-like bg
+    document.getElementById('shareBgLayer').style.background = 'linear-gradient(160deg,#c8a882,#9b7d6a)';
+    document.getElementById('shareBgLayer').style.backgroundImage = '';
+  } else if (mode === 'color') {
+    cameraCtrl.style.display = 'none';
+    colorCtrl.style.display = '';
+    controls.style.display = 'none';
+    setBgColor('#ffb3c6', document.querySelector('.bg-color-swatch'));
+  } else if (mode === 'gallery') {
+    cameraCtrl.style.display = '';
+    colorCtrl.style.display = 'none';
+    controls.style.display = '';
+    document.getElementById('galleryInput').click();
+  }
+  
+  // Update mode button active states
+  const modeBtns = document.querySelectorAll('.share-mode-btn');
+  modeBtns.forEach(b => {
+    b.classList.remove('active');
+    if (b.textContent.trim() === mode || 
+       (mode === 'camera' && b.textContent.trim() === 'chụp ảnh') ||
+       (mode === 'color' && b.textContent.trim() === 'màu nền') ||
+       (mode === 'gallery' && b.textContent.trim() === 'tập ảnh')) {
+      b.classList.add('active');
+    }
+  });
+}
+
+function setBgColor(color, el) {
+  document.querySelectorAll('.bg-color-swatch').forEach(s => s.classList.remove('active'));
+  if (el) el.classList.add('active');
+  const bg = document.getElementById('shareBgLayer');
+  bg.style.background = color;
+  bg.style.backgroundImage = '';
+  // Adjust overlay card for dark bg
+  const card = document.getElementById('shareOverlayCard');
+  if (color === '#1a1a2e') {
+    card.style.background = 'rgba(255,255,255,0.12)';
+    card.style.color = 'white';
+  } else {
+    card.style.background = 'rgba(255,255,255,0.88)';
+    card.style.color = '';
+  }
+}
+
+function selectFrame(el) {
+  document.querySelectorAll('.frame-option').forEach(f => f.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function loadGalleryImage(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const bg = document.getElementById('shareBgLayer');
+    bg.style.background = '#000';
+    bg.style.backgroundImage = `url(${e.target.result})`;
+    bg.style.backgroundSize = 'cover';
+    bg.style.backgroundPosition = 'center';
+    document.getElementById('shareControls').style.display = '';
+  };
+  reader.readAsDataURL(file);
+}
+
+function switchBgColorMode() {
+  switchShareSubMode(shareSubMode === 'color' ? 'camera' : 'color');
+}
+
+// ===== GENDER SELECT =====
+function selectGender(btn) {
+  const parent = btn.closest('.gender-btns');
+  parent.querySelectorAll('.gender-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+// ===== DATE NAV =====
+const dates = ['08.05.2026 (T5) 10:12', '08.05.2026 (T5) 14:33', '08.05.2026 (T5) 17:45', '07.06.2026 (CN) 11:20', '07.06.2026 (CN) 14:05', '07.06.2026 (CN) 16:52'];
+let dateIdx = dates.length - 1;
+function changeDate(dir) {
+  dateIdx = Math.max(0, Math.min(dates.length - 1, dateIdx + dir));
+  document.querySelector('.nav-date').textContent = dates[dateIdx];
+}
+
+// ===== METRIC DETAIL =====
+function showMetricDetail(metric) {
+  switchTab('thayDoi', document.querySelectorAll('.tab-btn')[2]);
+  const tabBtn = document.querySelectorAll('.tab-btn')[2];
+  tabBtn.classList.add('active');
+  setTimeout(() => { document.querySelector('#screen-thayDoi').scrollTop = 200; }, 100);
+}
+
+// Close manual modal on backdrop click
+document.getElementById('manualInputModal').addEventListener('click', function(e) {
+  if (e.target === this) closeManualInput();
+});
+
+// Init
+switchTab('trangTong', document.querySelectorAll('.tab-btn')[0]);
+</script>
+</body>
+</html>
+
+// ===== CSV DATA (from InBody-20260508 3.csv equivalent) =====
+const csvData = [
+  { date: '08.05.26', weight: 74.3, muscle: 27.8, fat: 24.1, fatPct: 32.4, bmi: 27.3, visceral: 10, bmr: 1455, water: 36.6, protein: 9.6, mineral: 3.38 },
+  { date: '08.05', weight: 74.3, muscle: 27.6, fat: 24.4, fatPct: 32.9, bmi: 27.3, visceral: 11, bmr: 1447, water: 36.9, protein: 9.6, mineral: 3.37 },
+  { date: '08.05', weight: 74.5, muscle: 27.7, fat: 24.5, fatPct: 32.8, bmi: 27.4, visceral: 10, bmr: 1451, water: 36.6, protein: 9.6, mineral: 3.38 },
+  { date: '08.05', weight: 71.9, muscle: 27.5, fat: 22.5, fatPct: 31.2, bmi: 26.4, visceral: 9, bmr: 1438, water: 36.7, protein: 9.7, mineral: 3.39 },
+  { date: '07.06', weight: 72.3, muscle: 27.0, fat: 23.6, fatPct: 32.6, bmi: 26.6, visceral: 10, bmr: 1444, water: 36.3, protein: 9.6, mineral: 3.38 },
+  { date: '07.06', weight: 72.5, muscle: 27.6, fat: 22.8, fatPct: 31.4, bmi: 26.6, visceral: 9, bmr: 1444, water: 35.7, protein: 9.5, mineral: 3.36 },
+  { date: '07.06', weight: 71.0, muscle: 27.0, fat: 21.3, fatPct: 30.0, bmi: 26.1, visceral: 9, bmr: 1444, water: 36.5, protein: 9.8, mineral: 3.40, isLatest: true },
+];
+const latestData = csvData[csvData.length - 1];
+
+// ===== TAB SWITCHING =====
+function switchTab(tabId, btn) {
+  if (isOnPage) {
+    isOnPage = false;
+    pageHistory = [];
+  }
+  
+  // Deactivate all tabs and screens
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.screen').forEach(s => {
+    s.classList.remove('active', 'prev');
+  });
+  
+  if (btn) btn.classList.add('active');
+  
+  const screen = document.getElementById('screen-' + tabId);
+  if (screen) screen.classList.add('active');
+  
+  currentTab = tabId;
+  showMainNav();
+  
+  // Update bottom nav
+  const bottomHome = document.getElementById('bottomHome');
+  document.querySelectorAll('.bottom-btn').forEach(b => b.classList.remove('active'));
+  if (tabId === 'trangTong') bottomHome.classList.add('active');
+}
+
+// ===== PAGE NAVIGATION =====
+function navigateToPage(pageId) {
+  const allScreens = document.querySelectorAll('.screen');
+  allScreens.forEach(s => {
+    if (s.classList.contains('active')) {
+      s.classList.add('prev');
+      s.classList.remove('active');
+    }
+  });
+  
+  const target = document.getElementById('page-' + pageId);
+  if (target) {
+    target.classList.remove('prev');
+    target.classList.add('active');
+    target.scrollTop = 0;
+    pageHistory.push(pageId);
+    isOnPage = true;
+  }
+  
+  // Hide top nav for sub-pages
+  document.getElementById('topNav').style.display = 'none';
+}
+
+function goBack() {
+  pageHistory.pop();
+  
+  if (pageHistory.length === 0) {
+    isOnPage = false;
+    document.getElementById('topNav').style.display = '';
+    
+    // Restore current tab
+    document.querySelectorAll('.screen').forEach(s => {
+      s.classList.remove('active', 'prev');
+    });
+    const screen = document.getElementById('screen-' + currentTab);
+    if (screen) screen.classList.add('active');
+  } else {
+    const prevPage = pageHistory[pageHistory.length - 1];
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById('page-' + prevPage).classList.add('active');
+  }
+}
+
+function showMainNav() {
+  document.getElementById('topNav').style.display = '';
+}
+
+// ===== RADAR TAB =====
+function switchRadar(type, btn) {
+  document.querySelectorAll('.radar-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('radarMuscle').style.display = type === 'muscle' ? 'flex' : 'none';
+  document.getElementById('radarFat').style.display = type === 'fat' ? 'flex' : 'none';
+  if (type === 'fat') document.getElementById('radarFat').style.flexDirection = 'column';
+}
+
+// ===== SUB TABS =====
+function switchSubTab(contentId, btn, className) {
+  const parent = btn.closest('.screen') || document.body;
+  parent.querySelectorAll('.' + className).forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  
+  // Show/hide content
+  if (contentId === 'bpResult') {
+    document.getElementById('bpResult').style.display = '';
+    document.getElementById('bpChart').style.display = 'none';
+  } else if (contentId === 'bpChart') {
+    document.getElementById('bpResult').style.display = 'none';
+    document.getElementById('bpChart').style.display = '';
+  }
+}
+
+// ===== RANK TAB =====
+function switchRankTab(tabId, btn) {
+  document.querySelectorAll('.rank-sub-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+// ===== FILTER =====
+function setFilter(btn, label) {
+  const parent = btn.closest('div');
+  parent.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+// ===== MANUAL INPUT =====
+function openManualInput() {
+  document.getElementById('manualInputModal').classList.add('open');
+}
+function closeManualInput() {
+  document.getElementById('manualInputModal').classList.remove('open');
+}
+
+// ===== DATE NAV =====
+const dates = ['08.05.2026 (T5) 10:12', '08.05.2026 (T5) 14:33', '08.05.2026 (T5) 17:45', '07.06.2026 (CN) 11:20', '07.06.2026 (CN) 14:05', '07.06.2026 (CN) 16:52'];
+let dateIdx = dates.length - 1;
+function changeDate(dir) {
+  dateIdx = Math.max(0, Math.min(dates.length - 1, dateIdx + dir));
+  document.querySelector('.nav-date').textContent = dates[dateIdx];
+}
+
+// ===== METRIC DETAIL =====
+function showMetricDetail(metric) {
+  const names = { weight: 'Cân nặng', bmi: 'BMI', fat: 'Tỷ lệ mỡ', muscle: 'Khối lượng cơ xương' };
+  switchTab('thayDoi', document.querySelectorAll('.tab-btn')[2]);
+  const tabBtn = document.querySelectorAll('.tab-btn')[2];
+  tabBtn.classList.add('active');
+  setTimeout(() => { document.querySelector('#screen-thayDoi').scrollTop = 200; }, 100);
+}
+
+// Close modal on backdrop click
+document.getElementById('manualInputModal').addEventListener('click', function(e) {
+  if (e.target === this) closeManualInput();
+});
+
+// Init
+switchTab('trangTong', document.querySelectorAll('.tab-btn')[0]);
+</script>
+</body>
+</html>
