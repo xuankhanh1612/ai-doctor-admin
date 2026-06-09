@@ -101,7 +101,7 @@ const TABS = [
   },
 ];
 
-export default function PrintCenter({ onPrev, prevLabel }) {
+export default function PrintCenter({ onNext, nextLabel, onPrev, prevLabel }) {
   const [activeTab, setActiveTab] = useState('exam');
   const printRef = useRef(null);
 
@@ -188,7 +188,7 @@ export default function PrintCenter({ onPrev, prevLabel }) {
           </div>
         </div>
         <div style={{ padding: '0 28px' }}>
-          <NavButtons onPrev={onPrev} prevLabel={prevLabel} />
+          <NavButtons onNext={onNext} nextLabel={nextLabel} onPrev={onPrev} prevLabel={prevLabel} />
         </div>
       </div>
     </>
