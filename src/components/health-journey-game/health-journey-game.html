@@ -1,0 +1,1569 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Neuro Quest – Warrior Journey</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+
+  :root {
+    --bg-deep: #050812;
+    --bg-card: #0d1528;
+    --bg-card2: #111d35;
+    --bg-modal: #0a1220;
+    --border: rgba(80,160,255,0.18);
+    --border2: rgba(100,80,220,0.22);
+    --blue: #3b82f6;
+    --blue-glow: #60a5fa;
+    --purple: #8b5cf6;
+    --purple-glow: #a78bfa;
+    --cyan: #06b6d4;
+    --gold: #f59e0b;
+    --gem: #38bdf8;
+    --fire: #ef4444;
+    --green: #22c55e;
+    --orange: #f97316;
+    --text: #e2e8f0;
+    --text-dim: #94a3b8;
+    --text-muted: #64748b;
+    --accent: #7c3aed;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+
+  html, body {
+    width:100%; height:100%;
+    background: var(--bg-deep);
+    font-family: 'Inter', sans-serif;
+    color: var(--text);
+    overflow: hidden;
+  }
+
+  /* ─── APP SHELL ─── */
+  #app {
+    width:100%; height:100%;
+    display:flex; flex-direction:column;
+    position: relative;
+  }
+
+  /* ─── SCREENS ─── */
+  .screen {
+    display: none;
+    flex-direction: column;
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-bottom: 70px;
+    background: var(--bg-deep);
+  }
+  .screen.active { display: flex; }
+
+  /* ─── MODALS / SUB-SCREENS ─── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    background: rgba(0,0,0,0.85);
+    flex-direction: column;
+    overflow-y: auto;
+  }
+  .modal-overlay.active { display: flex; }
+  .modal-box {
+    background: var(--bg-modal);
+    border: 1px solid var(--border2);
+    border-radius: 16px;
+    margin: 60px 12px 80px;
+    padding: 16px;
+    position: relative;
+    flex-shrink: 0;
+  }
+  .modal-close {
+    position: absolute;
+    top: 12px; right: 12px;
+    width:28px; height:28px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid var(--border);
+    border-radius:50%;
+    cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    font-size:14px; color:var(--text-dim);
+    z-index:10;
+  }
+
+  /* ─── BOTTOM NAV ─── */
+  #bottom-nav {
+    position:fixed; bottom:0; left:0; right:0;
+    height:64px;
+    background: rgba(8,14,30,0.97);
+    border-top: 1px solid var(--border);
+    display:flex; align-items:center;
+    z-index:100;
+    backdrop-filter: blur(12px);
+  }
+  .nav-item {
+    flex:1; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:3px;
+    cursor:pointer; padding:8px 0;
+    position:relative;
+  }
+  .nav-item .nav-icon { font-size:20px; transition:.2s; }
+  .nav-item .nav-label { font-size:9px; color:var(--text-muted); font-weight:500; letter-spacing:.3px; }
+  .nav-item.active .nav-label { color: var(--blue-glow); }
+  .nav-item.active .nav-icon { transform: scale(1.1); }
+  .nav-center {
+    width:56px; height:56px; border-radius:50%;
+    background: linear-gradient(135deg, var(--purple) 0%, var(--blue) 100%);
+    display:flex; align-items:center; justify-content:center;
+    box-shadow: 0 0 20px rgba(139,92,246,0.5);
+    margin-top:-20px;
+    font-size:22px;
+    cursor:pointer;
+  }
+
+  /* ─── TOP HEADER ─── */
+  .top-bar {
+    display:flex; align-items:center; justify-content:space-between;
+    padding: 14px 16px 10px;
+    background: linear-gradient(180deg, rgba(10,18,40,0.98) 0%, transparent 100%);
+    position: sticky; top:0; z-index:50;
+  }
+  .top-bar-title {
+    font-family:'Rajdhani',sans-serif;
+    font-size:18px; font-weight:700;
+    background: linear-gradient(90deg, var(--blue-glow), var(--purple-glow));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .currency-row {
+    display:flex; align-items:center; gap:8px;
+  }
+  .currency-badge {
+    display:flex; align-items:center; gap:4px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border);
+    border-radius:20px; padding:3px 8px;
+    font-size:11px; font-weight:600;
+  }
+
+  /* ─── CARDS ─── */
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius:12px;
+    padding:14px;
+    margin: 0 12px 10px;
+  }
+  .card-title {
+    font-family:'Rajdhani',sans-serif;
+    font-size:12px; font-weight:600;
+    color: var(--text-dim); letter-spacing:1px;
+    text-transform:uppercase; margin-bottom:10px;
+  }
+
+  /* ─── BUTTONS ─── */
+  .btn-primary {
+    width:100%; padding:12px;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--blue) 100%);
+    border:none; border-radius:8px;
+    color:#fff; font-family:'Rajdhani',sans-serif;
+    font-size:14px; font-weight:700; letter-spacing:.5px;
+    cursor:pointer; transition:.15s;
+  }
+  .btn-primary:active { opacity:.85; transform:scale(.98); }
+  .btn-outline {
+    padding:8px 16px;
+    background: transparent;
+    border: 1px solid var(--blue);
+    border-radius:8px; color:var(--blue-glow);
+    font-size:12px; font-weight:600; cursor:pointer;
+  }
+  .btn-sm {
+    padding:6px 12px; border-radius:6px;
+    font-size:11px; font-weight:600;
+    cursor:pointer; border:none;
+  }
+
+  /* ─── PROGRESS BAR ─── */
+  .progress-wrap { background:rgba(255,255,255,0.07); border-radius:99px; overflow:hidden; }
+  .progress-bar { height:100%; border-radius:99px; transition:.3s; }
+
+  /* ─── HERO BANNER (Home) ─── */
+  .hero-banner {
+    margin:0 12px 10px;
+    border-radius:14px; overflow:hidden;
+    background: linear-gradient(135deg, #0f1a3a 0%, #1a0a3a 50%, #0a1228 100%);
+    border: 1px solid var(--border2);
+    padding:20px 16px;
+    position:relative;
+    min-height:180px;
+    display:flex; flex-direction:column; justify-content:flex-end;
+  }
+  .hero-banner::before {
+    content:'';
+    position:absolute; inset:0;
+    background: radial-gradient(circle at 70% 40%, rgba(139,92,246,0.25) 0%, transparent 60%);
+  }
+  .hero-avatar {
+    position:absolute; right:16px; top:50%; transform:translateY(-50%);
+    font-size:64px; opacity:.7;
+  }
+  .hero-tag {
+    font-size:9px; font-weight:700; letter-spacing:2px;
+    color:var(--purple-glow); text-transform:uppercase; margin-bottom:6px;
+  }
+  .hero-name { font-family:'Rajdhani',sans-serif; font-size:22px; font-weight:700; color:#fff; }
+  .hero-sub { font-size:11px; color:var(--text-dim); margin: 4px 0 12px; line-height:1.5; }
+
+  /* ─── XP BAR ─── */
+  .xp-section { margin: 0 12px 10px; }
+  .xp-label { display:flex; justify-content:space-between; font-size:11px; color:var(--text-dim); margin-bottom:4px; }
+  .xp-bar-wrap { height:6px; background:rgba(255,255,255,0.07); border-radius:99px; overflow:hidden; }
+  .xp-bar { height:6px; width:70%; background:linear-gradient(90deg,var(--purple),var(--blue)); border-radius:99px; }
+
+  /* ─── STAT GRID ─── */
+  .stat-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin:0 12px 10px; }
+  .stat-item {
+    background:var(--bg-card); border:1px solid var(--border);
+    border-radius:10px; padding:10px 8px; text-align:center;
+  }
+  .stat-value { font-family:'Rajdhani',sans-serif; font-size:22px; font-weight:700; color:var(--blue-glow); }
+  .stat-label { font-size:9px; color:var(--text-muted); letter-spacing:.5px; margin-top:2px; }
+
+  /* ─── TASK ITEM ─── */
+  .task-item {
+    display:flex; align-items:center; gap:10px;
+    padding:10px 0; border-bottom:1px solid rgba(255,255,255,0.05);
+  }
+  .task-item:last-child { border-bottom:none; }
+  .task-icon { width:34px; height:34px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0; }
+  .task-info { flex:1; min-width:0; }
+  .task-name { font-size:13px; font-weight:600; }
+  .task-desc { font-size:10px; color:var(--text-dim); margin-top:1px; }
+  .task-prog { font-size:10px; font-weight:700; color:var(--blue-glow); }
+  .task-check { width:22px; height:22px; border-radius:50%; border:2px solid var(--border); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .task-check.done { background:var(--green); border-color:var(--green); }
+
+  /* ─── CHAPTER ITEM ─── */
+  .chapter-item {
+    display:flex; align-items:center; gap:12px;
+    background:var(--bg-card2); border:1px solid var(--border);
+    border-radius:10px; padding:10px 12px; margin-bottom:8px;
+    cursor:pointer; transition:.15s;
+  }
+  .chapter-item:active { opacity:.85; }
+  .chapter-thumb { width:44px; height:44px; border-radius:8px; overflow:hidden; font-size:24px; display:flex; align-items:center; justify-content:center; background:rgba(139,92,246,.2); flex-shrink:0; }
+  .chapter-info { flex:1; }
+  .chapter-num { font-size:9px; color:var(--text-muted); letter-spacing:1px; text-transform:uppercase; }
+  .chapter-name { font-family:'Rajdhani',sans-serif; font-size:14px; font-weight:700; }
+  .chapter-prog { font-size:10px; color:var(--blue-glow); margin-top:2px; }
+
+  /* ─── AI PULSE ─── */
+  .ai-orb {
+    width:100px; height:100px; border-radius:50%; margin:0 auto;
+    background: radial-gradient(circle, #1e3a6e 0%, #0a1228 70%);
+    border: 2px solid var(--blue);
+    box-shadow: 0 0 30px rgba(59,130,246,0.4), inset 0 0 20px rgba(59,130,246,0.1);
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Rajdhani',sans-serif; font-size:26px; font-weight:700;
+    color:var(--blue-glow);
+    animation: pulse-orb 2s ease-in-out infinite;
+  }
+  @keyframes pulse-orb { 0%,100%{box-shadow:0 0 30px rgba(59,130,246,0.4)} 50%{box-shadow:0 0 50px rgba(59,130,246,0.7)} }
+
+  /* ─── SHOP ITEM ─── */
+  .shop-item {
+    background:var(--bg-card2); border:1px solid var(--border);
+    border-radius:10px; padding:12px;
+    display:flex; align-items:center; gap:10px; margin-bottom:8px;
+    cursor:pointer;
+  }
+  .shop-thumb { width:40px; height:40px; border-radius:8px; font-size:22px; display:flex; align-items:center; justify-content:center; background:rgba(245,158,11,.15); flex-shrink:0; }
+
+  /* ─── LEADERBOARD ─── */
+  .lb-item { display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid rgba(255,255,255,0.05); }
+  .lb-rank { width:26px; text-align:center; font-family:'Rajdhani',sans-serif; font-size:16px; font-weight:700; }
+  .lb-avatar { width:34px; height:34px; border-radius:50%; background:rgba(139,92,246,.25); display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0; }
+  .lb-info { flex:1; }
+  .lb-name { font-size:13px; font-weight:600; }
+  .lb-level { font-size:10px; color:var(--text-dim); }
+  .lb-xp { font-family:'Rajdhani',sans-serif; font-size:13px; font-weight:700; color:var(--gold); }
+
+  /* ─── REWARDS ─── */
+  .reward-row { display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.05); }
+
+  /* ─── DAILY REWARD GRID ─── */
+  .day-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:4px; }
+  .day-item { text-align:center; padding:8px 2px; background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:8px; }
+  .day-item.claimed { background:rgba(34,197,94,.1); border-color:var(--green); }
+  .day-item.today { background:rgba(245,158,11,.12); border-color:var(--gold); }
+  .day-label { font-size:8px; color:var(--text-muted); margin-bottom:4px; }
+  .day-check { font-size:14px; }
+
+  /* ─── TABS ─── */
+  .tab-row { display:flex; gap:0; margin-bottom:12px; background:rgba(255,255,255,0.04); border-radius:8px; padding:3px; }
+  .tab-btn { flex:1; padding:6px; text-align:center; font-size:11px; font-weight:600; color:var(--text-dim); border-radius:6px; cursor:pointer; border:none; background:transparent; }
+  .tab-btn.active { background:var(--bg-card2); color:var(--blue-glow); }
+
+  /* ─── NOTIFICATION ─── */
+  .notif-item { display:flex; gap:10px; padding:10px 0; border-bottom:1px solid rgba(255,255,255,0.05); }
+  .notif-icon { width:36px; height:36px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0; }
+  .notif-body { flex:1; }
+  .notif-title { font-size:12px; font-weight:600; }
+  .notif-time { font-size:10px; color:var(--text-muted); margin-top:2px; }
+
+  /* ─── SKILL TREE NODE ─── */
+  .skill-node {
+    text-align:center; cursor:pointer;
+  }
+  .skill-circle {
+    width:56px; height:56px; border-radius:50%;
+    border:2px solid var(--border2);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    margin:0 auto 4px; font-size:18px;
+    background:var(--bg-card);
+  }
+  .skill-circle.unlocked { border-color:var(--purple); box-shadow:0 0 12px rgba(139,92,246,.4); }
+  .skill-circle.maxed { border-color:var(--gold); box-shadow:0 0 12px rgba(245,158,11,.4); }
+  .skill-node-name { font-size:9px; color:var(--text-dim); max-width:60px; margin:0 auto; line-height:1.3; }
+  .skill-node-level { font-size:8px; color:var(--text-muted); }
+
+  /* ─── ACHIEVEMENT ─── */
+  .ach-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+  .ach-item { text-align:center; }
+  .ach-icon { width:56px; height:56px; border-radius:12px; margin:0 auto 6px; display:flex; align-items:center; justify-content:center; font-size:24px; }
+  .ach-icon.locked { background:rgba(255,255,255,0.04); border:1px solid var(--border); filter:grayscale(1) opacity(.4); }
+  .ach-icon.unlocked { background:rgba(245,158,11,.12); border:1px solid rgba(245,158,11,.4); }
+  .ach-name { font-size:10px; color:var(--text-dim); line-height:1.3; }
+
+  /* ─── LEVEL UP MODAL ─── */
+  .level-badge {
+    width:100px; height:100px; border-radius:50%;
+    background: conic-gradient(var(--gold) 0%, var(--orange) 50%, var(--gold) 100%);
+    box-shadow: 0 0 40px rgba(245,158,11,.6);
+    display:flex; align-items:center; justify-content:center;
+    margin:0 auto 12px;
+    font-family:'Rajdhani',sans-serif; font-size:36px; font-weight:900; color:#fff;
+  }
+
+  /* ─── STATS CHART (simple bars) ─── */
+  .stat-bar-row { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+  .stat-bar-label { font-size:10px; width:80px; flex-shrink:0; }
+  .stat-bar-wrap { flex:1; height:6px; background:rgba(255,255,255,.07); border-radius:99px; overflow:hidden; }
+  .stat-bar-fill { height:6px; border-radius:99px; }
+
+  /* ─── SECTION HEAD ─── */
+  .section-head { display:flex; justify-content:space-between; align-items:center; margin:0 12px 8px; }
+  .section-head-title { font-family:'Rajdhani',sans-serif; font-size:14px; font-weight:700; color:var(--text-dim); text-transform:uppercase; letter-spacing:.5px; }
+
+  /* ─── GLOW DIVIDER ─── */
+  .glow-line { height:1px; background:linear-gradient(90deg,transparent,var(--purple),transparent); margin:12px 0; }
+
+  /* ─── FLOATING BADGE ─── */
+  .badge { display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:99px; font-size:10px; font-weight:600; }
+  .badge-blue { background:rgba(59,130,246,.15); border:1px solid rgba(59,130,246,.3); color:var(--blue-glow); }
+  .badge-green { background:rgba(34,197,94,.15); border:1px solid rgba(34,197,94,.3); color:#4ade80; }
+  .badge-gold { background:rgba(245,158,11,.15); border:1px solid rgba(245,158,11,.3); color:var(--gold); }
+  .badge-purple { background:rgba(139,92,246,.15); border:1px solid rgba(139,92,246,.3); color:var(--purple-glow); }
+
+  /* scroll bar */
+  ::-webkit-scrollbar { width:3px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+  ::-webkit-scrollbar-thumb { background:rgba(100,120,180,.3); border-radius:99px; }
+
+  /* ─── MISSION SUBPAGE COLORS ─── */
+  .icon-bg-purple { background:rgba(139,92,246,.2); }
+  .icon-bg-blue   { background:rgba(59,130,246,.2); }
+  .icon-bg-green  { background:rgba(34,197,94,.2); }
+  .icon-bg-gold   { background:rgba(245,158,11,.2); }
+  .icon-bg-cyan   { background:rgba(6,182,212,.2); }
+
+  /* analysis quadrant */
+  .ai-quad-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .ai-quad { background:rgba(255,255,255,.04); border:1px solid var(--border); border-radius:10px; padding:12px; text-align:center; }
+  .ai-quad-icon { font-size:24px; margin-bottom:4px; }
+  .ai-quad-label { font-size:10px; color:var(--text-dim); }
+
+  /* profile stats hex */
+  .hex-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin:0 0 10px; }
+  .hex-stat { background:rgba(255,255,255,.04); border:1px solid var(--border); border-radius:8px; padding:8px 4px; text-align:center; }
+  .hex-stat-val { font-family:'Rajdhani',sans-serif; font-size:20px; font-weight:700; }
+  .hex-stat-name { font-size:9px; color:var(--text-dim); }
+
+  /* inbody scan area */
+  .scan-area { border:1.5px dashed rgba(59,130,246,.4); border-radius:10px; padding:16px; text-align:center; background:rgba(59,130,246,.04); }
+
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ═══════════════════════════════ SCREEN 1: TRANG CHỦ ═══════════════════════════════ -->
+  <div class="screen active" id="screen-home">
+    <div class="top-bar">
+      <div class="top-bar-title">⚔ NEURO QUEST</div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <div class="currency-badge">🪙 2,450</div>
+        <div class="currency-badge" style="color:#38bdf8;">💎 340</div>
+        <div class="currency-badge" style="color:#ef4444;">🔥 6,000</div>
+        <span onclick="openModal('modal-notif')" style="font-size:20px;cursor:pointer;margin-left:4px;">🔔</span>
+      </div>
+    </div>
+
+    <!-- Hero -->
+    <div class="hero-banner">
+      <div class="hero-avatar">🥷</div>
+      <div class="hero-tag">Shadow Warrior · Lv. 12</div>
+      <div class="hero-name">BẮT ĐẦU<br>HÀNH TRÌNH CHIẾN BINH</div>
+      <div class="hero-sub">Nâng cấp thể chất, tinh thần và trí tuệ<br>để chinh phục phiên bản tốt nhất.</div>
+      <button class="btn-primary" style="max-width:160px;" onclick="goTo('screen-hanh-trinh')">BẮT ĐẦU</button>
+    </div>
+
+    <!-- XP -->
+    <div class="xp-section">
+      <div class="xp-label"><span>XP: 4,250 / 6,000</span><span>Lv. 12 → 13</span></div>
+      <div class="xp-bar-wrap"><div class="xp-bar"></div></div>
+    </div>
+
+    <!-- Quick stats -->
+    <div class="stat-grid">
+      <div class="stat-item"><div class="stat-value" style="color:#60a5fa;">81</div><div class="stat-label">FOCUS</div></div>
+      <div class="stat-item"><div class="stat-value" style="color:#a78bfa;">92</div><div class="stat-label">DISCIPLINE</div></div>
+      <div class="stat-item"><div class="stat-value" style="color:#f97316;">63</div><div class="stat-label">ENERGY</div></div>
+      <div class="stat-item"><div class="stat-value" style="color:#4ade80;">74</div><div class="stat-label">HEALTH</div></div>
+      <div class="stat-item"><div class="stat-value" style="color:#38bdf8;">58</div><div class="stat-label">KNOWLEDGE</div></div>
+      <div class="stat-item"><div class="stat-value" style="color:#f59e0b;">46</div><div class="stat-label">CHARISMA</div></div>
+    </div>
+
+    <!-- Current mission -->
+    <div class="card">
+      <div class="card-title">Nhiệm vụ chính</div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div style="font-size:28px;">⚔️</div>
+        <div>
+          <div style="font-size:11px;color:var(--text-muted);">CHAPTER 1</div>
+          <div style="font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;">THE AWAKENING</div>
+          <div class="progress-wrap" style="height:4px;margin-top:4px;width:140px;"><div class="progress-bar" style="width:66%;background:linear-gradient(90deg,var(--purple),var(--blue));"></div></div>
+        </div>
+        <button class="btn-sm" style="background:linear-gradient(135deg,var(--purple),var(--blue));color:#fff;margin-left:auto;" onclick="openModal('modal-chapter-detail')">TIẾP TỤC</button>
+      </div>
+    </div>
+
+    <!-- Quick actions -->
+    <div class="card" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+      <div onclick="openModal('modal-daily-reward')" style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-radius:10px;padding:12px;cursor:pointer;display:flex;align-items:center;gap:8px;">
+        <span style="font-size:22px;">🎁</span>
+        <div><div style="font-size:12px;font-weight:600;color:var(--gold);">Daily Reward</div><div style="font-size:10px;color:var(--text-dim);">Nhận thưởng</div></div>
+      </div>
+      <div onclick="goTo('screen-rewards')" style="background:rgba(139,92,246,.08);border:1px solid rgba(139,92,246,.25);border-radius:10px;padding:12px;cursor:pointer;display:flex;align-items:center;gap:8px;">
+        <span style="font-size:22px;">🛡</span>
+        <div><div style="font-size:12px;font-weight:600;color:var(--purple-glow);">Shadow Pass</div><div style="font-size:10px;color:var(--text-dim);">Mở khóa</div></div>
+      </div>
+    </div>
+
+    <!-- Quick nav cards -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:0 12px 10px;">
+      <div onclick="goTo('screen-ai-coach')" style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:10px 6px;text-align:center;cursor:pointer;">
+        <div style="font-size:22px;">🤖</div><div style="font-size:9px;color:var(--text-dim);margin-top:4px;">AI Coach</div>
+      </div>
+      <div onclick="goTo('screen-nhiem-vu')" style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:10px 6px;text-align:center;cursor:pointer;">
+        <div style="font-size:22px;">📋</div><div style="font-size:9px;color:var(--text-dim);margin-top:4px;">Nhiệm vụ</div>
+      </div>
+      <div onclick="openModal('modal-stats')" style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:10px 6px;text-align:center;cursor:pointer;">
+        <div style="font-size:22px;">📊</div><div style="font-size:9px;color:var(--text-dim);margin-top:4px;">Thống kê</div>
+      </div>
+      <div onclick="openModal('modal-leaderboard')" style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:10px 6px;text-align:center;cursor:pointer;">
+        <div style="font-size:22px;">🏆</div><div style="font-size:9px;color:var(--text-dim);margin-top:4px;">Bảng xếp hạng</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════ SCREEN 2: NHIỆM VỤ ═══════════════════════════════ -->
+  <div class="screen" id="screen-nhiem-vu">
+    <div class="top-bar">
+      <div class="top-bar-title">📋 NHIỆM VỤ</div>
+      <div class="currency-badge" style="font-size:12px;">320 / 600 XP</div>
+    </div>
+
+    <!-- Tabs -->
+    <div style="padding:0 12px;">
+      <div class="tab-row">
+        <button class="tab-btn active" onclick="switchTab(this,'tasks')">Hôm nay</button>
+        <button class="tab-btn" onclick="switchTab(this,'tasks')">Hàng ngày</button>
+        <button class="tab-btn" onclick="switchTab(this,'tasks')">Hàng tuần</button>
+        <button class="tab-btn" onclick="switchTab(this,'tasks')">Thành tựu</button>
+      </div>
+    </div>
+
+    <!-- Task list -->
+    <div class="card">
+      <div class="task-item">
+        <div class="task-icon icon-bg-cyan">🌬</div>
+        <div class="task-info">
+          <div class="task-name">Breath Activation</div>
+          <div class="task-desc">Thở sâu 5 phút</div>
+          <div style="height:3px;background:rgba(255,255,255,.07);border-radius:99px;margin-top:4px;overflow:hidden;"><div style="height:3px;width:100%;background:var(--green);border-radius:99px;"></div></div>
+        </div>
+        <div class="task-prog">5/5</div>
+        <div class="task-check done">✓</div>
+      </div>
+      <div class="task-item">
+        <div class="task-icon icon-bg-gold">🚫</div>
+        <div class="task-info">
+          <div class="task-name">No Sugar Challenge</div>
+          <div class="task-desc">Không đường 1 ngày</div>
+          <div style="height:3px;background:rgba(255,255,255,.07);border-radius:99px;margin-top:4px;overflow:hidden;"><div style="height:3px;width:100%;background:var(--green);border-radius:99px;"></div></div>
+        </div>
+        <div class="task-prog">1/1</div>
+        <div class="task-check done">✓</div>
+      </div>
+      <div class="task-item" onclick="openModal('modal-task-detail')" style="cursor:pointer;">
+        <div class="task-icon icon-bg-blue">💼</div>
+        <div class="task-info">
+          <div class="task-name">Deep Work 90m</div>
+          <div class="task-desc">Tập trung làm việc 90 phút</div>
+          <div style="height:3px;background:rgba(255,255,255,.07);border-radius:99px;margin-top:4px;overflow:hidden;"><div style="height:3px;width:78%;background:var(--blue);border-radius:99px;"></div></div>
+        </div>
+        <div class="task-prog" style="color:var(--blue-glow);">70/90</div>
+        <div class="task-check">›</div>
+      </div>
+      <div class="task-item">
+        <div class="task-icon icon-bg-cyan">🚿</div>
+        <div class="task-info">
+          <div class="task-name">Cold Shower</div>
+          <div class="task-desc">Tắm nước lạnh</div>
+          <div style="height:3px;background:rgba(255,255,255,.07);border-radius:99px;margin-top:4px;"></div>
+        </div>
+        <div class="task-prog" style="color:var(--text-muted);">0/1</div>
+        <div class="task-check">○</div>
+      </div>
+      <div class="task-item">
+        <div class="task-icon icon-bg-purple">📚</div>
+        <div class="task-info">
+          <div class="task-name">Read 20 Pages</div>
+          <div class="task-desc">Đọc ít nhất 20 trang sách</div>
+          <div style="height:3px;background:rgba(255,255,255,.07);border-radius:99px;margin-top:4px;overflow:hidden;"><div style="height:3px;width:50%;background:var(--purple);border-radius:99px;"></div></div>
+        </div>
+        <div class="task-prog" style="color:var(--gold);">10/20</div>
+        <div class="task-check">›</div>
+      </div>
+      <div class="task-item">
+        <div class="task-icon icon-bg-gold">📓</div>
+        <div class="task-info">
+          <div class="task-name">Reflection Journal</div>
+          <div class="task-desc">Ghi lại suy nghĩ của bạn</div>
+          <div style="height:3px;background:rgba(255,255,255,.07);border-radius:99px;margin-top:4px;"></div>
+        </div>
+        <div class="task-prog" style="color:var(--text-muted);">0/1</div>
+        <div class="task-check">○</div>
+      </div>
+    </div>
+
+    <!-- Chest rewards -->
+    <div class="card">
+      <div class="card-title">Điểm nhiệm vụ · 320/600</div>
+      <div class="progress-wrap" style="height:6px;margin-bottom:12px;"><div class="progress-bar" style="width:53%;background:linear-gradient(90deg,var(--blue),var(--purple));"></div></div>
+      <div style="display:flex;justify-content:space-around;text-align:center;">
+        <div><div style="font-size:28px;opacity:.5;">🎁</div><div style="font-size:10px;color:var(--text-muted);margin-top:4px;">🪙 100</div></div>
+        <div><div style="font-size:28px;opacity:.5;">🎁</div><div style="font-size:10px;color:var(--text-muted);margin-top:4px;">🪙 300</div></div>
+        <div><div style="font-size:28px;opacity:.5;">🎁</div><div style="font-size:10px;color:var(--text-muted);margin-top:4px;">🪙 600</div></div>
+      </div>
+    </div>
+
+    <div style="padding:0 12px 4px;"><button class="btn-primary" onclick="openModal('modal-level-up')">NHẬN TẤT CẢ</button></div>
+
+    <!-- Achievements shortcut -->
+    <div class="section-head" style="margin-top:8px;">
+      <span class="section-head-title">Thành tựu gần đây</span>
+      <span onclick="openModal('modal-achievements')" style="font-size:11px;color:var(--blue-glow);cursor:pointer;">Xem tất cả ›</span>
+    </div>
+    <div style="display:flex;gap:10px;padding:0 12px 10px;overflow-x:auto;">
+      <div class="ach-item" style="min-width:70px;"><div class="ach-icon unlocked">🔥</div><div class="ach-name">7 Days Streak</div></div>
+      <div class="ach-item" style="min-width:70px;"><div class="ach-icon unlocked">🌅</div><div class="ach-name">Early Bird</div></div>
+      <div class="ach-item" style="min-width:70px;"><div class="ach-icon locked">🍬</div><div class="ach-name">No Sugar 3D</div></div>
+      <div class="ach-item" style="min-width:70px;"><div class="ach-icon locked">💼</div><div class="ach-name">Deep Worker</div></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════ SCREEN 3: HÀNH TRÌNH ═══════════════════════════════ -->
+  <div class="screen" id="screen-hanh-trinh">
+    <div class="top-bar">
+      <div class="top-bar-title">⚔ HÀNH TRÌNH</div>
+      <div style="display:flex;gap:6px;">
+        <button class="btn-sm badge-purple" style="border:none;cursor:pointer;">Story Mode</button>
+        <button class="btn-sm" style="background:transparent;border:1px solid var(--border);color:var(--text-dim);cursor:pointer;">Adventure</button>
+      </div>
+    </div>
+
+    <div class="chapter-item" onclick="openModal('modal-chapter-detail')" style="margin:0 12px 8px;border-color:rgba(139,92,246,.4);background:rgba(139,92,246,.07);">
+      <div class="chapter-thumb">🌅</div>
+      <div class="chapter-info">
+        <div class="chapter-num">CHAPTER 1</div>
+        <div class="chapter-name">THE AWAKENING</div>
+        <div class="progress-wrap" style="height:4px;margin-top:4px;"><div class="progress-bar" style="width:66%;background:linear-gradient(90deg,var(--purple),var(--blue));"></div></div>
+        <div class="chapter-prog">66% · Tiếp tục 1-3</div>
+      </div>
+      <div style="color:var(--blue-glow);font-size:18px;">›</div>
+    </div>
+
+    <div class="chapter-item" onclick="openModal('modal-chapter-detail2')" style="margin:0 12px 8px;">
+      <div class="chapter-thumb" style="background:rgba(59,130,246,.2);">🔥</div>
+      <div class="chapter-info">
+        <div class="chapter-num">CHAPTER 2</div>
+        <div class="chapter-name">THE DISCIPLINE</div>
+        <div class="progress-wrap" style="height:4px;margin-top:4px;"><div class="progress-bar" style="width:0%;background:linear-gradient(90deg,var(--blue),var(--cyan));"></div></div>
+        <div class="chapter-prog">0% · Chưa bắt đầu</div>
+      </div>
+      <div style="color:var(--text-muted);font-size:18px;">🔒</div>
+    </div>
+
+    <div class="chapter-item" style="margin:0 12px 8px;opacity:.5;">
+      <div class="chapter-thumb" style="background:rgba(239,68,68,.2);">⚡</div>
+      <div class="chapter-info">
+        <div class="chapter-num">CHAPTER 3</div>
+        <div class="chapter-name">THE TRANSFORMATION</div>
+        <div class="chapter-prog" style="color:var(--text-muted);">Khóa · Hoàn thành Ch.2</div>
+      </div>
+      <div style="color:var(--text-muted);font-size:18px;">🔒</div>
+    </div>
+
+    <div class="chapter-item" style="margin:0 12px 8px;opacity:.5;">
+      <div class="chapter-thumb" style="background:rgba(245,158,11,.2);">👑</div>
+      <div class="chapter-info">
+        <div class="chapter-num">CHAPTER 4</div>
+        <div class="chapter-name">THE MASTERY</div>
+        <div class="chapter-prog" style="color:var(--text-muted);">Khóa</div>
+      </div>
+      <div style="color:var(--text-muted);font-size:18px;">🔒</div>
+    </div>
+
+    <div class="chapter-item" style="margin:0 12px 8px;opacity:.35;">
+      <div class="chapter-thumb" style="background:rgba(139,92,246,.2);">⚜️</div>
+      <div class="chapter-info">
+        <div class="chapter-num">CHAPTER 5</div>
+        <div class="chapter-name">THE LEGEND</div>
+        <div class="chapter-prog" style="color:var(--text-muted);">Khóa</div>
+      </div>
+      <div style="color:var(--text-muted);font-size:18px;">🔒</div>
+    </div>
+
+    <div style="padding:0 12px;">
+      <button class="btn-outline" onclick="openModal('modal-all-chapters')" style="width:100%;">XEM TẤT CẢ CHAPTER</button>
+    </div>
+
+    <!-- Skill Tree shortcut -->
+    <div class="section-head" style="margin-top:12px;">
+      <span class="section-head-title">Cây kỹ năng</span>
+      <span onclick="openModal('modal-skill-tree')" style="font-size:11px;color:var(--blue-glow);cursor:pointer;">Xem ›</span>
+    </div>
+    <div class="card" onclick="openModal('modal-skill-tree')" style="cursor:pointer;">
+      <div style="display:flex;justify-content:space-around;">
+        <div class="skill-node"><div class="skill-circle maxed">⏰</div><div class="skill-node-name">Wake Up Early</div><div class="skill-node-level">1/1</div></div>
+        <div class="skill-node"><div class="skill-circle unlocked">🧠</div><div class="skill-node-name">Dopamine Detox</div><div class="skill-node-level">3/3</div></div>
+        <div class="skill-node"><div class="skill-circle unlocked">💼</div><div class="skill-node-name">Deep Work</div><div class="skill-node-level">2/3</div></div>
+        <div class="skill-node"><div class="skill-circle">🏆</div><div class="skill-node-name">Monk Mode</div><div class="skill-node-level">0/3</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════ SCREEN 4: AI COACH ═══════════════════════════════ -->
+  <div class="screen" id="screen-ai-coach">
+    <div class="top-bar">
+      <div class="top-bar-title">🤖 AI COACH</div>
+      <div class="badge badge-purple">Đang phân tích...</div>
+    </div>
+
+    <!-- AI Orb -->
+    <div style="text-align:center;padding:20px 12px 12px;">
+      <div class="ai-orb">AI</div>
+      <div style="margin-top:12px;font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;">AI ĐANG PHÂN TÍCH BẠN</div>
+      <div style="font-size:11px;color:var(--text-dim);margin-top:4px;">Để tạo lộ trình tối ưu</div>
+    </div>
+
+    <!-- Analysis quadrant -->
+    <div class="ai-quad-grid" style="margin:0 12px 10px;">
+      <div class="ai-quad">
+        <div class="ai-quad-icon">⚙️</div>
+        <div style="font-family:'Rajdhani',sans-serif;font-size:22px;font-weight:700;color:var(--blue-glow);">81</div>
+        <div class="ai-quad-label">Thói quen</div>
+      </div>
+      <div class="ai-quad">
+        <div class="ai-quad-icon">🌙</div>
+        <div style="font-family:'Rajdhani',sans-serif;font-size:22px;font-weight:700;color:var(--purple-glow);">74</div>
+        <div class="ai-quad-label">Giấc ngủ</div>
+      </div>
+      <div class="ai-quad">
+        <div class="ai-quad-icon">🎯</div>
+        <div style="font-family:'Rajdhani',sans-serif;font-size:22px;font-weight:700;color:var(--gold);">92</div>
+        <div class="ai-quad-label">Mục tiêu</div>
+      </div>
+      <div class="ai-quad">
+        <div class="ai-quad-icon">💼</div>
+        <div style="font-family:'Rajdhani',sans-serif;font-size:22px;font-weight:700;color:var(--green);">63</div>
+        <div class="ai-quad-label">Công việc</div>
+      </div>
+    </div>
+
+    <!-- Emotion + progress -->
+    <div class="card" style="text-align:center;">
+      <div class="ai-quad-icon" style="font-size:28px;margin-bottom:6px;">😊</div>
+      <div style="font-size:12px;color:var(--text-dim);margin-bottom:8px;">Cảm xúc</div>
+      <div class="progress-wrap" style="height:6px;"><div class="progress-bar" style="width:66%;background:linear-gradient(90deg,var(--blue),var(--purple));"></div></div>
+      <div style="font-size:11px;color:var(--text-dim);margin-top:4px;">Đang phân tích… 66%</div>
+    </div>
+
+    <!-- Suggestions -->
+    <div class="section-head">
+      <span class="section-head-title">Gợi ý hôm nay</span>
+      <span onclick="openModal('modal-ai-suggest')" style="font-size:11px;color:var(--blue-glow);cursor:pointer;">Chi tiết ›</span>
+    </div>
+    <div class="card">
+      <div class="task-item">
+        <div class="task-icon icon-bg-blue">💧</div>
+        <div class="task-info"><div class="task-name">Uống đủ nước</div><div class="task-desc">Tăng năng lượng và tập trung</div></div>
+        <div class="badge badge-green">+100 XP</div>
+      </div>
+      <div class="task-item">
+        <div class="task-icon icon-bg-purple">😴</div>
+        <div class="task-info"><div class="task-name">Ngủ 7-8 tiếng</div><div class="task-desc">Cải thiện phục hồi</div></div>
+        <div class="badge badge-green">+120 XP</div>
+      </div>
+      <div class="task-item">
+        <div class="task-icon icon-bg-cyan">🧘</div>
+        <div class="task-info"><div class="task-name">Thiền 10 phút</div><div class="task-desc">Giảm stress, tăng clarity</div></div>
+        <div class="badge badge-green">+80 XP</div>
+      </div>
+    </div>
+
+    <div style="padding:0 12px 8px;display:flex;gap:8px;">
+      <button class="btn-primary" onclick="openModal('modal-ai-suggest')">GỢI Ý AI</button>
+      <button class="btn-outline" onclick="openModal('modal-ai-suggest')">PHÂN TÍCH</button>
+    </div>
+
+    <!-- Chat box -->
+    <div class="card">
+      <div class="card-title">Nhắn tin với AI Coach</div>
+      <div style="background:rgba(255,255,255,.04);border-radius:8px;padding:10px;margin-bottom:8px;">
+        <div style="font-size:11px;color:var(--text-dim);margin-bottom:4px;">AI Coach</div>
+        <div style="font-size:12px;line-height:1.5;">Bạn đang làm rất tốt! Hãy duy trì những thói quen này để đạt mục tiêu. 💪</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <input type="text" placeholder="Nhắn tin với AI Coach..." style="flex:1;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text);font-size:12px;outline:none;">
+        <button style="width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,var(--purple),var(--blue));border:none;font-size:16px;cursor:pointer;">🎤</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════ SCREEN 5: CỬA HÀNG ═══════════════════════════════ -->
+  <div class="screen" id="screen-cua-hang">
+    <div class="top-bar">
+      <div class="top-bar-title">🏪 CỬA HÀNG</div>
+      <div style="display:flex;gap:4px;">
+        <div class="currency-badge">🪙 2,450</div>
+        <div class="currency-badge" style="color:#38bdf8;">💎 340</div>
+      </div>
+    </div>
+
+    <div style="padding:0 12px;">
+      <div class="tab-row">
+        <button class="tab-btn active" onclick="switchTab(this,'shop')">Cửa hàng</button>
+        <button class="tab-btn" onclick="switchTab(this,'shop')">Vật phẩm</button>
+        <button class="tab-btn" onclick="switchTab(this,'shop')">NFT</button>
+        <button class="tab-btn" onclick="switchTab(this,'shop')">Đặc biệt</button>
+      </div>
+    </div>
+
+    <!-- Suggested packs -->
+    <div class="section-head"><span class="section-head-title">Gói đề xuất</span></div>
+    <div class="shop-item" style="margin:0 12px 6px;" onclick="openModal('modal-item-detail')">
+      <div class="shop-thumb">🎒</div>
+      <div style="flex:1;"><div style="font-size:13px;font-weight:600;">Starter Pack</div><div style="font-size:10px;color:var(--text-dim);">Khởi đầu hành trình</div></div>
+      <div style="text-align:right;"><div style="font-size:14px;font-weight:700;color:var(--gold);">🪙 200</div><button class="btn-sm" style="background:var(--gold);color:#000;margin-top:4px;">MUA</button></div>
+    </div>
+    <div class="shop-item" style="margin:0 12px 6px;" onclick="openModal('modal-item-detail')">
+      <div class="shop-thumb" style="background:rgba(59,130,246,.15);">⚔️</div>
+      <div style="flex:1;"><div style="font-size:13px;font-weight:600;">Warrior Pack</div><div style="font-size:10px;color:var(--text-dim);">Tăng sức chiến đấu</div></div>
+      <div style="text-align:right;"><div style="font-size:14px;font-weight:700;color:var(--gold);">🪙 490</div><button class="btn-sm" style="background:var(--blue);color:#fff;margin-top:4px;">MUA</button></div>
+    </div>
+    <div class="shop-item" style="margin:0 12px 8px;" onclick="openModal('modal-item-detail')">
+      <div class="shop-thumb" style="background:rgba(139,92,246,.15);">👑</div>
+      <div style="flex:1;"><div style="font-size:13px;font-weight:600;">Master Pack</div><div style="font-size:10px;color:var(--text-dim);">Dành cho chiến binh đỉnh cao</div></div>
+      <div style="text-align:right;"><div style="font-size:14px;font-weight:700;color:var(--gold);">🪙 990</div><button class="btn-sm" style="background:var(--purple);color:#fff;margin-top:4px;">MUA</button></div>
+    </div>
+
+    <!-- Items -->
+    <div class="section-head"><span class="section-head-title">Vật phẩm</span></div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:0 12px 10px;">
+      <div onclick="openModal('modal-item-detail')" style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:10px;text-align:center;cursor:pointer;">
+        <div style="font-size:26px;margin-bottom:4px;">⚡</div>
+        <div style="font-size:11px;font-weight:600;">Energy Boost</div>
+        <div style="font-size:9px;color:var(--text-dim);margin:2px 0;">+100 Energy</div>
+        <div style="font-size:11px;color:var(--gold);font-weight:700;">🪙 200</div>
+      </div>
+      <div onclick="openModal('modal-item-detail')" style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:10px;text-align:center;cursor:pointer;">
+        <div style="font-size:26px;margin-bottom:4px;">🧪</div>
+        <div style="font-size:11px;font-weight:600;">Focus Potion</div>
+        <div style="font-size:9px;color:var(--text-dim);margin:2px 0;">Tăng Focus 1h</div>
+        <div style="font-size:11px;color:var(--gold);font-weight:700;">🪙 150</div>
+      </div>
+      <div onclick="openModal('modal-item-detail')" style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:10px;text-align:center;cursor:pointer;">
+        <div style="font-size:26px;margin-bottom:4px;">🛡</div>
+        <div style="font-size:11px;font-weight:600;">Streak Shield</div>
+        <div style="font-size:9px;color:var(--text-dim);margin:2px 0;">Bảo vệ streak</div>
+        <div style="font-size:11px;color:var(--gold);font-weight:700;">🪙 300</div>
+      </div>
+    </div>
+
+    <!-- Mystery chests -->
+    <div class="section-head"><span class="section-head-title">Rương bí ẩn</span></div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:0 12px 10px;">
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:10px;text-align:center;cursor:pointer;" onclick="openModal('modal-item-detail')">
+        <div style="font-size:28px;margin-bottom:4px;">📦</div>
+        <div style="font-size:10px;color:var(--text-dim);">Common</div>
+        <div style="font-size:11px;color:var(--gold);font-weight:700;margin-top:4px;">🪙 100</div>
+      </div>
+      <div style="background:var(--bg-card);border:1px solid rgba(59,130,246,.3);border-radius:10px;padding:10px;text-align:center;cursor:pointer;" onclick="openModal('modal-item-detail')">
+        <div style="font-size:28px;margin-bottom:4px;">🎁</div>
+        <div style="font-size:10px;color:var(--blue-glow);">Rare</div>
+        <div style="font-size:11px;color:var(--gold);font-weight:700;margin-top:4px;">🪙 250</div>
+      </div>
+      <div style="background:var(--bg-card);border:1px solid rgba(139,92,246,.4);border-radius:10px;padding:10px;text-align:center;cursor:pointer;" onclick="openModal('modal-item-detail')">
+        <div style="font-size:28px;margin-bottom:4px;">💎</div>
+        <div style="font-size:10px;color:var(--purple-glow);">Epic</div>
+        <div style="font-size:11px;color:var(--gold);font-weight:700;margin-top:4px;">🪙 500</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════ SCREEN 6: REWARDS ═══════════════════════════════ -->
+  <div class="screen" id="screen-rewards">
+    <div class="top-bar">
+      <div class="top-bar-title">🎁 REWARDS</div>
+    </div>
+
+    <!-- Points big display -->
+    <div style="text-align:center;padding:20px 12px 12px;">
+      <div style="font-size:11px;color:var(--text-muted);letter-spacing:2px;text-transform:uppercase;">ĐIỂM REWARDS</div>
+      <div style="font-family:'Rajdhani',sans-serif;font-size:48px;font-weight:900;background:linear-gradient(90deg,var(--blue-glow),var(--purple-glow));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">2,450</div>
+      <div style="font-size:11px;color:var(--text-dim);">Quy đổi phần thưởng hấp dẫn</div>
+    </div>
+
+    <!-- Tabs -->
+    <div style="padding:0 12px 8px;">
+      <div class="tab-row">
+        <button class="tab-btn active" onclick="switchTab(this,'rewards')">Nhiệm vụ</button>
+        <button class="tab-btn" onclick="switchTab(this,'rewards')">Thành tựu</button>
+        <button class="tab-btn" onclick="switchTab(this,'rewards')">Sự kiện</button>
+      </div>
+    </div>
+
+    <!-- Reward exchange -->
+    <div class="section-head"><span class="section-head-title">Cửa hàng Rewards</span></div>
+    <div class="card">
+      <div class="reward-row">
+        <div style="display:flex;align-items:center;gap:8px;"><span style="font-size:18px;">🪙</span><div><div style="font-size:12px;font-weight:600;">500 Điểm → 🪙 50</div></div></div>
+        <button class="btn-sm" style="background:var(--blue);color:#fff;">Đổi</button>
+      </div>
+      <div class="reward-row">
+        <div style="display:flex;align-items:center;gap:8px;"><span style="font-size:18px;">💎</span><div><div style="font-size:12px;font-weight:600;">1,000 Điểm → 💎 100</div></div></div>
+        <button class="btn-sm" style="background:var(--blue);color:#fff;">Đổi</button>
+      </div>
+      <div class="reward-row">
+        <div style="display:flex;align-items:center;gap:8px;"><span style="font-size:18px;">🧪</span><div><div style="font-size:12px;font-weight:600;">2,000 Điểm → 💎 200</div></div></div>
+        <button class="btn-sm" style="background:var(--blue);color:#fff;">Đổi</button>
+      </div>
+      <div class="reward-row" style="border-bottom:none;">
+        <div style="display:flex;align-items:center;gap:8px;"><span style="font-size:18px;">👑</span><div><div style="font-size:12px;font-weight:600;">5,000 Điểm → 💎 500</div></div></div>
+        <button class="btn-sm" style="background:linear-gradient(135deg,var(--purple),var(--blue));color:#fff;">Đổi</button>
+      </div>
+    </div>
+
+    <!-- History -->
+    <div class="section-head"><span class="section-head-title">Lịch sử nhận thưởng</span></div>
+    <div class="card">
+      <div class="notif-item">
+        <div class="notif-icon icon-bg-gold">💎</div>
+        <div class="notif-body"><div class="notif-title">Đã đổi 1,000 Điểm lấy 100 Gem</div><div class="notif-time">12/05/2024</div></div>
+      </div>
+      <div class="notif-item" style="border-bottom:none;">
+        <div class="notif-icon icon-bg-blue">💎</div>
+        <div class="notif-body"><div class="notif-title">Đã đổi 500 Điểm lấy 50 Gem</div><div class="notif-time">10/05/2024</div></div>
+      </div>
+    </div>
+
+    <!-- Daily reward shortcut -->
+    <div class="card" style="cursor:pointer;" onclick="openModal('modal-daily-reward')">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span style="font-size:32px;">🎁</span>
+        <div style="flex:1;">
+          <div style="font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;">Phần thưởng hàng ngày</div>
+          <div style="font-size:11px;color:var(--text-dim);">Nhận thưởng mỗi ngày · 7 ngày liên tiếp</div>
+        </div>
+        <div style="color:var(--blue-glow);">›</div>
+      </div>
+    </div>
+
+    <!-- Leaderboard shortcut -->
+    <div class="card" style="cursor:pointer;" onclick="openModal('modal-leaderboard')">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span style="font-size:32px;">🏆</span>
+        <div style="flex:1;">
+          <div style="font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;">Bảng xếp hạng</div>
+          <div style="font-size:11px;color:var(--text-dim);">Bạn #12 · 7,540 XP</div>
+        </div>
+        <div style="color:var(--blue-glow);">›</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════ SCREEN 7: PROFILE ═══════════════════════════════ -->
+  <div class="screen" id="screen-profile">
+    <div class="top-bar">
+      <div class="top-bar-title">👤 PROFILE</div>
+      <button class="btn-sm badge-blue" onclick="openModal('modal-edit-profile')">Chỉnh sửa</button>
+    </div>
+
+    <!-- Avatar + Name -->
+    <div style="text-align:center;padding:20px 12px 12px;">
+      <div style="width:80px;height:80px;border-radius:50%;background:radial-gradient(circle,rgba(139,92,246,.4),rgba(30,40,80,.9));border:2px solid var(--purple);margin:0 auto 8px;display:flex;align-items:center;justify-content:center;font-size:40px;box-shadow:0 0 20px rgba(139,92,246,.4);">🥷</div>
+      <div style="font-family:'Rajdhani',sans-serif;font-size:22px;font-weight:700;">Shadow Warrior</div>
+      <div class="badge badge-purple" style="margin-top:4px;">Lv. 12 · Iron Disciples</div>
+      <div style="margin-top:8px;"><div class="xp-label"><span>4,250 / 6,000 XP</span></div><div class="xp-bar-wrap"><div class="xp-bar" style="width:70%;"></div></div></div>
+    </div>
+
+    <!-- Info -->
+    <div class="card">
+      <div class="card-title">Thông tin</div>
+      <div class="reward-row"><span style="font-size:11px;color:var(--text-dim);">Ngày tham gia</span><span style="font-size:11px;font-weight:600;">12/05/2024</span></div>
+      <div class="reward-row"><span style="font-size:11px;color:var(--text-dim);">Nhiệm vụ hoàn thành</span><span style="font-size:11px;font-weight:600;">156</span></div>
+      <div class="reward-row"><span style="font-size:11px;color:var(--text-dim);">Thành tựu</span><span style="font-size:11px;font-weight:600;">24/48</span></div>
+      <div class="reward-row"><span style="font-size:11px;color:var(--text-dim);">Cấp độ</span><span style="font-size:11px;font-weight:600;">12</span></div>
+      <div class="reward-row" style="border-bottom:none;"><span style="font-size:11px;color:var(--text-dim);">Chuỗi ngày</span><span class="badge badge-gold">24 ngày 🔥</span></div>
+    </div>
+
+    <!-- Stats -->
+    <div class="card">
+      <div class="card-title">Chỉ số chính</div>
+      <div class="hex-stats">
+        <div class="hex-stat"><div class="hex-stat-val" style="color:#60a5fa;">81</div><div class="hex-stat-name">Focus</div></div>
+        <div class="hex-stat"><div class="hex-stat-val" style="color:#a78bfa;">92</div><div class="hex-stat-name">Discipline</div></div>
+        <div class="hex-stat"><div class="hex-stat-val" style="color:#f97316;">63</div><div class="hex-stat-name">Energy</div></div>
+        <div class="hex-stat"><div class="hex-stat-val" style="color:#4ade80;">74</div><div class="hex-stat-name">Health</div></div>
+        <div class="hex-stat"><div class="hex-stat-val" style="color:#38bdf8;">58</div><div class="hex-stat-name">Knowledge</div></div>
+        <div class="hex-stat"><div class="hex-stat-val" style="color:#f59e0b;">46</div><div class="hex-stat-name">Charisma</div></div>
+      </div>
+    </div>
+
+    <!-- Scan InBody -->
+    <div class="card">
+      <div class="card-title">Scan InBody</div>
+      <div class="scan-area">
+        <div style="font-size:28px;margin-bottom:8px;">📊</div>
+        <div style="font-size:12px;color:var(--text-dim);margin-bottom:12px;">Nhập kết quả InBody của bạn<br>(.csv / image)</div>
+        <button class="btn-primary" style="max-width:160px;">Scan InBody</button>
+        <div style="font-size:9px;color:var(--text-muted);margin-top:8px;">Hỗ trợ .csv, .png, .jpg, .jpeg</div>
+      </div>
+    </div>
+
+    <!-- Shortcuts -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0 12px 10px;">
+      <div onclick="openModal('modal-stats')" style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:12px;cursor:pointer;text-align:center;">
+        <div style="font-size:22px;">📊</div><div style="font-size:11px;color:var(--text-dim);margin-top:4px;">Thống kê</div>
+      </div>
+      <div onclick="openModal('modal-achievements')" style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:12px;cursor:pointer;text-align:center;">
+        <div style="font-size:22px;">🏅</div><div style="font-size:11px;color:var(--text-dim);margin-top:4px;">Thành tựu</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <!-- ═══════════════════  MODALS / SUB-SCREENS  ════════════════════ -->
+  <!-- ══════════════════════════════════════════════════════════════ -->
+
+  <!-- MODAL: NOTIFICATIONS -->
+  <div class="modal-overlay" id="modal-notif">
+    <div class="modal-box">
+      <div class="modal-close" onclick="closeModal('modal-notif')">✕</div>
+      <div style="font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700;margin-bottom:12px;">🔔 Thông báo</div>
+      <div class="tab-row"><button class="tab-btn active">Hệ thống</button><button class="tab-btn">Thưởng</button><button class="tab-btn">Quà</button></div>
+      <div class="notif-item">
+        <div class="notif-icon icon-bg-gold">🎁</div>
+        <div class="notif-body"><div class="notif-title">Phần thưởng đăng nhập – 5 phút nữa</div><div class="notif-time">Vừa xong</div></div>
+      </div>
+      <div class="notif-item">
+        <div class="notif-icon icon-bg-green">✅</div>
+        <div class="notif-body"><div class="notif-title">Nhiệm vụ hoàn thành – 10 phút nữa</div><div class="notif-time">5 phút trước</div></div>
+      </div>
+      <div class="notif-item">
+        <div class="notif-icon icon-bg-purple">⭐</div>
+        <div class="notif-body"><div class="notif-title">Quà sự kiện đặc biệt – 30 phút nữa</div><div class="notif-time">20 phút trước</div></div>
+      </div>
+      <div class="notif-item">
+        <div class="notif-icon icon-bg-blue">⚠️</div>
+        <div class="notif-body"><div class="notif-title">Bảo trì máy chủ 05:00 – 07:00</div><div class="notif-time">2 giờ trước</div></div>
+      </div>
+      <button class="btn-primary" style="margin-top:12px;" onclick="closeModal('modal-notif')">NHẬN TẤT CẢ</button>
+    </div>
+  </div>
+
+  <!-- MODAL: TASK DETAIL -->
+  <div class="modal-overlay" id="modal-task-detail">
+    <div class="modal-box">
+      <div class="modal-close" onclick="closeModal('modal-task-detail')">✕</div>
+      <div style="font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700;margin-bottom:4px;">💼 Chi tiết Nhiệm Vụ</div>
+      <div style="font-size:14px;color:var(--text-dim);margin-bottom:14px;">Deep Work 90m · Tập trung làm việc</div>
+      <div class="reward-row"><span style="font-size:11px;color:var(--text-dim);">Thời gian</span><span style="font-size:12px;font-weight:600;">90 phút</span></div>
+      <div class="reward-row"><span style="font-size:11px;color:var(--text-dim);">Đã hoàn thành</span><span style="font-size:12px;font-weight:600;">70 phút</span></div>
+      <div class="glow-line"></div>
+      <div style="font-size:12px;font-weight:600;color:var(--blue-glow);margin-bottom:6px;">Phần thưởng</div>
+      <div style="display:flex;gap:8px;">
+        <div class="badge badge-purple">+50 XP</div>
+        <div class="badge badge-blue">+20 ENERGY</div>
+      </div>
+      <div class="glow-line"></div>
+      <div style="font-size:12px;font-weight:600;margin-bottom:8px;">Lịch sử nhiệm vụ</div>
+      <div class="task-item">
+        <div class="task-icon icon-bg-cyan" style="font-size:14px;width:28px;height:28px;">🌬</div>
+        <div class="task-info"><div class="task-name" style="font-size:12px;">Breath Activation</div><div class="task-desc">Hoàn thành 5 phút</div></div>
+        <div class="task-check done" style="width:18px;height:18px;font-size:10px;">✓</div>
+      </div>
+      <div class="task-item">
+        <div class="task-icon icon-bg-gold" style="font-size:14px;width:28px;height:28px;">🚫</div>
+        <div class="task-info"><div class="task-name" style="font-size:12px;">No Sugar Challenge</div><div class="task-desc">Hoàn thành 1 ngày</div></div>
+        <div class="task-check done" style="width:18px;height:18px;font-size:10px;">✓</div>
+      </div>
+      <div class="task-item" style="border-bottom:none;">
+        <div class="task-icon icon-bg-cyan" style="font-size:14px;width:28px;height:28px;">🚿</div>
+        <div class="task-info"><div class="task-name" style="font-size:12px;">Cold Shower</div><div class="task-desc">Chưa hoàn thành</div></div>
+        <div class="task-check" style="width:18px;height:18px;">○</div>
+      </div>
+      <button class="btn-primary" style="margin-top:14px;" onclick="closeModal('modal-task-detail')">BẮT ĐẦU</button>
+    </div>
+  </div>
+
+  <!-- MODAL: CHAPTER DETAIL (Ch.1) -->
+  <div class="modal-overlay" id="modal-chapter-detail">
+    <div class="modal-box">
+      <div class="modal-close" onclick="closeModal('modal-chapter-detail')">✕</div>
+      <div style="text-align:center;padding:10px 0 14px;">
+        <div style="font-size:11px;color:var(--text-muted);letter-spacing:2px;">CHAPTER 1</div>
+        <div style="font-family:'Rajdhani',sans-serif;font-size:22px;font-weight:900;">THE AWAKENING</div>
+        <div style="background:linear-gradient(135deg,rgba(139,92,246,.25),rgba(59,130,246,.15));border-radius:12px;height:100px;margin:10px 0;display:flex;align-items:center;justify-content:center;font-size:48px;">🌅</div>
+        <div class="progress-wrap" style="height:5px;"><div class="progress-bar" style="width:66%;background:linear-gradient(90deg,var(--purple),var(--blue));"></div></div>
+        <div style="font-size:11px;color:var(--text-dim);margin-top:4px;">Tiến độ: 66%</div>
+      </div>
+      <!-- Sub-lessons -->
+      <div class="task-item">
+        <div style="width:26px;text-align:center;font-size:11px;color:var(--text-muted);">1-1</div>
+        <div class="task-info"><div class="task-name" style="font-size:12px;">The First Step</div></div>
+        <div class="badge badge-green">100%</div>
+        <div class="task-check done" style="width:18px;height:18px;font-size:10px;">✓</div>
+      </div>
+      <div class="task-item">
+        <div style="width:26px;text-align:center;font-size:11px;color:var(--text-muted);">1-2</div>
+        <div class="task-info"><div class="task-name" style="font-size:12px;">The Breath</div></div>
+        <div class="badge badge-blue">82%</div>
+        <div class="task-check done" style="width:18px;height:18px;font-size:10px;">✓</div>
+      </div>
+      <div class="task-item">
+        <div style="width:26px;text-align:center;font-size:11px;color:var(--blue-glow);">1-3</div>
+        <div class="task-info"><div class="task-name" style="font-size:12px;">The Focus</div></div>
+        <div class="badge badge-gold">66%</div>
+        <div style="width:18px;height:18px;border-radius:50%;border:2px solid var(--blue);display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--blue-glow);">›</div>
+      </div>
+      <div class="task-item">
+        <div style="width:26px;text-align:center;font-size:11px;color:var(--text-muted);">1-4</div>
+        <div class="task-info"><div class="task-name" style="font-size:12px;">The Challenge</div></div>
+        <div style="font-size:14px;">🔒</div>
+        <div style="width:18px;"></div>
+      </div>
+      <div class="task-item" style="border-bottom:none;">
+        <div style="width:26px;text-align:center;font-size:11px;color:var(--text-muted);">1-5</div>
+        <div class="task-info"><div class="task-name" style="font-size:12px;">The Breakthrough</div></div>
+        <div style="font-size:14px;">🔒</div>
+        <div style="width:18px;"></div>
+      </div>
+      <button class="btn-primary" style="margin-top:14px;" onclick="closeModal('modal-chapter-detail')">TIẾP TỤC 1-3</button>
+    </div>
+  </div>
+
+  <!-- MODAL: CHAPTER 2 placeholder -->
+  <div class="modal-overlay" id="modal-chapter-detail2">
+    <div class="modal-box" style="text-align:center;padding:30px 16px;">
+      <div class="modal-close" onclick="closeModal('modal-chapter-detail2')">✕</div>
+      <div style="font-size:48px;margin-bottom:10px;">🔒</div>
+      <div style="font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700;">THE DISCIPLINE</div>
+      <div style="font-size:12px;color:var(--text-dim);margin-top:6px;">Hoàn thành Chapter 1 để mở khóa</div>
+      <button class="btn-primary" style="margin-top:20px;max-width:160px;" onclick="closeModal('modal-chapter-detail2')">OK</button>
+    </div>
+  </div>
+
+  <!-- MODAL: AI SUGGESTIONS -->
+  <div class="modal-overlay" id="modal-ai-suggest">
+    <div class="modal-box">
+      <div class="modal-close" onclick="closeModal('modal-ai-suggest')">✕</div>
+      <div style="font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700;margin-bottom:4px;">🤖 AI Coach – Gợi ý & Phân tích</div>
+      <div class="tab-row"><button class="tab-btn active">Gợi ý</button><button class="tab-btn">Phân tích</button><button class="tab-btn">Kế hoạch</button></div>
+      <!-- Radar chart (CSS) -->
+      <div style="text-align:center;padding:12px 0;">
+        <div style="width:120px;height:120px;border-radius:50%;background:conic-gradient(rgba(59,130,246,.4) 0%,rgba(139,92,246,.4) 50%,rgba(34,197,94,.3) 100%);margin:0 auto;display:flex;align-items:center;justify-content:center;border:2px solid rgba(59,130,246,.3);">
+          <div style="width:80px;height:80px;border-radius:50%;background:var(--bg-modal);display:flex;align-items:center;justify-content:center;">
+            <span style="font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;color:var(--blue-glow);">69/100</span>
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--text-dim);margin-top:8px;">Điểm tổng quan</div>
+      </div>
+      <div style="font-size:12px;font-weight:600;color:var(--blue-glow);margin-bottom:6px;">Gợi ý hôm nay từ AI</div>
+      <div class="task-item">
+        <div class="task-icon icon-bg-blue">💧</div>
+        <div class="task-info"><div class="task-name">Uống đủ nước</div><div class="task-desc">Tối thiểu 2L mỗi ngày</div></div>
+        <div class="badge badge-green">+100 XP</div>
+      </div>
+      <div class="task-item">
+        <div class="task-icon icon-bg-purple">😴</div>
+        <div class="task-info"><div class="task-name">Ngủ 7-8 tiếng</div><div class="task-desc">Ngủ trước 23:00</div></div>
+        <div class="badge badge-green">+120 XP</div>
+      </div>
+      <div class="task-item" style="border-bottom:none;">
+        <div class="task-icon icon-bg-cyan">🧘</div>
+        <div class="task-info"><div class="task-name">Thiền 10 phút</div><div class="task-desc">Thiền trước khi ngủ</div></div>
+        <div class="badge badge-green">+80 XP</div>
+      </div>
+      <div style="background:rgba(59,130,246,.07);border:1px solid rgba(59,130,246,.2);border-radius:10px;padding:10px;margin-top:8px;">
+        <div style="font-size:10px;color:var(--text-muted);margin-bottom:4px;">Tin nhắn từ AI Coach</div>
+        <div style="font-size:12px;line-height:1.5;">Bạn đang làm rất tốt! Hãy duy trì những thói quen này để đạt mục tiêu. Deep Work 90 phút · Không thông báo · Pomodoro 25-5-25-5</div>
+      </div>
+      <button class="btn-primary" style="margin-top:14px;" onclick="closeModal('modal-ai-suggest')">CHAT VỚI AI COACH</button>
+    </div>
+  </div>
+
+  <!-- MODAL: ITEM DETAIL -->
+  <div class="modal-overlay" id="modal-item-detail">
+    <div class="modal-box" style="text-align:center;">
+      <div class="modal-close" onclick="closeModal('modal-item-detail')">✕</div>
+      <div style="font-size:52px;margin-bottom:8px;">🧪</div>
+      <div style="font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700;">Focus Potion</div>
+      <div style="font-size:12px;color:var(--text-dim);margin-top:4px;">Tăng Focus trong 1 giờ</div>
+      <div class="glow-line" style="margin:14px 0;"></div>
+      <div style="text-align:left;">
+        <div style="font-size:12px;font-weight:600;color:var(--blue-glow);margin-bottom:6px;">Hiệu ứng</div>
+        <div class="badge badge-blue" style="margin-bottom:6px;display:inline-flex;">+30% Điểm Focus</div>
+        <div style="font-size:11px;color:var(--text-dim);">Thời gian: 60 phút</div>
+        <div class="reward-row" style="margin-top:10px;"><span style="font-size:11px;color:var(--text-dim);">Đang sở hữu</span><span style="font-size:12px;font-weight:600;">2</span></div>
+      </div>
+      <div class="glow-line"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <button style="width:28px;height:28px;border-radius:6px;background:rgba(255,255,255,.08);border:1px solid var(--border);color:var(--text);font-size:16px;cursor:pointer;">−</button>
+          <span style="font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700;">1</span>
+          <button style="width:28px;height:28px;border-radius:6px;background:rgba(255,255,255,.08);border:1px solid var(--border);color:var(--text);font-size:16px;cursor:pointer;">+</button>
+        </div>
+        <div style="font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700;color:var(--gold);">🪙 150</div>
+      </div>
+      <button class="btn-primary" onclick="closeModal('modal-item-detail')">MUA NGAY</button>
+      <button class="btn-outline" style="width:100%;margin-top:8px;" onclick="closeModal('modal-item-detail')">XEM ĐỀ XUẤT</button>
+    </div>
+  </div>
+
+  <!-- MODAL: LEADERBOARD -->
+  <div class="modal-overlay" id="modal-leaderboard">
+    <div class="modal-box">
+      <div class="modal-close" onclick="closeModal('modal-leaderboard')">✕</div>
+      <div style="font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700;margin-bottom:12px;">🏆 Bảng xếp hạng</div>
+      <div class="tab-row"><button class="tab-btn active">Toàn cầu</button><button class="tab-btn">Bạn bè</button></div>
+      <div class="lb-item">
+        <div class="lb-rank" style="color:var(--gold);">1</div>
+        <div class="lb-avatar">🧊</div>
+        <div class="lb-info"><div class="lb-name">Titan</div><div class="lb-level">Lv. 18</div></div>
+        <div class="lb-xp">18,450 XP</div>
+      </div>
+      <div class="lb-item">
+        <div class="lb-rank" style="color:#94a3b8;">2</div>
+        <div class="lb-avatar">🥷</div>
+        <div class="lb-info"><div class="lb-name">Shadow</div><div class="lb-level">Lv. 16</div></div>
+        <div class="lb-xp">16,230 XP</div>
+      </div>
+      <div class="lb-item">
+        <div class="lb-rank" style="color:#cd7f32;">3</div>
+        <div class="lb-avatar">🦅</div>
+        <div class="lb-info"><div class="lb-name">Phoenix</div><div class="lb-level">Lv. 15</div></div>
+        <div class="lb-xp">14,890 XP</div>
+      </div>
+      <div class="lb-item">
+        <div class="lb-rank">4</div>
+        <div class="lb-avatar">⚔️</div>
+        <div class="lb-info"><div class="lb-name">Samurai</div><div class="lb-level">Lv. 14</div></div>
+        <div class="lb-xp">13,450 XP</div>
+      </div>
+      <div class="lb-item">
+        <div class="lb-rank">5</div>
+        <div class="lb-avatar">🐉</div>
+        <div class="lb-info"><div class="lb-name">MonkX</div><div class="lb-level">Lv. 14</div></div>
+        <div class="lb-xp">12,980 XP</div>
+      </div>
+      <div class="glow-line"></div>
+      <div class="lb-item" style="background:rgba(139,92,246,.08);border-radius:8px;padding:0 8px;">
+        <div class="lb-rank" style="color:var(--purple-glow);">12</div>
+        <div class="lb-avatar" style="background:rgba(139,92,246,.3);">🥷</div>
+        <div class="lb-info"><div class="lb-name" style="color:var(--purple-glow);">You</div><div class="lb-level">Lv. 12</div></div>
+        <div class="lb-xp" style="color:var(--purple-glow);">7,540 XP</div>
+      </div>
+      <button class="btn-outline" style="width:100%;margin-top:12px;" onclick="closeModal('modal-leaderboard')">XEM BẢNG XẾP HẠNG ĐẦY ĐỦ</button>
+    </div>
+  </div>
+
+  <!-- MODAL: DAILY REWARD -->
+  <div class="modal-overlay" id="modal-daily-reward">
+    <div class="modal-box" style="text-align:center;">
+      <div class="modal-close" onclick="closeModal('modal-daily-reward')">✕</div>
+      <div style="font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700;margin-bottom:4px;">🎁 Phần thưởng hàng ngày</div>
+      <div style="font-size:11px;color:var(--text-dim);margin-bottom:14px;">7 ngày liên tiếp · Hôm nay: Ngày 7</div>
+      <div class="day-grid" style="margin-bottom:16px;">
+        <div class="day-item claimed"><div class="day-label">N1</div><div class="day-check">✅</div></div>
+        <div class="day-item claimed"><div class="day-label">N2</div><div class="day-check">✅</div></div>
+        <div class="day-item claimed"><div class="day-label">N3</div><div class="day-check">✅</div></div>
+        <div class="day-item claimed"><div class="day-label">N4</div><div class="day-check">✅</div></div>
+        <div class="day-item claimed"><div class="day-label">N5</div><div class="day-check">✅</div></div>
+        <div class="day-item claimed"><div class="day-label">N6</div><div class="day-check">✅</div></div>
+        <div class="day-item today"><div class="day-label">N7</div><div class="day-check">🎁</div></div>
+      </div>
+      <div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.3);border-radius:12px;padding:16px;margin-bottom:14px;">
+        <div style="font-size:48px;margin-bottom:8px;">🎁</div>
+        <div style="font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;color:var(--gold);">RƯƠNG HUYỀN THOẠI!</div>
+        <div style="font-size:11px;color:var(--text-dim);margin:4px 0 10px;">Chúc mừng! Bạn đã nhận được phần thưởng ngày 7</div>
+        <div style="display:flex;justify-content:center;gap:12px;">
+          <div class="badge badge-blue">💎 500</div>
+          <div class="badge badge-gold">🪙 100</div>
+          <div class="badge badge-purple">⭐ ×1</div>
+        </div>
+      </div>
+      <button class="btn-primary" onclick="closeModal('modal-daily-reward')">NHẬN THƯỞNG</button>
+    </div>
+  </div>
+
+  <!-- MODAL: LEVEL UP -->
+  <div class="modal-overlay" id="modal-level-up">
+    <div class="modal-box" style="text-align:center;">
+      <div class="modal-close" onclick="closeModal('modal-level-up')">✕</div>
+      <div style="font-family:'Rajdhani',sans-serif;font-size:28px;font-weight:900;letter-spacing:2px;color:var(--gold);margin-bottom:4px;">LEVEL UP!</div>
+      <div class="level-badge">13</div>
+      <div style="font-family:'Rajdhani',sans-serif;font-size:22px;font-weight:700;">Shadow Warrior</div>
+      <div class="glow-line"></div>
+      <div style="font-size:12px;font-weight:600;margin-bottom:8px;">Phần thưởng</div>
+      <div class="reward-row"><span style="font-size:11px;color:var(--text-dim);">XP</span><span class="badge badge-gold">+850</span></div>
+      <div class="reward-row"><span style="font-size:11px;color:var(--text-dim);">ENERGY</span><span class="badge badge-blue">+50</span></div>
+      <div class="reward-row"><span style="font-size:11px;color:var(--text-dim);">DISCIPLINE</span><span class="badge badge-purple">+15</span></div>
+      <div class="reward-row" style="border-bottom:none;"><span style="font-size:11px;color:var(--text-dim);">MYSTERY CHEST</span><span class="badge badge-gold">×1</span></div>
+      <button class="btn-primary" style="margin-top:16px;" onclick="closeModal('modal-level-up')">TUYỆT VỜI!</button>
+    </div>
+  </div>
+
+  <!-- MODAL: STATS -->
+  <div class="modal-overlay" id="modal-stats">
+    <div class="modal-box">
+      <div class="modal-close" onclick="closeModal('modal-stats')">✕</div>
+      <div style="font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700;margin-bottom:12px;">📊 Thống kê</div>
+      <div class="tab-row"><button class="tab-btn active">Tuần</button><button class="tab-btn">Tháng</button><button class="tab-btn">Năm</button></div>
+      <!-- Overview -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+        <div style="background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:10px;padding:10px;text-align:center;">
+          <div style="font-family:'Rajdhani',sans-serif;font-size:22px;font-weight:700;color:var(--green);">32</div>
+          <div style="font-size:10px;color:var(--text-dim);">NV hoàn thành</div>
+        </div>
+        <div style="background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:10px;padding:10px;text-align:center;">
+          <div style="font-family:'Rajdhani',sans-serif;font-size:22px;font-weight:700;color:var(--gold);">8,450</div>
+          <div style="font-size:10px;color:var(--text-dim);">XP nhận được</div>
+        </div>
+        <div style="background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:10px;padding:10px;text-align:center;">
+          <div style="font-family:'Rajdhani',sans-serif;font-size:22px;font-weight:700;color:var(--fire);">12</div>
+          <div style="font-size:10px;color:var(--text-dim);">Streak dài nhất</div>
+        </div>
+        <div style="background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:10px;padding:10px;text-align:center;">
+          <div style="font-family:'Rajdhani',sans-serif;font-size:22px;font-weight:700;color:var(--cyan);">21h30</div>
+          <div style="font-size:10px;color:var(--text-dim);">Tgian tập TB</div>
+        </div>
+      </div>
+      <!-- Stat bars -->
+      <div style="font-size:12px;font-weight:600;margin-bottom:8px;">Tiến độ chỉ số</div>
+      <div class="stat-bar-row"><span class="stat-bar-label" style="color:#60a5fa;">Focus</span><div class="stat-bar-wrap"><div class="stat-bar-fill" style="width:81%;background:#60a5fa;"></div></div><span style="font-size:11px;font-weight:600;color:#60a5fa;margin-left:6px;">81</span></div>
+      <div class="stat-bar-row"><span class="stat-bar-label" style="color:#a78bfa;">Discipline</span><div class="stat-bar-wrap"><div class="stat-bar-fill" style="width:92%;background:#a78bfa;"></div></div><span style="font-size:11px;font-weight:600;color:#a78bfa;margin-left:6px;">92</span></div>
+      <div class="stat-bar-row"><span class="stat-bar-label" style="color:#f97316;">Energy</span><div class="stat-bar-wrap"><div class="stat-bar-fill" style="width:63%;background:#f97316;"></div></div><span style="font-size:11px;font-weight:600;color:#f97316;margin-left:6px;">63</span></div>
+      <div class="stat-bar-row"><span class="stat-bar-label" style="color:#4ade80;">Health</span><div class="stat-bar-wrap"><div class="stat-bar-fill" style="width:74%;background:#4ade80;"></div></div><span style="font-size:11px;font-weight:600;color:#4ade80;margin-left:6px;">74</span></div>
+      <div class="stat-bar-row"><span class="stat-bar-label" style="color:#38bdf8;">Knowledge</span><div class="stat-bar-wrap"><div class="stat-bar-fill" style="width:58%;background:#38bdf8;"></div></div><span style="font-size:11px;font-weight:600;color:#38bdf8;margin-left:6px;">58</span></div>
+    </div>
+  </div>
+
+  <!-- MODAL: ACHIEVEMENTS -->
+  <div class="modal-overlay" id="modal-achievements">
+    <div class="modal-box">
+      <div class="modal-close" onclick="closeModal('modal-achievements')">✕</div>
+      <div style="font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700;margin-bottom:12px;">🏅 Thành tựu</div>
+      <div class="tab-row"><button class="tab-btn active">Tất cả</button><button class="tab-btn">Đã mở</button><button class="tab-btn">Chưa mở</button></div>
+      <div class="ach-grid">
+        <div class="ach-item"><div class="ach-icon unlocked">🔥</div><div class="ach-name">7 Days Streak</div></div>
+        <div class="ach-item"><div class="ach-icon unlocked">🌅</div><div class="ach-name">Early Bird</div></div>
+        <div class="ach-item"><div class="ach-icon locked">🍬</div><div class="ach-name">No Sugar 3 Days</div></div>
+        <div class="ach-item"><div class="ach-icon unlocked">💼</div><div class="ach-name">Deep Worker</div></div>
+        <div class="ach-item"><div class="ach-icon locked">📚</div><div class="ach-name">Book Worm</div></div>
+        <div class="ach-item"><div class="ach-icon unlocked">🚿</div><div class="ach-name">Cold Shower</div></div>
+        <div class="ach-item"><div class="ach-icon locked">🧘</div><div class="ach-name">Meditation Master</div></div>
+        <div class="ach-item"><div class="ach-icon locked">⚡</div><div class="ach-name">Consistent</div></div>
+        <div class="ach-item"><div class="ach-icon locked">🦉</div><div class="ach-name">Night Owl</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: SKILL TREE -->
+  <div class="modal-overlay" id="modal-skill-tree">
+    <div class="modal-box">
+      <div class="modal-close" onclick="closeModal('modal-skill-tree')">✕</div>
+      <div style="font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700;margin-bottom:4px;">🌳 Cây kỹ năng</div>
+      <div style="font-size:11px;color:var(--text-dim);margin-bottom:14px;">DISCIPLINE TREE · Điểm kỹ năng: 2</div>
+      <!-- Tree layout -->
+      <div style="text-align:center;padding:10px 0;">
+        <!-- Row 1 -->
+        <div style="display:flex;justify-content:center;margin-bottom:16px;">
+          <div class="skill-node"><div class="skill-circle maxed">⏰</div><div class="skill-node-name">Wake Up Early</div><div class="skill-node-level">1/1</div></div>
+        </div>
+        <!-- Connector -->
+        <div style="width:2px;height:16px;background:rgba(139,92,246,.4);margin:0 auto -4px;"></div>
+        <!-- Row 2 -->
+        <div style="display:flex;justify-content:center;gap:32px;margin-bottom:16px;">
+          <div class="skill-node"><div class="skill-circle unlocked">🧠</div><div class="skill-node-name">Dopamine Detox</div><div class="skill-node-level">3/3</div></div>
+          <div class="skill-node"><div class="skill-circle unlocked">💼</div><div class="skill-node-name">Deep Work</div><div class="skill-node-level">2/3</div></div>
+        </div>
+        <!-- Row 3 -->
+        <div style="display:flex;justify-content:center;gap:32px;">
+          <div class="skill-node"><div class="skill-circle" style="opacity:.5;">🏆</div><div class="skill-node-name">Consistency</div><div class="skill-node-level">0/3</div></div>
+          <div class="skill-node"><div class="skill-circle" style="opacity:.5;">🧙</div><div class="skill-node-name">Monk Mode</div><div class="skill-node-level">0/3</div></div>
+        </div>
+      </div>
+      <button class="btn-outline" style="width:100%;margin-top:16px;" onclick="closeModal('modal-skill-tree')">XEM TẤT CẢ CÂY KỸ NĂNG</button>
+    </div>
+  </div>
+
+  <!-- MODAL: EDIT PROFILE -->
+  <div class="modal-overlay" id="modal-edit-profile">
+    <div class="modal-box">
+      <div class="modal-close" onclick="closeModal('modal-edit-profile')">✕</div>
+      <div style="font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700;margin-bottom:14px;">✏️ Chỉnh sửa Profile</div>
+      <!-- Avatar -->
+      <div style="text-align:center;margin-bottom:14px;">
+        <div style="width:72px;height:72px;border-radius:50%;background:rgba(139,92,246,.25);border:2px solid var(--purple);margin:0 auto 8px;display:flex;align-items:center;justify-content:center;font-size:36px;">🥷</div>
+        <button class="btn-sm badge-blue" style="border:none;cursor:pointer;">Đổi ảnh đại diện</button>
+      </div>
+      <!-- Fields -->
+      <div style="margin-bottom:10px;">
+        <div style="font-size:11px;color:var(--text-dim);margin-bottom:4px;">Tên hiển thị</div>
+        <select style="width:100%;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text);font-size:12px;outline:none;">
+          <option>Shadow Warrior</option><option>Warrior</option><option>Shadow Master</option>
+        </select>
+      </div>
+      <div style="margin-bottom:10px;">
+        <div style="font-size:11px;color:var(--text-dim);margin-bottom:4px;">Ảnh nền</div>
+        <select style="width:100%;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text);font-size:12px;outline:none;">
+          <option>Chọn ảnh nền</option><option>Warrior Realm</option><option>Dark Forest</option>
+        </select>
+      </div>
+      <div style="margin-bottom:10px;">
+        <div style="font-size:11px;color:var(--text-dim);margin-bottom:4px;">Khung avatar</div>
+        <select style="width:100%;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text);font-size:12px;outline:none;">
+          <option>Legend Frame</option><option>Default</option><option>Golden Frame</option>
+        </select>
+      </div>
+      <div style="margin-bottom:14px;">
+        <div style="font-size:11px;color:var(--text-dim);margin-bottom:4px;">Danh hiệu</div>
+        <select style="width:100%;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text);font-size:12px;outline:none;">
+          <option>No Sugar Champion</option><option>Deep Worker</option><option>Early Bird</option>
+        </select>
+      </div>
+      <button class="btn-primary" onclick="closeModal('modal-edit-profile')">LƯU THAY ĐỔI</button>
+    </div>
+  </div>
+
+  <!-- MODAL: XEM TẤT CẢ CHAPTER -->
+  <div class="modal-overlay" id="modal-all-chapters">
+    <div class="modal-box" style="padding:0;overflow:hidden;">
+      <div class="modal-close" onclick="closeModal('modal-all-chapters')" style="top:14px;right:14px;z-index:20;">✕</div>
+
+      <!-- Header banner -->
+      <div style="background:linear-gradient(135deg,#0f1a3a 0%,#1a0a3a 60%,#0a1228 100%);padding:20px 16px 16px;position:relative;overflow:hidden;">
+        <div style="position:absolute;inset:0;background:radial-gradient(circle at 70% 40%,rgba(139,92,246,0.3) 0%,transparent 65%);pointer-events:none;"></div>
+        <div style="font-size:10px;color:var(--purple-glow);letter-spacing:2px;font-weight:700;text-transform:uppercase;margin-bottom:4px;">Hành trình</div>
+        <div style="font-family:'Rajdhani',sans-serif;font-size:22px;font-weight:900;color:#fff;margin-bottom:4px;">TẤT CẢ CHAPTER</div>
+        <div style="font-size:11px;color:var(--text-dim);">5 Chapter · 1 đang mở · 1 đang tiến hành</div>
+      </div>
+
+      <!-- Chapter list -->
+      <div style="padding:14px 14px 6px;">
+
+        <!-- CHAPTER 1 - unlocked & in progress -->
+        <div onclick="closeModal('modal-all-chapters');openModal('modal-chapter-detail');" style="display:flex;align-items:center;gap:12px;background:rgba(139,92,246,0.10);border:1px solid rgba(139,92,246,0.4);border-radius:12px;padding:12px;margin-bottom:10px;cursor:pointer;position:relative;overflow:hidden;">
+          <div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:linear-gradient(180deg,var(--purple),var(--blue));border-radius:2px 0 0 2px;"></div>
+          <div style="width:48px;height:48px;border-radius:10px;background:rgba(139,92,246,0.25);border:1px solid rgba(139,92,246,0.5);display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0;">🌅</div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:9px;color:var(--text-muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:2px;">CHAPTER 1</div>
+            <div style="font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:800;color:#fff;">THE AWAKENING</div>
+            <div style="height:4px;background:rgba(255,255,255,0.07);border-radius:99px;margin:5px 0 3px;overflow:hidden;"><div style="height:4px;width:66%;background:linear-gradient(90deg,var(--purple),var(--blue));border-radius:99px;"></div></div>
+            <div style="font-size:10px;color:var(--blue-glow);">66% · Tiếp tục 1-3</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex-shrink:0;">
+            <div class="badge badge-green" style="font-size:9px;padding:2px 6px;">Đang chơi</div>
+            <div style="color:var(--blue-glow);font-size:18px;">›</div>
+          </div>
+        </div>
+
+        <!-- CHAPTER 2 - locked -->
+        <div onclick="showLockedChapter('THE DISCIPLINE','Hoàn thành Chapter 1 để mở khóa','🔥')" style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px;margin-bottom:10px;cursor:pointer;position:relative;overflow:hidden;">
+          <div style="position:absolute;inset:0;background:rgba(0,0,0,0.2);pointer-events:none;"></div>
+          <div style="width:48px;height:48px;border-radius:10px;background:rgba(59,130,246,0.12);border:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0;filter:grayscale(0.6);opacity:0.7;">🔥</div>
+          <div style="flex:1;min-width:0;opacity:0.6;">
+            <div style="font-size:9px;color:var(--text-muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:2px;">CHAPTER 2</div>
+            <div style="font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:800;color:var(--text-dim);">THE DISCIPLINE</div>
+            <div style="font-size:10px;color:var(--text-muted);margin-top:4px;">Hoàn thành Ch.1 để mở khóa</div>
+          </div>
+          <div style="font-size:22px;flex-shrink:0;opacity:0.5;">🔒</div>
+        </div>
+
+        <!-- CHAPTER 3 - locked -->
+        <div onclick="showLockedChapter('THE TRANSFORMATION','Hoàn thành Chapter 2 để mở khóa','⚡')" style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:12px;margin-bottom:10px;cursor:pointer;opacity:0.55;position:relative;overflow:hidden;">
+          <div style="width:48px;height:48px;border-radius:10px;background:rgba(239,68,68,0.10);border:1px solid rgba(255,255,255,0.07);display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0;filter:grayscale(0.8);">⚡</div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:9px;color:var(--text-muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:2px;">CHAPTER 3</div>
+            <div style="font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:800;color:var(--text-dim);">THE TRANSFORMATION</div>
+            <div style="font-size:10px;color:var(--text-muted);margin-top:4px;">Hoàn thành Ch.2 để mở khóa</div>
+          </div>
+          <div style="font-size:22px;flex-shrink:0;">🔒</div>
+        </div>
+
+        <!-- CHAPTER 4 - locked -->
+        <div onclick="showLockedChapter('THE MASTERY','Hoàn thành Chapter 3 để mở khóa','👑')" style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:12px;margin-bottom:10px;cursor:pointer;opacity:0.45;position:relative;overflow:hidden;">
+          <div style="width:48px;height:48px;border-radius:10px;background:rgba(245,158,11,0.10);border:1px solid rgba(255,255,255,0.07);display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0;filter:grayscale(0.8);">👑</div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:9px;color:var(--text-muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:2px;">CHAPTER 4</div>
+            <div style="font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:800;color:var(--text-dim);">THE MASTERY</div>
+            <div style="font-size:10px;color:var(--text-muted);margin-top:4px;">Hoàn thành Ch.3 để mở khóa</div>
+          </div>
+          <div style="font-size:22px;flex-shrink:0;">🔒</div>
+        </div>
+
+        <!-- CHAPTER 5 - locked -->
+        <div onclick="showLockedChapter('THE LEGEND','Hoàn thành Chapter 4 để mở khóa','⚜️')" style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,0.015);border:1px solid rgba(255,255,255,0.05);border-radius:12px;padding:12px;margin-bottom:6px;cursor:pointer;opacity:0.35;position:relative;overflow:hidden;">
+          <div style="width:48px;height:48px;border-radius:10px;background:rgba(139,92,246,0.10);border:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0;filter:grayscale(0.9);">⚜️</div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:9px;color:var(--text-muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:2px;">CHAPTER 5</div>
+            <div style="font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:800;color:var(--text-dim);">THE LEGEND</div>
+            <div style="font-size:10px;color:var(--text-muted);margin-top:4px;">Hoàn thành Ch.4 để mở khóa</div>
+          </div>
+          <div style="font-size:22px;flex-shrink:0;">🔒</div>
+        </div>
+
+      </div>
+
+      <div style="padding:0 14px 16px;">
+        <button class="btn-primary" onclick="closeModal('modal-all-chapters');openModal('modal-chapter-detail');">TIẾP TỤC CHAPTER 1</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: LOCKED CHAPTER NOTICE -->
+  <div class="modal-overlay" id="modal-locked-chapter">
+    <div class="modal-box" style="text-align:center;padding:32px 20px 24px;margin:auto 20px;">
+      <div class="modal-close" onclick="closeModal('modal-locked-chapter')">✕</div>
+      <div id="locked-chapter-icon" style="font-size:52px;margin-bottom:12px;">🔒</div>
+      <div id="locked-chapter-name" style="font-family:'Rajdhani',sans-serif;font-size:22px;font-weight:900;color:#fff;margin-bottom:8px;"></div>
+      <div id="locked-chapter-msg" style="font-size:13px;color:var(--text-dim);margin-bottom:20px;line-height:1.5;"></div>
+      <div style="background:rgba(139,92,246,0.08);border:1px solid rgba(139,92,246,0.2);border-radius:10px;padding:12px;margin-bottom:20px;">
+        <div style="font-size:10px;color:var(--text-muted);margin-bottom:4px;">Tiến độ hiện tại</div>
+        <div style="font-size:12px;color:var(--blue-glow);font-weight:600;">Chapter 1 · THE AWAKENING · 66%</div>
+      </div>
+      <button class="btn-primary" onclick="closeModal('modal-locked-chapter');closeModal('modal-all-chapters');openModal('modal-chapter-detail');">TIẾP TỤC CHAPTER 1</button>
+      <button class="btn-outline" style="width:100%;margin-top:8px;" onclick="closeModal('modal-locked-chapter')">ĐÓNG</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════ BOTTOM NAV ═══════════════════════════════ -->
+  <nav id="bottom-nav">
+    <div class="nav-item active" id="nav-home" onclick="goTo('screen-home')">
+      <span class="nav-icon">🏠</span>
+      <span class="nav-label">Trang chủ</span>
+    </div>
+    <div class="nav-item" id="nav-nhiem-vu" onclick="goTo('screen-nhiem-vu')">
+      <span class="nav-icon">📋</span>
+      <span class="nav-label">Nhiệm vụ</span>
+    </div>
+    <div class="nav-item" id="nav-hanh-trinh" onclick="goTo('screen-hanh-trinh')" style="flex:1;">
+      <span class="nav-icon">⚔️</span>
+      <span class="nav-label">Hành trình</span>
+    </div>
+    <div style="flex:0 0 64px;display:flex;justify-content:center;">
+      <div class="nav-center" onclick="goTo('screen-ai-coach')">🎤</div>
+    </div>
+    <div class="nav-item" id="nav-cua-hang" onclick="goTo('screen-cua-hang')">
+      <span class="nav-icon">🏪</span>
+      <span class="nav-label">Cửa hàng</span>
+    </div>
+    <div class="nav-item" id="nav-rewards" onclick="goTo('screen-rewards')">
+      <span class="nav-icon">🎁</span>
+      <span class="nav-label">Rewards</span>
+    </div>
+    <div class="nav-item" id="nav-profile" onclick="goTo('screen-profile')">
+      <span class="nav-icon">👤</span>
+      <span class="nav-label">Profile</span>
+    </div>
+  </nav>
+</div>
+
+<script>
+  const screenNavMap = {
+    'screen-home': 'nav-home',
+    'screen-nhiem-vu': 'nav-nhiem-vu',
+    'screen-hanh-trinh': 'nav-hanh-trinh',
+    'screen-ai-coach': null,
+    'screen-cua-hang': 'nav-cua-hang',
+    'screen-rewards': 'nav-rewards',
+    'screen-profile': 'nav-profile',
+  };
+
+  function goTo(screenId) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(screenId).classList.add('active');
+    document.getElementById(screenId).scrollTop = 0;
+
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    const navId = screenNavMap[screenId];
+    if (navId) document.getElementById(navId).classList.add('active');
+  }
+
+  function openModal(id) {
+    document.getElementById(id).classList.add('active');
+    document.getElementById(id).scrollTop = 0;
+  }
+
+  function closeModal(id) {
+    document.getElementById(id).classList.remove('active');
+  }
+
+  function showLockedChapter(name, msg, icon) {
+    document.getElementById('locked-chapter-name').textContent = name;
+    document.getElementById('locked-chapter-msg').textContent = msg;
+    document.getElementById('locked-chapter-icon').textContent = icon;
+    openModal('modal-locked-chapter');
+  }
+
+  function switchTab(btn, group) {
+    const parent = btn.closest('.tab-row');
+    parent.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+
+  // Close modals on overlay click
+  document.querySelectorAll('.modal-overlay').forEach(overlay => {
+    overlay.addEventListener('click', function(e) {
+      if (e.target === this) this.classList.remove('active');
+    });
+  });
+</script>
+</body>
+</html>
