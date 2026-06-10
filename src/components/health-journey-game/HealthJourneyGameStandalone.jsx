@@ -1,50 +1,57 @@
-import React from 'react'
-//import NavButtons from './NavButtons.jsx'
-import { useApp } from '../../context/AppContext'
-import healthJourneyGameUrl from './health-journey-game/health-journey-game.html?url'
+import { useEffect, useRef } from 'react'
+import htmlContent from './health-journey-game.html?raw'
 
-const GAME_SCREENS = [
-  'Home',
-  'Nhiệm vụ',
-  'Hành trình',
-  'AI Coach',
-  'Cửa hàng',
-  'Rewards',
-  'Profile',
-]
+const STYLE_ID = 'health-journey-inline-style'
 
-export default function HealthJourneyGamePanel({ onNext, nextLabel }) {
-  const { lang } = useApp()
+export default function HealthJourneyGameStandalone() {
+  const containerRef = useRef(null)
+
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    const parser = new DOMParser()
+    const doc = parser.parseFromString(htmlContent, 'text/html')
+
+    const styleTag = doc.querySelector('style')
+
+    if (styleTag && !document.getElementById(STYLE_ID)) {
+      const style = document.createElement('style')
+      style.id = STYLE_ID
+      style.textContent = styleTag.textContent || ''
+      document.head.appendChild(style)
+    }
+
+    container.innerHTML = doc.body.innerHTML
+
+    const scripts = Array.from(
+      container.querySelectorAll('script')
+    )
+
+    scripts.forEach((oldScript) => {
+      const script = document.createElement('script')
+
+      Array.from(oldScript.attributes).forEach((attr) => {
+        script.setAttribute(attr.name, attr.value)
+      })
+
+      script.textContent = oldScript.textContent || ''
+
+      oldScript.parentNode?.replaceChild(
+        script,
+        oldScript
+      )
+    })
+
+    return () => {
+      container.innerHTML = ''
+    }
+  }, [])
 
   return (
-    <div className="animate-fade health-journey-game-page">
-      <section className="ai-healthcare-vision-header health-journey-game-header">
-        <div>
-          <div className="ai-healthcare-vision-kicker">HEALTH JOURNEY GAME</div>
-          <h2>🎮 Health Journey Game</h2>
-          <p>
-            {lang === 'vi'
-              ? 'Game động lực rèn luyện sức khoẻ gồm 7 màn hình chính, tối ưu responsive cho điện thoại. Các nút trong game mở được màn hình chính và màn hình chi tiết liên quan từ file HTML gốc.'
-              : 'A motivational health-training game with 7 primary mobile-first screens. In-game buttons navigate across the main screens and related detail screens from the source HTML.'}
-          </p>
-        </div>
-        <div className="health-journey-game-screen-list" aria-label="7 main Health Journey Game screens">
-          {GAME_SCREENS.map((screen, index) => (
-            <span key={screen}>{index + 1}. {screen}</span>
-          ))}
-        </div>
-      </section>
-
-      <section className="health-journey-game-frame-card" aria-label="Health Journey Game embedded app">
-        <iframe
-          title="Health Journey Game"
-          src={healthJourneyGameUrl}
-          className="health-journey-game-frame"
-          loading="lazy"
-        />
-      </section>
-
-      {/* <NavButtons onNext={onNext} nextLabel={nextLabel} /> */}
-    </div>
+    <div
+      ref={containerRef}
+      className="health-journey-standalone-container"
+    />
   )
 }
