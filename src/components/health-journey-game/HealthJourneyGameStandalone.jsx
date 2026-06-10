@@ -1,8 +1,7 @@
 import React from 'react'
 import NavButtons from './NavButtons.jsx'
 import { useApp } from '../context/AppContext'
-//import healthJourneyGameUrl from './health-journey-game/health-journey-game.html?url'
-import HealthJourneyGameStandalone from './health-journey-game/HealthJourneyGameStandalone'
+import healthJourneyGameUrl from './health-journey-game/health-journey-game.html?url'
 
 const GAME_SCREENS = [
   'Home',
@@ -37,14 +36,12 @@ export default function HealthJourneyGamePanel({ onNext, nextLabel }) {
       </section>
 
       <section className="health-journey-game-frame-card" aria-label="Health Journey Game embedded app">
-//        <iframe
-//          title="Health Journey Game"
-//          src={healthJourneyGameUrl}
-//          className="health-journey-game-frame"
-//          loading="lazy"
-//        />
-
-<HealthJourneyGameStandalone />
+        <iframe
+          title="Health Journey Game"
+          src={healthJourneyGameUrl}
+          className="health-journey-game-frame"
+          loading="lazy"
+        />
       </section>
 
       <NavButtons onNext={onNext} nextLabel={nextLabel} />
