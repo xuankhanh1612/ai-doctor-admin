@@ -1,6 +1,6 @@
 import React from 'react'
-import NavButtons from './NavButtons.jsx'
-import { useApp } from '../context/AppContext'
+//import NavButtons from './NavButtons.jsx'
+import { useApp } from '../../context/AppContext'
 import healthJourneyGameUrl from './health-journey-game/health-journey-game.html?url'
 
 const GAME_SCREENS = [
@@ -44,7 +44,7 @@ export default function HealthJourneyGamePanel({ onNext, nextLabel }) {
         />
       </section>
 
-      <NavButtons onNext={onNext} nextLabel={nextLabel} />
+      {/* <NavButtons onNext={onNext} nextLabel={nextLabel} /> */}
     </div>
   )
 }
