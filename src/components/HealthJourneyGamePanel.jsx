@@ -2,7 +2,7 @@ import React from 'react'
 import NavButtons from './NavButtons.jsx'
 import { useApp } from '../context/AppContext'
 //import healthJourneyGameUrl from './health-journey-game/health-journey-game.html?url'
-import HealthJourneyGameStandalone from '../health-journey-game/HealthJourneyGameStandalone'
+import HealthJourneyGameStandalone from './health-journey-game/HealthJourneyGameStandalone'
 
 const GAME_SCREENS = [
   'Home',
