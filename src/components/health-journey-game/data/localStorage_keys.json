@@ -1,5 +1,9 @@
 {
-  "keys": [
+  "schema": "health_journey_local_storage_keys_v1",
+  "primaryDatabaseKey": "health_journey_local_db_v1",
+  "medicalUploadMetaPrefix": "ai-clinic-patient-meta",
+  "events": ["health-journey:updated", "medical-records-updated"],
+  "legacyKeys": [
     "user_profile",
     "user_activities",
     "daily_tasks",
@@ -12,6 +16,6 @@
     "user_inventory",
     "user_leaderboard",
     "user_ai_coach_conversations",
-    "user_proof_images.json"
+    "user_proof_images"
   ]
 }
