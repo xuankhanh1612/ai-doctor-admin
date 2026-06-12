@@ -2210,7 +2210,7 @@ export default function HealthJourneyGameStandalone() {
 
             {selectedProof && (
               <div style={{ marginTop: "10px", padding: "10px", borderRadius: "12px", border: "1px solid rgba(34,197,94,.28)", background: "rgba(34,197,94,.10)", color: "#bbf7d0", fontSize: "12px", fontWeight: "700" }}>
-                ✓ Đã có ảnh proof AI: hoàn thành {selectedTaskState?.current || 0}/{selectedTaskState?.target || 1} nhiệm vụ ({selectedTaskPct}%). Upload: {selectedProof.uploadPath || selectedProof.image || selectedProof.uploadRecord?.uploadPath}
+                ✓ Đã có ảnh proof AI: hoàn thành {selectedTaskState?.current || 0}/{selectedTaskState?.target || 1} nhiệm vụ ({selectedTaskPct}%). Upload: {selectedProof.uploadPath || (selectedProof.image === '__INDEXED_DB_ONLY__' ? '(ảnh lớn - lưu cloud)' : selectedProof.image) || selectedProof.uploadRecord?.uploadPath}
               </div>
             )}
             {cameraError && <div className="mission-error">{cameraError}</div>}
