@@ -150,8 +150,12 @@ export abstract class BaseVisionTask extends BaseTask {
       }
     };
 
+    const params = new URLSearchParams(window.location.search);
+    const requestedWebcam = ['webcam', 'video'].includes((params.get('mode') || params.get('view') || '').toLowerCase());
+    const shouldAutostartWebcam = requestedWebcam && params.get('autostart') === '1';
     const storedMode = localStorage.getItem('mediapipe-running-mode') as 'VIDEO' | 'IMAGE';
-    const initialMode = storedMode || 'IMAGE';
+    const initialMode = requestedWebcam ? 'VIDEO' : (storedMode || 'IMAGE');
+    if (shouldAutostartWebcam) localStorage.setItem('mediapipe-webcam-active', 'true');
 
     const viewToggle = new ViewToggle(
       'view-mode-toggle',

@@ -19,8 +19,8 @@ export function dataUrlToFile(dataUrl, filename) {
   return new File([bytes], filename, { type: mime })
 }
 
-export function makeWaterUploadPath(user, filename) {
-  return `upload/${safeUploadSegment(user?.email || user?.name || 'guest')}/health-journey-game/water/${filename}`
+export function makeWaterUploadPath(user, filename, taskId = 'water') {
+  return `upload/${safeUploadSegment(user?.email || user?.name || 'guest')}/health-journey-game/${safeUploadSegment(taskId || 'mission')}/${filename}`
 }
 
 export function drawAIWaterBottleOverlay(ctx, width, height) {
@@ -115,10 +115,18 @@ export function syncBeMeoWater(amount = WATER_AMOUNT_ML, source = 'health-journe
   return { state, botText }
 }
 
-export async function saveWaterProofImage(file, user, { source = 'health-journey-game-water-proof', notesPrefix = 'Health Journey Game · Water Proof' } = {}) {
+export async function saveWaterProofImage(file, user, {
+  source = 'health-journey-game-water-proof',
+  notesPrefix = 'Health Journey Game · Water Proof',
+  activityType = 'drink_water',
+  taskId = 'water',
+  xpEarned = 10,
+  waterAmountMl = WATER_AMOUNT_ML,
+  proofType = 'webcam_bottle_photo_ai_overlay',
+} = {}) {
   const [dataUrl, base64Data] = await Promise.all([fileToDataUrl(file), fileToBase64(file)])
-  const filename = `water_bottle_ai_${new Date().toISOString().replace(/[:.]/g, '-')}.jpg`
-  const uploadPath = makeWaterUploadPath(user, filename)
+  const filename = `${safeUploadSegment(taskId)}_ai_${new Date().toISOString().replace(/[:.]/g, '-')}.jpg`
+  const uploadPath = makeWaterUploadPath(user, filename, taskId)
   const fileType = detectFileType(file.type, filename)
   const record = {
     id: `health_journey_water_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
@@ -131,7 +139,7 @@ export async function saveWaterProofImage(file, user, { source = 'health-journey
     uploadedAt: new Date().toISOString(),
     dataUrl,
     base64Data,
-    notes: `${notesPrefix} · Activity: drink_water · +10 XP · +${WATER_AMOUNT_ML}ml · AI overlay saved · ${uploadPath}`,
+    notes: `${notesPrefix} · Activity: ${activityType} · +${xpEarned} XP · AI Healthcare Vision Object Detection Webcam overlay saved · ${uploadPath}`,
     ownerEmail: user?.email || null,
     ownerName: user?.name || '',
     ownerAvatar: user?.avatar || '',
@@ -140,11 +148,11 @@ export async function saveWaterProofImage(file, user, { source = 'health-journey
     uploadFolder: uploadPath.split('/').slice(0, -1).join('/'),
     uploadPath,
     healthJourney: {
-      activityType: 'drink_water',
-      taskId: 'water',
-      xpEarned: 10,
-      waterAmountMl: WATER_AMOUNT_ML,
-      proofType: 'webcam_bottle_photo_ai_overlay',
+      activityType,
+      taskId,
+      xpEarned,
+      waterAmountMl,
+      proofType,
     },
   }
   await saveRecord(record, {

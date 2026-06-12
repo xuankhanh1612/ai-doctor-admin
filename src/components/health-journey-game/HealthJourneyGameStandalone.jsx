@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../../context/AuthContext.jsx'
-import { completeHealthJourneyActivity, HEALTH_JOURNEY_EVENT, getTaskSnapshot } from './services/healthJourneyStorage.js'
+import { completeHealthJourneyActivity, HEALTH_JOURNEY_EVENT, getTaskSnapshot, XP_TABLE } from './services/healthJourneyStorage.js'
 import { dataUrlToFile, drawAIWaterBottleOverlay, saveWaterProofImage, syncBeMeoWater } from './services/waterProofUpload.js'
 
 
@@ -15,6 +15,8 @@ const TASK_DETAIL_CONTENT = {
   inbody: { icon: '📈', title: 'Import InBody', subtitle: 'Tải hồ sơ sức khoẻ để AI theo dõi', reward: '+100 XP', unitLabel: 'file', activityType: 'import_inbody' },
   walk: { icon: '🚶', title: 'Walk 10,000 Steps', subtitle: 'Hoàn thành 10.000 bước', reward: '+50 XP', unitLabel: 'bước', activityType: 'walk_10000_steps' },
 }
+
+const MEDIAPIPE_OBJECT_DETECTION_WEBCAM_URL = '/src/mediapipe-khanh/index.html?mode=webcam&autostart=1#/vision/object_detector'
 
 const CHAPTER_DETAIL_CONTENT = {
   first_step: { taskId: 'water', icon: '🌅', title: 'The First Step', subtitle: 'Khởi động hành trình bằng 1 proof uống nước.' },
@@ -226,6 +228,8 @@ const styles = String.raw`
 
 
   .mission-proof-card { border:1px solid rgba(56,189,248,.28); border-radius:14px; overflow:hidden; background:#020617; margin-top:12px; }
+  .mission-ai-frame { width:100%; min-height:560px; border:0; display:block; background:#020617; }
+  .mission-ai-note { padding:10px; border-bottom:1px solid rgba(56,189,248,.18); background:rgba(8,47,73,.34); color:#bae6fd; font-size:12px; line-height:1.45; }
   .mission-camera-stage { height:260px; position:relative; display:grid; place-items:center; color:#bae6fd; text-align:center; overflow:hidden; }
   .mission-camera-stage video, .mission-camera-stage img { width:100%; height:100%; object-fit:cover; display:block; }
   .mission-ai-hud { position:absolute; inset:10px; pointer-events:none; border:1px solid rgba(56,189,248,.34); border-radius:12px; box-shadow:inset 0 0 28px rgba(14,165,233,.18); }
@@ -455,7 +459,7 @@ export default function HealthJourneyGameStandalone() {
   const [cameraOn, setCameraOn] = useState(false)
   const [cameraError, setCameraError] = useState('')
   const [savingProof, setSavingProof] = useState(false)
-  const [lastWaterRecord, setLastWaterRecord] = useState(null)
+  const [lastMissionRecord, setLastMissionRecord] = useState(null)
 
   useEffect(() => {
     const refreshSnapshot = () => setSnapshot(getTaskSnapshot(user))
@@ -466,6 +470,52 @@ export default function HealthJourneyGameStandalone() {
   useEffect(() => () => {
     streamRef.current?.getTracks?.().forEach((track) => track.stop())
   }, [])
+
+
+  useEffect(() => {
+    const onMediaPipeCapture = async (event) => {
+      if (event.origin !== window.location.origin) return
+      if (event.data?.type !== 'AI_CLINIC_MEDIAPIPE_WEBCAM_CAPTURE') return
+      const taskDetailOpen = getRoot()?.querySelector('#modal-task-detail')?.classList.contains('active')
+      if (!taskDetailOpen || !event.data?.dataUrl) return
+
+      const task = TASK_DETAIL_CONTENT[selectedTaskKey] || TASK_DETAIL_CONTENT.deep_work
+      setSavingProof(true)
+      setCameraError('')
+      try {
+        const xpEarned = XP_TABLE[task.activityType] || 0
+        const file = dataUrlToFile(event.data.dataUrl, event.data.filename || `${selectedTaskKey}_ai_webcam.jpg`)
+        const record = await saveWaterProofImage(file, user, {
+          source: 'health-journey-game-task-detail-ai-healthcare-vision',
+          notesPrefix: `Health Journey Game · Chi tiết Nhiệm Vụ · ${task.title}`,
+          activityType: task.activityType,
+          taskId: selectedTaskKey,
+          xpEarned,
+          waterAmountMl: selectedTaskKey === 'water' ? 150 : 0,
+          proofType: 'ai_healthcare_vision_object_detection_webcam_overlay',
+        })
+        completeHealthJourneyActivity({
+          user,
+          activityType: task.activityType,
+          value: 1,
+          proofImage: record.uploadPath,
+          uploadRecord: record,
+          metadata: { source: 'health-journey-game-task-detail-ai-healthcare-vision', flow: 'Chi tiết Nhiệm Vụ -> AI Healthcare Vision Control Object Detection Webcam -> Upload proof' },
+        })
+        if (selectedTaskKey === 'water') syncBeMeoWater(150, 'Health Journey Game · AI Healthcare Vision proof')
+        setLastMissionRecord(record)
+        event.source?.postMessage?.({ type: 'AI_CLINIC_MEDIAPIPE_CAPTURE_SAVED', captureKind: 'webcam', uploadPath: record.uploadPath }, event.origin)
+      } catch (error) {
+        setCameraError(error?.message || 'Không thể lưu ảnh AI Healthcare Vision proof.')
+        event.source?.postMessage?.({ type: 'AI_CLINIC_MEDIAPIPE_CAPTURE_SAVE_FAILED', captureKind: 'webcam', message: error?.message || String(error) }, event.origin)
+      } finally {
+        setSavingProof(false)
+      }
+    }
+
+    window.addEventListener('message', onMediaPipeCapture)
+    return () => window.removeEventListener('message', onMediaPipeCapture)
+  }, [selectedTaskKey, user])
 
   const todayTask = (taskId) => snapshot.day?.tasks?.find((task) => task.taskId === taskId)
   const journeyObjective = (activityType) => snapshot.journeyUser?.journeyProgress?.objectives?.find((objective) => objective.activityType === activityType)
@@ -478,9 +528,9 @@ export default function HealthJourneyGameStandalone() {
   const journeyProfile = snapshot.journeyUser?.profile || {}
   const selectedTask = TASK_DETAIL_CONTENT[selectedTaskKey] || TASK_DETAIL_CONTENT.deep_work
   const selectedTaskState = todayTask(selectedTaskKey)
-  const selectedProof = selectedTaskKey === 'water'
-    ? (lastWaterRecord || snapshot.journeyUser?.proofImages?.find((proof) => proof.activityType === 'drink_water' && proof.capturedAt?.slice(0, 10) === new Date().toISOString().slice(0, 10)) || snapshot.journeyUser?.proofImages?.find((proof) => proof.activityType === 'drink_water'))
-    : null
+  const selectedProof = (lastMissionRecord?.healthJourney?.activityType === selectedTask.activityType ? lastMissionRecord : null)
+    || snapshot.journeyUser?.proofImages?.find((proof) => proof.activityType === selectedTask.activityType && proof.capturedAt?.slice(0, 10) === new Date().toISOString().slice(0, 10))
+    || snapshot.journeyUser?.proofImages?.find((proof) => proof.activityType === selectedTask.activityType)
   const selectedTaskPct = taskPercent(selectedTaskState)
 
   const getRoot = () => containerRef.current
@@ -525,6 +575,7 @@ export default function HealthJourneyGameStandalone() {
 
   const openChapterMissionDetail = (chapterKey) => {
     const chapter = CHAPTER_DETAIL_CONTENT[chapterKey] || CHAPTER_DETAIL_CONTENT.focus
+    closeModal('modal-chapter-detail')
     openTaskDetail(chapter.taskId)
   }
 
@@ -571,7 +622,7 @@ export default function HealthJourneyGameStandalone() {
         metadata: { source: 'health-journey-game-task-detail', flow: 'Chi tiết Nhiệm Vụ -> AI Webcam -> Upload -> Bé Mèo +150ml' },
       })
       syncBeMeoWater(150, 'Health Journey Game · Chụp chai nước')
-      setLastWaterRecord(record)
+      setLastMissionRecord(record)
       stopWaterCamera()
     } catch (error) {
       setCameraError(error?.message || 'Không thể lưu ảnh chai nước.')
@@ -659,7 +710,7 @@ export default function HealthJourneyGameStandalone() {
               <br />
               để chinh phục phiên bản tốt nhất.
             </div>
-            <button className="btn-primary" onClick={(event) => { goTo('screen-hanh-trinh'); }} style={{ maxWidth: "160px" }}>
+            <button className="btn-primary" onClick={(event) => { goTo('screen-nhiem-vu'); }} style={{ maxWidth: "160px" }}>
               BẮT ĐẦU
             </button>
           </div>
@@ -2266,54 +2317,24 @@ export default function HealthJourneyGameStandalone() {
               )}
             </div>
 
-            {selectedTaskKey === 'water' && (
-              <div className="mission-proof-card">
-                <div className="mission-camera-stage">
-                  {selectedProof?.image || selectedProof?.dataUrl ? (
-                    <img src={selectedProof.dataUrl || selectedProof.image} alt="Water bottle proof" />
-                  ) : (
-                    <>
-                      <video ref={videoRef} autoPlay playsInline muted style={{ display: cameraOn ? 'block' : 'none' }} />
-                      {!cameraOn && (
-                        <div style={{ padding: "18px" }}>
-                          <div style={{ fontSize: "52px" }}>📷</div>
-                          <b>Webcam AI Object Detection</b>
-                          <p style={{ margin: "8px 0 0", color: "#7dd3fc", fontSize: "12px" }}>
-                            Chưa có ảnh hôm nay. Mở Webcam như tab Object Detection để User chụp ảnh làm nhiệm vụ.
-                          </p>
-                        </div>
-                      )}
-                      {cameraOn && <div className="mission-ai-hud" />}
-                    </>
-                  )}
-                </div>
-                <canvas ref={canvasRef} style={{ display: "none" }} />
-                <div className="mission-camera-actions">
-                  {selectedProof?.image || selectedProof?.dataUrl ? (
-                    <button className="btn-outline" type="button" onClick={(event) => { setLastWaterRecord(null); }} style={{ width: "100%" }}>
-                      Chụp lại proof mới
-                    </button>
-                  ) : !cameraOn ? (
-                    <button className="btn-primary" type="button" onClick={startWaterCamera} disabled={savingProof}>
-                      Mở Webcam AI
-                    </button>
-                  ) : (
-                    <>
-                      <button className="btn-primary" type="button" onClick={captureWaterProof} disabled={savingProof}>
-                        {savingProof ? 'Đang lưu Upload…' : 'Chụp chai nước + lưu Upload'}
-                      </button>
-                      <button className="btn-outline" type="button" onClick={stopWaterCamera} disabled={savingProof}>
-                        Đóng
-                      </button>
-                    </>
-                  )}
-                </div>
+            <div className="mission-proof-card">
+              <div className="mission-ai-note">
+                <b>AI Healthcare Vision Control · Object Detection · Webcam</b><br />
+                Camera AI thật luôn hiển thị cho mọi nhiệm vụ. Bấm <b>Mở camera</b>, xem lớp phủ nhận diện realtime, rồi bấm <b>Lưu Upload Records</b> trong Webcam để lưu ảnh kèm lớp phủ AI và cộng thêm lượt hoàn thành (có thể vượt mức tối thiểu như 11/10).
               </div>
-            )}
+              <iframe
+                key={selectedTaskKey}
+                title={`AI Healthcare Vision Object Detection Webcam - ${selectedTask.title}`}
+                src={MEDIAPIPE_OBJECT_DETECTION_WEBCAM_URL}
+                className="mission-ai-frame"
+                allow="camera; microphone; fullscreen; clipboard-read; clipboard-write"
+                referrerPolicy="strict-origin-when-cross-origin"
+              />
+            </div>
 
-            {selectedProof && selectedTaskKey === 'water' && (
+            {selectedProof && (
               <div style={{ marginTop: "10px", padding: "10px", borderRadius: "12px", border: "1px solid rgba(34,197,94,.28)", background: "rgba(34,197,94,.10)", color: "#bbf7d0", fontSize: "12px", fontWeight: "700" }}>
-                ✓ Đã có ảnh proof: hoàn thành {selectedTaskState?.current || 0}/{selectedTaskState?.target || 1} nhiệm vụ ({selectedTaskPct}%). Upload: {selectedProof.uploadPath || selectedProof.image}
+                ✓ Đã có ảnh proof AI: hoàn thành {selectedTaskState?.current || 0}/{selectedTaskState?.target || 1} nhiệm vụ ({selectedTaskPct}%). Upload: {selectedProof.uploadPath || selectedProof.image || selectedProof.uploadRecord?.uploadPath}
               </div>
             )}
             {cameraError && <div className="mission-error">{cameraError}</div>}
