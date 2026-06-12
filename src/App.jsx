@@ -328,8 +328,19 @@ class PanelErrorBoundary extends React.Component {
     }
   }
 
+  handleClearHealthJourneyData = () => {
+    try {
+      localStorage.removeItem('health_journey_local_db_v1')
+    } catch (e) {
+      console.error('Unable to clear health journey data:', e)
+    }
+    this.setState({ error: null, reportSent: false })
+  }
+
   handleClearFamilyData = () => {
     try {
+      // Also clear health journey DB to free quota
+      try { localStorage.removeItem('health_journey_local_db_v1') } catch (_) {}
       const ownerKey = String(this.props.familyStorageOwnerId || 'guest').trim().toLowerCase() || 'guest'
       const byUser = JSON.parse(localStorage.getItem('cdoc_family_members_by_user') || '{}')
 
@@ -386,6 +397,9 @@ class PanelErrorBoundary extends React.Component {
             {this.state.error?.message || 'Unknown panel error'}
           </pre>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 18 }}>
+            <button type="button" onClick={this.handleClearHealthJourneyData} style={{ padding: '10px 14px', borderRadius: 9, border: '1px solid rgba(134,239,172,.35)', background: 'rgba(134,239,172,.1)', color: '#86efac', fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>
+              Xoá cache Health Journey
+            </button>
             <button type="button" onClick={this.handleClearFamilyData} style={{ padding: '10px 14px', borderRadius: 9, border: '1px solid rgba(0,229,255,.35)', background: 'rgba(0,229,255,.1)', color: '#00e5ff', fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>
               Xoá dữ liệu gia đình trên máy
             </button>
