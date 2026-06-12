@@ -16,7 +16,7 @@ const TASK_DETAIL_CONTENT = {
   walk: { icon: '🚶', title: 'Walk 10,000 Steps', subtitle: 'Hoàn thành 10.000 bước', reward: '+50 XP', unitLabel: 'bước', activityType: 'walk_10000_steps' },
 }
 
-const MEDIAPIPE_OBJECT_DETECTION_WEBCAM_URL = '/src/mediapipe-khanh/index.html?mode=webcam&autostart=1#/vision/object_detector'
+const MEDIAPIPE_OBJECT_DETECTION_WEBCAM_URL = '/src/mediapipe-khanh/index.html?mode=webcam#/vision/object_detector'
 
 const CHAPTER_DETAIL_CONTENT = {
   first_step: { taskId: 'water', icon: '🌅', title: 'The First Step', subtitle: 'Khởi động hành trình bằng 1 proof uống nước.' },
@@ -2320,7 +2320,7 @@ export default function HealthJourneyGameStandalone() {
             <div className="mission-proof-card">
               <div className="mission-ai-note">
                 <b>AI Healthcare Vision Control · Object Detection · Webcam</b><br />
-                Camera AI thật luôn hiển thị cho mọi nhiệm vụ. Bấm <b>Mở camera</b>, xem lớp phủ nhận diện realtime, rồi bấm <b>Lưu Upload Records</b> trong Webcam để lưu ảnh kèm lớp phủ AI và cộng thêm lượt hoàn thành (có thể vượt mức tối thiểu như 11/10).
+                Camera AI thật luôn hiển thị cho mọi nhiệm vụ. Bấm <b>Mở camera</b>, xem lớp phủ nhận diện realtime, rồi bấm <b>Lưu Hình</b> trong Webcam để lưu ảnh kèm lớp phủ AI và cộng thêm lượt hoàn thành (có thể vượt mức tối thiểu như 11/10).
               </div>
               <iframe
                 key={selectedTaskKey}

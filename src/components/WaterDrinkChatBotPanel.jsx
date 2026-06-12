@@ -13,7 +13,7 @@ import meoNuocAiUrl from '../waterdrink-khanh/MeoNuocAI.JPG'
 import robotTuThe1Url from '../waterdrink-khanh/Robot-mang-giong-noi-nguoi-thuong-ren-hoc-sinh-ngoi-dung-tu-the-1.jpg'
 import robotTuThe2Url from '../waterdrink-khanh/Robot-mang-giong-noi-nguoi-thuong-ren-hoc-sinh-ngoi-dung-tu-the-2.jpg'
 
-const MEDIAPIPE_OBJECT_DETECTION_WEBCAM_URL = '/src/mediapipe-khanh/index.html?mode=webcam&autostart=1#/vision/object_detector'
+const MEDIAPIPE_OBJECT_DETECTION_WEBCAM_URL = '/src/mediapipe-khanh/index.html?mode=webcam#/vision/object_detector'
 
 export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, nextLabel }) {
   const { theme } = useApp()
@@ -190,7 +190,7 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
             <div style={{ borderRadius: 22, overflow: 'hidden', background: '#020617', border: '1px solid rgba(125,211,252,0.28)', minHeight: 560, position: 'relative' }}>
               <div style={{ padding: 10, borderBottom: '1px solid rgba(125,211,252,0.22)', background: 'rgba(8,47,73,0.42)', color: '#bae6fd', fontSize: 12, lineHeight: 1.45 }}>
                 <b>AI Healthcare Vision Control · Object Detection · Webcam</b><br />
-                Mở Webcam, xem nhận diện realtime trên lớp phủ AI thật, rồi bấm <b>Lưu Upload Records</b> để lưu ảnh kèm overlay và cộng thêm lượt uống nước.
+                Mở Webcam, xem nhận diện realtime trên lớp phủ AI thật, rồi bấm <b>Lưu Hình</b> để lưu ảnh kèm overlay và cộng thêm lượt uống nước.
               </div>
               <iframe
                 title="Bé Mèo Nước AI Healthcare Vision Object Detection Webcam"

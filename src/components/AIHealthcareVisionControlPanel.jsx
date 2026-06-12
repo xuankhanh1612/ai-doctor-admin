@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { detectFileType, fileToBase64, fileToDataUrl, saveRecord } from '../lib/medicalStorage.js'
 import { notifyUpload } from '../hooks/useMedicalData.js'
 
-const MEDIAPIPE_APP_URL = '/src/mediapipe-khanh/index.html#/vision/object_detector'
+const MEDIAPIPE_APP_URL = '/src/mediapipe-khanh/index.html?mode=webcam#/vision/object_detector'
 
 
 function safeUploadSegment(value) {
@@ -134,15 +134,13 @@ export default function AIHealthcareVisionControlPanel({ onNext, nextLabel, onPr
               : 'Keeps the full MediaPipe Tasks console. Camera controls are attached around the MediaPipe Webcam so users can open the camera, save Webcam captures into Upload Records, and upload local images.'}
           </p>
           {lastMediaPipeRecord && (
-            <>
-              <div className="ai-vision-upload-path" style={{ marginTop: 10 }}>
-                <b>{lang === 'vi' ? 'MediaPipe đã lưu:' : 'MediaPipe saved:'}</b> {lastMediaPipeRecord.uploadPath}
-              </div>
-              <button type="button" className="ai-vision-medical-record-button inline" onClick={onViewMedicalRecord}>
-                {lang === 'vi' ? 'Xem hình tại Medical Records' : 'View image in Medical Records'}
-              </button>
-            </>
+            <div className="ai-vision-upload-path" style={{ marginTop: 10 }}>
+              <b>{lang === 'vi' ? 'MediaPipe đã lưu:' : 'MediaPipe saved:'}</b> {lastMediaPipeRecord.uploadPath}
+            </div>
           )}
+          <button type="button" className="ai-vision-medical-record-button inline" onClick={onViewMedicalRecord} style={{ marginTop: 10 }}>
+            {lang === 'vi' ? 'Xem hình tại Medical Records' : 'View image in Medical Records'}
+          </button>
         </div>
       </section>
 

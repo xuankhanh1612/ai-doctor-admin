@@ -49,6 +49,7 @@ export abstract class BaseVisionTask extends BaseTask {
     this.setupViewToggle();
     this.setupImageUpload();
     this.setupUploadRecordControls();
+    this.setupModelSelectionToggle();
 
     // Child class hook
     this.onInitializeUI();
@@ -132,7 +133,8 @@ export abstract class BaseVisionTask extends BaseTask {
         this.worker?.postMessage({ type: 'SET_OPTIONS', runningMode: 'VIDEO' });
 
         const isWebcamActive = localStorage.getItem('mediapipe-webcam-active') === 'true';
-        if (isWebcamActive) {
+        const requestedWebcam = ['webcam', 'video'].includes((new URLSearchParams(window.location.search).get('mode') || new URLSearchParams(window.location.search).get('view') || '').toLowerCase());
+        if (!requestedWebcam && isWebcamActive) {
           this.enableCam();
         }
       } else {
@@ -152,11 +154,8 @@ export abstract class BaseVisionTask extends BaseTask {
 
     const params = new URLSearchParams(window.location.search);
     const requestedWebcam = ['webcam', 'video'].includes((params.get('mode') || params.get('view') || '').toLowerCase());
-    const shouldAutostartWebcam = requestedWebcam && params.get('autostart') === '1';
     const storedMode = localStorage.getItem('mediapipe-running-mode') as 'VIDEO' | 'IMAGE';
     const initialMode = requestedWebcam ? 'VIDEO' : (storedMode || 'IMAGE');
-    if (shouldAutostartWebcam) localStorage.setItem('mediapipe-webcam-active', 'true');
-
     const viewToggle = new ViewToggle(
       'view-mode-toggle',
       [
@@ -208,6 +207,37 @@ export abstract class BaseVisionTask extends BaseTask {
     this.ensureViewUploadRecordsButton(webcamControls, 'webcam');
   }
 
+
+  protected setupModelSelectionToggle() {
+    const taskContainer = this.container.querySelector('.task-container') as HTMLElement | null;
+    const controlsPanel = this.container.querySelector('.controls-panel') as HTMLElement | null;
+    if (!taskContainer || !controlsPanel || document.getElementById('model-selection-toggle-btn')) return;
+
+    const params = new URLSearchParams(window.location.search);
+    const requestedWebcam = ['webcam', 'video'].includes((params.get('mode') || params.get('view') || '').toLowerCase());
+    const collapsedLabel = 'Hiện Model Selection';
+    const expandedLabel = 'Ẩn Model Selection';
+    const toggleButton = document.createElement('button');
+    toggleButton.id = 'model-selection-toggle-btn';
+    toggleButton.className = 'model-selection-toggle action-button secondary';
+    toggleButton.type = 'button';
+
+    const setCollapsed = (collapsed: boolean) => {
+      taskContainer.classList.toggle('controls-collapsed', collapsed);
+      toggleButton.innerHTML = `<span class="material-icons">tune</span> ${collapsed ? collapsedLabel : expandedLabel}`;
+      toggleButton.setAttribute('aria-expanded', String(!collapsed));
+    };
+
+    toggleButton.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      setCollapsed(!taskContainer.classList.contains('controls-collapsed'));
+    });
+
+    taskContainer.insertBefore(toggleButton, taskContainer.firstChild);
+    setCollapsed(requestedWebcam);
+  }
+
   private setupUploadBridgeMessages() {
     if (this.uploadBridgeMessageHandler) return;
 
@@ -216,11 +246,11 @@ export abstract class BaseVisionTask extends BaseTask {
 
       if (event.data?.type === 'AI_CLINIC_MEDIAPIPE_CAPTURE_SAVED') {
         this.showUploadRecordsButton(event.data.captureKind, event.data.uploadPath);
-        this.updateStatus(`Đã lưu Upload Records: ${event.data.uploadPath || ''}`.trim());
+        this.updateStatus(`Đã lưu hình: ${event.data.uploadPath || ''}`.trim());
       }
 
       if (event.data?.type === 'AI_CLINIC_MEDIAPIPE_CAPTURE_SAVE_FAILED') {
-        this.updateStatus(`Không lưu được Upload Records: ${event.data.message || ''}`.trim());
+        this.updateStatus(`Không lưu được hình: ${event.data.message || ''}`.trim());
       }
     };
 
@@ -266,7 +296,7 @@ export abstract class BaseVisionTask extends BaseTask {
     saveButton.id = 'save-webcam-record-btn';
     saveButton.className = 'action-button secondary';
     saveButton.type = 'button';
-    saveButton.innerHTML = '<span class="material-icons">save_alt</span> Lưu Upload Records';
+    saveButton.innerHTML = '<span class="material-icons">save_alt</span> Lưu&nbsp;&nbsp;Hình';
     saveButton.addEventListener('click', (event) => {
       event.preventDefault();
       event.stopPropagation();
@@ -281,7 +311,7 @@ export abstract class BaseVisionTask extends BaseTask {
       saveButton.id = 'save-image-record-btn';
       saveButton.className = 'action-button secondary image-save-record';
       saveButton.type = 'button';
-      saveButton.innerHTML = '<span class="material-icons">save_alt</span> Lưu Upload Records';
+      saveButton.innerHTML = '<span class="material-icons">save_alt</span> Lưu&nbsp;&nbsp;Hình';
       saveButton.addEventListener('click', (event) => {
         event.preventDefault();
         event.stopPropagation();
@@ -302,7 +332,7 @@ export abstract class BaseVisionTask extends BaseTask {
     viewButton.id = id;
     viewButton.className = 'action-button view-upload-records';
     viewButton.type = 'button';
-    viewButton.style.display = 'none';
+    viewButton.style.display = 'flex';
     viewButton.innerHTML = '<span class="material-icons">folder_shared</span> Xem hình tại Medical Records';
     viewButton.addEventListener('click', (event) => {
       event.preventDefault();
@@ -357,7 +387,7 @@ export abstract class BaseVisionTask extends BaseTask {
       dataUrl,
       filename: `mediapipe_webcam_${new Date().toISOString().replace(/[:.]/g, '-')}.jpg`,
     }, window.location.origin);
-    this.updateStatus('Đã gửi ảnh Webcam sang Upload Records.');
+    this.updateStatus('Đang lưu hình Webcam...');
   }
 
   protected captureImageToUploadRecords() {
@@ -386,7 +416,7 @@ export abstract class BaseVisionTask extends BaseTask {
       dataUrl,
       filename: `mediapipe_image_${new Date().toISOString().replace(/[:.]/g, '-')}.jpg`,
     }, window.location.origin);
-    this.updateStatus('Đang lưu hình Image tab vào Upload Records...');
+    this.updateStatus('Đang lưu hình Image tab...');
   }
 
   protected setupImageUpload() {
