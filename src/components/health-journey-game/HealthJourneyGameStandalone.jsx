@@ -4,6 +4,8 @@ import { completeHealthJourneyActivity, HEALTH_JOURNEY_EVENT, getTaskSnapshot, X
 import { dataUrlToFile, drawAIWaterBottleOverlay, saveWaterProofImage, syncBeMeoWater } from './services/waterProofUpload.js'
 import dailyTasksData from './data/daily_tasks.json'
 import journeysData from './data/journeys.json'
+import TaskDetailPopup from './TaskDetailPopup.jsx'
+import JourneyDetailPopup from './JourneyDetailPopup.jsx'
 
 const MEDIAPIPE_OBJECT_DETECTION_WEBCAM_URL = '/src/mediapipe-khanh/index.html?mode=webcam#/vision/object_detector'
 
@@ -488,6 +490,9 @@ export default function HealthJourneyGameStandalone() {
   const [cameraError, setCameraError] = useState('')
   const [savingProof, setSavingProof] = useState(false)
   const [lastMissionRecord, setLastMissionRecord] = useState(null)
+  // ── Popup state (replaces DOM-based modal-task-detail / modal-chapter-detail) ──
+  const [taskPopupKey, setTaskPopupKey] = useState(null)    // taskId | null
+  const [journeyPopupKey, setJourneyPopupKey] = useState(null) // chapterKey | 'overview' | null
 
   useEffect(() => {
     const refreshSnapshot = () => setSnapshot(getTaskSnapshot(user))
@@ -602,7 +607,8 @@ export default function HealthJourneyGameStandalone() {
   const openTaskDetail = (taskKey) => {
     setSelectedTaskKey(taskKey)
     setCameraError('')
-    openModal('modal-task-detail')
+    openModal('modal-task-detail')   // legacy DOM (kept for other callers)
+    setTaskPopupKey(taskKey)          // new React popup
   }
 
   const openChapterMissionDetail = (chapterKey) => {
@@ -610,6 +616,10 @@ export default function HealthJourneyGameStandalone() {
     closeModal('modal-chapter-detail')
     openTaskDetail(chapter.taskId)
   }
+
+  // New popup openers
+  const openTaskPopup = (taskId) => { setTaskPopupKey(taskId) }
+  const openJourneyPopup = (chapterKey) => { setJourneyPopupKey(chapterKey || 'overview') }
 
   const startWaterCamera = async () => {
     setCameraError('')
@@ -833,7 +843,7 @@ export default function HealthJourneyGameStandalone() {
                   </div>
                 </div>
               </div>
-              <button className="btn-sm" onClick={(event) => { openModal('modal-chapter-detail'); }} style={{ background: "linear-gradient(135deg,var(--purple),var(--blue))", color: "#fff", marginLeft: "auto" }}>
+              <button className="btn-sm" onClick={(event) => { openJourneyPopup('overview') }} style={{ background: "linear-gradient(135deg,var(--purple),var(--blue))", color: "#fff", marginLeft: "auto" }}>
                 TIẾP TỤC
               </button>
             </div>
@@ -948,7 +958,7 @@ export default function HealthJourneyGameStandalone() {
                 <div
                   key={task.taskId}
                   className="task-item clickable"
-                  onClick={(event) => { openTaskDetail(task.taskId) }}
+                  onClick={(event) => { openTaskPopup(task.taskId) }}
                   style={{
                     borderColor: done ? 'rgba(34,197,94,.34)' : task.requiresProof ? 'rgba(59,130,246,.28)' : undefined,
                     borderBottom: idx === allTasks.length - 1 ? 'none' : undefined,
@@ -1102,7 +1112,7 @@ export default function HealthJourneyGameStandalone() {
               <div
                 key={journey.chapter}
                 className="chapter-item"
-                onClick={(event) => { isUnlocked ? openModal(modalId) : showLockedChapter(`Chapter ${journey.chapter}`, `Hoàn thành Chapter ${journey.chapter - 1} để mở khóa`, '🔒') }}
+                onClick={(event) => { isUnlocked ? openJourneyPopup(isChapter1 ? 'overview' : `chapter_${journey.chapter}`) : showLockedChapter(`Chapter ${journey.chapter}`, `Hoàn thành Chapter ${journey.chapter - 1} để mở khóa`, '🔒') }}
                 style={{
                   margin: "0 12px 8px",
                   borderColor: isChapter1 ? "rgba(139,92,246,.4)" : undefined,
@@ -3283,7 +3293,7 @@ export default function HealthJourneyGameStandalone() {
               })}
             </div>
             <div style={{ padding: "0 14px 14px" }}>
-              <button className="btn-primary" onClick={(event) => { closeModal('modal-all-chapters'); openModal('modal-chapter-detail'); }}>
+              <button className="btn-primary" onClick={(event) => { closeModal('modal-all-chapters'); openJourneyPopup('overview') }}>
                 TIẾP TỤC CHAPTER 1
               </button>
             </div>
@@ -3346,6 +3356,33 @@ export default function HealthJourneyGameStandalone() {
           </div>
         </nav>
       </div>
+
+      {/* ── TaskDetailPopup: Chi tiết Nhiệm Vụ (dynamic from daily_tasks.json) ── */}
+      {taskPopupKey && (
+        <TaskDetailPopup
+          taskId={taskPopupKey}
+          snapshot={snapshot}
+          user={user}
+          onClose={() => setTaskPopupKey(null)}
+          onOpenJourney={(chapterKey) => {
+            setTaskPopupKey(null)
+            setJourneyPopupKey(chapterKey || 'overview')
+          }}
+        />
+      )}
+
+      {/* ── JourneyDetailPopup: Chi tiết Journey (dynamic from journeys.json) ── */}
+      {journeyPopupKey && (
+        <JourneyDetailPopup
+          chapterKey={journeyPopupKey === 'overview' ? null : journeyPopupKey}
+          snapshot={snapshot}
+          onClose={() => setJourneyPopupKey(null)}
+          onOpenTask={(taskId) => {
+            setJourneyPopupKey(null)
+            setTaskPopupKey(taskId)
+          }}
+        />
+      )}
     </div>
   )
 }
