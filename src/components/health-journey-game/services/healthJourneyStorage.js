@@ -41,6 +41,43 @@ const makeUserId = (user) => {
 
 const clone = (value) => JSON.parse(JSON.stringify(value))
 
+const INDEXED_DB_ONLY = '__INDEXED_DB_ONLY__'
+
+function compressForLocalStorage(dataUrl) {
+  if (!dataUrl) return ''
+  if (typeof dataUrl !== 'string') return ''
+  return dataUrl.length < 50000 ? dataUrl : INDEXED_DB_ONLY
+}
+
+function migrateLargeImages(db) {
+  let changed = false
+  Object.values(db.users || {}).forEach((user) => {
+    user.activityLog?.forEach((activity) => {
+      if (typeof activity.proofImage === 'string' && activity.proofImage.length > 50000) {
+        activity.proofImage = INDEXED_DB_ONLY
+        changed = true
+      }
+    })
+    user.proofImages?.forEach((proof) => {
+      if (typeof proof.image === 'string' && proof.image.length > 50000) {
+        proof.image = INDEXED_DB_ONLY
+        changed = true
+      }
+    })
+    if (Array.isArray(user.activityLog) && user.activityLog.length > 500) {
+      user.activityLog = user.activityLog.slice(0, 500)
+      changed = true
+    }
+    if (Array.isArray(user.proofImages) && user.proofImages.length > 500) {
+      user.proofImages = user.proofImages.slice(0, 500)
+      changed = true
+    }
+  })
+  return changed
+}
+
+
+
 const defaultDb = () => ({
   version: 1,
   seededAt: new Date().toISOString(),
@@ -82,10 +119,14 @@ export function loadHealthJourneyDb() {
     const raw = localStorage.getItem(HEALTH_JOURNEY_DB_KEY)
     if (!raw) {
       const db = defaultDb()
-      localStorage.setItem(HEALTH_JOURNEY_DB_KEY, JSON.stringify(db))
+      try { localStorage.setItem(HEALTH_JOURNEY_DB_KEY, JSON.stringify(db)) } catch (_) { /* quota: skip seed */ }
       return db
     }
     const db = JSON.parse(raw)
+    const changed = migrateLargeImages(db)
+    if (changed) {
+      try { localStorage.setItem(HEALTH_JOURNEY_DB_KEY, JSON.stringify(db)) } catch (_) { /* quota: skip */ }
+    }
     if (!db.users?.[sampleUserData.user.userId]) {
       db.users = { ...(db.users || {}), [sampleUserData.user.userId]: clone(sampleUserData) }
       saveHealthJourneyDb(db)
@@ -93,7 +134,7 @@ export function loadHealthJourneyDb() {
     return db
   } catch {
     const db = defaultDb()
-    localStorage.setItem(HEALTH_JOURNEY_DB_KEY, JSON.stringify(db))
+    try { localStorage.setItem(HEALTH_JOURNEY_DB_KEY, JSON.stringify(db)) } catch (_) { /* quota: skip */ }
     return db
   }
 }
@@ -101,7 +142,30 @@ export function loadHealthJourneyDb() {
 export function saveHealthJourneyDb(db) {
   if (typeof window === 'undefined') return db
   const nextDb = { ...db, updatedAt: new Date().toISOString() }
-  localStorage.setItem(HEALTH_JOURNEY_DB_KEY, JSON.stringify(nextDb))
+  const tryWrite = (payload) => {
+    try {
+      localStorage.setItem(HEALTH_JOURNEY_DB_KEY, JSON.stringify(payload))
+      return true
+    } catch (err) {
+      if (err?.name === 'QuotaExceededError') return false
+      throw err
+    }
+  }
+  if (!tryWrite(nextDb)) {
+    // First attempt: migrate large images and trim logs
+    migrateLargeImages(nextDb)
+    if (!tryWrite(nextDb)) {
+      // Second attempt: strip ALL proof images completely as last resort
+      Object.values(nextDb.users || {}).forEach((user) => {
+        user.activityLog?.forEach((a) => { a.proofImage = '' })
+        user.proofImages?.forEach((p) => { p.image = '' })
+        // Also trim logs aggressively
+        if (Array.isArray(user.activityLog)) user.activityLog = user.activityLog.slice(0, 100)
+        if (Array.isArray(user.proofImages)) user.proofImages = user.proofImages.slice(0, 50)
+      })
+      tryWrite(nextDb) // best-effort, ignore if still fails
+    }
+  }
   window.dispatchEvent(new CustomEvent(HEALTH_JOURNEY_EVENT, { detail: nextDb }))
   return nextDb
 }
@@ -206,7 +270,7 @@ export function completeHealthJourneyActivity({ user, activityType, value = 1, p
     userId: journeyUser.user.userId,
     activityId,
     activityType,
-    image: proofImage,
+    image: compressForLocalStorage(proofImage),
     verified: true,
     confidence: 0.95,
     capturedAt: timestamp,
@@ -223,7 +287,7 @@ export function completeHealthJourneyActivity({ user, activityType, value = 1, p
     timestamp,
     value,
     xpEarned,
-    proofImage,
+    proofImage: compressForLocalStorage(proofImage),
     proofId: proof?.id || null,
     uploadRecordId: uploadRecord?.id || null,
     uploadPath: uploadRecord?.uploadPath || '',
