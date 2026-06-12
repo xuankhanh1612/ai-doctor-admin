@@ -1467,3 +1467,97 @@ video {
     max-height: 58vh;
   }
 }
+
+
+/* AI Healthcare Vision embedded layout: keep navigation hidden behind a hamburger,
+   and let Webcam/Object Detection use the available space by default. */
+.task-container {
+  position: relative;
+}
+
+.model-selection-toggle {
+  position: absolute;
+  top: 26px;
+  left: 26px;
+  z-index: 40;
+  margin-top: 0;
+  padding: 10px 16px;
+  box-shadow: var(--shadow-md);
+}
+
+.task-container.controls-collapsed .controls-panel {
+  display: none !important;
+}
+
+.task-container.controls-collapsed .output-panel {
+  flex: 1 1 100%;
+}
+
+.task-container.controls-collapsed .output-header {
+  padding-left: 190px;
+}
+
+.menu-toggle {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (min-width: 769px) {
+  .mobile-header {
+    display: flex !important;
+    position: fixed;
+    top: 12px;
+    right: 12px;
+    z-index: 1201;
+    height: auto;
+    padding: 8px;
+    border: 1px solid rgba(15, 23, 42, 0.10);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.92);
+    box-shadow: 0 14px 36px rgba(15, 23, 42, 0.16);
+    backdrop-filter: blur(12px);
+  }
+
+  .mobile-header .menu-toggle {
+    margin: 0 !important;
+    color: var(--primary) !important;
+  }
+
+  .mobile-header #mobile-nav-container {
+    display: none !important;
+  }
+
+  .sidebar {
+    position: fixed;
+    top: 12px;
+    right: 12px;
+    left: auto;
+    width: min(var(--sidebar-width), calc(100vw - 24px));
+    height: calc(100vh - 24px);
+    z-index: 1200;
+    transform: translateX(calc(100% + 24px));
+    transition: transform 0.24s ease;
+  }
+
+  .sidebar.open {
+    transform: translateX(0);
+  }
+}
+
+@media (max-width: 768px) {
+  .mobile-header {
+    display: flex !important;
+  }
+
+  .task-container.controls-collapsed .output-header {
+    padding-left: 0;
+    padding-top: 46px;
+  }
+
+  .model-selection-toggle {
+    top: 12px;
+    left: 12px;
+    padding: 8px 12px;
+  }
+}
