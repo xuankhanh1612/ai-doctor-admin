@@ -15,7 +15,7 @@ import robotTuThe2Url from '../waterdrink-khanh/Robot-mang-giong-noi-nguoi-thuon
 
 const MEDIAPIPE_OBJECT_DETECTION_WEBCAM_URL = '/src/mediapipe-khanh/index.html?mode=webcam#/vision/object_detector'
 
-export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, nextLabel }) {
+export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, nextLabel, onViewMedicalRecord }) {
   const { theme } = useApp()
   const { user } = useAuth()
   const isDark = theme === 'dark'
@@ -55,20 +55,33 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
   useEffect(() => {
     const onMediaPipeCapture = async (event) => {
       if (event.origin !== window.location.origin) return
-      if (event.data?.type !== 'AI_CLINIC_MEDIAPIPE_WEBCAM_CAPTURE' || !event.data?.dataUrl) return
+
+      // Handle Open Upload Records button from MediaPipe iframe
+      if (event.data?.type === 'AI_CLINIC_OPEN_UPLOAD_RECORDS') {
+        onViewMedicalRecord?.()
+        return
+      }
+
+      const isWebcamCapture = event.data?.type === 'AI_CLINIC_MEDIAPIPE_WEBCAM_CAPTURE'
+      const isImageCapture = event.data?.type === 'AI_CLINIC_MEDIAPIPE_IMAGE_CAPTURE'
+      if (!isWebcamCapture && !isImageCapture) return
+      if (!event.data?.dataUrl) return
+
+      const captureKind = isWebcamCapture ? 'webcam' : 'image'
 
       setSaving(true)
       setCameraError('')
       try {
-        const file = dataUrlToFile(event.data.dataUrl, event.data.filename || 'be_meo_nuoc_ai_webcam.jpg')
+        const defaultFilename = isWebcamCapture ? 'be_meo_nuoc_ai_webcam.jpg' : 'be_meo_nuoc_ai_image.jpg'
+        const file = dataUrlToFile(event.data.dataUrl, event.data.filename || defaultFilename)
         const record = await saveWaterProofImage(file, user, {
-          source: 'be-meo-nuoc-ai-healthcare-vision-webcam',
-          notesPrefix: 'Bé Mèo Nước · AI Healthcare Vision Control · Object Detection Webcam',
+          source: `be-meo-nuoc-ai-healthcare-vision-${captureKind}`,
+          notesPrefix: `Bé Mèo Nước · AI Healthcare Vision Control · Object Detection ${isWebcamCapture ? 'Webcam' : 'Image'}`,
           activityType: 'drink_water',
           taskId: 'water',
           xpEarned: 10,
           waterAmountMl: 150,
-          proofType: 'ai_healthcare_vision_object_detection_webcam_overlay',
+          proofType: `ai_healthcare_vision_object_detection_${captureKind}_overlay`,
         })
         const result = completeHealthJourneyActivity({
           user,
@@ -76,14 +89,14 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
           value: 1,
           proofImage: record.uploadPath,
           uploadRecord: record,
-          metadata: { source: 'be-meo-nuoc-ai-healthcare-vision-webcam', flow: 'Bé Mèo Nước -> AI Healthcare Vision Object Detection Webcam -> drink_water proof' },
+          metadata: { source: `be-meo-nuoc-ai-healthcare-vision-${captureKind}`, flow: `Bé Mèo Nước -> AI Healthcare Vision Object Detection ${isWebcamCapture ? 'Webcam' : 'Image'} -> drink_water proof` },
         })
         const beMeoSync = syncBeMeoWater(150, 'Bé Mèo Nước AI Healthcare Vision')
         setLastResult({ record, beMeoSync, ...result })
-        event.source?.postMessage?.({ type: 'AI_CLINIC_MEDIAPIPE_CAPTURE_SAVED', captureKind: 'webcam', uploadPath: record.uploadPath }, event.origin)
+        event.source?.postMessage?.({ type: 'AI_CLINIC_MEDIAPIPE_CAPTURE_SAVED', captureKind, uploadPath: record.uploadPath }, event.origin)
       } catch (error) {
-        setCameraError(error?.message || 'Không thể lưu ảnh AI Healthcare Vision proof.')
-        event.source?.postMessage?.({ type: 'AI_CLINIC_MEDIAPIPE_CAPTURE_SAVE_FAILED', captureKind: 'webcam', message: error?.message || String(error) }, event.origin)
+        setCameraError(error?.message || `Không thể lưu ảnh AI Healthcare Vision ${captureKind} proof.`)
+        event.source?.postMessage?.({ type: 'AI_CLINIC_MEDIAPIPE_CAPTURE_SAVE_FAILED', captureKind, message: error?.message || String(error) }, event.origin)
       } finally {
         setSaving(false)
       }
@@ -91,7 +104,7 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
 
     window.addEventListener('message', onMediaPipeCapture)
     return () => window.removeEventListener('message', onMediaPipeCapture)
-  }, [user])
+  }, [user, onViewMedicalRecord])
 
   const html = useMemo(() => waterDrinkTrackerHtml
     .replaceAll('__MEO_NHAY_MAT__', meoNhayMatUrl)
@@ -181,16 +194,25 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
               </div>
               {lastResult && (
                 <div style={{ marginTop: 14, padding: 12, borderRadius: 16, background: 'rgba(34,197,94,0.14)', border: '1px solid rgba(34,197,94,0.28)', color: isDark ? '#bbf7d0' : '#166534', fontWeight: 800 }}>
-                  ✓ Đã xác nhận uống nước: +{lastResult.activity.xpEarned} XP · Bé Mèo +150ml · ảnh AI overlay lưu tại {lastResult.record.uploadPath}
+                  ✓ Đã xác nhận uống nước: +{lastResult.activity?.xpEarned || 10} XP · Bé Mèo +150ml · ảnh AI overlay lưu tại {lastResult.record?.uploadPath}
                 </div>
+              )}
+              {onViewMedicalRecord && (
+                <button
+                  type="button"
+                  onClick={onViewMedicalRecord}
+                  style={{ marginTop: 12, padding: '8px 16px', borderRadius: 10, background: 'linear-gradient(135deg,#0ea5e9,#14b8a6)', border: 'none', color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}
+                >
+                  Xem hình tại Medical Records
+                </button>
               )}
               {cameraError && <div style={{ marginTop: 12, color: '#fecaca', background: 'rgba(239,68,68,.18)', padding: 10, borderRadius: 12 }}>{cameraError}</div>}
             </div>
 
             <div style={{ borderRadius: 22, overflow: 'hidden', background: '#020617', border: '1px solid rgba(125,211,252,0.28)', minHeight: 560, position: 'relative' }}>
               <div style={{ padding: 10, borderBottom: '1px solid rgba(125,211,252,0.22)', background: 'rgba(8,47,73,0.42)', color: '#bae6fd', fontSize: 12, lineHeight: 1.45 }}>
-                <b>AI Healthcare Vision Control · Object Detection · Webcam</b><br />
-                Mở Webcam, xem nhận diện realtime trên lớp phủ AI thật, rồi bấm <b>Lưu Hình</b> để lưu ảnh kèm overlay và cộng thêm lượt uống nước.
+                <b>AI Healthcare Vision Control · Object Detection · Webcam &amp; Image</b><br />
+                Tab <b>Webcam</b>: mở camera, xem nhận diện realtime, bấm <b>Lưu Hình</b> để lưu ảnh kèm overlay AI. Tab <b>Image</b>: upload ảnh chai nước từ thiết bị. Cả hai đều cộng lượt uống nước &amp; +10 XP.
               </div>
               <iframe
                 title="Bé Mèo Nước AI Healthcare Vision Object Detection Webcam"

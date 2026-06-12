@@ -1,30 +1,58 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useMemo } from 'react'
 import { useAuth } from '../../context/AuthContext.jsx'
 import { completeHealthJourneyActivity, HEALTH_JOURNEY_EVENT, getTaskSnapshot, XP_TABLE } from './services/healthJourneyStorage.js'
 import { dataUrlToFile, drawAIWaterBottleOverlay, saveWaterProofImage, syncBeMeoWater } from './services/waterProofUpload.js'
-
-
-const TASK_DETAIL_CONTENT = {
-  water: { icon: '💧', title: 'Uống nước · Chụp chai nước', subtitle: 'AI Webcam xác nhận chai nước · Upload proof · Bé Mèo +150ml', reward: '+10 XP', unitLabel: 'lần', activityType: 'drink_water', camera: true },
-  breathing: { icon: '🌬', title: 'Breath Activation', subtitle: 'Thở sâu 5 phút để kích hoạt năng lượng', reward: '+20 XP', unitLabel: 'phút', activityType: 'breath_activation' },
-  no_sugar: { icon: '🚫', title: 'No Sugar Challenge', subtitle: 'Không đường trong ngày hôm nay', reward: '+40 XP', unitLabel: 'ngày', activityType: 'no_sugar_challenge' },
-  deep_work: { icon: '💼', title: 'Deep Work 90m', subtitle: 'Tập trung làm việc 90 phút', reward: '+60 XP', unitLabel: 'phút', activityType: 'deep_work_90m' },
-  cold_shower: { icon: '🚿', title: 'Cold Shower', subtitle: 'Tắm nước lạnh / thử thách kỷ luật', reward: '+20 XP', unitLabel: 'lần', activityType: 'cold_shower' },
-  read_book: { icon: '📚', title: 'Read 20 Pages', subtitle: 'Đọc ít nhất 20 trang sách', reward: '+30 XP', unitLabel: 'trang', activityType: 'read_20_pages' },
-  reflection: { icon: '📓', title: 'Reflection Journal', subtitle: 'Ghi lại suy nghĩ và bài học hôm nay', reward: '+20 XP', unitLabel: 'entry', activityType: 'reflection_journal' },
-  inbody: { icon: '📈', title: 'Import InBody', subtitle: 'Tải hồ sơ sức khoẻ để AI theo dõi', reward: '+100 XP', unitLabel: 'file', activityType: 'import_inbody' },
-  walk: { icon: '🚶', title: 'Walk 10,000 Steps', subtitle: 'Hoàn thành 10.000 bước', reward: '+50 XP', unitLabel: 'bước', activityType: 'walk_10000_steps' },
-}
+import dailyTasksData from './data/daily_tasks.json'
+import journeysData from './data/journeys.json'
 
 const MEDIAPIPE_OBJECT_DETECTION_WEBCAM_URL = '/src/mediapipe-khanh/index.html?mode=webcam#/vision/object_detector'
 
-const CHAPTER_DETAIL_CONTENT = {
-  first_step: { taskId: 'water', icon: '🌅', title: 'The First Step', subtitle: 'Khởi động hành trình bằng 1 proof uống nước.' },
-  breath: { taskId: 'breathing', icon: '🌬', title: 'The Breath', subtitle: 'Ổn định hơi thở và nhịp tập trung.' },
-  focus: { taskId: 'deep_work', icon: '🎯', title: 'The Focus', subtitle: 'Deep Work để mở khóa sức mạnh chú ý.' },
-  challenge: { taskId: 'no_sugar', icon: '🚫', title: 'The Challenge', subtitle: 'Giữ kỷ luật không đường trong ngày.' },
-  breakthrough: { taskId: 'read_book', icon: '📚', title: 'The Breakthrough', subtitle: 'Đọc sách để hoàn tất vòng học hỏi.' },
+// ─── Helpers to build dynamic content maps from JSON data ───
+const UNIT_LABEL_MAP = {
+  bottle_photo: 'lần', minutes: 'phút', day: 'ngày', pages: 'trang',
+  times: 'lần', entry: 'entry', steps: 'bước', file: 'file',
 }
+
+function buildTaskDetailContent(tasks) {
+  const map = {}
+  tasks.forEach((task) => {
+    map[task.taskId] = {
+      icon: task.icon,
+      title: task.title?.vi || task.title?.en || task.taskId,
+      subtitle: task.title?.en || task.taskId,
+      reward: `+${task.xp} XP`,
+      unitLabel: UNIT_LABEL_MAP[task.unit] || task.unit || 'lần',
+      activityType: task.activityType,
+      target: task.target,
+      requiresProof: task.requiresProof || false,
+      camera: task.proofCapture === 'webcam_bottle_photo',
+    }
+  })
+  return map
+}
+
+// Build chapter objectives list from journeys.json chapter 1
+function buildChapterDetailContent(journeys) {
+  const chapter1 = journeys.find((j) => j.chapter === 1)
+  if (!chapter1?.requiredObjectives) return {}
+  const chapterIcons = ['🌅', '🌬', '🎯', '🚫', '📚', '💧', '🚶', '💼']
+  const chapterKeys = ['first_step', 'breath', 'focus', 'challenge', 'breakthrough', 'flow', 'stride', 'work']
+  const map = {}
+  chapter1.requiredObjectives.forEach((obj, i) => {
+    const key = chapterKeys[i] || `step_${i}`
+    map[key] = {
+      taskId: obj.task,
+      icon: chapterIcons[i] || '⭐',
+      title: `The ${['First Step', 'Breath', 'Focus', 'Challenge', 'Breakthrough', 'Flow', 'Stride', 'Work'][i] || `Step ${i + 1}`}`,
+      subtitle: obj.title?.vi || obj.title?.en || `Hoàn thành ${obj.target} lần`,
+      target: obj.target,
+    }
+  })
+  return map
+}
+
+const TASK_DETAIL_CONTENT = buildTaskDetailContent(dailyTasksData.tasks || [])
+const CHAPTER_DETAIL_CONTENT = buildChapterDetailContent(journeysData.journeys || [])
 
 function taskPercent(task) {
   if (!task?.target) return 0
@@ -533,6 +561,10 @@ export default function HealthJourneyGameStandalone() {
     || snapshot.journeyUser?.proofImages?.find((proof) => proof.activityType === selectedTask.activityType)
   const selectedTaskPct = taskPercent(selectedTaskState)
 
+  // Dynamic lists from JSON data
+  const allTasks = dailyTasksData.tasks || []
+  const allJourneys = journeysData.journeys || []
+
   const getRoot = () => containerRef.current
 
   const goTo = (screenId) => {
@@ -898,165 +930,54 @@ export default function HealthJourneyGameStandalone() {
               </button>
             </div>
           </div>
-          {/* Task list */}
+          {/* Task list - dynamic from daily_tasks.json */}
           <div className="card">
-            <div className="task-item clickable" onClick={(event) => { openTaskDetail('water'); }} style={{ borderColor: isTaskDone('water') ? 'rgba(34,197,94,.34)' : 'rgba(59,130,246,.28)' }}>
-              <div className="task-icon icon-bg-blue">
-                💧
-              </div>
-              <div className="task-info">
-                <div className="task-name">
-                  Uống nước · Chụp chai nước
-                </div>
-                <div className="task-desc">
-                  Activity: drink_water · +10 XP · lưu ảnh tại Upload
-                </div>
-                <div style={{ height: "3px", background: "rgba(255,255,255,.07)", borderRadius: "99px", marginTop: "4px", overflow: "hidden" }}>
-                  <div style={{ height: "3px", width: isTaskDone('water') ? "100%" : "0%", background: "var(--blue)", borderRadius: "99px" }}>
+            {allTasks.map((task, idx) => {
+              const done = isTaskDone(task.taskId)
+              const pct = taskPercent(todayTask(task.taskId))
+              const iconBgMap = {
+                water: 'icon-bg-blue', breathing: 'icon-bg-cyan', no_sugar: 'icon-bg-gold',
+                deep_work: 'icon-bg-blue', cold_shower: 'icon-bg-cyan', read_book: 'icon-bg-purple',
+                reflection: 'icon-bg-gold', inbody: 'icon-bg-purple', walk: 'icon-bg-green',
+              }
+              const iconBg = iconBgMap[task.taskId] || 'icon-bg-blue'
+              const proofIcon = task.requiresProof ? '📷' : '○'
+              const checkContent = done ? '✓' : proofIcon
+              const progressColor = done ? 'var(--green)' : pct > 0 ? 'var(--blue)' : 'transparent'
+              return (
+                <div
+                  key={task.taskId}
+                  className="task-item clickable"
+                  onClick={(event) => { openTaskDetail(task.taskId) }}
+                  style={{
+                    borderColor: done ? 'rgba(34,197,94,.34)' : task.requiresProof ? 'rgba(59,130,246,.28)' : undefined,
+                    borderBottom: idx === allTasks.length - 1 ? 'none' : undefined,
+                  }}
+                >
+                  <div className={`task-icon ${iconBg}`}>
+                    {task.icon}
+                  </div>
+                  <div className="task-info">
+                    <div className="task-name">
+                      {task.title?.vi || task.title?.en || task.taskId}
+                    </div>
+                    <div className="task-desc">
+                      {task.activityType} · +{task.xp} XP{task.requiresProof ? ' · cần ảnh proof' : ''}
+                    </div>
+                    <div style={{ height: "3px", background: "rgba(255,255,255,.07)", borderRadius: "99px", marginTop: "4px", overflow: "hidden" }}>
+                      <div style={{ height: "3px", width: `${pct}%`, background: progressColor, borderRadius: "99px" }}>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="task-prog" style={{ color: done ? "var(--green)" : pct > 0 ? "var(--blue-glow)" : "var(--text-muted)" }}>
+                    {taskProgressLabel(task.taskId, `0/${task.target}`)}
+                  </div>
+                  <div className={done ? "task-check done" : "task-check"}>
+                    {checkContent}
                   </div>
                 </div>
-              </div>
-              <div className="task-prog" style={{ color: isTaskDone('water') ? "var(--green)" : "var(--blue-glow)" }}>
-                {taskProgressLabel('water', '0/1')}
-              </div>
-              <div className={isTaskDone('water') ? "task-check done" : "task-check"}>
-                {isTaskDone('water') ? '✓' : '📷'}
-              </div>
-            </div>
-            <div className="task-item clickable" onClick={(event) => { openTaskDetail('breathing'); }}>
-              <div className="task-icon icon-bg-cyan">
-                🌬
-              </div>
-              <div className="task-info">
-                <div className="task-name">
-                  Breath Activation
-                </div>
-                <div className="task-desc">
-                  Thở sâu 5 phút
-                </div>
-                <div style={{ height: "3px", background: "rgba(255,255,255,.07)", borderRadius: "99px", marginTop: "4px", overflow: "hidden" }}>
-                  <div style={{ height: "3px", width: "100%", background: "var(--green)", borderRadius: "99px" }}>
-                  </div>
-                </div>
-              </div>
-              <div className="task-prog">
-                {taskProgressLabel('breathing', '5/5')}
-              </div>
-              <div className="task-check done">
-                ✓
-              </div>
-            </div>
-            <div className="task-item clickable" onClick={(event) => { openTaskDetail('no_sugar'); }}>
-              <div className="task-icon icon-bg-gold">
-                🚫
-              </div>
-              <div className="task-info">
-                <div className="task-name">
-                  No Sugar Challenge
-                </div>
-                <div className="task-desc">
-                  Không đường 1 ngày
-                </div>
-                <div style={{ height: "3px", background: "rgba(255,255,255,.07)", borderRadius: "99px", marginTop: "4px", overflow: "hidden" }}>
-                  <div style={{ height: "3px", width: "100%", background: "var(--green)", borderRadius: "99px" }}>
-                  </div>
-                </div>
-              </div>
-              <div className="task-prog">
-                {taskProgressLabel('no_sugar', '1/1')}
-              </div>
-              <div className="task-check done">
-                ✓
-              </div>
-            </div>
-            <div className="task-item clickable" onClick={(event) => { openTaskDetail('deep_work'); }}>
-              <div className="task-icon icon-bg-blue">
-                💼
-              </div>
-              <div className="task-info">
-                <div className="task-name">
-                  Deep Work 90m
-                </div>
-                <div className="task-desc">
-                  Tập trung làm việc 90 phút
-                </div>
-                <div style={{ height: "3px", background: "rgba(255,255,255,.07)", borderRadius: "99px", marginTop: "4px", overflow: "hidden" }}>
-                  <div style={{ height: "3px", width: "78%", background: "var(--blue)", borderRadius: "99px" }}>
-                  </div>
-                </div>
-              </div>
-              <div className="task-prog" style={{ color: "var(--blue-glow)" }}>
-                {taskProgressLabel('deep_work', '70/90')}
-              </div>
-              <div className="task-check">
-                ›
-              </div>
-            </div>
-            <div className="task-item clickable" onClick={(event) => { openTaskDetail('cold_shower'); }}>
-              <div className="task-icon icon-bg-cyan">
-                🚿
-              </div>
-              <div className="task-info">
-                <div className="task-name">
-                  Cold Shower
-                </div>
-                <div className="task-desc">
-                  Tắm nước lạnh
-                </div>
-                <div style={{ height: "3px", background: "rgba(255,255,255,.07)", borderRadius: "99px", marginTop: "4px" }}>
-                </div>
-              </div>
-              <div className="task-prog" style={{ color: "var(--text-muted)" }}>
-                {taskProgressLabel('cold_shower', '0/1')}
-              </div>
-              <div className="task-check">
-                ○
-              </div>
-            </div>
-            <div className="task-item clickable" onClick={(event) => { openTaskDetail('read_book'); }}>
-              <div className="task-icon icon-bg-purple">
-                📚
-              </div>
-              <div className="task-info">
-                <div className="task-name">
-                  Read 20 Pages
-                </div>
-                <div className="task-desc">
-                  Đọc ít nhất 20 trang sách
-                </div>
-                <div style={{ height: "3px", background: "rgba(255,255,255,.07)", borderRadius: "99px", marginTop: "4px", overflow: "hidden" }}>
-                  <div style={{ height: "3px", width: "50%", background: "var(--purple)", borderRadius: "99px" }}>
-                  </div>
-                </div>
-              </div>
-              <div className="task-prog" style={{ color: "var(--gold)" }}>
-                {taskProgressLabel('read_book', '10/20')}
-              </div>
-              <div className="task-check">
-                ›
-              </div>
-            </div>
-            <div className="task-item clickable" onClick={(event) => { openTaskDetail('reflection'); }}>
-              <div className="task-icon icon-bg-gold">
-                📓
-              </div>
-              <div className="task-info">
-                <div className="task-name">
-                  Reflection Journal
-                </div>
-                <div className="task-desc">
-                  Ghi lại suy nghĩ của bạn
-                </div>
-                <div style={{ height: "3px", background: "rgba(255,255,255,.07)", borderRadius: "99px", marginTop: "4px" }}>
-                </div>
-              </div>
-              <div className="task-prog" style={{ color: "var(--text-muted)" }}>
-                {taskProgressLabel('reflection', '0/1')}
-              </div>
-              <div className="task-check">
-                {isTaskDone('reflection') ? '✓' : '○'}
-              </div>
-            </div>
+              )
+            })}
           </div>
           {/* Chest rewards */}
           <div className="card">
@@ -1158,109 +1079,64 @@ export default function HealthJourneyGameStandalone() {
               </button>
             </div>
           </div>
-          <div className="chapter-item" onClick={(event) => { openModal('modal-chapter-detail'); }} style={{ margin: "0 12px 8px", borderColor: "rgba(139,92,246,.4)", background: "rgba(139,92,246,.07)" }}>
-            <div className="chapter-thumb">
-              🌅
-            </div>
-            <div className="chapter-info">
-              <div className="chapter-num">
-                CHAPTER 1
-              </div>
-              <div className="chapter-name">
-                THE AWAKENING
-              </div>
-              <div className="progress-wrap" style={{ height: "4px", marginTop: "4px" }}>
-                <div className="progress-bar" style={{ width: "66%", background: "linear-gradient(90deg,var(--purple),var(--blue))" }}>
+          {/* Chapter list - dynamic from journeys.json */}
+          {allJourneys.map((journey, idx) => {
+            const isChapter1 = journey.chapter === 1
+            const isUnlocked = isChapter1 || snapshot.journeyUser?.journeyProgress?.unlockedChapters?.includes(journey.chapter)
+            const chapterIcons = ['🌅', '🔥', '⚡', '👑', '⚜️']
+            const chapterColors = [
+              'rgba(139,92,246,.2)', 'rgba(59,130,246,.2)', 'rgba(239,68,68,.2)',
+              'rgba(245,158,11,.2)', 'rgba(139,92,246,.2)',
+            ]
+            const icon = chapterIcons[idx] || '⭐'
+            const bgColor = chapterColors[idx] || chapterColors[0]
+            const objectives = journey.requiredObjectives || []
+            const totalObjectiveTarget = objectives.reduce((s, o) => s + (o.target || 1), 0)
+            const currentObjectiveSum = objectives.reduce((s, o) => {
+              const obj = journeyObjective(o.task)
+              return s + Math.min(obj?.current || 0, o.target || 1)
+            }, 0)
+            const chapterPct = totalObjectiveTarget > 0 ? Math.min(100, Math.round(currentObjectiveSum / totalObjectiveTarget * 100)) : 0
+            const modalId = isChapter1 ? 'modal-chapter-detail' : `modal-chapter-detail${journey.chapter}`
+            return (
+              <div
+                key={journey.chapter}
+                className="chapter-item"
+                onClick={(event) => { isUnlocked ? openModal(modalId) : showLockedChapter(`Chapter ${journey.chapter}`, `Hoàn thành Chapter ${journey.chapter - 1} để mở khóa`, '🔒') }}
+                style={{
+                  margin: "0 12px 8px",
+                  borderColor: isChapter1 ? "rgba(139,92,246,.4)" : undefined,
+                  background: isChapter1 ? "rgba(139,92,246,.07)" : undefined,
+                  opacity: isUnlocked ? 1 : idx === 1 ? 0.6 : 0.35,
+                }}
+              >
+                <div className="chapter-thumb" style={{ background: bgColor }}>
+                  {icon}
+                </div>
+                <div className="chapter-info">
+                  <div className="chapter-num">
+                    CHAPTER {journey.chapter}
+                  </div>
+                  <div className="chapter-name">
+                    {(journey.title?.en || `CHAPTER ${journey.chapter}`).toUpperCase()}
+                  </div>
+                  <div className="progress-wrap" style={{ height: "4px", marginTop: "4px" }}>
+                    <div className="progress-bar" style={{ width: `${isChapter1 ? chapterPct : 0}%`, background: "linear-gradient(90deg,var(--purple),var(--blue))" }}>
+                    </div>
+                  </div>
+                  <div className="chapter-prog" style={{ color: isUnlocked ? undefined : "var(--text-muted)" }}>
+                    {isChapter1
+                      ? (waterObjective ? `Uống nước ${waterObjective.current}/${waterObjective.target} · ${chapterPct}%` : `${chapterPct}% · Tiếp tục`)
+                      : isUnlocked ? '0% · Chưa bắt đầu' : `Khóa · Hoàn thành Ch.${journey.chapter - 1}`
+                    }
+                  </div>
+                </div>
+                <div style={{ color: isUnlocked ? (isChapter1 ? "var(--blue-glow)" : "var(--text-muted)") : "var(--text-muted)", fontSize: "18px" }}>
+                  {isUnlocked ? '›' : '🔒'}
                 </div>
               </div>
-              <div className="chapter-prog">
-                {waterObjective ? `Uống nước ${waterObjective.current}/${waterObjective.target} · ${snapshot.journeyUser?.journeyProgress?.unlockedChapters?.includes(2) ? 'Đã mở Chapter 2' : 'Tiếp tục Ch.1'}` : '66% · Tiếp tục 1-3'}
-              </div>
-            </div>
-            <div style={{ color: "var(--blue-glow)", fontSize: "18px" }}>
-              ›
-            </div>
-          </div>
-          <div className="chapter-item" onClick={(event) => { openModal('modal-chapter-detail2'); }} style={{ margin: "0 12px 8px" }}>
-            <div className="chapter-thumb" style={{ background: "rgba(59,130,246,.2)" }}>
-              🔥
-            </div>
-            <div className="chapter-info">
-              <div className="chapter-num">
-                CHAPTER 2
-              </div>
-              <div className="chapter-name">
-                THE DISCIPLINE
-              </div>
-              <div className="progress-wrap" style={{ height: "4px", marginTop: "4px" }}>
-                <div className="progress-bar" style={{ width: "0%", background: "linear-gradient(90deg,var(--blue),var(--cyan))" }}>
-                </div>
-              </div>
-              <div className="chapter-prog">
-                0% · Chưa bắt đầu
-              </div>
-            </div>
-            <div style={{ color: "var(--text-muted)", fontSize: "18px" }}>
-              🔒
-            </div>
-          </div>
-          <div className="chapter-item" style={{ margin: "0 12px 8px", opacity: ".5" }}>
-            <div className="chapter-thumb" style={{ background: "rgba(239,68,68,.2)" }}>
-              ⚡
-            </div>
-            <div className="chapter-info">
-              <div className="chapter-num">
-                CHAPTER 3
-              </div>
-              <div className="chapter-name">
-                THE TRANSFORMATION
-              </div>
-              <div className="chapter-prog" style={{ color: "var(--text-muted)" }}>
-                Khóa · Hoàn thành Ch.2
-              </div>
-            </div>
-            <div style={{ color: "var(--text-muted)", fontSize: "18px" }}>
-              🔒
-            </div>
-          </div>
-          <div className="chapter-item" style={{ margin: "0 12px 8px", opacity: ".5" }}>
-            <div className="chapter-thumb" style={{ background: "rgba(245,158,11,.2)" }}>
-              👑
-            </div>
-            <div className="chapter-info">
-              <div className="chapter-num">
-                CHAPTER 4
-              </div>
-              <div className="chapter-name">
-                THE MASTERY
-              </div>
-              <div className="chapter-prog" style={{ color: "var(--text-muted)" }}>
-                Khóa
-              </div>
-            </div>
-            <div style={{ color: "var(--text-muted)", fontSize: "18px" }}>
-              🔒
-            </div>
-          </div>
-          <div className="chapter-item" style={{ margin: "0 12px 8px", opacity: ".35" }}>
-            <div className="chapter-thumb" style={{ background: "rgba(139,92,246,.2)" }}>
-              ⚜️
-            </div>
-            <div className="chapter-info">
-              <div className="chapter-num">
-                CHAPTER 5
-              </div>
-              <div className="chapter-name">
-                THE LEGEND
-              </div>
-              <div className="chapter-prog" style={{ color: "var(--text-muted)" }}>
-                Khóa
-              </div>
-            </div>
-            <div style={{ color: "var(--text-muted)", fontSize: "18px" }}>
-              🔒
-            </div>
-          </div>
+            )
+          })}
           <div style={{ padding: "0 12px" }}>
             <button className="btn-outline" onClick={(event) => { openModal('modal-all-chapters'); }} style={{ width: "100%" }}>
               XEM TẤT CẢ CHAPTER
@@ -2371,134 +2247,111 @@ export default function HealthJourneyGameStandalone() {
             </button>
           </div>
         </div>
-        {/* MODAL: CHAPTER DETAIL (Ch.1) */}
+        {/* MODAL: CHAPTER DETAIL (Ch.1) - dynamic from journeys.json */}
         <div className="modal-overlay" onClick={handleOverlayClick} id="modal-chapter-detail">
-          <div className="modal-box">
-            <div className="modal-close" onClick={(event) => { closeModal('modal-chapter-detail'); }}>
-              ✕
-            </div>
-            <div style={{ textAlign: "center", padding: "10px 0 14px" }}>
-              <div style={{ fontSize: "11px", color: "var(--text-muted)", letterSpacing: "2px" }}>
-                CHAPTER 1
-              </div>
-              <div style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: "22px", fontWeight: "900" }}>
-                THE AWAKENING
-              </div>
-              <div style={{ background: "linear-gradient(135deg,rgba(139,92,246,.25),rgba(59,130,246,.15))", borderRadius: "12px", height: "100px", margin: "10px 0", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "48px" }}>
-                🌅
-              </div>
-              <div className="progress-wrap" style={{ height: "5px" }}>
-                <div className="progress-bar" style={{ width: "66%", background: "linear-gradient(90deg,var(--purple),var(--blue))" }}>
+          {(() => {
+            const ch1 = allJourneys.find((j) => j.chapter === 1) || {}
+            const chapterKeys = Object.keys(CHAPTER_DETAIL_CONTENT)
+            const objectives = ch1.requiredObjectives || []
+            const totalTarget = objectives.reduce((s, o) => s + (o.target || 1), 0)
+            const currentSum = objectives.reduce((s, o) => {
+              const obj = journeyObjective(o.task)
+              return s + Math.min(obj?.current || 0, o.target || 1)
+            }, 0)
+            const ch1Pct = totalTarget > 0 ? Math.min(100, Math.round(currentSum / totalTarget * 100)) : 0
+            const firstUnfinishedKey = chapterKeys.find((key) => taskPercent(todayTask(CHAPTER_DETAIL_CONTENT[key]?.taskId)) < 100) || chapterKeys[0]
+            return (
+              <div className="modal-box">
+                <div className="modal-close" onClick={(event) => { closeModal('modal-chapter-detail'); }}>
+                  ✕
                 </div>
-              </div>
-              <div style={{ fontSize: "11px", color: "var(--text-dim)", marginTop: "4px" }}>
-                Tiến độ: 66%
-              </div>
-            </div>
-            {/* Sub-lessons */}
-            <div className="task-item clickable" onClick={(event) => { openChapterMissionDetail('first_step'); }}>
-              <div style={{ width: "26px", textAlign: "center", fontSize: "11px", color: "var(--text-muted)" }}>
-                1-1
-              </div>
-              <div className="task-info">
-                <div className="task-name" style={{ fontSize: "12px" }}>
-                  The First Step
+                <div style={{ textAlign: "center", padding: "10px 0 14px" }}>
+                  <div style={{ fontSize: "11px", color: "var(--text-muted)", letterSpacing: "2px" }}>
+                    CHAPTER 1
+                  </div>
+                  <div style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: "22px", fontWeight: "900" }}>
+                    {(ch1.title?.en || 'THE AWAKENING').toUpperCase()}
+                  </div>
+                  <div style={{ background: "linear-gradient(135deg,rgba(139,92,246,.25),rgba(59,130,246,.15))", borderRadius: "12px", height: "100px", margin: "10px 0", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "48px" }}>
+                    🌅
+                  </div>
+                  <div className="progress-wrap" style={{ height: "5px" }}>
+                    <div className="progress-bar" style={{ width: `${ch1Pct}%`, background: "linear-gradient(90deg,var(--purple),var(--blue))" }}>
+                    </div>
+                  </div>
+                  <div style={{ fontSize: "11px", color: "var(--text-dim)", marginTop: "4px" }}>
+                    Tiến độ: {ch1Pct}%
+                  </div>
                 </div>
+                {/* Sub-lessons from CHAPTER_DETAIL_CONTENT (built from journeys.json objectives) */}
+                {chapterKeys.map((key, i) => {
+                  const chapter = CHAPTER_DETAIL_CONTENT[key]
+                  const pct = taskPercent(todayTask(chapter.taskId))
+                  const done = pct >= 100
+                  const isActive = !done && chapterKeys.slice(0, i).every((k) => taskPercent(todayTask(CHAPTER_DETAIL_CONTENT[k].taskId)) >= 100)
+                  const badgeClass = done ? 'badge-green' : isActive ? 'badge-gold' : 'badge-blue'
+                  const badgeText = `${pct}%`
+                  return (
+                    <div
+                      key={key}
+                      className="task-item clickable"
+                      onClick={(event) => { openChapterMissionDetail(key) }}
+                      style={{ borderBottom: i === chapterKeys.length - 1 ? "none" : undefined }}
+                    >
+                      <div style={{ width: "26px", textAlign: "center", fontSize: "11px", color: isActive ? "var(--blue-glow)" : "var(--text-muted)" }}>
+                        1-{i + 1}
+                      </div>
+                      <div className="task-info">
+                        <div className="task-name" style={{ fontSize: "12px" }}>
+                          {chapter.title}
+                        </div>
+                        <div className="task-desc">
+                          {chapter.subtitle}
+                        </div>
+                      </div>
+                      {done || isActive ? (
+                        <div className={`badge ${badgeClass}`}>
+                          {badgeText}
+                        </div>
+                      ) : (
+                        <div style={{ fontSize: "14px" }}>🔒</div>
+                      )}
+                      <div className={done ? "task-check done" : "task-check"} style={{ width: "18px", height: "18px", fontSize: "10px" }}>
+                        {done ? '✓' : isActive ? '›' : ''}
+                      </div>
+                    </div>
+                  )
+                })}
+                <button className="btn-primary" onClick={(event) => { openChapterMissionDetail(firstUnfinishedKey) }} style={{ marginTop: "14px" }}>
+                  MỞ CHI TIẾT NHIỆM VỤ {chapterKeys.indexOf(firstUnfinishedKey) + 1}
+                </button>
               </div>
-              <div className="badge badge-green">
-                100%
-              </div>
-              <div className="task-check done" style={{ width: "18px", height: "18px", fontSize: "10px" }}>
-                ✓
-              </div>
-            </div>
-            <div className="task-item clickable" onClick={(event) => { openChapterMissionDetail('breath'); }}>
-              <div style={{ width: "26px", textAlign: "center", fontSize: "11px", color: "var(--text-muted)" }}>
-                1-2
-              </div>
-              <div className="task-info">
-                <div className="task-name" style={{ fontSize: "12px" }}>
-                  The Breath
-                </div>
-              </div>
-              <div className="badge badge-blue">
-                82%
-              </div>
-              <div className="task-check done" style={{ width: "18px", height: "18px", fontSize: "10px" }}>
-                ✓
-              </div>
-            </div>
-            <div className="task-item clickable" onClick={(event) => { openChapterMissionDetail('focus'); }}>
-              <div style={{ width: "26px", textAlign: "center", fontSize: "11px", color: "var(--blue-glow)" }}>
-                1-3
-              </div>
-              <div className="task-info">
-                <div className="task-name" style={{ fontSize: "12px" }}>
-                  The Focus
-                </div>
-              </div>
-              <div className="badge badge-gold">
-                66%
-              </div>
-              <div style={{ width: "18px", height: "18px", borderRadius: "50%", border: "2px solid var(--blue)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "10px", color: "var(--blue-glow)" }}>
-                ›
-              </div>
-            </div>
-            <div className="task-item clickable" onClick={(event) => { openChapterMissionDetail('challenge'); }}>
-              <div style={{ width: "26px", textAlign: "center", fontSize: "11px", color: "var(--text-muted)" }}>
-                1-4
-              </div>
-              <div className="task-info">
-                <div className="task-name" style={{ fontSize: "12px" }}>
-                  The Challenge
-                </div>
-              </div>
-              <div style={{ fontSize: "14px" }}>
-                🔒
-              </div>
-              <div style={{ width: "18px" }}>
-              </div>
-            </div>
-            <div className="task-item clickable" onClick={(event) => { openChapterMissionDetail('breakthrough'); }} style={{ borderBottom: "none" }}>
-              <div style={{ width: "26px", textAlign: "center", fontSize: "11px", color: "var(--text-muted)" }}>
-                1-5
-              </div>
-              <div className="task-info">
-                <div className="task-name" style={{ fontSize: "12px" }}>
-                  The Breakthrough
-                </div>
-              </div>
-              <div style={{ fontSize: "14px" }}>
-                🔒
-              </div>
-              <div style={{ width: "18px" }}>
-              </div>
-            </div>
-            <button className="btn-primary" onClick={(event) => { openChapterMissionDetail('focus'); }} style={{ marginTop: "14px" }}>
-              MỞ CHI TIẾT NHIỆM VỤ 1-3
-            </button>
-          </div>
+            )
+          })()}
         </div>
-        {/* MODAL: CHAPTER 2 placeholder */}
-        <div className="modal-overlay" onClick={handleOverlayClick} id="modal-chapter-detail2">
-          <div className="modal-box" style={{ textAlign: "center", padding: "30px 16px" }}>
-            <div className="modal-close" onClick={(event) => { closeModal('modal-chapter-detail2'); }}>
-              ✕
+        {/* MODAL: CHAPTER 2+ (locked) - dynamic from journeys.json */}
+        {allJourneys.filter((j) => j.chapter > 1).map((journey) => (
+          <div key={journey.chapter} className="modal-overlay" onClick={handleOverlayClick} id={`modal-chapter-detail${journey.chapter}`}>
+            <div className="modal-box" style={{ textAlign: "center", padding: "30px 16px" }}>
+              <div className="modal-close" onClick={(event) => { closeModal(`modal-chapter-detail${journey.chapter}`) }}>
+                ✕
+              </div>
+              <div style={{ fontSize: "48px", marginBottom: "10px" }}>🔒</div>
+              <div style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: "20px", fontWeight: "700" }}>
+                {(journey.title?.en || `CHAPTER ${journey.chapter}`).toUpperCase()}
+              </div>
+              <div style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "4px" }}>
+                {journey.title?.vi || `Chapter ${journey.chapter}`}
+              </div>
+              <div style={{ fontSize: "12px", color: "var(--text-dim)", marginTop: "6px" }}>
+                Hoàn thành Chapter {journey.chapter - 1} để mở khóa
+              </div>
+              <button className="btn-primary" onClick={(event) => { closeModal(`modal-chapter-detail${journey.chapter}`) }} style={{ marginTop: "20px", maxWidth: "160px" }}>
+                OK
+              </button>
             </div>
-            <div style={{ fontSize: "48px", marginBottom: "10px" }}>
-              🔒
-            </div>
-            <div style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: "20px", fontWeight: "700" }}>
-              THE DISCIPLINE
-            </div>
-            <div style={{ fontSize: "12px", color: "var(--text-dim)", marginTop: "6px" }}>
-              Hoàn thành Chapter 1 để mở khóa
-            </div>
-            <button className="btn-primary" onClick={(event) => { closeModal('modal-chapter-detail2'); }} style={{ marginTop: "20px", maxWidth: "160px" }}>
-              OK
-            </button>
           </div>
-        </div>
+        ))}
         {/* MODAL: AI SUGGESTIONS */}
         <div className="modal-overlay" onClick={handleOverlayClick} id="modal-ai-suggest">
           <div className="modal-box">
@@ -3342,16 +3195,14 @@ export default function HealthJourneyGameStandalone() {
             </button>
           </div>
         </div>
-        {/* MODAL: XEM TẤT CẢ CHAPTER */}
+        {/* MODAL: XEM TẤT CẢ CHAPTER - dynamic from journeys.json */}
         <div className="modal-overlay" onClick={handleOverlayClick} id="modal-all-chapters">
           <div className="modal-box" style={{ padding: "0", overflow: "hidden" }}>
             <div className="modal-close" onClick={(event) => { closeModal('modal-all-chapters'); }} style={{ top: "14px", right: "14px", zIndex: "20" }}>
               ✕
             </div>
-            {/* Header banner */}
             <div style={{ background: "linear-gradient(135deg,#0f1a3a 0%,#1a0a3a 60%,#0a1228 100%)", padding: "20px 16px 16px", position: "relative", overflow: "hidden" }}>
-              <div style={{ position: "absolute", inset: "0", background: "radial-gradient(circle at 70% 40%,rgba(139,92,246,0.3) 0%,transparent 65%)", pointerEvents: "none" }}>
-              </div>
+              <div style={{ position: "absolute", inset: "0", background: "radial-gradient(circle at 70% 40%,rgba(139,92,246,0.3) 0%,transparent 65%)", pointerEvents: "none" }}></div>
               <div style={{ fontSize: "10px", color: "var(--purple-glow)", letterSpacing: "2px", fontWeight: "700", textTransform: "uppercase", marginBottom: "4px" }}>
                 Hành trình
               </div>
@@ -3359,159 +3210,83 @@ export default function HealthJourneyGameStandalone() {
                 TẤT CẢ CHAPTER
               </div>
               <div style={{ fontSize: "11px", color: "var(--text-dim)" }}>
-                5 Chapter · 1 đang mở · 1 đang tiến hành
+                {allJourneys.length} Chapter · 1 đang mở · 1 đang tiến hành
               </div>
             </div>
-            {/* Chapter list */}
             <div style={{ padding: "14px 14px 6px" }}>
-              {/* CHAPTER 1 - unlocked & in progress */}
-              <div onClick={(event) => { closeModal('modal-all-chapters');openModal('modal-chapter-detail'); }} style={{ display: "flex", alignItems: "center", gap: "12px", background: "rgba(139,92,246,0.10)", border: "1px solid rgba(139,92,246,0.4)", borderRadius: "12px", padding: "12px", marginBottom: "10px", cursor: "pointer", position: "relative", overflow: "hidden" }}>
-                <div style={{ position: "absolute", left: "0", top: "0", bottom: "0", width: "3px", background: "linear-gradient(180deg,var(--purple),var(--blue))", borderRadius: "2px 0 0 2px" }}>
-                </div>
-                <div style={{ width: "48px", height: "48px", borderRadius: "10px", background: "rgba(139,92,246,0.25)", border: "1px solid rgba(139,92,246,0.5)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "26px", flexShrink: "0" }}>
-                  🌅
-                </div>
-                <div style={{ flex: "1", minWidth: "0" }}>
-                  <div style={{ fontSize: "9px", color: "var(--text-muted)", letterSpacing: "1.5px", textTransform: "uppercase", marginBottom: "2px" }}>
-                    CHAPTER 1
-                  </div>
-                  <div style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: "16px", fontWeight: "800", color: "#fff" }}>
-                    THE AWAKENING
-                  </div>
-                  <div style={{ height: "4px", background: "rgba(255,255,255,0.07)", borderRadius: "99px", margin: "5px 0 3px", overflow: "hidden" }}>
-                    <div style={{ height: "4px", width: "66%", background: "linear-gradient(90deg,var(--purple),var(--blue))", borderRadius: "99px" }}>
+              {allJourneys.map((journey, idx) => {
+                const isChapter1 = journey.chapter === 1
+                const isUnlocked = isChapter1 || snapshot.journeyUser?.journeyProgress?.unlockedChapters?.includes(journey.chapter)
+                const chapterIcons = ['🌅', '🔥', '⚡', '👑', '⚜️']
+                const icon = chapterIcons[idx] || '⭐'
+                const objectives = journey.requiredObjectives || []
+                const totalTarget = objectives.reduce((s, o) => s + (o.target || 1), 0)
+                const currentSum = objectives.reduce((s, o) => {
+                  const obj = journeyObjective(o.task)
+                  return s + Math.min(obj?.current || 0, o.target || 1)
+                }, 0)
+                const chPct = totalTarget > 0 ? Math.min(100, Math.round(currentSum / totalTarget * 100)) : 0
+                const modalId = isChapter1 ? 'modal-chapter-detail' : `modal-chapter-detail${journey.chapter}`
+                return (
+                  <div
+                    key={journey.chapter}
+                    onClick={(event) => {
+                      closeModal('modal-all-chapters')
+                      isUnlocked ? openModal(modalId) : showLockedChapter((journey.title?.en || `Chapter ${journey.chapter}`).toUpperCase(), `Hoàn thành Chapter ${journey.chapter - 1} để mở khóa`, icon)
+                    }}
+                    style={{
+                      display: "flex", alignItems: "center", gap: "12px",
+                      background: isChapter1 ? "rgba(139,92,246,0.10)" : "rgba(255,255,255,0.03)",
+                      border: isChapter1 ? "1px solid rgba(139,92,246,0.4)" : "1px solid rgba(255,255,255,0.08)",
+                      borderRadius: "12px", padding: "12px", marginBottom: "10px", cursor: "pointer",
+                      position: "relative", overflow: "hidden",
+                      opacity: isUnlocked ? 1 : idx === 1 ? 0.6 : 0.45,
+                    }}
+                  >
+                    {isChapter1 && (
+                      <div style={{ position: "absolute", left: "0", top: "0", bottom: "0", width: "3px", background: "linear-gradient(180deg,var(--purple),var(--blue))", borderRadius: "2px 0 0 2px" }}></div>
+                    )}
+                    <div style={{ width: "48px", height: "48px", borderRadius: "10px", background: isChapter1 ? "rgba(139,92,246,0.25)" : "rgba(59,130,246,0.12)", border: isChapter1 ? "1px solid rgba(139,92,246,0.5)" : "1px solid rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "26px", flexShrink: "0", filter: isUnlocked ? "none" : "grayscale(0.6)", opacity: isUnlocked ? 1 : 0.7 }}>
+                      {icon}
+                    </div>
+                    <div style={{ flex: "1", minWidth: "0", opacity: isUnlocked ? 1 : 0.6 }}>
+                      <div style={{ fontSize: "9px", color: "var(--text-muted)", letterSpacing: "1.5px", textTransform: "uppercase", marginBottom: "2px" }}>
+                        CHAPTER {journey.chapter}
+                      </div>
+                      <div style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: "16px", fontWeight: "800", color: isChapter1 ? "#fff" : "var(--text-dim)" }}>
+                        {(journey.title?.en || `Chapter ${journey.chapter}`).toUpperCase()}
+                      </div>
+                      {isChapter1 && (
+                        <>
+                          <div style={{ height: "4px", background: "rgba(255,255,255,0.07)", borderRadius: "99px", margin: "5px 0 3px", overflow: "hidden" }}>
+                            <div style={{ height: "4px", width: `${chPct}%`, background: "linear-gradient(90deg,var(--purple),var(--blue))", borderRadius: "99px" }}></div>
+                          </div>
+                          <div style={{ fontSize: "10px", color: "var(--blue-glow)" }}>
+                            {waterObjective ? `Uống nước ${waterObjective.current}/${waterObjective.target} · ${chPct}%` : `${chPct}% · Tiếp tục`}
+                          </div>
+                        </>
+                      )}
+                      {!isChapter1 && (
+                        <div style={{ fontSize: "10px", color: "var(--text-muted)", marginTop: "4px" }}>
+                          {isUnlocked ? '0% · Chưa bắt đầu' : `Hoàn thành Ch.${journey.chapter - 1} để mở khóa`}
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", flexShrink: "0" }}>
+                      {isChapter1 && <div className="badge badge-green" style={{ fontSize: "9px", padding: "2px 6px" }}>Đang chơi</div>}
+                      <div style={{ color: isUnlocked ? (isChapter1 ? "var(--blue-glow)" : "var(--text-muted)") : "var(--text-muted)", fontSize: "18px" }}>
+                        {isUnlocked ? '›' : '🔒'}
+                      </div>
                     </div>
                   </div>
-                  <div style={{ fontSize: "10px", color: "var(--blue-glow)" }}>
-                    {waterObjective ? `Uống nước ${waterObjective.current}/${waterObjective.target} · ${snapshot.journeyUser?.journeyProgress?.unlockedChapters?.includes(2) ? 'Đã mở Chapter 2' : 'Tiếp tục Ch.1'}` : '66% · Tiếp tục 1-3'}
-                  </div>
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", flexShrink: "0" }}>
-                  <div className="badge badge-green" style={{ fontSize: "9px", padding: "2px 6px" }}>
-                    Đang chơi
-                  </div>
-                  <div style={{ color: "var(--blue-glow)", fontSize: "18px" }}>
-                    ›
-                  </div>
-                </div>
-              </div>
-              {/* CHAPTER 2 - locked */}
-              <div onClick={(event) => { showLockedChapter('THE DISCIPLINE','Hoàn thành Chapter 1 để mở khóa','🔥'); }} style={{ display: "flex", alignItems: "center", gap: "12px", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "12px", padding: "12px", marginBottom: "10px", cursor: "pointer", position: "relative", overflow: "hidden" }}>
-                <div style={{ position: "absolute", inset: "0", background: "rgba(0,0,0,0.2)", pointerEvents: "none" }}>
-                </div>
-                <div style={{ width: "48px", height: "48px", borderRadius: "10px", background: "rgba(59,130,246,0.12)", border: "1px solid rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "26px", flexShrink: "0", filter: "grayscale(0.6)", opacity: "0.7" }}>
-                  🔥
-                </div>
-                <div style={{ flex: "1", minWidth: "0", opacity: "0.6" }}>
-                  <div style={{ fontSize: "9px", color: "var(--text-muted)", letterSpacing: "1.5px", textTransform: "uppercase", marginBottom: "2px" }}>
-                    CHAPTER 2
-                  </div>
-                  <div style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: "16px", fontWeight: "800", color: "var(--text-dim)" }}>
-                    THE DISCIPLINE
-                  </div>
-                  <div style={{ fontSize: "10px", color: "var(--text-muted)", marginTop: "4px" }}>
-                    Hoàn thành Ch.1 để mở khóa
-                  </div>
-                </div>
-                <div style={{ fontSize: "22px", flexShrink: "0", opacity: "0.5" }}>
-                  🔒
-                </div>
-              </div>
-              {/* CHAPTER 3 - locked */}
-              <div onClick={(event) => { showLockedChapter('THE TRANSFORMATION','Hoàn thành Chapter 2 để mở khóa','⚡'); }} style={{ display: "flex", alignItems: "center", gap: "12px", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "12px", padding: "12px", marginBottom: "10px", cursor: "pointer", opacity: "0.55", position: "relative", overflow: "hidden" }}>
-                <div style={{ width: "48px", height: "48px", borderRadius: "10px", background: "rgba(239,68,68,0.10)", border: "1px solid rgba(255,255,255,0.07)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "26px", flexShrink: "0", filter: "grayscale(0.8)" }}>
-                  ⚡
-                </div>
-                <div style={{ flex: "1", minWidth: "0" }}>
-                  <div style={{ fontSize: "9px", color: "var(--text-muted)", letterSpacing: "1.5px", textTransform: "uppercase", marginBottom: "2px" }}>
-                    CHAPTER 3
-                  </div>
-                  <div style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: "16px", fontWeight: "800", color: "var(--text-dim)" }}>
-                    THE TRANSFORMATION
-                  </div>
-                  <div style={{ fontSize: "10px", color: "var(--text-muted)", marginTop: "4px" }}>
-                    Hoàn thành Ch.2 để mở khóa
-                  </div>
-                </div>
-                <div style={{ fontSize: "22px", flexShrink: "0" }}>
-                  🔒
-                </div>
-              </div>
-              {/* CHAPTER 4 - locked */}
-              <div onClick={(event) => { showLockedChapter('THE MASTERY','Hoàn thành Chapter 3 để mở khóa','👑'); }} style={{ display: "flex", alignItems: "center", gap: "12px", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "12px", padding: "12px", marginBottom: "10px", cursor: "pointer", opacity: "0.45", position: "relative", overflow: "hidden" }}>
-                <div style={{ width: "48px", height: "48px", borderRadius: "10px", background: "rgba(245,158,11,0.10)", border: "1px solid rgba(255,255,255,0.07)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "26px", flexShrink: "0", filter: "grayscale(0.8)" }}>
-                  👑
-                </div>
-                <div style={{ flex: "1", minWidth: "0" }}>
-                  <div style={{ fontSize: "9px", color: "var(--text-muted)", letterSpacing: "1.5px", textTransform: "uppercase", marginBottom: "2px" }}>
-                    CHAPTER 4
-                  </div>
-                  <div style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: "16px", fontWeight: "800", color: "var(--text-dim)" }}>
-                    THE MASTERY
-                  </div>
-                  <div style={{ fontSize: "10px", color: "var(--text-muted)", marginTop: "4px" }}>
-                    Hoàn thành Ch.3 để mở khóa
-                  </div>
-                </div>
-                <div style={{ fontSize: "22px", flexShrink: "0" }}>
-                  🔒
-                </div>
-              </div>
-              {/* CHAPTER 5 - locked */}
-              <div onClick={(event) => { showLockedChapter('THE LEGEND','Hoàn thành Chapter 4 để mở khóa','⚜️'); }} style={{ display: "flex", alignItems: "center", gap: "12px", background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.05)", borderRadius: "12px", padding: "12px", marginBottom: "6px", cursor: "pointer", opacity: "0.35", position: "relative", overflow: "hidden" }}>
-                <div style={{ width: "48px", height: "48px", borderRadius: "10px", background: "rgba(139,92,246,0.10)", border: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "26px", flexShrink: "0", filter: "grayscale(0.9)" }}>
-                  ⚜️
-                </div>
-                <div style={{ flex: "1", minWidth: "0" }}>
-                  <div style={{ fontSize: "9px", color: "var(--text-muted)", letterSpacing: "1.5px", textTransform: "uppercase", marginBottom: "2px" }}>
-                    CHAPTER 5
-                  </div>
-                  <div style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: "16px", fontWeight: "800", color: "var(--text-dim)" }}>
-                    THE LEGEND
-                  </div>
-                  <div style={{ fontSize: "10px", color: "var(--text-muted)", marginTop: "4px" }}>
-                    Hoàn thành Ch.4 để mở khóa
-                  </div>
-                </div>
-                <div style={{ fontSize: "22px", flexShrink: "0" }}>
-                  🔒
-                </div>
-              </div>
+                )
+              })}
             </div>
-            <div style={{ padding: "0 14px 16px" }}>
-              <button className="btn-primary" onClick={(event) => { closeModal('modal-all-chapters');openModal('modal-chapter-detail'); }}>
+            <div style={{ padding: "0 14px 14px" }}>
+              <button className="btn-primary" onClick={(event) => { closeModal('modal-all-chapters'); openModal('modal-chapter-detail'); }}>
                 TIẾP TỤC CHAPTER 1
               </button>
             </div>
-          </div>
-        </div>
-        {/* MODAL: LOCKED CHAPTER NOTICE */}
-        <div className="modal-overlay" onClick={handleOverlayClick} id="modal-locked-chapter">
-          <div className="modal-box" style={{ textAlign: "center", padding: "32px 20px 24px", margin: "auto 20px" }}>
-            <div className="modal-close" onClick={(event) => { closeModal('modal-locked-chapter'); }}>
-              ✕
-            </div>
-            <div id="locked-chapter-icon" style={{ fontSize: "52px", marginBottom: "12px" }}>
-              🔒
-            </div>
-            <div id="locked-chapter-name" style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: "22px", fontWeight: "900", color: "#fff", marginBottom: "8px" }}>
-            </div>
-            <div id="locked-chapter-msg" style={{ fontSize: "13px", color: "var(--text-dim)", marginBottom: "20px", lineHeight: "1.5" }}>
-            </div>
-            <div style={{ background: "rgba(139,92,246,0.08)", border: "1px solid rgba(139,92,246,0.2)", borderRadius: "10px", padding: "12px", marginBottom: "20px" }}>
-              <div style={{ fontSize: "10px", color: "var(--text-muted)", marginBottom: "4px" }}>
-                Tiến độ hiện tại
-              </div>
-              <div style={{ fontSize: "12px", color: "var(--blue-glow)", fontWeight: "600" }}>
-                Chapter 1 · THE AWAKENING · 66%
-              </div>
-            </div>
-            <button className="btn-primary" onClick={(event) => { closeModal('modal-locked-chapter');closeModal('modal-all-chapters');openModal('modal-chapter-detail'); }}>
-              TIẾP TỤC CHAPTER 1
-            </button>
-            <button className="btn-outline" onClick={(event) => { closeModal('modal-locked-chapter'); }} style={{ width: "100%", marginTop: "8px" }}>
-              ĐÓNG
-            </button>
           </div>
         </div>
         {/* ═══════════════════════════════ BOTTOM NAV ═══════════════════════════════ */}
