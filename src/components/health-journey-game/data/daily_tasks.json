@@ -1,92 +1,87 @@
 {
-  "cycleDays": 31,
+  "schema": "health_journey_daily_tasks_v1",
+  "sourceOfTruth": "Activity -> Task -> XP/Energy -> Journey Progress -> Chapter Unlock -> Reward",
   "tasks": [
     {
       "taskId": "inbody",
-      "title": {
-        "en": "Import InBody Report",
-        "vi": "Import kết quả đo InBody"
-      },
+      "activityType": "import_inbody",
+      "icon": "📈",
+      "title": { "en": "Import InBody health result", "vi": "Import kết quả đo sức khoẻ InBody" },
       "target": 1,
-      "unit": "report",
-      "xp": 100
+      "unit": "file",
+      "xp": 100,
+      "requiresProof": true
     },
     {
       "taskId": "water",
-      "title": {
-        "en": "Drink Water",
-        "vi": "Uống nước"
-      },
+      "activityType": "drink_water",
+      "icon": "💧",
+      "title": { "en": "Drink Water", "vi": "Uống nước" },
       "target": 1,
-      "unit": "times",
-      "xp": 10
+      "unit": "bottle_photo",
+      "xp": 10,
+      "requiresProof": true,
+      "proofCapture": "webcam_bottle_photo"
     },
     {
       "taskId": "walk",
-      "title": {
-        "en": "Walk 10,000 Steps",
-        "vi": "Đi bộ 10.000 bước"
-      },
+      "activityType": "walk_10000_steps",
+      "icon": "🚶",
+      "title": { "en": "Walk 10,000 steps", "vi": "Đi bộ 10.000 bước" },
       "target": 10000,
       "unit": "steps",
       "xp": 50
     },
     {
       "taskId": "deep_work",
-      "title": {
-        "en": "Deep Work 90m",
-        "vi": "Tập trung làm việc 90 phút"
-      },
+      "activityType": "deep_work_90m",
+      "icon": "💼",
+      "title": { "en": "Deep Work 90m", "vi": "Deep Work 90 phút" },
       "target": 90,
       "unit": "minutes",
       "xp": 60
     },
     {
       "taskId": "read_book",
-      "title": {
-        "en": "Read 20 Pages",
-        "vi": "Đọc ít nhất 20 trang sách"
-      },
+      "activityType": "read_20_pages",
+      "icon": "📚",
+      "title": { "en": "Read 20 Pages", "vi": "Đọc sách 20 phút / 20 trang" },
       "target": 20,
       "unit": "pages",
       "xp": 30
     },
     {
       "taskId": "breathing",
-      "title": {
-        "en": "Breath Activation",
-        "vi": "Thở sâu 5 phút"
-      },
+      "activityType": "breath_activation",
+      "icon": "🌬",
+      "title": { "en": "Breath Activation", "vi": "Breath Activation - Thở sâu 5 phút" },
       "target": 5,
       "unit": "minutes",
       "xp": 20
     },
     {
       "taskId": "no_sugar",
-      "title": {
-        "en": "No Sugar Challenge",
-        "vi": "Không đường 1 ngày"
-      },
+      "activityType": "no_sugar_challenge",
+      "icon": "🚫",
+      "title": { "en": "No Sugar Challenge", "vi": "No Sugar Challenge - Không đường 1 ngày" },
       "target": 1,
       "unit": "day",
       "xp": 40
     },
     {
       "taskId": "cold_shower",
-      "title": {
-        "en": "Cold Shower",
-        "vi": "Tắm nước lạnh"
-      },
+      "activityType": "cold_shower",
+      "icon": "🚿",
+      "title": { "en": "Cold Shower", "vi": "Cold Shower - Tắm nước lạnh" },
       "target": 1,
       "unit": "times",
       "xp": 20
     },
     {
       "taskId": "reflection",
-      "title": {
-        "en": "Reflection Journal",
-        "vi": "Ghi lại suy nghĩ của bạn"
-      },
+      "activityType": "reflection_journal",
+      "icon": "📓",
+      "title": { "en": "Reflection Journal", "vi": "Reflection Journal - Ghi lại suy nghĩ của bạn" },
       "target": 1,
       "unit": "entry",
       "xp": 20

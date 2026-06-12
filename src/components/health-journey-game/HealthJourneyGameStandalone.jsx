@@ -1,4 +1,5 @@
-import { useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { HEALTH_JOURNEY_EVENT, getTaskSnapshot } from './services/healthJourneyStorage.js'
 
 const screenNavMap = {
   'screen-home': 'nav-home',
@@ -403,6 +404,23 @@ const styles = String.raw`
 
 export default function HealthJourneyGameStandalone() {
   const containerRef = useRef(null)
+  const [snapshot, setSnapshot] = useState(() => getTaskSnapshot())
+
+  useEffect(() => {
+    const refreshSnapshot = () => setSnapshot(getTaskSnapshot())
+    window.addEventListener(HEALTH_JOURNEY_EVENT, refreshSnapshot)
+    return () => window.removeEventListener(HEALTH_JOURNEY_EVENT, refreshSnapshot)
+  }, [])
+
+  const todayTask = (taskId) => snapshot.day?.tasks?.find((task) => task.taskId === taskId)
+  const journeyObjective = (activityType) => snapshot.journeyUser?.journeyProgress?.objectives?.find((objective) => objective.activityType === activityType)
+  const taskProgressLabel = (taskId, fallback) => {
+    const task = todayTask(taskId)
+    return task ? `${task.current}/${task.target}` : fallback
+  }
+  const isTaskDone = (taskId) => Boolean(todayTask(taskId)?.completed)
+  const waterObjective = journeyObjective('drink_water')
+  const journeyProfile = snapshot.journeyUser?.profile || {}
 
   const getRoot = () => containerRef.current
 
@@ -485,13 +503,13 @@ export default function HealthJourneyGameStandalone() {
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
               <div className="currency-badge">
-                🪙 2,450
+                🪙 {journeyProfile.xp || 2450}
               </div>
               <div className="currency-badge" style={{ color: "#38bdf8" }}>
-                💎 340
+                💎 {journeyProfile.energy || 340}
               </div>
               <div className="currency-badge" style={{ color: "#ef4444" }}>
-                🔥 6,000
+                🔥 {journeyProfile.coins || 6000}
               </div>
               <span onClick={(event) => { openModal('modal-notif'); }} style={{ fontSize: "20px", cursor: "pointer", marginLeft: "4px" }}>
                 🔔
@@ -684,7 +702,7 @@ export default function HealthJourneyGameStandalone() {
               📋 NHIỆM VỤ
             </div>
             <div className="currency-badge" style={{ fontSize: "12px" }}>
-              320 / 600 XP
+              {snapshot.day?.xpEarned || 320} / 600 XP
             </div>
           </div>
           {/* Tabs */}
@@ -706,6 +724,29 @@ export default function HealthJourneyGameStandalone() {
           </div>
           {/* Task list */}
           <div className="card">
+            <div className="task-item" style={{ borderColor: isTaskDone('water') ? 'rgba(34,197,94,.34)' : 'rgba(59,130,246,.28)' }}>
+              <div className="task-icon icon-bg-blue">
+                💧
+              </div>
+              <div className="task-info">
+                <div className="task-name">
+                  Uống nước · Chụp chai nước
+                </div>
+                <div className="task-desc">
+                  Activity: drink_water · +10 XP · lưu ảnh tại Upload
+                </div>
+                <div style={{ height: "3px", background: "rgba(255,255,255,.07)", borderRadius: "99px", marginTop: "4px", overflow: "hidden" }}>
+                  <div style={{ height: "3px", width: isTaskDone('water') ? "100%" : "0%", background: "var(--blue)", borderRadius: "99px" }}>
+                  </div>
+                </div>
+              </div>
+              <div className="task-prog" style={{ color: isTaskDone('water') ? "var(--green)" : "var(--blue-glow)" }}>
+                {taskProgressLabel('water', '0/1')}
+              </div>
+              <div className={isTaskDone('water') ? "task-check done" : "task-check"}>
+                {isTaskDone('water') ? '✓' : '📷'}
+              </div>
+            </div>
             <div className="task-item">
               <div className="task-icon icon-bg-cyan">
                 🌬
@@ -723,7 +764,7 @@ export default function HealthJourneyGameStandalone() {
                 </div>
               </div>
               <div className="task-prog">
-                5/5
+                {taskProgressLabel('breathing', '5/5')}
               </div>
               <div className="task-check done">
                 ✓
@@ -746,7 +787,7 @@ export default function HealthJourneyGameStandalone() {
                 </div>
               </div>
               <div className="task-prog">
-                1/1
+                {taskProgressLabel('no_sugar', '1/1')}
               </div>
               <div className="task-check done">
                 ✓
@@ -769,7 +810,7 @@ export default function HealthJourneyGameStandalone() {
                 </div>
               </div>
               <div className="task-prog" style={{ color: "var(--blue-glow)" }}>
-                70/90
+                {taskProgressLabel('deep_work', '70/90')}
               </div>
               <div className="task-check">
                 ›
@@ -790,7 +831,7 @@ export default function HealthJourneyGameStandalone() {
                 </div>
               </div>
               <div className="task-prog" style={{ color: "var(--text-muted)" }}>
-                0/1
+                {taskProgressLabel('cold_shower', '0/1')}
               </div>
               <div className="task-check">
                 ○
@@ -813,7 +854,7 @@ export default function HealthJourneyGameStandalone() {
                 </div>
               </div>
               <div className="task-prog" style={{ color: "var(--gold)" }}>
-                10/20
+                {taskProgressLabel('read_book', '10/20')}
               </div>
               <div className="task-check">
                 ›
@@ -834,10 +875,10 @@ export default function HealthJourneyGameStandalone() {
                 </div>
               </div>
               <div className="task-prog" style={{ color: "var(--text-muted)" }}>
-                0/1
+                {taskProgressLabel('reflection', '0/1')}
               </div>
               <div className="task-check">
-                ○
+                {isTaskDone('reflection') ? '✓' : '○'}
               </div>
             </div>
           </div>
@@ -957,7 +998,7 @@ export default function HealthJourneyGameStandalone() {
                 </div>
               </div>
               <div className="chapter-prog">
-                66% · Tiếp tục 1-3
+                {waterObjective ? `Uống nước ${waterObjective.current}/${waterObjective.target} · ${snapshot.journeyUser?.journeyProgress?.unlockedChapters?.includes(2) ? 'Đã mở Chapter 2' : 'Tiếp tục Ch.1'}` : '66% · Tiếp tục 1-3'}
               </div>
             </div>
             <div style={{ color: "var(--blue-glow)", fontSize: "18px" }}>
@@ -1288,10 +1329,10 @@ export default function HealthJourneyGameStandalone() {
             </div>
             <div style={{ display: "flex", gap: "4px" }}>
               <div className="currency-badge">
-                🪙 2,450
+                🪙 {journeyProfile.xp || 2450}
               </div>
               <div className="currency-badge" style={{ color: "#38bdf8" }}>
-                💎 340
+                💎 {journeyProfile.energy || 340}
               </div>
             </div>
           </div>
@@ -3160,7 +3201,7 @@ export default function HealthJourneyGameStandalone() {
                     </div>
                   </div>
                   <div style={{ fontSize: "10px", color: "var(--blue-glow)" }}>
-                    66% · Tiếp tục 1-3
+                    {waterObjective ? `Uống nước ${waterObjective.current}/${waterObjective.target} · ${snapshot.journeyUser?.journeyProgress?.unlockedChapters?.includes(2) ? 'Đã mở Chapter 2' : 'Tiếp tục Ch.1'}` : '66% · Tiếp tục 1-3'}
                   </div>
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", flexShrink: "0" }}>

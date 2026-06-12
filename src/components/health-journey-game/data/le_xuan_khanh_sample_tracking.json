@@ -1,0 +1,4991 @@
+{
+  "schema": "health_journey_user_tracking_v1",
+  "generatedAt": "2026-06-12T00:00:00.000Z",
+  "user": {
+    "userId": "le-xuan-khanh-sample",
+    "displayName": "Lê Xuân Khánh Sample",
+    "email": "le.xuan.khanh.sample@example.local",
+    "locale": "vi",
+    "timezone": "Etc/UTC"
+  },
+  "profile": {
+    "userId": "le-xuan-khanh-sample",
+    "level": 12,
+    "xp": 2450,
+    "energy": 340,
+    "coins": 6000,
+    "streakDays": 31
+  },
+  "dataFlow": [
+    "Activity (nguồn dữ liệu duy nhất)",
+    "Task (việc làm hôm nay)",
+    "XP / Energy",
+    "Journey Progress",
+    "Chapter Unlock",
+    "Reward"
+  ],
+  "dailyTasks": [
+    {
+      "taskId": "inbody",
+      "activityType": "import_inbody",
+      "icon": "📈",
+      "title": {
+        "vi": "Import kết quả đo sức khoẻ InBody",
+        "en": "Import InBody health result"
+      },
+      "target": 1,
+      "unit": "file",
+      "xp": 100,
+      "requiresProof": true
+    },
+    {
+      "taskId": "water",
+      "activityType": "drink_water",
+      "icon": "💧",
+      "title": {
+        "vi": "Uống nước",
+        "en": "Drink Water"
+      },
+      "target": 1,
+      "unit": "bottle_photo",
+      "xp": 10,
+      "requiresProof": true
+    },
+    {
+      "taskId": "walk",
+      "activityType": "walk_10000_steps",
+      "icon": "🚶",
+      "title": {
+        "vi": "Đi bộ 10.000 bước",
+        "en": "Walk 10,000 steps"
+      },
+      "target": 10000,
+      "unit": "steps",
+      "xp": 50
+    },
+    {
+      "taskId": "deep_work",
+      "activityType": "deep_work_90m",
+      "icon": "💼",
+      "title": {
+        "vi": "Deep Work 90 phút",
+        "en": "Deep Work 90m"
+      },
+      "target": 90,
+      "unit": "minutes",
+      "xp": 60
+    },
+    {
+      "taskId": "read_book",
+      "activityType": "read_20_pages",
+      "icon": "📚",
+      "title": {
+        "vi": "Đọc sách 20 phút / 20 trang",
+        "en": "Read 20 pages"
+      },
+      "target": 20,
+      "unit": "pages",
+      "xp": 30
+    },
+    {
+      "taskId": "breathing",
+      "activityType": "breath_activation",
+      "icon": "🌬",
+      "title": {
+        "vi": "Breath Activation - Thở sâu 5 phút",
+        "en": "Breath Activation"
+      },
+      "target": 5,
+      "unit": "minutes",
+      "xp": 20
+    },
+    {
+      "taskId": "no_sugar",
+      "activityType": "no_sugar_challenge",
+      "icon": "🚫",
+      "title": {
+        "vi": "No Sugar Challenge - Không đường 1 ngày",
+        "en": "No Sugar Challenge"
+      },
+      "target": 1,
+      "unit": "day",
+      "xp": 40
+    },
+    {
+      "taskId": "cold_shower",
+      "activityType": "cold_shower",
+      "icon": "🚿",
+      "title": {
+        "vi": "Cold Shower - Tắm nước lạnh",
+        "en": "Cold Shower"
+      },
+      "target": 1,
+      "unit": "times",
+      "xp": 20
+    },
+    {
+      "taskId": "reflection",
+      "activityType": "reflection_journal",
+      "icon": "📓",
+      "title": {
+        "vi": "Reflection Journal - Ghi lại suy nghĩ của bạn",
+        "en": "Reflection Journal"
+      },
+      "target": 1,
+      "unit": "entry",
+      "xp": 20
+    }
+  ],
+  "dailyTracking": {
+    "userId": "le-xuan-khanh-sample",
+    "range": {
+      "days": 31,
+      "from": "2026-05-13",
+      "to": "2026-06-12"
+    },
+    "days": [
+      {
+        "date": "2026-05-13",
+        "completed": false,
+        "xpEarned": 240,
+        "tasks": [
+          {
+            "taskId": "inbody",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-05-13T07:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_import_inbody_20260513"
+            ]
+          },
+          {
+            "taskId": "water",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-05-13T07:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_drink_water_20260513"
+            ]
+          },
+          {
+            "taskId": "walk",
+            "current": 0,
+            "target": 10000,
+            "completed": false,
+            "updatedAt": "2026-05-13T07:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "deep_work",
+            "current": 90,
+            "target": 90,
+            "completed": true,
+            "updatedAt": "2026-05-13T07:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_deep_work_90m_20260513"
+            ]
+          },
+          {
+            "taskId": "read_book",
+            "current": 20,
+            "target": 20,
+            "completed": true,
+            "updatedAt": "2026-05-13T07:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_read_20_pages_20260513"
+            ]
+          },
+          {
+            "taskId": "breathing",
+            "current": 5,
+            "target": 5,
+            "completed": true,
+            "updatedAt": "2026-05-13T07:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_breath_activation_20260513"
+            ]
+          },
+          {
+            "taskId": "no_sugar",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-05-13T07:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "cold_shower",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-05-13T07:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_cold_shower_20260513"
+            ]
+          },
+          {
+            "taskId": "reflection",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-05-13T07:30:00.000Z",
+            "proofActivityIds": []
+          }
+        ]
+      },
+      {
+        "date": "2026-05-14",
+        "completed": false,
+        "xpEarned": 200,
+        "tasks": [
+          {
+            "taskId": "inbody",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-05-14T08:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "water",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-05-14T08:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_drink_water_20260514"
+            ]
+          },
+          {
+            "taskId": "walk",
+            "current": 10000,
+            "target": 10000,
+            "completed": true,
+            "updatedAt": "2026-05-14T08:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_walk_10000_steps_20260514"
+            ]
+          },
+          {
+            "taskId": "deep_work",
+            "current": 90,
+            "target": 90,
+            "completed": true,
+            "updatedAt": "2026-05-14T08:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_deep_work_90m_20260514"
+            ]
+          },
+          {
+            "taskId": "read_book",
+            "current": 10,
+            "target": 20,
+            "completed": false,
+            "updatedAt": "2026-05-14T08:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "breathing",
+            "current": 5,
+            "target": 5,
+            "completed": true,
+            "updatedAt": "2026-05-14T08:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_breath_activation_20260514"
+            ]
+          },
+          {
+            "taskId": "no_sugar",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-05-14T08:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_no_sugar_challenge_20260514"
+            ]
+          },
+          {
+            "taskId": "cold_shower",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-05-14T08:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "reflection",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-05-14T08:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_reflection_journal_20260514"
+            ]
+          }
+        ]
+      },
+      {
+        "date": "2026-05-15",
+        "completed": false,
+        "xpEarned": 150,
+        "tasks": [
+          {
+            "taskId": "inbody",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-05-15T09:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "water",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-05-15T09:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_drink_water_20260515"
+            ]
+          },
+          {
+            "taskId": "walk",
+            "current": 10000,
+            "target": 10000,
+            "completed": true,
+            "updatedAt": "2026-05-15T09:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_walk_10000_steps_20260515"
+            ]
+          },
+          {
+            "taskId": "deep_work",
+            "current": 70,
+            "target": 90,
+            "completed": false,
+            "updatedAt": "2026-05-15T09:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "read_book",
+            "current": 20,
+            "target": 20,
+            "completed": true,
+            "updatedAt": "2026-05-15T09:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_read_20_pages_20260515"
+            ]
+          },
+          {
+            "taskId": "breathing",
+            "current": 5,
+            "target": 5,
+            "completed": true,
+            "updatedAt": "2026-05-15T09:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_breath_activation_20260515"
+            ]
+          },
+          {
+            "taskId": "no_sugar",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-05-15T09:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_no_sugar_challenge_20260515"
+            ]
+          },
+          {
+            "taskId": "cold_shower",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-05-15T09:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "reflection",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-05-15T09:30:00.000Z",
+            "proofActivityIds": []
+          }
+        ]
+      },
+      {
+        "date": "2026-05-16",
+        "completed": false,
+        "xpEarned": 90,
+        "tasks": [
+          {
+            "taskId": "inbody",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-05-16T10:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "water",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-05-16T10:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_drink_water_20260516"
+            ]
+          },
+          {
+            "taskId": "walk",
+            "current": 0,
+            "target": 10000,
+            "completed": false,
+            "updatedAt": "2026-05-16T10:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "deep_work",
+            "current": 70,
+            "target": 90,
+            "completed": false,
+            "updatedAt": "2026-05-16T10:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "read_book",
+            "current": 10,
+            "target": 20,
+            "completed": false,
+            "updatedAt": "2026-05-16T10:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "breathing",
+            "current": 5,
+            "target": 5,
+            "completed": true,
+            "updatedAt": "2026-05-16T10:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_breath_activation_20260516"
+            ]
+          },
+          {
+            "taskId": "no_sugar",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-05-16T10:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_no_sugar_challenge_20260516"
+            ]
+          },
+          {
+            "taskId": "cold_shower",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-05-16T10:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "reflection",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-05-16T10:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_reflection_journal_20260516"
+            ]
+          }
+        ]
+      },
+      {
+        "date": "2026-05-17",
+        "completed": false,
+        "xpEarned": 170,
+        "tasks": [
+          {
+            "taskId": "inbody",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-05-17T11:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "water",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-05-17T11:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_drink_water_20260517"
+            ]
+          },
+          {
+            "taskId": "walk",
+            "current": 10000,
+            "target": 10000,
+            "completed": true,
+            "updatedAt": "2026-05-17T11:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_walk_10000_steps_20260517"
+            ]
+          },
+          {
+            "taskId": "deep_work",
+            "current": 90,
+            "target": 90,
+            "completed": true,
+            "updatedAt": "2026-05-17T11:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_deep_work_90m_20260517"
+            ]
+          },
+          {
+            "taskId": "read_book",
+            "current": 20,
+            "target": 20,
+            "completed": true,
+            "updatedAt": "2026-05-17T11:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_read_20_pages_20260517"
+            ]
+          },
+          {
+            "taskId": "breathing",
+            "current": 5,
+            "target": 5,
+            "completed": true,
+            "updatedAt": "2026-05-17T11:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_breath_activation_20260517"
+            ]
+          },
+          {
+            "taskId": "no_sugar",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-05-17T11:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "cold_shower",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-05-17T11:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "reflection",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-05-17T11:30:00.000Z",
+            "proofActivityIds": []
+          }
+        ]
+      },
+      {
+        "date": "2026-05-18",
+        "completed": false,
+        "xpEarned": 180,
+        "tasks": [
+          {
+            "taskId": "inbody",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-05-18T12:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "water",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-05-18T12:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_drink_water_20260518"
+            ]
+          },
+          {
+            "taskId": "walk",
+            "current": 10000,
+            "target": 10000,
+            "completed": true,
+            "updatedAt": "2026-05-18T12:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_walk_10000_steps_20260518"
+            ]
+          },
+          {
+            "taskId": "deep_work",
+            "current": 90,
+            "target": 90,
+            "completed": true,
+            "updatedAt": "2026-05-18T12:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_deep_work_90m_20260518"
+            ]
+          },
+          {
+            "taskId": "read_book",
+            "current": 10,
+            "target": 20,
+            "completed": false,
+            "updatedAt": "2026-05-18T12:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "breathing",
+            "current": 0,
+            "target": 5,
+            "completed": false,
+            "updatedAt": "2026-05-18T12:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "no_sugar",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-05-18T12:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_no_sugar_challenge_20260518"
+            ]
+          },
+          {
+            "taskId": "cold_shower",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-05-18T12:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "reflection",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-05-18T12:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_reflection_journal_20260518"
+            ]
+          }
+        ]
+      },
+      {
+        "date": "2026-05-19",
+        "completed": false,
+        "xpEarned": 100,
+        "tasks": [
+          {
+            "taskId": "inbody",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-05-19T13:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "water",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-05-19T13:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_drink_water_20260519"
+            ]
+          },
+          {
+            "taskId": "walk",
+            "current": 0,
+            "target": 10000,
+            "completed": false,
+            "updatedAt": "2026-05-19T13:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "deep_work",
+            "current": 70,
+            "target": 90,
+            "completed": false,
+            "updatedAt": "2026-05-19T13:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "read_book",
+            "current": 20,
+            "target": 20,
+            "completed": true,
+            "updatedAt": "2026-05-19T13:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_read_20_pages_20260519"
+            ]
+          },
+          {
+            "taskId": "breathing",
+            "current": 0,
+            "target": 5,
+            "completed": false,
+            "updatedAt": "2026-05-19T13:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "no_sugar",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-05-19T13:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_no_sugar_challenge_20260519"
+            ]
+          },
+          {
+            "taskId": "cold_shower",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-05-19T13:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_cold_shower_20260519"
+            ]
+          },
+          {
+            "taskId": "reflection",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-05-19T13:30:00.000Z",
+            "proofActivityIds": []
+          }
+        ]
+      },
+      {
+        "date": "2026-05-20",
+        "completed": false,
+        "xpEarned": 180,
+        "tasks": [
+          {
+            "taskId": "inbody",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-05-20T14:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "water",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-05-20T14:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_drink_water_20260520"
+            ]
+          },
+          {
+            "taskId": "walk",
+            "current": 10000,
+            "target": 10000,
+            "completed": true,
+            "updatedAt": "2026-05-20T14:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_walk_10000_steps_20260520"
+            ]
+          },
+          {
+            "taskId": "deep_work",
+            "current": 90,
+            "target": 90,
+            "completed": true,
+            "updatedAt": "2026-05-20T14:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_deep_work_90m_20260520"
+            ]
+          },
+          {
+            "taskId": "read_book",
+            "current": 10,
+            "target": 20,
+            "completed": false,
+            "updatedAt": "2026-05-20T14:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "breathing",
+            "current": 0,
+            "target": 5,
+            "completed": false,
+            "updatedAt": "2026-05-20T14:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "no_sugar",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-05-20T14:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_no_sugar_challenge_20260520"
+            ]
+          },
+          {
+            "taskId": "cold_shower",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-05-20T14:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "reflection",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-05-20T14:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_reflection_journal_20260520"
+            ]
+          }
+        ]
+      },
+      {
+        "date": "2026-05-21",
+        "completed": false,
+        "xpEarned": 90,
+        "tasks": [
+          {
+            "taskId": "inbody",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-05-21T15:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "water",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-05-21T15:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_drink_water_20260521"
+            ]
+          },
+          {
+            "taskId": "walk",
+            "current": 10000,
+            "target": 10000,
+            "completed": true,
+            "updatedAt": "2026-05-21T15:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_walk_10000_steps_20260521"
+            ]
+          },
+          {
+            "taskId": "deep_work",
+            "current": 70,
+            "target": 90,
+            "completed": false,
+            "updatedAt": "2026-05-21T15:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "read_book",
+            "current": 20,
+            "target": 20,
+            "completed": true,
+            "updatedAt": "2026-05-21T15:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_read_20_pages_20260521"
+            ]
+          },
+          {
+            "taskId": "breathing",
+            "current": 0,
+            "target": 5,
+            "completed": false,
+            "updatedAt": "2026-05-21T15:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "no_sugar",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-05-21T15:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "cold_shower",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-05-21T15:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "reflection",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-05-21T15:30:00.000Z",
+            "proofActivityIds": []
+          }
+        ]
+      },
+      {
+        "date": "2026-05-22",
+        "completed": false,
+        "xpEarned": 70,
+        "tasks": [
+          {
+            "taskId": "inbody",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-05-22T16:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "water",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-05-22T16:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_drink_water_20260522"
+            ]
+          },
+          {
+            "taskId": "walk",
+            "current": 0,
+            "target": 10000,
+            "completed": false,
+            "updatedAt": "2026-05-22T16:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "deep_work",
+            "current": 70,
+            "target": 90,
+            "completed": false,
+            "updatedAt": "2026-05-22T16:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "read_book",
+            "current": 10,
+            "target": 20,
+            "completed": false,
+            "updatedAt": "2026-05-22T16:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "breathing",
+            "current": 0,
+            "target": 5,
+            "completed": false,
+            "updatedAt": "2026-05-22T16:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "no_sugar",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-05-22T16:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_no_sugar_challenge_20260522"
+            ]
+          },
+          {
+            "taskId": "cold_shower",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-05-22T16:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "reflection",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-05-22T16:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_reflection_journal_20260522"
+            ]
+          }
+        ]
+      },
+      {
+        "date": "2026-05-23",
+        "completed": false,
+        "xpEarned": 190,
+        "tasks": [
+          {
+            "taskId": "inbody",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-05-23T17:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "water",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-05-23T17:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_drink_water_20260523"
+            ]
+          },
+          {
+            "taskId": "walk",
+            "current": 10000,
+            "target": 10000,
+            "completed": true,
+            "updatedAt": "2026-05-23T17:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_walk_10000_steps_20260523"
+            ]
+          },
+          {
+            "taskId": "deep_work",
+            "current": 90,
+            "target": 90,
+            "completed": true,
+            "updatedAt": "2026-05-23T17:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_deep_work_90m_20260523"
+            ]
+          },
+          {
+            "taskId": "read_book",
+            "current": 20,
+            "target": 20,
+            "completed": true,
+            "updatedAt": "2026-05-23T17:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_read_20_pages_20260523"
+            ]
+          },
+          {
+            "taskId": "breathing",
+            "current": 0,
+            "target": 5,
+            "completed": false,
+            "updatedAt": "2026-05-23T17:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "no_sugar",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-05-23T17:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_no_sugar_challenge_20260523"
+            ]
+          },
+          {
+            "taskId": "cold_shower",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-05-23T17:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "reflection",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-05-23T17:30:00.000Z",
+            "proofActivityIds": []
+          }
+        ]
+      },
+      {
+        "date": "2026-05-24",
+        "completed": false,
+        "xpEarned": 120,
+        "tasks": [
+          {
+            "taskId": "inbody",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-05-24T18:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "water",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-05-24T18:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_drink_water_20260524"
+            ]
+          },
+          {
+            "taskId": "walk",
+            "current": 10000,
+            "target": 10000,
+            "completed": true,
+            "updatedAt": "2026-05-24T18:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_walk_10000_steps_20260524"
+            ]
+          },
+          {
+            "taskId": "deep_work",
+            "current": 70,
+            "target": 90,
+            "completed": false,
+            "updatedAt": "2026-05-24T18:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "read_book",
+            "current": 10,
+            "target": 20,
+            "completed": false,
+            "updatedAt": "2026-05-24T18:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "breathing",
+            "current": 0,
+            "target": 5,
+            "completed": false,
+            "updatedAt": "2026-05-24T18:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "no_sugar",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-05-24T18:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_no_sugar_challenge_20260524"
+            ]
+          },
+          {
+            "taskId": "cold_shower",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-05-24T18:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "reflection",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-05-24T18:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_reflection_journal_20260524"
+            ]
+          }
+        ]
+      },
+      {
+        "date": "2026-05-25",
+        "completed": false,
+        "xpEarned": 60,
+        "tasks": [
+          {
+            "taskId": "inbody",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-05-25T07:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "water",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-05-25T07:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_drink_water_20260525"
+            ]
+          },
+          {
+            "taskId": "walk",
+            "current": 0,
+            "target": 10000,
+            "completed": false,
+            "updatedAt": "2026-05-25T07:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "deep_work",
+            "current": 70,
+            "target": 90,
+            "completed": false,
+            "updatedAt": "2026-05-25T07:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "read_book",
+            "current": 20,
+            "target": 20,
+            "completed": true,
+            "updatedAt": "2026-05-25T07:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_read_20_pages_20260525"
+            ]
+          },
+          {
+            "taskId": "breathing",
+            "current": 0,
+            "target": 5,
+            "completed": false,
+            "updatedAt": "2026-05-25T07:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "no_sugar",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-05-25T07:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "cold_shower",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-05-25T07:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_cold_shower_20260525"
+            ]
+          },
+          {
+            "taskId": "reflection",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-05-25T07:30:00.000Z",
+            "proofActivityIds": []
+          }
+        ]
+      },
+      {
+        "date": "2026-05-26",
+        "completed": false,
+        "xpEarned": 180,
+        "tasks": [
+          {
+            "taskId": "inbody",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-05-26T08:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "water",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-05-26T08:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_drink_water_20260526"
+            ]
+          },
+          {
+            "taskId": "walk",
+            "current": 10000,
+            "target": 10000,
+            "completed": true,
+            "updatedAt": "2026-05-26T08:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_walk_10000_steps_20260526"
+            ]
+          },
+          {
+            "taskId": "deep_work",
+            "current": 90,
+            "target": 90,
+            "completed": true,
+            "updatedAt": "2026-05-26T08:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_deep_work_90m_20260526"
+            ]
+          },
+          {
+            "taskId": "read_book",
+            "current": 10,
+            "target": 20,
+            "completed": false,
+            "updatedAt": "2026-05-26T08:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "breathing",
+            "current": 0,
+            "target": 5,
+            "completed": false,
+            "updatedAt": "2026-05-26T08:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "no_sugar",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-05-26T08:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_no_sugar_challenge_20260526"
+            ]
+          },
+          {
+            "taskId": "cold_shower",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-05-26T08:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "reflection",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-05-26T08:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_reflection_journal_20260526"
+            ]
+          }
+        ]
+      },
+      {
+        "date": "2026-05-27",
+        "completed": false,
+        "xpEarned": 130,
+        "tasks": [
+          {
+            "taskId": "inbody",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-05-27T09:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "water",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-05-27T09:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_drink_water_20260527"
+            ]
+          },
+          {
+            "taskId": "walk",
+            "current": 10000,
+            "target": 10000,
+            "completed": true,
+            "updatedAt": "2026-05-27T09:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_walk_10000_steps_20260527"
+            ]
+          },
+          {
+            "taskId": "deep_work",
+            "current": 70,
+            "target": 90,
+            "completed": false,
+            "updatedAt": "2026-05-27T09:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "read_book",
+            "current": 20,
+            "target": 20,
+            "completed": true,
+            "updatedAt": "2026-05-27T09:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_read_20_pages_20260527"
+            ]
+          },
+          {
+            "taskId": "breathing",
+            "current": 0,
+            "target": 5,
+            "completed": false,
+            "updatedAt": "2026-05-27T09:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "no_sugar",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-05-27T09:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_no_sugar_challenge_20260527"
+            ]
+          },
+          {
+            "taskId": "cold_shower",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-05-27T09:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "reflection",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-05-27T09:30:00.000Z",
+            "proofActivityIds": []
+          }
+        ]
+      },
+      {
+        "date": "2026-05-28",
+        "completed": false,
+        "xpEarned": 130,
+        "tasks": [
+          {
+            "taskId": "inbody",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-05-28T10:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "water",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-05-28T10:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_drink_water_20260528"
+            ]
+          },
+          {
+            "taskId": "walk",
+            "current": 0,
+            "target": 10000,
+            "completed": false,
+            "updatedAt": "2026-05-28T10:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "deep_work",
+            "current": 90,
+            "target": 90,
+            "completed": true,
+            "updatedAt": "2026-05-28T10:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_deep_work_90m_20260528"
+            ]
+          },
+          {
+            "taskId": "read_book",
+            "current": 10,
+            "target": 20,
+            "completed": false,
+            "updatedAt": "2026-05-28T10:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "breathing",
+            "current": 0,
+            "target": 5,
+            "completed": false,
+            "updatedAt": "2026-05-28T10:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "no_sugar",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-05-28T10:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_no_sugar_challenge_20260528"
+            ]
+          },
+          {
+            "taskId": "cold_shower",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-05-28T10:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "reflection",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-05-28T10:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_reflection_journal_20260528"
+            ]
+          }
+        ]
+      },
+      {
+        "date": "2026-05-29",
+        "completed": false,
+        "xpEarned": 150,
+        "tasks": [
+          {
+            "taskId": "inbody",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-05-29T11:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "water",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-05-29T11:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_drink_water_20260529"
+            ]
+          },
+          {
+            "taskId": "walk",
+            "current": 10000,
+            "target": 10000,
+            "completed": true,
+            "updatedAt": "2026-05-29T11:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_walk_10000_steps_20260529"
+            ]
+          },
+          {
+            "taskId": "deep_work",
+            "current": 90,
+            "target": 90,
+            "completed": true,
+            "updatedAt": "2026-05-29T11:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_deep_work_90m_20260529"
+            ]
+          },
+          {
+            "taskId": "read_book",
+            "current": 20,
+            "target": 20,
+            "completed": true,
+            "updatedAt": "2026-05-29T11:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_read_20_pages_20260529"
+            ]
+          },
+          {
+            "taskId": "breathing",
+            "current": 0,
+            "target": 5,
+            "completed": false,
+            "updatedAt": "2026-05-29T11:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "no_sugar",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-05-29T11:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "cold_shower",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-05-29T11:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "reflection",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-05-29T11:30:00.000Z",
+            "proofActivityIds": []
+          }
+        ]
+      },
+      {
+        "date": "2026-05-30",
+        "completed": false,
+        "xpEarned": 120,
+        "tasks": [
+          {
+            "taskId": "inbody",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-05-30T12:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "water",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-05-30T12:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_drink_water_20260530"
+            ]
+          },
+          {
+            "taskId": "walk",
+            "current": 10000,
+            "target": 10000,
+            "completed": true,
+            "updatedAt": "2026-05-30T12:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_walk_10000_steps_20260530"
+            ]
+          },
+          {
+            "taskId": "deep_work",
+            "current": 70,
+            "target": 90,
+            "completed": false,
+            "updatedAt": "2026-05-30T12:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "read_book",
+            "current": 10,
+            "target": 20,
+            "completed": false,
+            "updatedAt": "2026-05-30T12:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "breathing",
+            "current": 0,
+            "target": 5,
+            "completed": false,
+            "updatedAt": "2026-05-30T12:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "no_sugar",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-05-30T12:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_no_sugar_challenge_20260530"
+            ]
+          },
+          {
+            "taskId": "cold_shower",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-05-30T12:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "reflection",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-05-30T12:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_reflection_journal_20260530"
+            ]
+          }
+        ]
+      },
+      {
+        "date": "2026-05-31",
+        "completed": false,
+        "xpEarned": 100,
+        "tasks": [
+          {
+            "taskId": "inbody",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-05-31T13:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "water",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-05-31T13:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_drink_water_20260531"
+            ]
+          },
+          {
+            "taskId": "walk",
+            "current": 0,
+            "target": 10000,
+            "completed": false,
+            "updatedAt": "2026-05-31T13:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "deep_work",
+            "current": 70,
+            "target": 90,
+            "completed": false,
+            "updatedAt": "2026-05-31T13:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "read_book",
+            "current": 20,
+            "target": 20,
+            "completed": true,
+            "updatedAt": "2026-05-31T13:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_read_20_pages_20260531"
+            ]
+          },
+          {
+            "taskId": "breathing",
+            "current": 0,
+            "target": 5,
+            "completed": false,
+            "updatedAt": "2026-05-31T13:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "no_sugar",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-05-31T13:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_no_sugar_challenge_20260531"
+            ]
+          },
+          {
+            "taskId": "cold_shower",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-05-31T13:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_cold_shower_20260531"
+            ]
+          },
+          {
+            "taskId": "reflection",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-05-31T13:30:00.000Z",
+            "proofActivityIds": []
+          }
+        ]
+      },
+      {
+        "date": "2026-06-01",
+        "completed": false,
+        "xpEarned": 180,
+        "tasks": [
+          {
+            "taskId": "inbody",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-06-01T14:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "water",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-06-01T14:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_drink_water_20260601"
+            ]
+          },
+          {
+            "taskId": "walk",
+            "current": 10000,
+            "target": 10000,
+            "completed": true,
+            "updatedAt": "2026-06-01T14:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_walk_10000_steps_20260601"
+            ]
+          },
+          {
+            "taskId": "deep_work",
+            "current": 90,
+            "target": 90,
+            "completed": true,
+            "updatedAt": "2026-06-01T14:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_deep_work_90m_20260601"
+            ]
+          },
+          {
+            "taskId": "read_book",
+            "current": 10,
+            "target": 20,
+            "completed": false,
+            "updatedAt": "2026-06-01T14:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "breathing",
+            "current": 0,
+            "target": 5,
+            "completed": false,
+            "updatedAt": "2026-06-01T14:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "no_sugar",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-06-01T14:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_no_sugar_challenge_20260601"
+            ]
+          },
+          {
+            "taskId": "cold_shower",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-06-01T14:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "reflection",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-06-01T14:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_reflection_journal_20260601"
+            ]
+          }
+        ]
+      },
+      {
+        "date": "2026-06-02",
+        "completed": false,
+        "xpEarned": 150,
+        "tasks": [
+          {
+            "taskId": "inbody",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-06-02T15:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "water",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-06-02T15:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_drink_water_20260602"
+            ]
+          },
+          {
+            "taskId": "walk",
+            "current": 10000,
+            "target": 10000,
+            "completed": true,
+            "updatedAt": "2026-06-02T15:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_walk_10000_steps_20260602"
+            ]
+          },
+          {
+            "taskId": "deep_work",
+            "current": 90,
+            "target": 90,
+            "completed": true,
+            "updatedAt": "2026-06-02T15:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_deep_work_90m_20260602"
+            ]
+          },
+          {
+            "taskId": "read_book",
+            "current": 20,
+            "target": 20,
+            "completed": true,
+            "updatedAt": "2026-06-02T15:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_read_20_pages_20260602"
+            ]
+          },
+          {
+            "taskId": "breathing",
+            "current": 0,
+            "target": 5,
+            "completed": false,
+            "updatedAt": "2026-06-02T15:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "no_sugar",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-06-02T15:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "cold_shower",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-06-02T15:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "reflection",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-06-02T15:30:00.000Z",
+            "proofActivityIds": []
+          }
+        ]
+      },
+      {
+        "date": "2026-06-03",
+        "completed": false,
+        "xpEarned": 70,
+        "tasks": [
+          {
+            "taskId": "inbody",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-06-03T16:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "water",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-06-03T16:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_drink_water_20260603"
+            ]
+          },
+          {
+            "taskId": "walk",
+            "current": 0,
+            "target": 10000,
+            "completed": false,
+            "updatedAt": "2026-06-03T16:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "deep_work",
+            "current": 70,
+            "target": 90,
+            "completed": false,
+            "updatedAt": "2026-06-03T16:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "read_book",
+            "current": 10,
+            "target": 20,
+            "completed": false,
+            "updatedAt": "2026-06-03T16:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "breathing",
+            "current": 0,
+            "target": 5,
+            "completed": false,
+            "updatedAt": "2026-06-03T16:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "no_sugar",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-06-03T16:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_no_sugar_challenge_20260603"
+            ]
+          },
+          {
+            "taskId": "cold_shower",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-06-03T16:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "reflection",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-06-03T16:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_reflection_journal_20260603"
+            ]
+          }
+        ]
+      },
+      {
+        "date": "2026-06-04",
+        "completed": false,
+        "xpEarned": 190,
+        "tasks": [
+          {
+            "taskId": "inbody",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-06-04T17:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "water",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-06-04T17:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_drink_water_20260604"
+            ]
+          },
+          {
+            "taskId": "walk",
+            "current": 10000,
+            "target": 10000,
+            "completed": true,
+            "updatedAt": "2026-06-04T17:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_walk_10000_steps_20260604"
+            ]
+          },
+          {
+            "taskId": "deep_work",
+            "current": 90,
+            "target": 90,
+            "completed": true,
+            "updatedAt": "2026-06-04T17:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_deep_work_90m_20260604"
+            ]
+          },
+          {
+            "taskId": "read_book",
+            "current": 20,
+            "target": 20,
+            "completed": true,
+            "updatedAt": "2026-06-04T17:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_read_20_pages_20260604"
+            ]
+          },
+          {
+            "taskId": "breathing",
+            "current": 0,
+            "target": 5,
+            "completed": false,
+            "updatedAt": "2026-06-04T17:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "no_sugar",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-06-04T17:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_no_sugar_challenge_20260604"
+            ]
+          },
+          {
+            "taskId": "cold_shower",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-06-04T17:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "reflection",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-06-04T17:30:00.000Z",
+            "proofActivityIds": []
+          }
+        ]
+      },
+      {
+        "date": "2026-06-05",
+        "completed": false,
+        "xpEarned": 120,
+        "tasks": [
+          {
+            "taskId": "inbody",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-06-05T18:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "water",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-06-05T18:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_drink_water_20260605"
+            ]
+          },
+          {
+            "taskId": "walk",
+            "current": 10000,
+            "target": 10000,
+            "completed": true,
+            "updatedAt": "2026-06-05T18:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_walk_10000_steps_20260605"
+            ]
+          },
+          {
+            "taskId": "deep_work",
+            "current": 70,
+            "target": 90,
+            "completed": false,
+            "updatedAt": "2026-06-05T18:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "read_book",
+            "current": 10,
+            "target": 20,
+            "completed": false,
+            "updatedAt": "2026-06-05T18:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "breathing",
+            "current": 0,
+            "target": 5,
+            "completed": false,
+            "updatedAt": "2026-06-05T18:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "no_sugar",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-06-05T18:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_no_sugar_challenge_20260605"
+            ]
+          },
+          {
+            "taskId": "cold_shower",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-06-05T18:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "reflection",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-06-05T18:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_reflection_journal_20260605"
+            ]
+          }
+        ]
+      },
+      {
+        "date": "2026-06-06",
+        "completed": false,
+        "xpEarned": 60,
+        "tasks": [
+          {
+            "taskId": "inbody",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-06-06T07:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "water",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-06-06T07:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_drink_water_20260606"
+            ]
+          },
+          {
+            "taskId": "walk",
+            "current": 0,
+            "target": 10000,
+            "completed": false,
+            "updatedAt": "2026-06-06T07:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "deep_work",
+            "current": 70,
+            "target": 90,
+            "completed": false,
+            "updatedAt": "2026-06-06T07:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "read_book",
+            "current": 20,
+            "target": 20,
+            "completed": true,
+            "updatedAt": "2026-06-06T07:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_read_20_pages_20260606"
+            ]
+          },
+          {
+            "taskId": "breathing",
+            "current": 0,
+            "target": 5,
+            "completed": false,
+            "updatedAt": "2026-06-06T07:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "no_sugar",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-06-06T07:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "cold_shower",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-06-06T07:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_cold_shower_20260606"
+            ]
+          },
+          {
+            "taskId": "reflection",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-06-06T07:30:00.000Z",
+            "proofActivityIds": []
+          }
+        ]
+      },
+      {
+        "date": "2026-06-07",
+        "completed": false,
+        "xpEarned": 180,
+        "tasks": [
+          {
+            "taskId": "inbody",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-06-07T08:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "water",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-06-07T08:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_drink_water_20260607"
+            ]
+          },
+          {
+            "taskId": "walk",
+            "current": 10000,
+            "target": 10000,
+            "completed": true,
+            "updatedAt": "2026-06-07T08:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_walk_10000_steps_20260607"
+            ]
+          },
+          {
+            "taskId": "deep_work",
+            "current": 90,
+            "target": 90,
+            "completed": true,
+            "updatedAt": "2026-06-07T08:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_deep_work_90m_20260607"
+            ]
+          },
+          {
+            "taskId": "read_book",
+            "current": 10,
+            "target": 20,
+            "completed": false,
+            "updatedAt": "2026-06-07T08:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "breathing",
+            "current": 0,
+            "target": 5,
+            "completed": false,
+            "updatedAt": "2026-06-07T08:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "no_sugar",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-06-07T08:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_no_sugar_challenge_20260607"
+            ]
+          },
+          {
+            "taskId": "cold_shower",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-06-07T08:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "reflection",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-06-07T08:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_reflection_journal_20260607"
+            ]
+          }
+        ]
+      },
+      {
+        "date": "2026-06-08",
+        "completed": false,
+        "xpEarned": 130,
+        "tasks": [
+          {
+            "taskId": "inbody",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-06-08T09:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "water",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-06-08T09:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_drink_water_20260608"
+            ]
+          },
+          {
+            "taskId": "walk",
+            "current": 10000,
+            "target": 10000,
+            "completed": true,
+            "updatedAt": "2026-06-08T09:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_walk_10000_steps_20260608"
+            ]
+          },
+          {
+            "taskId": "deep_work",
+            "current": 70,
+            "target": 90,
+            "completed": false,
+            "updatedAt": "2026-06-08T09:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "read_book",
+            "current": 20,
+            "target": 20,
+            "completed": true,
+            "updatedAt": "2026-06-08T09:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_read_20_pages_20260608"
+            ]
+          },
+          {
+            "taskId": "breathing",
+            "current": 0,
+            "target": 5,
+            "completed": false,
+            "updatedAt": "2026-06-08T09:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "no_sugar",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-06-08T09:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_no_sugar_challenge_20260608"
+            ]
+          },
+          {
+            "taskId": "cold_shower",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-06-08T09:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "reflection",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-06-08T09:30:00.000Z",
+            "proofActivityIds": []
+          }
+        ]
+      },
+      {
+        "date": "2026-06-09",
+        "completed": false,
+        "xpEarned": 70,
+        "tasks": [
+          {
+            "taskId": "inbody",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-06-09T10:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "water",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-06-09T10:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_drink_water_20260609"
+            ]
+          },
+          {
+            "taskId": "walk",
+            "current": 0,
+            "target": 10000,
+            "completed": false,
+            "updatedAt": "2026-06-09T10:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "deep_work",
+            "current": 70,
+            "target": 90,
+            "completed": false,
+            "updatedAt": "2026-06-09T10:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "read_book",
+            "current": 10,
+            "target": 20,
+            "completed": false,
+            "updatedAt": "2026-06-09T10:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "breathing",
+            "current": 0,
+            "target": 5,
+            "completed": false,
+            "updatedAt": "2026-06-09T10:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "no_sugar",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-06-09T10:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_no_sugar_challenge_20260609"
+            ]
+          },
+          {
+            "taskId": "cold_shower",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-06-09T10:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "reflection",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-06-09T10:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_reflection_journal_20260609"
+            ]
+          }
+        ]
+      },
+      {
+        "date": "2026-06-10",
+        "completed": false,
+        "xpEarned": 150,
+        "tasks": [
+          {
+            "taskId": "inbody",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-06-10T11:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "water",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-06-10T11:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_drink_water_20260610"
+            ]
+          },
+          {
+            "taskId": "walk",
+            "current": 10000,
+            "target": 10000,
+            "completed": true,
+            "updatedAt": "2026-06-10T11:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_walk_10000_steps_20260610"
+            ]
+          },
+          {
+            "taskId": "deep_work",
+            "current": 90,
+            "target": 90,
+            "completed": true,
+            "updatedAt": "2026-06-10T11:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_deep_work_90m_20260610"
+            ]
+          },
+          {
+            "taskId": "read_book",
+            "current": 20,
+            "target": 20,
+            "completed": true,
+            "updatedAt": "2026-06-10T11:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_read_20_pages_20260610"
+            ]
+          },
+          {
+            "taskId": "breathing",
+            "current": 0,
+            "target": 5,
+            "completed": false,
+            "updatedAt": "2026-06-10T11:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "no_sugar",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-06-10T11:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "cold_shower",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-06-10T11:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "reflection",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-06-10T11:30:00.000Z",
+            "proofActivityIds": []
+          }
+        ]
+      },
+      {
+        "date": "2026-06-11",
+        "completed": false,
+        "xpEarned": 120,
+        "tasks": [
+          {
+            "taskId": "inbody",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-06-11T12:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "water",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-06-11T12:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_drink_water_20260611"
+            ]
+          },
+          {
+            "taskId": "walk",
+            "current": 10000,
+            "target": 10000,
+            "completed": true,
+            "updatedAt": "2026-06-11T12:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_walk_10000_steps_20260611"
+            ]
+          },
+          {
+            "taskId": "deep_work",
+            "current": 70,
+            "target": 90,
+            "completed": false,
+            "updatedAt": "2026-06-11T12:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "read_book",
+            "current": 10,
+            "target": 20,
+            "completed": false,
+            "updatedAt": "2026-06-11T12:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "breathing",
+            "current": 0,
+            "target": 5,
+            "completed": false,
+            "updatedAt": "2026-06-11T12:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "no_sugar",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-06-11T12:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_no_sugar_challenge_20260611"
+            ]
+          },
+          {
+            "taskId": "cold_shower",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-06-11T12:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "reflection",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-06-11T12:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_reflection_journal_20260611"
+            ]
+          }
+        ]
+      },
+      {
+        "date": "2026-06-12",
+        "completed": false,
+        "xpEarned": 250,
+        "tasks": [
+          {
+            "taskId": "inbody",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-06-12T13:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_import_inbody_20260612"
+            ]
+          },
+          {
+            "taskId": "water",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-06-12T13:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "walk",
+            "current": 0,
+            "target": 10000,
+            "completed": false,
+            "updatedAt": "2026-06-12T13:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "deep_work",
+            "current": 90,
+            "target": 90,
+            "completed": true,
+            "updatedAt": "2026-06-12T13:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_deep_work_90m_20260612"
+            ]
+          },
+          {
+            "taskId": "read_book",
+            "current": 20,
+            "target": 20,
+            "completed": true,
+            "updatedAt": "2026-06-12T13:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_read_20_pages_20260612"
+            ]
+          },
+          {
+            "taskId": "breathing",
+            "current": 0,
+            "target": 5,
+            "completed": false,
+            "updatedAt": "2026-06-12T13:30:00.000Z",
+            "proofActivityIds": []
+          },
+          {
+            "taskId": "no_sugar",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-06-12T13:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_no_sugar_challenge_20260612"
+            ]
+          },
+          {
+            "taskId": "cold_shower",
+            "current": 1,
+            "target": 1,
+            "completed": true,
+            "updatedAt": "2026-06-12T13:30:00.000Z",
+            "proofActivityIds": [
+              "act_sample_cold_shower_20260612"
+            ]
+          },
+          {
+            "taskId": "reflection",
+            "current": 0,
+            "target": 1,
+            "completed": false,
+            "updatedAt": "2026-06-12T13:30:00.000Z",
+            "proofActivityIds": []
+          }
+        ]
+      }
+    ]
+  },
+  "journeys": [
+    {
+      "chapter": 1,
+      "title": {
+        "vi": "Thức Tỉnh",
+        "en": "The Awakening"
+      },
+      "status": "unlocked",
+      "reward": {
+        "chest": "hydration_starter_chest",
+        "coins": 500
+      },
+      "requiredObjectives": [
+        {
+          "activityType": "drink_water",
+          "title": {
+            "vi": "Hoàn thành 30 lần uống nước",
+            "en": "Complete 30 water logs"
+          },
+          "target": 30
+        },
+        {
+          "activityType": "walk_10000_steps",
+          "title": {
+            "vi": "Hoàn thành 20 lần đi bộ 10.000 bước",
+            "en": "Complete 20 walking days"
+          },
+          "target": 20
+        },
+        {
+          "activityType": "deep_work_90m",
+          "title": {
+            "vi": "Hoàn thành 10 Deep Work",
+            "en": "Complete 10 Deep Work sessions"
+          },
+          "target": 10
+        },
+        {
+          "activityType": "read_20_pages",
+          "title": {
+            "vi": "Hoàn thành 10 lần đọc sách",
+            "en": "Complete 10 reading sessions"
+          },
+          "target": 10
+        },
+        {
+          "activityType": "breath_activation",
+          "title": {
+            "vi": "Hoàn thành 5 lần thở sâu",
+            "en": "Complete 5 breath sessions"
+          },
+          "target": 5
+        }
+      ]
+    },
+    {
+      "chapter": 2,
+      "title": {
+        "vi": "Kỷ Luật",
+        "en": "The Discipline"
+      },
+      "status": "unlocked",
+      "reward": {
+        "chest": "discipline_chest",
+        "coins": 800
+      }
+    },
+    {
+      "chapter": 3,
+      "title": {
+        "vi": "Chuyển Hóa",
+        "en": "The Transformation"
+      },
+      "status": "locked",
+      "reward": {
+        "chest": "transformation_chest",
+        "coins": 1200
+      }
+    },
+    {
+      "chapter": 4,
+      "title": {
+        "vi": "Tinh Thông",
+        "en": "The Mastery"
+      },
+      "status": "locked",
+      "reward": {
+        "chest": "mastery_chest",
+        "coins": 1800
+      }
+    },
+    {
+      "chapter": 5,
+      "title": {
+        "vi": "Huyền Thoại",
+        "en": "The Legend"
+      },
+      "status": "locked",
+      "reward": {
+        "chest": "legend_chest",
+        "coins": 2500
+      }
+    }
+  ],
+  "journeyProgress": {
+    "currentChapter": 2,
+    "unlockedChapters": [
+      1,
+      2
+    ],
+    "objectives": [
+      {
+        "chapter": 1,
+        "activityType": "drink_water",
+        "title": {
+          "vi": "Hoàn thành 30 lần uống nước",
+          "en": "Complete 30 water logs"
+        },
+        "current": 30,
+        "target": 30,
+        "completed": true,
+        "updatedAt": "2026-06-12T18:30:00.000Z"
+      },
+      {
+        "chapter": 1,
+        "activityType": "walk_10000_steps",
+        "title": {
+          "vi": "Hoàn thành 20 lần đi bộ 10.000 bước",
+          "en": "Complete 20 walking days"
+        },
+        "current": 20,
+        "target": 20,
+        "completed": true,
+        "updatedAt": "2026-06-12T18:30:00.000Z"
+      },
+      {
+        "chapter": 1,
+        "activityType": "deep_work_90m",
+        "title": {
+          "vi": "Hoàn thành 10 Deep Work",
+          "en": "Complete 10 Deep Work sessions"
+        },
+        "current": 10,
+        "target": 10,
+        "completed": true,
+        "updatedAt": "2026-06-12T18:30:00.000Z"
+      },
+      {
+        "chapter": 1,
+        "activityType": "read_20_pages",
+        "title": {
+          "vi": "Hoàn thành 10 lần đọc sách",
+          "en": "Complete 10 reading sessions"
+        },
+        "current": 10,
+        "target": 10,
+        "completed": true,
+        "updatedAt": "2026-06-12T18:30:00.000Z"
+      },
+      {
+        "chapter": 1,
+        "activityType": "breath_activation",
+        "title": {
+          "vi": "Hoàn thành 5 lần thở sâu",
+          "en": "Complete 5 breath sessions"
+        },
+        "current": 5,
+        "target": 5,
+        "completed": true,
+        "updatedAt": "2026-06-12T18:30:00.000Z"
+      }
+    ]
+  },
+  "rewards": {
+    "claimed": [
+      {
+        "id": "reward_chapter_1_sample",
+        "chapter": 1,
+        "type": "chapter_unlock",
+        "name": {
+          "vi": "Rương Chapter 1 + 500 xu",
+          "en": "Chapter 1 Chest + 500 coins"
+        },
+        "coins": 500,
+        "chest": "hydration_starter_chest",
+        "claimedAt": "2026-06-12T18:30:00.000Z"
+      }
+    ]
+  },
+  "activityLog": [
+    {
+      "id": "act_sample_cold_shower_20260612",
+      "userId": "le-xuan-khanh-sample",
+      "type": "cold_shower",
+      "taskId": "cold_shower",
+      "timestamp": "2026-06-12T12:30:00.000Z",
+      "value": 1,
+      "xpEarned": 20,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_no_sugar_challenge_20260612",
+      "userId": "le-xuan-khanh-sample",
+      "type": "no_sugar_challenge",
+      "taskId": "no_sugar",
+      "timestamp": "2026-06-12T09:30:00.000Z",
+      "value": 1,
+      "xpEarned": 40,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_read_20_pages_20260612",
+      "userId": "le-xuan-khanh-sample",
+      "type": "read_20_pages",
+      "taskId": "read_book",
+      "timestamp": "2026-06-12T10:30:00.000Z",
+      "value": 20,
+      "xpEarned": 30,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_deep_work_90m_20260612",
+      "userId": "le-xuan-khanh-sample",
+      "type": "deep_work_90m",
+      "taskId": "deep_work",
+      "timestamp": "2026-06-12T10:30:00.000Z",
+      "value": 90,
+      "xpEarned": 60,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_import_inbody_20260612",
+      "userId": "le-xuan-khanh-sample",
+      "type": "import_inbody",
+      "taskId": "inbody",
+      "timestamp": "2026-06-12T07:30:00.000Z",
+      "value": 1,
+      "xpEarned": 100,
+      "proofImage": "/sample-upload/le-xuan-khanh/2026-06-12/inbody-proof.jpg",
+      "proofId": "proof_act_sample_import_inbody_20260612",
+      "uploadPath": "upload/le-xuan-khanh-sample/health-journey/2026-06-12/inbody-proof.jpg"
+    },
+    {
+      "id": "act_sample_reflection_journal_20260611",
+      "userId": "le-xuan-khanh-sample",
+      "type": "reflection_journal",
+      "taskId": "reflection",
+      "timestamp": "2026-06-11T10:23:00.000Z",
+      "value": 1,
+      "xpEarned": 20,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_no_sugar_challenge_20260611",
+      "userId": "le-xuan-khanh-sample",
+      "type": "no_sugar_challenge",
+      "taskId": "no_sugar",
+      "timestamp": "2026-06-11T08:23:00.000Z",
+      "value": 1,
+      "xpEarned": 40,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_walk_10000_steps_20260611",
+      "userId": "le-xuan-khanh-sample",
+      "type": "walk_10000_steps",
+      "taskId": "walk",
+      "timestamp": "2026-06-11T16:23:00.000Z",
+      "value": 10000,
+      "xpEarned": 50,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_drink_water_20260611",
+      "userId": "le-xuan-khanh-sample",
+      "type": "drink_water",
+      "taskId": "water",
+      "timestamp": "2026-06-11T17:23:00.000Z",
+      "value": 1,
+      "xpEarned": 10,
+      "proofImage": "/sample-upload/le-xuan-khanh/2026-06-11/water-proof.jpg",
+      "proofId": "proof_act_sample_drink_water_20260611",
+      "uploadPath": "upload/le-xuan-khanh-sample/health-journey/2026-06-11/water-proof.jpg"
+    },
+    {
+      "id": "act_sample_read_20_pages_20260610",
+      "userId": "le-xuan-khanh-sample",
+      "type": "read_20_pages",
+      "taskId": "read_book",
+      "timestamp": "2026-06-10T08:16:00.000Z",
+      "value": 20,
+      "xpEarned": 30,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_deep_work_90m_20260610",
+      "userId": "le-xuan-khanh-sample",
+      "type": "deep_work_90m",
+      "taskId": "deep_work",
+      "timestamp": "2026-06-10T08:16:00.000Z",
+      "value": 90,
+      "xpEarned": 60,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_walk_10000_steps_20260610",
+      "userId": "le-xuan-khanh-sample",
+      "type": "walk_10000_steps",
+      "taskId": "walk",
+      "timestamp": "2026-06-10T15:16:00.000Z",
+      "value": 10000,
+      "xpEarned": 50,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_drink_water_20260610",
+      "userId": "le-xuan-khanh-sample",
+      "type": "drink_water",
+      "taskId": "water",
+      "timestamp": "2026-06-10T16:16:00.000Z",
+      "value": 1,
+      "xpEarned": 10,
+      "proofImage": "/sample-upload/le-xuan-khanh/2026-06-10/water-proof.jpg",
+      "proofId": "proof_act_sample_drink_water_20260610",
+      "uploadPath": "upload/le-xuan-khanh-sample/health-journey/2026-06-10/water-proof.jpg"
+    },
+    {
+      "id": "act_sample_reflection_journal_20260609",
+      "userId": "le-xuan-khanh-sample",
+      "type": "reflection_journal",
+      "taskId": "reflection",
+      "timestamp": "2026-06-09T08:09:00.000Z",
+      "value": 1,
+      "xpEarned": 20,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_no_sugar_challenge_20260609",
+      "userId": "le-xuan-khanh-sample",
+      "type": "no_sugar_challenge",
+      "taskId": "no_sugar",
+      "timestamp": "2026-06-09T18:09:00.000Z",
+      "value": 1,
+      "xpEarned": 40,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_drink_water_20260609",
+      "userId": "le-xuan-khanh-sample",
+      "type": "drink_water",
+      "taskId": "water",
+      "timestamp": "2026-06-09T15:09:00.000Z",
+      "value": 1,
+      "xpEarned": 10,
+      "proofImage": "/sample-upload/le-xuan-khanh/2026-06-09/water-proof.jpg",
+      "proofId": "proof_act_sample_drink_water_20260609",
+      "uploadPath": "upload/le-xuan-khanh-sample/health-journey/2026-06-09/water-proof.jpg"
+    },
+    {
+      "id": "act_sample_no_sugar_challenge_20260608",
+      "userId": "le-xuan-khanh-sample",
+      "type": "no_sugar_challenge",
+      "taskId": "no_sugar",
+      "timestamp": "2026-06-08T17:02:00.000Z",
+      "value": 1,
+      "xpEarned": 40,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_read_20_pages_20260608",
+      "userId": "le-xuan-khanh-sample",
+      "type": "read_20_pages",
+      "taskId": "read_book",
+      "timestamp": "2026-06-08T18:02:00.000Z",
+      "value": 20,
+      "xpEarned": 30,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_walk_10000_steps_20260608",
+      "userId": "le-xuan-khanh-sample",
+      "type": "walk_10000_steps",
+      "taskId": "walk",
+      "timestamp": "2026-06-08T13:02:00.000Z",
+      "value": 10000,
+      "xpEarned": 50,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_drink_water_20260608",
+      "userId": "le-xuan-khanh-sample",
+      "type": "drink_water",
+      "taskId": "water",
+      "timestamp": "2026-06-08T14:02:00.000Z",
+      "value": 1,
+      "xpEarned": 10,
+      "proofImage": "/sample-upload/le-xuan-khanh/2026-06-08/water-proof.jpg",
+      "proofId": "proof_act_sample_drink_water_20260608",
+      "uploadPath": "upload/le-xuan-khanh-sample/health-journey/2026-06-08/water-proof.jpg"
+    },
+    {
+      "id": "act_sample_reflection_journal_20260607",
+      "userId": "le-xuan-khanh-sample",
+      "type": "reflection_journal",
+      "taskId": "reflection",
+      "timestamp": "2026-06-07T18:55:00.000Z",
+      "value": 1,
+      "xpEarned": 20,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_no_sugar_challenge_20260607",
+      "userId": "le-xuan-khanh-sample",
+      "type": "no_sugar_challenge",
+      "taskId": "no_sugar",
+      "timestamp": "2026-06-07T16:55:00.000Z",
+      "value": 1,
+      "xpEarned": 40,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_deep_work_90m_20260607",
+      "userId": "le-xuan-khanh-sample",
+      "type": "deep_work_90m",
+      "taskId": "deep_work",
+      "timestamp": "2026-06-07T17:55:00.000Z",
+      "value": 90,
+      "xpEarned": 60,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_walk_10000_steps_20260607",
+      "userId": "le-xuan-khanh-sample",
+      "type": "walk_10000_steps",
+      "taskId": "walk",
+      "timestamp": "2026-06-07T12:55:00.000Z",
+      "value": 10000,
+      "xpEarned": 50,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_drink_water_20260607",
+      "userId": "le-xuan-khanh-sample",
+      "type": "drink_water",
+      "taskId": "water",
+      "timestamp": "2026-06-07T13:55:00.000Z",
+      "value": 1,
+      "xpEarned": 10,
+      "proofImage": "/sample-upload/le-xuan-khanh/2026-06-07/water-proof.jpg",
+      "proofId": "proof_act_sample_drink_water_20260607",
+      "uploadPath": "upload/le-xuan-khanh-sample/health-journey/2026-06-07/water-proof.jpg"
+    },
+    {
+      "id": "act_sample_cold_shower_20260606",
+      "userId": "le-xuan-khanh-sample",
+      "type": "cold_shower",
+      "taskId": "cold_shower",
+      "timestamp": "2026-06-06T18:48:00.000Z",
+      "value": 1,
+      "xpEarned": 20,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_read_20_pages_20260606",
+      "userId": "le-xuan-khanh-sample",
+      "type": "read_20_pages",
+      "taskId": "read_book",
+      "timestamp": "2026-06-06T16:48:00.000Z",
+      "value": 20,
+      "xpEarned": 30,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_drink_water_20260606",
+      "userId": "le-xuan-khanh-sample",
+      "type": "drink_water",
+      "taskId": "water",
+      "timestamp": "2026-06-06T12:48:00.000Z",
+      "value": 1,
+      "xpEarned": 10,
+      "proofImage": "/sample-upload/le-xuan-khanh/2026-06-06/water-proof.jpg",
+      "proofId": "proof_act_sample_drink_water_20260606",
+      "uploadPath": "upload/le-xuan-khanh-sample/health-journey/2026-06-06/water-proof.jpg"
+    },
+    {
+      "id": "act_sample_reflection_journal_20260605",
+      "userId": "le-xuan-khanh-sample",
+      "type": "reflection_journal",
+      "taskId": "reflection",
+      "timestamp": "2026-06-05T16:41:00.000Z",
+      "value": 1,
+      "xpEarned": 20,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_no_sugar_challenge_20260605",
+      "userId": "le-xuan-khanh-sample",
+      "type": "no_sugar_challenge",
+      "taskId": "no_sugar",
+      "timestamp": "2026-06-05T14:41:00.000Z",
+      "value": 1,
+      "xpEarned": 40,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_walk_10000_steps_20260605",
+      "userId": "le-xuan-khanh-sample",
+      "type": "walk_10000_steps",
+      "taskId": "walk",
+      "timestamp": "2026-06-05T10:41:00.000Z",
+      "value": 10000,
+      "xpEarned": 50,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_drink_water_20260605",
+      "userId": "le-xuan-khanh-sample",
+      "type": "drink_water",
+      "taskId": "water",
+      "timestamp": "2026-06-05T11:41:00.000Z",
+      "value": 1,
+      "xpEarned": 10,
+      "proofImage": "/sample-upload/le-xuan-khanh/2026-06-05/water-proof.jpg",
+      "proofId": "proof_act_sample_drink_water_20260605",
+      "uploadPath": "upload/le-xuan-khanh-sample/health-journey/2026-06-05/water-proof.jpg"
+    },
+    {
+      "id": "act_sample_no_sugar_challenge_20260604",
+      "userId": "le-xuan-khanh-sample",
+      "type": "no_sugar_challenge",
+      "taskId": "no_sugar",
+      "timestamp": "2026-06-04T13:34:00.000Z",
+      "value": 1,
+      "xpEarned": 40,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_read_20_pages_20260604",
+      "userId": "le-xuan-khanh-sample",
+      "type": "read_20_pages",
+      "taskId": "read_book",
+      "timestamp": "2026-06-04T14:34:00.000Z",
+      "value": 20,
+      "xpEarned": 30,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_deep_work_90m_20260604",
+      "userId": "le-xuan-khanh-sample",
+      "type": "deep_work_90m",
+      "taskId": "deep_work",
+      "timestamp": "2026-06-04T14:34:00.000Z",
+      "value": 90,
+      "xpEarned": 60,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_walk_10000_steps_20260604",
+      "userId": "le-xuan-khanh-sample",
+      "type": "walk_10000_steps",
+      "taskId": "walk",
+      "timestamp": "2026-06-04T09:34:00.000Z",
+      "value": 10000,
+      "xpEarned": 50,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_drink_water_20260604",
+      "userId": "le-xuan-khanh-sample",
+      "type": "drink_water",
+      "taskId": "water",
+      "timestamp": "2026-06-04T10:34:00.000Z",
+      "value": 1,
+      "xpEarned": 10,
+      "proofImage": "/sample-upload/le-xuan-khanh/2026-06-04/water-proof.jpg",
+      "proofId": "proof_act_sample_drink_water_20260604",
+      "uploadPath": "upload/le-xuan-khanh-sample/health-journey/2026-06-04/water-proof.jpg"
+    },
+    {
+      "id": "act_sample_reflection_journal_20260603",
+      "userId": "le-xuan-khanh-sample",
+      "type": "reflection_journal",
+      "taskId": "reflection",
+      "timestamp": "2026-06-03T14:27:00.000Z",
+      "value": 1,
+      "xpEarned": 20,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_no_sugar_challenge_20260603",
+      "userId": "le-xuan-khanh-sample",
+      "type": "no_sugar_challenge",
+      "taskId": "no_sugar",
+      "timestamp": "2026-06-03T12:27:00.000Z",
+      "value": 1,
+      "xpEarned": 40,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_drink_water_20260603",
+      "userId": "le-xuan-khanh-sample",
+      "type": "drink_water",
+      "taskId": "water",
+      "timestamp": "2026-06-03T09:27:00.000Z",
+      "value": 1,
+      "xpEarned": 10,
+      "proofImage": "/sample-upload/le-xuan-khanh/2026-06-03/water-proof.jpg",
+      "proofId": "proof_act_sample_drink_water_20260603",
+      "uploadPath": "upload/le-xuan-khanh-sample/health-journey/2026-06-03/water-proof.jpg"
+    },
+    {
+      "id": "act_sample_read_20_pages_20260602",
+      "userId": "le-xuan-khanh-sample",
+      "type": "read_20_pages",
+      "taskId": "read_book",
+      "timestamp": "2026-06-02T12:20:00.000Z",
+      "value": 20,
+      "xpEarned": 30,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_deep_work_90m_20260602",
+      "userId": "le-xuan-khanh-sample",
+      "type": "deep_work_90m",
+      "taskId": "deep_work",
+      "timestamp": "2026-06-02T12:20:00.000Z",
+      "value": 90,
+      "xpEarned": 60,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_walk_10000_steps_20260602",
+      "userId": "le-xuan-khanh-sample",
+      "type": "walk_10000_steps",
+      "taskId": "walk",
+      "timestamp": "2026-06-02T07:20:00.000Z",
+      "value": 10000,
+      "xpEarned": 50,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_drink_water_20260602",
+      "userId": "le-xuan-khanh-sample",
+      "type": "drink_water",
+      "taskId": "water",
+      "timestamp": "2026-06-02T08:20:00.000Z",
+      "value": 1,
+      "xpEarned": 10,
+      "proofImage": "/sample-upload/le-xuan-khanh/2026-06-02/water-proof.jpg",
+      "proofId": "proof_act_sample_drink_water_20260602",
+      "uploadPath": "upload/le-xuan-khanh-sample/health-journey/2026-06-02/water-proof.jpg"
+    },
+    {
+      "id": "act_sample_reflection_journal_20260601",
+      "userId": "le-xuan-khanh-sample",
+      "type": "reflection_journal",
+      "taskId": "reflection",
+      "timestamp": "2026-06-01T12:13:00.000Z",
+      "value": 1,
+      "xpEarned": 20,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_no_sugar_challenge_20260601",
+      "userId": "le-xuan-khanh-sample",
+      "type": "no_sugar_challenge",
+      "taskId": "no_sugar",
+      "timestamp": "2026-06-01T10:13:00.000Z",
+      "value": 1,
+      "xpEarned": 40,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_deep_work_90m_20260601",
+      "userId": "le-xuan-khanh-sample",
+      "type": "deep_work_90m",
+      "taskId": "deep_work",
+      "timestamp": "2026-06-01T11:13:00.000Z",
+      "value": 90,
+      "xpEarned": 60,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_walk_10000_steps_20260601",
+      "userId": "le-xuan-khanh-sample",
+      "type": "walk_10000_steps",
+      "taskId": "walk",
+      "timestamp": "2026-06-01T18:13:00.000Z",
+      "value": 10000,
+      "xpEarned": 50,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_drink_water_20260601",
+      "userId": "le-xuan-khanh-sample",
+      "type": "drink_water",
+      "taskId": "water",
+      "timestamp": "2026-06-01T07:13:00.000Z",
+      "value": 1,
+      "xpEarned": 10,
+      "proofImage": "/sample-upload/le-xuan-khanh/2026-06-01/water-proof.jpg",
+      "proofId": "proof_act_sample_drink_water_20260601",
+      "uploadPath": "upload/le-xuan-khanh-sample/health-journey/2026-06-01/water-proof.jpg"
+    },
+    {
+      "id": "act_sample_cold_shower_20260531",
+      "userId": "le-xuan-khanh-sample",
+      "type": "cold_shower",
+      "taskId": "cold_shower",
+      "timestamp": "2026-05-31T12:06:00.000Z",
+      "value": 1,
+      "xpEarned": 20,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_no_sugar_challenge_20260531",
+      "userId": "le-xuan-khanh-sample",
+      "type": "no_sugar_challenge",
+      "taskId": "no_sugar",
+      "timestamp": "2026-05-31T09:06:00.000Z",
+      "value": 1,
+      "xpEarned": 40,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_read_20_pages_20260531",
+      "userId": "le-xuan-khanh-sample",
+      "type": "read_20_pages",
+      "taskId": "read_book",
+      "timestamp": "2026-05-31T10:06:00.000Z",
+      "value": 20,
+      "xpEarned": 30,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_drink_water_20260531",
+      "userId": "le-xuan-khanh-sample",
+      "type": "drink_water",
+      "taskId": "water",
+      "timestamp": "2026-05-31T18:06:00.000Z",
+      "value": 1,
+      "xpEarned": 10,
+      "proofImage": "/sample-upload/le-xuan-khanh/2026-05-31/water-proof.jpg",
+      "proofId": "proof_act_sample_drink_water_20260531",
+      "uploadPath": "upload/le-xuan-khanh-sample/health-journey/2026-05-31/water-proof.jpg"
+    },
+    {
+      "id": "act_sample_reflection_journal_20260530",
+      "userId": "le-xuan-khanh-sample",
+      "type": "reflection_journal",
+      "taskId": "reflection",
+      "timestamp": "2026-05-30T10:59:00.000Z",
+      "value": 1,
+      "xpEarned": 20,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_no_sugar_challenge_20260530",
+      "userId": "le-xuan-khanh-sample",
+      "type": "no_sugar_challenge",
+      "taskId": "no_sugar",
+      "timestamp": "2026-05-30T08:59:00.000Z",
+      "value": 1,
+      "xpEarned": 40,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_walk_10000_steps_20260530",
+      "userId": "le-xuan-khanh-sample",
+      "type": "walk_10000_steps",
+      "taskId": "walk",
+      "timestamp": "2026-05-30T16:59:00.000Z",
+      "value": 10000,
+      "xpEarned": 50,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_drink_water_20260530",
+      "userId": "le-xuan-khanh-sample",
+      "type": "drink_water",
+      "taskId": "water",
+      "timestamp": "2026-05-30T17:59:00.000Z",
+      "value": 1,
+      "xpEarned": 10,
+      "proofImage": "/sample-upload/le-xuan-khanh/2026-05-30/water-proof.jpg",
+      "proofId": "proof_act_sample_drink_water_20260530",
+      "uploadPath": "upload/le-xuan-khanh-sample/health-journey/2026-05-30/water-proof.jpg"
+    },
+    {
+      "id": "act_sample_read_20_pages_20260529",
+      "userId": "le-xuan-khanh-sample",
+      "type": "read_20_pages",
+      "taskId": "read_book",
+      "timestamp": "2026-05-29T08:52:00.000Z",
+      "value": 20,
+      "xpEarned": 30,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_deep_work_90m_20260529",
+      "userId": "le-xuan-khanh-sample",
+      "type": "deep_work_90m",
+      "taskId": "deep_work",
+      "timestamp": "2026-05-29T08:52:00.000Z",
+      "value": 90,
+      "xpEarned": 60,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_walk_10000_steps_20260529",
+      "userId": "le-xuan-khanh-sample",
+      "type": "walk_10000_steps",
+      "taskId": "walk",
+      "timestamp": "2026-05-29T15:52:00.000Z",
+      "value": 10000,
+      "xpEarned": 50,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_drink_water_20260529",
+      "userId": "le-xuan-khanh-sample",
+      "type": "drink_water",
+      "taskId": "water",
+      "timestamp": "2026-05-29T16:52:00.000Z",
+      "value": 1,
+      "xpEarned": 10,
+      "proofImage": "/sample-upload/le-xuan-khanh/2026-05-29/water-proof.jpg",
+      "proofId": "proof_act_sample_drink_water_20260529",
+      "uploadPath": "upload/le-xuan-khanh-sample/health-journey/2026-05-29/water-proof.jpg"
+    },
+    {
+      "id": "act_sample_reflection_journal_20260528",
+      "userId": "le-xuan-khanh-sample",
+      "type": "reflection_journal",
+      "taskId": "reflection",
+      "timestamp": "2026-05-28T08:45:00.000Z",
+      "value": 1,
+      "xpEarned": 20,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_no_sugar_challenge_20260528",
+      "userId": "le-xuan-khanh-sample",
+      "type": "no_sugar_challenge",
+      "taskId": "no_sugar",
+      "timestamp": "2026-05-28T18:45:00.000Z",
+      "value": 1,
+      "xpEarned": 40,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_deep_work_90m_20260528",
+      "userId": "le-xuan-khanh-sample",
+      "type": "deep_work_90m",
+      "taskId": "deep_work",
+      "timestamp": "2026-05-28T07:45:00.000Z",
+      "value": 90,
+      "xpEarned": 60,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_drink_water_20260528",
+      "userId": "le-xuan-khanh-sample",
+      "type": "drink_water",
+      "taskId": "water",
+      "timestamp": "2026-05-28T15:45:00.000Z",
+      "value": 1,
+      "xpEarned": 10,
+      "proofImage": "/sample-upload/le-xuan-khanh/2026-05-28/water-proof.jpg",
+      "proofId": "proof_act_sample_drink_water_20260528",
+      "uploadPath": "upload/le-xuan-khanh-sample/health-journey/2026-05-28/water-proof.jpg"
+    },
+    {
+      "id": "act_sample_no_sugar_challenge_20260527",
+      "userId": "le-xuan-khanh-sample",
+      "type": "no_sugar_challenge",
+      "taskId": "no_sugar",
+      "timestamp": "2026-05-27T17:38:00.000Z",
+      "value": 1,
+      "xpEarned": 40,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_read_20_pages_20260527",
+      "userId": "le-xuan-khanh-sample",
+      "type": "read_20_pages",
+      "taskId": "read_book",
+      "timestamp": "2026-05-27T18:38:00.000Z",
+      "value": 20,
+      "xpEarned": 30,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_walk_10000_steps_20260527",
+      "userId": "le-xuan-khanh-sample",
+      "type": "walk_10000_steps",
+      "taskId": "walk",
+      "timestamp": "2026-05-27T13:38:00.000Z",
+      "value": 10000,
+      "xpEarned": 50,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_drink_water_20260527",
+      "userId": "le-xuan-khanh-sample",
+      "type": "drink_water",
+      "taskId": "water",
+      "timestamp": "2026-05-27T14:38:00.000Z",
+      "value": 1,
+      "xpEarned": 10,
+      "proofImage": "/sample-upload/le-xuan-khanh/2026-05-27/water-proof.jpg",
+      "proofId": "proof_act_sample_drink_water_20260527",
+      "uploadPath": "upload/le-xuan-khanh-sample/health-journey/2026-05-27/water-proof.jpg"
+    },
+    {
+      "id": "act_sample_reflection_journal_20260526",
+      "userId": "le-xuan-khanh-sample",
+      "type": "reflection_journal",
+      "taskId": "reflection",
+      "timestamp": "2026-05-26T18:31:00.000Z",
+      "value": 1,
+      "xpEarned": 20,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_no_sugar_challenge_20260526",
+      "userId": "le-xuan-khanh-sample",
+      "type": "no_sugar_challenge",
+      "taskId": "no_sugar",
+      "timestamp": "2026-05-26T16:31:00.000Z",
+      "value": 1,
+      "xpEarned": 40,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_deep_work_90m_20260526",
+      "userId": "le-xuan-khanh-sample",
+      "type": "deep_work_90m",
+      "taskId": "deep_work",
+      "timestamp": "2026-05-26T17:31:00.000Z",
+      "value": 90,
+      "xpEarned": 60,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_walk_10000_steps_20260526",
+      "userId": "le-xuan-khanh-sample",
+      "type": "walk_10000_steps",
+      "taskId": "walk",
+      "timestamp": "2026-05-26T12:31:00.000Z",
+      "value": 10000,
+      "xpEarned": 50,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_drink_water_20260526",
+      "userId": "le-xuan-khanh-sample",
+      "type": "drink_water",
+      "taskId": "water",
+      "timestamp": "2026-05-26T13:31:00.000Z",
+      "value": 1,
+      "xpEarned": 10,
+      "proofImage": "/sample-upload/le-xuan-khanh/2026-05-26/water-proof.jpg",
+      "proofId": "proof_act_sample_drink_water_20260526",
+      "uploadPath": "upload/le-xuan-khanh-sample/health-journey/2026-05-26/water-proof.jpg"
+    },
+    {
+      "id": "act_sample_cold_shower_20260525",
+      "userId": "le-xuan-khanh-sample",
+      "type": "cold_shower",
+      "taskId": "cold_shower",
+      "timestamp": "2026-05-25T18:24:00.000Z",
+      "value": 1,
+      "xpEarned": 20,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_read_20_pages_20260525",
+      "userId": "le-xuan-khanh-sample",
+      "type": "read_20_pages",
+      "taskId": "read_book",
+      "timestamp": "2026-05-25T16:24:00.000Z",
+      "value": 20,
+      "xpEarned": 30,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_drink_water_20260525",
+      "userId": "le-xuan-khanh-sample",
+      "type": "drink_water",
+      "taskId": "water",
+      "timestamp": "2026-05-25T12:24:00.000Z",
+      "value": 1,
+      "xpEarned": 10,
+      "proofImage": "/sample-upload/le-xuan-khanh/2026-05-25/water-proof.jpg",
+      "proofId": "proof_act_sample_drink_water_20260525",
+      "uploadPath": "upload/le-xuan-khanh-sample/health-journey/2026-05-25/water-proof.jpg"
+    },
+    {
+      "id": "act_sample_reflection_journal_20260524",
+      "userId": "le-xuan-khanh-sample",
+      "type": "reflection_journal",
+      "taskId": "reflection",
+      "timestamp": "2026-05-24T16:17:00.000Z",
+      "value": 1,
+      "xpEarned": 20,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_no_sugar_challenge_20260524",
+      "userId": "le-xuan-khanh-sample",
+      "type": "no_sugar_challenge",
+      "taskId": "no_sugar",
+      "timestamp": "2026-05-24T14:17:00.000Z",
+      "value": 1,
+      "xpEarned": 40,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_walk_10000_steps_20260524",
+      "userId": "le-xuan-khanh-sample",
+      "type": "walk_10000_steps",
+      "taskId": "walk",
+      "timestamp": "2026-05-24T10:17:00.000Z",
+      "value": 10000,
+      "xpEarned": 50,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_drink_water_20260524",
+      "userId": "le-xuan-khanh-sample",
+      "type": "drink_water",
+      "taskId": "water",
+      "timestamp": "2026-05-24T11:17:00.000Z",
+      "value": 1,
+      "xpEarned": 10,
+      "proofImage": "/sample-upload/le-xuan-khanh/2026-05-24/water-proof.jpg",
+      "proofId": "proof_act_sample_drink_water_20260524",
+      "uploadPath": "upload/le-xuan-khanh-sample/health-journey/2026-05-24/water-proof.jpg"
+    },
+    {
+      "id": "act_sample_no_sugar_challenge_20260523",
+      "userId": "le-xuan-khanh-sample",
+      "type": "no_sugar_challenge",
+      "taskId": "no_sugar",
+      "timestamp": "2026-05-23T13:10:00.000Z",
+      "value": 1,
+      "xpEarned": 40,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_read_20_pages_20260523",
+      "userId": "le-xuan-khanh-sample",
+      "type": "read_20_pages",
+      "taskId": "read_book",
+      "timestamp": "2026-05-23T14:10:00.000Z",
+      "value": 20,
+      "xpEarned": 30,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_deep_work_90m_20260523",
+      "userId": "le-xuan-khanh-sample",
+      "type": "deep_work_90m",
+      "taskId": "deep_work",
+      "timestamp": "2026-05-23T14:10:00.000Z",
+      "value": 90,
+      "xpEarned": 60,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_walk_10000_steps_20260523",
+      "userId": "le-xuan-khanh-sample",
+      "type": "walk_10000_steps",
+      "taskId": "walk",
+      "timestamp": "2026-05-23T09:10:00.000Z",
+      "value": 10000,
+      "xpEarned": 50,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_drink_water_20260523",
+      "userId": "le-xuan-khanh-sample",
+      "type": "drink_water",
+      "taskId": "water",
+      "timestamp": "2026-05-23T10:10:00.000Z",
+      "value": 1,
+      "xpEarned": 10,
+      "proofImage": "/sample-upload/le-xuan-khanh/2026-05-23/water-proof.jpg",
+      "proofId": "proof_act_sample_drink_water_20260523",
+      "uploadPath": "upload/le-xuan-khanh-sample/health-journey/2026-05-23/water-proof.jpg"
+    },
+    {
+      "id": "act_sample_reflection_journal_20260522",
+      "userId": "le-xuan-khanh-sample",
+      "type": "reflection_journal",
+      "taskId": "reflection",
+      "timestamp": "2026-05-22T14:03:00.000Z",
+      "value": 1,
+      "xpEarned": 20,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_no_sugar_challenge_20260522",
+      "userId": "le-xuan-khanh-sample",
+      "type": "no_sugar_challenge",
+      "taskId": "no_sugar",
+      "timestamp": "2026-05-22T12:03:00.000Z",
+      "value": 1,
+      "xpEarned": 40,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_drink_water_20260522",
+      "userId": "le-xuan-khanh-sample",
+      "type": "drink_water",
+      "taskId": "water",
+      "timestamp": "2026-05-22T09:03:00.000Z",
+      "value": 1,
+      "xpEarned": 10,
+      "proofImage": "/sample-upload/le-xuan-khanh/2026-05-22/water-proof.jpg",
+      "proofId": "proof_act_sample_drink_water_20260522",
+      "uploadPath": "upload/le-xuan-khanh-sample/health-journey/2026-05-22/water-proof.jpg"
+    },
+    {
+      "id": "act_sample_read_20_pages_20260521",
+      "userId": "le-xuan-khanh-sample",
+      "type": "read_20_pages",
+      "taskId": "read_book",
+      "timestamp": "2026-05-21T12:56:00.000Z",
+      "value": 20,
+      "xpEarned": 30,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_walk_10000_steps_20260521",
+      "userId": "le-xuan-khanh-sample",
+      "type": "walk_10000_steps",
+      "taskId": "walk",
+      "timestamp": "2026-05-21T07:56:00.000Z",
+      "value": 10000,
+      "xpEarned": 50,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_drink_water_20260521",
+      "userId": "le-xuan-khanh-sample",
+      "type": "drink_water",
+      "taskId": "water",
+      "timestamp": "2026-05-21T08:56:00.000Z",
+      "value": 1,
+      "xpEarned": 10,
+      "proofImage": "/sample-upload/le-xuan-khanh/2026-05-21/water-proof.jpg",
+      "proofId": "proof_act_sample_drink_water_20260521",
+      "uploadPath": "upload/le-xuan-khanh-sample/health-journey/2026-05-21/water-proof.jpg"
+    },
+    {
+      "id": "act_sample_reflection_journal_20260520",
+      "userId": "le-xuan-khanh-sample",
+      "type": "reflection_journal",
+      "taskId": "reflection",
+      "timestamp": "2026-05-20T12:49:00.000Z",
+      "value": 1,
+      "xpEarned": 20,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_no_sugar_challenge_20260520",
+      "userId": "le-xuan-khanh-sample",
+      "type": "no_sugar_challenge",
+      "taskId": "no_sugar",
+      "timestamp": "2026-05-20T10:49:00.000Z",
+      "value": 1,
+      "xpEarned": 40,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_deep_work_90m_20260520",
+      "userId": "le-xuan-khanh-sample",
+      "type": "deep_work_90m",
+      "taskId": "deep_work",
+      "timestamp": "2026-05-20T11:49:00.000Z",
+      "value": 90,
+      "xpEarned": 60,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_walk_10000_steps_20260520",
+      "userId": "le-xuan-khanh-sample",
+      "type": "walk_10000_steps",
+      "taskId": "walk",
+      "timestamp": "2026-05-20T18:49:00.000Z",
+      "value": 10000,
+      "xpEarned": 50,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_drink_water_20260520",
+      "userId": "le-xuan-khanh-sample",
+      "type": "drink_water",
+      "taskId": "water",
+      "timestamp": "2026-05-20T07:49:00.000Z",
+      "value": 1,
+      "xpEarned": 10,
+      "proofImage": "/sample-upload/le-xuan-khanh/2026-05-20/water-proof.jpg",
+      "proofId": "proof_act_sample_drink_water_20260520",
+      "uploadPath": "upload/le-xuan-khanh-sample/health-journey/2026-05-20/water-proof.jpg"
+    },
+    {
+      "id": "act_sample_cold_shower_20260519",
+      "userId": "le-xuan-khanh-sample",
+      "type": "cold_shower",
+      "taskId": "cold_shower",
+      "timestamp": "2026-05-19T12:42:00.000Z",
+      "value": 1,
+      "xpEarned": 20,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_no_sugar_challenge_20260519",
+      "userId": "le-xuan-khanh-sample",
+      "type": "no_sugar_challenge",
+      "taskId": "no_sugar",
+      "timestamp": "2026-05-19T09:42:00.000Z",
+      "value": 1,
+      "xpEarned": 40,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_read_20_pages_20260519",
+      "userId": "le-xuan-khanh-sample",
+      "type": "read_20_pages",
+      "taskId": "read_book",
+      "timestamp": "2026-05-19T10:42:00.000Z",
+      "value": 20,
+      "xpEarned": 30,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_drink_water_20260519",
+      "userId": "le-xuan-khanh-sample",
+      "type": "drink_water",
+      "taskId": "water",
+      "timestamp": "2026-05-19T18:42:00.000Z",
+      "value": 1,
+      "xpEarned": 10,
+      "proofImage": "/sample-upload/le-xuan-khanh/2026-05-19/water-proof.jpg",
+      "proofId": "proof_act_sample_drink_water_20260519",
+      "uploadPath": "upload/le-xuan-khanh-sample/health-journey/2026-05-19/water-proof.jpg"
+    },
+    {
+      "id": "act_sample_reflection_journal_20260518",
+      "userId": "le-xuan-khanh-sample",
+      "type": "reflection_journal",
+      "taskId": "reflection",
+      "timestamp": "2026-05-18T10:35:00.000Z",
+      "value": 1,
+      "xpEarned": 20,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_no_sugar_challenge_20260518",
+      "userId": "le-xuan-khanh-sample",
+      "type": "no_sugar_challenge",
+      "taskId": "no_sugar",
+      "timestamp": "2026-05-18T08:35:00.000Z",
+      "value": 1,
+      "xpEarned": 40,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_deep_work_90m_20260518",
+      "userId": "le-xuan-khanh-sample",
+      "type": "deep_work_90m",
+      "taskId": "deep_work",
+      "timestamp": "2026-05-18T09:35:00.000Z",
+      "value": 90,
+      "xpEarned": 60,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_walk_10000_steps_20260518",
+      "userId": "le-xuan-khanh-sample",
+      "type": "walk_10000_steps",
+      "taskId": "walk",
+      "timestamp": "2026-05-18T16:35:00.000Z",
+      "value": 10000,
+      "xpEarned": 50,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_drink_water_20260518",
+      "userId": "le-xuan-khanh-sample",
+      "type": "drink_water",
+      "taskId": "water",
+      "timestamp": "2026-05-18T17:35:00.000Z",
+      "value": 1,
+      "xpEarned": 10,
+      "proofImage": "/sample-upload/le-xuan-khanh/2026-05-18/water-proof.jpg",
+      "proofId": "proof_act_sample_drink_water_20260518",
+      "uploadPath": "upload/le-xuan-khanh-sample/health-journey/2026-05-18/water-proof.jpg"
+    },
+    {
+      "id": "act_sample_breath_activation_20260517",
+      "userId": "le-xuan-khanh-sample",
+      "type": "breath_activation",
+      "taskId": "breathing",
+      "timestamp": "2026-05-17T08:28:00.000Z",
+      "value": 5,
+      "xpEarned": 20,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_read_20_pages_20260517",
+      "userId": "le-xuan-khanh-sample",
+      "type": "read_20_pages",
+      "taskId": "read_book",
+      "timestamp": "2026-05-17T08:28:00.000Z",
+      "value": 20,
+      "xpEarned": 30,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_deep_work_90m_20260517",
+      "userId": "le-xuan-khanh-sample",
+      "type": "deep_work_90m",
+      "taskId": "deep_work",
+      "timestamp": "2026-05-17T08:28:00.000Z",
+      "value": 90,
+      "xpEarned": 60,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_walk_10000_steps_20260517",
+      "userId": "le-xuan-khanh-sample",
+      "type": "walk_10000_steps",
+      "taskId": "walk",
+      "timestamp": "2026-05-17T15:28:00.000Z",
+      "value": 10000,
+      "xpEarned": 50,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_drink_water_20260517",
+      "userId": "le-xuan-khanh-sample",
+      "type": "drink_water",
+      "taskId": "water",
+      "timestamp": "2026-05-17T16:28:00.000Z",
+      "value": 1,
+      "xpEarned": 10,
+      "proofImage": "/sample-upload/le-xuan-khanh/2026-05-17/water-proof.jpg",
+      "proofId": "proof_act_sample_drink_water_20260517",
+      "uploadPath": "upload/le-xuan-khanh-sample/health-journey/2026-05-17/water-proof.jpg"
+    },
+    {
+      "id": "act_sample_reflection_journal_20260516",
+      "userId": "le-xuan-khanh-sample",
+      "type": "reflection_journal",
+      "taskId": "reflection",
+      "timestamp": "2026-05-16T08:21:00.000Z",
+      "value": 1,
+      "xpEarned": 20,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_no_sugar_challenge_20260516",
+      "userId": "le-xuan-khanh-sample",
+      "type": "no_sugar_challenge",
+      "taskId": "no_sugar",
+      "timestamp": "2026-05-16T18:21:00.000Z",
+      "value": 1,
+      "xpEarned": 40,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_breath_activation_20260516",
+      "userId": "le-xuan-khanh-sample",
+      "type": "breath_activation",
+      "taskId": "breathing",
+      "timestamp": "2026-05-16T07:21:00.000Z",
+      "value": 5,
+      "xpEarned": 20,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_drink_water_20260516",
+      "userId": "le-xuan-khanh-sample",
+      "type": "drink_water",
+      "taskId": "water",
+      "timestamp": "2026-05-16T15:21:00.000Z",
+      "value": 1,
+      "xpEarned": 10,
+      "proofImage": "/sample-upload/le-xuan-khanh/2026-05-16/water-proof.jpg",
+      "proofId": "proof_act_sample_drink_water_20260516",
+      "uploadPath": "upload/le-xuan-khanh-sample/health-journey/2026-05-16/water-proof.jpg"
+    },
+    {
+      "id": "act_sample_no_sugar_challenge_20260515",
+      "userId": "le-xuan-khanh-sample",
+      "type": "no_sugar_challenge",
+      "taskId": "no_sugar",
+      "timestamp": "2026-05-15T17:14:00.000Z",
+      "value": 1,
+      "xpEarned": 40,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_breath_activation_20260515",
+      "userId": "le-xuan-khanh-sample",
+      "type": "breath_activation",
+      "taskId": "breathing",
+      "timestamp": "2026-05-15T18:14:00.000Z",
+      "value": 5,
+      "xpEarned": 20,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_read_20_pages_20260515",
+      "userId": "le-xuan-khanh-sample",
+      "type": "read_20_pages",
+      "taskId": "read_book",
+      "timestamp": "2026-05-15T18:14:00.000Z",
+      "value": 20,
+      "xpEarned": 30,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_walk_10000_steps_20260515",
+      "userId": "le-xuan-khanh-sample",
+      "type": "walk_10000_steps",
+      "taskId": "walk",
+      "timestamp": "2026-05-15T13:14:00.000Z",
+      "value": 10000,
+      "xpEarned": 50,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_drink_water_20260515",
+      "userId": "le-xuan-khanh-sample",
+      "type": "drink_water",
+      "taskId": "water",
+      "timestamp": "2026-05-15T14:14:00.000Z",
+      "value": 1,
+      "xpEarned": 10,
+      "proofImage": "/sample-upload/le-xuan-khanh/2026-05-15/water-proof.jpg",
+      "proofId": "proof_act_sample_drink_water_20260515",
+      "uploadPath": "upload/le-xuan-khanh-sample/health-journey/2026-05-15/water-proof.jpg"
+    },
+    {
+      "id": "act_sample_reflection_journal_20260514",
+      "userId": "le-xuan-khanh-sample",
+      "type": "reflection_journal",
+      "taskId": "reflection",
+      "timestamp": "2026-05-14T18:07:00.000Z",
+      "value": 1,
+      "xpEarned": 20,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_no_sugar_challenge_20260514",
+      "userId": "le-xuan-khanh-sample",
+      "type": "no_sugar_challenge",
+      "taskId": "no_sugar",
+      "timestamp": "2026-05-14T16:07:00.000Z",
+      "value": 1,
+      "xpEarned": 40,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_breath_activation_20260514",
+      "userId": "le-xuan-khanh-sample",
+      "type": "breath_activation",
+      "taskId": "breathing",
+      "timestamp": "2026-05-14T17:07:00.000Z",
+      "value": 5,
+      "xpEarned": 20,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_deep_work_90m_20260514",
+      "userId": "le-xuan-khanh-sample",
+      "type": "deep_work_90m",
+      "taskId": "deep_work",
+      "timestamp": "2026-05-14T17:07:00.000Z",
+      "value": 90,
+      "xpEarned": 60,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_walk_10000_steps_20260514",
+      "userId": "le-xuan-khanh-sample",
+      "type": "walk_10000_steps",
+      "taskId": "walk",
+      "timestamp": "2026-05-14T12:07:00.000Z",
+      "value": 10000,
+      "xpEarned": 50,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_drink_water_20260514",
+      "userId": "le-xuan-khanh-sample",
+      "type": "drink_water",
+      "taskId": "water",
+      "timestamp": "2026-05-14T13:07:00.000Z",
+      "value": 1,
+      "xpEarned": 10,
+      "proofImage": "/sample-upload/le-xuan-khanh/2026-05-14/water-proof.jpg",
+      "proofId": "proof_act_sample_drink_water_20260514",
+      "uploadPath": "upload/le-xuan-khanh-sample/health-journey/2026-05-14/water-proof.jpg"
+    },
+    {
+      "id": "act_sample_cold_shower_20260513",
+      "userId": "le-xuan-khanh-sample",
+      "type": "cold_shower",
+      "taskId": "cold_shower",
+      "timestamp": "2026-05-13T18:00:00.000Z",
+      "value": 1,
+      "xpEarned": 20,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_breath_activation_20260513",
+      "userId": "le-xuan-khanh-sample",
+      "type": "breath_activation",
+      "taskId": "breathing",
+      "timestamp": "2026-05-13T16:00:00.000Z",
+      "value": 5,
+      "xpEarned": 20,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_read_20_pages_20260513",
+      "userId": "le-xuan-khanh-sample",
+      "type": "read_20_pages",
+      "taskId": "read_book",
+      "timestamp": "2026-05-13T16:00:00.000Z",
+      "value": 20,
+      "xpEarned": 30,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_deep_work_90m_20260513",
+      "userId": "le-xuan-khanh-sample",
+      "type": "deep_work_90m",
+      "taskId": "deep_work",
+      "timestamp": "2026-05-13T16:00:00.000Z",
+      "value": 90,
+      "xpEarned": 60,
+      "proofImage": "",
+      "proofId": null,
+      "uploadPath": ""
+    },
+    {
+      "id": "act_sample_drink_water_20260513",
+      "userId": "le-xuan-khanh-sample",
+      "type": "drink_water",
+      "taskId": "water",
+      "timestamp": "2026-05-13T12:00:00.000Z",
+      "value": 1,
+      "xpEarned": 10,
+      "proofImage": "/sample-upload/le-xuan-khanh/2026-05-13/water-proof.jpg",
+      "proofId": "proof_act_sample_drink_water_20260513",
+      "uploadPath": "upload/le-xuan-khanh-sample/health-journey/2026-05-13/water-proof.jpg"
+    },
+    {
+      "id": "act_sample_import_inbody_20260513",
+      "userId": "le-xuan-khanh-sample",
+      "type": "import_inbody",
+      "taskId": "inbody",
+      "timestamp": "2026-05-13T13:00:00.000Z",
+      "value": 1,
+      "xpEarned": 100,
+      "proofImage": "/sample-upload/le-xuan-khanh/2026-05-13/inbody-proof.jpg",
+      "proofId": "proof_act_sample_import_inbody_20260513",
+      "uploadPath": "upload/le-xuan-khanh-sample/health-journey/2026-05-13/inbody-proof.jpg"
+    }
+  ],
+  "proofImages": [
+    {
+      "id": "proof_act_sample_import_inbody_20260612",
+      "userId": "le-xuan-khanh-sample",
+      "activityId": "act_sample_import_inbody_20260612",
+      "activityType": "import_inbody",
+      "image": "/sample-upload/le-xuan-khanh/2026-06-12/inbody-proof.jpg",
+      "verified": true,
+      "confidence": 0.95,
+      "capturedAt": "2026-06-12T07:30:00.000Z",
+      "uploadPath": "upload/le-xuan-khanh-sample/health-journey/2026-06-12/inbody-proof.jpg"
+    },
+    {
+      "id": "proof_act_sample_drink_water_20260611",
+      "userId": "le-xuan-khanh-sample",
+      "activityId": "act_sample_drink_water_20260611",
+      "activityType": "drink_water",
+      "image": "/sample-upload/le-xuan-khanh/2026-06-11/water-proof.jpg",
+      "verified": true,
+      "confidence": 0.95,
+      "capturedAt": "2026-06-11T17:23:00.000Z",
+      "uploadPath": "upload/le-xuan-khanh-sample/health-journey/2026-06-11/water-proof.jpg"
+    },
+    {
+      "id": "proof_act_sample_drink_water_20260610",
+      "userId": "le-xuan-khanh-sample",
+      "activityId": "act_sample_drink_water_20260610",
+      "activityType": "drink_water",
+      "image": "/sample-upload/le-xuan-khanh/2026-06-10/water-proof.jpg",
+      "verified": true,
+      "confidence": 0.95,
+      "capturedAt": "2026-06-10T16:16:00.000Z",
+      "uploadPath": "upload/le-xuan-khanh-sample/health-journey/2026-06-10/water-proof.jpg"
+    },
+    {
+      "id": "proof_act_sample_drink_water_20260609",
+      "userId": "le-xuan-khanh-sample",
+      "activityId": "act_sample_drink_water_20260609",
+      "activityType": "drink_water",
+      "image": "/sample-upload/le-xuan-khanh/2026-06-09/water-proof.jpg",
+      "verified": true,
+      "confidence": 0.95,
+      "capturedAt": "2026-06-09T15:09:00.000Z",
+      "uploadPath": "upload/le-xuan-khanh-sample/health-journey/2026-06-09/water-proof.jpg"
+    },
+    {
+      "id": "proof_act_sample_drink_water_20260608",
+      "userId": "le-xuan-khanh-sample",
+      "activityId": "act_sample_drink_water_20260608",
+      "activityType": "drink_water",
+      "image": "/sample-upload/le-xuan-khanh/2026-06-08/water-proof.jpg",
+      "verified": true,
+      "confidence": 0.95,
+      "capturedAt": "2026-06-08T14:02:00.000Z",
+      "uploadPath": "upload/le-xuan-khanh-sample/health-journey/2026-06-08/water-proof.jpg"
+    },
+    {
+      "id": "proof_act_sample_drink_water_20260607",
+      "userId": "le-xuan-khanh-sample",
+      "activityId": "act_sample_drink_water_20260607",
+      "activityType": "drink_water",
+      "image": "/sample-upload/le-xuan-khanh/2026-06-07/water-proof.jpg",
+      "verified": true,
+      "confidence": 0.95,
+      "capturedAt": "2026-06-07T13:55:00.000Z",
+      "uploadPath": "upload/le-xuan-khanh-sample/health-journey/2026-06-07/water-proof.jpg"
+    },
+    {
+      "id": "proof_act_sample_drink_water_20260606",
+      "userId": "le-xuan-khanh-sample",
+      "activityId": "act_sample_drink_water_20260606",
+      "activityType": "drink_water",
+      "image": "/sample-upload/le-xuan-khanh/2026-06-06/water-proof.jpg",
+      "verified": true,
+      "confidence": 0.95,
+      "capturedAt": "2026-06-06T12:48:00.000Z",
+      "uploadPath": "upload/le-xuan-khanh-sample/health-journey/2026-06-06/water-proof.jpg"
+    },
+    {
+      "id": "proof_act_sample_drink_water_20260605",
+      "userId": "le-xuan-khanh-sample",
+      "activityId": "act_sample_drink_water_20260605",
+      "activityType": "drink_water",
+      "image": "/sample-upload/le-xuan-khanh/2026-06-05/water-proof.jpg",
+      "verified": true,
+      "confidence": 0.95,
+      "capturedAt": "2026-06-05T11:41:00.000Z",
+      "uploadPath": "upload/le-xuan-khanh-sample/health-journey/2026-06-05/water-proof.jpg"
+    },
+    {
+      "id": "proof_act_sample_drink_water_20260604",
+      "userId": "le-xuan-khanh-sample",
+      "activityId": "act_sample_drink_water_20260604",
+      "activityType": "drink_water",
+      "image": "/sample-upload/le-xuan-khanh/2026-06-04/water-proof.jpg",
+      "verified": true,
+      "confidence": 0.95,
+      "capturedAt": "2026-06-04T10:34:00.000Z",
+      "uploadPath": "upload/le-xuan-khanh-sample/health-journey/2026-06-04/water-proof.jpg"
+    },
+    {
+      "id": "proof_act_sample_drink_water_20260603",
+      "userId": "le-xuan-khanh-sample",
+      "activityId": "act_sample_drink_water_20260603",
+      "activityType": "drink_water",
+      "image": "/sample-upload/le-xuan-khanh/2026-06-03/water-proof.jpg",
+      "verified": true,
+      "confidence": 0.95,
+      "capturedAt": "2026-06-03T09:27:00.000Z",
+      "uploadPath": "upload/le-xuan-khanh-sample/health-journey/2026-06-03/water-proof.jpg"
+    },
+    {
+      "id": "proof_act_sample_drink_water_20260602",
+      "userId": "le-xuan-khanh-sample",
+      "activityId": "act_sample_drink_water_20260602",
+      "activityType": "drink_water",
+      "image": "/sample-upload/le-xuan-khanh/2026-06-02/water-proof.jpg",
+      "verified": true,
+      "confidence": 0.95,
+      "capturedAt": "2026-06-02T08:20:00.000Z",
+      "uploadPath": "upload/le-xuan-khanh-sample/health-journey/2026-06-02/water-proof.jpg"
+    },
+    {
+      "id": "proof_act_sample_drink_water_20260601",
+      "userId": "le-xuan-khanh-sample",
+      "activityId": "act_sample_drink_water_20260601",
+      "activityType": "drink_water",
+      "image": "/sample-upload/le-xuan-khanh/2026-06-01/water-proof.jpg",
+      "verified": true,
+      "confidence": 0.95,
+      "capturedAt": "2026-06-01T07:13:00.000Z",
+      "uploadPath": "upload/le-xuan-khanh-sample/health-journey/2026-06-01/water-proof.jpg"
+    },
+    {
+      "id": "proof_act_sample_drink_water_20260531",
+      "userId": "le-xuan-khanh-sample",
+      "activityId": "act_sample_drink_water_20260531",
+      "activityType": "drink_water",
+      "image": "/sample-upload/le-xuan-khanh/2026-05-31/water-proof.jpg",
+      "verified": true,
+      "confidence": 0.95,
+      "capturedAt": "2026-05-31T18:06:00.000Z",
+      "uploadPath": "upload/le-xuan-khanh-sample/health-journey/2026-05-31/water-proof.jpg"
+    },
+    {
+      "id": "proof_act_sample_drink_water_20260530",
+      "userId": "le-xuan-khanh-sample",
+      "activityId": "act_sample_drink_water_20260530",
+      "activityType": "drink_water",
+      "image": "/sample-upload/le-xuan-khanh/2026-05-30/water-proof.jpg",
+      "verified": true,
+      "confidence": 0.95,
+      "capturedAt": "2026-05-30T17:59:00.000Z",
+      "uploadPath": "upload/le-xuan-khanh-sample/health-journey/2026-05-30/water-proof.jpg"
+    },
+    {
+      "id": "proof_act_sample_drink_water_20260529",
+      "userId": "le-xuan-khanh-sample",
+      "activityId": "act_sample_drink_water_20260529",
+      "activityType": "drink_water",
+      "image": "/sample-upload/le-xuan-khanh/2026-05-29/water-proof.jpg",
+      "verified": true,
+      "confidence": 0.95,
+      "capturedAt": "2026-05-29T16:52:00.000Z",
+      "uploadPath": "upload/le-xuan-khanh-sample/health-journey/2026-05-29/water-proof.jpg"
+    },
+    {
+      "id": "proof_act_sample_drink_water_20260528",
+      "userId": "le-xuan-khanh-sample",
+      "activityId": "act_sample_drink_water_20260528",
+      "activityType": "drink_water",
+      "image": "/sample-upload/le-xuan-khanh/2026-05-28/water-proof.jpg",
+      "verified": true,
+      "confidence": 0.95,
+      "capturedAt": "2026-05-28T15:45:00.000Z",
+      "uploadPath": "upload/le-xuan-khanh-sample/health-journey/2026-05-28/water-proof.jpg"
+    },
+    {
+      "id": "proof_act_sample_drink_water_20260527",
+      "userId": "le-xuan-khanh-sample",
+      "activityId": "act_sample_drink_water_20260527",
+      "activityType": "drink_water",
+      "image": "/sample-upload/le-xuan-khanh/2026-05-27/water-proof.jpg",
+      "verified": true,
+      "confidence": 0.95,
+      "capturedAt": "2026-05-27T14:38:00.000Z",
+      "uploadPath": "upload/le-xuan-khanh-sample/health-journey/2026-05-27/water-proof.jpg"
+    },
+    {
+      "id": "proof_act_sample_drink_water_20260526",
+      "userId": "le-xuan-khanh-sample",
+      "activityId": "act_sample_drink_water_20260526",
+      "activityType": "drink_water",
+      "image": "/sample-upload/le-xuan-khanh/2026-05-26/water-proof.jpg",
+      "verified": true,
+      "confidence": 0.95,
+      "capturedAt": "2026-05-26T13:31:00.000Z",
+      "uploadPath": "upload/le-xuan-khanh-sample/health-journey/2026-05-26/water-proof.jpg"
+    },
+    {
+      "id": "proof_act_sample_drink_water_20260525",
+      "userId": "le-xuan-khanh-sample",
+      "activityId": "act_sample_drink_water_20260525",
+      "activityType": "drink_water",
+      "image": "/sample-upload/le-xuan-khanh/2026-05-25/water-proof.jpg",
+      "verified": true,
+      "confidence": 0.95,
+      "capturedAt": "2026-05-25T12:24:00.000Z",
+      "uploadPath": "upload/le-xuan-khanh-sample/health-journey/2026-05-25/water-proof.jpg"
+    },
+    {
+      "id": "proof_act_sample_drink_water_20260524",
+      "userId": "le-xuan-khanh-sample",
+      "activityId": "act_sample_drink_water_20260524",
+      "activityType": "drink_water",
+      "image": "/sample-upload/le-xuan-khanh/2026-05-24/water-proof.jpg",
+      "verified": true,
+      "confidence": 0.95,
+      "capturedAt": "2026-05-24T11:17:00.000Z",
+      "uploadPath": "upload/le-xuan-khanh-sample/health-journey/2026-05-24/water-proof.jpg"
+    },
+    {
+      "id": "proof_act_sample_drink_water_20260523",
+      "userId": "le-xuan-khanh-sample",
+      "activityId": "act_sample_drink_water_20260523",
+      "activityType": "drink_water",
+      "image": "/sample-upload/le-xuan-khanh/2026-05-23/water-proof.jpg",
+      "verified": true,
+      "confidence": 0.95,
+      "capturedAt": "2026-05-23T10:10:00.000Z",
+      "uploadPath": "upload/le-xuan-khanh-sample/health-journey/2026-05-23/water-proof.jpg"
+    },
+    {
+      "id": "proof_act_sample_drink_water_20260522",
+      "userId": "le-xuan-khanh-sample",
+      "activityId": "act_sample_drink_water_20260522",
+      "activityType": "drink_water",
+      "image": "/sample-upload/le-xuan-khanh/2026-05-22/water-proof.jpg",
+      "verified": true,
+      "confidence": 0.95,
+      "capturedAt": "2026-05-22T09:03:00.000Z",
+      "uploadPath": "upload/le-xuan-khanh-sample/health-journey/2026-05-22/water-proof.jpg"
+    },
+    {
+      "id": "proof_act_sample_drink_water_20260521",
+      "userId": "le-xuan-khanh-sample",
+      "activityId": "act_sample_drink_water_20260521",
+      "activityType": "drink_water",
+      "image": "/sample-upload/le-xuan-khanh/2026-05-21/water-proof.jpg",
+      "verified": true,
+      "confidence": 0.95,
+      "capturedAt": "2026-05-21T08:56:00.000Z",
+      "uploadPath": "upload/le-xuan-khanh-sample/health-journey/2026-05-21/water-proof.jpg"
+    },
+    {
+      "id": "proof_act_sample_drink_water_20260520",
+      "userId": "le-xuan-khanh-sample",
+      "activityId": "act_sample_drink_water_20260520",
+      "activityType": "drink_water",
+      "image": "/sample-upload/le-xuan-khanh/2026-05-20/water-proof.jpg",
+      "verified": true,
+      "confidence": 0.95,
+      "capturedAt": "2026-05-20T07:49:00.000Z",
+      "uploadPath": "upload/le-xuan-khanh-sample/health-journey/2026-05-20/water-proof.jpg"
+    },
+    {
+      "id": "proof_act_sample_drink_water_20260519",
+      "userId": "le-xuan-khanh-sample",
+      "activityId": "act_sample_drink_water_20260519",
+      "activityType": "drink_water",
+      "image": "/sample-upload/le-xuan-khanh/2026-05-19/water-proof.jpg",
+      "verified": true,
+      "confidence": 0.95,
+      "capturedAt": "2026-05-19T18:42:00.000Z",
+      "uploadPath": "upload/le-xuan-khanh-sample/health-journey/2026-05-19/water-proof.jpg"
+    },
+    {
+      "id": "proof_act_sample_drink_water_20260518",
+      "userId": "le-xuan-khanh-sample",
+      "activityId": "act_sample_drink_water_20260518",
+      "activityType": "drink_water",
+      "image": "/sample-upload/le-xuan-khanh/2026-05-18/water-proof.jpg",
+      "verified": true,
+      "confidence": 0.95,
+      "capturedAt": "2026-05-18T17:35:00.000Z",
+      "uploadPath": "upload/le-xuan-khanh-sample/health-journey/2026-05-18/water-proof.jpg"
+    },
+    {
+      "id": "proof_act_sample_drink_water_20260517",
+      "userId": "le-xuan-khanh-sample",
+      "activityId": "act_sample_drink_water_20260517",
+      "activityType": "drink_water",
+      "image": "/sample-upload/le-xuan-khanh/2026-05-17/water-proof.jpg",
+      "verified": true,
+      "confidence": 0.95,
+      "capturedAt": "2026-05-17T16:28:00.000Z",
+      "uploadPath": "upload/le-xuan-khanh-sample/health-journey/2026-05-17/water-proof.jpg"
+    },
+    {
+      "id": "proof_act_sample_drink_water_20260516",
+      "userId": "le-xuan-khanh-sample",
+      "activityId": "act_sample_drink_water_20260516",
+      "activityType": "drink_water",
+      "image": "/sample-upload/le-xuan-khanh/2026-05-16/water-proof.jpg",
+      "verified": true,
+      "confidence": 0.95,
+      "capturedAt": "2026-05-16T15:21:00.000Z",
+      "uploadPath": "upload/le-xuan-khanh-sample/health-journey/2026-05-16/water-proof.jpg"
+    },
+    {
+      "id": "proof_act_sample_drink_water_20260515",
+      "userId": "le-xuan-khanh-sample",
+      "activityId": "act_sample_drink_water_20260515",
+      "activityType": "drink_water",
+      "image": "/sample-upload/le-xuan-khanh/2026-05-15/water-proof.jpg",
+      "verified": true,
+      "confidence": 0.95,
+      "capturedAt": "2026-05-15T14:14:00.000Z",
+      "uploadPath": "upload/le-xuan-khanh-sample/health-journey/2026-05-15/water-proof.jpg"
+    },
+    {
+      "id": "proof_act_sample_drink_water_20260514",
+      "userId": "le-xuan-khanh-sample",
+      "activityId": "act_sample_drink_water_20260514",
+      "activityType": "drink_water",
+      "image": "/sample-upload/le-xuan-khanh/2026-05-14/water-proof.jpg",
+      "verified": true,
+      "confidence": 0.95,
+      "capturedAt": "2026-05-14T13:07:00.000Z",
+      "uploadPath": "upload/le-xuan-khanh-sample/health-journey/2026-05-14/water-proof.jpg"
+    },
+    {
+      "id": "proof_act_sample_drink_water_20260513",
+      "userId": "le-xuan-khanh-sample",
+      "activityId": "act_sample_drink_water_20260513",
+      "activityType": "drink_water",
+      "image": "/sample-upload/le-xuan-khanh/2026-05-13/water-proof.jpg",
+      "verified": true,
+      "confidence": 0.95,
+      "capturedAt": "2026-05-13T12:00:00.000Z",
+      "uploadPath": "upload/le-xuan-khanh-sample/health-journey/2026-05-13/water-proof.jpg"
+    },
+    {
+      "id": "proof_act_sample_import_inbody_20260513",
+      "userId": "le-xuan-khanh-sample",
+      "activityId": "act_sample_import_inbody_20260513",
+      "activityType": "import_inbody",
+      "image": "/sample-upload/le-xuan-khanh/2026-05-13/inbody-proof.jpg",
+      "verified": true,
+      "confidence": 0.95,
+      "capturedAt": "2026-05-13T13:00:00.000Z",
+      "uploadPath": "upload/le-xuan-khanh-sample/health-journey/2026-05-13/inbody-proof.jpg"
+    }
+  ]
+}
