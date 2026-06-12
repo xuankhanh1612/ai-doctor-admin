@@ -1,5 +1,33 @@
 import { useEffect, useRef, useState } from 'react'
-import { HEALTH_JOURNEY_EVENT, getTaskSnapshot } from './services/healthJourneyStorage.js'
+import { useAuth } from '../../context/AuthContext.jsx'
+import { completeHealthJourneyActivity, HEALTH_JOURNEY_EVENT, getTaskSnapshot } from './services/healthJourneyStorage.js'
+import { dataUrlToFile, drawAIWaterBottleOverlay, saveWaterProofImage, syncBeMeoWater } from './services/waterProofUpload.js'
+
+
+const TASK_DETAIL_CONTENT = {
+  water: { icon: '💧', title: 'Uống nước · Chụp chai nước', subtitle: 'AI Webcam xác nhận chai nước · Upload proof · Bé Mèo +150ml', reward: '+10 XP', unitLabel: 'lần', activityType: 'drink_water', camera: true },
+  breathing: { icon: '🌬', title: 'Breath Activation', subtitle: 'Thở sâu 5 phút để kích hoạt năng lượng', reward: '+20 XP', unitLabel: 'phút', activityType: 'breath_activation' },
+  no_sugar: { icon: '🚫', title: 'No Sugar Challenge', subtitle: 'Không đường trong ngày hôm nay', reward: '+40 XP', unitLabel: 'ngày', activityType: 'no_sugar_challenge' },
+  deep_work: { icon: '💼', title: 'Deep Work 90m', subtitle: 'Tập trung làm việc 90 phút', reward: '+60 XP', unitLabel: 'phút', activityType: 'deep_work_90m' },
+  cold_shower: { icon: '🚿', title: 'Cold Shower', subtitle: 'Tắm nước lạnh / thử thách kỷ luật', reward: '+20 XP', unitLabel: 'lần', activityType: 'cold_shower' },
+  read_book: { icon: '📚', title: 'Read 20 Pages', subtitle: 'Đọc ít nhất 20 trang sách', reward: '+30 XP', unitLabel: 'trang', activityType: 'read_20_pages' },
+  reflection: { icon: '📓', title: 'Reflection Journal', subtitle: 'Ghi lại suy nghĩ và bài học hôm nay', reward: '+20 XP', unitLabel: 'entry', activityType: 'reflection_journal' },
+  inbody: { icon: '📈', title: 'Import InBody', subtitle: 'Tải hồ sơ sức khoẻ để AI theo dõi', reward: '+100 XP', unitLabel: 'file', activityType: 'import_inbody' },
+  walk: { icon: '🚶', title: 'Walk 10,000 Steps', subtitle: 'Hoàn thành 10.000 bước', reward: '+50 XP', unitLabel: 'bước', activityType: 'walk_10000_steps' },
+}
+
+const CHAPTER_DETAIL_CONTENT = {
+  first_step: { taskId: 'water', icon: '🌅', title: 'The First Step', subtitle: 'Khởi động hành trình bằng 1 proof uống nước.' },
+  breath: { taskId: 'breathing', icon: '🌬', title: 'The Breath', subtitle: 'Ổn định hơi thở và nhịp tập trung.' },
+  focus: { taskId: 'deep_work', icon: '🎯', title: 'The Focus', subtitle: 'Deep Work để mở khóa sức mạnh chú ý.' },
+  challenge: { taskId: 'no_sugar', icon: '🚫', title: 'The Challenge', subtitle: 'Giữ kỷ luật không đường trong ngày.' },
+  breakthrough: { taskId: 'read_book', icon: '📚', title: 'The Breakthrough', subtitle: 'Đọc sách để hoàn tất vòng học hỏi.' },
+}
+
+function taskPercent(task) {
+  if (!task?.target) return 0
+  return Math.min(100, Math.round((Number(task.current || 0) / Number(task.target || 1)) * 100))
+}
 
 const screenNavMap = {
   'screen-home': 'nav-home',
@@ -196,6 +224,17 @@ const styles = String.raw`
   .progress-wrap { background:rgba(255,255,255,0.07); border-radius:99px; overflow:hidden; }
   .progress-bar { height:100%; border-radius:99px; transition:.3s; }
 
+
+  .mission-proof-card { border:1px solid rgba(56,189,248,.28); border-radius:14px; overflow:hidden; background:#020617; margin-top:12px; }
+  .mission-camera-stage { height:260px; position:relative; display:grid; place-items:center; color:#bae6fd; text-align:center; overflow:hidden; }
+  .mission-camera-stage video, .mission-camera-stage img { width:100%; height:100%; object-fit:cover; display:block; }
+  .mission-ai-hud { position:absolute; inset:10px; pointer-events:none; border:1px solid rgba(56,189,248,.34); border-radius:12px; box-shadow:inset 0 0 28px rgba(14,165,233,.18); }
+  .mission-ai-hud::before { content:'AI Object Detection · water bottle 0.96'; position:absolute; left:10px; top:10px; padding:5px 8px; border-radius:999px; background:rgba(2,6,23,.78); color:#67e8f9; font-size:10px; font-weight:800; }
+  .mission-ai-hud::after { content:''; position:absolute; left:32%; top:18%; width:36%; height:62%; border:2px dashed rgba(34,197,94,.86); border-radius:18px; box-shadow:0 0 18px rgba(34,197,94,.28); }
+  .mission-camera-actions { display:flex; gap:8px; padding:10px; background:rgba(2,6,23,.94); }
+  .mission-proof-img { width:100%; max-height:320px; object-fit:cover; border-radius:12px; border:1px solid rgba(56,189,248,.28); margin-top:10px; }
+  .mission-error { margin-top:10px; padding:10px; border-radius:10px; background:rgba(239,68,68,.16); color:#fecaca; font-size:12px; }
+
   /* ─── HERO BANNER (Home) ─── */
   .hero-banner {
     margin:0 12px 10px;
@@ -243,6 +282,9 @@ const styles = String.raw`
     display:flex; align-items:center; gap:10px;
     padding:10px 0; border-bottom:1px solid rgba(255,255,255,0.05);
   }
+  .task-item.clickable { cursor:pointer; border-radius:10px; padding:10px 8px; margin:0 -8px; transition:.16s ease; }
+  .task-item.clickable:hover { background:rgba(59,130,246,.10); border-color:rgba(96,165,250,.34); box-shadow:0 0 0 1px rgba(96,165,250,.14), 0 12px 26px rgba(2,6,23,.24); transform:translateY(-1px); }
+  .task-item.clickable:active { transform:scale(.99); }
   .task-item:last-child { border-bottom:none; }
   .task-icon { width:34px; height:34px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0; }
   .task-info { flex:1; min-width:0; }
@@ -404,12 +446,25 @@ const styles = String.raw`
 
 export default function HealthJourneyGameStandalone() {
   const containerRef = useRef(null)
-  const [snapshot, setSnapshot] = useState(() => getTaskSnapshot())
+  const { user } = useAuth()
+  const videoRef = useRef(null)
+  const canvasRef = useRef(null)
+  const streamRef = useRef(null)
+  const [snapshot, setSnapshot] = useState(() => getTaskSnapshot(user))
+  const [selectedTaskKey, setSelectedTaskKey] = useState('deep_work')
+  const [cameraOn, setCameraOn] = useState(false)
+  const [cameraError, setCameraError] = useState('')
+  const [savingProof, setSavingProof] = useState(false)
+  const [lastWaterRecord, setLastWaterRecord] = useState(null)
 
   useEffect(() => {
-    const refreshSnapshot = () => setSnapshot(getTaskSnapshot())
+    const refreshSnapshot = () => setSnapshot(getTaskSnapshot(user))
     window.addEventListener(HEALTH_JOURNEY_EVENT, refreshSnapshot)
     return () => window.removeEventListener(HEALTH_JOURNEY_EVENT, refreshSnapshot)
+  }, [user])
+
+  useEffect(() => () => {
+    streamRef.current?.getTracks?.().forEach((track) => track.stop())
   }, [])
 
   const todayTask = (taskId) => snapshot.day?.tasks?.find((task) => task.taskId === taskId)
@@ -421,6 +476,12 @@ export default function HealthJourneyGameStandalone() {
   const isTaskDone = (taskId) => Boolean(todayTask(taskId)?.completed)
   const waterObjective = journeyObjective('drink_water')
   const journeyProfile = snapshot.journeyUser?.profile || {}
+  const selectedTask = TASK_DETAIL_CONTENT[selectedTaskKey] || TASK_DETAIL_CONTENT.deep_work
+  const selectedTaskState = todayTask(selectedTaskKey)
+  const selectedProof = selectedTaskKey === 'water'
+    ? (lastWaterRecord || snapshot.journeyUser?.proofImages?.find((proof) => proof.activityType === 'drink_water' && proof.capturedAt?.slice(0, 10) === new Date().toISOString().slice(0, 10)) || snapshot.journeyUser?.proofImages?.find((proof) => proof.activityType === 'drink_water'))
+    : null
+  const selectedTaskPct = taskPercent(selectedTaskState)
 
   const getRoot = () => containerRef.current
 
@@ -456,8 +517,72 @@ export default function HealthJourneyGameStandalone() {
     modal.scrollTop = 0
   }
 
+  const openTaskDetail = (taskKey) => {
+    setSelectedTaskKey(taskKey)
+    setCameraError('')
+    openModal('modal-task-detail')
+  }
+
+  const openChapterMissionDetail = (chapterKey) => {
+    const chapter = CHAPTER_DETAIL_CONTENT[chapterKey] || CHAPTER_DETAIL_CONTENT.focus
+    openTaskDetail(chapter.taskId)
+  }
+
+  const startWaterCamera = async () => {
+    setCameraError('')
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false })
+      streamRef.current = stream
+      if (videoRef.current) videoRef.current.srcObject = stream
+      setCameraOn(true)
+    } catch (error) {
+      setCameraError(error?.message || 'Không thể mở Webcam. Hãy cấp quyền camera cho trình duyệt.')
+    }
+  }
+
+  const stopWaterCamera = () => {
+    streamRef.current?.getTracks?.().forEach((track) => track.stop())
+    streamRef.current = null
+    if (videoRef.current) videoRef.current.srcObject = null
+    setCameraOn(false)
+  }
+
+  const captureWaterProof = async () => {
+    if (!videoRef.current || !canvasRef.current) return
+    setSavingProof(true)
+    setCameraError('')
+    try {
+      const video = videoRef.current
+      const canvas = canvasRef.current
+      canvas.width = video.videoWidth || 1280
+      canvas.height = video.videoHeight || 720
+      const ctx = canvas.getContext('2d')
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+      drawAIWaterBottleOverlay(ctx, canvas.width, canvas.height)
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.92)
+      const file = dataUrlToFile(dataUrl, 'health_journey_water_bottle.jpg')
+      const record = await saveWaterProofImage(file, user, { source: 'health-journey-game-task-detail', notesPrefix: 'Health Journey Game · Chi tiết Nhiệm Vụ · Uống nước' })
+      completeHealthJourneyActivity({
+        user,
+        activityType: 'drink_water',
+        value: 1,
+        proofImage: record.uploadPath,
+        uploadRecord: record,
+        metadata: { source: 'health-journey-game-task-detail', flow: 'Chi tiết Nhiệm Vụ -> AI Webcam -> Upload -> Bé Mèo +150ml' },
+      })
+      syncBeMeoWater(150, 'Health Journey Game · Chụp chai nước')
+      setLastWaterRecord(record)
+      stopWaterCamera()
+    } catch (error) {
+      setCameraError(error?.message || 'Không thể lưu ảnh chai nước.')
+    } finally {
+      setSavingProof(false)
+    }
+  }
+
   const closeModal = (id) => {
     getRoot()?.querySelector(`#${id}`)?.classList.remove('active')
+    if (id === 'modal-task-detail') stopWaterCamera()
   }
 
   const showLockedChapter = (name, msg, icon) => {
@@ -724,7 +849,7 @@ export default function HealthJourneyGameStandalone() {
           </div>
           {/* Task list */}
           <div className="card">
-            <div className="task-item" style={{ borderColor: isTaskDone('water') ? 'rgba(34,197,94,.34)' : 'rgba(59,130,246,.28)' }}>
+            <div className="task-item clickable" onClick={(event) => { openTaskDetail('water'); }} style={{ borderColor: isTaskDone('water') ? 'rgba(34,197,94,.34)' : 'rgba(59,130,246,.28)' }}>
               <div className="task-icon icon-bg-blue">
                 💧
               </div>
@@ -747,7 +872,7 @@ export default function HealthJourneyGameStandalone() {
                 {isTaskDone('water') ? '✓' : '📷'}
               </div>
             </div>
-            <div className="task-item">
+            <div className="task-item clickable" onClick={(event) => { openTaskDetail('breathing'); }}>
               <div className="task-icon icon-bg-cyan">
                 🌬
               </div>
@@ -770,7 +895,7 @@ export default function HealthJourneyGameStandalone() {
                 ✓
               </div>
             </div>
-            <div className="task-item">
+            <div className="task-item clickable" onClick={(event) => { openTaskDetail('no_sugar'); }}>
               <div className="task-icon icon-bg-gold">
                 🚫
               </div>
@@ -793,7 +918,7 @@ export default function HealthJourneyGameStandalone() {
                 ✓
               </div>
             </div>
-            <div className="task-item" onClick={(event) => { openModal('modal-task-detail'); }} style={{ cursor: "pointer" }}>
+            <div className="task-item clickable" onClick={(event) => { openTaskDetail('deep_work'); }}>
               <div className="task-icon icon-bg-blue">
                 💼
               </div>
@@ -816,7 +941,7 @@ export default function HealthJourneyGameStandalone() {
                 ›
               </div>
             </div>
-            <div className="task-item">
+            <div className="task-item clickable" onClick={(event) => { openTaskDetail('cold_shower'); }}>
               <div className="task-icon icon-bg-cyan">
                 🚿
               </div>
@@ -837,7 +962,7 @@ export default function HealthJourneyGameStandalone() {
                 ○
               </div>
             </div>
-            <div className="task-item">
+            <div className="task-item clickable" onClick={(event) => { openTaskDetail('read_book'); }}>
               <div className="task-icon icon-bg-purple">
                 📚
               </div>
@@ -860,7 +985,7 @@ export default function HealthJourneyGameStandalone() {
                 ›
               </div>
             </div>
-            <div className="task-item">
+            <div className="task-item clickable" onClick={(event) => { openTaskDetail('reflection'); }}>
               <div className="task-icon icon-bg-gold">
                 📓
               </div>
@@ -2097,25 +2222,29 @@ export default function HealthJourneyGameStandalone() {
               ✕
             </div>
             <div style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: "18px", fontWeight: "700", marginBottom: "4px" }}>
-              💼 Chi tiết Nhiệm Vụ
+              {selectedTask.icon} Chi tiết Nhiệm Vụ
             </div>
             <div style={{ fontSize: "14px", color: "var(--text-dim)", marginBottom: "14px" }}>
-              Deep Work 90m · Tập trung làm việc
+              {selectedTask.title} · {selectedTask.subtitle}
             </div>
             <div className="reward-row">
               <span style={{ fontSize: "11px", color: "var(--text-dim)" }}>
-                Thời gian
+                Tracking hôm nay
               </span>
               <span style={{ fontSize: "12px", fontWeight: "600" }}>
-                90 phút
+                {selectedTaskState ? `${selectedTaskState.current}/${selectedTaskState.target} ${selectedTask.unitLabel}` : `0/1 ${selectedTask.unitLabel}`} · {selectedTaskPct}%
               </span>
+            </div>
+            <div className="progress-wrap" style={{ height: "6px", margin: "8px 0 12px" }}>
+              <div className="progress-bar" style={{ width: `${selectedTaskPct}%`, background: selectedTaskPct >= 100 ? "var(--green)" : "linear-gradient(90deg,var(--purple),var(--blue))" }}>
+              </div>
             </div>
             <div className="reward-row">
               <span style={{ fontSize: "11px", color: "var(--text-dim)" }}>
-                Đã hoàn thành
+                Trạng thái
               </span>
-              <span style={{ fontSize: "12px", fontWeight: "600" }}>
-                70 phút
+              <span style={{ fontSize: "12px", fontWeight: "700", color: selectedTaskPct >= 100 ? "var(--green)" : "var(--blue-glow)" }}>
+                {selectedTaskPct >= 100 ? 'Đã hoàn thành' : 'Đang thực hiện'}
               </span>
             </div>
             <div className="glow-line">
@@ -2123,69 +2252,101 @@ export default function HealthJourneyGameStandalone() {
             <div style={{ fontSize: "12px", fontWeight: "600", color: "var(--blue-glow)", marginBottom: "6px" }}>
               Phần thưởng
             </div>
-            <div style={{ display: "flex", gap: "8px" }}>
+            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
               <div className="badge badge-purple">
-                +50 XP
+                {selectedTask.reward}
               </div>
               <div className="badge badge-blue">
-                +20 ENERGY
+                +5 ENERGY
               </div>
+              {selectedTaskKey === 'water' && (
+                <div className="badge badge-green">
+                  Bé Mèo +150ml
+                </div>
+              )}
             </div>
+
+            {selectedTaskKey === 'water' && (
+              <div className="mission-proof-card">
+                <div className="mission-camera-stage">
+                  {selectedProof?.image || selectedProof?.dataUrl ? (
+                    <img src={selectedProof.dataUrl || selectedProof.image} alt="Water bottle proof" />
+                  ) : (
+                    <>
+                      <video ref={videoRef} autoPlay playsInline muted style={{ display: cameraOn ? 'block' : 'none' }} />
+                      {!cameraOn && (
+                        <div style={{ padding: "18px" }}>
+                          <div style={{ fontSize: "52px" }}>📷</div>
+                          <b>Webcam AI Object Detection</b>
+                          <p style={{ margin: "8px 0 0", color: "#7dd3fc", fontSize: "12px" }}>
+                            Chưa có ảnh hôm nay. Mở Webcam như tab Object Detection để User chụp ảnh làm nhiệm vụ.
+                          </p>
+                        </div>
+                      )}
+                      {cameraOn && <div className="mission-ai-hud" />}
+                    </>
+                  )}
+                </div>
+                <canvas ref={canvasRef} style={{ display: "none" }} />
+                <div className="mission-camera-actions">
+                  {selectedProof?.image || selectedProof?.dataUrl ? (
+                    <button className="btn-outline" type="button" onClick={(event) => { setLastWaterRecord(null); }} style={{ width: "100%" }}>
+                      Chụp lại proof mới
+                    </button>
+                  ) : !cameraOn ? (
+                    <button className="btn-primary" type="button" onClick={startWaterCamera} disabled={savingProof}>
+                      Mở Webcam AI
+                    </button>
+                  ) : (
+                    <>
+                      <button className="btn-primary" type="button" onClick={captureWaterProof} disabled={savingProof}>
+                        {savingProof ? 'Đang lưu Upload…' : 'Chụp chai nước + lưu Upload'}
+                      </button>
+                      <button className="btn-outline" type="button" onClick={stopWaterCamera} disabled={savingProof}>
+                        Đóng
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {selectedProof && selectedTaskKey === 'water' && (
+              <div style={{ marginTop: "10px", padding: "10px", borderRadius: "12px", border: "1px solid rgba(34,197,94,.28)", background: "rgba(34,197,94,.10)", color: "#bbf7d0", fontSize: "12px", fontWeight: "700" }}>
+                ✓ Đã có ảnh proof: hoàn thành {selectedTaskState?.current || 0}/{selectedTaskState?.target || 1} nhiệm vụ ({selectedTaskPct}%). Upload: {selectedProof.uploadPath || selectedProof.image}
+              </div>
+            )}
+            {cameraError && <div className="mission-error">{cameraError}</div>}
+
             <div className="glow-line">
             </div>
             <div style={{ fontSize: "12px", fontWeight: "600", marginBottom: "8px" }}>
-              Lịch sử nhiệm vụ
+              Nhiệm vụ liên quan trong hành trình
             </div>
-            <div className="task-item">
-              <div className="task-icon icon-bg-cyan" style={{ fontSize: "14px", width: "28px", height: "28px" }}>
-                🌬
-              </div>
-              <div className="task-info">
-                <div className="task-name" style={{ fontSize: "12px" }}>
-                  Breath Activation
+            {Object.entries(CHAPTER_DETAIL_CONTENT).map(([chapterKey, chapter]) => {
+              const chapterTask = todayTask(chapter.taskId)
+              const chapterPct = taskPercent(chapterTask)
+              return (
+                <div key={chapterKey} className="task-item clickable" onClick={(event) => { openChapterMissionDetail(chapterKey); }} style={{ borderBottom: chapterKey === 'breakthrough' ? "none" : undefined }}>
+                  <div className="task-icon icon-bg-cyan" style={{ fontSize: "14px", width: "28px", height: "28px" }}>
+                    {chapter.icon}
+                  </div>
+                  <div className="task-info">
+                    <div className="task-name" style={{ fontSize: "12px" }}>
+                      {chapter.title}
+                    </div>
+                    <div className="task-desc">
+                      {chapter.subtitle}
+                    </div>
+                  </div>
+                  <div className={chapterPct >= 100 ? "task-check done" : "task-check"} style={{ width: "18px", height: "18px", fontSize: "10px" }}>
+                    {chapterPct >= 100 ? '✓' : '›'}
+                  </div>
                 </div>
-                <div className="task-desc">
-                  Hoàn thành 5 phút
-                </div>
-              </div>
-              <div className="task-check done" style={{ width: "18px", height: "18px", fontSize: "10px" }}>
-                ✓
-              </div>
-            </div>
-            <div className="task-item">
-              <div className="task-icon icon-bg-gold" style={{ fontSize: "14px", width: "28px", height: "28px" }}>
-                🚫
-              </div>
-              <div className="task-info">
-                <div className="task-name" style={{ fontSize: "12px" }}>
-                  No Sugar Challenge
-                </div>
-                <div className="task-desc">
-                  Hoàn thành 1 ngày
-                </div>
-              </div>
-              <div className="task-check done" style={{ width: "18px", height: "18px", fontSize: "10px" }}>
-                ✓
-              </div>
-            </div>
-            <div className="task-item" style={{ borderBottom: "none" }}>
-              <div className="task-icon icon-bg-cyan" style={{ fontSize: "14px", width: "28px", height: "28px" }}>
-                🚿
-              </div>
-              <div className="task-info">
-                <div className="task-name" style={{ fontSize: "12px" }}>
-                  Cold Shower
-                </div>
-                <div className="task-desc">
-                  Chưa hoàn thành
-                </div>
-              </div>
-              <div className="task-check" style={{ width: "18px", height: "18px" }}>
-                ○
-              </div>
-            </div>
+              )
+            })}
             <button className="btn-primary" onClick={(event) => { closeModal('modal-task-detail'); }} style={{ marginTop: "14px" }}>
-              BẮT ĐẦU
+              ĐÓNG CHI TIẾT
             </button>
           </div>
         </div>
@@ -2214,7 +2375,7 @@ export default function HealthJourneyGameStandalone() {
               </div>
             </div>
             {/* Sub-lessons */}
-            <div className="task-item">
+            <div className="task-item clickable" onClick={(event) => { openChapterMissionDetail('first_step'); }}>
               <div style={{ width: "26px", textAlign: "center", fontSize: "11px", color: "var(--text-muted)" }}>
                 1-1
               </div>
@@ -2230,7 +2391,7 @@ export default function HealthJourneyGameStandalone() {
                 ✓
               </div>
             </div>
-            <div className="task-item">
+            <div className="task-item clickable" onClick={(event) => { openChapterMissionDetail('breath'); }}>
               <div style={{ width: "26px", textAlign: "center", fontSize: "11px", color: "var(--text-muted)" }}>
                 1-2
               </div>
@@ -2246,7 +2407,7 @@ export default function HealthJourneyGameStandalone() {
                 ✓
               </div>
             </div>
-            <div className="task-item">
+            <div className="task-item clickable" onClick={(event) => { openChapterMissionDetail('focus'); }}>
               <div style={{ width: "26px", textAlign: "center", fontSize: "11px", color: "var(--blue-glow)" }}>
                 1-3
               </div>
@@ -2262,7 +2423,7 @@ export default function HealthJourneyGameStandalone() {
                 ›
               </div>
             </div>
-            <div className="task-item">
+            <div className="task-item clickable" onClick={(event) => { openChapterMissionDetail('challenge'); }}>
               <div style={{ width: "26px", textAlign: "center", fontSize: "11px", color: "var(--text-muted)" }}>
                 1-4
               </div>
@@ -2277,7 +2438,7 @@ export default function HealthJourneyGameStandalone() {
               <div style={{ width: "18px" }}>
               </div>
             </div>
-            <div className="task-item" style={{ borderBottom: "none" }}>
+            <div className="task-item clickable" onClick={(event) => { openChapterMissionDetail('breakthrough'); }} style={{ borderBottom: "none" }}>
               <div style={{ width: "26px", textAlign: "center", fontSize: "11px", color: "var(--text-muted)" }}>
                 1-5
               </div>
@@ -2292,8 +2453,8 @@ export default function HealthJourneyGameStandalone() {
               <div style={{ width: "18px" }}>
               </div>
             </div>
-            <button className="btn-primary" onClick={(event) => { closeModal('modal-chapter-detail'); }} style={{ marginTop: "14px" }}>
-              TIẾP TỤC 1-3
+            <button className="btn-primary" onClick={(event) => { openChapterMissionDetail('focus'); }} style={{ marginTop: "14px" }}>
+              MỞ CHI TIẾT NHIỆM VỤ 1-3
             </button>
           </div>
         </div>

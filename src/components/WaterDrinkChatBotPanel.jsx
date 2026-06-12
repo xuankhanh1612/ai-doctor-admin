@@ -2,9 +2,8 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import NavButtons from './NavButtons.jsx'
 import { useApp } from '../context/AppContext'
 import { useAuth } from '../context/AuthContext.jsx'
-import { detectFileType, fileToBase64, fileToDataUrl, saveRecord } from '../lib/medicalStorage.js'
-import { notifyUpload } from '../hooks/useMedicalData.js'
 import { completeHealthJourneyActivity, getTaskSnapshot, HEALTH_JOURNEY_EVENT } from './health-journey-game/services/healthJourneyStorage.js'
+import { dataUrlToFile, drawAIWaterBottleOverlay, saveWaterProofImage, syncBeMeoWater } from './health-journey-game/services/waterProofUpload.js'
 // @ts-ignore Vite raw HTML import
 import waterDrinkTrackerHtml from '../waterdrink-khanh/waterdrink_tracker.html?raw'
 import meoNhayMatUrl from '../waterdrink-khanh/MeoNhayMat.JPG'
@@ -12,65 +11,6 @@ import meoBuAiUrl from '../waterdrink-khanh/MeoBuAI.JPG'
 import meoNuocAiUrl from '../waterdrink-khanh/MeoNuocAI.JPG'
 import robotTuThe1Url from '../waterdrink-khanh/Robot-mang-giong-noi-nguoi-thuong-ren-hoc-sinh-ngoi-dung-tu-the-1.jpg'
 import robotTuThe2Url from '../waterdrink-khanh/Robot-mang-giong-noi-nguoi-thuong-ren-hoc-sinh-ngoi-dung-tu-the-2.jpg'
-
-function safeUploadSegment(value) {
-  return (value || 'guest').toString().trim().toLowerCase().replace(/[^a-z0-9._-]+/g, '-').replace(/^-+|-+$/g, '') || 'guest'
-}
-
-function dataUrlToFile(dataUrl, filename) {
-  const [meta, base64] = dataUrl.split(',')
-  const mime = meta?.match(/data:(.*?);base64/)?.[1] || 'image/jpeg'
-  const binary = atob(base64 || '')
-  const bytes = new Uint8Array(binary.length)
-  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i)
-  return new File([bytes], filename, { type: mime })
-}
-
-function makeWaterUploadPath(user, filename) {
-  return `upload/${safeUploadSegment(user?.email || user?.name || 'guest')}/health-journey-game/water/${filename}`
-}
-
-async function saveWaterProofImage(file, user) {
-  const [dataUrl, base64Data] = await Promise.all([fileToDataUrl(file), fileToBase64(file)])
-  const filename = `water_bottle_${new Date().toISOString().replace(/[:.]/g, '-')}.jpg`
-  const uploadPath = makeWaterUploadPath(user, filename)
-  const fileType = detectFileType(file.type, filename)
-  const record = {
-    id: `health_journey_water_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-    filename,
-    name: filename,
-    fileType,
-    type: fileType,
-    mimeType: file.type,
-    size: file.size,
-    uploadedAt: new Date().toISOString(),
-    dataUrl,
-    base64Data,
-    notes: `Health Journey Game · Bé Mèo Nước · Activity: drink_water · +10 XP · ${uploadPath}`,
-    ownerEmail: user?.email || null,
-    ownerName: user?.name || '',
-    ownerAvatar: user?.avatar || '',
-    ownerProvider: user?.provider || '',
-    sourceModule: 'health-journey-game-water-proof',
-    uploadFolder: uploadPath.split('/').slice(0, -1).join('/'),
-    uploadPath,
-    healthJourney: {
-      activityType: 'drink_water',
-      taskId: 'water',
-      xpEarned: 10,
-      proofType: 'webcam_bottle_photo',
-    },
-  }
-  await saveRecord(record, {
-    ownerEmail: user?.email,
-    ownerName: user?.name,
-    ownerAvatar: user?.avatar,
-    ownerProvider: user?.provider,
-    sourceModule: 'health-journey-game-water-proof',
-  })
-  notifyUpload()
-  return record
-}
 
 export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, nextLabel }) {
   const { theme } = useApp()
@@ -87,8 +27,21 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
 
   useEffect(() => {
     const refresh = () => setSnapshot(getTaskSnapshot(user))
+    const onMessage = (event) => {
+      if (event.origin !== window.location.origin || event.data?.type !== 'BE_MEO_WATER_ADDED') return
+      completeHealthJourneyActivity({
+        user,
+        activityType: 'drink_water',
+        value: 1,
+        metadata: { source: event.data.source || 'be-meo-nuoc-chat', waterAmountMl: event.data.amount || 150, flow: 'Bé Mèo Nước -> Health Journey Game sync' },
+      })
+    }
     window.addEventListener(HEALTH_JOURNEY_EVENT, refresh)
-    return () => window.removeEventListener(HEALTH_JOURNEY_EVENT, refresh)
+    window.addEventListener('message', onMessage)
+    return () => {
+      window.removeEventListener(HEALTH_JOURNEY_EVENT, refresh)
+      window.removeEventListener('message', onMessage)
+    }
   }, [user])
 
   useEffect(() => () => {
@@ -130,7 +83,9 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
       const canvas = canvasRef.current
       canvas.width = video.videoWidth || 1280
       canvas.height = video.videoHeight || 720
-      canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height)
+      const ctx = canvas.getContext('2d')
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+      drawAIWaterBottleOverlay(ctx, canvas.width, canvas.height)
       const dataUrl = canvas.toDataURL('image/jpeg', 0.92)
       const file = dataUrlToFile(dataUrl, 'water_bottle.jpg')
       const record = await saveWaterProofImage(file, user)
@@ -142,7 +97,8 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
         uploadRecord: record,
         metadata: { source: 'be-meo-nuoc-webcam', flow: 'User chụp ảnh chai nước -> drink_water -> +10 XP' },
       })
-      setLastResult({ record, ...result })
+      const beMeoSync = syncBeMeoWater(150, 'Bé Mèo Nước Webcam')
+      setLastResult({ record, beMeoSync, ...result })
       stopCamera()
     } catch (error) {
       setCameraError(error?.message || 'Không thể lưu ảnh chai nước.')
@@ -170,7 +126,7 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
               <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: 1.4, color: isDark ? '#67e8f9' : '#0284c7' }}>HEALTH JOURNEY GAME · WATER PROOF</div>
               <h2 style={{ margin: '6px 0 8px', fontSize: 28, color: isDark ? '#f0f9ff' : '#075985' }}>🐱💧 Bé Mèo Nước Webcam</h2>
               <p style={{ margin: 0, color: isDark ? '#bae6fd' : '#0369a1', lineHeight: 1.55 }}>
-                User chụp ảnh chai nước → Activity <b>drink_water</b> → Task Uống nước hoàn thành → <b>+10 XP</b> → Journey Chapter 1 +1/30 → ảnh được lưu sang Upload Records.
+                User chụp ảnh chai nước → AI overlay Object Detection → Activity <b>drink_water</b> → Task Uống nước hoàn thành → <b>+10 XP</b> → Journey Chapter 1 +1/30 → Bé Mèo chat <b>+150ml</b> → ảnh được lưu sang Upload Records.
               </p>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 14 }}>
                 <span style={statPill(isDark)}>Hôm nay: {todayWater?.current || 0}/{todayWater?.target || 1}</span>
@@ -180,7 +136,7 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
               </div>
               {lastResult && (
                 <div style={{ marginTop: 14, padding: 12, borderRadius: 16, background: 'rgba(34,197,94,0.14)', border: '1px solid rgba(34,197,94,0.28)', color: isDark ? '#bbf7d0' : '#166534', fontWeight: 800 }}>
-                  ✓ Đã xác nhận uống nước: +{lastResult.activity.xpEarned} XP · ảnh lưu tại {lastResult.record.uploadPath}
+                  ✓ Đã xác nhận uống nước: +{lastResult.activity.xpEarned} XP · Bé Mèo +150ml · ảnh AI overlay lưu tại {lastResult.record.uploadPath}
                 </div>
               )}
               {cameraError && <div style={{ marginTop: 12, color: '#fecaca', background: 'rgba(239,68,68,.18)', padding: 10, borderRadius: 12 }}>{cameraError}</div>}
