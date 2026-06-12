@@ -576,6 +576,7 @@
     <script>
       const STORAGE_KEY = 'be-meo-nuoc-water-state-v1';
       const CHAT_KEY = 'be-meo-nuoc-chat-v1';
+      const SYNC_EVENT = 'be-meo-nuoc:water-added';
       const today = new Date().toISOString().slice(0, 10);
       const defaultState = { date: today, total: 0, goal: 2000, history: {} };
       let state = loadState();
@@ -927,9 +928,10 @@
         saveMessages();
       }
 
-      function addWater(amount) {
+      function addWater(amount, source = 'Bé Mèo Nước') {
         state.total = Math.max(0, state.total + amount);
         renderState();
+        window.parent?.postMessage?.({ type: 'BE_MEO_WATER_ADDED', amount, source, total: state.total, goal: state.goal }, window.location.origin);
         return state.total >= state.goal
           ? `Giỏi quá meo! Bạn đã đạt ${state.total}/${state.goal}ml hôm nay rồi đó 🏆💧`
           : `Bé Mèo đã ghi +${amount}ml. Hôm nay bạn đang ở ${state.total}/${state.goal}ml (${Math.round((state.total / state.goal) * 100)}%).`;
@@ -938,7 +940,7 @@
       function botReply(text) {
         const lower = text.toLowerCase();
         const mlMatch = lower.match(/(\d{2,4})\s*(ml|mili|milliliter)?/);
-        if (mlMatch && /(uống|drink|vừa|them|thêm|ghi|add)/i.test(lower)) return addWater(Number(mlMatch[1]));
+        if (mlMatch && /(uống|drink|vừa|them|thêm|ghi|add)/i.test(lower)) return addWater(Number(mlMatch[1]), 'Bé Mèo Nước chat');
         if (/(bao nhiêu|mục tiêu|goal|nên uống)/i.test(lower)) return `Mục tiêu mặc định của Bé Mèo là ${state.goal}ml/ngày. Bạn có thể chia thành 6–8 lần uống nhỏ, ưu tiên uống đều trong ngày thay vì dồn vào buổi tối nha 💧`;
         if (/(quên|nhắc|remind|reminder)/i.test(lower)) return 'Mẹo của Bé Mèo: để ly nước ngay cạnh bàn, uống vài ngụm sau khi thức dậy, trước bữa ăn và sau mỗi 45–60 phút làm việc. Meo meo, uống một ngụm ngay bây giờ nhé! 🐱';
         if (/(reset|xóa|xoá)/i.test(lower)) { state.total = 0; renderState(); return 'Bé Mèo đã reset lượng nước hôm nay về 0ml rồi nha.'; }
@@ -1036,7 +1038,7 @@
       }
 
       document.querySelectorAll('.tab-btn').forEach((button) => button.addEventListener('click', () => switchTab(button.dataset.tab)));
-      document.querySelectorAll('[data-add]').forEach((button) => button.addEventListener('click', () => { messages.push({ role: 'bot', text: addWater(Number(button.dataset.add)) }); renderChat(); }));
+      document.querySelectorAll('[data-add]').forEach((button) => button.addEventListener('click', () => { messages.push({ role: 'bot', text: addWater(Number(button.dataset.add), 'Bé Mèo Nước quick button') }); renderChat(); }));
       document.querySelectorAll('[data-prompt]').forEach((button) => button.addEventListener('click', () => sendMessage(button.dataset.prompt)));
       document.getElementById('setGoal1800').addEventListener('click', () => setGoal(1800));
       document.getElementById('setGoal2000').addEventListener('click', () => setGoal(2000));
@@ -1044,6 +1046,7 @@
       document.getElementById('resetDay').addEventListener('click', () => { state.total = 0; if (state.history) state.history[today] = { total: 0, goal: state.goal, percent: 0 }; renderState(); messages.push({ role: 'bot', text: 'Bé Mèo đã reset lượng nước hôm nay. Calendar 31 ngày cũng cập nhật ngày hiện tại về 0ml nha 💧' }); renderChat(); });
       document.getElementById('clearChat').addEventListener('click', () => { messages = [{ role: 'bot', text: 'Chat đã được làm mới. Bé Mèo Nước vẫn ở đây để nhắc bạn uống nước nha 🐱💧' }]; renderChat(); });
       document.getElementById('chatForm').addEventListener('submit', (event) => { event.preventDefault(); sendMessage(chatInput.value); chatInput.value = ''; });
+      window.addEventListener(SYNC_EVENT, (event) => { state = loadState(); messages = loadMessages(); renderState(); renderChat(); });
       document.getElementById('flipCard').addEventListener('click', () => { cardFlipped = !cardFlipped; renderCard(); });
       document.getElementById('prevCard').addEventListener('click', () => { activeCard = (activeCard - 1 + flashcards.length) % flashcards.length; cardFlipped = false; renderCard(); });
       document.getElementById('nextCard').addEventListener('click', () => { activeCard = (activeCard + 1) % flashcards.length; cardFlipped = false; renderCard(); });
