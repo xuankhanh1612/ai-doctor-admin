@@ -1,0 +1,15 @@
+{
+"userId": "u001",
+  "activities": [
+    {
+      "id": "act_001",
+      "type": "drink_water",
+      "title": {
+        "en": "Drink Water",
+        "vi": "Uống nước"
+      },
+      "timestamp": "2026-06-12T08:15:22Z",
+      "proofImage": "/uploads/water001.jpg"
+    }
+  ]
+}

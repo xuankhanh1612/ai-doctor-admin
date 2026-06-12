@@ -1,0 +1,12 @@
+{
+  "items": [
+    {
+      "id": "focus_potion",
+      "name": {
+        "en": "Focus Potion",
+        "vi": "Thuốc Tăng Tập Trung"
+      },
+      "qty": 2
+    }
+  ]
+}

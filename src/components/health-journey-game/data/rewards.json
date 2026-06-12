@@ -1,0 +1,20 @@
+{
+  "rewards": [
+    {
+      "id": "rw001",
+      "name": {
+        "en": "100 Coins",
+        "vi": "100 Xu"
+      },
+      "unlock": "chapter1"
+    },
+    {
+      "id": "rw002",
+      "name": {
+        "en": "Epic Chest",
+        "vi": "Rương Sử Thi"
+      },
+      "unlock": "chapter2"
+    }
+  ]
+}

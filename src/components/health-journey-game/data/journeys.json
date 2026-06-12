@@ -1,0 +1,65 @@
+{
+  "journeys": [
+    {
+      "chapter": 1,
+      "title": {
+        "en": "The Awakening",
+        "vi": "Thức Tỉnh"
+      },
+      "requiredObjectives": [
+        {
+          "task": "drink_water",
+          "title": {
+            "en": "Complete 30 water logs",
+            "vi": "Hoàn thành 30 lần uống nước"
+          },
+          "target": 30
+        },
+        {
+          "task": "walk",
+          "title": {
+            "en": "Complete 20 walking days",
+            "vi": "Hoàn thành 20 lần đi bộ"
+          },
+          "target": 20
+        },
+        {
+          "task": "deep_work",
+          "title": {
+            "en": "Complete 10 Deep Work sessions",
+            "vi": "Hoàn thành 10 Deep Work"
+          },
+          "target": 10
+        }
+      ]
+    },
+    {
+      "chapter": 2,
+      "title": {
+        "en": "The Discipline",
+        "vi": "Kỷ Luật"
+      }
+    },
+    {
+      "chapter": 3,
+      "title": {
+        "en": "The Transformation",
+        "vi": "Chuyển Hóa"
+      }
+    },
+    {
+      "chapter": 4,
+      "title": {
+        "en": "The Mastery",
+        "vi": "Tinh Thông"
+      }
+    },
+    {
+      "chapter": 5,
+      "title": {
+        "en": "The Legend",
+        "vi": "Huyền Thoại"
+      }
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "userId": "u001",
+  "proofs": [
+    {
+      "activityId": "act001",
+      "image": "/uploads/water.jpg",
+      "verified": true
+    }
+  ]
+}

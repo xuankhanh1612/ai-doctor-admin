@@ -1,0 +1,1 @@
+export default function RewardScreen(){return <div>Reward Screen</div>}

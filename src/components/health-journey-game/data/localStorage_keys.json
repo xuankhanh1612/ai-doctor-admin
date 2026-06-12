@@ -1,0 +1,17 @@
+{
+  "keys": [
+    "user_profile",
+    "user_activities",
+    "daily_tasks",
+    "user_task_progress_today",
+    "journeys",
+    "user_journey_progress",
+    "rewards",
+    "user_rewards",
+    "inventory",
+    "user_inventory",
+    "user_leaderboard",
+    "user_ai_coach_conversations",
+    "user_proof_images.json"
+  ]
+}

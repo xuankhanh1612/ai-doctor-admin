@@ -1,0 +1,16 @@
+{
+  "rankings": [
+    {
+      "rank": 1,
+  "userId": "u001",
+      "user": "Shadow",
+      "score": 22450
+    },
+    {
+      "rank": 2,
+  "userId": "u002",
+      "user": "Titan",
+      "score": 18200
+    }
+  ]
+}

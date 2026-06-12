@@ -1,0 +1,24 @@
+{
+"userId": "u001",
+  "date": "2026-06-12",
+  "tasks": [
+    {
+      "taskId": "deep_work",
+      "title": {
+        "en": "Deep Work 90m",
+        "vi": "Tập trung làm việc 90 phút"
+      },
+      "current": 70,
+      "target": 90
+    },
+    {
+      "taskId": "read_book",
+      "title": {
+        "en": "Read 20 Pages",
+        "vi": "Đọc ít nhất 20 trang sách"
+      },
+      "current": 10,
+      "target": 20
+    }
+  ]
+}

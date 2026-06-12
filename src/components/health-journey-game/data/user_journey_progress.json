@@ -1,0 +1,10 @@
+{
+  "userId": "u001",
+  "currentChapter": 1,
+  "completion": 38,
+  "objectives": {
+    "drink_water": 12,
+    "walk": 7,
+    "deep_work": 4
+  }
+}

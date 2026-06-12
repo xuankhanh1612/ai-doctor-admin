@@ -1,0 +1,1 @@
+export default function JourneyScreen(){return <div>Journey Screen</div>}
