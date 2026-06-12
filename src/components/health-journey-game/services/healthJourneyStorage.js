@@ -146,12 +146,12 @@ function updateDailyTask(journeyUser, activityType, timestamp, proof) {
   const task = day.tasks.find((entry) => entry.taskId === taskId)
   if (!task) return day
 
-  if (task.taskId === 'water') task.current = Math.min(task.target, task.current + 1)
-  else if (task.taskId === 'walk') task.current = Math.max(task.current, 10000)
-  else if (task.taskId === 'deep_work') task.current = Math.max(task.current, 90)
-  else if (task.taskId === 'read_book') task.current = Math.max(task.current, 20)
-  else if (task.taskId === 'breathing') task.current = Math.max(task.current, 5)
-  else task.current = Math.max(task.current, task.target)
+  if (task.taskId === 'water') task.current += 1
+  else if (task.taskId === 'walk') task.current += Math.max(Number(task.target || 10000), Number(proof?.value || 10000))
+  else if (task.taskId === 'deep_work') task.current += Math.max(Number(task.target || 90), Number(proof?.value || 90))
+  else if (task.taskId === 'read_book') task.current += Math.max(Number(task.target || 20), Number(proof?.value || 20))
+  else if (task.taskId === 'breathing') task.current += Math.max(Number(task.target || 5), Number(proof?.value || 5))
+  else task.current += Math.max(Number(task.target || 1), Number(proof?.value || 1))
 
   task.completed = task.current >= task.target
   task.updatedAt = timestamp
@@ -169,7 +169,7 @@ function updateJourney(journeyUser, activityType, timestamp) {
   const objective = journeyUser.journeyProgress.objectives.find((entry) => entry.activityType === activityType)
   if (!objective) return null
 
-  objective.current = Math.min(objective.target, objective.current + 1)
+  objective.current += 1
   objective.updatedAt = timestamp
   objective.completed = objective.current >= objective.target
 
@@ -212,6 +212,7 @@ export function completeHealthJourneyActivity({ user, activityType, value = 1, p
     capturedAt: timestamp,
     uploadRecordId: uploadRecord?.id || null,
     uploadPath: uploadRecord?.uploadPath || '',
+    value,
   } : null
 
   const activity = {

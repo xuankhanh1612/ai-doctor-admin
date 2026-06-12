@@ -6,11 +6,14 @@ import { completeHealthJourneyActivity, getTaskSnapshot, HEALTH_JOURNEY_EVENT } 
 import { dataUrlToFile, drawAIWaterBottleOverlay, saveWaterProofImage, syncBeMeoWater } from './health-journey-game/services/waterProofUpload.js'
 // @ts-ignore Vite raw HTML import
 import waterDrinkTrackerHtml from '../waterdrink-khanh/waterdrink_tracker.html?raw'
+
 import meoNhayMatUrl from '../waterdrink-khanh/MeoNhayMat.JPG'
 import meoBuAiUrl from '../waterdrink-khanh/MeoBuAI.JPG'
 import meoNuocAiUrl from '../waterdrink-khanh/MeoNuocAI.JPG'
 import robotTuThe1Url from '../waterdrink-khanh/Robot-mang-giong-noi-nguoi-thuong-ren-hoc-sinh-ngoi-dung-tu-the-1.jpg'
 import robotTuThe2Url from '../waterdrink-khanh/Robot-mang-giong-noi-nguoi-thuong-ren-hoc-sinh-ngoi-dung-tu-the-2.jpg'
+
+const MEDIAPIPE_OBJECT_DETECTION_WEBCAM_URL = '/src/mediapipe-khanh/index.html?mode=webcam&autostart=1#/vision/object_detector'
 
 export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, nextLabel }) {
   const { theme } = useApp()
@@ -47,6 +50,48 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
   useEffect(() => () => {
     streamRef.current?.getTracks?.().forEach((track) => track.stop())
   }, [])
+
+
+  useEffect(() => {
+    const onMediaPipeCapture = async (event) => {
+      if (event.origin !== window.location.origin) return
+      if (event.data?.type !== 'AI_CLINIC_MEDIAPIPE_WEBCAM_CAPTURE' || !event.data?.dataUrl) return
+
+      setSaving(true)
+      setCameraError('')
+      try {
+        const file = dataUrlToFile(event.data.dataUrl, event.data.filename || 'be_meo_nuoc_ai_webcam.jpg')
+        const record = await saveWaterProofImage(file, user, {
+          source: 'be-meo-nuoc-ai-healthcare-vision-webcam',
+          notesPrefix: 'Bé Mèo Nước · AI Healthcare Vision Control · Object Detection Webcam',
+          activityType: 'drink_water',
+          taskId: 'water',
+          xpEarned: 10,
+          waterAmountMl: 150,
+          proofType: 'ai_healthcare_vision_object_detection_webcam_overlay',
+        })
+        const result = completeHealthJourneyActivity({
+          user,
+          activityType: 'drink_water',
+          value: 1,
+          proofImage: record.uploadPath,
+          uploadRecord: record,
+          metadata: { source: 'be-meo-nuoc-ai-healthcare-vision-webcam', flow: 'Bé Mèo Nước -> AI Healthcare Vision Object Detection Webcam -> drink_water proof' },
+        })
+        const beMeoSync = syncBeMeoWater(150, 'Bé Mèo Nước AI Healthcare Vision')
+        setLastResult({ record, beMeoSync, ...result })
+        event.source?.postMessage?.({ type: 'AI_CLINIC_MEDIAPIPE_CAPTURE_SAVED', captureKind: 'webcam', uploadPath: record.uploadPath }, event.origin)
+      } catch (error) {
+        setCameraError(error?.message || 'Không thể lưu ảnh AI Healthcare Vision proof.')
+        event.source?.postMessage?.({ type: 'AI_CLINIC_MEDIAPIPE_CAPTURE_SAVE_FAILED', captureKind: 'webcam', message: error?.message || String(error) }, event.origin)
+      } finally {
+        setSaving(false)
+      }
+    }
+
+    window.addEventListener('message', onMediaPipeCapture)
+    return () => window.removeEventListener('message', onMediaPipeCapture)
+  }, [user])
 
   const html = useMemo(() => waterDrinkTrackerHtml
     .replaceAll('__MEO_NHAY_MAT__', meoNhayMatUrl)
@@ -142,28 +187,18 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
               {cameraError && <div style={{ marginTop: 12, color: '#fecaca', background: 'rgba(239,68,68,.18)', padding: 10, borderRadius: 12 }}>{cameraError}</div>}
             </div>
 
-            <div style={{ borderRadius: 22, overflow: 'hidden', background: '#020617', border: '1px solid rgba(125,211,252,0.28)', minHeight: 260, position: 'relative' }}>
-              <video ref={videoRef} autoPlay playsInline muted style={{ display: cameraOn ? 'block' : 'none', width: '100%', height: 260, objectFit: 'cover' }} />
-              {!cameraOn && (
-                <div style={{ height: 260, display: 'grid', placeItems: 'center', color: '#bae6fd', textAlign: 'center', padding: 20 }}>
-                  <div>
-                    <div style={{ fontSize: 54 }}>📷</div>
-                    <b>Webcam Object Detection style</b>
-                    <p style={{ margin: '8px 0 0', color: '#7dd3fc' }}>Mở camera, đưa chai nước vào khung rồi chụp.</p>
-                  </div>
-                </div>
-              )}
-              <canvas ref={canvasRef} style={{ display: 'none' }} />
-              <div style={{ display: 'flex', gap: 8, padding: 10, background: 'rgba(2,6,23,0.92)' }}>
-                {!cameraOn ? (
-                  <button type="button" onClick={startCamera} style={cameraButton(true)} disabled={saving}>Mở Webcam</button>
-                ) : (
-                  <>
-                    <button type="button" onClick={captureBottle} style={cameraButton(true)} disabled={saving}>{saving ? 'Đang lưu…' : 'Chụp chai nước'}</button>
-                    <button type="button" onClick={stopCamera} style={cameraButton(false)} disabled={saving}>Đóng</button>
-                  </>
-                )}
+            <div style={{ borderRadius: 22, overflow: 'hidden', background: '#020617', border: '1px solid rgba(125,211,252,0.28)', minHeight: 560, position: 'relative' }}>
+              <div style={{ padding: 10, borderBottom: '1px solid rgba(125,211,252,0.22)', background: 'rgba(8,47,73,0.42)', color: '#bae6fd', fontSize: 12, lineHeight: 1.45 }}>
+                <b>AI Healthcare Vision Control · Object Detection · Webcam</b><br />
+                Mở Webcam, xem nhận diện realtime trên lớp phủ AI thật, rồi bấm <b>Lưu Upload Records</b> để lưu ảnh kèm overlay và cộng thêm lượt uống nước.
               </div>
+              <iframe
+                title="Bé Mèo Nước AI Healthcare Vision Object Detection Webcam"
+                src={MEDIAPIPE_OBJECT_DETECTION_WEBCAM_URL}
+                style={{ width: '100%', minHeight: 520, border: 0, display: 'block', background: '#020617' }}
+                allow="camera; microphone; fullscreen; clipboard-read; clipboard-write"
+                referrerPolicy="strict-origin-when-cross-origin"
+              />
             </div>
           </div>
         </section>
