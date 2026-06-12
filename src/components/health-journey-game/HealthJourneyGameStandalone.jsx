@@ -490,6 +490,8 @@ export default function HealthJourneyGameStandalone() {
   const [cameraError, setCameraError] = useState('')
   const [savingProof, setSavingProof] = useState(false)
   const [lastMissionRecord, setLastMissionRecord] = useState(null)
+  // ── Active screen state (replaces DOM class mutation) ──
+  const [activeScreen, setActiveScreen] = useState('screen-home')
   // ── Popup state (replaces DOM-based modal-task-detail / modal-chapter-detail) ──
   const [taskPopupKey, setTaskPopupKey] = useState(null)    // taskId | null
   const [journeyPopupKey, setJourneyPopupKey] = useState(null) // chapterKey | 'overview' | null
@@ -573,27 +575,11 @@ export default function HealthJourneyGameStandalone() {
   const getRoot = () => containerRef.current
 
   const goTo = (screenId) => {
-    const root = getRoot()
-    if (!root) return
-
-    root.querySelectorAll('.screen').forEach((screen) => {
-      screen.classList.remove('active')
-    })
-
-    const screen = root.querySelector(`#${screenId}`)
-    if (screen) {
-      screen.classList.add('active')
-      screen.scrollTop = 0
-    }
-
-    root.querySelectorAll('.nav-item').forEach((navItem) => {
-      navItem.classList.remove('active')
-    })
-
-    const navId = screenNavMap[screenId]
-    if (navId) {
-      root.querySelector(`#${navId}`)?.classList.add('active')
-    }
+    setActiveScreen(screenId)
+    // Scroll to top of the new screen after render
+    setTimeout(() => {
+      getRoot()?.querySelector(`#${screenId}`)?.scrollTo?.(0, 0)
+    }, 0)
   }
 
   const openModal = (id) => {
@@ -714,7 +700,7 @@ export default function HealthJourneyGameStandalone() {
       <style>{styles}</style>
       <div id="app">
         {/* ═══════════════════════════════ SCREEN 1: TRANG CHỦ ═══════════════════════════════ */}
-        <div className="screen active" id="screen-home">
+        <div className={`screen${activeScreen === 'screen-home' ? ' active' : ''}`} id="screen-home">
           <div className="top-bar">
             <div className="top-bar-title">
               ⚔ NEURO QUEST
@@ -914,7 +900,7 @@ export default function HealthJourneyGameStandalone() {
           </div>
         </div>
         {/* ═══════════════════════════════ SCREEN 2: NHIỆM VỤ ═══════════════════════════════ */}
-        <div className="screen" id="screen-nhiem-vu">
+        <div className={`screen${activeScreen === 'screen-nhiem-vu' ? ' active' : ''}`} id="screen-nhiem-vu">
           <div className="top-bar">
             <div className="top-bar-title">
               📋 NHIỆM VỤ
@@ -1075,7 +1061,7 @@ export default function HealthJourneyGameStandalone() {
           </div>
         </div>
         {/* ═══════════════════════════════ SCREEN 3: HÀNH TRÌNH ═══════════════════════════════ */}
-        <div className="screen" id="screen-hanh-trinh">
+        <div className={`screen${activeScreen === 'screen-hanh-trinh' ? ' active' : ''}`} id="screen-hanh-trinh">
           <div className="top-bar">
             <div className="top-bar-title">
               ⚔ HÀNH TRÌNH
@@ -1211,7 +1197,7 @@ export default function HealthJourneyGameStandalone() {
           </div>
         </div>
         {/* ═══════════════════════════════ SCREEN 4: AI COACH ═══════════════════════════════ */}
-        <div className="screen" id="screen-ai-coach">
+        <div className={`screen${activeScreen === 'screen-ai-coach' ? ' active' : ''}`} id="screen-ai-coach">
           <div className="top-bar">
             <div className="top-bar-title">
               🤖 AI COACH
@@ -1384,7 +1370,7 @@ export default function HealthJourneyGameStandalone() {
           </div>
         </div>
         {/* ═══════════════════════════════ SCREEN 5: CỬA HÀNG ═══════════════════════════════ */}
-        <div className="screen" id="screen-cua-hang">
+        <div className={`screen${activeScreen === 'screen-cua-hang' ? ' active' : ''}`} id="screen-cua-hang">
           <div className="top-bar">
             <div className="top-bar-title">
               🏪 CỬA HÀNG
@@ -1576,7 +1562,7 @@ export default function HealthJourneyGameStandalone() {
           </div>
         </div>
         {/* ═══════════════════════════════ SCREEN 6: REWARDS ═══════════════════════════════ */}
-        <div className="screen" id="screen-rewards">
+        <div className={`screen${activeScreen === 'screen-rewards' ? ' active' : ''}`} id="screen-rewards">
           <div className="top-bar">
             <div className="top-bar-title">
               🎁 REWARDS
@@ -1750,7 +1736,7 @@ export default function HealthJourneyGameStandalone() {
           </div>
         </div>
         {/* ═══════════════════════════════ SCREEN 7: PROFILE ═══════════════════════════════ */}
-        <div className="screen" id="screen-profile">
+        <div className={`screen${activeScreen === 'screen-profile' ? ' active' : ''}`} id="screen-profile">
           <div className="top-bar">
             <div className="top-bar-title">
               👤 PROFILE
@@ -3301,7 +3287,7 @@ export default function HealthJourneyGameStandalone() {
         </div>
         {/* ═══════════════════════════════ BOTTOM NAV ═══════════════════════════════ */}
         <nav id="bottom-nav">
-          <div className="nav-item active" id="nav-home" onClick={(event) => { goTo('screen-home'); }}>
+          <div className={`nav-item${activeScreen === 'screen-home' ? ' active' : ''}`} id="nav-home" onClick={(event) => { goTo('screen-home'); }}>
             <span className="nav-icon">
               🏠
             </span>
@@ -3309,7 +3295,7 @@ export default function HealthJourneyGameStandalone() {
               Trang chủ
             </span>
           </div>
-          <div className="nav-item" id="nav-nhiem-vu" onClick={(event) => { goTo('screen-nhiem-vu'); }}>
+          <div className={`nav-item${activeScreen === 'screen-nhiem-vu' ? ' active' : ''}`} id="nav-nhiem-vu" onClick={(event) => { goTo('screen-nhiem-vu'); }}>
             <span className="nav-icon">
               📋
             </span>
@@ -3317,7 +3303,7 @@ export default function HealthJourneyGameStandalone() {
               Nhiệm vụ
             </span>
           </div>
-          <div className="nav-item" id="nav-hanh-trinh" onClick={(event) => { goTo('screen-hanh-trinh'); }} style={{ flex: "1" }}>
+          <div className={`nav-item${activeScreen === 'screen-hanh-trinh' ? ' active' : ''}`} id="nav-hanh-trinh" onClick={(event) => { goTo('screen-hanh-trinh'); }} style={{ flex: "1" }}>
             <span className="nav-icon">
               ⚔️
             </span>
@@ -3330,7 +3316,7 @@ export default function HealthJourneyGameStandalone() {
               🎤
             </div>
           </div>
-          <div className="nav-item" id="nav-cua-hang" onClick={(event) => { goTo('screen-cua-hang'); }}>
+          <div className={`nav-item${activeScreen === 'screen-cua-hang' ? ' active' : ''}`} id="nav-cua-hang" onClick={(event) => { goTo('screen-cua-hang'); }}>
             <span className="nav-icon">
               🏪
             </span>
@@ -3338,7 +3324,7 @@ export default function HealthJourneyGameStandalone() {
               Cửa hàng
             </span>
           </div>
-          <div className="nav-item" id="nav-rewards" onClick={(event) => { goTo('screen-rewards'); }}>
+          <div className={`nav-item${activeScreen === 'screen-rewards' ? ' active' : ''}`} id="nav-rewards" onClick={(event) => { goTo('screen-rewards'); }}>
             <span className="nav-icon">
               🎁
             </span>
@@ -3346,7 +3332,7 @@ export default function HealthJourneyGameStandalone() {
               Rewards
             </span>
           </div>
-          <div className="nav-item" id="nav-profile" onClick={(event) => { goTo('screen-profile'); }}>
+          <div className={`nav-item${activeScreen === 'screen-profile' ? ' active' : ''}`} id="nav-profile" onClick={(event) => { goTo('screen-profile'); }}>
             <span className="nav-icon">
               👤
             </span>
