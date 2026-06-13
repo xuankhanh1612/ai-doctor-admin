@@ -328,26 +328,56 @@ export abstract class BaseVisionTask extends BaseTask {
     const id = `view-${captureKind}-upload-records-btn`;
     if (document.getElementById(id)) return;
 
+    // ── Thông báo lưu hình (ẩn cho đến khi lưu thành công) ──
+    const notifId = `save-notif-${captureKind}`;
+    if (!document.getElementById(notifId)) {
+      const notif = document.createElement('div');
+      notif.id = notifId;
+      notif.className = 'capture-save-notif';
+      notif.style.display = 'none';
+      notif.setAttribute('role', 'status');
+      notif.setAttribute('aria-live', 'polite');
+      anchor.insertAdjacentElement('afterend', notif);
+    }
+
+    // ── Nút Xem hình ──
+    const notifEl = document.getElementById(notifId)!;
     const viewButton = document.createElement('button');
     viewButton.id = id;
     viewButton.className = 'action-button view-upload-records';
     viewButton.type = 'button';
-    viewButton.style.display = 'flex';
+    viewButton.style.display = 'none';
     viewButton.innerHTML = '<span class="material-icons">folder_shared</span> Xem hình tại Medical Records';
     viewButton.addEventListener('click', (event) => {
       event.preventDefault();
       event.stopPropagation();
       window.parent?.postMessage({ type: 'AI_CLINIC_OPEN_UPLOAD_RECORDS' }, window.location.origin);
     });
-    anchor.insertAdjacentElement('afterend', viewButton);
+    notifEl.insertAdjacentElement('afterend', viewButton);
   }
 
   private showUploadRecordsButton(captureKind: 'webcam' | 'image', uploadPath = '') {
     const viewButton = document.getElementById(`view-${captureKind}-upload-records-btn`) as HTMLButtonElement | null;
-    if (!viewButton) return;
+    const notif = document.getElementById(`save-notif-${captureKind}`) as HTMLElement | null;
 
-    viewButton.style.display = 'flex';
-    viewButton.title = uploadPath;
+    if (notif) {
+      const tabLabel = captureKind === 'webcam' ? 'Webcam' : 'Image';
+      const icon     = captureKind === 'webcam' ? 'photo_camera' : 'image';
+      const pathText = uploadPath ? `<span class="save-notif-path">${uploadPath}</span>` : '';
+      notif.innerHTML = `
+        <span class="save-notif-icon material-icons">${icon}</span>
+        <span class="save-notif-text">
+          Đã lưu hình <b>${tabLabel}</b> vào Upload Records${pathText ? ' · ' : ''}${pathText}
+        </span>
+        <span class="save-notif-check material-icons">check_circle</span>
+      `;
+      notif.style.display = 'flex';
+    }
+
+    if (viewButton) {
+      viewButton.style.display = 'flex';
+      viewButton.title = uploadPath;
+    }
   }
 
   protected captureWebcamToUploadRecords() {
