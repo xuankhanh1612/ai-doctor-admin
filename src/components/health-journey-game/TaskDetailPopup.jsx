@@ -279,7 +279,7 @@ export default function TaskDetailPopup({ taskId, onClose, onOpenJourney, snapsh
               key={task.taskId}
               title={`AI Vision · ${task.titleVi}`}
               src={MEDIAPIPE_URL}
-              style={{ width:'100%', flex:1, minHeight:500, border:'none', borderRadius:12, display:'block' }}
+              style={{ width:'100%', flex:1, minHeight:0, border:'none', borderRadius:8, display:'block' }}
               allow="camera; microphone; fullscreen; clipboard-read; clipboard-write"
               referrerPolicy="strict-origin-when-cross-origin"
             />
@@ -295,16 +295,16 @@ const S = {
   overlay: {
     position: 'fixed', inset: 0, zIndex: 9000,
     background: 'rgba(5,8,18,.88)', backdropFilter: 'blur(8px)',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    padding: '0.5vh 1vw',
+    display: 'flex', alignItems: 'stretch', justifyContent: 'center',
+    padding: '0',
   },
   box: {
-    width: '98vw', height: '98vh',
+    width: '100vw', height: '100%',
     maxWidth: 1200,
     background: '#0a1220',
-    borderRadius: 20,
-    border: '1px solid rgba(80,160,255,.2)',
-    padding: '16px 18px 12px',
+    borderRadius: 0,
+    border: 'none',
+    padding: '12px 14px 8px',
     position: 'relative',
     display: 'flex', flexDirection: 'column',
     overflow: 'hidden',
@@ -315,12 +315,12 @@ const S = {
     color: '#94a3b8', fontSize: 15, cursor: 'pointer',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
   },
-  title: { fontFamily: "'Rajdhani',sans-serif", fontSize: 20, fontWeight: 800, marginBottom: 2 },
-  subtitle: { fontSize: 12, color: '#64748b', marginBottom: 12 },
-  cols: { display: 'flex', gap: 16, flex: 1, overflow: 'hidden', minHeight: 0 },
+  title: { fontFamily: "'Rajdhani',sans-serif", fontSize: 18, fontWeight: 800, marginBottom: 1 },
+  subtitle: { fontSize: 11, color: '#64748b', marginBottom: 8 },
+  cols: { display: 'flex', gap: 12, flex: 1, overflow: 'hidden', minHeight: 0 },
   colLeft: {
-    width: 340, flexShrink: 0, overflowY: 'auto', paddingRight: 8,
-    display: 'flex', flexDirection: 'column',
+    width: 360, flexShrink: 0, overflowY: 'auto', paddingRight: 6,
+    display: 'flex', flexDirection: 'column', minHeight: 0,
   },
   colRight: {
     flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden',

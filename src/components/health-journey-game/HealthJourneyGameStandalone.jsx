@@ -99,6 +99,15 @@ const styles = String.raw`
 
   .health-journey-standalone-container * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
 
+  .health-journey-standalone-container {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    position: relative;
+  }
+
   /* ─── APP SHELL ─── */
   .health-journey-standalone-container #app {
     width:100%; flex:1;
@@ -112,7 +121,7 @@ const styles = String.raw`
   }
 
   /* ─── SCREENS ─── */
-  .screen {
+  .health-journey-standalone-container .screen {
     display: none;
     flex-direction: column;
     flex: 1;
@@ -120,8 +129,9 @@ const styles = String.raw`
     overflow-x: hidden;
     padding-bottom: 70px;
     background: var(--bg-deep);
+    min-height: 0;
   }
-  .screen.active { display: flex; }
+  .health-journey-standalone-container .screen.active { display: flex; }
 
   /* ─── MODALS / SUB-SCREENS ─── */
   .modal-overlay {
