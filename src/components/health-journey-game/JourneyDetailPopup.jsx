@@ -58,14 +58,21 @@ export default function JourneyDetailPopup({ chapterKey, onClose, onOpenTask, sn
 
   return (
     <div style={S.overlay} onClick={e => { if (e.target === e.currentTarget) onClose?.() }}>
-      <div style={S.box}>
+      <div style={S.box} className="jdp-box">
+        <style>{`
+          @media (max-width: 860px) {
+            .jdp-box { width: 100vw !important; height: 100% !important; max-width: none !important; border-radius: 0 !important; }
+            .jdp-cols { flex-direction: column !important; overflow-y: auto !important; }
+            .jdp-left-col { width: 100% !important; overflow-y: visible !important; }
+          }
+        `}</style>
         <button style={S.closeBtn} onClick={onClose}>✕</button>
         <div style={S.title}>⚔ Chi tiết Hành Trình</div>
         <div style={S.subtitle}>{ALL_JOURNEYS.length} Chapter · Dữ liệu từ journeys.json</div>
 
-        <div style={S.cols}>
+        <div style={S.cols} className="jdp-cols">
           {/* ── Cột trái: danh sách chapter + missions ── */}
-          <div style={S.colLeft}>
+          <div style={S.colLeft} className="jdp-left-col">
 
             {/* Chapter list từ journeys.json */}
             <div style={S.sectionLabel}>CÁC CHAPTER</div>

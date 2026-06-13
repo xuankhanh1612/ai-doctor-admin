@@ -178,9 +178,27 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
           prevLabel={prevLabel}
         />
 
+        <style>{`
+          .bemeo-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1.05fr) minmax(280px, 0.95fr);
+            gap: 16px;
+            align-items: stretch;
+          }
+          .bemeo-camera { order: 2; }
+          .bemeo-info { order: 1; }
+          @media (max-width: 860px) {
+            .bemeo-grid { grid-template-columns: 1fr; }
+            .bemeo-camera { order: -1; }
+            .bemeo-info { order: 1; }
+            .bemeo-camera-frame { min-height: 0 !important; }
+            .bemeo-camera-iframe { min-height: 70vh !important; }
+            .bemeo-chatbot-iframe { min-height: 1500px !important; }
+          }
+        `}</style>
         <section style={{ borderRadius: 28, border: `1px solid ${isDark ? 'rgba(125,211,252,0.28)' : 'rgba(14,165,233,0.24)'}`, background: isDark ? 'linear-gradient(135deg, rgba(8,47,73,0.94), rgba(15,23,42,0.96))' : 'linear-gradient(135deg, #fff, #e0f7ff)', padding: 18, boxShadow: isDark ? '0 24px 70px rgba(0,0,0,0.35)' : '0 24px 70px rgba(14,165,233,0.16)' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.05fr) minmax(280px, 0.95fr)', gap: 16, alignItems: 'stretch' }}>
-            <div>
+          <div className="bemeo-grid">
+            <div className="bemeo-info">
               <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: 1.4, color: isDark ? '#67e8f9' : '#0284c7' }}>HEALTH JOURNEY GAME · WATER PROOF</div>
               <h2 style={{ margin: '6px 0 8px', fontSize: 28, color: isDark ? '#f0f9ff' : '#075985' }}>🐱💧 Bé Mèo Nước Webcam</h2>
               <p style={{ margin: 0, color: isDark ? '#bae6fd' : '#0369a1', lineHeight: 1.55 }}>
@@ -209,7 +227,7 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
               {cameraError && <div style={{ marginTop: 12, color: '#fecaca', background: 'rgba(239,68,68,.18)', padding: 10, borderRadius: 12 }}>{cameraError}</div>}
             </div>
 
-            <div style={{ borderRadius: 22, overflow: 'hidden', background: '#020617', border: '1px solid rgba(125,211,252,0.28)', minHeight: 560, position: 'relative' }}>
+            <div className="bemeo-camera bemeo-camera-frame" style={{ borderRadius: 22, overflow: 'hidden', background: '#020617', border: '1px solid rgba(125,211,252,0.28)', minHeight: 560, position: 'relative' }}>
               <div style={{ padding: 10, borderBottom: '1px solid rgba(125,211,252,0.22)', background: 'rgba(8,47,73,0.42)', color: '#bae6fd', fontSize: 12, lineHeight: 1.45 }}>
                 <b>AI Healthcare Vision Control · Object Detection · Webcam &amp; Image</b><br />
                 Tab <b>Webcam</b>: mở camera, xem nhận diện realtime, bấm <b>Lưu Hình</b> để lưu ảnh kèm overlay AI. Tab <b>Image</b>: upload ảnh chai nước từ thiết bị. Cả hai đều cộng lượt uống nước &amp; +10 XP.
@@ -217,6 +235,7 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
               <iframe
                 title="Bé Mèo Nước AI Healthcare Vision Object Detection Webcam"
                 src={MEDIAPIPE_OBJECT_DETECTION_WEBCAM_URL}
+                className="bemeo-camera-iframe"
                 style={{ width: '100%', minHeight: 520, border: 0, display: 'block', background: '#020617' }}
                 allow="camera; microphone; fullscreen; clipboard-read; clipboard-write"
                 referrerPolicy="strict-origin-when-cross-origin"
@@ -229,6 +248,7 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
           <iframe
             title="Bé Mèo Nước chatbot"
             srcDoc={html}
+            className="bemeo-chatbot-iframe"
             style={{ width: '100%', minHeight: '820px', border: 0, display: 'block', background: '#eef8ff' }}
             sandbox="allow-scripts allow-same-origin allow-forms"
           />

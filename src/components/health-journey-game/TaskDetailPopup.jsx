@@ -155,6 +155,13 @@ export default function TaskDetailPopup({ taskId, onClose, onOpenJourney, snapsh
   return (
     <div style={S.overlay} onClick={e => { if (e.target === e.currentTarget) close() }}>
       <div style={S.box}>
+        <style>{`
+          @media (max-width: 860px) {
+            .tdp-cols { flex-direction: column !important; overflow-y: auto !important; }
+            .tdp-camera-col { order: -1; flex: 0 0 auto !important; height: 48vh; min-height: 320px; }
+            .tdp-info-col { width: 100% !important; flex: 1 1 auto !important; overflow-y: visible !important; }
+          }
+        `}</style>
         <button style={S.closeBtn} onClick={close}>✕</button>
 
         {/* ── Header ── */}
@@ -162,10 +169,10 @@ export default function TaskDetailPopup({ taskId, onClose, onOpenJourney, snapsh
         <div style={S.subtitle}>{task.titleVi} · {task.titleEn}</div>
 
         {/* ── Layout 2 cột ── */}
-        <div style={S.cols}>
+        <div style={S.cols} className="tdp-cols">
 
           {/* Cột trái: thông tin + danh sách tất cả nhiệm vụ từ daily_tasks.json */}
-          <div style={S.colLeft}>
+          <div style={S.colLeft} className="tdp-info-col">
 
             {/* Progress hôm nay */}
             <div style={S.card}>
@@ -266,7 +273,7 @@ export default function TaskDetailPopup({ taskId, onClose, onOpenJourney, snapsh
           </div>
 
           {/* Cột phải: AI Camera full height */}
-          <div style={S.colRight}>
+          <div style={S.colRight} className="tdp-camera-col">
             <div style={S.cardLabel}>AI Healthcare Vision · Object Detection · Webcam</div>
             <div style={{ fontSize: 11, color: '#64748b', marginBottom: 8, lineHeight: 1.5 }}>
               Nhận diện vật thể realtime · Chụp ảnh để ghi nhận hoàn thành nhiệm vụ
