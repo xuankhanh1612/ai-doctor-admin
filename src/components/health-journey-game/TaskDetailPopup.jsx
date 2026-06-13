@@ -156,10 +156,22 @@ export default function TaskDetailPopup({ taskId, onClose, onOpenJourney, snapsh
     <div style={S.overlay} onClick={e => { if (e.target === e.currentTarget) close() }}>
       <div style={S.box}>
         <style>{`
-          @media (max-width: 860px) {
-            .tdp-cols { flex-direction: column !important; overflow-y: auto !important; }
-            .tdp-camera-col { order: -1; flex: 0 0 auto !important; height: 48vh; min-height: 320px; }
-            .tdp-info-col { width: 100% !important; flex: 1 1 auto !important; overflow-y: visible !important; }
+          .tdp-cols { flex-direction: column !important; overflow-y: auto !important; }
+          .tdp-camera-col {
+            order: -1;
+            flex: 0 0 auto !important;
+            width: 100%;
+            height: 52vh;
+            min-height: 340px;
+          }
+          .tdp-info-col {
+            width: 100% !important;
+            flex: 1 1 auto !important;
+            overflow-y: visible !important;
+          }
+          @media (min-width: 861px) {
+            .tdp-camera-col { height: 60vh; min-height: 420px; }
+            .tdp-info-col { max-width: 1080px; margin: 0 auto; }
           }
         `}</style>
         <button style={S.closeBtn} onClick={close}>✕</button>

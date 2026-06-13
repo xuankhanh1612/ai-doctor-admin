@@ -180,18 +180,21 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
 
         <style>{`
           .bemeo-grid {
-            display: grid;
-            grid-template-columns: minmax(0, 1.05fr) minmax(280px, 0.95fr);
+            display: flex;
+            flex-direction: column;
             gap: 16px;
-            align-items: stretch;
           }
-          .bemeo-camera { order: 2; }
-          .bemeo-info { order: 1; }
+          .bemeo-camera {
+            order: -1;
+            width: 100%;
+          }
+          .bemeo-info { order: 1; width: 100%; }
+          .bemeo-camera-frame { min-height: 0 !important; }
+          .bemeo-camera-iframe { min-height: 75vh !important; }
+          @media (min-width: 1100px) {
+            .bemeo-camera-iframe { min-height: 78vh !important; }
+          }
           @media (max-width: 860px) {
-            .bemeo-grid { grid-template-columns: 1fr; }
-            .bemeo-camera { order: -1; }
-            .bemeo-info { order: 1; }
-            .bemeo-camera-frame { min-height: 0 !important; }
             .bemeo-camera-iframe { min-height: 70vh !important; }
             .bemeo-chatbot-iframe { min-height: 1500px !important; }
           }

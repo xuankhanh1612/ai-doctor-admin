@@ -19,6 +19,17 @@ export default function HealthJourneyGamePanel({ onNext, nextLabel }) {
 
   return (
     <div className="animate-fade health-journey-game-page">
+      <section className="health-journey-game-frame-card" aria-label="Health Journey Game embedded app">
+        {/* <iframe
+          title="Health Journey Game"
+          src={healthJourneyGameUrl}
+          className="health-journey-game-frame"
+          loading="lazy"
+        /> */}
+
+<HealthJourneyGameStandalone />
+      </section>
+
       <section className="ai-healthcare-vision-header health-journey-game-header">
         <div>
           <div className="ai-healthcare-vision-kicker">HEALTH JOURNEY GAME</div>
@@ -34,17 +45,6 @@ export default function HealthJourneyGamePanel({ onNext, nextLabel }) {
             <span key={screen}>{index + 1}. {screen}</span>
           ))}
         </div>
-      </section>
-
-      <section className="health-journey-game-frame-card" aria-label="Health Journey Game embedded app">
-        {/* <iframe
-          title="Health Journey Game"
-          src={healthJourneyGameUrl}
-          className="health-journey-game-frame"
-          loading="lazy"
-        /> */}
-
-<HealthJourneyGameStandalone />
       </section>
 
       <NavButtons onNext={onNext} nextLabel={nextLabel} />
