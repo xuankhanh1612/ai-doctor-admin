@@ -65,6 +65,7 @@ export default function TaskDetailPopup({ taskId, onClose, onOpenJourney, snapsh
   const [cameraErr, setCameraErr] = useState('')
   const [saving, setSaving]       = useState(false)
   const [lastRecord, setLastRecord] = useState(null)
+  const [lastCaptureKind, setLastCaptureKind] = useState('')
 
   const videoRef  = useRef(null)
   const canvasRef = useRef(null)
@@ -77,35 +78,52 @@ export default function TaskDetailPopup({ taskId, onClose, onOpenJourney, snapsh
 
   useEffect(() => () => stopCam(), [])
 
-  // MediaPipe iframe → save proof
+  // MediaPipe iframe → save proof (Webcam + Image tab)
   useEffect(() => {
     const h = async (e) => {
       if (e.origin !== window.location.origin) return
-      if (e.data?.type !== 'AI_CLINIC_MEDIAPIPE_WEBCAM_CAPTURE' || !e.data?.dataUrl) return
+
+      // ── Mở Upload Records khi iframe yêu cầu ──
+      if (e.data?.type === 'AI_CLINIC_OPEN_UPLOAD_RECORDS') {
+        if (onViewMedicalRecord) { onViewMedicalRecord() }
+        else { window.dispatchEvent(new CustomEvent('navigate-to-upload')) }
+        return
+      }
+
+      const isWebcamCapture = e.data?.type === 'AI_CLINIC_MEDIAPIPE_WEBCAM_CAPTURE'
+      const isImageCapture  = e.data?.type === 'AI_CLINIC_MEDIAPIPE_IMAGE_CAPTURE'
+      if ((!isWebcamCapture && !isImageCapture) || !e.data?.dataUrl) return
+
+      const captureKind = isWebcamCapture ? 'webcam' : 'image'
       setSaving(true); setCameraErr('')
       try {
-        const file = dataUrlToFile(e.data.dataUrl, e.data.filename || `${task.taskId}_ai.jpg`)
+        const defaultFilename = isWebcamCapture
+          ? `${task.taskId}_ai_webcam.jpg`
+          : `${task.taskId}_ai_image.jpg`
+        const file = dataUrlToFile(e.data.dataUrl, e.data.filename || defaultFilename)
         const rec  = await saveWaterProofImage(file, user, {
-          source: 'task-detail-popup-ai-vision',
+          source: `task-detail-popup-ai-vision-${captureKind}`,
           notesPrefix: `Health Journey · ${task.titleVi}`,
           activityType: task.activityType, taskId: task.taskId,
           xpEarned: XP_TABLE[task.activityType] || 0,
           waterAmountMl: task.taskId === 'water' ? 150 : 0,
+          proofType: `ai_healthcare_vision_object_detection_${captureKind}_overlay`,
         })
         completeHealthJourneyActivity({ user, activityType: task.activityType, value: 1,
           proofImage: rec.uploadPath, uploadRecord: rec,
-          metadata: { source: 'task-detail-popup-ai-vision', taskId: task.taskId } })
-        if (task.taskId === 'water') syncBeMeoWater(150, 'TaskDetailPopup AI')
+          metadata: { source: `task-detail-popup-ai-vision-${captureKind}`, taskId: task.taskId } })
+        if (task.taskId === 'water') syncBeMeoWater(150, `TaskDetailPopup AI ${captureKind}`)
         setLastRecord(rec)
-        e.source?.postMessage?.({ type: 'AI_CLINIC_MEDIAPIPE_CAPTURE_SAVED', uploadPath: rec.uploadPath }, e.origin)
+        setLastCaptureKind(captureKind)
+        e.source?.postMessage?.({ type: 'AI_CLINIC_MEDIAPIPE_CAPTURE_SAVED', captureKind, uploadPath: rec.uploadPath }, e.origin)
       } catch(err) {
         setCameraErr(err?.message || 'Lỗi lưu ảnh.')
-        e.source?.postMessage?.({ type: 'AI_CLINIC_MEDIAPIPE_CAPTURE_SAVE_FAILED', message: err?.message }, e.origin)
+        e.source?.postMessage?.({ type: 'AI_CLINIC_MEDIAPIPE_CAPTURE_SAVE_FAILED', captureKind, message: err?.message }, e.origin)
       } finally { setSaving(false) }
     }
     window.addEventListener('message', h)
     return () => window.removeEventListener('message', h)
-  }, [task, user])
+  }, [task, user, onViewMedicalRecord])
 
   const startCam = async () => {
     setCameraErr('')
@@ -214,7 +232,9 @@ export default function TaskDetailPopup({ taskId, onClose, onOpenJourney, snapsh
 
             {/* Proof status */}
             {proofText && (
-              <div style={S.proofOk}>✓ Đã có ảnh proof · {proofText}</div>
+              <div style={S.proofOk}>
+                {lastCaptureKind === 'image' ? '🖼' : '📷'} Đã lưu hình {lastCaptureKind === 'image' ? 'Image tab' : lastCaptureKind === 'webcam' ? 'Webcam' : ''} · {proofText}
+              </div>
             )}
             {cameraErr && <div style={S.proofErr}>{cameraErr}</div>}
             {saving && <div style={{ ...S.dim, fontSize: 11, marginTop: 6 }}>⏳ Đang lưu ảnh...</div>}
@@ -292,9 +312,9 @@ export default function TaskDetailPopup({ taskId, onClose, onOpenJourney, snapsh
 
           {/* Cột phải: AI Camera full height */}
           <div style={S.colRight} className="tdp-camera-col">
-            <div style={S.cardLabel}>AI Healthcare Vision · Object Detection · Webcam</div>
+            <div style={S.cardLabel}>AI Healthcare Vision · Object Detection · Webcam / Image</div>
             <div style={{ fontSize: 11, color: '#64748b', marginBottom: 8, lineHeight: 1.5 }}>
-              Nhận diện vật thể realtime · Chụp ảnh để ghi nhận hoàn thành nhiệm vụ
+              Nhận diện vật thể realtime · Tab <b style={{color:'#93c5fd'}}>Webcam</b>: mở camera → "Lưu Hình" · Tab <b style={{color:'#93c5fd'}}>Image</b>: upload ảnh → "Lưu Hình" · Cả 2 đều ghi nhận nhiệm vụ
             </div>
 
 {/* Native webcam removed — AI MediaPipe iframe handles all tasks */}
