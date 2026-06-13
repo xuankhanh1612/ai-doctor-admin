@@ -101,13 +101,14 @@ const styles = String.raw`
 
   /* ─── APP SHELL ─── */
   .health-journey-standalone-container #app {
-    width:100%; height:100%;
+    width:100%; flex:1;
     display:flex; flex-direction:column;
     position: relative;
     background: var(--bg-deep);
     font-family: 'Inter', sans-serif;
     color: var(--text);
     overflow: hidden;
+    min-height: 0;
   }
 
   /* ─── SCREENS ─── */

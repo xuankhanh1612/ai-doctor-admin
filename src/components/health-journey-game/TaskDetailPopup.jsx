@@ -272,25 +272,7 @@ export default function TaskDetailPopup({ taskId, onClose, onOpenJourney, snapsh
               Nhận diện vật thể realtime · Chụp ảnh để ghi nhận hoàn thành nhiệm vụ
             </div>
 
-            {/* Native webcam (water task) */}
-            {task.taskId === 'water' && (
-              <div style={{ marginBottom: 10 }}>
-                {!cameraOn
-                  ? <button style={S.btnPrimary} onClick={startCam}>📷 Mở Camera Native</button>
-                  : <>
-                      <video ref={videoRef} autoPlay playsInline muted
-                        style={{ width:'100%', borderRadius:10, maxHeight:260, objectFit:'cover', display:'block' }} />
-                      <canvas ref={canvasRef} style={{ display:'none' }} />
-                      <div style={{ display:'flex', gap:8, marginTop:8 }}>
-                        <button style={S.btnPrimary} onClick={capture} disabled={saving}>
-                          {saving ? '⏳ Đang lưu...' : '📸 Chụp & Lưu'}
-                        </button>
-                        <button style={S.btnOutline} onClick={stopCam}>Tắt</button>
-                      </div>
-                    </>
-                }
-              </div>
-            )}
+{/* Native webcam removed — AI MediaPipe iframe handles all tasks */}
 
             {/* MediaPipe AI iframe - chiếm phần lớn cột phải */}
             <iframe
