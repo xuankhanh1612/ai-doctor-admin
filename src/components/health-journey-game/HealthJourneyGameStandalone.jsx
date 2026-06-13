@@ -281,6 +281,7 @@ const styles = String.raw`
     content:'';
     position:absolute; inset:0;
     background: radial-gradient(circle at 70% 40%, rgba(139,92,246,0.25) 0%, transparent 60%);
+    pointer-events: none;
   }
   .hero-avatar {
     position:absolute; right:16px; top:50%; transform:translateY(-50%);
