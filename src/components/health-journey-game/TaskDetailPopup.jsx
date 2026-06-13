@@ -279,7 +279,7 @@ export default function TaskDetailPopup({ taskId, onClose, onOpenJourney, snapsh
               key={task.taskId}
               title={`AI Vision · ${task.titleVi}`}
               src={MEDIAPIPE_URL}
-              style={{ width:'100%', flex:1, minHeight:420, border:'none', borderRadius:12, display:'block' }}
+              style={{ width:'100%', flex:1, minHeight:500, border:'none', borderRadius:12, display:'block' }}
               allow="camera; microphone; fullscreen; clipboard-read; clipboard-write"
               referrerPolicy="strict-origin-when-cross-origin"
             />
@@ -296,15 +296,15 @@ const S = {
     position: 'fixed', inset: 0, zIndex: 9000,
     background: 'rgba(5,8,18,.88)', backdropFilter: 'blur(8px)',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
-    padding: '2vh 2vw',
+    padding: '0.5vh 1vw',
   },
   box: {
-    width: '90vw', height: '90vh',
-    maxWidth: 1100,
+    width: '98vw', height: '98vh',
+    maxWidth: 1200,
     background: '#0a1220',
     borderRadius: 20,
     border: '1px solid rgba(80,160,255,.2)',
-    padding: '20px 20px 16px',
+    padding: '16px 18px 12px',
     position: 'relative',
     display: 'flex', flexDirection: 'column',
     overflow: 'hidden',
@@ -317,9 +317,9 @@ const S = {
   },
   title: { fontFamily: "'Rajdhani',sans-serif", fontSize: 20, fontWeight: 800, marginBottom: 2 },
   subtitle: { fontSize: 12, color: '#64748b', marginBottom: 12 },
-  cols: { display: 'flex', gap: 16, flex: 1, overflow: 'hidden' },
+  cols: { display: 'flex', gap: 16, flex: 1, overflow: 'hidden', minHeight: 0 },
   colLeft: {
-    width: 300, flexShrink: 0, overflowY: 'auto', paddingRight: 8,
+    width: 340, flexShrink: 0, overflowY: 'auto', paddingRight: 8,
     display: 'flex', flexDirection: 'column',
   },
   colRight: {
