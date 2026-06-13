@@ -508,24 +508,36 @@ export default function HealthJourneyGameStandalone({ onViewMedicalRecord }) {
   useEffect(() => {
     const onMediaPipeCapture = async (event) => {
       if (event.origin !== window.location.origin) return
-      if (event.data?.type !== 'AI_CLINIC_MEDIAPIPE_WEBCAM_CAPTURE') return
+
+      // ✅ "Xem hình tại Medical Records" từ iframe luôn hoạt động, không cần modal mở
+      if (event.data?.type === 'AI_CLINIC_OPEN_UPLOAD_RECORDS') {
+        if (onViewMedicalRecord) { onViewMedicalRecord() } else { window.dispatchEvent(new CustomEvent('navigate-to-upload')) }
+        return
+      }
+
+      const isWebcamCapture = event.data?.type === 'AI_CLINIC_MEDIAPIPE_WEBCAM_CAPTURE'
+      const isImageCapture  = event.data?.type === 'AI_CLINIC_MEDIAPIPE_IMAGE_CAPTURE'
+      if (!isWebcamCapture && !isImageCapture) return
+
       const taskDetailOpen = getRoot()?.querySelector('#modal-task-detail')?.classList.contains('active')
       if (!taskDetailOpen || !event.data?.dataUrl) return
 
+      const captureKind = isWebcamCapture ? 'webcam' : 'image'
       const task = TASK_DETAIL_CONTENT[selectedTaskKey] || TASK_DETAIL_CONTENT.deep_work
       setSavingProof(true)
       setCameraError('')
       try {
         const xpEarned = XP_TABLE[task.activityType] || 0
-        const file = dataUrlToFile(event.data.dataUrl, event.data.filename || `${selectedTaskKey}_ai_webcam.jpg`)
+        const defaultFilename = isWebcamCapture ? `${selectedTaskKey}_ai_webcam.jpg` : `${selectedTaskKey}_ai_image.jpg`
+        const file = dataUrlToFile(event.data.dataUrl, event.data.filename || defaultFilename)
         const record = await saveWaterProofImage(file, user, {
-          source: 'health-journey-game-task-detail-ai-healthcare-vision',
+          source: `health-journey-game-task-detail-ai-healthcare-vision-${captureKind}`,
           notesPrefix: `Health Journey Game · Chi tiết Nhiệm Vụ · ${task.title}`,
           activityType: task.activityType,
           taskId: selectedTaskKey,
           xpEarned,
           waterAmountMl: selectedTaskKey === 'water' ? 150 : 0,
-          proofType: 'ai_healthcare_vision_object_detection_webcam_overlay',
+          proofType: `ai_healthcare_vision_object_detection_${captureKind}_overlay`,
         })
         completeHealthJourneyActivity({
           user,
@@ -533,14 +545,14 @@ export default function HealthJourneyGameStandalone({ onViewMedicalRecord }) {
           value: 1,
           proofImage: record.uploadPath,
           uploadRecord: record,
-          metadata: { source: 'health-journey-game-task-detail-ai-healthcare-vision', flow: 'Chi tiết Nhiệm Vụ -> AI Healthcare Vision Control Object Detection Webcam -> Upload proof' },
+          metadata: { source: `health-journey-game-task-detail-ai-healthcare-vision-${captureKind}`, flow: `Chi tiết Nhiệm Vụ -> AI Healthcare Vision Control Object Detection ${captureKind} -> Upload proof` },
         })
-        if (selectedTaskKey === 'water') syncBeMeoWater(150, 'Health Journey Game · AI Healthcare Vision proof')
+        if (selectedTaskKey === 'water') syncBeMeoWater(150, `Health Journey Game · AI Healthcare Vision ${captureKind} proof`)
         setLastMissionRecord(record)
-        event.source?.postMessage?.({ type: 'AI_CLINIC_MEDIAPIPE_CAPTURE_SAVED', captureKind: 'webcam', uploadPath: record.uploadPath }, event.origin)
+        event.source?.postMessage?.({ type: 'AI_CLINIC_MEDIAPIPE_CAPTURE_SAVED', captureKind, uploadPath: record.uploadPath }, event.origin)
       } catch (error) {
-        setCameraError(error?.message || 'Không thể lưu ảnh AI Healthcare Vision proof.')
-        event.source?.postMessage?.({ type: 'AI_CLINIC_MEDIAPIPE_CAPTURE_SAVE_FAILED', captureKind: 'webcam', message: error?.message || String(error) }, event.origin)
+        setCameraError(error?.message || `Không thể lưu ảnh AI Healthcare Vision ${captureKind} proof.`)
+        event.source?.postMessage?.({ type: 'AI_CLINIC_MEDIAPIPE_CAPTURE_SAVE_FAILED', captureKind, message: error?.message || String(error) }, event.origin)
       } finally {
         setSavingProof(false)
       }
@@ -548,7 +560,7 @@ export default function HealthJourneyGameStandalone({ onViewMedicalRecord }) {
 
     window.addEventListener('message', onMediaPipeCapture)
     return () => window.removeEventListener('message', onMediaPipeCapture)
-  }, [selectedTaskKey, user])
+  }, [selectedTaskKey, user, onViewMedicalRecord])
 
   const todayTask = (taskId) => snapshot.day?.tasks?.find((task) => task.taskId === taskId)
   const journeyObjective = (activityType) => snapshot.journeyUser?.journeyProgress?.objectives?.find((objective) => objective.activityType === activityType)
@@ -2245,6 +2257,14 @@ export default function HealthJourneyGameStandalone({ onViewMedicalRecord }) {
             })}
             <button className="btn-primary" onClick={(event) => { closeModal('modal-task-detail'); }} style={{ marginTop: "14px" }}>
               ĐÓNG CHI TIẾT
+            </button>
+            {/* ✅ "Xem hình tại Medical Records" — luôn hoạt động dù chưa hay đã chụp hình */}
+            <button
+              className="btn-primary"
+              onClick={() => { closeModal('modal-task-detail'); if (onViewMedicalRecord) { onViewMedicalRecord() } else { window.dispatchEvent(new CustomEvent('navigate-to-upload')) } }}
+              style={{ marginTop: "8px", background: "linear-gradient(135deg,#16a34a,#22c55e)", boxShadow: "0 10px 24px rgba(34,197,94,0.24)" }}
+            >
+              📷 Xem hình tại Medical Records
             </button>
           </div>
         </div>

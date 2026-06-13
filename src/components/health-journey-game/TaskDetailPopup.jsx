@@ -1,10 +1,6 @@
 /**
  * TaskDetailPopup.jsx
  * Popup "Chi tiết Nhiệm Vụ" - dữ liệu động hoàn toàn từ daily_tasks.json
- * ✅ Fixes:
- *  1. "Xem hình tại Medical Records" luôn hoạt động (cả tab Webcam & Image)
- *  2. Tab "Image": "Lưu hình" lưu ảnh với đầy đủ lớp phủ AI, lưu vào Upload Records,
- *     đồng thời đồng bộ hoá task/game giống tab Webcam
  */
 
 import { useEffect, useRef, useState } from 'react'
@@ -59,121 +55,29 @@ function pct(taskState) {
   return Math.min(100, Math.round((Number(taskState.current || 0) / Number(taskState.target || 1)) * 100))
 }
 
-/**
- * Vẽ lớp phủ AI lên canvas từ ảnh đã upload
- * Giống hệt drawAIWaterBottleOverlay nhưng có thể nhận thêm activityType
- */
-function drawAIOverlayOnImage(ctx, width, height, activityType = 'drink_water') {
-  const now = new Date().toLocaleTimeString('vi-VN', { hour12: false })
-  const boxWidth  = width  * 0.34
-  const boxHeight = height * 0.58
-  const x = width  * 0.5 - boxWidth  / 2
-  const y = height * 0.2
-
-  ctx.save()
-
-  // Detection box
-  ctx.strokeStyle = 'rgba(56, 189, 248, 0.92)'
-  ctx.lineWidth = Math.max(3, width * 0.004)
-  ctx.shadowColor = 'rgba(14, 165, 233, 0.75)'
-  ctx.shadowBlur = 18
-  ctx.strokeRect(x, y, boxWidth, boxHeight)
-
-  // Label bar
-  ctx.shadowBlur = 0
-  ctx.fillStyle = 'rgba(2, 6, 23, 0.78)'
-  ctx.fillRect(x, Math.max(0, y - 38), Math.min(boxWidth + 60, 340), 34)
-  ctx.fillStyle = '#67e8f9'
-  ctx.font = `800 ${Math.max(14, width * 0.018)}px Inter, sans-serif`
-  ctx.fillText(`${activityType.replace(/_/g, ' ')} 0.96`, x + 10, Math.max(22, y - 15))
-
-  // Inner dashed rect
-  ctx.strokeStyle = 'rgba(34, 197, 94, 0.88)'
-  ctx.setLineDash([10, 8])
-  ctx.beginPath()
-  ctx.roundRect(x + boxWidth * 0.26, y + boxHeight * 0.12, boxWidth * 0.48, boxHeight * 0.76, 18)
-  ctx.stroke()
-  ctx.setLineDash([])
-
-  // Keypoints
-  for (let i = 0; i < 5; i += 1) {
-    const py = y + boxHeight * (0.18 + i * 0.15)
-    ctx.fillStyle = i % 2 ? '#22c55e' : '#38bdf8'
-    ctx.beginPath()
-    ctx.arc(x + boxWidth * 0.5, py, Math.max(4, width * 0.006), 0, Math.PI * 2)
-    ctx.fill()
-  }
-
-  // Scan lines
-  ctx.strokeStyle = 'rgba(125, 211, 252, 0.18)'
-  ctx.lineWidth = 1
-  for (let sy = 0; sy < height; sy += 22) {
-    ctx.beginPath()
-    ctx.moveTo(0, sy)
-    ctx.lineTo(width, sy)
-    ctx.stroke()
-  }
-
-  // Footer bar
-  ctx.fillStyle = 'rgba(15, 23, 42, 0.82)'
-  ctx.fillRect(12, height - 72, Math.min(width - 24, 560), 52)
-  ctx.fillStyle = '#e0f2fe'
-  ctx.font = `800 ${Math.max(13, width * 0.016)}px Inter, sans-serif`
-  ctx.fillText(`AI Healthcare Vision · Object Detection · Image · ${now}`, 24, height - 44)
-  ctx.fillStyle = '#86efac'
-  ctx.fillText(`✓ Verified proof · Health Journey · ${activityType.replace(/_/g, ' ')} · AI overlay`, 24, height - 24)
-
-  ctx.restore()
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 export default function TaskDetailPopup({ taskId, onClose, onOpenJourney, snapshot, user, onViewMedicalRecord }) {
   const task     = TASK_MAP[taskId] || TASK_MAP.deep_work || ALL_TASKS[0]
   const todayRec = snapshot?.day?.tasks?.find((t) => t.taskId === task?.taskId)
   const progress = pct(todayRec)
 
-  // ── Tab state ──
-  const [activeTab, setActiveTab] = useState('webcam') // 'webcam' | 'image'
-
-  // ── Webcam state ──
   const [cameraOn, setCameraOn]   = useState(false)
   const [cameraErr, setCameraErr] = useState('')
   const [saving, setSaving]       = useState(false)
   const [lastRecord, setLastRecord] = useState(null)
 
-  // ── Image tab state ──
-  const [imageFile, setImageFile]       = useState(null)   // File object
-  const [imagePreview, setImagePreview] = useState(null)   // dataUrl for <img>
-  const [imageSaving, setImageSaving]   = useState(false)
-  const [imageErr, setImageErr]         = useState('')
-  const [imageSaved, setImageSaved]     = useState(false)  // proof lưu thành công
-  const [imageRecord, setImageRecord]   = useState(null)   // record đã lưu
-
-  const videoRef    = useRef(null)
-  const canvasRef   = useRef(null)
-  const fileInputRef = useRef(null)
-  const imgCanvasRef = useRef(null)
-  const streamRef   = useRef(null)
+  const videoRef  = useRef(null)
+  const canvasRef = useRef(null)
+  const streamRef = useRef(null)
 
   const proofImages = snapshot?.journeyUser?.proofImages || []
   const proof = (lastRecord?.healthJourney?.activityType === task?.activityType ? lastRecord : null)
-    || (imageRecord?.healthJourney?.activityType === task?.activityType ? imageRecord : null)
     || proofImages.find(p => p.activityType === task?.activityType && p.capturedAt?.slice(0,10) === new Date().toISOString().slice(0,10))
     || proofImages.find(p => p.activityType === task?.activityType)
 
   useEffect(() => () => stopCam(), [])
 
-  // ── Navigate to Medical Records (always works regardless of tab or capture state) ──
-  const goToMedicalRecords = () => {
-    close()
-    if (onViewMedicalRecord) {
-      onViewMedicalRecord()
-    } else {
-      window.dispatchEvent(new CustomEvent('navigate-to-upload'))
-    }
-  }
-
-  // ── MediaPipe iframe → save proof (Webcam tab) ──
+  // MediaPipe iframe → save proof
   useEffect(() => {
     const h = async (e) => {
       if (e.origin !== window.location.origin) return
@@ -220,77 +124,27 @@ export default function TaskDetailPopup({ taskId, onClose, onOpenJourney, snapsh
     setCameraOn(false)
   }
 
-  const close = () => { stopCam(); onClose?.() }
-
-  // ── Image tab: chọn file ──
-  const handleFileChange = (e) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setImageFile(file)
-    setImageSaved(false)
-    setImageRecord(null)
-    setImageErr('')
-    const reader = new FileReader()
-    reader.onload = (ev) => setImagePreview(ev.target.result)
-    reader.readAsDataURL(file)
-  }
-
-  // ── Image tab: Lưu hình với lớp phủ AI đầy đủ ──
-  const saveImageWithAIOverlay = async () => {
-    if (!imagePreview) { setImageErr('Vui lòng chọn ảnh trước.'); return }
-    setImageSaving(true); setImageErr(''); setImageSaved(false)
+  const capture = async () => {
+    if (!videoRef.current || !canvasRef.current) return
+    setSaving(true); setCameraErr('')
     try {
-      // Vẽ ảnh gốc lên canvas
-      const canvas = imgCanvasRef.current
-      const img = new window.Image()
-      await new Promise((resolve, reject) => {
-        img.onload = resolve
-        img.onerror = reject
-        img.src = imagePreview
+      const v = videoRef.current, c = canvasRef.current
+      c.width = v.videoWidth || 1280; c.height = v.videoHeight || 720
+      c.getContext('2d').drawImage(v, 0, 0, c.width, c.height)
+      const file = dataUrlToFile(c.toDataURL('image/jpeg', 0.92), `${task.taskId}_proof.jpg`)
+      const rec  = await saveWaterProofImage(file, user, {
+        source: 'task-detail-popup-webcam',
+        notesPrefix: `Health Journey · ${task.titleVi}`,
       })
-      canvas.width  = img.naturalWidth  || img.width  || 1280
-      canvas.height = img.naturalHeight || img.height || 720
-      const ctx = canvas.getContext('2d')
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
-
-      // Vẽ lớp phủ AI thật sự lên trên
-      drawAIOverlayOnImage(ctx, canvas.width, canvas.height, task.activityType || 'drink_water')
-
-      // Lấy dataUrl với overlay
-      const overlaidDataUrl = canvas.toDataURL('image/jpeg', 0.92)
-      const file = dataUrlToFile(overlaidDataUrl, `${task.taskId}_image_ai_${Date.now()}.jpg`)
-
-      // Lưu vào Upload Records
-      const rec = await saveWaterProofImage(file, user, {
-        source: 'task-detail-popup-image-upload',
-        notesPrefix: `Health Journey · ${task.titleVi} · Image Upload`,
-        activityType: task.activityType,
-        taskId: task.taskId,
-        xpEarned: XP_TABLE[task.activityType] || 0,
-        waterAmountMl: task.taskId === 'water' ? 150 : 0,
-        proofType: 'image_upload_ai_overlay',
-      })
-
-      // Đồng bộ hoá task/journey (giống webcam)
-      completeHealthJourneyActivity({
-        user,
-        activityType: task.activityType,
-        value: 1,
-        proofImage: rec.uploadPath,
-        uploadRecord: rec,
-        metadata: { source: 'task-detail-popup-image-upload', taskId: task.taskId },
-      })
-
-      if (task.taskId === 'water') syncBeMeoWater(150, 'TaskDetailPopup Image')
-
-      setImageRecord(rec)
-      setImageSaved(true)
-    } catch(err) {
-      setImageErr(err?.message || 'Lỗi lưu ảnh.')
-    } finally {
-      setImageSaving(false)
-    }
+      completeHealthJourneyActivity({ user, activityType: task.activityType, value: 1,
+        proofImage: rec.uploadPath, uploadRecord: rec,
+        metadata: { source: 'task-detail-popup-webcam', taskId: task.taskId } })
+      if (task.taskId === 'water') syncBeMeoWater(150, 'TaskDetailPopup webcam')
+      setLastRecord(rec); stopCam()
+    } catch(e) { setCameraErr(e?.message || 'Lỗi lưu ảnh.') } finally { setSaving(false) }
   }
+
+  const close = () => { stopCam(); onClose?.() }
 
   const proofText = proof
     ? (proof.uploadPath || (proof.image === '__INDEXED_DB_ONLY__' ? '(ảnh lớn - lưu cloud)' : proof.image) || proof.uploadRecord?.uploadPath)
@@ -319,11 +173,6 @@ export default function TaskDetailPopup({ taskId, onClose, onOpenJourney, snapsh
             .tdp-camera-col { height: 88vh; min-height: 640px; }
             .tdp-info-col { max-width: 1080px; margin: 0 auto; }
           }
-          .tdp-tab-row { display:flex; gap:0; margin-bottom:10px; background:rgba(255,255,255,0.05); border-radius:8px; padding:3px; }
-          .tdp-tab-btn { flex:1; padding:7px 0; text-align:center; font-size:12px; font-weight:700; color:#64748b; border-radius:6px; cursor:pointer; border:none; background:transparent; transition:all .2s; }
-          .tdp-tab-btn.active { background:rgba(59,130,246,.2); color:#93c5fd; }
-          .tdp-image-drop { border:2px dashed rgba(99,102,241,.35); border-radius:10px; padding:28px 16px; text-align:center; cursor:pointer; transition:border-color .2s; margin-bottom:10px; }
-          .tdp-image-drop:hover { border-color:rgba(99,102,241,.7); }
         `}</style>
         <button style={S.closeBtn} onClick={close}>✕</button>
 
@@ -334,7 +183,7 @@ export default function TaskDetailPopup({ taskId, onClose, onOpenJourney, snapsh
         {/* ── Layout 2 cột ── */}
         <div style={S.cols} className="tdp-cols">
 
-          {/* Cột trái: thông tin + danh sách nhiệm vụ */}
+          {/* Cột trái: thông tin + danh sách tất cả nhiệm vụ từ daily_tasks.json */}
           <div style={S.colLeft} className="tdp-info-col">
 
             {/* Progress hôm nay */}
@@ -367,11 +216,8 @@ export default function TaskDetailPopup({ taskId, onClose, onOpenJourney, snapsh
             {proofText && (
               <div style={S.proofOk}>✓ Đã có ảnh proof · {proofText}</div>
             )}
-            {(cameraErr || imageErr) && <div style={S.proofErr}>{cameraErr || imageErr}</div>}
-            {(saving || imageSaving) && <div style={{ ...S.dim, fontSize: 11, marginTop: 6 }}>⏳ Đang lưu ảnh...</div>}
-            {imageSaved && imageRecord && (
-              <div style={S.proofOk}>✓ Đã lưu ảnh Image (với AI overlay) · {imageRecord.uploadPath}</div>
-            )}
+            {cameraErr && <div style={S.proofErr}>{cameraErr}</div>}
+            {saving && <div style={{ ...S.dim, fontSize: 11, marginTop: 6 }}>⏳ Đang lưu ảnh...</div>}
 
             <div style={S.glow} />
 
@@ -384,6 +230,7 @@ export default function TaskDetailPopup({ taskId, onClose, onOpenJourney, snapsh
               return (
                 <div
                   key={t.taskId}
+                  onClick={() => onOpenJourney ? undefined : undefined}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 10,
                     padding: '9px 10px', borderRadius: 10, marginBottom: 4,
@@ -434,148 +281,33 @@ export default function TaskDetailPopup({ taskId, onClose, onOpenJourney, snapsh
               )
             })}
 
-            {/* ✅ "Xem hình tại Medical Records" — luôn hoạt động, không phụ thuộc tab hay trạng thái chụp hình */}
             <button
               style={{ ...S.btnPrimary, marginTop: 12, background: 'linear-gradient(135deg,#16a34a,#22c55e)', boxShadow: '0 10px 24px rgba(34,197,94,0.28)' }}
-              onClick={goToMedicalRecords}
+              onClick={() => { close(); if (onViewMedicalRecord) { onViewMedicalRecord() } else { window.dispatchEvent(new CustomEvent('navigate-to-upload')) } }}
             >
               📷 Xem hình tại Medical Records
             </button>
             <button style={{ ...S.btnPrimary, marginTop: 8 }} onClick={close}>ĐÓNG CHI TIẾT</button>
           </div>
 
-          {/* Cột phải: Tabs Webcam / Image */}
+          {/* Cột phải: AI Camera full height */}
           <div style={S.colRight} className="tdp-camera-col">
-
-            {/* Tab switcher */}
-            <div className="tdp-tab-row">
-              <button
-                className={`tdp-tab-btn${activeTab === 'webcam' ? ' active' : ''}`}
-                onClick={() => setActiveTab('webcam')}
-              >
-                📸 Webcam AI
-              </button>
-              <button
-                className={`tdp-tab-btn${activeTab === 'image' ? ' active' : ''}`}
-                onClick={() => setActiveTab('image')}
-              >
-                🖼️ Image Upload
-              </button>
+            <div style={S.cardLabel}>AI Healthcare Vision · Object Detection · Webcam</div>
+            <div style={{ fontSize: 11, color: '#64748b', marginBottom: 8, lineHeight: 1.5 }}>
+              Nhận diện vật thể realtime · Chụp ảnh để ghi nhận hoàn thành nhiệm vụ
             </div>
 
-            {/* ── Tab: Webcam ── */}
-            {activeTab === 'webcam' && (
-              <>
-                <div style={S.cardLabel}>AI Healthcare Vision · Object Detection · Webcam</div>
-                <div style={{ fontSize: 11, color: '#64748b', marginBottom: 8, lineHeight: 1.5 }}>
-                  Nhận diện vật thể realtime · Chụp ảnh để ghi nhận hoàn thành nhiệm vụ
-                </div>
-                <iframe
-                  key={`webcam-${task.taskId}`}
-                  title={`AI Vision · ${task.titleVi}`}
-                  src={MEDIAPIPE_URL}
-                  style={{ width:'100%', flex:1, minHeight:0, border:'none', borderRadius:8, display:'block', height:'100%' }}
-                  allow="camera; microphone; fullscreen; clipboard-read; clipboard-write"
-                  referrerPolicy="strict-origin-when-cross-origin"
-                />
-              </>
-            )}
+{/* Native webcam removed — AI MediaPipe iframe handles all tasks */}
 
-            {/* ── Tab: Image Upload ── */}
-            {activeTab === 'image' && (
-              <div style={{ display:'flex', flexDirection:'column', height:'100%', gap:10 }}>
-                <div style={S.cardLabel}>🖼️ Image Upload · AI Overlay · Lưu Proof</div>
-                <div style={{ fontSize: 11, color: '#64748b', lineHeight: 1.5 }}>
-                  Chọn ảnh từ máy → lớp phủ AI sẽ được vẽ lên → bấm <b style={{color:'#93c5fd'}}>Lưu hình</b> để lưu vào Medical Records và đồng bộ nhiệm vụ.
-                </div>
-
-                {/* File picker */}
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  style={{ display: 'none' }}
-                  onChange={handleFileChange}
-                />
-
-                {!imagePreview ? (
-                  <div
-                    className="tdp-image-drop"
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    <div style={{ fontSize: 36, marginBottom: 8 }}>📂</div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: '#93c5fd' }}>Nhấn để chọn ảnh</div>
-                    <div style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>PNG, JPG, WEBP, HEIC · Bất kỳ kích thước</div>
-                  </div>
-                ) : (
-                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8, minHeight: 0 }}>
-                    {/* Preview ảnh gốc */}
-                    <div style={{ position: 'relative', flex: 1, minHeight: 0, borderRadius: 10, overflow: 'hidden', background: '#000' }}>
-                      <img
-                        src={imagePreview}
-                        alt="preview"
-                        style={{ width:'100%', height:'100%', objectFit:'contain', display:'block' }}
-                      />
-                      {/* AI overlay badge */}
-                      <div style={{
-                        position:'absolute', bottom:8, left:8, right:8,
-                        background:'rgba(2,6,23,.82)', borderRadius:8,
-                        padding:'6px 10px', fontSize:11, color:'#67e8f9', fontWeight:700,
-                        border:'1px solid rgba(56,189,248,.3)',
-                      }}>
-                        🤖 AI overlay sẽ được vẽ khi bấm "Lưu hình"
-                      </div>
-                    </div>
-
-                    {/* Nút đổi ảnh */}
-                    <button
-                      style={{ ...S.btnOutline, fontSize: 11, padding: '6px' }}
-                      onClick={() => { setImagePreview(null); setImageFile(null); setImageSaved(false); setImageRecord(null); fileInputRef.current?.click() }}
-                    >
-                      🔄 Đổi ảnh khác
-                    </button>
-
-                    {/* ✅ Nút "Lưu hình" — lưu ảnh + AI overlay + đồng bộ task */}
-                    <button
-                      style={{
-                        ...S.btnPrimary,
-                        background: imageSaved
-                          ? 'linear-gradient(135deg,#16a34a,#22c55e)'
-                          : 'linear-gradient(135deg,#6366f1,#8b5cf6)',
-                        boxShadow: imageSaved ? '0 8px 20px rgba(34,197,94,.3)' : '0 8px 20px rgba(99,102,241,.3)',
-                        opacity: imageSaving ? 0.6 : 1,
-                        cursor: imageSaving ? 'not-allowed' : 'pointer',
-                      }}
-                      onClick={saveImageWithAIOverlay}
-                      disabled={imageSaving}
-                    >
-                      {imageSaving ? '⏳ Đang lưu...' : imageSaved ? '✓ Đã lưu thành công!' : '💾 Lưu hình (AI Overlay)'}
-                    </button>
-
-                    {/* Trạng thái sau khi lưu */}
-                    {imageSaved && imageRecord && (
-                      <>
-                        <div style={{ ...S.proofOk, marginTop: 0 }}>
-                          ✓ Đã lưu · +{XP_TABLE[task.activityType] || 0} XP · Nhiệm vụ được ghi nhận
-                        </div>
-                        {/* ✅ Xem hình tại Medical Records từ trong Image tab */}
-                        <button
-                          style={{ ...S.btnPrimary, background: 'linear-gradient(135deg,#16a34a,#22c55e)', boxShadow:'0 8px 20px rgba(34,197,94,.25)' }}
-                          onClick={goToMedicalRecords}
-                        >
-                          📷 Xem hình tại Medical Records
-                        </button>
-                      </>
-                    )}
-                  </div>
-                )}
-
-                {/* Canvas ẩn dùng để vẽ AI overlay */}
-                <canvas ref={imgCanvasRef} style={{ display: 'none' }} />
-
-                {imageErr && <div style={S.proofErr}>{imageErr}</div>}
-              </div>
-            )}
+            {/* MediaPipe AI iframe - chiếm phần lớn cột phải */}
+            <iframe
+              key={task.taskId}
+              title={`AI Vision · ${task.titleVi}`}
+              src={MEDIAPIPE_URL}
+              style={{ width:'100%', flex:1, minHeight:0, border:'none', borderRadius:8, display:'block' }}
+              allow="camera; microphone; fullscreen; clipboard-read; clipboard-write"
+              referrerPolicy="strict-origin-when-cross-origin"
+            />
           </div>
         </div>
       </div>
