@@ -100,8 +100,9 @@ html, body, #root {
 /* Global top/end jump controls for long panels */
 .scroll-jump-controls {
   position: fixed;
-  bottom: calc(80px + env(safe-area-inset-bottom));
-  right: clamp(12px, 2.5vw, 28px);
+  top: 50%;
+  right: clamp(10px, 2vw, 20px);
+  transform: translateY(-50%);
   display: flex;
   flex-direction: column;
   align-items: flex-end;
@@ -111,11 +112,11 @@ html, body, #root {
 }
 
 .scroll-jump-button {
-  display: none;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  min-width: 92px;
+  min-width: 80px;
   min-height: 42px;
   padding: 0 15px;
   border: 1px solid rgba(0,229,255,0.36);
@@ -129,40 +130,47 @@ html, body, #root {
   font-weight: 800;
   line-height: 1;
   pointer-events: auto;
+  opacity: 0.38;
+  transform: scale(0.88);
   transition: transform 0.18s ease, opacity 0.18s ease, border-color 0.18s ease;
 }
 
 .scroll-jump-button.is-visible {
-  display: inline-flex;
+  opacity: 1;
+  transform: scale(1);
   animation: fade-in 0.18s ease both;
 }
 
 .scroll-jump-button:hover {
   border-color: rgba(0,229,255,0.74);
-  transform: translateY(-1px);
+  opacity: 1;
+  transform: scale(1) translateY(-1px);
 }
 
 .scroll-jump-button:active {
-  transform: translateY(0) scale(0.98);
+  transform: scale(0.97);
 }
 
 [data-theme="light"] .scroll-jump-button {
   background: rgba(255,255,255,0.92);
   color: #02708a;
   box-shadow: 0 10px 24px rgba(20,40,70,0.14);
+  border-color: rgba(2,112,138,0.38);
+}
+[data-theme="light"] .scroll-jump-button.is-visible {
+  opacity: 1;
 }
 
 @media (max-width: 640px) {
   .scroll-jump-controls {
-    right: 10px;
-    bottom: calc(88px + env(safe-area-inset-bottom));
+    right: 8px;
     gap: 6px;
   }
 
   .scroll-jump-button {
-    min-width: 0;
+    min-width: 52px;
     min-height: 38px;
-    padding: 0 12px;
+    padding: 0 10px;
     font-size: 12px;
   }
 }
@@ -1476,10 +1484,10 @@ html, body, #root {
 /* Health Journey Game embedded menu */
 .health-journey-game-page {
   min-height: 100%;
-  padding: 24px;
+  padding: 12px 16px 16px;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 12px;
   background:
     radial-gradient(circle at 18% 12%, rgba(139,92,246,0.18), transparent 34%),
     radial-gradient(circle at 84% 18%, rgba(0,229,255,0.16), transparent 36%),
@@ -1518,9 +1526,9 @@ html, body, #root {
   border-radius: 28px;
   background: rgba(6,10,24,0.84);
   box-shadow: 0 28px 90px rgba(0,0,0,0.35);
-  /* Height needed so the standalone React component fills correctly */
-  height: min(1080px, calc(100vh - 160px));
-  min-height: 820px;
+  /* Tall enough so game screens (Nhiệm vụ list, webcam) don't need internal scroll */
+  height: calc(100vh - 90px);
+  min-height: 860px;
   display: flex;
   flex-direction: column;
 }
@@ -1537,8 +1545,8 @@ html, body, #root {
 .health-journey-game-frame {
   display: block;
   width: 100%;
-  height: min(1080px, calc(100vh - 160px));
-  min-height: 820px;
+  height: calc(100vh - 90px);
+  min-height: 860px;
   border: 0;
   background: #050816;
 }
@@ -1603,14 +1611,14 @@ html, body, #root {
 
   .health-journey-game-frame-card {
     border-radius: 20px;
-    height: calc(100vh - 210px);
-    min-height: 620px;
+    height: calc(100vh - 70px);
+    min-height: 680px;
   }
 
   .health-journey-game-frame,
   .inbody-app-html-frame {
-    height: calc(100vh - 210px);
-    min-height: 620px;
+    height: calc(100vh - 70px);
+    min-height: 680px;
   }
 
   .inbody-app-html-copy {

@@ -36,7 +36,7 @@ function pct(taskState) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-export default function JourneyDetailPopup({ chapterKey, onClose, onOpenTask, snapshot }) {
+export default function JourneyDetailPopup({ chapterKey, onClose, onOpenTask, snapshot, onViewMedicalRecord }) {
   const [selected, setSelected] = React.useState(chapterKey || null)
 
   const todayTask  = taskId => snapshot?.day?.tasks?.find(t => t.taskId === taskId)
@@ -152,6 +152,11 @@ export default function JourneyDetailPopup({ chapterKey, onClose, onOpenTask, sn
             <button style={{ ...S.btnPrimary, marginTop:14 }}
               onClick={() => { onClose?.(); onOpenTask?.(firstUnfinished?.taskId) }}>
               MỞ NHIỆM VỤ TIẾP THEO
+            </button>
+            <button
+              style={{ ...S.btnPrimary, marginTop:8, background:'linear-gradient(135deg,#16a34a,#22c55e)', boxShadow:'0 10px 24px rgba(34,197,94,0.28)' }}
+              onClick={() => { onClose?.(); if (onViewMedicalRecord) { onViewMedicalRecord() } else { window.dispatchEvent(new CustomEvent('navigate-to-upload')) } }}>
+              📷 Xem hình tại Medical Records
             </button>
             <button style={{ ...S.btnOutline, marginTop:8 }} onClick={onClose}>ĐÓNG</button>
           </div>
@@ -327,17 +332,17 @@ const S = {
   overlay: {
     position:'fixed', inset:0, zIndex:9000,
     background:'rgba(5,8,18,.88)', backdropFilter:'blur(8px)',
-    display:'flex', alignItems:'center', justifyContent:'center',
-    padding:'2vh 2vw',
+    display:'flex', alignItems:'stretch', justifyContent:'center',
+    padding:'0',
   },
   box: {
-    width:'96vw', height:'96vh', maxWidth:1200,
-    background:'#0a1220', borderRadius:20,
-    border:'1px solid rgba(80,160,255,.2)',
-    padding:'20px 20px 16px',
+    width:'100vw', height:'100%', maxWidth:1400,
+    background:'#0a1220', borderRadius:0,
+    border:'none',
+    padding:'14px 16px 12px',
     position:'relative',
     display:'flex', flexDirection:'column',
-    overflow:'hidden',
+    overflowY:'auto', overflowX:'hidden',
   },
   closeBtn: {
     position:'absolute', top:12, right:12, width:32, height:32,
@@ -347,8 +352,8 @@ const S = {
   },
   title:   { fontFamily:"'Rajdhani',sans-serif", fontSize:20, fontWeight:800, marginBottom:2 },
   subtitle:{ fontSize:12, color:'#64748b', marginBottom:12 },
-  cols:    { display:'flex', gap:16, flex:1, overflow:'hidden' },
-  colLeft: { width:300, flexShrink:0, overflowY:'auto', paddingRight:8, display:'flex', flexDirection:'column' },
+  cols:    { display:'flex', gap:16, flex:1, overflow:'visible', minHeight:0 },
+  colLeft: { width:320, flexShrink:0, overflowY:'visible', paddingRight:8, display:'flex', flexDirection:'column' },
   colRight:{ flex:1, overflow:'hidden', display:'flex', flexDirection:'column' },
   sectionLabel: { fontSize:10, fontWeight:700, color:'#93c5fd', letterSpacing:1, marginBottom:6, textTransform:'uppercase' },
   glow: { height:1, background:'linear-gradient(90deg,transparent,rgba(80,160,255,.2),transparent)', margin:'10px 0' },

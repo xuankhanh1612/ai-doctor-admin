@@ -190,13 +190,13 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
           }
           .bemeo-info { order: 1; width: 100%; }
           .bemeo-camera-frame { min-height: 0 !important; }
-          .bemeo-camera-iframe { min-height: 88vh !important; }
+          .bemeo-camera-iframe { min-height: 92vh !important; height: 92vh !important; }
           @media (min-width: 1100px) {
-            .bemeo-camera-iframe { min-height: 90vh !important; }
+            .bemeo-camera-iframe { min-height: 94vh !important; height: 94vh !important; }
           }
           @media (max-width: 860px) {
-            .bemeo-camera-iframe { min-height: 82vh !important; }
-            .bemeo-chatbot-iframe { min-height: 1600px !important; }
+            .bemeo-camera-iframe { min-height: 88vh !important; height: 88vh !important; }
+            .bemeo-chatbot-iframe { min-height: 1800px !important; }
           }
         `}</style>
         <section style={{ borderRadius: 28, border: `1px solid ${isDark ? 'rgba(125,211,252,0.28)' : 'rgba(14,165,233,0.24)'}`, background: isDark ? 'linear-gradient(135deg, rgba(8,47,73,0.94), rgba(15,23,42,0.96))' : 'linear-gradient(135deg, #fff, #e0f7ff)', padding: 18, boxShadow: isDark ? '0 24px 70px rgba(0,0,0,0.35)' : '0 24px 70px rgba(14,165,233,0.16)' }}>

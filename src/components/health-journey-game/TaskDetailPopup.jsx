@@ -56,7 +56,7 @@ function pct(taskState) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-export default function TaskDetailPopup({ taskId, onClose, onOpenJourney, snapshot, user }) {
+export default function TaskDetailPopup({ taskId, onClose, onOpenJourney, snapshot, user, onViewMedicalRecord }) {
   const task     = TASK_MAP[taskId] || TASK_MAP.deep_work || ALL_TASKS[0]
   const todayRec = snapshot?.day?.tasks?.find((t) => t.taskId === task?.taskId)
   const progress = pct(todayRec)
@@ -161,8 +161,8 @@ export default function TaskDetailPopup({ taskId, onClose, onOpenJourney, snapsh
             order: -1;
             flex: 0 0 auto !important;
             width: 100%;
-            height: 68vh;
-            min-height: 480px;
+            height: 80vh;
+            min-height: 560px;
           }
           .tdp-info-col {
             width: 100% !important;
@@ -170,7 +170,7 @@ export default function TaskDetailPopup({ taskId, onClose, onOpenJourney, snapsh
             overflow-y: visible !important;
           }
           @media (min-width: 861px) {
-            .tdp-camera-col { height: 78vh; min-height: 560px; }
+            .tdp-camera-col { height: 88vh; min-height: 640px; }
             .tdp-info-col { max-width: 1080px; margin: 0 auto; }
           }
         `}</style>
@@ -281,7 +281,13 @@ export default function TaskDetailPopup({ taskId, onClose, onOpenJourney, snapsh
               )
             })}
 
-            <button style={{ ...S.btnPrimary, marginTop: 14 }} onClick={close}>ĐÓNG CHI TIẾT</button>
+            <button
+              style={{ ...S.btnPrimary, marginTop: 12, background: 'linear-gradient(135deg,#16a34a,#22c55e)', boxShadow: '0 10px 24px rgba(34,197,94,0.28)' }}
+              onClick={() => { close(); if (onViewMedicalRecord) { onViewMedicalRecord() } else { window.dispatchEvent(new CustomEvent('navigate-to-upload')) } }}
+            >
+              📷 Xem hình tại Medical Records
+            </button>
+            <button style={{ ...S.btnPrimary, marginTop: 8 }} onClick={close}>ĐÓNG CHI TIẾT</button>
           </div>
 
           {/* Cột phải: AI Camera full height */}
@@ -326,7 +332,8 @@ const S = {
     padding: '12px 14px 8px',
     position: 'relative',
     display: 'flex', flexDirection: 'column',
-    overflow: 'hidden',
+    overflowY: 'auto',
+    overflowX: 'hidden',
   },
   closeBtn: {
     position: 'absolute', top: 12, right: 12, width: 32, height: 32,
@@ -338,7 +345,7 @@ const S = {
   subtitle: { fontSize: 11, color: '#64748b', marginBottom: 8 },
   cols: { display: 'flex', gap: 12, flex: 1, overflow: 'hidden', minHeight: 0 },
   colLeft: {
-    width: 360, flexShrink: 0, overflowY: 'auto', paddingRight: 6,
+    width: 380, flexShrink: 0, overflowY: 'visible', paddingRight: 6,
     display: 'flex', flexDirection: 'column', minHeight: 0,
   },
   colRight: {

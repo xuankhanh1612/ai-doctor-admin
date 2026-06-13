@@ -3355,6 +3355,7 @@ export default function HealthJourneyGameStandalone({ onViewMedicalRecord }) {
           snapshot={snapshot}
           user={user}
           onClose={() => setTaskPopupKey(null)}
+          onViewMedicalRecord={onViewMedicalRecord}
           onOpenJourney={(chapterKey) => {
             setTaskPopupKey(null)
             setJourneyPopupKey(chapterKey || 'overview')
@@ -3368,6 +3369,7 @@ export default function HealthJourneyGameStandalone({ onViewMedicalRecord }) {
           chapterKey={journeyPopupKey === 'overview' ? null : journeyPopupKey}
           snapshot={snapshot}
           onClose={() => setJourneyPopupKey(null)}
+          onViewMedicalRecord={onViewMedicalRecord}
           onOpenTask={(taskId) => {
             setJourneyPopupKey(null)
             setTaskPopupKey(taskId)
