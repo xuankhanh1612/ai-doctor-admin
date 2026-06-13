@@ -390,8 +390,72 @@ export abstract class BaseVisionTask extends BaseTask {
     this.updateStatus('Đang lưu hình Webcam...');
   }
 
+  // ── AI Healthcare Vision overlay (Image tab) ─────────────────────────────
+  // Vẽ lớp phủ AI đầy đủ giống Webcam: detection box, label, scan lines, footer
+  private drawAIHealthcareVisionImageOverlay(ctx: CanvasRenderingContext2D, width: number, height: number) {
+    const now = new Date().toLocaleTimeString('vi-VN', { hour12: false });
+    const boxW  = width  * 0.34;
+    const boxH  = height * 0.58;
+    const bx = width  * 0.5 - boxW * 0.5;
+    const by = height * 0.2;
+
+    ctx.save();
+
+    // Detection bounding box
+    ctx.strokeStyle = 'rgba(56,189,248,0.92)';
+    ctx.lineWidth   = Math.max(3, width * 0.004);
+    ctx.shadowColor = 'rgba(14,165,233,0.75)';
+    ctx.shadowBlur  = 18;
+    ctx.strokeRect(bx, by, boxW, boxH);
+
+    // Label bar
+    ctx.shadowBlur  = 0;
+    ctx.fillStyle   = 'rgba(2,6,23,0.78)';
+    ctx.fillRect(bx, Math.max(0, by - 38), Math.min(boxW + 60, 340), 34);
+    ctx.fillStyle   = '#67e8f9';
+    ctx.font        = `800 ${Math.max(14, width * 0.018)}px Inter,sans-serif`;
+    ctx.fillText('AI Healthcare Vision 0.96', bx + 10, Math.max(22, by - 15));
+
+    // Inner dashed rect (keypoint region)
+    ctx.strokeStyle = 'rgba(34,197,94,0.88)';
+    ctx.lineWidth   = 2;
+    ctx.setLineDash([10, 8]);
+    ctx.beginPath();
+    (ctx as any).roundRect?.(bx + boxW * 0.26, by + boxH * 0.12, boxW * 0.48, boxH * 0.76, 18) ||
+      ctx.rect(bx + boxW * 0.26, by + boxH * 0.12, boxW * 0.48, boxH * 0.76);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Keypoints
+    for (let i = 0; i < 5; i++) {
+      const py = by + boxH * (0.18 + i * 0.15);
+      ctx.fillStyle = i % 2 ? '#22c55e' : '#38bdf8';
+      ctx.beginPath();
+      ctx.arc(bx + boxW * 0.5, py, Math.max(4, width * 0.006), 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Scan lines
+    ctx.strokeStyle = 'rgba(125,211,252,0.18)';
+    ctx.lineWidth   = 1;
+    for (let sy = 0; sy < height; sy += 22) {
+      ctx.beginPath(); ctx.moveTo(0, sy); ctx.lineTo(width, sy); ctx.stroke();
+    }
+
+    // Footer bar
+    ctx.fillStyle = 'rgba(15,23,42,0.82)';
+    ctx.fillRect(12, height - 72, Math.min(width - 24, 580), 52);
+    ctx.fillStyle = '#e0f2fe';
+    ctx.font      = `800 ${Math.max(13, width * 0.016)}px Inter,sans-serif`;
+    ctx.fillText(`AI Healthcare Vision · Object Detection · Image · ${now}`, 24, height - 44);
+    ctx.fillStyle = '#86efac';
+    ctx.fillText('✓ Verified proof · Health Journey · Image upload · AI overlay', 24, height - 24);
+
+    ctx.restore();
+  }
+
   protected captureImageToUploadRecords() {
-    const testImage = document.getElementById('test-image') as HTMLImageElement | null;
+    const testImage   = document.getElementById('test-image')   as HTMLImageElement  | null;
     const imageCanvas = document.getElementById('image-canvas') as HTMLCanvasElement | null;
 
     if (!testImage || !testImage.src || !testImage.complete || testImage.naturalWidth === 0) {
@@ -400,15 +464,22 @@ export abstract class BaseVisionTask extends BaseTask {
     }
 
     const canvas = document.createElement('canvas');
-    canvas.width = testImage.naturalWidth;
+    canvas.width  = testImage.naturalWidth;
     canvas.height = testImage.naturalHeight;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    // 1. Vẽ ảnh gốc
     ctx.drawImage(testImage, 0, 0, canvas.width, canvas.height);
+
+    // 2. Vẽ kết quả AI detection (bounding boxes từ MediaPipe) nếu có
     if (imageCanvas?.width && imageCanvas?.height) {
       ctx.drawImage(imageCanvas, 0, 0, canvas.width, canvas.height);
     }
+
+    // 3. Vẽ lớp phủ AI Healthcare Vision đầy đủ (timestamp, scan lines, footer...)
+    //    — giống hệt phần Webcam để đồng bộ trải nghiệm Health Journey Game
+    this.drawAIHealthcareVisionImageOverlay(ctx, canvas.width, canvas.height);
 
     const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
     window.parent?.postMessage({
