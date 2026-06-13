@@ -179,11 +179,12 @@ export abstract class BaseVisionTask extends BaseTask {
 
   protected setWebcamButtonLabel(state: 'open' | 'close' | 'starting' | 'initializing') {
     if (!this.enableWebcamButton) return;
+    this.enableWebcamButton.classList.add('wcam-btn', 'wcam-primary');
     const labels = {
-      open: '<span class="material-icons">videocam</span> Mở camera',
-      close: '<span class="material-icons">videocam_off</span> Đóng camera',
-      starting: '<span class="material-icons">hourglass_empty</span> Đang mở...',
-      initializing: '<span class="material-icons">hourglass_empty</span> Đang khởi tạo...',
+      open:          '<span class="material-icons">videocam</span><span class="wcam-label">Mở camera</span>',
+      close:         '<span class="material-icons">videocam_off</span><span class="wcam-label">Đóng camera</span>',
+      starting:      '<span class="material-icons">hourglass_empty</span><span class="wcam-label">Đang mở…</span>',
+      initializing:  '<span class="material-icons">hourglass_empty</span><span class="wcam-label">Đang khởi tạo…</span>',
     };
     this.enableWebcamButton.innerHTML = labels[state];
   }
@@ -268,11 +269,17 @@ export abstract class BaseVisionTask extends BaseTask {
     const buttonHost = this.getWebcamControlsButtonHost(webcamControls);
     buttonHost.classList.add('webcam-controls');
 
+    // ── Divider sau nút Mở/Đóng camera ──
+    const div1 = document.createElement('span');
+    div1.className = 'wcam-divider';
+    div1.setAttribute('aria-hidden', 'true');
+
     const switchButton = document.createElement('button');
     switchButton.id = 'switch-camera-btn';
-    switchButton.className = 'action-button secondary';
+    switchButton.className = 'action-button secondary wcam-btn';
     switchButton.type = 'button';
-    switchButton.innerHTML = '<span class="material-icons">flip_camera_ios</span> Đổi camera';
+    switchButton.title = 'Đổi camera trước/sau';
+    switchButton.innerHTML = '<span class="material-icons">flip_camera_ios</span><span class="wcam-label">Đổi camera</span>';
     switchButton.addEventListener('click', (event) => {
       event.preventDefault();
       event.stopPropagation();
@@ -280,8 +287,10 @@ export abstract class BaseVisionTask extends BaseTask {
     });
 
     if (this.enableWebcamButton?.parentElement === buttonHost && this.enableWebcamButton.nextSibling) {
-      buttonHost.insertBefore(switchButton, this.enableWebcamButton.nextSibling);
+      buttonHost.insertBefore(div1, this.enableWebcamButton.nextSibling);
+      buttonHost.insertBefore(switchButton, div1.nextSibling);
     } else {
+      buttonHost.appendChild(div1);
       buttonHost.appendChild(switchButton);
     }
   }
@@ -292,16 +301,23 @@ export abstract class BaseVisionTask extends BaseTask {
     const buttonHost = this.getWebcamControlsButtonHost(webcamControls);
     buttonHost.classList.add('webcam-controls');
 
+    // ── Divider trước nút Lưu Hình ──
+    const div2 = document.createElement('span');
+    div2.className = 'wcam-divider';
+    div2.setAttribute('aria-hidden', 'true');
+
     const saveButton = document.createElement('button');
     saveButton.id = 'save-webcam-record-btn';
-    saveButton.className = 'action-button secondary';
+    saveButton.className = 'action-button wcam-btn wcam-save';
     saveButton.type = 'button';
-    saveButton.innerHTML = '<span class="material-icons">save_alt</span> Lưu&nbsp;&nbsp;Hình';
+    saveButton.title = 'Chụp & lưu hình vào Medical Records';
+    saveButton.innerHTML = '<span class="material-icons">save_alt</span><span class="wcam-label">Lưu&nbsp;Hình</span>';
     saveButton.addEventListener('click', (event) => {
       event.preventDefault();
       event.stopPropagation();
       this.captureWebcamToUploadRecords();
     });
+    buttonHost.appendChild(div2);
     buttonHost.appendChild(saveButton);
   }
 
