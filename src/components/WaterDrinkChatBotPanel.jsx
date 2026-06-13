@@ -190,13 +190,13 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
           }
           .bemeo-info { order: 1; width: 100%; }
           .bemeo-camera-frame { min-height: 0 !important; }
-          .bemeo-camera-iframe { min-height: 75vh !important; }
+          .bemeo-camera-iframe { min-height: 88vh !important; }
           @media (min-width: 1100px) {
-            .bemeo-camera-iframe { min-height: 78vh !important; }
+            .bemeo-camera-iframe { min-height: 90vh !important; }
           }
           @media (max-width: 860px) {
-            .bemeo-camera-iframe { min-height: 70vh !important; }
-            .bemeo-chatbot-iframe { min-height: 1500px !important; }
+            .bemeo-camera-iframe { min-height: 82vh !important; }
+            .bemeo-chatbot-iframe { min-height: 1600px !important; }
           }
         `}</style>
         <section style={{ borderRadius: 28, border: `1px solid ${isDark ? 'rgba(125,211,252,0.28)' : 'rgba(14,165,233,0.24)'}`, background: isDark ? 'linear-gradient(135deg, rgba(8,47,73,0.94), rgba(15,23,42,0.96))' : 'linear-gradient(135deg, #fff, #e0f7ff)', padding: 18, boxShadow: isDark ? '0 24px 70px rgba(0,0,0,0.35)' : '0 24px 70px rgba(14,165,233,0.16)' }}>
@@ -218,15 +218,13 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
                   ✓ Đã xác nhận uống nước: +{lastResult.activity?.xpEarned || 10} XP · Bé Mèo +150ml · ảnh AI overlay lưu tại {lastResult.record?.uploadPath}
                 </div>
               )}
-              {onViewMedicalRecord && (
-                <button
+              <button
                   type="button"
-                  onClick={onViewMedicalRecord}
+                  onClick={() => onViewMedicalRecord ? onViewMedicalRecord() : window.dispatchEvent(new CustomEvent('navigate-to-upload'))}
                   style={{ marginTop: 12, padding: '8px 16px', borderRadius: 10, background: 'linear-gradient(135deg,#0ea5e9,#14b8a6)', border: 'none', color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}
                 >
                   Xem hình tại Medical Records
                 </button>
-              )}
               {cameraError && <div style={{ marginTop: 12, color: '#fecaca', background: 'rgba(239,68,68,.18)', padding: 10, borderRadius: 12 }}>{cameraError}</div>}
             </div>
 
@@ -239,7 +237,7 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
                 title="Bé Mèo Nước AI Healthcare Vision Object Detection Webcam"
                 src={MEDIAPIPE_OBJECT_DETECTION_WEBCAM_URL}
                 className="bemeo-camera-iframe"
-                style={{ width: '100%', minHeight: 520, border: 0, display: 'block', background: '#020617' }}
+                style={{ width: '100%', minHeight: 680, border: 0, display: 'block', background: '#020617' }}
                 allow="camera; microphone; fullscreen; clipboard-read; clipboard-write"
                 referrerPolicy="strict-origin-when-cross-origin"
               />
@@ -252,7 +250,7 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
             title="Bé Mèo Nước chatbot"
             srcDoc={html}
             className="bemeo-chatbot-iframe"
-            style={{ width: '100%', minHeight: '820px', border: 0, display: 'block', background: '#eef8ff' }}
+            style={{ width: '100%', minHeight: '1100px', border: 0, display: 'block', background: '#eef8ff' }}
             sandbox="allow-scripts allow-same-origin allow-forms"
           />
         </div>

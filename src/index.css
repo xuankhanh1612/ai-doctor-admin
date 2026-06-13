@@ -99,13 +99,14 @@ html, body, #root {
 
 /* Global top/end jump controls for long panels */
 .scroll-jump-controls {
+  position: fixed;
+  bottom: calc(80px + env(safe-area-inset-bottom));
+  right: clamp(12px, 2.5vw, 28px);
   display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 10px;
-  width: min(100%, 1180px);
-  margin: 0 auto;
-  padding: 10px clamp(16px, 3vw, 28px) 18px;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  z-index: 170;
   pointer-events: none;
 }
 
@@ -153,16 +154,16 @@ html, body, #root {
 
 @media (max-width: 640px) {
   .scroll-jump-controls {
-    justify-content: center;
-    padding: 8px 14px 14px;
+    right: 10px;
+    bottom: calc(88px + env(safe-area-inset-bottom));
+    gap: 6px;
   }
 
   .scroll-jump-button {
     min-width: 0;
-    min-height: 42px;
-    flex: 1 1 0;
+    min-height: 38px;
     padding: 0 12px;
-    font-size: 13px;
+    font-size: 12px;
   }
 }
 
@@ -853,7 +854,7 @@ html, body, #root {
 }
 
 .protein3d-frame-card {
-  min-height: min(760px, calc(100vh - 260px));
+  min-height: min(900px, calc(100vh - 200px));
   overflow: hidden;
   border: 1px solid var(--border2);
   border-radius: 22px;
@@ -864,8 +865,8 @@ html, body, #root {
 .protein3d-frame-card iframe {
   display: block;
   width: 100%;
-  height: min(760px, calc(100vh - 260px));
-  min-height: 560px;
+  height: min(900px, calc(100vh - 200px));
+  min-height: 680px;
   border: 0;
   background: #020617;
 }
@@ -894,8 +895,8 @@ html, body, #root {
 
   .protein3d-frame-card,
   .protein3d-frame-card iframe {
-    min-height: 620px;
-    height: 70vh;
+    min-height: 760px;
+    height: 82vh;
   }
 }
 
@@ -1060,7 +1061,7 @@ html, body, #root {
 }
 
 .ai-healthcare-vision-frame-card {
-  min-height: min(78vh, 880px);
+  min-height: min(88vh, 1020px);
   flex: 1 1 620px;
   border-radius: 22px;
   overflow: hidden;
@@ -1069,8 +1070,8 @@ html, body, #root {
 .ai-healthcare-vision-frame {
   display: block;
   width: 100%;
-  height: min(78vh, 880px);
-  min-height: 620px;
+  height: min(88vh, 1020px);
+  min-height: 720px;
   border: 0;
   background: #020617;
 }
@@ -1090,8 +1091,8 @@ html, body, #root {
 
   .ai-healthcare-vision-frame-card,
   .ai-healthcare-vision-frame {
-    min-height: 68vh;
-    height: 68vh;
+    min-height: 82vh;
+    height: 82vh;
   }
 }
 
@@ -1367,12 +1368,12 @@ html, body, #root {
   }
 
   .ai-healthcare-vision-frame-card {
-    min-height: min(72vh, 760px);
+    min-height: min(84vh, 920px);
   }
 
   .ai-healthcare-vision-frame {
-    height: min(72vh, 760px);
-    min-height: 560px;
+    height: min(84vh, 920px);
+    min-height: 680px;
   }
 }
 
@@ -1437,20 +1438,20 @@ html, body, #root {
 
 .ai-healthcare-vision-frame-card {
   flex: 1 1 auto;
-  min-height: clamp(620px, 78vh, 940px);
+  min-height: clamp(720px, 88vh, 1080px);
   box-shadow: 0 32px 90px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.10);
 }
 
 .ai-healthcare-vision-frame {
-  height: clamp(620px, 78vh, 940px);
+  height: clamp(720px, 88vh, 1080px);
   min-height: 0;
 }
 
 @media (max-width: 1180px) {
   .ai-healthcare-vision-frame-card,
   .ai-healthcare-vision-frame {
-    min-height: 74vh;
-    height: 74vh;
+    min-height: 84vh;
+    height: 84vh;
   }
 }
 
@@ -1466,8 +1467,8 @@ html, body, #root {
 
   .ai-healthcare-vision-frame-card,
   .ai-healthcare-vision-frame {
-    min-height: 76vh;
-    height: 76vh;
+    min-height: 86vh;
+    height: 86vh;
     border-radius: 22px;
   }
 }
@@ -1518,8 +1519,8 @@ html, body, #root {
   background: rgba(6,10,24,0.84);
   box-shadow: 0 28px 90px rgba(0,0,0,0.35);
   /* Height needed so the standalone React component fills correctly */
-  height: min(820px, calc(100vh - 230px));
-  min-height: 680px;
+  height: min(1080px, calc(100vh - 160px));
+  min-height: 820px;
   display: flex;
   flex-direction: column;
 }
@@ -1536,8 +1537,8 @@ html, body, #root {
 .health-journey-game-frame {
   display: block;
   width: 100%;
-  height: min(820px, calc(100vh - 230px));
-  min-height: 680px;
+  height: min(1080px, calc(100vh - 160px));
+  min-height: 820px;
   border: 0;
   background: #050816;
 }

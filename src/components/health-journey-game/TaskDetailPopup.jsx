@@ -161,8 +161,8 @@ export default function TaskDetailPopup({ taskId, onClose, onOpenJourney, snapsh
             order: -1;
             flex: 0 0 auto !important;
             width: 100%;
-            height: 52vh;
-            min-height: 340px;
+            height: 68vh;
+            min-height: 480px;
           }
           .tdp-info-col {
             width: 100% !important;
@@ -170,7 +170,7 @@ export default function TaskDetailPopup({ taskId, onClose, onOpenJourney, snapsh
             overflow-y: visible !important;
           }
           @media (min-width: 861px) {
-            .tdp-camera-col { height: 60vh; min-height: 420px; }
+            .tdp-camera-col { height: 78vh; min-height: 560px; }
             .tdp-info-col { max-width: 1080px; margin: 0 auto; }
           }
         `}</style>

@@ -331,7 +331,7 @@ const S = {
     padding:'2vh 2vw',
   },
   box: {
-    width:'90vw', height:'90vh', maxWidth:1100,
+    width:'96vw', height:'96vh', maxWidth:1200,
     background:'#0a1220', borderRadius:20,
     border:'1px solid rgba(80,160,255,.2)',
     padding:'20px 20px 16px',

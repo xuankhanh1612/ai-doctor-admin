@@ -27,7 +27,7 @@ const journeyTabs = [
 ]
 
 const panelShell = {
-  minHeight: 760,
+  minHeight: 960,
   borderRadius: 28,
   overflow: 'hidden',
   background: SURFACE,

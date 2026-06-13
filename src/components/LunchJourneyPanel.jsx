@@ -28,7 +28,7 @@ const journeyTabs = [
 ]
 
 const panelShell = {
-  minHeight: 760,
+  minHeight: 960,
   borderRadius: 28,
   overflow: 'hidden',
   background: SURFACE,
@@ -819,7 +819,7 @@ function MediaPipeDetectorView({ type, onViewMedicalRecord }) {
 
   return (
     <div style={{ display: 'grid', gap: 12 }}>
-      <div style={{ ...panelShell, minHeight: 820, background: isBody ? '#141820' : '#111827' }}>
+      <div style={{ ...panelShell, minHeight: 1000, background: isBody ? '#141820' : '#111827' }}>
         <div id={`hj-${detectorMode}-camera-host`} style={{ position: 'absolute', inset: 0, zIndex: 2, overflow: 'hidden' }} />
       <div style={{ position: 'absolute', inset: 0, zIndex: 1, background: isBody ? 'linear-gradient(135deg,#323744,#879098)' : 'linear-gradient(135deg,#20293b,#64748b)' }} />
       {!backgroundCameraState?.cameraOpen && <img alt={isBody ? 'Body detector placeholder' : 'Face detector placeholder'} src={isBody ? BODY_DETECTOR_BACKGROUND : FACE_DETECTOR_BACKGROUND} style={{ position: 'absolute', inset: 0, zIndex: 1, width: '100%', height: '100%', objectFit: 'cover', opacity: 0.9 }} />}
@@ -976,7 +976,7 @@ function MealScanView({ onViewMedicalRecord }) {
   const fallbackSrc = "https://lh3.googleusercontent.com/aida-public/AB6AXuDz673aowy2PSOhw7UeuUZHoFiJO_SQTymK2RWuGYolAX9ok2Eugcl8j17Ip3FWZh0sLSoEuJbb-6LNoLAx5NKWwQ4X-nfqnnDuhGQvU_Dnqxw7oWZ6IW5kNaCG4vfKLbgFEAB2OXpUPeMzAoiWAqNGIjyo-wbhqxNF7d2BtrQY5HECx53yA3z9L7GdwfOiHxbQB6UdclRS9c4hau37W37ieVXlmK40gZ0dB2H8sW9PobMG23MnaC8tYR0V12bMf46MMJNaRznFkUu7"
   return (
     <div style={{ display: 'grid', gap: 12 }}>
-      <div style={{ ...panelShell, minHeight: 820, background: '#111' }}>
+      <div style={{ ...panelShell, minHeight: 1000, background: '#111' }}>
         <div id="hj-meal-camera-host" style={{ position: 'absolute', inset: 0, zIndex: 2, overflow: 'hidden' }} />
       <img alt="Salmon salad being scanned" src={capturedRecord?.dataUrl || "https://lh3.googleusercontent.com/aida-public/AB6AXuDz673aowy2PSOhw7UeuUZHoFiJO_SQTymK2RWuGYolAX9ok2Eugcl8j17Ip3FWZh0sLSoEuJbb-6LNoLAx5NKWwQ4X-nfqnnDuhGQvU_Dnqxw7oWZ6IW5kNaCG4vfKLbgFEAB2OXpUPeMzAoiWAqNGIjyo-wbhqxNF7d2BtrQY5HECx53yA3z9L7GdwfOiHxbQB6UdclRS9c4hau37W37ieVXlmK40gZ0dB2H8sW9PobMG23MnaC8tYR0V12bMf46MMJNaRznFkUu7"} style={{ position: 'absolute', inset: 0, zIndex: 1, width: '100%', height: '100%', objectFit: 'cover' }} />
       <div style={{ position: 'absolute', inset: 0, zIndex: 3, background: 'rgba(0,0,0,0.05)', pointerEvents: 'none' }} />
@@ -1145,7 +1145,7 @@ function MedicationAssistantView({ onViewMedicalRecord }) {
   const fallbackSrc = "https://lh3.googleusercontent.com/aida-public/AB6AXuAZH2XA_C2g9jti8cF8o0E5hvwbxBLhK2y-tf0NDCFY7cyKfoeZ_U8_kn3jiQHhOa6b56cisSwi2bz6AE1EFWFS0dNQBehYv66eK0nIeMiU0q1kRU5vfIdZz1KoCj7T6VpAyJAotvB_di10b0BzJ7RdFkt_41wXUXbswPWEv9u7eX9drmA7OkyMb1YS1l1QjiSzEbHDivTPH6XurlsDr6cR5vjNnYcEWsLxKzNgrooWpXB-uu9DZvIchL5J627pN73vdwj5KTI9lY4z"
   return (
     <div style={{ display: 'grid', gap: 12 }}>
-      <div style={{ ...panelShell, minHeight: 820, background: '#000' }}>
+      <div style={{ ...panelShell, minHeight: 1000, background: '#000' }}>
         <div id="hj-medication-camera-host" style={{ position: 'absolute', inset: 0, zIndex: 2, overflow: 'hidden' }} />
       <header style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 15, padding: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <button onClick={handleCloseCamera} style={floatingPillButton()}>×</button>

@@ -88,6 +88,12 @@ export default function App() {
   }
 
   const navigateToRecord = (member) => { setSelectedMember(member); setActive('record') }
+  const navigateToUpload = useCallback(() => setActive('upload'), [])
+
+  useEffect(() => {
+    window.addEventListener('navigate-to-upload', navigateToUpload)
+    return () => window.removeEventListener('navigate-to-upload', navigateToUpload)
+  }, [navigateToUpload])
   const openMainMenu = useCallback(() => {
     setActive('healthJourneyGame')
     window.setTimeout(() => setSidebarOpenSignal(signal => signal + 1), 0)
@@ -213,7 +219,7 @@ export default function App() {
             familyStorageOwnerId={familyStorageOwnerId}
             user={user}
           >
-            {active === 'healthJourneyGame' && <HealthJourneyGamePanel onNext={goNext} nextLabel={nextLabel} />}
+            {active === 'healthJourneyGame' && <HealthJourneyGamePanel onNext={goNext} nextLabel={nextLabel} onViewMedicalRecord={() => setActive('upload')} />}
             {active === 'healthJourney' && <HealthJourneyPanel onNext={goNext} nextLabel={nextLabel} onOpenStressRelief={() => setActive('stressRelief')} onOpenInBody={() => setActive('aiInbodyPortal')} onViewMedicalRecord={() => setActive('upload')} />}
             {active === 'lunchJourney' && <LunchJourneyPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} onOpenStressRelief={() => setActive('stressRelief')} onOpenInBody={() => setActive('aiInbodyPortal')} onViewMedicalRecord={() => setActive('upload')} />}
             {active === 'dinnerJourney' && <DinnerJourneyPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} onOpenStressRelief={() => setActive('stressRelief')} onOpenInBody={() => setActive('aiInbodyPortal')} onViewMedicalRecord={() => setActive('upload')} />}
@@ -418,8 +424,6 @@ class PanelErrorBoundary extends React.Component {
 
 
 function GlobalScrollButtons({ showTop, showEnd, onGoTop, onGoEnd }) {
-  if (!showTop && !showEnd) return null
-
   return (
     <div className="scroll-jump-controls" aria-label="Page scroll controls">
       <button

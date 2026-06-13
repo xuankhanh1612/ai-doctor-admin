@@ -14,7 +14,7 @@ const GAME_SCREENS = [
   'Profile',
 ]
 
-export default function HealthJourneyGamePanel({ onNext, nextLabel }) {
+export default function HealthJourneyGamePanel({ onNext, nextLabel, onViewMedicalRecord }) {
   const { lang } = useApp()
 
   return (
@@ -27,7 +27,7 @@ export default function HealthJourneyGamePanel({ onNext, nextLabel }) {
           loading="lazy"
         /> */}
 
-<HealthJourneyGameStandalone />
+<HealthJourneyGameStandalone onViewMedicalRecord={onViewMedicalRecord} />
       </section>
 
       <section className="ai-healthcare-vision-header health-journey-game-header">

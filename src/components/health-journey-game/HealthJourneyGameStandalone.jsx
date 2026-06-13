@@ -476,7 +476,7 @@ const styles = String.raw`
   .scan-area { border:1.5px dashed rgba(59,130,246,.4); border-radius:10px; padding:16px; text-align:center; background:rgba(59,130,246,.04); }
 `
 
-export default function HealthJourneyGameStandalone() {
+export default function HealthJourneyGameStandalone({ onViewMedicalRecord }) {
   const containerRef = useRef(null)
   const { user } = useAuth()
   const videoRef = useRef(null)
@@ -738,6 +738,13 @@ export default function HealthJourneyGameStandalone() {
             </div>
             <button className="btn-primary" onClick={(event) => { goTo('screen-nhiem-vu'); }} style={{ maxWidth: "160px" }}>
               BẮT ĐẦU
+            </button>
+            <button
+              className="btn-primary"
+              onClick={() => onViewMedicalRecord ? onViewMedicalRecord() : window.dispatchEvent(new CustomEvent('navigate-to-upload'))}
+              style={{ maxWidth: "200px", marginTop: "8px", background: "linear-gradient(135deg,#16a34a,#22c55e)", boxShadow: "0 10px 24px rgba(34,197,94,0.24)", fontSize: "12px" }}
+            >
+              📷 Xem hình tại Medical Records
             </button>
           </div>
           {/* XP */}
