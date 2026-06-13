@@ -751,13 +751,13 @@ function HealthJourneyTabs({ activeTab, setActiveTab, lang }) {
             onClick={() => setActiveTab(tab.id)}
             style={{
               display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', padding: '14px 16px', borderRadius: 16,
-              border: `1px solid ${active ? 'rgba(0,229,255,0.42)' : 'rgba(255,255,255,0.10)'}`,
-              background: active ? 'linear-gradient(135deg, rgba(0,229,255,0.16), rgba(156,111,255,0.14))' : 'rgba(255,255,255,0.045)',
+              border: `1px solid ${active ? 'rgba(0,229,255,0.42)' : 'var(--border)'}`,
+              background: active ? 'linear-gradient(135deg, rgba(0,229,255,0.16), rgba(156,111,255,0.14))' : 'var(--surface)',
               color: active ? 'var(--cyan)' : 'var(--text2)', cursor: 'pointer', fontFamily: 'inherit',
               boxShadow: active ? '0 14px 34px rgba(0,229,255,0.10)' : 'none',
             }}
           >
-            <span style={{ width: 38, height: 38, borderRadius: 14, display: 'grid', placeItems: 'center', background: active ? 'rgba(0,229,255,0.14)' : 'rgba(255,255,255,0.06)', fontSize: 18 }}>{tab.icon}</span>
+            <span style={{ width: 38, height: 38, borderRadius: 14, display: 'grid', placeItems: 'center', background: active ? 'rgba(0,229,255,0.14)' : 'var(--surface2)', fontSize: 18 }}>{tab.icon}</span>
             <span style={{ minWidth: 0 }}>
               <span style={{ display: 'block', fontWeight: 800, fontSize: 13, color: active ? 'var(--text)' : 'inherit' }}>{lang === 'vi' ? tab.titleVi : tab.titleEn}</span>
               <span style={{ display: 'block', marginTop: 3, fontSize: 10, lineHeight: 1.35 }}>{lang === 'vi' ? tab.subtitleVi : tab.subtitleEn}</span>
@@ -1166,12 +1166,12 @@ export default function DinnerJourneyPanel({ onNext, nextLabel, onPrev, prevLabe
           </p>
         </div>
       </div>
-      <HealthJourneyTabs activeTab={activeTab} setActiveTab={setActiveTab} lang={lang} />
       {activeTab === 'emotion' && <EmotionalCompanionView onOpenStressRelief={onOpenStressRelief} onOpenInBody={onOpenInBody} />}
       {activeTab === 'meal' && <MealScanView onViewMedicalRecord={onViewMedicalRecord} />}
       {activeTab === 'medication' && <MedicationAssistantView onViewMedicalRecord={onViewMedicalRecord} />}
       {activeTab === 'faceDetector' && <MediaPipeDetectorView type="face" onViewMedicalRecord={onViewMedicalRecord} />}
       {activeTab === 'bodyDetector' && <MediaPipeDetectorView type="body" onViewMedicalRecord={onViewMedicalRecord} />}
+      <HealthJourneyTabs activeTab={activeTab} setActiveTab={setActiveTab} lang={lang} />
       <NavButtons onNext={onNext} nextLabel={nextLabel || t('uploadRecords')} onPrev={onPrev} prevLabel={prevLabel} />
     </div>
   )
