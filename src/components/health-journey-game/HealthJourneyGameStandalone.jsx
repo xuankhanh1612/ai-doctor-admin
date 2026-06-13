@@ -97,21 +97,17 @@ const styles = String.raw`
     --accent: #7c3aed;
   }
 
-  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  .health-journey-standalone-container * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
 
-  html, body {
+  /* ─── APP SHELL ─── */
+  .health-journey-standalone-container #app {
     width:100%; height:100%;
+    display:flex; flex-direction:column;
+    position: relative;
     background: var(--bg-deep);
     font-family: 'Inter', sans-serif;
     color: var(--text);
     overflow: hidden;
-  }
-
-  /* ─── APP SHELL ─── */
-  #app {
-    width:100%; height:100%;
-    display:flex; flex-direction:column;
-    position: relative;
   }
 
   /* ─── SCREENS ─── */
