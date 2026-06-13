@@ -1527,8 +1527,10 @@ html, body, #root {
 .health-journey-standalone-container {
   width: 100%;
   height: 100%;
+  flex: 1;          /* fill the flex frame-card parent */
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .health-journey-game-frame {
