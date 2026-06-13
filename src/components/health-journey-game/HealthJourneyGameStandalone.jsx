@@ -99,15 +99,6 @@ const styles = String.raw`
 
   .health-journey-standalone-container * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
 
-  .health-journey-standalone-container {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-    height: 100%;
-    min-height: 0;
-    position: relative;
-  }
-
   /* ─── APP SHELL ─── */
   .health-journey-standalone-container #app {
     width:100%; flex:1;
@@ -121,7 +112,7 @@ const styles = String.raw`
   }
 
   /* ─── SCREENS ─── */
-  .health-journey-standalone-container .screen {
+  .screen {
     display: none;
     flex-direction: column;
     flex: 1;
@@ -129,9 +120,8 @@ const styles = String.raw`
     overflow-x: hidden;
     padding-bottom: 70px;
     background: var(--bg-deep);
-    min-height: 0;
   }
-  .health-journey-standalone-container .screen.active { display: flex; }
+  .screen.active { display: flex; }
 
   /* ─── MODALS / SUB-SCREENS ─── */
   .modal-overlay {
@@ -707,7 +697,7 @@ export default function HealthJourneyGameStandalone() {
       <style>{styles}</style>
       <div id="app">
         {/* ═══════════════════════════════ SCREEN 1: TRANG CHỦ ═══════════════════════════════ */}
-        <div className={`screen${activeScreen === 'screen-home' ? ' active' : ''}`} id="screen-home">
+        <div className="screen" style={{display: activeScreen === 'screen-home' ? 'flex' : 'none', flexDirection:'column', flex:1, overflowY:'auto', overflowX:'hidden', paddingBottom:'70px', background:'var(--bg-deep)'}} id="screen-home">
           <div className="top-bar">
             <div className="top-bar-title">
               ⚔ NEURO QUEST
@@ -907,7 +897,7 @@ export default function HealthJourneyGameStandalone() {
           </div>
         </div>
         {/* ═══════════════════════════════ SCREEN 2: NHIỆM VỤ ═══════════════════════════════ */}
-        <div className={`screen${activeScreen === 'screen-nhiem-vu' ? ' active' : ''}`} id="screen-nhiem-vu">
+        <div className="screen" style={{display: activeScreen === 'screen-nhiem-vu' ? 'flex' : 'none', flexDirection:'column', flex:1, overflowY:'auto', overflowX:'hidden', paddingBottom:'70px', background:'var(--bg-deep)'}} id="screen-nhiem-vu">
           <div className="top-bar">
             <div className="top-bar-title">
               📋 NHIỆM VỤ
@@ -1068,7 +1058,7 @@ export default function HealthJourneyGameStandalone() {
           </div>
         </div>
         {/* ═══════════════════════════════ SCREEN 3: HÀNH TRÌNH ═══════════════════════════════ */}
-        <div className={`screen${activeScreen === 'screen-hanh-trinh' ? ' active' : ''}`} id="screen-hanh-trinh">
+        <div className="screen" style={{display: activeScreen === 'screen-hanh-trinh' ? 'flex' : 'none', flexDirection:'column', flex:1, overflowY:'auto', overflowX:'hidden', paddingBottom:'70px', background:'var(--bg-deep)'}} id="screen-hanh-trinh">
           <div className="top-bar">
             <div className="top-bar-title">
               ⚔ HÀNH TRÌNH
@@ -1204,7 +1194,7 @@ export default function HealthJourneyGameStandalone() {
           </div>
         </div>
         {/* ═══════════════════════════════ SCREEN 4: AI COACH ═══════════════════════════════ */}
-        <div className={`screen${activeScreen === 'screen-ai-coach' ? ' active' : ''}`} id="screen-ai-coach">
+        <div className="screen" style={{display: activeScreen === 'screen-ai-coach' ? 'flex' : 'none', flexDirection:'column', flex:1, overflowY:'auto', overflowX:'hidden', paddingBottom:'70px', background:'var(--bg-deep)'}} id="screen-ai-coach">
           <div className="top-bar">
             <div className="top-bar-title">
               🤖 AI COACH
@@ -1377,7 +1367,7 @@ export default function HealthJourneyGameStandalone() {
           </div>
         </div>
         {/* ═══════════════════════════════ SCREEN 5: CỬA HÀNG ═══════════════════════════════ */}
-        <div className={`screen${activeScreen === 'screen-cua-hang' ? ' active' : ''}`} id="screen-cua-hang">
+        <div className="screen" style={{display: activeScreen === 'screen-cua-hang' ? 'flex' : 'none', flexDirection:'column', flex:1, overflowY:'auto', overflowX:'hidden', paddingBottom:'70px', background:'var(--bg-deep)'}} id="screen-cua-hang">
           <div className="top-bar">
             <div className="top-bar-title">
               🏪 CỬA HÀNG
@@ -1569,7 +1559,7 @@ export default function HealthJourneyGameStandalone() {
           </div>
         </div>
         {/* ═══════════════════════════════ SCREEN 6: REWARDS ═══════════════════════════════ */}
-        <div className={`screen${activeScreen === 'screen-rewards' ? ' active' : ''}`} id="screen-rewards">
+        <div className="screen" style={{display: activeScreen === 'screen-rewards' ? 'flex' : 'none', flexDirection:'column', flex:1, overflowY:'auto', overflowX:'hidden', paddingBottom:'70px', background:'var(--bg-deep)'}} id="screen-rewards">
           <div className="top-bar">
             <div className="top-bar-title">
               🎁 REWARDS
@@ -1743,7 +1733,7 @@ export default function HealthJourneyGameStandalone() {
           </div>
         </div>
         {/* ═══════════════════════════════ SCREEN 7: PROFILE ═══════════════════════════════ */}
-        <div className={`screen${activeScreen === 'screen-profile' ? ' active' : ''}`} id="screen-profile">
+        <div className="screen" style={{display: activeScreen === 'screen-profile' ? 'flex' : 'none', flexDirection:'column', flex:1, overflowY:'auto', overflowX:'hidden', paddingBottom:'70px', background:'var(--bg-deep)'}} id="screen-profile">
           <div className="top-bar">
             <div className="top-bar-title">
               👤 PROFILE
