@@ -2185,9 +2185,19 @@ html, body, #root {
   z-index: 4;
 }
 
+/* object detection badge stacks below the face mesh badge when both are shown */
+.webcam-controls__objdet-badge.stacked {
+  top: 100px;
+}
+
 /* shift rec badge down when facemesh badge present */
 .webcam-controls__rec-badge {
   top: 100px;
+}
+
+/* shift rec badge further down when both facemesh + object detection badges are shown */
+.webcam-controls__rec-badge.stacked-2 {
+  top: 140px;
 }
 
 /* ---------- Captured image preview ---------- */

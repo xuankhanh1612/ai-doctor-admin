@@ -2,14 +2,16 @@ import React, { useEffect, useRef, useState, useCallback } from 'react'
 import {
   Camera, Video, Upload, RefreshCw, Eye, Clock,
   Square, Settings, Brain, X, Download, Zap, ZapOff,
-  Circle, StopCircle, Activity, Bone, HeartPulse, ScanFace,
+  Circle, StopCircle, Activity, Bone, HeartPulse, ScanFace, Boxes,
 } from 'lucide-react'
-import { FaceLandmarker, FilesetResolver, DrawingUtils } from '@mediapipe/tasks-vision'
+import { FaceLandmarker, FilesetResolver, DrawingUtils, ObjectDetector } from '@mediapipe/tasks-vision'
 import { useApp } from '../context/AppContext'
 
 const MEDIAPIPE_WASM_URL = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm'
 const FACE_LANDMARKER_MODEL_URL =
   'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task'
+const OBJECT_DETECTOR_MODEL_URL =
+  'https://storage.googleapis.com/mediapipe-models/object_detector/efficientdet_lite0/float16/1/efficientdet_lite0.tflite'
 
 /**
  * WebcamControls
@@ -42,6 +44,7 @@ export default function WebcamControls({
   const [showOverlay, setShowOverlay] = useState(true)
   const [showClock, setShowClock] = useState(true)
   const [showBorder, setShowBorder] = useState(true)
+  const [showObjectDetection, setShowObjectDetection] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [selectedCamera, setSelectedCamera] = useState('front')
   const [cameraDevices, setCameraDevices] = useState([]) // [{ deviceId, label }]
@@ -61,7 +64,11 @@ export default function WebcamControls({
   const faceLandmarkerRef = useRef(null)
   const lastFaceResultRef = useRef(null)
   const imageLandmarkerRef = useRef(null)
+  const objectDetectorRef = useRef(null)
+  const lastObjectResultRef = useRef(null)
+  const imageObjectDetectorRef = useRef(null)
   const [faceMeshReady, setFaceMeshReady] = useState(false)
+  const [objectDetectionReady, setObjectDetectionReady] = useState(false)
 
   /* ---------------- clock ---------------- */
   useEffect(() => {
@@ -113,6 +120,36 @@ export default function WebcamControls({
     }
   }, [])
 
+  /* ---------------- object detection drawing ---------------- */
+  const drawObjectDetections = useCallback((ctx, canvas, result) => {
+    if (!result?.detections?.length) return
+    result.detections.forEach((detection) => {
+      const box = detection.boundingBox
+      if (!box) return
+      const { originX: x, originY: y, width: w, height: h } = box
+
+      ctx.strokeStyle = 'rgba(0,229,255,0.9)'
+      ctx.lineWidth = 2
+      ctx.strokeRect(x, y, w, h)
+
+      const category = detection.categories?.[0]
+      if (category) {
+        const label = `${category.categoryName} ${(category.score * 100).toFixed(0)}%`
+        ctx.font = '600 13px sans-serif'
+        const textWidth = ctx.measureText(label).width
+        const labelH = 20
+        const labelY = Math.max(y - labelH, 0)
+        ctx.fillStyle = 'rgba(0,229,255,0.85)'
+        ctx.fillRect(x, labelY, textWidth + 12, labelH)
+        ctx.fillStyle = '#03131a'
+        ctx.textAlign = 'left'
+        ctx.textBaseline = 'middle'
+        ctx.fillText(label, x + 6, labelY + labelH / 2)
+        ctx.textBaseline = 'alphabetic'
+      }
+    })
+  }, [])
+
   /* lazy-load the FaceLandmarker model once, when overlay is needed */
   useEffect(() => {
     if (!isCameraOpen || !showOverlay || faceLandmarkerRef.current) return
@@ -141,11 +178,44 @@ export default function WebcamControls({
     return () => { cancelled = true }
   }, [isCameraOpen, showOverlay])
 
+  /* lazy-load the ObjectDetector model once, when object detection overlay is needed */
+  useEffect(() => {
+    if (!isCameraOpen || !showObjectDetection || objectDetectorRef.current) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const vision = await FilesetResolver.forVisionTasks(MEDIAPIPE_WASM_URL)
+        const detector = await ObjectDetector.createFromOptions(vision, {
+          baseOptions: {
+            modelAssetPath: OBJECT_DETECTOR_MODEL_URL,
+            delegate: 'GPU',
+          },
+          runningMode: 'VIDEO',
+          scoreThreshold: 0.5,
+          maxResults: 5,
+        })
+        if (cancelled) {
+          detector.close?.()
+          return
+        }
+        objectDetectorRef.current = detector
+        setObjectDetectionReady(true)
+      } catch (err) {
+        console.error('ObjectDetector init error:', err)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [isCameraOpen, showObjectDetection])
+
   useEffect(() => () => {
     faceLandmarkerRef.current?.close?.()
     faceLandmarkerRef.current = null
     imageLandmarkerRef.current?.close?.()
     imageLandmarkerRef.current = null
+    objectDetectorRef.current?.close?.()
+    objectDetectorRef.current = null
+    imageObjectDetectorRef.current?.close?.()
+    imageObjectDetectorRef.current = null
   }, [])
 
   const getImageLandmarker = async () => {
@@ -161,6 +231,22 @@ export default function WebcamControls({
     })
     imageLandmarkerRef.current = landmarker
     return landmarker
+  }
+
+  const getImageObjectDetector = async () => {
+    if (imageObjectDetectorRef.current) return imageObjectDetectorRef.current
+    const vision = await FilesetResolver.forVisionTasks(MEDIAPIPE_WASM_URL)
+    const detector = await ObjectDetector.createFromOptions(vision, {
+      baseOptions: {
+        modelAssetPath: OBJECT_DETECTOR_MODEL_URL,
+        delegate: 'GPU',
+      },
+      runningMode: 'IMAGE',
+      scoreThreshold: 0.5,
+      maxResults: 5,
+    })
+    imageObjectDetectorRef.current = detector
+    return detector
   }
 
 
@@ -229,12 +315,27 @@ export default function WebcamControls({
           lastFaceResultRef.current = null
           drawHud(ctx, canvas.width, canvas.height, { withBorder: showBorder, withClock: showClock })
         }
+
+        if (showObjectDetection) {
+          const detector = objectDetectorRef.current
+          if (detector && video.currentTime >= 0) {
+            try {
+              const result = detector.detectForVideo(video, performance.now())
+              lastObjectResultRef.current = result
+            } catch (err) {
+              // detection can throw if video isn't ready yet; ignore frame
+            }
+          }
+          drawObjectDetections(ctx, canvas, lastObjectResultRef.current)
+        } else {
+          lastObjectResultRef.current = null
+        }
       }
       raf = requestAnimationFrame(loop)
     }
     raf = requestAnimationFrame(loop)
     return () => cancelAnimationFrame(raf)
-  }, [isCameraOpen, showOverlay, showBorder, showClock, drawHud, drawFaceMesh])
+  }, [isCameraOpen, showOverlay, showBorder, showClock, showObjectDetection, drawHud, drawFaceMesh, drawObjectDetections])
 
   /* ---------------- camera lifecycle ---------------- */
   const refreshCameraDevices = async () => {
@@ -365,6 +466,9 @@ export default function WebcamControls({
       drawFaceMesh(ctx, canvas, lastFaceResultRef.current)
       drawHud(ctx, canvas.width, canvas.height, { withBorder: showBorder, withClock: showClock })
     }
+    if (showObjectDetection) {
+      drawObjectDetections(ctx, canvas, lastObjectResultRef.current)
+    }
     return canvas
   }
 
@@ -377,8 +481,8 @@ export default function WebcamControls({
       }, 'image/png')
     })
 
-  /* Draw an <img> + (optional) face mesh + HUD onto a canvas */
-  const composeImage = (img, { withOverlay, faceResult }) => {
+  /* Draw an <img> + (optional) face mesh + HUD + object detections onto a canvas */
+  const composeImage = (img, { withOverlay, faceResult, withObjectDetection, objectResult }) => {
     const canvas = document.createElement('canvas')
     canvas.width = img.naturalWidth || img.width
     canvas.height = img.naturalHeight || img.height
@@ -387,6 +491,9 @@ export default function WebcamControls({
     if (withOverlay) {
       drawFaceMesh(ctx, canvas, faceResult)
       drawHud(ctx, canvas.width, canvas.height, { withBorder: showBorder, withClock: showClock })
+    }
+    if (withObjectDetection) {
+      drawObjectDetections(ctx, canvas, objectResult)
     }
     return canvas
   }
@@ -433,6 +540,8 @@ export default function WebcamControls({
         canvas = composeImage(previewState.sourceImg, {
           withOverlay: overlayOn,
           faceResult: previewState.faceResult,
+          withObjectDetection: overlayOn,
+          objectResult: previewState.objectResult,
         })
       } else if (previewState.kind === 'capture' || previewState.kind === 'save') {
         if (overlayOn) {
@@ -511,10 +620,11 @@ export default function WebcamControls({
     try {
       let recordStream
 
-      if (showOverlay) {
-        // Bake the live AI overlay (face mesh + HUD) into the recording by
-        // drawing video + overlay canvas onto a dedicated capture canvas
-        // and recording that canvas' stream instead of the raw camera stream.
+      if (showOverlay || showObjectDetection) {
+        // Bake the live AI overlay (face mesh + HUD + object detection) into
+        // the recording by drawing video + overlay canvas onto a dedicated
+        // capture canvas and recording that canvas' stream instead of the
+        // raw camera stream.
         const video = videoRef.current
         const overlayCanvas = overlayCanvasRef.current
         const captureCanvas = document.createElement('canvas')
@@ -610,11 +720,26 @@ export default function WebcamControls({
         }
       }
 
-      const canvas = composeImage(img, { withOverlay: showOverlay, faceResult })
+      let objectResult = null
+      if (showObjectDetection) {
+        try {
+          const detector = await getImageObjectDetector()
+          objectResult = detector.detect(img)
+        } catch (err) {
+          console.error('Image object detection error:', err)
+        }
+      }
+
+      const canvas = composeImage(img, {
+        withOverlay: showOverlay,
+        faceResult,
+        withObjectDetection: showObjectDetection,
+        objectResult,
+      })
       const outFile = await canvasToFile(canvas, 'ai_doctor_upload')
       const url = URL.createObjectURL(outFile)
-      setPreviewOverlayOn(showOverlay)
-      setPreviewState({ url, file: outFile, kind: 'upload', sourceImg: img, faceResult })
+      setPreviewOverlayOn(showOverlay || showObjectDetection)
+      setPreviewState({ url, file: outFile, kind: 'upload', sourceImg: img, faceResult, objectResult })
       setStatusMsg('')
     } catch (err) {
       console.error('Upload processing error:', err)
@@ -626,13 +751,13 @@ export default function WebcamControls({
   const applyPreset = (preset) => {
     switch (preset) {
       case 'medical':
-        setShowOverlay(true); setShowClock(true); setShowBorder(true); break
+        setShowOverlay(true); setShowClock(true); setShowBorder(true); setShowObjectDetection(false); break
       case 'telemedicine':
-        setShowOverlay(false); setShowClock(true); setShowBorder(false); break
+        setShowOverlay(false); setShowClock(true); setShowBorder(false); setShowObjectDetection(false); break
       case 'research':
-        setShowOverlay(true); setShowClock(true); setShowBorder(true); break
+        setShowOverlay(true); setShowClock(true); setShowBorder(true); setShowObjectDetection(true); break
       case 'screenshot':
-        setShowOverlay(false); setShowClock(false); setShowBorder(false); break
+        setShowOverlay(false); setShowClock(false); setShowBorder(false); setShowObjectDetection(false); break
       default: break
     }
   }
@@ -679,6 +804,7 @@ export default function WebcamControls({
 
               <div className="webcam-controls__hud-chips">
                 <span><ScanFace size={14} /> {t('Lưới khuôn mặt', 'Face Mesh')}</span>
+                <span><Boxes size={14} /> {t('Nhận diện vật thể', 'Object Detection')}</span>
                 <span><Bone size={14} /> {t('Khung xương', 'Skeleton')}</span>
                 <span><HeartPulse size={14} /> {t('Nhịp tim', 'Heart Rate')}</span>
                 <span><Activity size={14} /> {t('Tư thế', 'Posture')}</span>
@@ -718,6 +844,14 @@ export default function WebcamControls({
                   : t('Face Mesh: đang tải...', 'Face Mesh: loading...')}
               </div>
             )}
+            {showObjectDetection && (
+              <div className={`webcam-controls__facemesh-badge webcam-controls__objdet-badge ${showOverlay ? 'stacked' : ''}`}>
+                <Boxes size={12} />
+                {objectDetectionReady
+                  ? t('Nhận diện vật thể: hoạt động', 'Object Detection: active')
+                  : t('Nhận diện vật thể: đang tải...', 'Object Detection: loading...')}
+              </div>
+            )}
             {showClock && (
               <div className="webcam-controls__hud-clock top-right">
                 <div className="time">{clock.time}</div>
@@ -743,7 +877,7 @@ export default function WebcamControls({
               <Settings size={18} />
             </button>
             {isRecording && (
-              <div className="webcam-controls__rec-badge">
+              <div className={`webcam-controls__rec-badge ${showOverlay && showObjectDetection ? 'stacked-2' : ''}`}>
                 <Circle size={10} fill="currentColor" /> REC
               </div>
             )}
@@ -761,6 +895,14 @@ export default function WebcamControls({
             <label className="webcam-controls__drawer-row">
               <span><Eye size={15} /> {t('Lớp phủ AI', 'AI Overlay')}</span>
               <input type="checkbox" checked={showOverlay} onChange={(e) => setShowOverlay(e.target.checked)} />
+            </label>
+            <label className="webcam-controls__drawer-row">
+              <span><Boxes size={15} /> {t('Nhận diện vật thể (AI)', 'Object Detection (AI)')}</span>
+              <input
+                type="checkbox"
+                checked={showObjectDetection}
+                onChange={(e) => setShowObjectDetection(e.target.checked)}
+              />
             </label>
             <label className="webcam-controls__drawer-row">
               <span><Clock size={15} /> {t('Đồng hồ', 'Clock')}</span>
