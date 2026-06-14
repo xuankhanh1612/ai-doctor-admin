@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import NavButtons from './NavButtons.jsx'
+import WebcamControls from './WebcamControls.jsx'
 import { useApp } from '../context/AppContext'
 import { useAuth } from '../context/AuthContext.jsx'
 import { detectFileType, fileToBase64, fileToDataUrl, saveRecord } from '../lib/medicalStorage.js'
@@ -77,6 +78,17 @@ export default function AIHealthcareVisionControlPanel({ onNext, nextLabel, onPr
   const { lang } = useApp()
   const { user } = useAuth()
   const [lastMediaPipeRecord, setLastMediaPipeRecord] = useState(null)
+  const [lastVisionRecord, setLastVisionRecord] = useState(null)
+
+  const handleVisionFile = async (file, label) => {
+    if (!file) return
+    try {
+      const record = await saveVisionControlImage(file, { user, lang, label })
+      setLastVisionRecord(record)
+    } catch (error) {
+      console.error('Could not save webcam capture:', error)
+    }
+  }
 
   useEffect(() => {
     const onMessage = async (event) => {
@@ -144,7 +156,28 @@ export default function AIHealthcareVisionControlPanel({ onNext, nextLabel, onPr
         </div>
       </section>
 
-      {/* <VisionCameraControls onViewMedicalRecord={onViewMedicalRecord} /> */}
+      <section className="ai-vision-camera-card" aria-label="AI Doctor Webcam Controls">
+        <div className="ai-vision-camera-copy">
+          <h3>{lang === 'vi' ? '📷 Webcam AI Doctor' : '📷 AI Doctor Webcam'}</h3>
+          <p>
+            {lang === 'vi'
+              ? 'Camera tắt theo mặc định. Mở camera để bắt đầu quét AI trực tiếp, chụp ảnh, ghi hình hoặc tải ảnh lên — mọi kết quả được lưu vào Medical Records.'
+              : 'Camera is off by default. Open it to start the live AI scan, capture frames, record video, or upload an image — results are saved to Medical Records.'}
+          </p>
+          {lastVisionRecord && (
+            <div className="ai-vision-upload-path" style={{ marginTop: 10 }}>
+              <b>{lang === 'vi' ? 'Đã lưu:' : 'Saved:'}</b> {lastVisionRecord.uploadPath}
+            </div>
+          )}
+        </div>
+
+        <WebcamControls
+          onCapture={(file) => handleVisionFile(file, lang === 'vi' ? 'Ảnh chụp Webcam AI Doctor' : 'AI Doctor webcam capture')}
+          onSave={(file) => handleVisionFile(file, lang === 'vi' ? 'Ảnh lưu từ Webcam AI Doctor' : 'AI Doctor webcam save')}
+          onUpload={(file) => handleVisionFile(file, lang === 'vi' ? 'Ảnh tải lên từ Webcam AI Doctor' : 'AI Doctor webcam upload')}
+          onRecordStop={(file) => handleVisionFile(file, lang === 'vi' ? 'Video ghi từ Webcam AI Doctor' : 'AI Doctor webcam recording')}
+        />
+      </section>
 
       <section className="ai-healthcare-vision-frame-card" aria-label="AI Healthcare Vision Control MediaPipe app">
         <iframe

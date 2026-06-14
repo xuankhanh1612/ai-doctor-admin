@@ -1146,10 +1146,9 @@ html, body, #root {
 }
 
 .ai-vision-camera-card {
-  display: grid;
-  grid-template-columns: minmax(260px, 0.9fr) minmax(280px, 430px);
-  gap: clamp(16px, 3vw, 28px);
-  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(16px, 3vw, 24px);
   padding: clamp(18px, 3vw, 28px);
   border: 1px solid var(--border);
   border-radius: 24px;
@@ -1624,5 +1623,649 @@ html, body, #root {
   .inbody-app-html-copy {
     align-items: flex-start;
     flex-direction: column;
+  }
+}
+
+/* ============================================================
+   WebcamControls — AI Doctor webcam UI (WEBCAM_CONTROLS_GUIDE.md)
+   ============================================================ */
+.webcam-controls {
+  width: 100%;
+}
+
+.webcam-controls__viewport {
+  position: relative;
+  width: 100%;
+  height: clamp(480px, 80vh, 900px);
+  min-height: 480px;
+  border-radius: 24px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 40%, rgba(0,229,255,0.10), transparent 70%),
+    linear-gradient(160deg, #0b1018, #141a28);
+  border: 1px solid var(--border);
+  box-shadow: 0 24px 80px rgba(0,0,0,0.25);
+}
+
+.webcam-controls__viewport.has-border::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border: 2px solid rgba(0,229,255,0.35);
+  border-radius: 24px;
+  box-shadow: inset 0 0 30px rgba(0,229,255,0.10);
+}
+
+.webcam-controls__video,
+.webcam-controls__overlay-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.webcam-controls__overlay-canvas {
+  pointer-events: none;
+}
+
+/* ---------- Placeholder (camera OFF) ---------- */
+.webcam-controls__placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(24px, 4vw, 48px);
+  padding-bottom: 90px;
+}
+
+.webcam-controls__hud-border {
+  position: absolute;
+  inset: 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(0,229,255,0.30);
+  pointer-events: none;
+}
+
+.webcam-controls__hud-badge {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(0,229,255,0.10);
+  border: 1px solid rgba(0,229,255,0.25);
+  color: var(--cyan);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+.webcam-controls__hud-clock {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  padding: 8px 14px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--border);
+  text-align: right;
+  color: var(--text);
+  font-family: monospace;
+}
+
+.webcam-controls__hud-clock.top-right {
+  top: 16px;
+  right: 16px;
+}
+
+.webcam-controls__hud-clock .time {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--cyan);
+}
+
+.webcam-controls__hud-clock .date {
+  font-size: 11px;
+  color: var(--text2);
+}
+
+.webcam-controls__placeholder-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  text-align: center;
+  max-width: 560px;
+}
+
+.webcam-controls__brain-icon {
+  color: var(--cyan);
+  filter: drop-shadow(0 0 18px rgba(0,229,255,0.55));
+  width: clamp(48px, 6vw, 72px);
+  height: clamp(48px, 6vw, 72px);
+}
+
+.webcam-controls__placeholder-body h3 {
+  margin: 4px 0 0;
+  font-size: clamp(26px, 4.5vw, 42px);
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  background: linear-gradient(135deg, #83f7ff, #9c6fff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.webcam-controls__placeholder-body p {
+  margin: 0;
+  color: var(--text2);
+  font-size: clamp(13px, 1.4vw, 16px);
+}
+
+.webcam-controls__hud-chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.webcam-controls__hud-chips span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--border);
+  color: var(--text2);
+  font-size: clamp(12px, 1.2vw, 14px);
+  font-weight: 700;
+}
+
+.webcam-controls__open-btn {
+  margin-top: 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  padding: clamp(14px, 1.8vw, 20px) clamp(24px, 3vw, 36px);
+  border-radius: 18px;
+  border: 1px solid rgba(0,229,255,0.35);
+  background: rgba(0,229,255,0.10);
+  color: var(--cyan);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.webcam-controls__open-btn:hover {
+  background: rgba(0,229,255,0.18);
+  transform: translateY(-1px);
+}
+
+.webcam-controls__open-btn b {
+  display: block;
+  font-size: clamp(15px, 1.6vw, 19px);
+  font-weight: 900;
+  letter-spacing: 0.04em;
+}
+
+.webcam-controls__open-btn small {
+  display: block;
+  margin-top: 2px;
+  font-size: clamp(11px, 1.1vw, 13px);
+  color: var(--text2);
+  font-weight: 600;
+}
+
+/* ---------- Live state ---------- */
+.webcam-controls__live-badge {
+  position: absolute;
+  top: 16px;
+  left: 64px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(0,0,0,0.45);
+  border: 1px solid var(--border);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  backdrop-filter: blur(8px);
+}
+
+.webcam-controls__live-badge .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 8px #22c55e;
+}
+
+.webcam-controls__close-fab {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid rgba(255,59,48,0.4);
+  background: rgba(255,59,48,0.18);
+  color: #ff6b62;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  z-index: 4;
+}
+
+.webcam-controls__close-fab:hover {
+  background: rgba(255,59,48,0.30);
+}
+
+.webcam-controls__rec-badge {
+  position: absolute;
+  top: 60px;
+  left: 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(255,59,48,0.18);
+  border: 1px solid rgba(255,59,48,0.45);
+  color: #ff6b62;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.webcam-controls__flash-fab {
+  position: absolute;
+  top: 16px;
+  right: 64px;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: rgba(0,0,0,0.45);
+  color: #fff;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  z-index: 4;
+}
+
+.webcam-controls__flash-fab:hover {
+  background: rgba(0,229,255,0.18);
+}
+
+.webcam-controls__flash-fab.active {
+  background: rgba(255,214,10,0.22);
+  border-color: rgba(255,214,10,0.5);
+  color: #ffd60a;
+}
+
+.webcam-controls__flash-fab:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.webcam-controls__settings-fab {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: rgba(0,0,0,0.45);
+  color: #fff;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+}
+
+.webcam-controls__settings-fab:hover {
+  background: rgba(0,229,255,0.18);
+}
+
+/* shift clock when settings fab + flash fab are present */
+.webcam-controls__hud-clock.top-right {
+  right: 112px;
+}
+
+/* ---------- Glassmorphism settings drawer ---------- */
+.webcam-controls__drawer {
+  position: absolute;
+  top: 64px;
+  right: 16px;
+  width: min(240px, 80%);
+  padding: 14px;
+  border-radius: 18px;
+  background: rgba(20,26,40,0.65);
+  border: 1px solid rgba(255,255,255,0.14);
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  box-shadow: 0 20px 50px rgba(0,0,0,0.35);
+  color: var(--text);
+  z-index: 5;
+}
+
+.webcam-controls__drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 800;
+  font-size: 13px;
+  margin-bottom: 10px;
+  color: var(--cyan);
+}
+
+.webcam-controls__drawer-header button {
+  background: transparent;
+  border: none;
+  color: var(--text2);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+
+.webcam-controls__drawer-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 0;
+  font-size: 13px;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+.webcam-controls__drawer-row:last-of-type {
+  border-bottom: none;
+}
+
+.webcam-controls__drawer-row span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.webcam-controls__drawer-row input[type="checkbox"] {
+  width: 36px;
+  height: 20px;
+  accent-color: var(--cyan);
+  cursor: pointer;
+}
+
+.webcam-controls__drawer-presets {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.webcam-controls__drawer-presets button {
+  padding: 8px 6px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.06);
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.webcam-controls__drawer-presets button:hover {
+  background: rgba(0,229,255,0.14);
+  border-color: rgba(0,229,255,0.3);
+}
+
+/* ---------- Floating toolbar ---------- */
+.webcam-controls__toolbar {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: rgba(15,20,32,0.55);
+  border: 1px solid rgba(255,255,255,0.12);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  box-shadow: 0 16px 40px rgba(0,0,0,0.35);
+  max-width: calc(100% - 24px);
+  overflow-x: auto;
+}
+
+.webcam-controls__toolbar button {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.06);
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.webcam-controls__toolbar button:hover {
+  background: rgba(0,229,255,0.18);
+  border-color: rgba(0,229,255,0.30);
+}
+
+.webcam-controls__toolbar button.active {
+  background: rgba(0,229,255,0.22);
+  color: var(--cyan);
+  border-color: rgba(0,229,255,0.4);
+}
+
+.webcam-controls__toolbar button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.webcam-controls__toolbar.idle {
+  padding: 8px 16px;
+}
+
+.webcam-controls__toolbar.idle button {
+  width: auto;
+  height: 40px;
+  border-radius: 999px;
+  padding: 0 16px;
+  gap: 8px;
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.webcam-controls__capture-btn {
+  width: 56px !important;
+  height: 56px !important;
+  background: rgba(255,255,255,0.10) !important;
+  border: 3px solid #fff !important;
+  position: relative;
+}
+
+.webcam-controls__capture-btn .ring {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.webcam-controls__close-btn {
+  background: rgba(255,59,48,0.18) !important;
+  border-color: rgba(255,59,48,0.4) !important;
+  color: #ff6b62 !important;
+}
+
+.webcam-controls__close-btn:hover {
+  background: rgba(255,59,48,0.30) !important;
+}
+
+/* ---------- Status text ---------- */
+.webcam-controls__status {
+  margin-top: 10px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(0,229,255,0.08);
+  border: 1px solid rgba(0,229,255,0.20);
+  color: var(--cyan);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 640px) {
+  .webcam-controls__viewport {
+    min-height: 280px;
+    aspect-ratio: 4 / 5;
+  }
+
+  .webcam-controls__toolbar {
+    gap: 6px;
+    padding: 8px 10px;
+  }
+
+  .webcam-controls__toolbar button {
+    width: 36px;
+    height: 36px;
+  }
+
+  .webcam-controls__capture-btn {
+    width: 50px !important;
+    height: 50px !important;
+  }
+
+  .webcam-controls__drawer {
+    width: min(220px, 90%);
+  }
+
+  .webcam-controls__hud-chips span {
+    font-size: 11px;
+    padding: 5px 9px;
+  }
+}
+
+/* ---------- Face mesh status badge ---------- */
+.webcam-controls__facemesh-badge {
+  position: absolute;
+  top: 60px;
+  left: 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(0,0,0,0.45);
+  border: 1px solid rgba(0,229,255,0.25);
+  color: var(--cyan);
+  font-size: 11px;
+  font-weight: 700;
+  backdrop-filter: blur(8px);
+  z-index: 4;
+}
+
+/* shift rec badge down when facemesh badge present */
+.webcam-controls__rec-badge {
+  top: 100px;
+}
+
+/* ---------- Captured image preview ---------- */
+.webcam-controls__preview {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(5,8,16,0.92);
+  backdrop-filter: blur(6px);
+}
+
+.webcam-controls__preview-img {
+  max-width: 92%;
+  max-height: 78%;
+  border-radius: 16px;
+  border: 1px solid rgba(0,229,255,0.30);
+  box-shadow: 0 24px 70px rgba(0,0,0,0.5);
+  object-fit: contain;
+}
+
+.webcam-controls__preview-toolbar {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.webcam-controls__preview-toolbar button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.08);
+  color: var(--text);
+  font-weight: 800;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.webcam-controls__preview-toolbar button:hover {
+  transform: translateY(-1px);
+}
+
+.webcam-controls__preview-close {
+  background: rgba(255,59,48,0.16) !important;
+  border-color: rgba(255,59,48,0.35) !important;
+  color: #ff6b62 !important;
+}
+
+.webcam-controls__preview-download {
+  background: rgba(255,255,255,0.08) !important;
+}
+
+.webcam-controls__preview-confirm {
+  background: linear-gradient(135deg, #16a34a, #22c55e) !important;
+  border-color: transparent !important;
+  color: #fff !important;
+  box-shadow: 0 14px 30px rgba(34,197,94,0.28);
+}
+
+@media (max-width: 640px) {
+  .webcam-controls__preview-toolbar {
+    width: 100%;
+    padding: 0 16px;
+  }
+
+  .webcam-controls__preview-toolbar button {
+    flex: 1;
+    justify-content: center;
+    padding: 12px 10px;
+    font-size: 12px;
   }
 }
