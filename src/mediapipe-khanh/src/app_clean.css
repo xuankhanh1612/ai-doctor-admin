@@ -1311,348 +1311,419 @@ video {
   }
 }
 
-/* AI Clinic upload bridge: keep MediaPipe Tasks while wrapping Webcam controls around the live preview. */
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   AI DOCTOR VISION — Webcam Controls UI
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+/* cam-container wrapper */
 #view-webcam .cam-container {
-  border: 1px solid rgba(0, 127, 139, 0.18);
+  border: 1px solid rgba(0, 127, 139, 0.22);
   border-radius: 18px;
-  padding: 18px;
-  background: linear-gradient(135deg, rgba(0, 127, 139, 0.08), rgba(103, 58, 183, 0.05));
-}
-
-/* ── Webcam Controls Pill ──────────────────────────────────────────────────── */
-#webcam-controls-container.webcam-controls {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-wrap: nowrap;
-  gap: 0;
-  margin: 14px auto 18px;
-  padding: 5px 8px;
-  border: 1.5px solid rgba(0, 127, 139, 0.28);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 2px 12px rgba(0, 127, 139, 0.10), 0 1px 3px rgba(0,0,0,0.07);
-  backdrop-filter: blur(6px);
-  max-width: fit-content;
-}
-
-/* Nút bên trong pill */
-#webcam-controls-container.webcam-controls .action-button,
-#webcam-controls-container.webcam-controls .wcam-btn {
-  margin: 0;
-  padding: 7px 14px;
-  border-radius: 999px;
-  font-size: 13px;
-  font-weight: 600;
-  white-space: nowrap;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  box-shadow: none;
-  transition: background 0.18s, color 0.18s, box-shadow 0.18s;
-}
-
-#webcam-controls-container.webcam-controls .action-button .material-icons,
-#webcam-controls-container.webcam-controls .wcam-btn .material-icons {
-  font-size: 18px;
-  line-height: 1;
-}
-
-/* Nút chính: Mở/Đóng camera */
-#webcam-controls-container.webcam-controls .wcam-primary {
-  background: var(--primary, #007f8b);
-  color: #fff;
-}
-#webcam-controls-container.webcam-controls .wcam-primary:hover {
-  background: var(--primary-hover, #005f69);
-  box-shadow: 0 2px 8px rgba(0, 127, 139, 0.3);
-}
-
-/* Nút phụ: Đổi camera */
-#webcam-controls-container.webcam-controls .action-button.secondary,
-#webcam-controls-container.webcam-controls .wcam-btn.secondary {
-  background: transparent;
-  color: #475569;
-  border: none;
-}
-#webcam-controls-container.webcam-controls .action-button.secondary:hover,
-#webcam-controls-container.webcam-controls .wcam-btn.secondary:hover {
-  background: rgba(0, 127, 139, 0.08);
-  color: var(--primary, #007f8b);
-  box-shadow: none;
-}
-
-/* Nút Lưu Hình: highlight xanh lá nhẹ */
-#webcam-controls-container.webcam-controls .wcam-save {
-  background: linear-gradient(135deg, rgba(22, 163, 74, 0.12), rgba(34, 197, 94, 0.10));
-  color: #15803d;
-  border: 1px solid rgba(34, 197, 94, 0.3);
-}
-#webcam-controls-container.webcam-controls .wcam-save:hover {
-  background: linear-gradient(135deg, rgba(22, 163, 74, 0.22), rgba(34, 197, 94, 0.18));
-  box-shadow: 0 2px 8px rgba(34, 197, 94, 0.2);
-}
-
-/* Divider giữa các nút */
-#webcam-controls-container.webcam-controls .wcam-divider {
-  display: inline-block;
-  width: 1px;
-  height: 20px;
-  background: rgba(0, 127, 139, 0.18);
-  margin: 0 4px;
-  border-radius: 1px;
-  flex-shrink: 0;
-}
-
-/* wcam-label: ẩn trên màn hình rất nhỏ */
-@media (max-width: 400px) {
-  #webcam-controls-container.webcam-controls .wcam-label {
-    display: none;
-  }
-  #webcam-controls-container.webcam-controls .wcam-btn {
-    padding: 7px 10px;
-  }
-}
-
-/* Responsive: cho phép wrap ở mobile */
-@media (max-width: 560px) {
-  #webcam-controls-container.webcam-controls {
-    flex-wrap: wrap;
-    border-radius: 18px;
-    padding: 8px 10px;
-    gap: 6px;
-    max-width: 100%;
-  }
-  #webcam-controls-container.webcam-controls .wcam-divider {
-    display: none;
-  }
-}
-
-#save-image-record-btn,
-#view-image-upload-records-btn {
-  margin-top: 15px;
-}
-
-/* AI Clinic responsive frame polish */
-@media (min-width: 769px) {
-  .app-container {
-    background: linear-gradient(135deg, #eef2f7, #f8fafc);
-  }
-
-  .task-container {
-    gap: 18px;
-    padding: 18px;
-  }
-
-  .sidebar,
-  .controls-panel,
-  .output-panel {
-    border: 1px solid rgba(15, 23, 42, 0.08);
-    border-radius: 28px;
-    box-shadow: 0 24px 70px rgba(15, 23, 42, 0.10);
-  }
-
-  .sidebar,
-  .controls-panel {
-    max-height: calc(100vh - 36px);
-  }
-
-  .output-panel {
-    padding: clamp(16px, 2vw, 28px);
-  }
-}
-
-@media (max-width: 1180px) {
-  :root { --sidebar-width: 220px; --controls-width: 280px; }
-
-  .output-header {
-    height: auto;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-
-  .view-tab {
-    padding: 8px 14px;
-  }
-}
-
-@media (max-width: 900px) {
-  body { overflow: auto; }
-
-  .app-container,
-  #app {
-    min-height: 100vh;
-    height: auto;
-  }
-
-  .task-container {
-    flex-direction: column;
-    min-height: 100vh;
-    height: auto;
-  }
-
-  .sidebar {
-    display: none !important;
-  }
-
-  .controls-panel {
-    width: 100%;
-    max-height: none;
-    border-right: none;
-    border-bottom: 1px solid var(--border-color);
-    padding: 14px;
-  }
-
-  .output-panel {
-    min-height: 68vh;
-    height: auto;
-    overflow: visible;
-    padding: 14px;
-  }
-
-  .viewport {
-    min-height: 54vh;
-    padding: 14px 0;
-  }
-
-  .video-wrapper,
-  .upload-dropzone {
-    max-width: min(100%, 680px);
-  }
-
-  .webcam-controls {
-    width: 100%;
-    justify-content: center;
-    flex-wrap: wrap;
-  }
-}
-
-@media (max-width: 560px) {
-  .controls-panel,
-  .output-panel {
-    padding: 12px;
-  }
-
-  .output-header h2 {
-    font-size: 1.2rem;
-  }
-
-  .view-tabs,
-  .webcam-controls {
-    width: 100%;
-    overflow-x: auto;
-  }
-
-  .view-tab,
-  .action-button {
-    min-height: 44px;
-    font-size: 0.86rem;
-    white-space: nowrap;
-  }
-
-  .viewport {
-    border-radius: 20px;
-  }
-
-  .video-wrapper {
-    width: 100%;
-    max-height: 58vh;
-  }
-}
-
-
-/* AI Healthcare Vision embedded layout: keep navigation hidden behind a hamburger,
-   and let Webcam/Object Detection use the available space by default. */
-.task-container {
+  padding: 16px 16px 0;
+  background: linear-gradient(135deg, rgba(0, 127, 139, 0.07), rgba(103, 58, 183, 0.04));
   position: relative;
 }
 
-.model-selection-toggle {
-  position: absolute;
-  top: 26px;
-  left: 26px;
-  z-index: 40;
-  margin-top: 0;
-  padding: 10px 16px;
-  box-shadow: var(--shadow-md);
+/* ── AI Doctor Vision HUD Placeholder ─────────────────────────────────────── */
+.wcam-hud-placeholder {
+  grid-area: 1 / 1;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  min-height: 260px;
+  border-radius: 16px;
+  overflow: hidden;
+  background: radial-gradient(ellipse at 50% 40%, #0c2033 0%, #060d1a 70%, #02060f 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+  position: relative;
 }
 
-.task-container.controls-collapsed .controls-panel {
-  display: none !important;
-}
-
-.task-container.controls-collapsed .output-panel {
-  flex: 1 1 100%;
-}
-
-.task-container.controls-collapsed .output-header {
-  padding-left: 190px;
-}
-
-.menu-toggle {
-  display: inline-flex !important;
+.wcam-hud-inner {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  display: flex;
   align-items: center;
   justify-content: center;
 }
 
-@media (min-width: 769px) {
-  .mobile-header {
-    display: flex !important;
-    position: fixed;
-    top: 12px;
-    right: 12px;
-    z-index: 1201;
-    height: auto;
-    padding: 8px;
-    border: 1px solid rgba(15, 23, 42, 0.10);
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.92);
-    box-shadow: 0 14px 36px rgba(15, 23, 42, 0.16);
-    backdrop-filter: blur(12px);
-  }
+/* Cyber corner borders */
+.wcam-border-tl, .wcam-border-tr,
+.wcam-border-bl, .wcam-border-br {
+  position: absolute;
+  width: 36px;
+  height: 36px;
+  border-color: #00e5ff;
+  border-style: solid;
+  border-width: 0;
+  z-index: 10;
+  pointer-events: none;
+  filter: drop-shadow(0 0 6px #00e5ff88);
+}
+.wcam-border-tl { top: 14px; left: 14px;  border-top-width: 3px;    border-left-width: 3px; }
+.wcam-border-tr { top: 14px; right: 14px; border-top-width: 3px;    border-right-width: 3px; }
+.wcam-border-bl { bottom: 14px; left: 14px;  border-bottom-width: 3px; border-left-width: 3px; }
+.wcam-border-br { bottom: 14px; right: 14px; border-bottom-width: 3px; border-right-width: 3px; }
 
-  .mobile-header .menu-toggle {
-    margin: 0 !important;
-    color: var(--primary) !important;
-  }
-
-  .mobile-header #mobile-nav-container {
-    display: none !important;
-  }
-
-  .sidebar {
-    position: fixed;
-    top: 12px;
-    right: 12px;
-    left: auto;
-    width: min(var(--sidebar-width), calc(100vw - 24px));
-    height: calc(100vh - 24px);
-    z-index: 1200;
-    transform: translateX(calc(100% + 24px));
-    transition: transform 0.24s ease;
-  }
-
-  .sidebar.open {
-    transform: translateX(0);
-  }
+/* Scan grid */
+.wcam-scan-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(0,229,255,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,229,255,0.04) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
 }
 
-@media (max-width: 768px) {
-  .mobile-header {
-    display: flex !important;
-  }
-
-  .task-container.controls-collapsed .output-header {
-    padding-left: 0;
-    padding-top: 46px;
-  }
-
-  .model-selection-toggle {
-    top: 12px;
-    left: 12px;
-    padding: 8px 12px;
-  }
+/* AI Overlay Active badge */
+.wcam-badge-overlay-active {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px 5px 8px;
+  background: rgba(0, 229, 255, 0.12);
+  border: 1px solid rgba(0, 229, 255, 0.35);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #67e8f9;
+  letter-spacing: 0.04em;
+  backdrop-filter: blur(6px);
 }
+.wcam-badge-overlay-active .material-icons { font-size: 15px; color: #22d3ee; }
+
+/* HUD Clock (top-right of placeholder) */
+.wcam-hud-clock {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  text-align: right;
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+  font-size: 13px;
+  font-weight: 700;
+  color: #e0f2fe;
+  white-space: pre;
+  line-height: 1.5;
+  letter-spacing: 0.03em;
+  background: rgba(2, 8, 23, 0.55);
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(0,229,255,0.15);
+}
+
+/* HUD center content */
+.wcam-hud-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  z-index: 2;
+  padding: 20px;
+}
+
+.wcam-hud-title {
+  font-size: clamp(18px, 3vw, 26px);
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  color: #67e8f9;
+  text-shadow: 0 0 28px rgba(34,211,238,0.7), 0 0 60px rgba(34,211,238,0.3);
+}
+
+.wcam-hud-subtitle {
+  font-size: 12.5px;
+  color: #94a3b8;
+  letter-spacing: 0.03em;
+}
+
+.wcam-hud-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+.wcam-hud-tags span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  border: 1px solid rgba(0,229,255,0.22);
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #cbd5e1;
+  background: rgba(0,229,255,0.06);
+}
+.wcam-hud-tags span .material-icons { font-size: 14px; color: #22d3ee; }
+
+/* OPEN CAMERA button */
+.wcam-hud-open-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 36px;
+  background: transparent;
+  border: 2px solid #00e5ff;
+  border-radius: 12px;
+  color: #e0f2fe;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 0 24px rgba(0,229,255,0.2), inset 0 0 20px rgba(0,229,255,0.05);
+}
+.wcam-hud-open-btn:hover {
+  background: rgba(0,229,255,0.12);
+  box-shadow: 0 0 40px rgba(0,229,255,0.4), inset 0 0 30px rgba(0,229,255,0.1);
+}
+.wcam-hud-open-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.wcam-hud-open-btn .material-icons { font-size: 22px; }
+
+/* ── Video wrapper overlays (live corners + clock) ─────────────────────────── */
+.video-wrapper.wcam-border-active { border-radius: 12px; }
+
+.wcam-vcorner {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  border-color: #00e5ff;
+  border-style: solid;
+  border-width: 0;
+  z-index: 20;
+  pointer-events: none;
+  filter: drop-shadow(0 0 5px #00e5ff99);
+  transition: opacity 0.3s;
+}
+.wcam-vcorner-tl { top: 8px;    left: 8px;    border-top-width: 2.5px; border-left-width: 2.5px; }
+.wcam-vcorner-tr { top: 8px;    right: 8px;   border-top-width: 2.5px; border-right-width: 2.5px; }
+.wcam-vcorner-bl { bottom: 8px; left: 8px;    border-bottom-width: 2.5px; border-left-width: 2.5px; }
+.wcam-vcorner-br { bottom: 8px; right: 8px;   border-bottom-width: 2.5px; border-right-width: 2.5px; }
+
+.wcam-live-clock {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+  background: rgba(2,6,23,0.65);
+  border: 1px solid rgba(0,229,255,0.2);
+  border-radius: 8px;
+  padding: 5px 10px;
+  pointer-events: none;
+}
+#wcam-live-clock-time {
+  font-size: 14px;
+  font-weight: 700;
+  color: #e0f2fe;
+  letter-spacing: 0.05em;
+}
+#wcam-live-clock-date {
+  font-size: 10px;
+  color: #67e8f9;
+  letter-spacing: 0.04em;
+}
+
+/* ── LIVE badge ────────────────────────────────────────────────────────────── */
+.wcam-live-badge {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  background: rgba(34,197,94,0.15);
+  border: 1px solid rgba(34,197,94,0.4);
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 800;
+  color: #86efac;
+  letter-spacing: 0.08em;
+  margin-bottom: 10px;
+}
+.wcam-live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #22c55e;
+  animation: wcam-pulse 1.2s ease-in-out infinite;
+  display: inline-block;
+}
+@keyframes wcam-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.5; transform: scale(0.85); }
+}
+
+/* ── Floating Toolbar ──────────────────────────────────────────────────────── */
+#webcam-controls-container {
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  padding: 12px 0 16px;
+  width: 100%;
+  position: relative;
+}
+
+.wcam-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 16px;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(0, 229, 255, 0.18);
+  border-radius: 999px;
+  backdrop-filter: blur(14px);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.35), 0 0 0 1px rgba(0,229,255,0.06);
+}
+
+.wcam-tb-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 8px 10px;
+  background: transparent;
+  border: none;
+  border-radius: 12px;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s, transform 0.15s;
+  min-width: 52px;
+}
+.wcam-tb-btn:hover {
+  background: rgba(0, 229, 255, 0.1);
+  color: #e0f2fe;
+  transform: translateY(-1px);
+}
+.wcam-tb-btn .material-icons {
+  font-size: 22px;
+  line-height: 1;
+}
+.wcam-tb-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+/* Capture — large center button */
+.wcam-tb-capture {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.92);
+  color: #0f172a;
+  box-shadow: 0 0 0 3px rgba(255,255,255,0.3), 0 4px 16px rgba(0,0,0,0.4);
+  flex-direction: row;
+  padding: 0;
+  min-width: unset;
+}
+.wcam-tb-capture .material-icons { font-size: 28px; }
+.wcam-tb-capture:hover {
+  background: #fff;
+  transform: scale(1.06);
+  box-shadow: 0 0 0 4px rgba(255,255,255,0.4), 0 6px 20px rgba(0,0,0,0.5);
+  color: #0f172a;
+}
+
+/* Record button active state */
+.wcam-tb-btn.recording .material-icons { color: #f87171; }
+.wcam-tb-btn.recording { animation: wcam-rec-blink 1s step-end infinite; }
+@keyframes wcam-rec-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.7; }
+}
+.wcam-record-dot {
+  display: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #ef4444;
+  position: absolute;
+  top: 6px;
+  right: 6px;
+}
+
+/* Close button */
+.wcam-tb-close { color: #f87171; }
+.wcam-tb-close:hover { background: rgba(248,113,113,0.12); color: #fca5a5; }
+
+/* Settings button active */
+.wcam-tb-settings-btn.active { background: rgba(0,229,255,0.12); color: #67e8f9; }
+
+/* ── Settings Drawer (glassmorphism) ───────────────────────────────────────── */
+.wcam-settings-drawer {
+  display: none;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 10px;
+  padding: 12px 16px;
+  background: rgba(15, 23, 42, 0.88);
+  border: 1px solid rgba(0, 229, 255, 0.18);
+  border-radius: 16px;
+  backdrop-filter: blur(16px);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  min-width: 220px;
+}
+
+.wcam-setting-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 4px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.wcam-setting-row:last-child { border-bottom: none; }
+.wcam-setting-row .material-icons { font-size: 18px; color: #67e8f9; }
+
+.wcam-setting-label {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 600;
+  color: #cbd5e1;
+}
+
+/* Toggle switch */
+.wcam-toggle { position: relative; display: inline-block; width: 40px; height: 22px; }
+.wcam-toggle input { opacity: 0; width: 0; height: 0; }
+.wcam-toggle-slider {
+  position: absolute;
+  inset: 0;
+  background: #334155;
+  border-radius: 22px;
+  transition: background 0.22s;
+  cursor: pointer;
+}
+.wcam-toggle-slider::before {
+  content: '';
+  position: absolute;
+  width: 16px; height: 16px;
+  left: 3px; top: 3px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform 0.22s;
+}
+.wcam-toggle input:checked + .wcam-toggle-slider { background: #22c55e; }
+.wcam-toggle input:checked + .wcam-toggle-slider::before { transform: translateX(18px); }
+
+/* ── Spin animation for loading ────────────────────────────────────────────── */
+@keyframes wcam-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.wcam-spin { display: inline-block; animation: wcam-spin 1s linear infinite; }
 
 /* ── Capture Save Notification ─────────────────────────────────────────────── */
 .capture-save-notif {
@@ -1662,54 +1733,38 @@ video {
   padding: 9px 14px;
   margin-top: 10px;
   border-radius: 10px;
-  background: linear-gradient(135deg, rgba(15, 118, 110, 0.18), rgba(34, 197, 94, 0.14));
-  border: 1px solid rgba(34, 197, 94, 0.35);
+  background: linear-gradient(135deg, rgba(15,118,110,0.18), rgba(34,197,94,0.14));
+  border: 1px solid rgba(34,197,94,0.35);
   color: #86efac;
   font-size: 12.5px;
   font-weight: 600;
   line-height: 1.45;
-  box-shadow: 0 4px 16px rgba(34, 197, 94, 0.1);
+  box-shadow: 0 4px 16px rgba(34,197,94,0.1);
   animation: notif-fadein 0.3s ease;
+  width: 100%;
+  box-sizing: border-box;
+  max-width: 420px;
 }
-
-.capture-save-notif .save-notif-icon {
-  font-size: 18px;
-  color: #4ade80;
-  flex-shrink: 0;
-}
-
-.capture-save-notif .save-notif-text {
-  flex: 1;
-  min-width: 0;
-}
-
+.capture-save-notif .save-notif-icon { font-size: 18px; color: #4ade80; flex-shrink: 0; }
+.capture-save-notif .save-notif-text { flex: 1; min-width: 0; }
 .capture-save-notif .save-notif-path {
-  display: block;
-  font-size: 10.5px;
-  color: #6ee7b7;
-  font-weight: 400;
-  margin-top: 2px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
-  opacity: 0.85;
+  display: block; font-size: 10.5px; color: #6ee7b7; font-weight: 400;
+  margin-top: 2px; white-space: nowrap; overflow: hidden;
+  text-overflow: ellipsis; max-width: 100%; opacity: 0.85;
 }
-
-.capture-save-notif .save-notif-check {
-  font-size: 18px;
-  color: #22c55e;
-  flex-shrink: 0;
-}
+.capture-save-notif .save-notif-check { font-size: 18px; color: #22c55e; flex-shrink: 0; }
 
 @keyframes notif-fadein {
   from { opacity: 0; transform: translateY(-6px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* Căn chỉnh khi nằm trong image controls (cạnh nút re-upload) */
-#save-notif-image,
-#save-notif-webcam {
-  width: 100%;
-  box-sizing: border-box;
+/* ── Responsive ────────────────────────────────────────────────────────────── */
+@media (max-width: 480px) {
+  .wcam-toolbar { gap: 2px; padding: 8px 10px; }
+  .wcam-tb-btn  { min-width: 42px; padding: 7px 6px; }
+  .wcam-tb-label { display: none; }
+  .wcam-tb-capture { width: 48px; height: 48px; }
+  .wcam-tb-capture .material-icons { font-size: 24px; }
+  .wcam-hud-tags { display: none; }
 }

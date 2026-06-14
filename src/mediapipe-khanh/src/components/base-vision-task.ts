@@ -86,14 +86,10 @@ export abstract class BaseVisionTask extends BaseTask {
     super.handleInitDone();
 
     if (this.video && this.video.srcObject && this.enableWebcamButton) {
-//       this.setWebcamButtonLabel('close');
-//       this.enableWebcamButton.disabled = false;
-//     } else if (this.enableWebcamButton && this.enableWebcamButton.innerText !== 'Starting...') {
-//       this.setWebcamButtonLabel('open');
-      this.enableWebcamButton.innerText = 'Đóng camera';
+      this.setWebcamButtonLabel('close');
       this.enableWebcamButton.disabled = false;
-    } else if (this.enableWebcamButton && this.enableWebcamButton.innerText !== 'Đang mở...') {
-      this.enableWebcamButton.innerText = 'Mở camera';
+    } else if (this.enableWebcamButton) {
+      this.setWebcamButtonLabel('open');
       this.enableWebcamButton.disabled = false;
     }
 
@@ -177,35 +173,348 @@ export abstract class BaseVisionTask extends BaseTask {
   }
 
 
+  // ── UI State ─────────────────────────────────────────────────────────────
+  private wcamShowOverlay  = true;
+  private wcamShowClock    = true;
+  private wcamShowBorder   = true;
+  private wcamClockTimer: number | null = null;
+
   protected setWebcamButtonLabel(state: 'open' | 'close' | 'starting' | 'initializing') {
-    if (!this.enableWebcamButton) return;
-    this.enableWebcamButton.classList.add('wcam-btn', 'wcam-primary');
-    const labels = {
-      open:          '<span class="material-icons">videocam</span><span class="wcam-label">Mở camera</span>',
-      close:         '<span class="material-icons">videocam_off</span><span class="wcam-label">Đóng camera</span>',
-      starting:      '<span class="material-icons">hourglass_empty</span><span class="wcam-label">Đang mở…</span>',
-      initializing:  '<span class="material-icons">hourglass_empty</span><span class="wcam-label">Đang khởi tạo…</span>',
-    };
-    this.enableWebcamButton.innerHTML = labels[state];
+    // Main open/close button lives inside the HUD placeholder now
+    const openBtn   = document.getElementById('wcam-hud-open-btn') as HTMLButtonElement | null;
+    const toolbar   = document.getElementById('wcam-toolbar')      as HTMLElement | null;
+    const liveBadge = document.getElementById('wcam-live-badge')   as HTMLElement | null;
+    const drawer    = document.getElementById('wcam-settings-drawer') as HTMLElement | null;
+
+    const isOpen = state === 'close';
+    if (openBtn)   openBtn.style.display   = isOpen ? 'none' : 'flex';
+    if (toolbar)   toolbar.style.display   = isOpen ? 'flex' : 'none';
+    if (liveBadge) liveBadge.style.display = isOpen ? 'flex' : 'none';
+    if (!isOpen && drawer) drawer.style.display = 'none';
+
+    // Disable open button during init/starting
+    if (openBtn) openBtn.disabled = (state === 'starting' || state === 'initializing');
+
+    if (state === 'starting' || state === 'initializing') {
+      if (openBtn) openBtn.innerHTML =
+        '<span class="material-icons wcam-spin">hourglass_empty</span><span>Đang mở…</span>';
+    } else if (state === 'open') {
+      if (openBtn) openBtn.innerHTML =
+        '<span class="material-icons">videocam</span><span>OPEN CAMERA</span>';
+    }
   }
 
   protected setupUploadRecordControls() {
-    this.setWebcamButtonLabel('open');
     this.setupUploadBridgeMessages();
+    this.injectWebcamHUD();
+    this.injectImageSaveControls();
+  }
 
-    const reUploadButton = document.getElementById('re-upload-btn') as HTMLButtonElement | null;
-    if (reUploadButton) {
-      reUploadButton.innerHTML = '<span class="material-icons">upload</span> upload hình trong máy';
-      this.ensureImageSaveControls(reUploadButton);
-    }
+  // ── Inject AI Doctor Vision HUD into #webcam-placeholder ─────────────────
+  private injectWebcamHUD() {
+    const placeholder = document.getElementById('webcam-placeholder');
+    if (!placeholder || document.getElementById('wcam-hud-inner')) return;
 
+    // Replace boring placeholder with full HUD
+    placeholder.className = 'wcam-hud-placeholder';
+    placeholder.innerHTML = `
+      <div id="wcam-hud-inner" class="wcam-hud-inner">
+        <!-- Cyber corner borders -->
+        <div class="wcam-border-tl"></div>
+        <div class="wcam-border-tr"></div>
+        <div class="wcam-border-bl"></div>
+        <div class="wcam-border-br"></div>
+
+        <!-- Scan grid overlay -->
+        <div class="wcam-scan-grid" aria-hidden="true"></div>
+
+        <!-- Top-left badge -->
+        <div class="wcam-badge-overlay-active">
+          <span class="material-icons">psychology</span>
+          AI OVERLAY ACTIVE
+        </div>
+
+        <!-- Top-right clock -->
+        <div id="wcam-hud-clock" class="wcam-hud-clock"></div>
+
+        <!-- Center branding -->
+        <div class="wcam-hud-center">
+          <div class="wcam-hud-title">AI DOCTOR VISION</div>
+          <div class="wcam-hud-subtitle">AI Overlay is running · Open camera to start</div>
+          <div class="wcam-hud-tags">
+            <span><span class="material-icons">face</span> Face Mesh</span>
+            <span><span class="material-icons">accessibility</span> Skeleton</span>
+            <span><span class="material-icons">favorite</span> Heart Rate</span>
+            <span><span class="material-icons">self_improvement</span> Posture</span>
+          </div>
+          <button id="wcam-hud-open-btn" class="wcam-hud-open-btn" type="button">
+            <span class="material-icons">videocam</span>
+            <span>OPEN CAMERA</span>
+          </button>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('wcam-hud-open-btn')?.addEventListener('click', (e) => {
+      e.preventDefault(); e.stopPropagation();
+      this.enableCam();
+    });
+
+    this.startHUDClock();
+    this.injectWebcamToolbar();
+  }
+
+  // ── Inject floating toolbar + settings drawer ─────────────────────────────
+  private injectWebcamToolbar() {
     const webcamControls = document.getElementById('webcam-controls-container');
-    if (!webcamControls) return;
+    if (!webcamControls || document.getElementById('wcam-toolbar')) return;
 
-    webcamControls.classList.add('webcam-controls');
-    this.ensureWebcamSwitchButton(webcamControls);
-    this.ensureWebcamSaveButton(webcamControls);
-    this.ensureViewUploadRecordsButton(webcamControls, 'webcam');
+    // Hide old webcamButton — toolbar takes over
+    if (this.enableWebcamButton) this.enableWebcamButton.style.display = 'none';
+
+    webcamControls.style.flexDirection = 'column';
+    webcamControls.style.alignItems = 'center';
+    webcamControls.style.gap = '0';
+    webcamControls.style.padding = '0';
+    webcamControls.style.margin = '0';
+
+    webcamControls.innerHTML = `
+      <!-- LIVE badge (shown when camera on) -->
+      <div id="wcam-live-badge" class="wcam-live-badge" style="display:none">
+        <span class="wcam-live-dot"></span> LIVE
+      </div>
+
+      <!-- Floating toolbar -->
+      <div id="wcam-toolbar" class="wcam-toolbar" role="toolbar" aria-label="Camera controls">
+
+        <!-- Switch Camera -->
+        <button id="wcam-tb-switch" class="wcam-tb-btn" type="button" title="Đổi camera">
+          <span class="material-icons">flip_camera_ios</span>
+          <span class="wcam-tb-label">Switch Camera</span>
+        </button>
+
+        <!-- Upload Image -->
+        <button id="wcam-tb-upload" class="wcam-tb-btn" type="button" title="Upload hình">
+          <span class="material-icons">image</span>
+          <span class="wcam-tb-label">Upload Image</span>
+        </button>
+
+        <!-- Capture (large center) -->
+        <button id="wcam-tb-capture" class="wcam-tb-btn wcam-tb-capture" type="button" title="Chụp & lưu hình">
+          <span class="material-icons">photo_camera</span>
+        </button>
+
+        <!-- Record -->
+        <button id="wcam-tb-record" class="wcam-tb-btn" type="button" title="Quay video">
+          <span class="wcam-record-dot" id="wcam-record-dot"></span>
+          <span class="material-icons" id="wcam-record-icon">videocam</span>
+          <span class="wcam-tb-label">Record Video</span>
+        </button>
+
+        <!-- Save Image -->
+        <button id="wcam-tb-save" class="wcam-tb-btn" type="button" title="Lưu hình vào Medical Records">
+          <span class="material-icons">save_alt</span>
+          <span class="wcam-tb-label">Save Image</span>
+        </button>
+
+        <!-- Settings -->
+        <button id="wcam-tb-settings" class="wcam-tb-btn wcam-tb-settings-btn" type="button" title="Cài đặt">
+          <span class="material-icons">settings</span>
+        </button>
+
+        <!-- Close Camera -->
+        <button id="wcam-toolbar-close" class="wcam-tb-btn wcam-tb-close" type="button" title="Đóng camera">
+          <span class="material-icons">close</span>
+        </button>
+      </div>
+
+      <!-- Settings Drawer (glassmorphism) -->
+      <div id="wcam-settings-drawer" class="wcam-settings-drawer" style="display:none">
+        <div class="wcam-setting-row">
+          <span class="material-icons">visibility</span>
+          <span class="wcam-setting-label">AI Overlay</span>
+          <label class="wcam-toggle">
+            <input type="checkbox" id="wcam-toggle-overlay" checked>
+            <span class="wcam-toggle-slider"></span>
+          </label>
+        </div>
+        <div class="wcam-setting-row">
+          <span class="material-icons">schedule</span>
+          <span class="wcam-setting-label">Clock</span>
+          <label class="wcam-toggle">
+            <input type="checkbox" id="wcam-toggle-clock" checked>
+            <span class="wcam-toggle-slider"></span>
+          </label>
+        </div>
+        <div class="wcam-setting-row">
+          <span class="material-icons">crop_square</span>
+          <span class="wcam-setting-label">Border</span>
+          <label class="wcam-toggle">
+            <input type="checkbox" id="wcam-toggle-border" checked>
+            <span class="wcam-toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Save notification -->
+      <div id="save-notif-webcam" class="capture-save-notif" role="status" aria-live="polite" style="display:none"></div>
+      <button id="view-webcam-upload-records-btn" class="action-button view-upload-records" type="button" style="display:none">
+        <span class="material-icons">folder_shared</span> Xem hình tại Medical Records
+      </button>
+    `;
+
+    // Wire up toolbar buttons
+    document.getElementById('wcam-tb-switch')?.addEventListener('click', (e) => {
+      e.preventDefault(); e.stopPropagation(); this.switchCamera();
+    });
+    document.getElementById('wcam-tb-capture')?.addEventListener('click', (e) => {
+      e.preventDefault(); e.stopPropagation(); this.captureWebcamToUploadRecords();
+    });
+    document.getElementById('wcam-tb-save')?.addEventListener('click', (e) => {
+      e.preventDefault(); e.stopPropagation(); this.captureWebcamToUploadRecords();
+    });
+    document.getElementById('wcam-toolbar-close')?.addEventListener('click', (e) => {
+      e.preventDefault(); e.stopPropagation(); this.stopCam(true);
+    });
+    document.getElementById('wcam-tb-upload')?.addEventListener('click', (e) => {
+      e.preventDefault(); e.stopPropagation();
+      (document.getElementById('image-upload') as HTMLInputElement)?.click();
+    });
+    document.getElementById('wcam-tb-record')?.addEventListener('click', (e) => {
+      e.preventDefault(); e.stopPropagation(); this.toggleRecording();
+    });
+    document.getElementById('view-webcam-upload-records-btn')?.addEventListener('click', (e) => {
+      e.preventDefault(); e.stopPropagation();
+      window.parent?.postMessage({ type: 'AI_CLINIC_OPEN_UPLOAD_RECORDS' }, window.location.origin);
+    });
+
+    // Settings drawer toggle
+    const settingsBtn = document.getElementById('wcam-tb-settings');
+    const drawer = document.getElementById('wcam-settings-drawer');
+    settingsBtn?.addEventListener('click', (e) => {
+      e.preventDefault(); e.stopPropagation();
+      if (!drawer) return;
+      const open = drawer.style.display === 'none';
+      drawer.style.display = open ? 'flex' : 'none';
+      settingsBtn.classList.toggle('active', open);
+    });
+
+    // Toggle handlers
+    document.getElementById('wcam-toggle-overlay')?.addEventListener('change', (e) => {
+      this.wcamShowOverlay = (e.target as HTMLInputElement).checked;
+      const canvas = document.getElementById('output_canvas') as HTMLCanvasElement | null;
+      if (canvas) canvas.style.opacity = this.wcamShowOverlay ? '1' : '0';
+    });
+    document.getElementById('wcam-toggle-clock')?.addEventListener('change', (e) => {
+      this.wcamShowClock = (e.target as HTMLInputElement).checked;
+      const el = document.getElementById('wcam-live-clock');
+      if (el) el.style.display = this.wcamShowClock ? 'flex' : 'none';
+    });
+    document.getElementById('wcam-toggle-border')?.addEventListener('change', (e) => {
+      this.wcamShowBorder = (e.target as HTMLInputElement).checked;
+      const wrapper = document.querySelector('.video-wrapper') as HTMLElement | null;
+      if (wrapper) wrapper.classList.toggle('wcam-border-active', this.wcamShowBorder);
+    });
+
+    // Inject overlays into video-wrapper (clock + border + live badge)
+    this.injectVideoWrapperOverlays();
+
+    // Sync initial open/close state with current camera status
+    this.setWebcamButtonLabel(this.video?.srcObject ? 'close' : 'open');
+  }
+
+  // ── Clock & border overlays inside video-wrapper ──────────────────────────
+  private injectVideoWrapperOverlays() {
+    const wrapper = document.querySelector('#view-webcam .video-wrapper') as HTMLElement | null;
+    if (!wrapper || document.getElementById('wcam-live-clock')) return;
+
+    wrapper.classList.add('wcam-border-active');
+
+    // Cyber corner borders (on the live video)
+    wrapper.insertAdjacentHTML('beforeend', `
+      <div class="wcam-vcorner wcam-vcorner-tl" aria-hidden="true"></div>
+      <div class="wcam-vcorner wcam-vcorner-tr" aria-hidden="true"></div>
+      <div class="wcam-vcorner wcam-vcorner-bl" aria-hidden="true"></div>
+      <div class="wcam-vcorner wcam-vcorner-br" aria-hidden="true"></div>
+      <div id="wcam-live-clock" class="wcam-live-clock">
+        <span id="wcam-live-clock-time">--:--:--</span>
+        <span id="wcam-live-clock-date"></span>
+      </div>
+    `);
+
+    this.startLiveClock();
+  }
+
+  // ── Clock tick ────────────────────────────────────────────────────────────
+  private startHUDClock() {
+    const tick = () => {
+      const el = document.getElementById('wcam-hud-clock');
+      if (el) {
+        const now = new Date();
+        el.textContent = now.toLocaleTimeString('vi-VN', { hour12: false }) +
+          '\n' + now.toLocaleDateString('vi-VN');
+      }
+    };
+    tick();
+    setInterval(tick, 1000);
+  }
+
+  private startLiveClock() {
+    const tick = () => {
+      const now = new Date();
+      const timeEl = document.getElementById('wcam-live-clock-time');
+      const dateEl = document.getElementById('wcam-live-clock-date');
+      if (timeEl) timeEl.textContent = now.toLocaleTimeString('vi-VN', { hour12: false });
+      if (dateEl) dateEl.textContent = now.toLocaleDateString('vi-VN');
+    };
+    tick();
+    if (this.wcamClockTimer) clearInterval(this.wcamClockTimer);
+    this.wcamClockTimer = window.setInterval(tick, 1000);
+  }
+
+  // ── Recording (stub — saves canvas frames as webm if supported) ───────────
+  private mediaRecorder: MediaRecorder | null = null;
+  private recordingChunks: Blob[] = [];
+
+  private toggleRecording() {
+    const dot  = document.getElementById('wcam-record-dot');
+    const icon = document.getElementById('wcam-record-icon');
+    const btn  = document.getElementById('wcam-tb-record');
+
+    if (this.mediaRecorder && this.mediaRecorder.state === 'recording') {
+      this.mediaRecorder.stop();
+      if (dot)  dot.style.display = 'none';
+      if (icon) icon.textContent  = 'videocam';
+      if (btn)  btn.classList.remove('recording');
+      this.updateStatus('Video đã lưu.');
+    } else {
+      const canvas = document.getElementById('output_canvas') as HTMLCanvasElement | null;
+      const stream = canvas?.captureStream?.(30) || this.video?.srcObject as MediaStream | null;
+      if (!stream) { this.updateStatus('Cần mở camera trước.'); return; }
+      this.recordingChunks = [];
+      try {
+        this.mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm; codecs=vp9' });
+      } catch {
+        this.mediaRecorder = new MediaRecorder(stream);
+      }
+      this.mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) this.recordingChunks.push(e.data);
+      };
+      this.mediaRecorder.onstop = () => {
+        const blob = new Blob(this.recordingChunks, { type: 'video/webm' });
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href = url;
+        a.download = `ai_doctor_${new Date().toISOString().replace(/[:.]/g, '-')}.webm`;
+        a.click();
+        URL.revokeObjectURL(url);
+      };
+      this.mediaRecorder.start(200);
+      if (dot)  { dot.style.display = 'inline-block'; }
+      if (icon) icon.textContent = 'stop';
+      if (btn)  btn.classList.add('recording');
+      this.updateStatus('Đang quay video…');
+    }
   }
 
 
@@ -258,118 +567,38 @@ export abstract class BaseVisionTask extends BaseTask {
     window.addEventListener('message', this.uploadBridgeMessageHandler);
   }
 
-  private getWebcamControlsButtonHost(webcamControls: HTMLElement) {
-    const webcamButtonParent = this.enableWebcamButton?.parentElement as HTMLElement | null;
-    return webcamButtonParent && webcamControls.contains(webcamButtonParent) ? webcamButtonParent : webcamControls;
-  }
+  private injectImageSaveControls() {
+    const reUploadButton = document.getElementById('re-upload-btn') as HTMLButtonElement | null;
+    if (!reUploadButton) return;
+    reUploadButton.innerHTML = '<span class="material-icons">upload</span> Upload hình trong máy';
 
-  private ensureWebcamSwitchButton(webcamControls: HTMLElement) {
-    if (document.getElementById('switch-camera-btn')) return;
-
-    const buttonHost = this.getWebcamControlsButtonHost(webcamControls);
-    buttonHost.classList.add('webcam-controls');
-
-    // ── Divider sau nút Mở/Đóng camera ──
-    const div1 = document.createElement('span');
-    div1.className = 'wcam-divider';
-    div1.setAttribute('aria-hidden', 'true');
-
-    const switchButton = document.createElement('button');
-    switchButton.id = 'switch-camera-btn';
-    switchButton.className = 'action-button secondary wcam-btn';
-    switchButton.type = 'button';
-    switchButton.title = 'Đổi camera trước/sau';
-    switchButton.innerHTML = '<span class="material-icons">flip_camera_ios</span><span class="wcam-label">Đổi camera</span>';
-    switchButton.addEventListener('click', (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      this.switchCamera();
-    });
-
-    if (this.enableWebcamButton?.parentElement === buttonHost && this.enableWebcamButton.nextSibling) {
-      buttonHost.insertBefore(div1, this.enableWebcamButton.nextSibling);
-      buttonHost.insertBefore(switchButton, div1.nextSibling);
-    } else {
-      buttonHost.appendChild(div1);
-      buttonHost.appendChild(switchButton);
-    }
-  }
-
-  private ensureWebcamSaveButton(webcamControls: HTMLElement) {
-    if (document.getElementById('save-webcam-record-btn')) return;
-
-    const buttonHost = this.getWebcamControlsButtonHost(webcamControls);
-    buttonHost.classList.add('webcam-controls');
-
-    // ── Divider trước nút Lưu Hình ──
-    const div2 = document.createElement('span');
-    div2.className = 'wcam-divider';
-    div2.setAttribute('aria-hidden', 'true');
-
-    const saveButton = document.createElement('button');
-    saveButton.id = 'save-webcam-record-btn';
-    saveButton.className = 'action-button wcam-btn wcam-save';
-    saveButton.type = 'button';
-    saveButton.title = 'Chụp & lưu hình vào Medical Records';
-    saveButton.innerHTML = '<span class="material-icons">save_alt</span><span class="wcam-label">Lưu&nbsp;Hình</span>';
-    saveButton.addEventListener('click', (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      this.captureWebcamToUploadRecords();
-    });
-    buttonHost.appendChild(div2);
-    buttonHost.appendChild(saveButton);
-  }
-
-  private ensureImageSaveControls(reUploadButton: HTMLButtonElement) {
     if (!document.getElementById('save-image-record-btn')) {
       const saveButton = document.createElement('button');
       saveButton.id = 'save-image-record-btn';
       saveButton.className = 'action-button secondary image-save-record';
       saveButton.type = 'button';
-      saveButton.innerHTML = '<span class="material-icons">save_alt</span> Lưu&nbsp;&nbsp;Hình';
-      saveButton.addEventListener('click', (event) => {
-        event.preventDefault();
-        event.stopPropagation();
+      saveButton.innerHTML = '<span class="material-icons">save_alt</span> Lưu Hình';
+      saveButton.addEventListener('click', (e) => {
+        e.preventDefault(); e.stopPropagation();
         this.captureImageToUploadRecords();
       });
       reUploadButton.insertAdjacentElement('afterend', saveButton);
     }
 
-    const imageSaveButton = document.getElementById('save-image-record-btn') as HTMLButtonElement | null;
-    if (imageSaveButton) this.ensureViewUploadRecordsButton(imageSaveButton, 'image');
-  }
-
-  private ensureViewUploadRecordsButton(anchor: HTMLElement, captureKind: 'webcam' | 'image') {
-    const id = `view-${captureKind}-upload-records-btn`;
-    if (document.getElementById(id)) return;
-
-    // ── Thông báo lưu hình (ẩn cho đến khi lưu thành công) ──
-    const notifId = `save-notif-${captureKind}`;
-    if (!document.getElementById(notifId)) {
-      const notif = document.createElement('div');
-      notif.id = notifId;
-      notif.className = 'capture-save-notif';
-      notif.style.display = 'none';
-      notif.setAttribute('role', 'status');
-      notif.setAttribute('aria-live', 'polite');
-      anchor.insertAdjacentElement('afterend', notif);
+    // Notification + view button for image tab
+    const imageSaveButton = document.getElementById('save-image-record-btn') as HTMLButtonElement;
+    if (imageSaveButton && !document.getElementById('save-notif-image')) {
+      imageSaveButton.insertAdjacentHTML('afterend', `
+        <div id="save-notif-image" class="capture-save-notif" role="status" aria-live="polite" style="display:none"></div>
+        <button id="view-image-upload-records-btn" class="action-button view-upload-records" type="button" style="display:none">
+          <span class="material-icons">folder_shared</span> Xem hình tại Medical Records
+        </button>
+      `);
+      document.getElementById('view-image-upload-records-btn')?.addEventListener('click', (e) => {
+        e.preventDefault(); e.stopPropagation();
+        window.parent?.postMessage({ type: 'AI_CLINIC_OPEN_UPLOAD_RECORDS' }, window.location.origin);
+      });
     }
-
-    // ── Nút Xem hình ──
-    const notifEl = document.getElementById(notifId)!;
-    const viewButton = document.createElement('button');
-    viewButton.id = id;
-    viewButton.className = 'action-button view-upload-records';
-    viewButton.type = 'button';
-    viewButton.style.display = 'none';
-    viewButton.innerHTML = '<span class="material-icons">folder_shared</span> Xem hình tại Medical Records';
-    viewButton.addEventListener('click', (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      window.parent?.postMessage({ type: 'AI_CLINIC_OPEN_UPLOAD_RECORDS' }, window.location.origin);
-    });
-    notifEl.insertAdjacentElement('afterend', viewButton);
   }
 
   private showUploadRecordsButton(captureKind: 'webcam' | 'image', uploadPath = '') {
@@ -784,6 +1013,17 @@ export abstract class BaseVisionTask extends BaseTask {
 
   protected stopCam(persistState = true) {
     if (this.video && this.video.srcObject) {
+      // Stop any in-progress recording
+      if (this.mediaRecorder && this.mediaRecorder.state === 'recording') {
+        this.mediaRecorder.stop();
+        const dot  = document.getElementById('wcam-record-dot');
+        const icon = document.getElementById('wcam-record-icon');
+        const btn  = document.getElementById('wcam-tb-record');
+        if (dot)  dot.style.display = 'none';
+        if (icon) icon.textContent  = 'videocam';
+        if (btn)  btn.classList.remove('recording');
+      }
+
       const stream = this.video.srcObject as MediaStream;
       const tracks = stream.getTracks();
       tracks.forEach((track) => track.stop());
@@ -793,6 +1033,13 @@ export abstract class BaseVisionTask extends BaseTask {
       if (placeholder) placeholder.style.display = 'flex';
       if (this.enableWebcamButton) this.setWebcamButtonLabel('open');
       if (this.enableWebcamButton) this.enableWebcamButton.innerText = 'Mở camera';
+
+      // Close settings drawer
+      const drawer = document.getElementById('wcam-settings-drawer');
+      const settingsBtn = document.getElementById('wcam-tb-settings');
+      if (drawer) drawer.style.display = 'none';
+      settingsBtn?.classList.remove('active');
+
       if (this.animationFrameId) cancelAnimationFrame(this.animationFrameId);
 
       if (this.canvasCtx && this.canvasElement) {
