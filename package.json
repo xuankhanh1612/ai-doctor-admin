@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "predev": "node scripts-copy-mediapipe-wasm.mjs",
     "build": "vite build",
     "preview": "vite preview",
     "prebuild": "node scripts-copy-mediapipe-wasm.mjs"
