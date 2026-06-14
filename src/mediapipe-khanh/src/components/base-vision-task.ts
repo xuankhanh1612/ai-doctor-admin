@@ -184,12 +184,19 @@ export abstract class BaseVisionTask extends BaseTask {
     const openBtn   = document.getElementById('wcam-hud-open-btn') as HTMLButtonElement | null;
     const toolbar   = document.getElementById('wcam-toolbar')      as HTMLElement | null;
     const liveBadge = document.getElementById('wcam-live-badge')   as HTMLElement | null;
+    const liveClock = document.getElementById('wcam-live-clock')   as HTMLElement | null;
     const drawer    = document.getElementById('wcam-settings-drawer') as HTMLElement | null;
+    const vcorners  = document.querySelectorAll<HTMLElement>('.wcam-vcorner');
 
     const isOpen = state === 'close';
     if (openBtn)   openBtn.style.display   = isOpen ? 'none' : 'flex';
     if (toolbar)   toolbar.style.display   = isOpen ? 'flex' : 'none';
     if (liveBadge) liveBadge.style.display = isOpen ? 'flex' : 'none';
+    // The live clock/corners overlay the video-wrapper; only show them while the
+    // camera is actually open, otherwise they sit on top of (and duplicate) the
+    // placeholder's own HUD clock (#wcam-hud-clock).
+    if (liveClock) liveClock.style.display = (isOpen && this.wcamShowClock) ? 'flex' : 'none';
+    vcorners.forEach((el) => { el.style.display = (isOpen && this.wcamShowBorder) ? 'block' : 'none'; });
     if (!isOpen && drawer) drawer.style.display = 'none';
 
     // Disable open button during init/starting
