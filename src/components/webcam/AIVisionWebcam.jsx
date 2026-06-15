@@ -83,6 +83,18 @@ export default function AIVisionWebcam({ onViewMedicalRecord, onCaptureSaved }) 
 
   useEffect(() => () => stopCamera(), [stopCamera])
 
+  // iOS Safari: sau khi isCameraOpen=true, React mới mount <video>.
+  // Dùng effect này để gán srcObject + play() ngay khi video element xuất hiện trong DOM.
+  useEffect(() => {
+    if (!isCameraOpen) return
+    const video = videoRef.current
+    const stream = streamRef.current
+    if (video && stream && video.srcObject !== stream) {
+      video.srcObject = stream
+      video.play().catch(() => {})
+    }
+  }, [isCameraOpen])
+
   const openCamera = useCallback(async (camera = selectedCamera, res = resolution) => {
     setCameraError('')
     if (!navigator.mediaDevices?.getUserMedia) {
@@ -100,10 +112,16 @@ export default function AIVisionWebcam({ onViewMedicalRecord, onCaptureSaved }) 
       })
       streamRef.current = stream
       setUploadedImage(null)
+
+      // iOS Safari: phải gán srcObject và gọi play() NGAY TRONG cùng microtask với
+      // getUserMedia — không được dùng setTimeout vì iOS sẽ block autoplay.
+      // setIsCameraOpen(true) TRƯỚC để React mount <video> rồi dùng callback ref.
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream
+        await videoRef.current.play().catch(() => {})
+      }
       setIsCameraOpen(true)
-      window.setTimeout(() => {
-        if (videoRef.current) videoRef.current.srcObject = stream
-      }, 0)
+
       const track = stream.getVideoTracks()[0]
       const caps = track?.getCapabilities?.()
       setFlashSupported(!!caps?.torch)
