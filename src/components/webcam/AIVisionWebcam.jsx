@@ -225,7 +225,8 @@ export default function AIVisionWebcam({ onViewMedicalRecord, onCaptureSaved }) 
           console.error('MediaPipe detection failed:', error)
         }
         ctx.clearRect(0, 0, canvas.width, canvas.height)
-        drawLandmarks(ctx, selectedCamera === 'front', canvas.width)
+        // Canvas live overlay dùng CSS scaleX(-1) giống <video> → KHÔNG flip bằng ctx.
+        drawLandmarks(ctx, false, canvas.width)
       }
       rafRef.current = requestAnimationFrame(loop)
     }
@@ -465,6 +466,7 @@ export default function AIVisionWebcam({ onViewMedicalRecord, onCaptureSaved }) 
             now={now}
             canvasRef={canvasRef}
             clockInset={showingMedia ? 112 : 14}
+            mirrorCanvas={isCameraOpen && selectedCamera === 'front'}
           />
 
           {showingMedia && (
