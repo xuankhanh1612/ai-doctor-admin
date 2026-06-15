@@ -7,7 +7,7 @@ import { saveVisionControlImage, dataUrlToFile, makeVisionFilename } from './web
 
 const MEDIAPIPE_APP_URL = '/src/mediapipe-khanh/index.html?mode=webcam#/vision/object_detector'
 
-export default function AIHealthcareVisionControlPanel({ onNext, nextLabel, onPrev, prevLabel, onViewMedicalRecord }) {
+export default function AIHealthcareVisionPanel({ onNext, nextLabel, onPrev, prevLabel, onViewMedicalRecord }) {
   const { lang } = useApp()
   const { user } = useAuth()
   const [lastMediaPipeRecord, setLastMediaPipeRecord] = useState(null)
@@ -61,8 +61,8 @@ export default function AIHealthcareVisionControlPanel({ onNext, nextLabel, onPr
     <div className="animate-fade ai-healthcare-vision-page">
       <section className="ai-healthcare-vision-header">
         <div>
-          <div className="ai-healthcare-vision-kicker">AI HEALTHCARE VISION CONTROL</div>
-          <h2>🧠 AI Healthcare Vision Control</h2>
+          <div className="ai-healthcare-vision-kicker">AI HEALTHCARE VISION</div>
+          <h2>🧠 AI Healthcare Vision</h2>
           <p>
             {lang === 'vi'
               ? 'Camera AI mặc định TẮT — màn hình AI DOCTOR VISION hiển thị HUD AI ngay cả khi chưa mở camera. Mở camera để chạy Face Mesh / Pose realtime bằng MediaPipe, chụp ảnh, ghi video hoặc tải ảnh lên để quét.'
@@ -94,9 +94,9 @@ export default function AIHealthcareVisionControlPanel({ onNext, nextLabel, onPr
           <button type="button" className="ai-vision-medical-record-button inline" onClick={onViewMedicalRecord} style={{ marginBottom: 4 }}>
             {lang === 'vi' ? 'Xem hình tại Medical Records' : 'View image in Medical Records'}
           </button>
-          <section className="ai-healthcare-vision-frame-card" aria-label="AI Healthcare Vision Control MediaPipe app">
+          <section className="ai-healthcare-vision-frame-card" aria-label="AI Healthcare Vision MediaPipe app">
             <iframe
-              title="AI Healthcare Vision Control"
+              title="AI Healthcare Vision"
               src={MEDIAPIPE_APP_URL}
               className="ai-healthcare-vision-frame"
               allow="camera; microphone; fullscreen; clipboard-read; clipboard-write"
