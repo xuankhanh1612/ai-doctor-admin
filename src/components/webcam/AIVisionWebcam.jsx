@@ -365,8 +365,10 @@ export default function AIVisionWebcam({ onViewMedicalRecord, onCaptureSaved, on
   }, [isCameraOpen, uploadedImage, drawComposite, stopCamera, onPreviewCapture])
 
   // ----- save / export PNG -----
-  const handleSaveDownload = useCallback(() => {
+  // ----- "Lưu ảnh" toolbar button → lưu vào Upload Records (không download về máy) -----
+  const handleSaveToUpload = useCallback(async () => {
     setDownloading(true)
+    setSavingStatus(t('Đang lưu ảnh vào Upload Records...', 'Saving photo to Upload Records...'))
     try {
       let canvas
       if (isCameraOpen && videoRef.current) {
@@ -385,18 +387,20 @@ export default function AIVisionWebcam({ onViewMedicalRecord, onCaptureSaved, on
         setSavingStatus(t('Vui lòng mở camera hoặc tải ảnh lên trước.', 'Please open the camera or upload an image first.'))
         return
       }
-      const link = document.createElement('a')
-      link.download = `ai_doctor_vision_${Date.now()}.png`
-      link.href = canvas.toDataURL('image/png')
-      link.click()
-      setSavingStatus(t('Đã xuất ảnh PNG về máy.', 'Exported PNG to your device.'))
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.92)
+      const file = dataUrlToFile(dataUrl, 'ai_vision_save.jpg')
+      const record = await saveVisionControlImage(file, {
+        user, lang, label: t('Ảnh lưu AI Doctor Vision', 'AI Doctor Vision saved photo'),
+      })
+      setSavingStatus(`${t('Đã lưu vào Upload Records', 'Saved to Upload Records')}: ${record.filename}`)
+      onCaptureSaved?.(record)
     } catch (error) {
-      console.error('AI Vision export failed:', error)
-      setSavingStatus(t('Không thể xuất ảnh.', 'Could not export image.'))
+      console.error('AI Vision save to upload failed:', error)
+      setSavingStatus(t('Không thể lưu ảnh.', 'Could not save the photo.'))
     } finally {
       setDownloading(false)
     }
-  }, [isCameraOpen, uploadedImage, drawComposite, lang])
+  }, [isCameraOpen, uploadedImage, drawComposite, user, lang, onCaptureSaved])
 
   // ----- record -----
   const toggleRecord = useCallback(async () => {
@@ -510,17 +514,39 @@ export default function AIVisionWebcam({ onViewMedicalRecord, onCaptureSaved, on
             showBorder={showBorder}
             now={now}
             canvasRef={canvasRef}
-            clockInset={showingMedia ? 112 : 14}
+            clockInset={null}
           />
 
           {showingMedia && !capturePreview && (
-            <button type="button" className="wc-settings-fab" style={{ right: 14 }} onClick={() => setShowSettings(v => !v)} title="Settings">
-              <Settings size={18} />
+            /* ── X đóng: góc trên trái, trước badge Live ── */
+            <button
+              type="button"
+              className="wc-settings-fab"
+              style={{ left: 14, right: 'auto' }}
+              onClick={isCameraOpen ? closeCamera : clearUploadedImage}
+              title={t('Đóng', 'Close')}
+            >
+              <X size={18} />
+            </button>
+          )}
+          {showingMedia && !capturePreview && isCameraOpen && (
+            /* ── Flash ⚡: góc trên phải, trước Settings ── */
+            <button
+              type="button"
+              className={`wc-settings-fab${flashEnabled ? ' wc-flash-on' : ''}`}
+              style={{ right: 60 }}
+              onClick={toggleFlash}
+              title={flashEnabled ? t('Tắt đèn Flash', 'Flash OFF') : t('Bật đèn Flash', 'Flash ON')}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill={flashEnabled ? '#ffe066' : 'currentColor'} stroke="none">
+                <path d="M13 2L4.09 12.96A1 1 0 005 14.5h6.5L10 22l9.91-10.96A1 1 0 0019 9.5H12.5L13 2z" />
+              </svg>
             </button>
           )}
           {showingMedia && !capturePreview && (
-            <button type="button" className="wc-settings-fab" style={{ right: 60 }} onClick={isCameraOpen ? closeCamera : clearUploadedImage} title={t('Đóng', 'Close')}>
-              <X size={18} />
+            /* ── Settings: góc trên phải ── */
+            <button type="button" className="wc-settings-fab" style={{ right: 14 }} onClick={() => setShowSettings(v => !v)} title="Settings">
+              <Settings size={18} />
             </button>
           )}
 
@@ -625,7 +651,7 @@ export default function AIVisionWebcam({ onViewMedicalRecord, onCaptureSaved, on
               onUpload={triggerUpload}
               onCapture={handleCapture}
               onRecord={toggleRecord}
-              onSave={handleSaveDownload}
+              onSave={handleSaveToUpload}
             />
           )}
 
@@ -640,7 +666,7 @@ export default function AIVisionWebcam({ onViewMedicalRecord, onCaptureSaved, on
               onUpload={triggerUpload}
               onCapture={handleCapture}
               onRecord={() => openCamera()}
-              onSave={handleSaveDownload}
+              onSave={handleSaveToUpload}
             />
           )}
 

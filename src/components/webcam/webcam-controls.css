@@ -115,7 +115,7 @@
 
 .wc-clock {
   position: absolute;
-  top: 14px;
+  bottom: 80px;
   right: 14px;
   padding: 8px 12px;
   border-radius: 12px;
@@ -127,6 +127,7 @@
   font-weight: 800;
   text-align: right;
   line-height: 1.35;
+  z-index: 6;
 }
 
 .wc-clock small {
@@ -139,7 +140,6 @@
 .wc-settings-fab {
   position: absolute;
   top: 14px;
-  right: 14px;
   width: 38px;
   height: 38px;
   border-radius: 50%;
@@ -154,6 +154,13 @@
 }
 
 .wc-settings-fab:hover { background: rgba(0,229,255,0.18); transform: rotate(35deg); }
+
+.wc-settings-fab.wc-flash-on {
+  background: rgba(255,220,0,0.18);
+  border-color: rgba(255,220,0,0.6);
+  color: #ffe066;
+  box-shadow: 0 0 12px rgba(255,220,0,0.35);
+}
 
 /* ---------- Camera OFF placeholder ---------- */
 .wc-placeholder {

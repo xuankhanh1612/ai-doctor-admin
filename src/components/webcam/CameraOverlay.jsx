@@ -1,13 +1,13 @@
 import React from 'react'
 import { Brain, Scan, HeartPulse, PersonStanding, Eye } from 'lucide-react'
 
-function Clock({ now, inset }) {
+function Clock({ now }) {
   const hh = String(now.getHours()).padStart(2, '0')
   const mm = String(now.getMinutes()).padStart(2, '0')
   const ss = String(now.getSeconds()).padStart(2, '0')
   const date = now.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })
   return (
-    <div className="wc-clock" style={inset ? { right: inset } : undefined}>
+    <div className="wc-clock">
       {hh}:{mm}:{ss}
       <small>{date}</small>
     </div>
@@ -45,13 +45,13 @@ export default function CameraOverlay({
   return (
     <div className="wc-hud">
       {showOverlay && (
-        <span className={isLive ? 'wc-live-badge' : 'wc-overlay-badge'}>
+        <span className={isLive ? 'wc-live-badge' : 'wc-overlay-badge'} style={{ left: 60 }}>
           <span className="wc-live-dot" />
           {isLive ? 'LIVE · AI SCAN' : t('LỚP PHỦ AI ĐANG CHẠY', 'AI OVERLAY ACTIVE')}
         </span>
       )}
 
-      {showClock && <Clock now={now} inset={clockInset} />}
+      {showClock && <Clock now={now} />}
 
       {showBorder && <BorderCorners />}
 

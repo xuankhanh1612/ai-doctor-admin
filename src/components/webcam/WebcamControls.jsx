@@ -1,5 +1,5 @@
 import React from 'react'
-import { RefreshCw, ImagePlus, Camera, Video, Download, Square } from 'lucide-react'
+import { RefreshCw, ImagePlus, Camera, Video, Square, Save } from 'lucide-react'
 
 function ToolButton({ icon, label, onClick, disabled, primary, recording }) {
   return (
@@ -19,7 +19,7 @@ function ToolButton({ icon, label, onClick, disabled, primary, recording }) {
 /**
  * Floating toolbar shown over the live camera frame.
  * Mirrors the "Final Toolbar" actions from WEBCAM_CONTROLS_GUIDE.md:
- * Switch Camera · Upload Image · Capture · Record · Save Image
+ * Switch Camera · Upload Image · Capture · Record · Save to Upload Records
  */
 export default function WebcamControls({
   lang = 'vi',
@@ -70,7 +70,7 @@ export default function WebcamControls({
           recording={isRecording}
         />
         <ToolButton
-          icon={<Download size={18} />}
+          icon={<Save size={18} />}
           label={t('Lưu ảnh', 'Save')}
           onClick={onSave}
           disabled={saving}
