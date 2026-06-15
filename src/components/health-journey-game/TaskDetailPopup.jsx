@@ -128,6 +128,22 @@ export default function TaskDetailPopup({ taskId, onClose, onOpenJourney, snapsh
 
   const close = () => onClose?.()
 
+  /* called by AIVisionWebcam after it saves a "Chụp ảnh" capture to Upload Records */
+  const handleCaptureSaved = async (record) => {
+    try {
+      completeHealthJourneyActivity({
+        user, activityType: task.activityType, value: 1,
+        proofImage: record?.uploadPath, uploadRecord: record,
+        metadata: { source: 'task-detail-popup-ai-vision-capture', taskId: task.taskId },
+      })
+      if (task.taskId === 'water') syncBeMeoWater(150, 'TaskDetailPopup AI capture')
+      setLastCaptureKind('webcam')
+      setSaveMsg('✅ Đã lưu ảnh vào Medical Records · Nhiệm vụ +1')
+    } catch (err) {
+      setSaveMsg(`❌ ${err?.message || 'Lỗi cập nhật nhiệm vụ.'}`)
+    }
+  }
+
   if (!task) return null
 
   return (
@@ -171,7 +187,7 @@ export default function TaskDetailPopup({ taskId, onClose, onOpenJourney, snapsh
 
           {/* ── CAMERA COLUMN — always visible, always max ── */}
           <div style={S.camCol} className="tdp-cam-col">
-            <AIVisionWebcam onViewMedicalRecord={onViewMedicalRecord} />
+            <AIVisionWebcam onViewMedicalRecord={onViewMedicalRecord} onCaptureSaved={handleCaptureSaved} />
           </div>
 
           {/* ── INFO PANEL — collapsible ── */}

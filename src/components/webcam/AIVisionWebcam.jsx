@@ -15,7 +15,7 @@ const RESOLUTIONS = {
   '1080': { width: 1920, height: 1080 },
 }
 
-export default function AIVisionWebcam({ onViewMedicalRecord }) {
+export default function AIVisionWebcam({ onViewMedicalRecord, onCaptureSaved }) {
   const { lang } = useApp()
   const { user } = useAuth()
   const t = (vi, en) => (lang === 'vi' ? vi : en)
@@ -288,13 +288,14 @@ export default function AIVisionWebcam({ onViewMedicalRecord }) {
         user, lang, label: t('Ảnh chụp AI Doctor Vision', 'AI Doctor Vision capture'),
       })
       setSavingStatus(`${t('Đã lưu vào Upload Records', 'Saved to Upload Records')}: ${record.filename}`)
+      onCaptureSaved?.(record)
     } catch (error) {
       console.error('AI Vision capture failed:', error)
       setSavingStatus(t('Không thể lưu ảnh chụp.', 'Could not save the photo.'))
     } finally {
       setCapturing(false)
     }
-  }, [isCameraOpen, uploadedImage, selectedCamera, drawComposite, user, lang])
+  }, [isCameraOpen, uploadedImage, selectedCamera, drawComposite, user, lang, onCaptureSaved])
 
   // ----- save / export to device (PNG download) -----
   const handleSaveDownload = useCallback(() => {
