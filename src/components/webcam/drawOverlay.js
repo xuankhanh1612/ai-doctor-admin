@@ -33,6 +33,37 @@ export function drawPose(ctx, drawingUtils, PoseLandmarker, poseResult) {
   }
 }
 
+export function drawObjectDetections(ctx, objectResult) {
+  if (!objectResult?.detections?.length) return
+  objectResult.detections.forEach((detection) => {
+    const box = detection.boundingBox
+    if (!box) return
+    const { originX: x, originY: y, width: w, height: h } = box
+
+    ctx.save()
+    ctx.strokeStyle = 'rgba(0,229,255,0.9)'
+    ctx.lineWidth = 2
+    ctx.strokeRect(x, y, w, h)
+
+    const category = detection.categories?.[0]
+    if (category) {
+      const label = `${category.categoryName} ${(category.score * 100).toFixed(0)}%`
+      ctx.font = '600 13px sans-serif'
+      const textWidth = ctx.measureText(label).width
+      const labelH = 20
+      const labelY = Math.max(y - labelH, 0)
+      ctx.fillStyle = 'rgba(0,229,255,0.85)'
+      ctx.fillRect(x, labelY, textWidth + 12, labelH)
+      ctx.fillStyle = '#03131a'
+      ctx.textAlign = 'left'
+      ctx.textBaseline = 'middle'
+      ctx.fillText(label, x + 6, labelY + labelH / 2)
+      ctx.textBaseline = 'alphabetic'
+    }
+    ctx.restore()
+  })
+}
+
 export function drawClock(ctx, width, height, now = new Date()) {
   const hh = String(now.getHours()).padStart(2, '0')
   const mm = String(now.getMinutes()).padStart(2, '0')

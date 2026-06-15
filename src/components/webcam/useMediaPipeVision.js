@@ -4,6 +4,7 @@ import { useCallback, useRef, useState } from 'react'
 const WASM_URL = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm'
 const FACE_MODEL_URL = 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task'
 const POSE_MODEL_URL = 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task'
+const OBJECT_MODEL_URL = 'https://storage.googleapis.com/mediapipe-models/object_detector/efficientdet_lite0/float16/1/efficientdet_lite0.tflite'
 
 /**
  * Lazily loads MediaPipe Tasks Vision (FaceLandmarker + PoseLandmarker) and exposes
@@ -18,10 +19,13 @@ export function useMediaPipeVision() {
     fileset: null,
     face: null,
     pose: null,
+    object: null,
     faceMode: 'VIDEO',
     poseMode: 'VIDEO',
+    objectMode: 'VIDEO',
     FaceLandmarker: null,
     PoseLandmarker: null,
+    ObjectDetector: null,
     DrawingUtils: null,
     loadingPromise: null,
   })
@@ -41,9 +45,9 @@ export function useMediaPipeVision() {
     }
   }, [])
 
-  const ensureLoaded = useCallback(async ({ face = true, pose = true } = {}) => {
+  const ensureLoaded = useCallback(async ({ face = true, pose = true, object = false } = {}) => {
     const v = visionRef.current
-    if ((!face || v.face) && (!pose || v.pose)) {
+    if ((!face || v.face) && (!pose || v.pose) && (!object || v.object)) {
       if (status !== 'ready') setStatus('ready')
       return
     }
@@ -54,9 +58,10 @@ export function useMediaPipeVision() {
 
     v.loadingPromise = (async () => {
       const tasksVision = await import('@mediapipe/tasks-vision')
-      const { FilesetResolver, FaceLandmarker, PoseLandmarker, DrawingUtils } = tasksVision
+      const { FilesetResolver, FaceLandmarker, PoseLandmarker, ObjectDetector, DrawingUtils } = tasksVision
       v.FaceLandmarker = FaceLandmarker
       v.PoseLandmarker = PoseLandmarker
+      v.ObjectDetector = ObjectDetector
       v.DrawingUtils = DrawingUtils
 
       if (!v.fileset) {
@@ -78,6 +83,14 @@ export function useMediaPipeVision() {
         })
         v.poseMode = 'VIDEO'
       }
+      if (object && !v.object) {
+        v.object = await createLandmarker(ObjectDetector, v.fileset, OBJECT_MODEL_URL, {
+          runningMode: 'VIDEO',
+          scoreThreshold: 0.5,
+          maxResults: 5,
+        })
+        v.objectMode = 'VIDEO'
+      }
     })()
 
     try {
@@ -92,8 +105,8 @@ export function useMediaPipeVision() {
     }
   }, [status, createLandmarker])
 
-  /** Run detection on a live <video> frame. Returns { face, pose } results. */
-  const detectVideoFrame = useCallback(async ({ video, face, pose }) => {
+  /** Run detection on a live <video> frame. Returns { face, pose, object } results. */
+  const detectVideoFrame = useCallback(async ({ video, face, pose, object }) => {
     const v = visionRef.current
     const result = {}
     const now = performance.now()
@@ -111,11 +124,18 @@ export function useMediaPipeVision() {
       }
       result.pose = v.pose.detectForVideo(video, now)
     }
+    if (object && v.object) {
+      if (v.objectMode !== 'VIDEO') {
+        await v.object.setOptions({ runningMode: 'VIDEO' })
+        v.objectMode = 'VIDEO'
+      }
+      result.object = v.object.detectForVideo(video, now)
+    }
     return result
   }, [])
 
   /** Run a one-shot detection on a static <img> element (uploaded photo). */
-  const detectImage = useCallback(async ({ image, face, pose }) => {
+  const detectImage = useCallback(async ({ image, face, pose, object }) => {
     const v = visionRef.current
     const result = {}
     if (face && v.face) {
@@ -132,6 +152,13 @@ export function useMediaPipeVision() {
       }
       result.pose = v.pose.detect(image)
     }
+    if (object && v.object) {
+      if (v.objectMode !== 'IMAGE') {
+        await v.object.setOptions({ runningMode: 'IMAGE' })
+        v.objectMode = 'IMAGE'
+      }
+      result.object = v.object.detect(image)
+    }
     return result
   }, [])
 
@@ -142,6 +169,7 @@ export function useMediaPipeVision() {
 
   const getFaceLandmarker = useCallback(() => visionRef.current.FaceLandmarker, [])
   const getPoseLandmarker = useCallback(() => visionRef.current.PoseLandmarker, [])
+  const getObjectDetector = useCallback(() => visionRef.current.ObjectDetector, [])
 
   return {
     status,
@@ -152,5 +180,6 @@ export function useMediaPipeVision() {
     getDrawingUtils,
     getFaceLandmarker,
     getPoseLandmarker,
+    getObjectDetector,
   }
 }

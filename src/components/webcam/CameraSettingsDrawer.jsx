@@ -1,5 +1,5 @@
 import React from 'react'
-import { Eye, Clock, Square, Zap, Scan, Activity } from 'lucide-react'
+import { Eye, Clock, Square, Zap, Scan, Activity, Boxes } from 'lucide-react'
 
 function Switch({ on, onClick, disabled }) {
   return (
@@ -16,22 +16,15 @@ function Switch({ on, onClick, disabled }) {
   )
 }
 
-const PRESETS = [
-  { id: 'medical', label: { vi: 'Quét y tế', en: 'Medical Scan' }, values: { overlay: true, faceMesh: true, pose: true, clock: true, border: true } },
-  { id: 'telemedicine', label: { vi: 'Khám từ xa', en: 'Telemedicine' }, values: { overlay: false, faceMesh: false, pose: false, clock: true, border: false } },
-  { id: 'research', label: { vi: 'AI Research', en: 'AI Research' }, values: { overlay: true, faceMesh: true, pose: true, clock: true, border: true } },
-  { id: 'screenshot', label: { vi: 'Chụp sạch', en: 'Screenshot' }, values: { overlay: false, faceMesh: false, pose: false, clock: false, border: false } },
-]
-
 /**
  * Glassmorphism drawer toggled by the ⚙ settings button.
- * Implements the toggles + presets from WEBCAM_CONTROLS_GUIDE.md.
+ * Implements the toggles from WEBCAM_CONTROLS_GUIDE.md.
  */
 export default function CameraSettingsDrawer({
   lang = 'vi',
   open,
-  showOverlay,
-  onToggleOverlay,
+  showObjectDetection,
+  onToggleObjectDetection,
   showClock,
   onToggleClock,
   showBorder,
@@ -47,7 +40,6 @@ export default function CameraSettingsDrawer({
   onSelectCamera,
   resolution,
   onSelectResolution,
-  onApplyPreset,
 }) {
   if (!open) return null
   const t = (vi, en) => (lang === 'vi' ? vi : en)
@@ -57,16 +49,16 @@ export default function CameraSettingsDrawer({
       <div className="wc-drawer-title">{t('LỚP PHỦ AI', 'AI OVERLAY')}</div>
 
       <div className="wc-drawer-row">
-        <span className="wc-drawer-row-label"><Eye size={15} /> {t('Lớp phủ AI', 'AI Overlay')}</span>
-        <Switch on={showOverlay} onClick={onToggleOverlay} />
+        <span className="wc-drawer-row-label"><Boxes size={15} /> {t('Object Detection', 'Object Detection')}</span>
+        <Switch on={showObjectDetection} onClick={onToggleObjectDetection} />
       </div>
       <div className="wc-drawer-row">
-        <span className="wc-drawer-row-label"><Scan size={15} /> {t('Face Mesh', 'Face Mesh')}</span>
-        <Switch on={showFaceMesh} onClick={onToggleFaceMesh} disabled={!showOverlay} />
+        <span className="wc-drawer-row-label"><Scan size={15} /> {t('AI Mesh', 'AI Mesh')}</span>
+        <Switch on={showFaceMesh} onClick={onToggleFaceMesh} />
       </div>
       <div className="wc-drawer-row">
-        <span className="wc-drawer-row-label"><Activity size={15} /> {t('Khung xương', 'Pose Skeleton')}</span>
-        <Switch on={showPose} onClick={onTogglePose} disabled={!showOverlay} />
+        <span className="wc-drawer-row-label"><Activity size={15} /> {t('AI Pose', 'AI Pose')}</span>
+        <Switch on={showPose} onClick={onTogglePose} />
       </div>
       <div className="wc-drawer-row">
         <span className="wc-drawer-row-label"><Clock size={15} /> {t('Đồng hồ', 'Clock')}</span>
@@ -108,17 +100,6 @@ export default function CameraSettingsDrawer({
             onClick={() => onSelectResolution?.(res)}
           >
             {res}p
-          </button>
-        ))}
-      </div>
-
-      <div className="wc-drawer-divider" />
-
-      <div className="wc-drawer-title">{t('CÀI ĐẶT NHANH', 'PRESETS')}</div>
-      <div className="wc-presets">
-        {PRESETS.map(preset => (
-          <button key={preset.id} type="button" className="wc-preset-btn" onClick={() => onApplyPreset?.(preset.values)}>
-            {preset.label[lang] || preset.label.en}
           </button>
         ))}
       </div>

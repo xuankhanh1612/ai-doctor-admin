@@ -6,7 +6,7 @@ import WebcamControls from './WebcamControls.jsx'
 import CameraSettingsDrawer from './CameraSettingsDrawer.jsx'
 import CameraOverlay from './CameraOverlay.jsx'
 import { useMediaPipeVision } from './useMediaPipeVision.js'
-import { drawFaceMesh, drawPose, drawClock, drawBorder, drawOverlayBadge } from './drawOverlay.js'
+import { drawFaceMesh, drawPose, drawObjectDetections, drawClock, drawBorder, drawOverlayBadge } from './drawOverlay.js'
 import { saveVisionControlImage, saveVisionControlVideo, dataUrlToFile, blobToDataUrl } from './visionStorage.js'
 import './webcam-controls.css'
 
@@ -42,11 +42,11 @@ export default function AIVisionWebcam({ onViewMedicalRecord }) {
   const [flashEnabled, setFlashEnabled] = useState(false)
   const [flashSupported, setFlashSupported] = useState(false)
 
-  const [showOverlay, setShowOverlay] = useState(true)
+  const [showObjectDetection, setShowObjectDetection] = useState(true)
   const [showClock, setShowClock] = useState(true)
   const [showBorder, setShowBorder] = useState(true)
-  const [showFaceMesh, setShowFaceMesh] = useState(true)
-  const [showPose, setShowPose] = useState(true)
+  const [showFaceMesh, setShowFaceMesh] = useState(false)
+  const [showPose, setShowPose] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
 
   const [uploadedImage, setUploadedImage] = useState(null)
@@ -160,8 +160,9 @@ export default function AIVisionWebcam({ onViewMedicalRecord }) {
     const drawingUtils = visionRef.current.getDrawingUtils(ctx)
     if (showFaceMesh) drawFaceMesh(ctx, drawingUtils, visionRef.current.getFaceLandmarker(), lastResultRef.current.face)
     if (showPose) drawPose(ctx, drawingUtils, visionRef.current.getPoseLandmarker(), lastResultRef.current.pose)
+    if (showObjectDetection) drawObjectDetections(ctx, lastResultRef.current.object)
     if (mirror) ctx.restore()
-  }, [showFaceMesh, showPose])
+  }, [showFaceMesh, showPose, showObjectDetection])
 
   const drawComposite = useCallback((ctx, { width, height, source, mirror }) => {
     ctx.save()
@@ -169,18 +170,18 @@ export default function AIVisionWebcam({ onViewMedicalRecord }) {
     if (mirror) { ctx.translate(width, 0); ctx.scale(-1, 1) }
     ctx.drawImage(source, 0, 0, width, height)
     ctx.restore()
-    if (showOverlay) {
+    if (showObjectDetection || showFaceMesh || showPose) {
       drawLandmarks(ctx, mirror, width)
       drawOverlayBadge(ctx, width, 'AI DOCTOR VISION SCAN')
     }
     if (showClock) drawClock(ctx, width, height, new Date())
     if (showBorder) drawBorder(ctx, width, height)
-  }, [showOverlay, showClock, showBorder, drawLandmarks])
+  }, [showObjectDetection, showFaceMesh, showPose, showClock, showBorder, drawLandmarks])
 
   // ----- live face mesh / pose detection loop -----
   useEffect(() => {
     let cancelled = false
-    const needsDetection = isCameraOpen && showOverlay && (showFaceMesh || showPose)
+    const needsDetection = isCameraOpen && (showObjectDetection || showFaceMesh || showPose)
 
     if (!needsDetection) {
       const canvas = canvasRef.current
@@ -189,7 +190,7 @@ export default function AIVisionWebcam({ onViewMedicalRecord }) {
       return
     }
 
-    visionRef.current.ensureLoaded({ face: showFaceMesh, pose: showPose })
+    visionRef.current.ensureLoaded({ face: showFaceMesh, pose: showPose, object: showObjectDetection })
 
     const loop = async () => {
       if (cancelled) return
@@ -200,7 +201,7 @@ export default function AIVisionWebcam({ onViewMedicalRecord }) {
         if (canvas.height !== video.videoHeight && video.videoHeight) canvas.height = video.videoHeight
         const ctx = canvas.getContext('2d')
         try {
-          const result = await visionRef.current.detectVideoFrame({ video, face: showFaceMesh, pose: showPose })
+          const result = await visionRef.current.detectVideoFrame({ video, face: showFaceMesh, pose: showPose, object: showObjectDetection })
           lastResultRef.current = result
         } catch (error) {
           console.error('MediaPipe detection failed:', error)
@@ -216,7 +217,7 @@ export default function AIVisionWebcam({ onViewMedicalRecord }) {
       cancelled = true
       if (rafRef.current) cancelAnimationFrame(rafRef.current)
     }
-  }, [isCameraOpen, showOverlay, showFaceMesh, showPose, selectedCamera, drawLandmarks])
+  }, [isCameraOpen, showObjectDetection, showFaceMesh, showPose, selectedCamera, drawLandmarks])
 
   // ----- upload image flow -----
   const triggerUpload = useCallback(() => fileInputRef.current?.click(), [])
@@ -230,23 +231,23 @@ export default function AIVisionWebcam({ onViewMedicalRecord }) {
     canvas.height = img.naturalHeight
     const ctx = canvas.getContext('2d')
     ctx.clearRect(0, 0, canvas.width, canvas.height)
-    if (!showOverlay || (!showFaceMesh && !showPose)) {
+    if (!showObjectDetection && !showFaceMesh && !showPose) {
       lastResultRef.current = {}
       return
     }
     try {
-      await visionRef.current.ensureLoaded({ face: showFaceMesh, pose: showPose })
-      const result = await visionRef.current.detectImage({ image: img, face: showFaceMesh, pose: showPose })
+      await visionRef.current.ensureLoaded({ face: showFaceMesh, pose: showPose, object: showObjectDetection })
+      const result = await visionRef.current.detectImage({ image: img, face: showFaceMesh, pose: showPose, object: showObjectDetection })
       lastResultRef.current = result
       drawLandmarks(ctx, false, canvas.width)
     } catch (error) {
       console.error('MediaPipe image detection failed:', error)
     }
-  }, [showOverlay, showFaceMesh, showPose, drawLandmarks])
+  }, [showObjectDetection, showFaceMesh, showPose, drawLandmarks])
 
   useEffect(() => {
     if (uploadedImage) runImageDetection()
-  }, [uploadedImage, showOverlay, showFaceMesh, showPose, runImageDetection])
+  }, [uploadedImage, showObjectDetection, showFaceMesh, showPose, runImageDetection])
 
   const handleFileChange = useCallback(async (event) => {
     const file = event.target.files?.[0]
@@ -348,7 +349,7 @@ export default function AIVisionWebcam({ onViewMedicalRecord }) {
     }
 
     let recordStream = stream
-    if (showOverlay || showClock || showBorder) {
+    if (showObjectDetection || showFaceMesh || showPose || showClock || showBorder) {
       const video = videoRef.current
       const recCanvas = document.createElement('canvas')
       recCanvas.width = video.videoWidth || 1280
@@ -393,21 +394,12 @@ export default function AIVisionWebcam({ onViewMedicalRecord }) {
     setIsRecording(true)
     setRecordSeconds(0)
     recordTimerRef.current = window.setInterval(() => setRecordSeconds(s => s + 1), 1000)
-  }, [isRecording, isCameraOpen, showOverlay, showClock, showBorder, selectedCamera, drawComposite, user, lang])
+  }, [isRecording, isCameraOpen, showObjectDetection, showFaceMesh, showPose, showClock, showBorder, selectedCamera, drawComposite, user, lang])
 
   useEffect(() => () => {
     if (recordRafRef.current) cancelAnimationFrame(recordRafRef.current)
     if (recordTimerRef.current) window.clearInterval(recordTimerRef.current)
     if (recorderRef.current?.state !== 'inactive') recorderRef.current?.stop?.()
-  }, [])
-
-  // ----- presets -----
-  const applyPreset = useCallback((values) => {
-    setShowOverlay(values.overlay)
-    setShowFaceMesh(values.faceMesh)
-    setShowPose(values.pose)
-    setShowClock(values.clock)
-    setShowBorder(values.border)
   }, [])
 
   const clearUploadedImage = useCallback(() => {
@@ -448,7 +440,7 @@ export default function AIVisionWebcam({ onViewMedicalRecord }) {
             lang={lang}
             cameraOpen={showingMedia}
             isLive={isCameraOpen}
-            showOverlay={showOverlay}
+            showOverlay={showObjectDetection || showFaceMesh || showPose}
             showClock={showClock}
             showBorder={showBorder}
             now={now}
@@ -470,8 +462,8 @@ export default function AIVisionWebcam({ onViewMedicalRecord }) {
           <CameraSettingsDrawer
             lang={lang}
             open={showSettings}
-            showOverlay={showOverlay}
-            onToggleOverlay={() => setShowOverlay(v => !v)}
+            showObjectDetection={showObjectDetection}
+            onToggleObjectDetection={() => setShowObjectDetection(v => !v)}
             showClock={showClock}
             onToggleClock={() => setShowClock(v => !v)}
             showBorder={showBorder}
@@ -487,7 +479,6 @@ export default function AIVisionWebcam({ onViewMedicalRecord }) {
             onSelectCamera={selectCamera}
             resolution={resolution}
             onSelectResolution={selectResolution}
-            onApplyPreset={applyPreset}
           />
 
           {!isCameraOpen && !uploadedImage && (
