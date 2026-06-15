@@ -1768,3 +1768,110 @@ video {
   .wcam-tb-capture .material-icons { font-size: 24px; }
   .wcam-hud-tags { display: none; }
 }
+
+/* ──────────────────────────────────────────────────────────────────────
+   Layout overhaul: turn the "MediaPipe Tasks" sidebar into a hamburger
+   menu on EVERY screen size (laptop, tablet, phone) and make the
+   "Ẩn/Hiện Model Selection" toggle actually collapse the controls panel,
+   so the webcam viewport always gets the maximum available width.
+   ────────────────────────────────────────────────────────────────────── */
+
+/* App shell becomes a single full-width column: top bar + content. */
+.app-container {
+  flex-direction: column;
+}
+
+.main-content {
+  width: 100%;
+}
+
+/* "MediaPipe Tasks" sidebar is now an off-canvas hamburger menu on all
+   screen sizes — it no longer reserves any horizontal space. */
+.sidebar {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: min(var(--sidebar-width), 86vw);
+  height: 100%;
+  max-height: 100vh;
+  z-index: 1000;
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.25);
+}
+
+.sidebar.open {
+  display: flex;
+}
+
+/* Dim/clickable backdrop shown behind the open sidebar */
+.sidebar-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  z-index: 999;
+}
+
+.sidebar-backdrop.open {
+  display: block;
+}
+
+/* Persistent top bar (hamburger + quick task switcher) on all devices */
+.mobile-header {
+  display: flex !important;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  padding: 10px 16px;
+  background-color: var(--surface);
+  border-bottom: 1px solid var(--border-color);
+  height: var(--header-height);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  flex-shrink: 0;
+}
+
+.menu-toggle {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── "Ẩn / Hiện Model Selection" ───────────────────────────────────────── */
+.task-container {
+  position: relative;
+}
+
+.task-container.controls-collapsed .controls-panel {
+  display: none;
+}
+
+.model-selection-toggle {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 30;
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.2;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
+  white-space: nowrap;
+}
+
+.model-selection-toggle .material-icons {
+  font-size: 18px;
+}
+
+@media (max-width: 480px) {
+  .model-selection-toggle {
+    padding: 6px 10px;
+    font-size: 0.7rem;
+  }
+}
