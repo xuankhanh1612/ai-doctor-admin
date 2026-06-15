@@ -73,7 +73,7 @@ export default function TaskDetailPopup({ taskId, onClose, onOpenJourney, snapsh
   const [infoOpen, setInfoOpen] = useState(false)
 
   /* "Xem lại ảnh đã chụp" → pushes a dataUrl into AIVisionWebcam for review */
-  const [previewRequest, setPreviewRequest] = useState(null) // { dataUrl, nonce } | null
+  const [reviewImageUrl, setReviewImageUrl] = useState(null)
   const [loadingProof,   setLoadingProof]   = useState(false)
 
   const proofImages = snapshot?.journeyUser?.proofImages || []
@@ -161,7 +161,7 @@ export default function TaskDetailPopup({ taskId, onClose, onOpenJourney, snapsh
         setSaveMsg('❌ Không tìm thấy ảnh proof để xem lại.')
         return
       }
-      setPreviewRequest({ dataUrl, nonce: Date.now() })
+      setReviewImageUrl(dataUrl)
     } catch (err) {
       setSaveMsg(`❌ ${err?.message || 'Lỗi tải ảnh proof.'}`)
     } finally {
@@ -212,7 +212,7 @@ export default function TaskDetailPopup({ taskId, onClose, onOpenJourney, snapsh
 
           {/* ── CAMERA COLUMN — always visible, always max ── */}
           <div style={S.camCol} className="tdp-cam-col">
-            <AIVisionWebcam onViewMedicalRecord={onViewMedicalRecord} onCaptureSaved={handleCaptureSaved} previewRequest={previewRequest} />
+            <AIVisionWebcam onViewMedicalRecord={onViewMedicalRecord} onCaptureSaved={handleCaptureSaved} reviewImageUrl={reviewImageUrl} onExitReview={() => setReviewImageUrl(null)} />
           </div>
 
           {/* ── INFO PANEL — collapsible ── */}

@@ -59,6 +59,11 @@ export default function AIVisionWebcam({ onViewMedicalRecord, onCaptureSaved, on
   const [savingStatus, setSavingStatus] = useState('')
   const [now, setNow] = useState(new Date())
 
+  // ----- capture preview (confirm before save) -----
+  // { dataUrl, kind } | null
+  const [capturePreview, setCapturePreview] = useState(null)
+  const [savingPreview, setSavingPreview] = useState(false)
+
   const vision = useMediaPipeVision()
   const visionRef = useRef(vision)
   visionRef.current = vision
@@ -275,63 +280,89 @@ export default function AIVisionWebcam({ onViewMedicalRecord, onCaptureSaved, on
 
   // ----- load reviewImageUrl into upload mode (Xem lại ảnh đã chụp) -----
   // Khi parent truyền reviewImageUrl, tắt camera và load ảnh vào upload mode
-  // với mọi lớp phủ mặc định TẮT (giống chức năng Upload Image)
+  // với MỌI lớp phủ mặc định TẮT (kể cả clock, border, AI layers)
   useEffect(() => {
     if (!reviewImageUrl) return
     closeCamera()
+    setCapturePreview(null)
     setUploadedImage(reviewImageUrl)
-    // Tắt hết lớp phủ mặc định khi xem lại
+    // Tắt hết lớp phủ khi xem lại ảnh proof
     setShowObjectDetection(false)
     setShowFaceMesh(false)
     setShowPose(false)
+    setShowClock(false)
+    setShowBorder(false)
   }, [reviewImageUrl, closeCamera])
+
+  // ----- capture preview: save confirmed -----
+  const handleConfirmSave = useCallback(async () => {
+    if (!capturePreview) return
+    setSavingPreview(true)
+    setSavingStatus(t('Đang lưu ảnh vào Upload Records...', 'Saving photo to Upload Records...'))
+    try {
+      const file = dataUrlToFile(capturePreview.dataUrl, 'ai_vision_capture.jpg')
+      const record = await saveVisionControlImage(file, {
+        user, lang, label: t('Ảnh chụp AI Doctor Vision', 'AI Doctor Vision capture'),
+      })
+      setSavingStatus(`${t('Đã lưu vào Upload Records', 'Saved to Upload Records')}: ${record.filename}`)
+      onCaptureSaved?.(record)
+      setCapturePreview(null)
+    } catch (error) {
+      console.error('AI Vision capture save failed:', error)
+      setSavingStatus(t('Không thể lưu ảnh chụp.', 'Could not save the photo.'))
+    } finally {
+      setSavingPreview(false)
+    }
+  }, [capturePreview, user, lang, onCaptureSaved])
+
+  // ----- capture preview: cancel → reopen camera -----
+  const handleCancelPreview = useCallback(async () => {
+    setCapturePreview(null)
+    setSavingStatus('')
+    await openCamera()
+  }, [openCamera])
 
   // ----- capture -----
   const handleCapture = useCallback(async () => {
     try {
       let canvas
+      let kind = 'webcam'
       if (isCameraOpen && videoRef.current) {
         const video = videoRef.current
         canvas = document.createElement('canvas')
         canvas.width = video.videoWidth || 1280
         canvas.height = video.videoHeight || 720
         drawComposite(canvas.getContext('2d'), { width: canvas.width, height: canvas.height, source: video })
+        kind = 'webcam'
       } else if (uploadedImage && uploadedImageElRef.current?.naturalWidth) {
         const img = uploadedImageElRef.current
         canvas = document.createElement('canvas')
         canvas.width = img.naturalWidth
         canvas.height = img.naturalHeight
         drawComposite(canvas.getContext('2d'), { width: canvas.width, height: canvas.height, source: img })
+        kind = 'image'
       } else {
         setSavingStatus(t('Vui lòng mở camera hoặc tải ảnh lên trước.', 'Please open the camera or upload an image first.'))
         return
       }
       const dataUrl = canvas.toDataURL('image/jpeg', 0.92)
 
-      // Nếu có onPreviewCapture: gửi dataUrl về parent để hiện confirm trước khi lưu
+      // Nếu có onPreviewCapture (prop từ parent): delegate về parent
       if (onPreviewCapture) {
-        const kind = uploadedImage ? 'image' : 'webcam'
         onPreviewCapture(dataUrl, kind)
         setSavingStatus(t('Ảnh đã chụp — nhấn "Lưu ảnh" để xác nhận.', 'Photo taken — tap "Save photo" to confirm.'))
         return
       }
 
-      // Luồng cũ (không có onPreviewCapture): auto-save
-      setCapturing(true)
-      setSavingStatus(t('Đang lưu ảnh vào Upload Records...', 'Saving photo to Upload Records...'))
-      const file = dataUrlToFile(dataUrl, 'ai_vision_capture.jpg')
-      const record = await saveVisionControlImage(file, {
-        user, lang, label: t('Ảnh chụp AI Doctor Vision', 'AI Doctor Vision capture'),
-      })
-      setSavingStatus(`${t('Đã lưu vào Upload Records', 'Saved to Upload Records')}: ${record.filename}`)
-      onCaptureSaved?.(record)
+      // Luồng nội bộ: tắt camera → hiện preview overlay trong chính AIVisionWebcam
+      stopCamera()
+      setCapturePreview({ dataUrl, kind })
+      setSavingStatus('')
     } catch (error) {
       console.error('AI Vision capture failed:', error)
       setSavingStatus(t('Không thể lưu ảnh chụp.', 'Could not save the photo.'))
-    } finally {
-      setCapturing(false)
     }
-  }, [isCameraOpen, uploadedImage, drawComposite, user, lang, onCaptureSaved, onPreviewCapture])
+  }, [isCameraOpen, uploadedImage, drawComposite, stopCamera, onPreviewCapture])
 
   // ----- save / export PNG -----
   const handleSaveDownload = useCallback(() => {
@@ -482,12 +513,12 @@ export default function AIVisionWebcam({ onViewMedicalRecord, onCaptureSaved, on
             clockInset={showingMedia ? 112 : 14}
           />
 
-          {showingMedia && (
+          {showingMedia && !capturePreview && (
             <button type="button" className="wc-settings-fab" style={{ right: 14 }} onClick={() => setShowSettings(v => !v)} title="Settings">
               <Settings size={18} />
             </button>
           )}
-          {showingMedia && (
+          {showingMedia && !capturePreview && (
             <button type="button" className="wc-settings-fab" style={{ right: 60 }} onClick={isCameraOpen ? closeCamera : clearUploadedImage} title={t('Đóng', 'Close')}>
               <X size={18} />
             </button>
@@ -515,7 +546,59 @@ export default function AIVisionWebcam({ onViewMedicalRecord, onCaptureSaved, on
             onSelectResolution={selectResolution}
           />
 
-          {!isCameraOpen && !uploadedImage && (
+          {/* ── CAPTURE PREVIEW: confirm before save ── */}
+          {capturePreview && (
+            <div style={{
+              position: 'absolute', inset: 0, zIndex: 30,
+              display: 'flex', flexDirection: 'column',
+              background: '#000',
+            }}>
+              {/* preview image */}
+              <img
+                src={capturePreview.dataUrl}
+                alt="capture preview"
+                style={{ flex: 1, width: '100%', objectFit: 'contain', display: 'block', minHeight: 0 }}
+              />
+              {/* action bar */}
+              <div style={{
+                display: 'flex', gap: 10, padding: '12px 16px',
+                background: 'rgba(0,0,0,0.85)',
+                borderTop: '1px solid rgba(255,255,255,0.10)',
+                flexShrink: 0,
+              }}>
+                <button
+                  type="button"
+                  disabled={savingPreview}
+                  onClick={handleCancelPreview}
+                  style={{
+                    flex: 1, padding: '11px 6px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.18)',
+                    background: 'rgba(255,255,255,0.08)', color: '#e2e8f0',
+                    fontSize: 13, fontWeight: 800, fontFamily: 'inherit',
+                    cursor: savingPreview ? 'default' : 'pointer',
+                    opacity: savingPreview ? 0.5 : 1,
+                  }}
+                >
+                  🔄 Hủy / Chụp lại
+                </button>
+                <button
+                  type="button"
+                  disabled={savingPreview}
+                  onClick={handleConfirmSave}
+                  style={{
+                    flex: 1, padding: '11px 6px', borderRadius: 10, border: 'none',
+                    background: savingPreview ? 'rgba(34,197,94,0.4)' : 'linear-gradient(135deg,#16a34a,#22c55e)',
+                    color: '#fff', fontSize: 13, fontWeight: 800, fontFamily: 'inherit',
+                    cursor: savingPreview ? 'default' : 'pointer',
+                    boxShadow: '0 6px 20px rgba(34,197,94,0.3)',
+                  }}
+                >
+                  {savingPreview ? '⏳ Đang lưu...' : '💾 Lưu ảnh'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {!isCameraOpen && !uploadedImage && !capturePreview && (
             <div style={{ position: 'absolute', bottom: 18, left: 0, right: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, zIndex: 9 }}>
               <button type="button" className="wc-open-btn" onClick={() => openCamera()} disabled={cameraStarting}>
                 <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -530,7 +613,7 @@ export default function AIVisionWebcam({ onViewMedicalRecord, onCaptureSaved, on
             </div>
           )}
 
-          {isCameraOpen && (
+          {isCameraOpen && !capturePreview && (
             <WebcamControls
               lang={lang}
               isRecording={isRecording}
@@ -546,7 +629,7 @@ export default function AIVisionWebcam({ onViewMedicalRecord, onCaptureSaved, on
             />
           )}
 
-          {!isCameraOpen && uploadedImage && (
+          {!isCameraOpen && uploadedImage && !capturePreview && (
             <WebcamControls
               lang={lang}
               isRecording={false}
