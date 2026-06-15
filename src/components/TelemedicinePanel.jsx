@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { saveRecord } from '../lib/medicalStorage.js'
 import { notifyUpload } from '../hooks/useMedicalData.js'
 import NavButtons from './NavButtons.jsx'
+import WebcamControls from './LiveWebcamControls.jsx'
 
 const HUMAN_DOCTORS = [
   {
@@ -233,230 +234,45 @@ function LivestreamScanOverlay({ timestamp, capturedAt }) {
   )
 }
 
-function TelemedicineCameraPanel({ onViewMedicalRecord }) {
-  const { lang } = useApp()
+export default function TelemedicinePanel({ onNext, nextLabel, onPrev, prevLabel, onViewMedicalRecord }) {
+  const { t, lang } = useApp()
   const { user } = useAuth()
-  const videoRef = useRef(null)
-  const streamRef = useRef(null)
-  const [cameraOpen, setCameraOpen] = useState(false)
-  const [cameraStarting, setCameraStarting] = useState(false)
-  const [facingMode, setFacingMode] = useState('user')
-  const [overlayOn, setOverlayOn] = useState(true)
-  const [timestamp, setTimestamp] = useState(livestreamTimestamp())
-  const [capturedAt, setCapturedAt] = useState('')
-  const [cameraError, setCameraError] = useState('')
-  const [savingStatus, setSavingStatus] = useState('')
-  const [videoSaving, setVideoSaving] = useState(false)
-  const [screenshotSaving, setScreenshotSaving] = useState(false)
+  const onlineHumans = HUMAN_DOCTORS.filter(d => d.status === 'online').length
+  const onlineAgents = AI_DOCTORS.filter(d => d.status === 'online').length
 
-  const stopCamera = useCallback(() => {
-    streamRef.current?.getTracks?.().forEach(track => track.stop())
-    streamRef.current = null
-    if (videoRef.current) videoRef.current.srcObject = null
-    setCameraOpen(false)
-    setCameraStarting(false)
-  }, [])
-
-  useEffect(() => {
-    const timer = window.setInterval(() => setTimestamp(livestreamTimestamp()), 1000)
-    return () => window.clearInterval(timer)
-  }, [])
-
-  useEffect(() => () => stopCamera(), [stopCamera])
-
-  const openCamera = useCallback(async (nextFacingMode = facingMode) => {
-    setCameraError('')
-    if (!navigator.mediaDevices?.getUserMedia) {
-      setCameraError('Trình duyệt không hỗ trợ mở camera live.')
-      return
-    }
-    setCameraStarting(true)
-    streamRef.current?.getTracks?.().forEach(track => track.stop())
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: nextFacingMode }, width: { ideal: 1280 }, height: { ideal: 720 } },
-        audio: false,
-      })
-      streamRef.current = stream
-      setFacingMode(nextFacingMode)
-      setCameraOpen(true)
-      window.setTimeout(() => {
-        if (videoRef.current) videoRef.current.srcObject = stream
-      }, 0)
-    } catch (error) {
-      console.error('Telemedicine livestream camera failed:', error)
-      setCameraError('Không thể mở camera. Vui lòng cấp quyền camera.')
-      stopCamera()
-    } finally {
-      setCameraStarting(false)
-    }
-  }, [facingMode, stopCamera])
-
-  const switchCamera = useCallback(() => {
-    const nextFacingMode = facingMode === 'user' ? 'environment' : 'user'
-    openCamera(nextFacingMode)
-  }, [facingMode, openCamera])
-
-  const saveTelemedicineRecord = useCallback(async ({ blob, dataUrl, mimeType, ext, prefix, label }) => {
+  /* Bridge: WebcamControls calls this → we persist via medicalStorage */
+  const handleSaveRecord = useCallback(async (blob, { dataUrl, filename, mimeType, label }) => {
     const finalDataUrl = dataUrl || await blobToDataUrl(blob)
-    const filename = telemedicineFilename(prefix, ext)
+    const isVideo = mimeType.startsWith('video/')
     const record = {
-      id: `tele_${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      id: `tele_webcam_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
       filename,
       name: filename,
-      fileType: mimeType.startsWith('video/') ? 'video' : 'photo',
-      type: mimeType.startsWith('video/') ? 'video' : 'photo',
+      fileType: isVideo ? 'video' : 'photo',
+      type:     isVideo ? 'video' : 'photo',
       mimeType,
       size: blob?.size || Math.round((finalDataUrl.length * 3) / 4),
       uploadedAt: new Date().toISOString(),
       dataUrl: finalDataUrl,
       base64Data: dataUrlBase64(finalDataUrl),
       notes: `${label} · ${livestreamTimestamp()}`,
-      ownerEmail: user?.email || null,
-      ownerName: user?.name || '',
-      ownerAvatar: user?.avatar || '',
+      ownerEmail:    user?.email    || null,
+      ownerName:     user?.name     || '',
+      ownerAvatar:   user?.avatar   || '',
       ownerProvider: user?.provider || '',
-      sourceModule: 'telemedicine-livestream',
-      uploadFolder: 'upload/telemedicine-livestream',
-      uploadPath: `upload/telemedicine-livestream/${filename}`,
+      sourceModule:  'telemedicine-webcam-controls',
+      uploadFolder:  'upload/telemedicine-livestream',
+      uploadPath:    `upload/telemedicine-livestream/${filename}`,
     }
     await saveRecord(record, {
-      ownerEmail: user?.email,
-      ownerName: user?.name,
-      ownerAvatar: user?.avatar,
+      ownerEmail:    user?.email,
+      ownerName:     user?.name,
+      ownerAvatar:   user?.avatar,
       ownerProvider: user?.provider,
     })
     notifyUpload()
     return record
   }, [user])
-
-  const captureScreenshot = useCallback(async () => {
-    const video = videoRef.current
-    if (!cameraOpen || !video) {
-      setSavingStatus('Vui lòng mở camera trước khi chụp màn hình.')
-      return
-    }
-    setScreenshotSaving(true)
-    setSavingStatus('Đang lưu ảnh chụp màn hình vào Upload Records...')
-    try {
-      const canvas = document.createElement('canvas')
-      canvas.width = video.videoWidth || 1280
-      canvas.height = video.videoHeight || 720
-      const ctx = canvas.getContext('2d')
-      if (facingMode === 'user') {
-        ctx.translate(canvas.width, 0)
-        ctx.scale(-1, 1)
-      }
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
-      if (facingMode === 'user') ctx.setTransform(1, 0, 0, 1, 0, 0)
-      if (overlayOn) drawLivestreamScanOverlay(ctx, canvas.width, canvas.height, timestamp, capturedAt)
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.92)
-      const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.92))
-      const record = await saveTelemedicineRecord({ blob, dataUrl, mimeType: 'image/jpeg', ext: 'jpg', prefix: 'telemedicine_screenshot', label: 'Telemedicine screenshot' })
-      setCapturedAt(livestreamTimestamp())
-      setSavingStatus(`Đã lưu ảnh chụp màn hình vào Upload Records: ${record.filename}`)
-    } catch (error) {
-      console.error('Telemedicine screenshot save failed:', error)
-      setSavingStatus('Không thể lưu ảnh chụp màn hình.')
-    } finally {
-      setScreenshotSaving(false)
-    }
-  }, [cameraOpen, capturedAt, facingMode, overlayOn, saveTelemedicineRecord, timestamp])
-
-  const captureMoment = useCallback(async () => {
-    const stream = streamRef.current
-    if (!cameraOpen || !stream) {
-      setSavingStatus('Vui lòng mở camera trước khi ghi video.')
-      return
-    }
-    if (typeof MediaRecorder === 'undefined') {
-      setSavingStatus('Trình duyệt không hỗ trợ MediaRecorder để lưu video.')
-      return
-    }
-    setVideoSaving(true)
-    const stamp = livestreamTimestamp()
-    setCapturedAt(stamp)
-    setSavingStatus('Đang ghi video 3 giây và lưu vào Upload Records...')
-    try {
-      const chunks = []
-      const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9') ? 'video/webm;codecs=vp9' : 'video/webm'
-      const recorder = new MediaRecorder(stream, { mimeType })
-      recorder.ondataavailable = event => {
-        if (event.data?.size) chunks.push(event.data)
-      }
-      const stopped = new Promise((resolve, reject) => {
-        recorder.onstop = resolve
-        recorder.onerror = event => reject(event.error || new Error('MediaRecorder error'))
-      })
-      recorder.start()
-      window.setTimeout(() => {
-        if (recorder.state !== 'inactive') recorder.stop()
-      }, 3000)
-      await stopped
-      const blob = new Blob(chunks, { type: 'video/webm' })
-      const record = await saveTelemedicineRecord({ blob, mimeType: 'video/webm', ext: 'webm', prefix: 'telemedicine_video', label: `Telemedicine livestream video · ${stamp}` })
-      setSavingStatus(`Đã lưu video vào Upload Records: ${record.filename}`)
-    } catch (error) {
-      console.error('Telemedicine video save failed:', error)
-      setSavingStatus('Không thể lưu video livestream.')
-    } finally {
-      setVideoSaving(false)
-    }
-  }, [cameraOpen, saveTelemedicineRecord])
-
-  return (
-    <div style={{ borderRadius: 18, border: '1px solid rgba(0,229,255,0.22)', background: 'linear-gradient(135deg, rgba(0,229,255,0.08), rgba(156,111,255,0.08)), var(--surface)', padding: 16 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
-        <div>
-          <div style={{ color: 'var(--cyan)', fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 900, letterSpacing: '0.12em' }}>AI LIVESTREAM CAMERA</div>
-          <div style={{ color: 'var(--text)', fontSize: 17, fontWeight: 900, marginTop: 4 }}>Camera · AI Livestream Scan</div>
-          <div style={{ color: 'var(--text2)', fontSize: 12, marginTop: 5 }}>Mở camera, đổi camera trước/sau và bật/tắt lớp phủ ghi thời gian realtime.</div>
-        </div>
-        <StatusPill status={cameraOpen ? 'online' : 'offline'} />
-      </div>
-      <div style={{ position: 'relative', minHeight: 320, borderRadius: 16, overflow: 'hidden', background: 'radial-gradient(circle at 50% 30%, rgba(0,229,255,0.18), rgba(4,6,15,0.98) 64%)', border: '1px solid var(--border)' }}>
-        {cameraOpen ? (
-          <video ref={videoRef} autoPlay playsInline muted style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', transform: facingMode === 'user' ? 'scaleX(-1)' : 'none' }} />
-        ) : (
-          <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', color: 'var(--text2)', textAlign: 'center', padding: 24 }}>
-            <div><div style={{ fontSize: 56, marginBottom: 10 }}>📹</div><b>Bấm “Mở camera” để bắt đầu livestream scan</b></div>
-          </div>
-        )}
-        {overlayOn && <LivestreamScanOverlay timestamp={timestamp} capturedAt={capturedAt} />}
-      </div>
-      {cameraError && <div style={{ marginTop: 10, color: '#ff5252', fontSize: 12, fontWeight: 800 }}>⚠️ {cameraError}</div>}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(132px, 1fr))', gap: 10, marginTop: 12 }}>
-        <button type="button" onClick={() => openCamera()} disabled={cameraStarting} style={telemedicineCameraButton(cameraOpen)}>{cameraStarting ? 'Đang mở…' : cameraOpen ? 'Khởi động lại' : 'Mở camera'}</button>
-        <button type="button" onClick={switchCamera} disabled={!cameraOpen || cameraStarting} style={telemedicineCameraButton(false)}>🔄 Đổi camera</button>
-        <button type="button" onClick={() => setOverlayOn(v => !v)} style={telemedicineCameraButton(overlayOn)}>▣ Lớp phủ</button>
-        <button type="button" onClick={captureScreenshot} disabled={!cameraOpen || screenshotSaving} style={telemedicineCameraButton(false)}>{screenshotSaving ? 'Đang lưu…' : '📷 Chụp màn hình'}</button>
-        <button type="button" onClick={captureMoment} disabled={!cameraOpen || videoSaving} style={telemedicineCameraButton(false)}>{videoSaving ? 'Đang ghi…' : '📸 Ghi giờ'}</button>
-      </div>
-      {savingStatus && <div style={{ marginTop: 10, color: savingStatus.startsWith('Đã') ? 'var(--green)' : 'var(--cyan)', fontSize: 12, fontWeight: 800 }}>{savingStatus}</div>}
-      {cameraOpen && <button type="button" onClick={stopCamera} style={{ ...telemedicineCameraButton(false), width: '100%', marginTop: 10 }}>{lang === 'vi' ? 'Đóng camera' : 'Close camera'}</button>}
-      {onViewMedicalRecord && <button type="button" onClick={onViewMedicalRecord} style={{ ...telemedicineCameraButton(true), width: '100%', marginTop: 10, background: 'linear-gradient(135deg, #16a34a, #22c55e)', border: '0', color: '#fff', boxShadow: '0 14px 30px rgba(34,197,94,0.24)' }}>{lang === 'vi' ? 'Xem hình tại Medical Records' : 'View image in Medical Records'}</button>}
-    </div>
-  )
-}
-
-function telemedicineCameraButton(active) {
-  return {
-    minHeight: 42,
-    border: `1px solid ${active ? 'rgba(0,229,255,0.45)' : 'var(--border2)'}`,
-    borderRadius: 11,
-    background: active ? 'rgba(0,229,255,0.16)' : 'rgba(255,255,255,0.05)',
-    color: active ? 'var(--cyan)' : 'var(--text)',
-    cursor: 'pointer',
-    fontSize: 12,
-    fontWeight: 900,
-    fontFamily: 'inherit',
-  }
-}
-
-export default function TelemedicinePanel({ onNext, nextLabel, onPrev, prevLabel, onViewMedicalRecord }) {
-  const { t } = useApp()
-  const onlineHumans = HUMAN_DOCTORS.filter(d => d.status === 'online').length
-  const onlineAgents = AI_DOCTORS.filter(d => d.status === 'online').length
 
   return (
     <div className="animate-fade" style={{ padding: 28, display: 'flex', flexDirection: 'column', gap: 18 }}>
@@ -481,7 +297,11 @@ export default function TelemedicinePanel({ onNext, nextLabel, onPrev, prevLabel
         </div>
       </div>
 
-      <TelemedicineCameraPanel onViewMedicalRecord={onViewMedicalRecord} />
+      <WebcamControls
+        onSaveRecord={handleSaveRecord}
+        onViewMedicalRecord={onViewMedicalRecord}
+        lang={lang}
+      />
 
       <div className="telemedicine-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.35fr) minmax(320px, 0.65fr)', gap: 16 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
