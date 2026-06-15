@@ -39,7 +39,6 @@ export default function CameraOverlay({
   now,
   canvasRef,
   clockInset,
-  mirrorCanvas = false,
 }) {
   const t = (vi, en) => (lang === 'vi' ? vi : en)
 
@@ -57,11 +56,7 @@ export default function CameraOverlay({
       {showBorder && <BorderCorners />}
 
       {/* Landmark / face-mesh / pose canvas, drawn by useMediaPipeVision results */}
-      <canvas
-        ref={canvasRef}
-        className="wc-canvas"
-        style={{ pointerEvents: 'none', transform: mirrorCanvas ? 'scaleX(-1)' : undefined }}
-      />
+      <canvas ref={canvasRef} className="wc-canvas" style={{ pointerEvents: 'none' }} />
 
       {!cameraOpen && (
         <div className="wc-placeholder">

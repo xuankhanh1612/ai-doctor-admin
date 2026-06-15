@@ -33,7 +33,7 @@ export default function AIVisionWebcam({ onViewMedicalRecord, onCaptureSaved }) 
   const recordRafRef = useRef(null)
   const lastResultRef = useRef({})
 
-  // ----- state model (see WEBCAM_CONTROLS_GUIDE.md) -----
+  // ----- state -----
   const [isCameraOpen, setIsCameraOpen] = useState(false)
   const [cameraStarting, setCameraStarting] = useState(false)
   const [cameraError, setCameraError] = useState('')
@@ -83,8 +83,8 @@ export default function AIVisionWebcam({ onViewMedicalRecord, onCaptureSaved }) 
 
   useEffect(() => () => stopCamera(), [stopCamera])
 
-  // iOS Safari: sau khi isCameraOpen=true, React mới mount <video>.
-  // Dùng effect này để gán srcObject + play() ngay khi video element xuất hiện trong DOM.
+  // iOS Safari: sau khi isCameraOpen=true React mới mount <video>.
+  // Effect này gán srcObject + gọi play() ngay khi video element vào DOM.
   useEffect(() => {
     if (!isCameraOpen) return
     const video = videoRef.current
@@ -112,16 +112,12 @@ export default function AIVisionWebcam({ onViewMedicalRecord, onCaptureSaved }) 
       })
       streamRef.current = stream
       setUploadedImage(null)
-
-      // iOS Safari: phải gán srcObject và gọi play() NGAY TRONG cùng microtask với
-      // getUserMedia — không được dùng setTimeout vì iOS sẽ block autoplay.
-      // setIsCameraOpen(true) TRƯỚC để React mount <video> rồi dùng callback ref.
+      // iOS Safari: gán srcObject + play() ngay trong cùng microtask getUserMedia.
       if (videoRef.current) {
         videoRef.current.srcObject = stream
         await videoRef.current.play().catch(() => {})
       }
       setIsCameraOpen(true)
-
       const track = stream.getVideoTracks()[0]
       const caps = track?.getCapabilities?.()
       setFlashSupported(!!caps?.torch)
@@ -173,23 +169,24 @@ export default function AIVisionWebcam({ onViewMedicalRecord, onCaptureSaved }) 
   }, [flashEnabled, flashSupported, lang])
 
   // ----- shared drawing -----
-  const drawLandmarks = useCallback((ctx, mirror, width) => {
-    if (mirror) { ctx.save(); ctx.translate(width, 0); ctx.scale(-1, 1) }
+  // KHÔNG flip gì cả — cả video lẫn canvas đều hiển thị raw stream.
+  // Giống WebcamControls.jsx (trang Control): không dùng CSS mirror, không dùng ctx scale(-1).
+  // Browser/OS tự xử lý chiều camera front trên mỗi thiết bị.
+  const drawLandmarks = useCallback((ctx, width) => {
     const drawingUtils = visionRef.current.getDrawingUtils(ctx)
     if (showFaceMesh) drawFaceMesh(ctx, drawingUtils, visionRef.current.getFaceLandmarker(), lastResultRef.current.face)
     if (showPose) drawPose(ctx, drawingUtils, visionRef.current.getPoseLandmarker(), lastResultRef.current.pose)
     if (showObjectDetection) drawObjectDetections(ctx, lastResultRef.current.object)
-    if (mirror) ctx.restore()
   }, [showFaceMesh, showPose, showObjectDetection])
 
-  const drawComposite = useCallback((ctx, { width, height, source, mirror }) => {
+  // drawComposite: dùng cho capture/record/export — vẽ thẳng không flip.
+  const drawComposite = useCallback((ctx, { width, height, source }) => {
     ctx.save()
     ctx.clearRect(0, 0, width, height)
-    if (mirror) { ctx.translate(width, 0); ctx.scale(-1, 1) }
     ctx.drawImage(source, 0, 0, width, height)
     ctx.restore()
     if (showObjectDetection || showFaceMesh || showPose) {
-      drawLandmarks(ctx, mirror, width)
+      drawLandmarks(ctx, width)
       drawOverlayBadge(ctx, width, 'AI DOCTOR VISION SCAN')
     }
     if (showClock) drawClock(ctx, width, height, new Date())
@@ -225,8 +222,7 @@ export default function AIVisionWebcam({ onViewMedicalRecord, onCaptureSaved }) 
           console.error('MediaPipe detection failed:', error)
         }
         ctx.clearRect(0, 0, canvas.width, canvas.height)
-        // Canvas live overlay dùng CSS scaleX(-1) giống <video> → KHÔNG flip bằng ctx.
-        drawLandmarks(ctx, false, canvas.width)
+        drawLandmarks(ctx, canvas.width)
       }
       rafRef.current = requestAnimationFrame(loop)
     }
@@ -236,7 +232,7 @@ export default function AIVisionWebcam({ onViewMedicalRecord, onCaptureSaved }) 
       cancelled = true
       if (rafRef.current) cancelAnimationFrame(rafRef.current)
     }
-  }, [isCameraOpen, showObjectDetection, showFaceMesh, showPose, selectedCamera, drawLandmarks])
+  }, [isCameraOpen, showObjectDetection, showFaceMesh, showPose, drawLandmarks])
 
   // ----- upload image flow -----
   const triggerUpload = useCallback(() => fileInputRef.current?.click(), [])
@@ -258,7 +254,7 @@ export default function AIVisionWebcam({ onViewMedicalRecord, onCaptureSaved }) 
       await visionRef.current.ensureLoaded({ face: showFaceMesh, pose: showPose, object: showObjectDetection })
       const result = await visionRef.current.detectImage({ image: img, face: showFaceMesh, pose: showPose, object: showObjectDetection })
       lastResultRef.current = result
-      drawLandmarks(ctx, false, canvas.width)
+      drawLandmarks(ctx, canvas.width)
     } catch (error) {
       console.error('MediaPipe image detection failed:', error)
     }
@@ -277,7 +273,7 @@ export default function AIVisionWebcam({ onViewMedicalRecord, onCaptureSaved }) 
     setUploadedImage(dataUrl)
   }, [closeCamera])
 
-  // ----- capture (save to Medical Records) -----
+  // ----- capture -----
   const handleCapture = useCallback(async () => {
     setCapturing(true)
     setSavingStatus(t('Đang lưu ảnh vào Upload Records...', 'Saving photo to Upload Records...'))
@@ -288,15 +284,13 @@ export default function AIVisionWebcam({ onViewMedicalRecord, onCaptureSaved }) 
         canvas = document.createElement('canvas')
         canvas.width = video.videoWidth || 1280
         canvas.height = video.videoHeight || 720
-        drawComposite(canvas.getContext('2d'), {
-          width: canvas.width, height: canvas.height, source: video, mirror: selectedCamera === 'front',
-        })
+        drawComposite(canvas.getContext('2d'), { width: canvas.width, height: canvas.height, source: video })
       } else if (uploadedImage && uploadedImageElRef.current?.naturalWidth) {
         const img = uploadedImageElRef.current
         canvas = document.createElement('canvas')
         canvas.width = img.naturalWidth
         canvas.height = img.naturalHeight
-        drawComposite(canvas.getContext('2d'), { width: canvas.width, height: canvas.height, source: img, mirror: false })
+        drawComposite(canvas.getContext('2d'), { width: canvas.width, height: canvas.height, source: img })
       } else {
         setSavingStatus(t('Vui lòng mở camera hoặc tải ảnh lên trước.', 'Please open the camera or upload an image first.'))
         return
@@ -314,9 +308,9 @@ export default function AIVisionWebcam({ onViewMedicalRecord, onCaptureSaved }) 
     } finally {
       setCapturing(false)
     }
-  }, [isCameraOpen, uploadedImage, selectedCamera, drawComposite, user, lang, onCaptureSaved])
+  }, [isCameraOpen, uploadedImage, drawComposite, user, lang, onCaptureSaved])
 
-  // ----- save / export to device (PNG download) -----
+  // ----- save / export PNG -----
   const handleSaveDownload = useCallback(() => {
     setDownloading(true)
     try {
@@ -326,15 +320,13 @@ export default function AIVisionWebcam({ onViewMedicalRecord, onCaptureSaved }) 
         canvas = document.createElement('canvas')
         canvas.width = video.videoWidth || 1280
         canvas.height = video.videoHeight || 720
-        drawComposite(canvas.getContext('2d'), {
-          width: canvas.width, height: canvas.height, source: video, mirror: selectedCamera === 'front',
-        })
+        drawComposite(canvas.getContext('2d'), { width: canvas.width, height: canvas.height, source: video })
       } else if (uploadedImage && uploadedImageElRef.current?.naturalWidth) {
         const img = uploadedImageElRef.current
         canvas = document.createElement('canvas')
         canvas.width = img.naturalWidth
         canvas.height = img.naturalHeight
-        drawComposite(canvas.getContext('2d'), { width: canvas.width, height: canvas.height, source: img, mirror: false })
+        drawComposite(canvas.getContext('2d'), { width: canvas.width, height: canvas.height, source: img })
       } else {
         setSavingStatus(t('Vui lòng mở camera hoặc tải ảnh lên trước.', 'Please open the camera or upload an image first.'))
         return
@@ -350,9 +342,9 @@ export default function AIVisionWebcam({ onViewMedicalRecord, onCaptureSaved }) 
     } finally {
       setDownloading(false)
     }
-  }, [isCameraOpen, uploadedImage, selectedCamera, drawComposite, lang])
+  }, [isCameraOpen, uploadedImage, drawComposite, lang])
 
-  // ----- record flow -----
+  // ----- record -----
   const toggleRecord = useCallback(async () => {
     if (isRecording) {
       recorderRef.current?.stop()
@@ -376,9 +368,7 @@ export default function AIVisionWebcam({ onViewMedicalRecord, onCaptureSaved }) 
       recCanvas.height = video.videoHeight || 720
       const recCtx = recCanvas.getContext('2d')
       const drawFrame = () => {
-        drawComposite(recCtx, {
-          width: recCanvas.width, height: recCanvas.height, source: video, mirror: selectedCamera === 'front',
-        })
+        drawComposite(recCtx, { width: recCanvas.width, height: recCanvas.height, source: video })
         recordRafRef.current = requestAnimationFrame(drawFrame)
       }
       drawFrame()
@@ -414,7 +404,7 @@ export default function AIVisionWebcam({ onViewMedicalRecord, onCaptureSaved }) 
     setIsRecording(true)
     setRecordSeconds(0)
     recordTimerRef.current = window.setInterval(() => setRecordSeconds(s => s + 1), 1000)
-  }, [isRecording, isCameraOpen, showObjectDetection, showFaceMesh, showPose, showClock, showBorder, selectedCamera, drawComposite, user, lang])
+  }, [isRecording, isCameraOpen, showObjectDetection, showFaceMesh, showPose, showClock, showBorder, drawComposite, user, lang])
 
   useEffect(() => () => {
     if (recordRafRef.current) cancelAnimationFrame(recordRafRef.current)
@@ -442,7 +432,7 @@ export default function AIVisionWebcam({ onViewMedicalRecord, onCaptureSaved }) 
               autoPlay
               playsInline
               muted
-              className={`wc-video${selectedCamera === 'front' ? ' wc-mirror' : ''}`}
+              className="wc-video"
             />
           )}
 
@@ -466,7 +456,6 @@ export default function AIVisionWebcam({ onViewMedicalRecord, onCaptureSaved }) 
             now={now}
             canvasRef={canvasRef}
             clockInset={showingMedia ? 112 : 14}
-            mirrorCanvas={isCameraOpen && selectedCamera === 'front'}
           />
 
           {showingMedia && (
