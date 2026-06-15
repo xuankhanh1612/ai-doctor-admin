@@ -1,10 +1,15 @@
 /**
  * TaskDetailPopup.jsx
  * Popup "Chi tiết Nhiệm Vụ" — webcam là AIVisionWebcam thật, không còn iframe.
- * Layout:
- *   - Mobile/tablet: webcam full width trên cùng, info panel scroll bên dưới
- *   - Desktop ≥ 860px: 2 cột — info 340px trái | webcam flex:1 phải
- *   - Cột info có thể thu/mở (toggle) để nhường chỗ cho webcam
+ *
+ * Luồng chụp ảnh:
+ *   1. User nhấn Chụp → AIVisionWebcam gọi onPreviewCapture(dataUrl)
+ *   2. Popup hiện preview + nút "Lưu ảnh" để user xác nhận
+ *   3. User nhấn "Lưu ảnh" → mới lưu vào Upload Records + tăng count nhiệm vụ +1
+ *
+ * Phần "Đã có ảnh proof hôm nay":
+ *   - Nút "Xem lại ảnh đã chụp" → load ảnh vào AIVisionWebcam ở chế độ upload
+ *     (mặc định tắt mọi lớp phủ, user có thể tự bật giống chức năng Upload Image)
  */
 
 import { useEffect, useRef, useState } from 'react'
@@ -63,12 +68,18 @@ export default function TaskDetailPopup({ taskId, onClose, onOpenJourney, snapsh
   const todayRec = snapshot?.day?.tasks?.find(t => t.taskId === task?.taskId)
   const progress = pct(todayRec)
 
-  /* save state wired to AIVisionWebcam via postMessage bridge */
-  const [saving,          setSaving]          = useState(false)
-  const [saveMsg,         setSaveMsg]         = useState('')
-  const [lastCaptureKind, setLastCaptureKind] = useState('')
+  /* ── pending capture: chờ user xác nhận trước khi lưu ── */
+  const [pendingDataUrl, setPendingDataUrl]   = useState(null)  // ảnh vừa chụp, chờ confirm
+  const [pendingKind, setPendingKind]         = useState('')     // 'webcam' | 'image'
+  const [confirmSaving, setConfirmSaving]     = useState(false)  // đang lưu sau khi confirm
 
-  /* info panel collapsed state (default collapsed on mobile, open on desktop) */
+  /* ── review mode: xem lại ảnh đã chụp ── */
+  const [reviewDataUrl, setReviewDataUrl]     = useState(null)  // dataUrl để load vào webcam upload mode
+
+  /* save status */
+  const [saveMsg, setSaveMsg] = useState('')
+
+  /* info panel collapsed */
   const [infoOpen, setInfoOpen] = useState(false)
 
   const proofImages = snapshot?.journeyUser?.proofImages || []
@@ -77,58 +88,78 @@ export default function TaskDetailPopup({ taskId, onClose, onOpenJourney, snapsh
          p.capturedAt?.slice(0,10) === new Date().toISOString().slice(0,10)
   ) || proofImages.find(p => p.activityType === task?.activityType)
 
-  /* postMessage bridge — intercept saves from AIVisionWebcam */
+  /* ── Lưu ảnh sau khi user xác nhận ── */
+  const confirmSave = async () => {
+    if (!pendingDataUrl) return
+    setConfirmSaving(true)
+    setSaveMsg('⏳ Đang lưu ảnh...')
+    try {
+      const file = dataUrlToFile(
+        pendingDataUrl,
+        `${task.taskId}_ai_${pendingKind || 'capture'}.jpg`
+      )
+      const rec = await saveWaterProofImage(file, user, {
+        source:        `task-detail-popup-ai-vision-${pendingKind}`,
+        notesPrefix:   `Health Journey · ${task.titleVi}`,
+        activityType:  task.activityType,
+        taskId:        task.taskId,
+        xpEarned:      XP_TABLE[task.activityType] || 0,
+        waterAmountMl: task.taskId === 'water' ? 150 : 0,
+        proofType:     `ai_healthcare_vision_${pendingKind}_overlay`,
+      })
+      completeHealthJourneyActivity({
+        user, activityType: task.activityType, value: 1,
+        proofImage: rec.uploadPath, uploadRecord: rec,
+        metadata: { source: `task-detail-popup-confirm-save-${pendingKind}`, taskId: task.taskId },
+      })
+      if (task.taskId === 'water') syncBeMeoWater(150, `TaskDetailPopup confirm ${pendingKind}`)
+      setSaveMsg('✅ Đã lưu ảnh · Nhiệm vụ +1')
+      setPendingDataUrl(null)
+      setPendingKind('')
+    } catch (err) {
+      setSaveMsg(`❌ ${err?.message || 'Lỗi lưu ảnh.'}`)
+    } finally {
+      setConfirmSaving(false)
+    }
+  }
+
+  /* Hủy pending capture — bỏ ảnh, quay lại camera */
+  const cancelPending = () => {
+    setPendingDataUrl(null)
+    setPendingKind('')
+    setSaveMsg('')
+  }
+
+  /* postMessage bridge — intercept saves từ AIVisionWebcam (iframe path, nếu còn dùng) */
   useEffect(() => {
     const h = async (e) => {
       if (e.origin !== window.location.origin) return
-
       if (e.data?.type === 'AI_CLINIC_OPEN_UPLOAD_RECORDS') {
         if (onViewMedicalRecord) onViewMedicalRecord()
         else window.dispatchEvent(new CustomEvent('navigate-to-upload'))
         return
       }
-
       const isWebcam = e.data?.type === 'AI_CLINIC_MEDIAPIPE_WEBCAM_CAPTURE'
       const isImage  = e.data?.type === 'AI_CLINIC_MEDIAPIPE_IMAGE_CAPTURE'
       if ((!isWebcam && !isImage) || !e.data?.dataUrl) return
-
-      const kind = isWebcam ? 'webcam' : 'image'
-      setSaving(true); setSaveMsg('')
-      try {
-        const file = dataUrlToFile(
-          e.data.dataUrl,
-          e.data.filename || `${task.taskId}_ai_${kind}.jpg`
-        )
-        const rec = await saveWaterProofImage(file, user, {
-          source:        `task-detail-popup-ai-vision-${kind}`,
-          notesPrefix:   `Health Journey · ${task.titleVi}`,
-          activityType:  task.activityType,
-          taskId:        task.taskId,
-          xpEarned:      XP_TABLE[task.activityType] || 0,
-          waterAmountMl: task.taskId === 'water' ? 150 : 0,
-          proofType:     `ai_healthcare_vision_${kind}_overlay`,
-        })
-        completeHealthJourneyActivity({
-          user, activityType: task.activityType, value: 1,
-          proofImage: rec.uploadPath, uploadRecord: rec,
-          metadata: { source: `task-detail-popup-ai-vision-${kind}`, taskId: task.taskId },
-        })
-        if (task.taskId === 'water') syncBeMeoWater(150, `TaskDetailPopup AI ${kind}`)
-        setLastCaptureKind(kind)
-        setSaveMsg(`✅ Đã lưu ảnh ${kind === 'image' ? 'Image' : 'Webcam'} vào Medical Records`)
-        e.source?.postMessage?.({ type: 'AI_CLINIC_MEDIAPIPE_CAPTURE_SAVED', kind, uploadPath: rec.uploadPath }, e.origin)
-      } catch (err) {
-        setSaveMsg(`❌ ${err?.message || 'Lỗi lưu ảnh.'}`)
-        e.source?.postMessage?.({ type: 'AI_CLINIC_MEDIAPIPE_CAPTURE_SAVE_FAILED', kind, message: err?.message }, e.origin)
-      } finally { setSaving(false) }
+      // iframe path: show pending confirm
+      setPendingDataUrl(e.data.dataUrl)
+      setPendingKind(isWebcam ? 'webcam' : 'image')
+      setSaveMsg('')
     }
     window.addEventListener('message', h)
     return () => window.removeEventListener('message', h)
   }, [task, user, onViewMedicalRecord])
 
-  const close = () => onClose?.()
+  /* called by AIVisionWebcam.onPreviewCapture — thay vì auto-save, hiện preview + confirm */
+  const handlePreviewCapture = (dataUrl, kind = 'webcam') => {
+    setPendingDataUrl(dataUrl)
+    setPendingKind(kind)
+    setSaveMsg('')
+  }
 
-  /* called by AIVisionWebcam after it saves a "Chụp ảnh" capture to Upload Records */
+  /* called by AIVisionWebcam.onCaptureSaved — KHÔNG dùng nữa (luồng cũ auto-save) */
+  // Giữ lại để không break nếu có path khác gọi tới
   const handleCaptureSaved = async (record) => {
     try {
       completeHealthJourneyActivity({
@@ -137,14 +168,32 @@ export default function TaskDetailPopup({ taskId, onClose, onOpenJourney, snapsh
         metadata: { source: 'task-detail-popup-ai-vision-capture', taskId: task.taskId },
       })
       if (task.taskId === 'water') syncBeMeoWater(150, 'TaskDetailPopup AI capture')
-      setLastCaptureKind('webcam')
       setSaveMsg('✅ Đã lưu ảnh vào Medical Records · Nhiệm vụ +1')
     } catch (err) {
       setSaveMsg(`❌ ${err?.message || 'Lỗi cập nhật nhiệm vụ.'}`)
     }
   }
 
+  /* Xem lại ảnh proof đã lưu: load dataUrl vào AIVisionWebcam upload mode */
+  const handleReviewProof = () => {
+    // Lấy dataUrl từ proof record (có thể là uploadPath hoặc image dataUrl)
+    const dataUrl = proof?.dataUrl || proof?.image
+    if (dataUrl && dataUrl !== '__INDEXED_DB_ONLY__') {
+      setReviewDataUrl(dataUrl)
+      setPendingDataUrl(null) // bỏ pending nếu có
+    } else {
+      // Không có dataUrl local → mở Medical Records
+      if (onViewMedicalRecord) onViewMedicalRecord()
+      else window.dispatchEvent(new CustomEvent('navigate-to-upload'))
+    }
+  }
+
+  /* Thoát review mode */
+  const exitReview = () => setReviewDataUrl(null)
+
   if (!task) return null
+
+  const close = () => onClose?.()
 
   return (
     <div style={S.overlay} onClick={e => { if (e.target === e.currentTarget) close() }}>
@@ -158,7 +207,6 @@ export default function TaskDetailPopup({ taskId, onClose, onOpenJourney, snapsh
             <div style={S.title}>{task.icon} {task.titleVi}</div>
           </div>
           <div style={{ display:'flex', gap:6, alignItems:'center' }}>
-            {/* Toggle info panel */}
             <button
               type="button"
               style={S.toggleBtn}
@@ -171,26 +219,62 @@ export default function TaskDetailPopup({ taskId, onClose, onOpenJourney, snapsh
           </div>
         </div>
 
-        {/* save status bar */}
-        {(saveMsg || saving) && (
+        {/* ── status bar ── */}
+        {saveMsg && (
           <div style={{
             padding: '6px 14px', fontSize: 12, fontWeight: 700,
             color: saveMsg.startsWith('✅') ? '#86efac' : saveMsg.startsWith('❌') ? '#fca5a5' : '#93c5fd',
             background: 'rgba(0,0,0,0.3)', borderBottom: '1px solid rgba(255,255,255,0.06)',
           }}>
-            {saving ? '⏳ Đang lưu ảnh...' : saveMsg}
+            {saveMsg}
+          </div>
+        )}
+
+        {/* ── pending capture confirm overlay ── */}
+        {pendingDataUrl && (
+          <div style={S.pendingOverlay}>
+            <div style={S.pendingBox}>
+              <div style={S.pendingTitle}>📸 Xác nhận lưu ảnh</div>
+              <img
+                src={pendingDataUrl}
+                alt="Ảnh vừa chụp"
+                style={S.pendingImg}
+              />
+              <div style={S.pendingActions}>
+                <button
+                  style={{ ...S.btnSave, opacity: confirmSaving ? 0.6 : 1 }}
+                  disabled={confirmSaving}
+                  onClick={confirmSave}
+                >
+                  {confirmSaving ? '⏳ Đang lưu...' : '✅ Lưu ảnh'}
+                </button>
+                <button
+                  style={S.btnCancel}
+                  disabled={confirmSaving}
+                  onClick={cancelPending}
+                >
+                  ✕ Chụp lại
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
         {/* ── main layout ── */}
         <div style={S.body} className="tdp-body">
 
-          {/* ── CAMERA COLUMN — always visible, always max ── */}
+          {/* ── CAMERA COLUMN ── */}
           <div style={S.camCol} className="tdp-cam-col">
-            <AIVisionWebcam onViewMedicalRecord={onViewMedicalRecord} onCaptureSaved={handleCaptureSaved} />
+            <AIVisionWebcam
+              onViewMedicalRecord={onViewMedicalRecord}
+              onPreviewCapture={handlePreviewCapture}
+              onCaptureSaved={handleCaptureSaved}
+              reviewImageUrl={reviewDataUrl}
+              onExitReview={exitReview}
+            />
           </div>
 
-          {/* ── INFO PANEL — collapsible ── */}
+          {/* ── INFO PANEL ── */}
           <div
             style={S.infoCol}
             className={`tdp-info-col${infoOpen ? ' tdp-info-open' : ''}`}
@@ -223,10 +307,19 @@ export default function TaskDetailPopup({ taskId, onClose, onOpenJourney, snapsh
                 </div>
               </div>
 
-              {/* proof status */}
+              {/* proof status + review button */}
               {proof && (
-                <div style={S.proofOk}>
-                  {lastCaptureKind === 'image' ? '🖼' : '📷'} Đã có ảnh proof hôm nay
+                <div style={S.proofCard}>
+                  <div style={S.proofOk}>
+                    📷 Đã có ảnh proof hôm nay
+                  </div>
+                  <button
+                    style={S.btnReview}
+                    onClick={handleReviewProof}
+                    type="button"
+                  >
+                    🔍 Xem lại ảnh đã chụp
+                  </button>
                 </div>
               )}
 
@@ -302,7 +395,6 @@ export default function TaskDetailPopup({ taskId, onClose, onOpenJourney, snapsh
 
 /* ── responsive CSS ─────────────────────────────────────────────────────────── */
 const RESPONSIVE_CSS = `
-  /* ── base: mobile-first — camera 100% top, info hidden by default ── */
   .tdp-body {
     display: flex;
     flex-direction: column;
@@ -328,42 +420,22 @@ const RESPONSIVE_CSS = `
     max-height: 70vh;
     overflow-y: auto;
   }
-
-  /* ── tablet ≥ 600px — info panel gets a bit more room ── */
   @media (min-width: 600px) {
-    .tdp-info-col.tdp-info-open {
-      max-height: 60vh;
-    }
+    .tdp-info-col.tdp-info-open { max-height: 60vh; }
   }
-
-  /* ── desktop ≥ 860px — side-by-side, info auto-open ── */
   @media (min-width: 860px) {
-    .tdp-body {
-      flex-direction: row;
-    }
-    .tdp-cam-col {
-      flex: 1;
-      min-width: 0;
-    }
+    .tdp-body { flex-direction: row; }
+    .tdp-cam-col { flex: 1; min-width: 0; }
     .tdp-info-col {
       width: 320px;
       flex-shrink: 0;
       max-height: none !important;
       overflow-y: auto;
-      /* open by default on desktop regardless of toggle state */
     }
-    .tdp-info-col:not(.tdp-info-open) {
-      width: 0;
-      padding: 0;
-      overflow: hidden;
-    }
+    .tdp-info-col:not(.tdp-info-open) { width: 0; padding: 0; overflow: hidden; }
   }
-
-  /* ── large desktop ≥ 1100px — wider info panel ── */
   @media (min-width: 1100px) {
-    .tdp-info-col {
-      width: 360px;
-    }
+    .tdp-info-col { width: 360px; }
   }
 `
 
@@ -412,10 +484,58 @@ const S = {
   barBg: { height:5, background:'rgba(255,255,255,.07)', borderRadius:99, overflow:'hidden', marginTop:6 },
   barFill: { height:5, borderRadius:99, transition:'width .3s' },
   glow: { height:1, background:'linear-gradient(90deg,transparent,rgba(80,160,255,.2),transparent)', margin:'10px 0' },
-  proofOk: { padding:'8px 10px', borderRadius:8, background:'rgba(34,197,94,.1)', border:'1px solid rgba(34,197,94,.25)', color:'#86efac', fontSize:11, fontWeight:700, marginBottom:6 },
+  proofCard: { marginBottom:6 },
+  proofOk: { padding:'8px 10px', borderRadius:'8px 8px 0 0', background:'rgba(34,197,94,.1)', border:'1px solid rgba(34,197,94,.25)', borderBottom:'none', color:'#86efac', fontSize:11, fontWeight:700 },
+  btnReview: {
+    width:'100%', padding:'8px 12px',
+    borderRadius:'0 0 8px 8px',
+    background:'rgba(56,189,248,.15)', border:'1px solid rgba(56,189,248,.35)', borderTop:'none',
+    color:'#7dd3fc', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit',
+    textAlign:'center',
+  },
   badgePurple: { padding:'3px 9px', borderRadius:99, background:'rgba(139,92,246,.2)', color:'#c4b5fd', fontSize:11, fontWeight:700 },
   badgeBlue:   { padding:'3px 9px', borderRadius:99, background:'rgba(59,130,246,.2)', color:'#93c5fd', fontSize:11, fontWeight:700 },
   badgeGreen:  { padding:'3px 9px', borderRadius:99, background:'rgba(34,197,94,.2)', color:'#86efac', fontSize:11, fontWeight:700 },
   badgeOrange: { padding:'3px 9px', borderRadius:99, background:'rgba(245,158,11,.2)', color:'#fcd34d', fontSize:11, fontWeight:700 },
   btnPrimary: { width:'100%', padding:'11px', borderRadius:10, border:'none', background:'linear-gradient(135deg,#8b5cf6,#3b82f6)', color:'#fff', fontWeight:800, fontSize:13, cursor:'pointer', fontFamily:'inherit', marginBottom:2 },
+
+  /* pending confirm overlay */
+  pendingOverlay: {
+    position:'absolute', inset:0, zIndex:100,
+    background:'rgba(5,8,18,.88)', backdropFilter:'blur(6px)',
+    display:'flex', alignItems:'center', justifyContent:'center',
+    padding:16,
+  },
+  pendingBox: {
+    width:'100%', maxWidth:480,
+    background:'#0d1528', borderRadius:18,
+    border:'1px solid rgba(56,189,248,.3)',
+    boxShadow:'0 24px 60px rgba(0,0,0,.7)',
+    overflow:'hidden',
+    display:'flex', flexDirection:'column',
+  },
+  pendingTitle: {
+    padding:'12px 16px',
+    fontSize:14, fontWeight:800, color:'#e2e8f0',
+    borderBottom:'1px solid rgba(255,255,255,.07)',
+    flexShrink:0,
+  },
+  pendingImg: {
+    width:'100%', maxHeight:'55vh', objectFit:'contain',
+    display:'block', background:'#020617',
+  },
+  pendingActions: {
+    display:'flex', gap:8, padding:'12px 14px',
+    background:'rgba(2,6,23,.94)', flexShrink:0,
+  },
+  btnSave: {
+    flex:1, padding:'11px', borderRadius:10, border:'none',
+    background:'linear-gradient(135deg,#16a34a,#22c55e)',
+    color:'#fff', fontWeight:800, fontSize:13, cursor:'pointer', fontFamily:'inherit',
+  },
+  btnCancel: {
+    flex:1, padding:'11px', borderRadius:10,
+    background:'rgba(255,255,255,.07)', border:'1px solid rgba(255,255,255,.12)',
+    color:'#94a3b8', fontWeight:700, fontSize:13, cursor:'pointer', fontFamily:'inherit',
+  },
 }

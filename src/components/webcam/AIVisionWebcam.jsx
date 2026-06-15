@@ -15,7 +15,7 @@ const RESOLUTIONS = {
   '1080': { width: 1920, height: 1080 },
 }
 
-export default function AIVisionWebcam({ onViewMedicalRecord, onCaptureSaved }) {
+export default function AIVisionWebcam({ onViewMedicalRecord, onCaptureSaved, onPreviewCapture, reviewImageUrl, onExitReview }) {
   const { lang } = useApp()
   const { user } = useAuth()
   const t = (vi, en) => (lang === 'vi' ? vi : en)
@@ -273,10 +273,21 @@ export default function AIVisionWebcam({ onViewMedicalRecord, onCaptureSaved }) 
     setUploadedImage(dataUrl)
   }, [closeCamera])
 
+  // ----- load reviewImageUrl into upload mode (Xem lại ảnh đã chụp) -----
+  // Khi parent truyền reviewImageUrl, tắt camera và load ảnh vào upload mode
+  // với mọi lớp phủ mặc định TẮT (giống chức năng Upload Image)
+  useEffect(() => {
+    if (!reviewImageUrl) return
+    closeCamera()
+    setUploadedImage(reviewImageUrl)
+    // Tắt hết lớp phủ mặc định khi xem lại
+    setShowObjectDetection(false)
+    setShowFaceMesh(false)
+    setShowPose(false)
+  }, [reviewImageUrl, closeCamera])
+
   // ----- capture -----
   const handleCapture = useCallback(async () => {
-    setCapturing(true)
-    setSavingStatus(t('Đang lưu ảnh vào Upload Records...', 'Saving photo to Upload Records...'))
     try {
       let canvas
       if (isCameraOpen && videoRef.current) {
@@ -296,6 +307,18 @@ export default function AIVisionWebcam({ onViewMedicalRecord, onCaptureSaved }) 
         return
       }
       const dataUrl = canvas.toDataURL('image/jpeg', 0.92)
+
+      // Nếu có onPreviewCapture: gửi dataUrl về parent để hiện confirm trước khi lưu
+      if (onPreviewCapture) {
+        const kind = uploadedImage ? 'image' : 'webcam'
+        onPreviewCapture(dataUrl, kind)
+        setSavingStatus(t('Ảnh đã chụp — nhấn "Lưu ảnh" để xác nhận.', 'Photo taken — tap "Save photo" to confirm.'))
+        return
+      }
+
+      // Luồng cũ (không có onPreviewCapture): auto-save
+      setCapturing(true)
+      setSavingStatus(t('Đang lưu ảnh vào Upload Records...', 'Saving photo to Upload Records...'))
       const file = dataUrlToFile(dataUrl, 'ai_vision_capture.jpg')
       const record = await saveVisionControlImage(file, {
         user, lang, label: t('Ảnh chụp AI Doctor Vision', 'AI Doctor Vision capture'),
@@ -308,7 +331,7 @@ export default function AIVisionWebcam({ onViewMedicalRecord, onCaptureSaved }) 
     } finally {
       setCapturing(false)
     }
-  }, [isCameraOpen, uploadedImage, drawComposite, user, lang, onCaptureSaved])
+  }, [isCameraOpen, uploadedImage, drawComposite, user, lang, onCaptureSaved, onPreviewCapture])
 
   // ----- save / export PNG -----
   const handleSaveDownload = useCallback(() => {
@@ -418,7 +441,8 @@ export default function AIVisionWebcam({ onViewMedicalRecord, onCaptureSaved }) 
     const canvas = canvasRef.current
     const ctx = canvas?.getContext?.('2d')
     ctx?.clearRect(0, 0, canvas.width, canvas.height)
-  }, [])
+    onExitReview?.()
+  }, [onExitReview])
 
   const showingMedia = isCameraOpen || !!uploadedImage
 
