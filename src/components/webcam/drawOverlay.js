@@ -75,7 +75,9 @@ export function drawClock(ctx, width, height, now = new Date()) {
   const boxW = Math.max(150, width * 0.16)
   const boxH = Math.max(46, height * 0.09)
   const x = width - pad - boxW
-  const y = pad
+  // bottom-right: đặt phía trên toolbar ~72px để không bị che
+  const toolbarH = Math.max(72, height * 0.13)
+  const y = height - toolbarH - boxH - pad
 
   ctx.save()
   ctx.fillStyle = 'rgba(0,12,24,0.72)'

@@ -365,42 +365,45 @@ export default function AIVisionWebcam({ onViewMedicalRecord, onCaptureSaved, on
   }, [isCameraOpen, uploadedImage, drawComposite, stopCamera, onPreviewCapture])
 
   // ----- save / export PNG -----
-  // ----- "Lưu ảnh" toolbar button → lưu vào Upload Records (không download về máy) -----
+  // ----- "Lưu ảnh" toolbar button → qua flow xác nhận preview rồi mới lưu vào Upload Records -----
   const handleSaveToUpload = useCallback(async () => {
-    setDownloading(true)
-    setSavingStatus(t('Đang lưu ảnh vào Upload Records...', 'Saving photo to Upload Records...'))
     try {
       let canvas
+      let kind = 'webcam'
       if (isCameraOpen && videoRef.current) {
         const video = videoRef.current
         canvas = document.createElement('canvas')
         canvas.width = video.videoWidth || 1280
         canvas.height = video.videoHeight || 720
         drawComposite(canvas.getContext('2d'), { width: canvas.width, height: canvas.height, source: video })
+        kind = 'webcam'
       } else if (uploadedImage && uploadedImageElRef.current?.naturalWidth) {
         const img = uploadedImageElRef.current
         canvas = document.createElement('canvas')
         canvas.width = img.naturalWidth
         canvas.height = img.naturalHeight
         drawComposite(canvas.getContext('2d'), { width: canvas.width, height: canvas.height, source: img })
+        kind = 'image'
       } else {
         setSavingStatus(t('Vui lòng mở camera hoặc tải ảnh lên trước.', 'Please open the camera or upload an image first.'))
         return
       }
       const dataUrl = canvas.toDataURL('image/jpeg', 0.92)
-      const file = dataUrlToFile(dataUrl, 'ai_vision_save.jpg')
-      const record = await saveVisionControlImage(file, {
-        user, lang, label: t('Ảnh lưu AI Doctor Vision', 'AI Doctor Vision saved photo'),
-      })
-      setSavingStatus(`${t('Đã lưu vào Upload Records', 'Saved to Upload Records')}: ${record.filename}`)
-      onCaptureSaved?.(record)
+      // Nếu có onPreviewCapture (prop từ parent): delegate về parent
+      if (onPreviewCapture) {
+        onPreviewCapture(dataUrl, kind)
+        setSavingStatus(t('Ảnh đã sẵn sàng — nhấn "Lưu ảnh" để xác nhận.', 'Ready — tap "Save photo" to confirm.'))
+        return
+      }
+      // Luồng nội bộ: hiện preview confirm (không tắt camera nếu đang dùng upload mode)
+      if (isCameraOpen) stopCamera()
+      setCapturePreview({ dataUrl, kind })
+      setSavingStatus('')
     } catch (error) {
       console.error('AI Vision save to upload failed:', error)
       setSavingStatus(t('Không thể lưu ảnh.', 'Could not save the photo.'))
-    } finally {
-      setDownloading(false)
     }
-  }, [isCameraOpen, uploadedImage, drawComposite, user, lang, onCaptureSaved])
+  }, [isCameraOpen, uploadedImage, drawComposite, stopCamera, onPreviewCapture])
 
   // ----- record -----
   const toggleRecord = useCallback(async () => {
