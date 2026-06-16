@@ -114,6 +114,26 @@ export default function StressReliefPanel({ onNext, nextLabel, onPrev, prevLabel
           <span>✨ {lang === 'en' ? 'Stay relaxed in app' : 'Thư giãn ngay trong trang'}</span>
         </div>
       </div>
+      
+      <div className="stress-relief-frame-card">
+        <iframe
+          title={lang === 'en' ? 'Captain Khanh Game' : 'Khánh đa vũ trụ Game'}
+          src="https://captain-khanh-game.vercel.app/"
+          className="stress-relief-frame"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+          allowFullScreen
+        />
+      </div>
+
+      <div className="stress-relief-frame-card">
+        <iframe
+          title={lang === 'en' ? 'Angry-bird Khanh Game' : 'Angry bird Game'}
+          src="https://angry-bird-nft-khanh.vercel.app/"
+          className="stress-relief-frame"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+          allowFullScreen
+        />
+      </div>
 
       <NavButtons onNext={onNext} nextLabel={nextLabel} onPrev={onPrev} prevLabel={prevLabel} />
     </div>
