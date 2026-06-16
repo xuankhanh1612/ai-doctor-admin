@@ -101,18 +101,12 @@ export default function StressReliefPanel({ onNext, nextLabel, onPrev, prevLabel
 
       <div className="stress-relief-frame-card">
         <iframe
-          title={lang === 'en' ? 'Stress Relief Corner' : 'Góc xả stress'}
-          src={STRESS_RELIEF_URL}
+          title={lang === 'en' ? 'Game-ticker-Knight-Platformer' : 'Game-ticker-Knight với Khánh'}
+          src="https://game-ticker-knight-khanh.vercel.app"
           className="stress-relief-frame"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
           allowFullScreen
         />
-        <div className="stress-relief-mask stress-relief-mask-top" aria-hidden="true">
-          <span>🌿 {lang === 'en' ? 'Focus breathing space' : 'Không gian thở chậm'}</span>
-        </div>
-        <div className="stress-relief-mask stress-relief-mask-bottom" aria-hidden="true">
-          <span>✨ {lang === 'en' ? 'Stay relaxed in app' : 'Thư giãn ngay trong trang'}</span>
-        </div>
       </div>
       
       <div className="stress-relief-frame-card">
@@ -135,6 +129,22 @@ export default function StressReliefPanel({ onNext, nextLabel, onPrev, prevLabel
         />
       </div>
 
+      <div className="stress-relief-frame-card">
+        <iframe
+          title={lang === 'en' ? 'Stress Relief Corner' : 'Góc xả stress'}
+          src={STRESS_RELIEF_URL}
+          className="stress-relief-frame"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+          allowFullScreen
+        />
+        <div className="stress-relief-mask stress-relief-mask-top" aria-hidden="true">
+          <span>🌿 {lang === 'en' ? 'Focus breathing space' : 'Không gian thở chậm'}</span>
+        </div>
+        <div className="stress-relief-mask stress-relief-mask-bottom" aria-hidden="true">
+          <span>✨ {lang === 'en' ? 'Stay relaxed in app' : 'Thư giãn ngay trong trang'}</span>
+        </div>
+      </div>
+      
       <NavButtons onNext={onNext} nextLabel={nextLabel} onPrev={onPrev} prevLabel={prevLabel} />
     </div>
   )
