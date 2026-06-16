@@ -26,6 +26,7 @@ export default function AIVisionWebcam({ onViewMedicalRecord, onCaptureSaved, on
   const canvasRef = useRef(null)
   const fileInputRef = useRef(null)
   const uploadedImageElRef = useRef(null)
+  const frameRef = useRef(null)
   const rafRef = useRef(null)
   const recorderRef = useRef(null)
   const recordChunksRef = useRef([])
@@ -64,6 +65,10 @@ export default function AIVisionWebcam({ onViewMedicalRecord, onCaptureSaved, on
   const [capturePreview, setCapturePreview] = useState(null)
   const [savingPreview, setSavingPreview] = useState(false)
 
+  // ----- letterbox rect: vị trí thực tế của ảnh upload trong frame -----
+  // { left, top, width, height } tính bằng px trong frame
+  const [imageRect, setImageRect] = useState(null)
+
   const vision = useMediaPipeVision()
   const visionRef = useRef(vision)
   visionRef.current = vision
@@ -73,6 +78,43 @@ export default function AIVisionWebcam({ onViewMedicalRecord, onCaptureSaved, on
     const timer = window.setInterval(() => setNow(new Date()), 1000)
     return () => window.clearInterval(timer)
   }, [])
+
+  // ----- letterbox rect: tính vị trí thực của ảnh upload trong frame -----
+  // object-fit:contain → ảnh được letterboxed, canvas overlay phải khớp đúng vùng đó
+  const calcImageRect = useCallback(() => {
+    const frame = frameRef.current
+    const img   = uploadedImageElRef.current
+    if (!frame || !img || !img.naturalWidth || !img.naturalHeight) {
+      setImageRect(null)
+      return
+    }
+    const fw = frame.clientWidth
+    const fh = frame.clientHeight
+    const iw = img.naturalWidth
+    const ih = img.naturalHeight
+    const scale = Math.min(fw / iw, fh / ih)
+    const rw = iw * scale
+    const rh = ih * scale
+    setImageRect({
+      left:   Math.round((fw - rw) / 2),
+      top:    Math.round((fh - rh) / 2),
+      width:  Math.round(rw),
+      height: Math.round(rh),
+    })
+  }, [])
+
+  useEffect(() => {
+    if (!uploadedImage) { setImageRect(null); return }
+    // Đợi img load xong rồi tính
+    const img = uploadedImageElRef.current
+    if (img?.complete && img.naturalWidth) calcImageRect()
+    // ResizeObserver: tính lại khi frame thay đổi kích thước
+    const frame = frameRef.current
+    if (!frame) return
+    const ro = new ResizeObserver(calcImageRect)
+    ro.observe(frame)
+    return () => ro.disconnect()
+  }, [uploadedImage, calcImageRect])
 
   // ----- camera lifecycle -----
   const stopCamera = useCallback(() => {
@@ -247,6 +289,8 @@ export default function AIVisionWebcam({ onViewMedicalRecord, onCaptureSaved, on
     const canvas = canvasRef.current
     if (!img || !canvas) return
     if (!img.complete || !img.naturalWidth) return
+    // Cập nhật letterbox rect khi ảnh load xong
+    calcImageRect()
     canvas.width = img.naturalWidth
     canvas.height = img.naturalHeight
     const ctx = canvas.getContext('2d')
@@ -263,7 +307,7 @@ export default function AIVisionWebcam({ onViewMedicalRecord, onCaptureSaved, on
     } catch (error) {
       console.error('MediaPipe image detection failed:', error)
     }
-  }, [showObjectDetection, showFaceMesh, showPose, drawLandmarks])
+  }, [showObjectDetection, showFaceMesh, showPose, drawLandmarks, calcImageRect])
 
   useEffect(() => {
     if (uploadedImage) runImageDetection()
@@ -487,7 +531,7 @@ export default function AIVisionWebcam({ onViewMedicalRecord, onCaptureSaved, on
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div className="wc-wrapper">
-        <div className="wc-frame">
+        <div className="wc-frame" ref={frameRef}>
           {isCameraOpen && (
             <video
               ref={videoRef}
@@ -504,7 +548,7 @@ export default function AIVisionWebcam({ onViewMedicalRecord, onCaptureSaved, on
               src={uploadedImage}
               alt="uploaded"
               className="wc-uploaded-image"
-              onLoad={runImageDetection}
+              onLoad={() => { runImageDetection(); calcImageRect() }}
             />
           )}
 
@@ -518,6 +562,7 @@ export default function AIVisionWebcam({ onViewMedicalRecord, onCaptureSaved, on
             now={now}
             canvasRef={canvasRef}
             clockInset={null}
+            imageRect={!isCameraOpen && uploadedImage ? imageRect : null}
           />
 
           {showingMedia && !capturePreview && (
