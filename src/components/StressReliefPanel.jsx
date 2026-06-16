@@ -1,11 +1,91 @@
-import React from 'react'
+import React, { useState } from 'react'
 import NavButtons from './NavButtons.jsx'
 import { useApp } from '../context/AppContext.jsx'
 
 const STRESS_RELIEF_URL = 'https://castle.xyz/d/t8p9l7o0N'
+const CUSTOM_GAMES_KEY = 'stress_relief_custom_games'
+
+const DEFAULT_GAMES = [
+  {
+    id: 'knight',
+    caption: 'Game Knight Platformer với Khánh',
+    captionEn: 'Knight Platformer Game',
+    src: 'https://game-ticker-knight-khanh.vercel.app',
+  },
+  {
+    id: 'captain',
+    caption: 'Khánh đa vũ trụ Game',
+    captionEn: 'Captain Khanh Game',
+    src: 'https://captain-khanh-game.vercel.app/',
+  },
+  {
+    id: 'angrybird',
+    caption: 'Angry Bird Game',
+    captionEn: 'Angry Bird Khanh Game',
+    src: 'https://angry-bird-nft-khanh.vercel.app/',
+  },
+  {
+    id: 'castle',
+    caption: 'Không gian thở chậm – Castle',
+    captionEn: 'Focus Breathing Space – Castle',
+    src: STRESS_RELIEF_URL,
+    hasMask: true,
+  },
+]
+
+function loadCustomGames() {
+  try {
+    const raw = localStorage.getItem(CUSTOM_GAMES_KEY)
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) ? parsed.filter(g => g?.caption && g?.src) : []
+  } catch {
+    return []
+  }
+}
+
+function saveCustomGames(games) {
+  localStorage.setItem(CUSTOM_GAMES_KEY, JSON.stringify(games))
+}
 
 export default function StressReliefPanel({ onNext, nextLabel, onPrev, prevLabel }) {
   const { lang } = useApp()
+  const [customGames, setCustomGames] = useState(loadCustomGames)
+  const [draftCaption, setDraftCaption] = useState('')
+  const [draftLink, setDraftLink] = useState('')
+  const [saveStatus, setSaveStatus] = useState(null)
+
+  const allGames = [...DEFAULT_GAMES, ...customGames]
+  const isDraftValid = draftCaption.trim().length > 0 && /^https?:\/\//i.test(draftLink.trim())
+
+  function handleAddGame() {
+    const caption = draftCaption.trim()
+    const src = draftLink.trim()
+    if (!caption || !/^https?:\/\//i.test(src)) {
+      setSaveStatus({ type: 'error', message: 'Vui lòng nhập Caption và Link hợp lệ (bắt đầu bằng http:// hoặc https://).' })
+      return
+    }
+    const dup = customGames.find(g => g.src === src)
+    if (dup) {
+      setSaveStatus({ type: 'error', message: `Link này đã tồn tại trong danh sách: "${dup.caption}".` })
+      return
+    }
+    const newGame = { id: `custom_${Date.now()}`, caption, captionEn: caption, src }
+    const updated = [...customGames, newGame]
+    setCustomGames(updated)
+    saveCustomGames(updated)
+    setDraftCaption('')
+    setDraftLink('')
+    setSaveStatus({ type: 'success', message: `Đã lưu game "${caption}" vào danh sách!` })
+    setTimeout(() => setSaveStatus(null), 3000)
+  }
+
+  function handleDeleteCustom(id) {
+    const updated = customGames.filter(g => g.id !== id)
+    setCustomGames(updated)
+    saveCustomGames(updated)
+    setSaveStatus({ type: 'success', message: 'Đã xoá game khỏi danh sách.' })
+    setTimeout(() => setSaveStatus(null), 2500)
+  }
 
   return (
     <div className="animate-fade stress-relief-page" style={{ padding: 28, display: 'flex', flexDirection: 'column', gap: 20, minHeight: 'calc(100vh - 96px)' }}>
@@ -74,15 +154,110 @@ export default function StressReliefPanel({ onNext, nextLabel, onPrev, prevLabel
           height: clamp(64px, 8.6vw, 102px);
           border-radius: 28px 28px 16px 16px;
         }
+        .sr-game-list {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 12px;
+        }
+        .sr-game-list-item {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 10px 14px;
+          border-radius: 12px;
+          border: 1px solid var(--border);
+          background: var(--surface2);
+          position: relative;
+        }
+        .sr-game-badge {
+          width: 30px;
+          height: 30px;
+          min-width: 30px;
+          border-radius: 8px;
+          background: rgba(0,229,255,0.12);
+          border: 1px solid rgba(0,229,255,0.22);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 15px;
+        }
+        .sr-game-caption {
+          font-size: 12px;
+          font-weight: 700;
+          color: var(--text);
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          flex: 1;
+          min-width: 0;
+        }
+        .sr-game-url {
+          font-size: 9px;
+          color: var(--text3);
+          margin-top: 2px;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .sr-delete-btn {
+          background: none;
+          border: none;
+          color: var(--text3);
+          cursor: pointer;
+          font-size: 14px;
+          padding: 2px 5px;
+          border-radius: 6px;
+          transition: color 0.15s;
+          flex-shrink: 0;
+        }
+        .sr-delete-btn:hover { color: #ff6b6b; }
+        .sr-add-input {
+          width: 100%;
+          border-radius: 12px;
+          border: 1px solid var(--border);
+          background: var(--surface2);
+          color: var(--text);
+          padding: 11px 13px;
+          font-family: inherit;
+          font-size: 12px;
+          box-sizing: border-box;
+        }
+        .sr-add-input:focus { outline: none; border-color: rgba(0,229,255,0.4); }
+        .sr-add-btn {
+          width: 100%;
+          border-radius: 12px;
+          padding: 11px 12px;
+          font-family: inherit;
+          font-weight: 900;
+          font-size: 12px;
+          cursor: pointer;
+          transition: background 0.15s, color 0.15s;
+          box-sizing: border-box;
+        }
+        .sr-section-title {
+          font-size: 13px;
+          font-weight: 900;
+          color: var(--text2);
+          margin: 0 0 10px 0;
+          display: flex;
+          align-items: center;
+          gap: 7px;
+        }
         @media (max-width: 760px) {
-          .stress-relief-page { padding: 16px !important; }
+          .stress-relief-page { padding: 14px !important; }
           .stress-relief-frame-card, .stress-relief-frame { min-height: 70vh; }
           .stress-relief-mask { left: 6px; right: 6px; }
           .stress-relief-mask-top { top: 6px; height: 58px; border-radius: 14px 14px 22px 22px; }
           .stress-relief-mask-bottom { bottom: 6px; height: 76px; border-radius: 22px 22px 14px 14px; }
           .stress-relief-mask span { font-size: 10px; padding: 6px 10px; }
+          .sr-game-list { grid-template-columns: 1fr; gap: 8px; }
+          .sr-game-caption { font-size: 11px; }
+          .sr-add-input { font-size: 11px; padding: 10px 11px; }
+          .sr-add-btn { font-size: 11px; padding: 10px 12px; }
         }
       `}</style>
+
+      {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
         <div>
           <h2 style={{ fontSize: 24, fontWeight: 900, color: '#fff', margin: 0 }}>
@@ -94,57 +269,116 @@ export default function StressReliefPanel({ onNext, nextLabel, onPrev, prevLabel
               : 'Không gian nhúng để xả stress nhanh, thở chậm và cân bằng lại cảm xúc.'}
           </p>
         </div>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 999, background: 'rgba(0,229,255,0.10)', color: 'var(--cyan)', border: '1px solid rgba(0,229,255,0.20)', fontSize: 11, fontWeight: 900 }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 999, background: 'rgba(0,229,255,0.10)', color: 'var(--cyan)', border: '1px solid rgba(0,229,255,0.20)', fontSize: 11, fontWeight: 900, whiteSpace: 'nowrap' }}>
           🌿 {lang === 'en' ? 'RELAX MODE' : 'CHẾ ĐỘ THƯ GIÃN'}
         </span>
       </div>
 
-      <div className="stress-relief-frame-card">
-        <iframe
-          title={lang === 'en' ? 'Game-ticker-Knight-Platformer' : 'Game-ticker-Knight với Khánh'}
-          src="https://game-ticker-knight-khanh.vercel.app"
-          className="stress-relief-frame"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
-          allowFullScreen
-        />
-      </div>
-      
-      <div className="stress-relief-frame-card">
-        <iframe
-          title={lang === 'en' ? 'Captain Khanh Game' : 'Khánh đa vũ trụ Game'}
-          src="https://captain-khanh-game.vercel.app/"
-          className="stress-relief-frame"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
-          allowFullScreen
-        />
+      {/* Game List */}
+      <div style={{ borderRadius: 16, border: '1px solid var(--border)', background: 'var(--surface)', padding: '18px 18px 14px' }}>
+        <p className="sr-section-title">
+          🎮 {lang === 'en' ? 'Game List' : 'Danh sách Game'}
+          <span style={{ fontSize: 10, fontWeight: 400, color: 'var(--text3)', marginLeft: 4 }}>
+            ({allGames.length} games)
+          </span>
+        </p>
+        <div className="sr-game-list">
+          {allGames.map((game, idx) => {
+            const isCustom = !DEFAULT_GAMES.find(d => d.id === game.id)
+            const icons = ['🕹️', '🚀', '🐦', '🌿']
+            const icon = isCustom ? '⭐' : (icons[idx] || '🎮')
+            return (
+              <div className="sr-game-list-item" key={game.id}>
+                <div className="sr-game-badge">{icon}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="sr-game-caption">{lang === 'en' ? game.captionEn : game.caption}</div>
+                  <div className="sr-game-url">{game.src.replace(/^https?:\/\//, '').slice(0, 40)}{game.src.length > 47 ? '…' : ''}</div>
+                </div>
+                {isCustom && (
+                  <button className="sr-delete-btn" title="Xoá game này" onClick={() => handleDeleteCustom(game.id)}>✕</button>
+                )}
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Add Custom Game Form */}
+        <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
+          <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text3)', margin: '0 0 8px 0' }}>
+            {lang === 'en' ? '➕ Add your favourite game' : '➕ Thêm game yêu thích của bạn'}
+          </p>
+          <input
+            className="sr-add-input"
+            style={{ marginBottom: 8 }}
+            value={draftCaption}
+            onChange={e => { setDraftCaption(e.target.value); setSaveStatus(null) }}
+            placeholder={lang === 'en' ? 'Game caption (e.g. My favourite game)' : 'Caption game (vd: Game yêu thích của tôi)'}
+          />
+          <input
+            className="sr-add-input"
+            style={{ marginBottom: 8 }}
+            value={draftLink}
+            onChange={e => { setDraftLink(e.target.value); setSaveStatus(null) }}
+            placeholder="Link game (https://...)"
+          />
+          <button
+            type="button"
+            className="sr-add-btn"
+            onClick={handleAddGame}
+            disabled={!isDraftValid}
+            style={{
+              border: `1px solid ${isDraftValid ? 'rgba(0,229,255,0.3)' : 'var(--border)'}`,
+              background: isDraftValid ? 'rgba(0,229,255,0.08)' : 'var(--surface2)',
+              color: isDraftValid ? 'var(--cyan)' : 'var(--text3)',
+              opacity: isDraftValid ? 1 : 0.7,
+              cursor: isDraftValid ? 'pointer' : 'not-allowed',
+            }}
+          >
+            + Save Caption and Link for Game
+          </button>
+          {saveStatus && (
+            <div style={{
+              marginTop: 8,
+              fontSize: 10,
+              lineHeight: 1.5,
+              color: saveStatus.type === 'success' ? 'var(--green)' : 'var(--amber)',
+            }}>
+              {saveStatus.message}
+            </div>
+          )}
+          {!saveStatus && (draftCaption || draftLink) && (
+            <div style={{ marginTop: 8, fontSize: 10, color: isDraftValid ? 'var(--text3)' : 'var(--amber)' }}>
+              {isDraftValid
+                ? (lang === 'en' ? 'Ready to save.' : 'Sẵn sàng lưu game.')
+                : (lang === 'en' ? 'Please fill in Caption and a valid Link (http:// or https://).' : 'Vui lòng nhập Caption và Link hợp lệ (http:// hoặc https://).')}
+            </div>
+          )}
+        </div>
       </div>
 
-      <div className="stress-relief-frame-card">
-        <iframe
-          title={lang === 'en' ? 'Angry-bird Khanh Game' : 'Angry bird Game'}
-          src="https://angry-bird-nft-khanh.vercel.app/"
-          className="stress-relief-frame"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
-          allowFullScreen
-        />
-      </div>
+      {/* iFrames */}
+      {allGames.map((game) => (
+        <div className="stress-relief-frame-card" key={game.id}>
+          <iframe
+            title={lang === 'en' ? game.captionEn : game.caption}
+            src={game.src}
+            className="stress-relief-frame"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+            allowFullScreen
+          />
+          {game.hasMask && (
+            <>
+              <div className="stress-relief-mask stress-relief-mask-top" aria-hidden="true">
+                <span>🌿 {lang === 'en' ? 'Focus breathing space' : 'Không gian thở chậm'}</span>
+              </div>
+              <div className="stress-relief-mask stress-relief-mask-bottom" aria-hidden="true">
+                <span>✨ {lang === 'en' ? 'Stay relaxed in app' : 'Thư giãn ngay trong trang'}</span>
+              </div>
+            </>
+          )}
+        </div>
+      ))}
 
-      <div className="stress-relief-frame-card">
-        <iframe
-          title={lang === 'en' ? 'Stress Relief Corner' : 'Góc xả stress'}
-          src={STRESS_RELIEF_URL}
-          className="stress-relief-frame"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
-          allowFullScreen
-        />
-        <div className="stress-relief-mask stress-relief-mask-top" aria-hidden="true">
-          <span>🌿 {lang === 'en' ? 'Focus breathing space' : 'Không gian thở chậm'}</span>
-        </div>
-        <div className="stress-relief-mask stress-relief-mask-bottom" aria-hidden="true">
-          <span>✨ {lang === 'en' ? 'Stay relaxed in app' : 'Thư giãn ngay trong trang'}</span>
-        </div>
-      </div>
-      
       <NavButtons onNext={onNext} nextLabel={nextLabel} onPrev={onPrev} prevLabel={prevLabel} />
     </div>
   )
