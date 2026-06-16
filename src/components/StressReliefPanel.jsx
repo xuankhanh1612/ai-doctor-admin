@@ -33,6 +33,8 @@ const DEFAULT_GAMES = [
   },
 ]
 
+const ICONS = ['🕹️', '🚀', '🐦', '🌿']
+
 function loadCustomGames() {
   try {
     const raw = localStorage.getItem(CUSTOM_GAMES_KEY)
@@ -50,11 +52,13 @@ function saveCustomGames(games) {
 export default function StressReliefPanel({ onNext, nextLabel, onPrev, prevLabel }) {
   const { lang } = useApp()
   const [customGames, setCustomGames] = useState(loadCustomGames)
+  const [selectedId, setSelectedId] = useState(DEFAULT_GAMES[0].id)
   const [draftCaption, setDraftCaption] = useState('')
   const [draftLink, setDraftLink] = useState('')
   const [saveStatus, setSaveStatus] = useState(null)
 
   const allGames = [...DEFAULT_GAMES, ...customGames]
+  const selectedGame = allGames.find(g => g.id === selectedId) || allGames[0]
   const isDraftValid = draftCaption.trim().length > 0 && /^https?:\/\//i.test(draftLink.trim())
 
   function handleAddGame() {
@@ -66,7 +70,7 @@ export default function StressReliefPanel({ onNext, nextLabel, onPrev, prevLabel
     }
     const dup = customGames.find(g => g.src === src)
     if (dup) {
-      setSaveStatus({ type: 'error', message: `Link này đã tồn tại trong danh sách: "${dup.caption}".` })
+      setSaveStatus({ type: 'error', message: `Link này đã tồn tại: "${dup.caption}".` })
       return
     }
     const newGame = { id: `custom_${Date.now()}`, caption, captionEn: caption, src }
@@ -75,6 +79,7 @@ export default function StressReliefPanel({ onNext, nextLabel, onPrev, prevLabel
     saveCustomGames(updated)
     setDraftCaption('')
     setDraftLink('')
+    setSelectedId(newGame.id)
     setSaveStatus({ type: 'success', message: `Đã lưu game "${caption}" vào danh sách!` })
     setTimeout(() => setSaveStatus(null), 3000)
   }
@@ -83,6 +88,7 @@ export default function StressReliefPanel({ onNext, nextLabel, onPrev, prevLabel
     const updated = customGames.filter(g => g.id !== id)
     setCustomGames(updated)
     saveCustomGames(updated)
+    if (selectedId === id) setSelectedId(DEFAULT_GAMES[0].id)
     setSaveStatus({ type: 'success', message: 'Đã xoá game khỏi danh sách.' })
     setTimeout(() => setSaveStatus(null), 2500)
   }
@@ -157,7 +163,7 @@ export default function StressReliefPanel({ onNext, nextLabel, onPrev, prevLabel
         .sr-game-list {
           display: grid;
           grid-template-columns: repeat(2, 1fr);
-          gap: 12px;
+          gap: 10px;
         }
         .sr-game-list-item {
           display: flex;
@@ -167,7 +173,19 @@ export default function StressReliefPanel({ onNext, nextLabel, onPrev, prevLabel
           border-radius: 12px;
           border: 1px solid var(--border);
           background: var(--surface2);
+          cursor: pointer;
+          transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
           position: relative;
+          user-select: none;
+        }
+        .sr-game-list-item:hover {
+          border-color: rgba(0,229,255,0.35);
+          background: rgba(0,229,255,0.05);
+        }
+        .sr-game-list-item.active {
+          border-color: rgba(0,229,255,0.6);
+          background: rgba(0,229,255,0.10);
+          box-shadow: 0 0 0 2px rgba(0,229,255,0.18);
         }
         .sr-game-badge {
           width: 30px;
@@ -181,6 +199,10 @@ export default function StressReliefPanel({ onNext, nextLabel, onPrev, prevLabel
           justify-content: center;
           font-size: 15px;
         }
+        .sr-game-list-item.active .sr-game-badge {
+          background: rgba(0,229,255,0.22);
+          border-color: rgba(0,229,255,0.5);
+        }
         .sr-game-caption {
           font-size: 12px;
           font-weight: 700;
@@ -191,6 +213,7 @@ export default function StressReliefPanel({ onNext, nextLabel, onPrev, prevLabel
           flex: 1;
           min-width: 0;
         }
+        .sr-game-list-item.active .sr-game-caption { color: var(--cyan); }
         .sr-game-url {
           font-size: 9px;
           color: var(--text3);
@@ -198,6 +221,13 @@ export default function StressReliefPanel({ onNext, nextLabel, onPrev, prevLabel
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
+        }
+        .sr-active-dot {
+          width: 7px; height: 7px;
+          border-radius: 50%;
+          background: var(--cyan);
+          flex-shrink: 0;
+          box-shadow: 0 0 6px rgba(0,229,255,0.7);
         }
         .sr-delete-btn {
           background: none;
@@ -209,6 +239,7 @@ export default function StressReliefPanel({ onNext, nextLabel, onPrev, prevLabel
           border-radius: 6px;
           transition: color 0.15s;
           flex-shrink: 0;
+          z-index: 1;
         }
         .sr-delete-btn:hover { color: #ff6b6b; }
         .sr-add-input {
@@ -234,14 +265,18 @@ export default function StressReliefPanel({ onNext, nextLabel, onPrev, prevLabel
           transition: background 0.15s, color 0.15s;
           box-sizing: border-box;
         }
-        .sr-section-title {
-          font-size: 13px;
-          font-weight: 900;
-          color: var(--text2);
-          margin: 0 0 10px 0;
+        .sr-now-playing {
           display: flex;
           align-items: center;
-          gap: 7px;
+          gap: 8px;
+          padding: 7px 14px;
+          border-radius: 10px;
+          background: rgba(0,229,255,0.07);
+          border: 1px solid rgba(0,229,255,0.18);
+          font-size: 11px;
+          font-weight: 700;
+          color: var(--cyan);
+          margin-bottom: 4px;
         }
         @media (max-width: 760px) {
           .stress-relief-page { padding: 14px !important; }
@@ -265,8 +300,8 @@ export default function StressReliefPanel({ onNext, nextLabel, onPrev, prevLabel
           </h2>
           <p style={{ color: 'var(--text2)', fontSize: 12, marginTop: 6, lineHeight: 1.6 }}>
             {lang === 'en'
-              ? 'A calming embedded experience for quick decompression, breathing space, and emotional reset.'
-              : 'Không gian nhúng để xả stress nhanh, thở chậm và cân bằng lại cảm xúc.'}
+              ? 'Click a game to load it. A calming space for quick decompression and emotional reset.'
+              : 'Nhấn vào game muốn chơi để load. Không gian xả stress nhanh và cân bằng cảm xúc.'}
           </p>
         </div>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 999, background: 'rgba(0,229,255,0.10)', color: 'var(--cyan)', border: '1px solid rgba(0,229,255,0.20)', fontSize: 11, fontWeight: 900, whiteSpace: 'nowrap' }}>
@@ -274,35 +309,45 @@ export default function StressReliefPanel({ onNext, nextLabel, onPrev, prevLabel
         </span>
       </div>
 
-      {/* Game List */}
+      {/* Game Picker Card */}
       <div style={{ borderRadius: 16, border: '1px solid var(--border)', background: 'var(--surface)', padding: '18px 18px 14px' }}>
-        <p className="sr-section-title">
+        <p style={{ fontSize: 13, fontWeight: 900, color: 'var(--text2)', margin: '0 0 10px 0', display: 'flex', alignItems: 'center', gap: 7 }}>
           🎮 {lang === 'en' ? 'Game List' : 'Danh sách Game'}
           <span style={{ fontSize: 10, fontWeight: 400, color: 'var(--text3)', marginLeft: 4 }}>
-            ({allGames.length} games)
+            ({allGames.length} games — {lang === 'en' ? 'tap to switch' : 'nhấn để chuyển'})
           </span>
         </p>
+
         <div className="sr-game-list">
           {allGames.map((game, idx) => {
             const isCustom = !DEFAULT_GAMES.find(d => d.id === game.id)
-            const icons = ['🕹️', '🚀', '🐦', '🌿']
-            const icon = isCustom ? '⭐' : (icons[idx] || '🎮')
+            const icon = isCustom ? '⭐' : (ICONS[idx] || '🎮')
+            const isActive = game.id === selectedId
             return (
-              <div className="sr-game-list-item" key={game.id}>
+              <div
+                className={`sr-game-list-item${isActive ? ' active' : ''}`}
+                key={game.id}
+                onClick={() => setSelectedId(game.id)}
+              >
                 <div className="sr-game-badge">{icon}</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div className="sr-game-caption">{lang === 'en' ? game.captionEn : game.caption}</div>
-                  <div className="sr-game-url">{game.src.replace(/^https?:\/\//, '').slice(0, 40)}{game.src.length > 47 ? '…' : ''}</div>
+                  <div className="sr-game-url">{game.src.replace(/^https?:\/\//, '').slice(0, 38)}{game.src.replace(/^https?:\/\//, '').length > 38 ? '…' : ''}</div>
                 </div>
+                {isActive && <div className="sr-active-dot" />}
                 {isCustom && (
-                  <button className="sr-delete-btn" title="Xoá game này" onClick={() => handleDeleteCustom(game.id)}>✕</button>
+                  <button
+                    className="sr-delete-btn"
+                    title="Xoá game này"
+                    onClick={e => { e.stopPropagation(); handleDeleteCustom(game.id) }}
+                  >✕</button>
                 )}
               </div>
             )
           })}
         </div>
 
-        {/* Add Custom Game Form */}
+        {/* Add Custom Game */}
         <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
           <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text3)', margin: '0 0 8px 0' }}>
             {lang === 'en' ? '➕ Add your favourite game' : '➕ Thêm game yêu thích của bạn'}
@@ -337,12 +382,7 @@ export default function StressReliefPanel({ onNext, nextLabel, onPrev, prevLabel
             + Save Caption and Link for Game
           </button>
           {saveStatus && (
-            <div style={{
-              marginTop: 8,
-              fontSize: 10,
-              lineHeight: 1.5,
-              color: saveStatus.type === 'success' ? 'var(--green)' : 'var(--amber)',
-            }}>
+            <div style={{ marginTop: 8, fontSize: 10, lineHeight: 1.5, color: saveStatus.type === 'success' ? 'var(--green)' : 'var(--amber)' }}>
               {saveStatus.message}
             </div>
           )}
@@ -356,28 +396,33 @@ export default function StressReliefPanel({ onNext, nextLabel, onPrev, prevLabel
         </div>
       </div>
 
-      {/* iFrames */}
-      {allGames.map((game) => (
-        <div className="stress-relief-frame-card" key={game.id}>
-          <iframe
-            title={lang === 'en' ? game.captionEn : game.caption}
-            src={game.src}
-            className="stress-relief-frame"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
-            allowFullScreen
-          />
-          {game.hasMask && (
-            <>
-              <div className="stress-relief-mask stress-relief-mask-top" aria-hidden="true">
-                <span>🌿 {lang === 'en' ? 'Focus breathing space' : 'Không gian thở chậm'}</span>
-              </div>
-              <div className="stress-relief-mask stress-relief-mask-bottom" aria-hidden="true">
-                <span>✨ {lang === 'en' ? 'Stay relaxed in app' : 'Thư giãn ngay trong trang'}</span>
-              </div>
-            </>
-          )}
-        </div>
-      ))}
+      {/* Single Active Game iFrame */}
+      <div className="sr-now-playing">
+        <span>▶</span>
+        <span>{lang === 'en' ? 'Now playing:' : 'Đang chơi:'}</span>
+        <span style={{ fontWeight: 400, color: '#fff' }}>{lang === 'en' ? selectedGame.captionEn : selectedGame.caption}</span>
+      </div>
+
+      <div className="stress-relief-frame-card">
+        <iframe
+          key={selectedGame.id}
+          title={lang === 'en' ? selectedGame.captionEn : selectedGame.caption}
+          src={selectedGame.src}
+          className="stress-relief-frame"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+          allowFullScreen
+        />
+        {selectedGame.hasMask && (
+          <>
+            <div className="stress-relief-mask stress-relief-mask-top" aria-hidden="true">
+              <span>🌿 {lang === 'en' ? 'Focus breathing space' : 'Không gian thở chậm'}</span>
+            </div>
+            <div className="stress-relief-mask stress-relief-mask-bottom" aria-hidden="true">
+              <span>✨ {lang === 'en' ? 'Stay relaxed in app' : 'Thư giãn ngay trong trang'}</span>
+            </div>
+          </>
+        )}
+      </div>
 
       <NavButtons onNext={onNext} nextLabel={nextLabel} onPrev={onPrev} prevLabel={prevLabel} />
     </div>
