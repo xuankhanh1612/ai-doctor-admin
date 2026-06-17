@@ -411,8 +411,6 @@ export default function MedicalUploader({ patientId, onSelectImage }) {
   const [apiKey, setApiKey]               = useState('')
   const [showApiInput, setShowApiInput]   = useState(false)
   const [notes, setNotes]                 = useState('')
-  const [inbodyOcrResult, setInbodyOcrResult] = useState(null)   // null | { stream, done, confirmed }
-  const [inbodyOcrRunning, setInbodyOcrRunning] = useState(false)
   const [cameraOpen, setCameraOpen]       = useState(false)
   const [cameraStarting, setCameraStarting] = useState(false)
   const [cameraError, setCameraError]     = useState('')
@@ -642,122 +640,17 @@ export default function MedicalUploader({ patientId, onSelectImage }) {
     return record
   }
 
-  async function runInBodyImageOcr() {
+  async function convertSelectedInBodyImageToCsv() {
     if (!selected || selected.fileType === 'csv') return
-    if (!apiKey) { setShowApiInput(true); return }
-
-    setInbodyOcrRunning(true)
-    setInbodyOcrResult({ stream: '', done: false, confirmed: false, csvText: null, parsedRow: null })
-
-    const ocrPrompt = `Bạn là chuyên gia đọc kết quả InBody. Hãy OCR toàn bộ hình ảnh InBody này và trích xuất CHÍNH XÁC các thông số sau (trả về JSON thuần, không markdown):
-
-{
-  "ngày": "YYYYMMDDHHMMSS hoặc YYYYMMDD",
-  "Thiết bị đo": "tên máy InBody",
-  "Cân nặng(kg)": số,
-  "Khối lượng cơ xương(kg)": số,
-  "Khối lượng mỡ trong cơ thể(kg)": số,
-  "BMI(kg/m²)": số,
-  "Tỷ lệ mỡ cơ thể(%)": số,
-  "Tỷ lệ trao đổi chất cơ bản(kcal)": số,
-  "Điểm InBody": số,
-  "Lượng nước trong cơ thể(L)": số,
-  "Nước nội bào(L)": số,
-  "Nước ngoại bào(L)": số,
-  "Tỷ lệ ECW": số,
-  "Mức độ chất béo nội tạng(Level)": số,
-  "Protein(kg)": số,
-  "Khoáng chất(kg)": số,
-  "Góc pha toàn bộ cơ thể(°)": số,
-  "Khối lượng cơ ở cánh tay phải(kg)": số,
-  "Khối lượng cơ ở cánh tay trái(kg)": số,
-  "Khối lượng cơ ở thân mình(kg)": số,
-  "Khối lượng cơ ở chân phải(kg)": số,
-  "Khối lượng cơ ở chân trái(kg)": số
-}
-
-Nếu không đọc được một giá trị, để null. Chỉ trả về JSON, không giải thích thêm.`
-
-    try {
-      const body = {
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1500,
-        stream: true,
-        messages: [{
-          role: 'user',
-          content: [
-            { type: 'image', source: { type: 'base64', media_type: selected.mimeType || 'image/jpeg', data: selected.base64Data } },
-            { type: 'text', text: ocrPrompt },
-          ],
-        }],
-      }
-
-      const resp = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-        },
-        body: JSON.stringify(body),
-      })
-
-      if (!resp.ok) {
-        const err = await resp.json()
-        throw new Error(err.error?.message || 'API error')
-      }
-
-      const reader = resp.body.getReader()
-      const decoder = new TextDecoder()
-      let fullText = ''
-
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        const chunk = decoder.decode(value)
-        for (const line of chunk.split('\n').filter(l => l.startsWith('data: '))) {
-          try {
-            const data = JSON.parse(line.slice(6))
-            if (data.type === 'content_block_delta' && data.delta?.text) {
-              fullText += data.delta.text
-              setInbodyOcrResult(prev => ({ ...prev, stream: fullText }))
-            }
-          } catch {}
-        }
-      }
-
-      // Parse JSON from OCR result
-      let parsedRow = null
-      let csvText = null
-      try {
-        const clean = fullText.replace(/```json|```/g, '').trim()
-        parsedRow = JSON.parse(clean)
-        // Build CSV using existing helper
-        const existingCsv = records.find(r => r.fileType === 'csv' && r.textContent)
-        const fallback = existingCsv ? parseInBodyCsv(recordText(existingCsv)).at(-1) : null
-        const converted = buildImageConvertedInBodyRecord({ analysis: { summary: fullText, parsedOcr: parsedRow }, fallback, sourceName: selected.filename, ocrRow: parsedRow })
-        csvText = recordsToInBodyCsv([converted])
-      } catch {
-        csvText = null
-      }
-
-      setInbodyOcrResult({ stream: fullText, done: true, confirmed: false, csvText, parsedRow })
-
-    } catch (err) {
-      setInbodyOcrResult({ stream: `❌ Lỗi OCR: ${err instanceof Error ? err.message : 'Không xác định'}`, done: true, confirmed: false, csvText: null, parsedRow: null })
-    } finally {
-      setInbodyOcrRunning(false)
-    }
-  }
-
-  async function confirmSaveInBodyCsv() {
-    if (!inbodyOcrResult?.csvText || !selected) return
+    const existingCsv = records.find(record => record.fileType === 'csv' && record.textContent)
+    const fallback = existingCsv ? parseInBodyCsv(recordText(existingCsv)).at(-1) : null
+    const converted = buildImageConvertedInBodyRecord({ analysis: selected.aiAnalysis, fallback, sourceName: selected.filename })
+    const csvText = recordsToInBodyCsv([converted])
     const safeName = selected.filename.replace(/\.[^.]+$/, '').replace(/[^a-z0-9._-]+/gi, '_') || 'InBody_Image'
-    await saveCsvRecordFromText(inbodyOcrResult.csvText, `${safeName}_converted.csv`, {
+    await saveCsvRecordFromText(csvText, `${safeName}_converted.csv`, {
       notes: `Converted from InBody image: ${selected.filename}`,
       convertedFromRecordId: selected.id,
     })
-    setInbodyOcrResult(null)
   }
 
   // ─── AI Analysis (gọi thẳng Anthropic API, stream) ─────────────────────
@@ -1075,23 +968,20 @@ Trả lời bằng tiếng Việt, ngắn gọn và rõ ràng. Nhắc nhở đâ
             cursor: 'pointer', fontSize: 12, marginBottom: 20,
           }}>← {uploadText(lang, 'backToLibrary')}</button>
 
-          {/* ── TOP ROW: Image (large) + OCR Confirm panel ── */}
-          <div style={{ display: 'grid', gridTemplateColumns: selected.fileType === 'csv' ? '1fr' : '1.6fr 1fr', gap: 20, marginBottom: 20 }}>
-
-            {/* LEFT: Large Preview */}
+          <div style={{ display: 'grid', gridTemplateColumns: selected.fileType === 'csv' ? 'minmax(0,1.35fr) minmax(320px,0.65fr)' : '1fr 1fr', gap: 20 }}>
+            {/* Left: Preview */}
             <div>
               <div style={{
                 background: '#000', borderRadius: 14, overflow: 'hidden',
                 border: '1px solid rgba(255,255,255,0.08)', marginBottom: 14,
-                minHeight: selected.fileType === 'csv' ? 280 : 560,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                minHeight: 280, display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>
                 {selected.fileType === 'csv' ? (
                   <div style={{ width: '100%', padding: 14, boxSizing: 'border-box' }}>
                     <InBodyCsvDashboard record={selected} />
                   </div>
                 ) : selected.mimeType?.startsWith('video/') ? (
-                  <video src={selected.dataUrl} controls style={{ maxWidth: '100%', maxHeight: 560, borderRadius: 8 }} />
+                  <video src={selected.dataUrl} controls style={{ maxWidth: '100%', maxHeight: 320, borderRadius: 8 }} />
                 ) : selected.mimeType === 'application/pdf' ? (
                   <div style={{ textAlign: 'center', padding: 32 }}>
                     <div style={{ fontSize: 48, marginBottom: 12 }}>📄</div>
@@ -1105,10 +995,10 @@ Trả lời bằng tiếng Việt, ngắn gọn và rõ ràng. Nhắc nhở đâ
                     >🔬 {uploadText(lang, 'useForCompare')}</button>
                   </div>
                 ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: '12px 0', width: '100%' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: '12px 0' }}>
                     <img
                       src={selected.dataUrl} alt={selected.filename}
-                      style={{ maxWidth: '100%', maxHeight: 560, objectFit: 'contain', borderRadius: 8, cursor: 'pointer' }}
+                      style={{ maxWidth: '100%', maxHeight: 320, objectFit: 'contain', borderRadius: 8, cursor: 'pointer' }}
                       onClick={() => onSelectImage?.(selected.dataUrl, records, { selectedRecord: selected })}
                     />
                     <button
@@ -1130,23 +1020,12 @@ Trả lời bằng tiếng Việt, ngắn gọn và rõ ràng. Nhắc nhở đâ
                 <MetaRow k={uploadText(lang, 'uploaded')} v={new Date(selected.uploadedAt).toLocaleString('vi-VN')} />
               </div>
 
-              {/* Convert button */}
               {selected.fileType !== 'csv' && selected.fileType !== 'pdf' && (
-                <button
-                  onClick={runInBodyImageOcr}
-                  disabled={inbodyOcrRunning}
-                  style={{
-                    marginTop: 12, width: '100%', padding: '11px 14px', borderRadius: 10,
-                    cursor: inbodyOcrRunning ? 'wait' : 'pointer',
-                    background: inbodyOcrRunning
-                      ? 'rgba(179,255,95,0.08)'
-                      : 'linear-gradient(135deg,rgba(179,255,95,0.22),rgba(0,229,255,0.12))',
-                    border: '1px solid rgba(179,255,95,0.35)',
-                    color: '#b3ff5f', fontSize: 12, fontWeight: 800,
-                    opacity: inbodyOcrRunning ? 0.7 : 1,
-                  }}>
-                  {inbodyOcrRunning ? '⏳ Đang OCR hình ảnh InBody…' : '📈 Convert InBody Image thành .CSV'}
-                </button>
+                <button onClick={convertSelectedInBodyImageToCsv} style={{
+                  marginTop: 12, width: '100%', padding: '11px 14px', borderRadius: 10, cursor: 'pointer',
+                  background: 'linear-gradient(135deg,rgba(179,255,95,0.22),rgba(0,229,255,0.12))', border: '1px solid rgba(179,255,95,0.35)',
+                  color: '#b3ff5f', fontSize: 12, fontWeight: 800,
+                }}>📈 Convert InBody Image thành .CSV</button>
               )}
 
               {/* Notes */}
@@ -1173,163 +1052,21 @@ Trả lời bằng tiếng Việt, ngắn gọn và rõ ràng. Nhắc nhở đâ
               </div>
             </div>
 
-            {/* RIGHT: OCR result + Confirm panel (only for image, non-csv) */}
-            {selected.fileType !== 'csv' && (
-              <div>
-                {/* When no OCR run yet and no AI analysis */}
-                {!inbodyOcrResult && !inbodyOcrRunning && (
-                  <div style={{
-                    background: 'rgba(179,255,95,0.03)', border: '1px dashed rgba(179,255,95,0.18)',
-                    borderRadius: 14, padding: '40px 24px', textAlign: 'center',
-                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14,
-                  }}>
-                    <div style={{ fontSize: 36 }}>📈</div>
-                    <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', lineHeight: 1.6 }}>
-                      Nhấn <strong style={{ color: '#b3ff5f' }}>📈 Convert InBody Image thành .CSV</strong> để OCR hình ảnh và xem kết quả trước khi lưu.
-                    </div>
-                    <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', fontFamily: 'monospace' }}>
-                      Cần Anthropic API key · OCR bằng Claude Vision
-                    </div>
-                  </div>
-                )}
-
-                {/* OCR Running */}
-                {inbodyOcrRunning && (
-                  <div style={{
-                    background: 'rgba(179,255,95,0.04)', border: '1px solid rgba(179,255,95,0.2)',
-                    borderRadius: 14, padding: 18,
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#b3ff5f', animation: 'pulse-dot 1s infinite' }} />
-                      <span style={{ fontSize: 12, color: '#b3ff5f', fontFamily: 'monospace', fontWeight: 700 }}>
-                        Claude đang OCR hình InBody…
-                      </span>
-                    </div>
-                    {inbodyOcrResult?.stream && (
-                      <pre style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', whiteSpace: 'pre-wrap', maxHeight: 400, overflowY: 'auto', fontFamily: 'monospace', margin: 0 }}>
-                        {inbodyOcrResult.stream}
-                      </pre>
-                    )}
-                  </div>
-                )}
-
-                {/* OCR Done — show result + confirm */}
-                {inbodyOcrResult?.done && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    {/* OCR raw stream */}
-                    <div style={{
-                      background: 'rgba(179,255,95,0.04)', border: '1px solid rgba(179,255,95,0.2)',
-                      borderRadius: 14, padding: 16,
-                    }}>
-                      <div style={{ fontSize: 11, color: '#b3ff5f', fontFamily: 'monospace', letterSpacing: '0.08em', marginBottom: 10 }}>
-                        📋 KẾT QUẢ OCR INBODY
-                      </div>
-                      <pre style={{
-                        fontSize: 11, color: 'rgba(255,255,255,0.8)', whiteSpace: 'pre-wrap',
-                        maxHeight: 320, overflowY: 'auto', fontFamily: 'monospace', margin: 0, lineHeight: 1.7,
-                      }}>
-                        {inbodyOcrResult.stream}
-                      </pre>
-                    </div>
-
-                    {/* Parsed metrics preview */}
-                    {inbodyOcrResult.parsedRow && (() => {
-                      const r = inbodyOcrResult.parsedRow
-                      const metrics = [
-                        ['Ngày đo', r['ngày'] || '-'],
-                        ['Thiết bị', r['Thiết bị đo'] || '-'],
-                        ['Cân nặng', r['Cân nặng(kg)'] != null ? `${r['Cân nặng(kg)']} kg` : '-'],
-                        ['Cơ xương', r['Khối lượng cơ xương(kg)'] != null ? `${r['Khối lượng cơ xương(kg)']} kg` : '-'],
-                        ['Mỡ cơ thể', r['Tỷ lệ mỡ cơ thể(%)'] != null ? `${r['Tỷ lệ mỡ cơ thể(%)']}%` : '-'],
-                        ['BMI', r['BMI(kg/m²)'] != null ? `${r['BMI(kg/m²)']}` : '-'],
-                        ['Điểm InBody', r['Điểm InBody'] != null ? `${r['Điểm InBody']}` : '-'],
-                        ['BMR', r['Tỷ lệ trao đổi chất cơ bản(kcal)'] != null ? `${r['Tỷ lệ trao đổi chất cơ bản(kcal)']} kcal` : '-'],
-                      ]
-                      return (
-                        <div style={{
-                          background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(179,255,95,0.25)',
-                          borderRadius: 14, padding: 14,
-                        }}>
-                          <div style={{ fontSize: 11, color: '#b3ff5f', fontFamily: 'monospace', letterSpacing: '0.08em', marginBottom: 10 }}>
-                            ✅ THÔNG SỐ ĐÃ NHẬN DẠNG
-                          </div>
-                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                            {metrics.map(([label, val]) => (
-                              <div key={label} style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 8, padding: '8px 10px' }}>
-                                <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.38)' }}>{label}</div>
-                                <div style={{ fontSize: 13, fontWeight: 700, color: '#fff', marginTop: 2, fontFamily: 'monospace' }}>{String(val)}</div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )
-                    })()}
-
-                    {/* Error / no parse */}
-                    {!inbodyOcrResult.parsedRow && !inbodyOcrResult.stream.startsWith('❌') && (
-                      <div style={{ padding: '10px 14px', background: 'rgba(255,183,77,0.08)', border: '1px solid rgba(255,183,77,0.2)', borderRadius: 8, fontSize: 12, color: 'rgba(255,183,77,0.85)' }}>
-                        ⚠️ Không parse được JSON từ kết quả OCR. Vui lòng thử lại hoặc dùng ảnh rõ hơn.
-                      </div>
-                    )}
-
-                    {/* Confirm save button */}
-                    {inbodyOcrResult.csvText && (
-                      <button
-                        onClick={confirmSaveInBodyCsv}
-                        style={{
-                          padding: '14px 20px', borderRadius: 12, cursor: 'pointer',
-                          background: 'linear-gradient(135deg,#00b8cc,#00e676)',
-                          border: 'none', color: '#000', fontSize: 14, fontWeight: 900,
-                          boxShadow: '0 4px 20px rgba(0,230,118,0.3)',
-                        }}>
-                        ✅ Xác nhận thông số InBody chính xác — Lưu thành file .CSV
-                      </button>
-                    )}
-
-                    {/* Retry */}
-                    <button
-                      onClick={runInBodyImageOcr}
-                      style={{
-                        padding: '9px 16px', borderRadius: 10, cursor: 'pointer',
-                        background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)',
-                        color: 'rgba(255,255,255,0.45)', fontSize: 12,
-                      }}>
-                      ↺ OCR lại
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* RIGHT for CSV: show insights */}
-            {selected.fileType === 'csv' && (
-              <div>
-                <div style={{ fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', fontFamily: 'monospace', marginBottom: 12 }}>
-                  {uploadText(lang, 'aiAnalysis')}
-                </div>
-                <CsvRecordInsights record={selected} />
-              </div>
-            )}
-          </div>
-
-          {/* ── BOTTOM: AI Analysis section (always below) ── */}
-          {selected.fileType !== 'csv' && (
-            <div style={{
-              borderTop: '1px solid rgba(255,255,255,0.07)',
-              paddingTop: 20, marginTop: 4,
-            }}>
-              <div style={{ fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', fontFamily: 'monospace', marginBottom: 14 }}>
+            {/* Right: AI Analysis */}
+            <div>
+              <div style={{ fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', fontFamily: 'monospace', marginBottom: 12 }}>
                 {uploadText(lang, 'aiAnalysis')}
               </div>
 
-              {!selected.aiAnalysis && !analyzing && !analysisStream && (
+              {selected.fileType === 'csv' ? (
+                <CsvRecordInsights record={selected} />
+              ) : !selected.aiAnalysis && !analyzing && !analysisStream && (
                 <div style={{
                   background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.1)',
-                  borderRadius: 14, padding: '32px 24px', textAlign: 'center', marginBottom: 14,
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12,
+                  borderRadius: 14, padding: '40px 24px', textAlign: 'center', marginBottom: 14,
                 }}>
-                  <div style={{ fontSize: 32 }}>🤖</div>
-                  <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)' }}>
+                  <div style={{ fontSize: 32, marginBottom: 12 }}>🤖</div>
+                  <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', marginBottom: 16 }}>
                     {uploadText(lang, 'aiAnalyzeHelp')}
                   </div>
                   <button onClick={() => analyzeWithAI(selected)} style={{
@@ -1338,7 +1075,7 @@ Trả lời bằng tiếng Việt, ngắn gọn và rõ ràng. Nhắc nhở đâ
                     color: '#fff', fontSize: 14, fontWeight: 600, border: 'none',
                   }}>▶ {uploadText(lang, 'analyzeWithClaude')}</button>
                   {!apiKey && (
-                    <div style={{ fontSize: 11, color: 'rgba(255,171,64,0.7)' }}>
+                    <div style={{ fontSize: 11, color: 'rgba(255,171,64,0.7)', marginTop: 10 }}>
                       {uploadText(lang, 'requiresKey')}
                       <button onClick={() => setShowApiInput(true)} style={{
                         background: 'none', border: 'none', color: '#ffb74d',
@@ -1375,6 +1112,7 @@ Trả lời bằng tiếng Việt, ngắn gọn và rõ ràng. Nhắc nhở đâ
                       {selected.aiAnalysis.summary}
                     </div>
                   </div>
+                  {/* Confidence bar */}
                   <div style={{ marginTop: 4 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'rgba(255,255,255,0.4)', marginBottom: 4 }}>
                       <span>{uploadText(lang, 'aiConfidence')}</span>
@@ -1395,7 +1133,7 @@ Trả lời bằng tiếng Việt, ngắn gọn và rõ ràng. Nhắc nhở đâ
                 </div>
               )}
             </div>
-          )}
+          </div>
         </div>
       )}
     </div>
