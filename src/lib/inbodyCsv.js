@@ -117,7 +117,7 @@ export function recordsToInBodyCsv(records = []) {
   return [INBODY_CSV_HEADERS.join(','), ...records.map(record => inBodyRecordToCsvRow(record).join(','))].join('\n')
 }
 
-export function buildImageConvertedInBodyRecord({ analysis, fallback, sourceName } = {}) {
+export function buildImageConvertedInBodyRecord({ analysis, fallback, sourceName, ocrRow } = {}) {
   const metrics = analysis?.metrics || {}
   const pick = (...keys) => {
     for (const key of keys) {
@@ -128,30 +128,47 @@ export function buildImageConvertedInBodyRecord({ analysis, fallback, sourceName
     return null
   }
   const base = fallback || {}
+
+  // If we have a real OCR-parsed row, use it directly
+  const ocr = ocrRow || {}
+  const ocrNum = (key) => {
+    const v = ocr[key]
+    const n = parseNumber(v)
+    return n !== null ? n : null
+  }
+
+  const rawDate = ocr['ngày'] ? String(ocr['ngày']).replace(/\D/g, '').slice(0, 14) : compactTimestamp()
+
   return {
     ...base,
-    rawDate: compactTimestamp(),
-    date: formatInBodyDate(compactTimestamp()),
-    device: 'image-convert',
+    rawDate,
+    date: formatInBodyDate(rawDate),
+    shortDate: formatInBodyDate(rawDate, { short: true }),
+    device: ocr['Thiết bị đo'] || 'image-ocr',
     sourceName,
-    weight: pick('Cân nặng', 'Weight', 'Cân nặng(kg)') ?? base.weight ?? 74.5,
-    skeletalMuscle: pick('Cơ xương', 'Skeletal Muscle Mass', 'Khối lượng cơ xương') ?? base.skeletalMuscle ?? base.muscle ?? 27.7,
-    muscle: pick('Cơ bắp', 'Cơ xương', 'Skeletal Muscle Mass') ?? base.muscle ?? base.skeletalMuscle ?? 27.7,
-    bodyFatMass: pick('Khối lượng mỡ', 'Body Fat Mass') ?? base.bodyFatMass ?? 24.5,
-    bmi: pick('BMI') ?? base.bmi ?? 27.4,
-    fat: pick('Mỡ (%)', 'Tỷ lệ mỡ', 'Percent Body Fat') ?? base.fat ?? 32.8,
-    bmr: pick('BMR', 'Tỷ lệ trao đổi chất cơ bản') ?? base.bmr ?? 1451,
-    score: pick('Điểm InBody', 'InBody Score') ?? base.score ?? 64,
-    water: pick('Nước', 'Lượng nước trong cơ thể') ?? base.water ?? 36.7,
-    intracellularWater: base.intracellularWater ?? 22.8,
-    extracellularWater: base.extracellularWater ?? 13.9,
-    ecwRatio: base.ecwRatio ?? 0.379,
-    visceralFatLevel: pick('Mỡ nội tạng', 'Visceral Fat Level') ?? base.visceralFatLevel ?? 10,
-    protein: base.protein ?? 9.9,
-    minerals: base.minerals ?? 3.4,
-    boneMineral: base.boneMineral ?? 2.84,
-    bodyCellMass: base.bodyCellMass ?? 32.7,
-    smi: base.smi ?? 7.7,
-    phaseAngle: base.phaseAngle ?? 5.7,
+    weight:             ocrNum('Cân nặng(kg)')                      ?? pick('Cân nặng', 'Weight', 'Cân nặng(kg)')         ?? base.weight ?? 74.5,
+    skeletalMuscle:     ocrNum('Khối lượng cơ xương(kg)')           ?? pick('Cơ xương', 'Skeletal Muscle Mass')            ?? base.skeletalMuscle ?? base.muscle ?? 27.7,
+    muscle:             ocrNum('Khối lượng cơ xương(kg)')           ?? pick('Cơ bắp', 'Cơ xương', 'Skeletal Muscle Mass') ?? base.muscle ?? base.skeletalMuscle ?? 27.7,
+    bodyFatMass:        ocrNum('Khối lượng mỡ trong cơ thể(kg)')    ?? pick('Khối lượng mỡ', 'Body Fat Mass')             ?? base.bodyFatMass ?? 24.5,
+    bmi:                ocrNum('BMI(kg/m²)')                         ?? pick('BMI')                                         ?? base.bmi ?? 27.4,
+    fat:                ocrNum('Tỷ lệ mỡ cơ thể(%)')                ?? pick('Mỡ (%)', 'Tỷ lệ mỡ', 'Percent Body Fat')    ?? base.fat ?? 32.8,
+    bmr:                ocrNum('Tỷ lệ trao đổi chất cơ bản(kcal)')  ?? pick('BMR', 'Tỷ lệ trao đổi chất cơ bản')         ?? base.bmr ?? 1451,
+    score:              ocrNum('Điểm InBody')                         ?? pick('Điểm InBody', 'InBody Score')                ?? base.score ?? 64,
+    water:              ocrNum('Lượng nước trong cơ thể(L)')         ?? pick('Nước', 'Lượng nước trong cơ thể')            ?? base.water ?? 36.7,
+    intracellularWater: ocrNum('Nước nội bào(L)')                    ?? base.intracellularWater ?? 22.8,
+    extracellularWater: ocrNum('Nước ngoại bào(L)')                  ?? base.extracellularWater ?? 13.9,
+    ecwRatio:           ocrNum('Tỷ lệ ECW')                          ?? base.ecwRatio ?? 0.379,
+    visceralFatLevel:   ocrNum('Mức độ chất béo nội tạng(Level)')    ?? pick('Mỡ nội tạng', 'Visceral Fat Level')          ?? base.visceralFatLevel ?? 10,
+    protein:            ocrNum('Protein(kg)')                         ?? base.protein ?? 9.9,
+    minerals:           ocrNum('Khoáng chất(kg)')                    ?? base.minerals ?? 3.4,
+    boneMineral:        base.boneMineral ?? 2.84,
+    bodyCellMass:       base.bodyCellMass ?? 32.7,
+    smi:                base.smi ?? 7.7,
+    phaseAngle:         ocrNum('Góc pha toàn bộ cơ thể(°)')          ?? base.phaseAngle ?? 5.7,
+    rightArmMuscle:     ocrNum('Khối lượng cơ ở cánh tay phải(kg)') ?? base.rightArmMuscle,
+    leftArmMuscle:      ocrNum('Khối lượng cơ ở cánh tay trái(kg)') ?? base.leftArmMuscle,
+    trunkMuscle:        ocrNum('Khối lượng cơ ở thân mình(kg)')      ?? base.trunkMuscle,
+    rightLegMuscle:     ocrNum('Khối lượng cơ ở chân phải(kg)')      ?? base.rightLegMuscle,
+    leftLegMuscle:      ocrNum('Khối lượng cơ ở chân trái(kg)')      ?? base.leftLegMuscle,
   }
 }
