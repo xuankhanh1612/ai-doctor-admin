@@ -731,7 +731,7 @@ function UploadTab({ onAnalysis, onViewMedicalRecord }) {
           setResult(analysis);
           if (onAnalysis) onAnalysis(analysis);
         } catch (err) {
-          setError('Lỗi phân tích. Vui lòng thử lại.');
+          setError(err.message || 'Lỗi phân tích. Vui lòng thử lại.');
         } finally {
           setLoading(false);
         }
