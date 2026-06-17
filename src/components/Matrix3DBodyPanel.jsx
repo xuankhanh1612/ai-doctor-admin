@@ -31,6 +31,7 @@ export default function Matrix3DBodyPanel({ onNext, nextLabel, onPrev, prevLabel
   const [scan, setScan] = useState(DEFAULT_XRAY)
   const [fileName, setFileName] = useState('Demo chest X-ray · Mediplus reference')
   const [isDragging, setIsDragging] = useState(false)
+  const [hasUploaded, setHasUploaded] = useState(false)
 
   const twinScore = useMemo(() => {
     const base = fileName.startsWith('Demo') ? 87 : 94
@@ -43,6 +44,7 @@ export default function Matrix3DBodyPanel({ onNext, nextLabel, onPrev, prevLabel
     reader.onload = () => {
       setScan(reader.result)
       setFileName(file.name)
+      setHasUploaded(true)
     }
     reader.readAsDataURL(file)
   }
@@ -97,6 +99,17 @@ export default function Matrix3DBodyPanel({ onNext, nextLabel, onPrev, prevLabel
           </div>
         </div>
       </div>
+
+      {hasUploaded && (
+        <div className="matrix3d-3dviewer">
+          <iframe
+            src="https://caskanatomy.info/open3dviewer/?model=overview-skeleton&export=on"
+            title="Cask Anatomy 3D Viewer"
+            allow="fullscreen"
+            allowFullScreen
+          />
+        </div>
+      )}
 
       <div className="matrix3d-grid">
         <MatrixCard title="3D Organ Reconstruction" accent="var(--cyan)">

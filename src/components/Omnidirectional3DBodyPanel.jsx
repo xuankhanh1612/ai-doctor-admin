@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import NavButtons from './NavButtons.jsx'
 
 const mvpInputs = ['X-ray', 'Hồ sơ bệnh án', 'Xét nghiệm máu']
@@ -97,23 +97,33 @@ function OmniCard({ title, eyebrow, children, accent = 'var(--cyan)' }) {
   )
 }
 
-function Flow({ steps, variant = 'mvp' }) {
+function Flow({ steps, variant = 'mvp', onStepClick, activeStep }) {
   return (
     <div className={`omni3d-flow omni3d-flow-${variant}`}>
-      {steps.map((step, index) => (
-        <React.Fragment key={step}>
-          <div className="omni3d-flow-node">
-            <b>{String(index + 1).padStart(2, '0')}</b>
-            <span>{step}</span>
-          </div>
-          {index < steps.length - 1 && <div className="omni3d-flow-arrow">↓</div>}
-        </React.Fragment>
-      ))}
+      {steps.map((step, index) => {
+        const clickable = typeof onStepClick === 'function'
+        return (
+          <React.Fragment key={step}>
+            <div
+              className={`omni3d-flow-node ${clickable ? 'is-clickable' : ''} ${activeStep === step ? 'is-active' : ''}`}
+              onClick={clickable ? () => onStepClick(step) : undefined}
+              role={clickable ? 'button' : undefined}
+              tabIndex={clickable ? 0 : undefined}
+            >
+              <b>{String(index + 1).padStart(2, '0')}</b>
+              <span>{step}</span>
+            </div>
+            {index < steps.length - 1 && <div className="omni3d-flow-arrow">↓</div>}
+          </React.Fragment>
+        )
+      })}
     </div>
   )
 }
 
 export default function Omnidirectional3DBodyPanel({ onNext, nextLabel, onPrev, prevLabel }) {
+  const [showDigitalTwinViewer, setShowDigitalTwinViewer] = useState(false)
+
   return (
     <div className="omni3d-page animate-fade">
       <section className="omni3d-hero">
@@ -162,7 +172,24 @@ export default function Omnidirectional3DBodyPanel({ onNext, nextLabel, onPrev, 
               <span>Cơ quan cơ bản: {mvpOrgans.join(' · ')}</span>
             </div>
           </div>
-          <Flow steps={levelOnePipeline} />
+          <Flow
+            steps={levelOnePipeline}
+            onStepClick={(step) => {
+              if (step === 'Digital Twin') setShowDigitalTwinViewer((prev) => !prev)
+            }}
+            activeStep={showDigitalTwinViewer ? 'Digital Twin' : null}
+          />
+
+          {showDigitalTwinViewer && (
+            <div className="omni3d-3dviewer">
+              <iframe
+                src="https://caskanatomy.info/open3dviewer/?model=overview-skeleton&export=on"
+                title="Cask Anatomy 3D Viewer"
+                allow="fullscreen"
+                allowFullScreen
+              />
+            </div>
+          )}
         </OmniCard>
 
         <OmniCard title="Level 2" eyebrow="Medical-grade reconstruction" accent="var(--violet)">
