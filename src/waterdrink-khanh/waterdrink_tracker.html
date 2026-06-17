@@ -270,8 +270,13 @@
         font-size: 14px;
         white-space: pre-wrap;
       }
-      .bot { align-self: flex-start; background: #fff; border: 1px solid rgba(14, 165, 233, 0.18); border-bottom-left-radius: 6px; }
-      .user { align-self: flex-end; background: linear-gradient(135deg, var(--water), var(--aqua)); color: #fff; border-bottom-right-radius: 6px; }
+      .bot { background: #fff; border: 1px solid rgba(14, 165, 233, 0.18); border-bottom-left-radius: 6px; }
+      .user { background: linear-gradient(135deg, var(--water), var(--aqua)); color: #fff; border-bottom-right-radius: 6px; }
+      .msg-wrap { display: flex; flex-direction: column; gap: 3px; max-width: min(78%, 680px); }
+      .msg-wrap.user { align-self: flex-end; align-items: flex-end; }
+      .msg-wrap.bot-wrap { align-self: flex-start; align-items: flex-start; }
+      .msg-wrap .msg { max-width: 100%; align-self: stretch; }
+      .msg-time { font-size: 10px; font-weight: 700; color: rgba(3,105,161,0.5); letter-spacing: 0.2px; padding: 0 5px; }
       .composer { display: flex; gap: 10px; margin-top: 12px; }
       input {
         flex: 1;
@@ -919,10 +924,37 @@
       function renderChat() {
         chatLog.innerHTML = '';
         messages.forEach((message) => {
+          const wrap = document.createElement('div');
+          const isUser = message.role === 'user';
+          wrap.className = 'msg-wrap ' + (isUser ? 'user' : 'bot-wrap');
+
           const bubble = document.createElement('div');
-          bubble.className = 'msg ' + (message.role === 'user' ? 'user' : 'bot');
+          bubble.className = 'msg ' + (isUser ? 'user' : 'bot');
           bubble.textContent = message.text;
-          chatLog.appendChild(bubble);
+          wrap.appendChild(bubble);
+
+          const ts = document.createElement('div');
+          ts.className = 'msg-time';
+          if (message.time) {
+            const d = new Date(message.time);
+            const hh = String(d.getHours()).padStart(2, '0');
+            const mm = String(d.getMinutes()).padStart(2, '0');
+            const ss = String(d.getSeconds()).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            const mo = String(d.getMonth() + 1).padStart(2, '0');
+            ts.textContent = `🕐 ${hh}:${mm}:${ss} · ${dd}/${mo}/${d.getFullYear()}`;
+          } else {
+            const now = new Date();
+            const hh = String(now.getHours()).padStart(2, '0');
+            const mm = String(now.getMinutes()).padStart(2, '0');
+            const ss = String(now.getSeconds()).padStart(2, '0');
+            const dd = String(now.getDate()).padStart(2, '0');
+            const mo = String(now.getMonth() + 1).padStart(2, '0');
+            ts.textContent = `🕐 ${hh}:${mm}:${ss} · ${dd}/${mo}/${now.getFullYear()}`;
+          }
+          wrap.appendChild(ts);
+
+          chatLog.appendChild(wrap);
         });
         chatLog.scrollTop = chatLog.scrollHeight;
         saveMessages();
@@ -951,15 +983,16 @@
       function sendMessage(text) {
         const trimmed = text.trim();
         if (!trimmed) return;
-        messages.push({ role: 'user', text: trimmed });
-        messages.push({ role: 'bot', text: botReply(trimmed) });
+        const now = new Date().toISOString();
+        messages.push({ role: 'user', text: trimmed, time: now });
+        messages.push({ role: 'bot', text: botReply(trimmed), time: new Date().toISOString() });
         renderChat();
       }
 
       function setGoal(goal) {
         state.goal = goal;
         renderState();
-        messages.push({ role: 'bot', text: `Bé Mèo đã đặt mục tiêu ${goal}ml/ngày cho bạn rồi nha.` });
+        messages.push({ role: 'bot', text: `Bé Mèo đã đặt mục tiêu ${goal}ml/ngày cho bạn rồi nha.`, time: new Date().toISOString() });
         renderChat();
       }
 
@@ -1038,13 +1071,13 @@
       }
 
       document.querySelectorAll('.tab-btn').forEach((button) => button.addEventListener('click', () => switchTab(button.dataset.tab)));
-      document.querySelectorAll('[data-add]').forEach((button) => button.addEventListener('click', () => { messages.push({ role: 'bot', text: addWater(Number(button.dataset.add), 'Bé Mèo Nước quick button') }); renderChat(); }));
+      document.querySelectorAll('[data-add]').forEach((button) => button.addEventListener('click', () => { messages.push({ role: 'bot', text: addWater(Number(button.dataset.add), 'Bé Mèo Nước quick button'), time: new Date().toISOString() }); renderChat(); }));
       document.querySelectorAll('[data-prompt]').forEach((button) => button.addEventListener('click', () => sendMessage(button.dataset.prompt)));
       document.getElementById('setGoal1800').addEventListener('click', () => setGoal(1800));
       document.getElementById('setGoal2000').addEventListener('click', () => setGoal(2000));
       document.getElementById('setGoal2500').addEventListener('click', () => setGoal(2500));
-      document.getElementById('resetDay').addEventListener('click', () => { state.total = 0; if (state.history) state.history[today] = { total: 0, goal: state.goal, percent: 0 }; renderState(); messages.push({ role: 'bot', text: 'Bé Mèo đã reset lượng nước hôm nay. Calendar 31 ngày cũng cập nhật ngày hiện tại về 0ml nha 💧' }); renderChat(); });
-      document.getElementById('clearChat').addEventListener('click', () => { messages = [{ role: 'bot', text: 'Chat đã được làm mới. Bé Mèo Nước vẫn ở đây để nhắc bạn uống nước nha 🐱💧' }]; renderChat(); });
+      document.getElementById('resetDay').addEventListener('click', () => { state.total = 0; if (state.history) state.history[today] = { total: 0, goal: state.goal, percent: 0 }; renderState(); messages.push({ role: 'bot', text: 'Bé Mèo đã reset lượng nước hôm nay. Calendar 31 ngày cũng cập nhật ngày hiện tại về 0ml nha 💧', time: new Date().toISOString() }); renderChat(); });
+      document.getElementById('clearChat').addEventListener('click', () => { messages = [{ role: 'bot', text: 'Chat đã được làm mới. Bé Mèo Nước vẫn ở đây để nhắc bạn uống nước nha 🐱💧', time: new Date().toISOString() }]; renderChat(); });
       document.getElementById('chatForm').addEventListener('submit', (event) => { event.preventDefault(); sendMessage(chatInput.value); chatInput.value = ''; });
       window.addEventListener(SYNC_EVENT, (event) => { state = loadState(); messages = loadMessages(); renderState(); renderChat(); });
       document.getElementById('flipCard').addEventListener('click', () => { cardFlipped = !cardFlipped; renderCard(); });

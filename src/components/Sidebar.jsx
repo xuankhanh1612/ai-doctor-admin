@@ -37,6 +37,7 @@ export default function Sidebar({ active, onNavigate, openSignal = 0 }) {
 
   const STEPS = [
     { id: 'healthJourneyGame', label: 'Health Journey Game', step: '00' },
+    { id: 'waterDrinkChatBot', label: t('waterDrinkChatBot'), step: '00a' },
     { id: 'healthJourney', label: t('healthJourney'), step: '01' },
     { id: 'lunchJourney', label: t('lunchJourney'), step: '02' },
     { id: 'dinnerJourney', label: t('dinnerJourney'), step: '03' },
@@ -58,7 +59,6 @@ export default function Sidebar({ active, onNavigate, openSignal = 0 }) {
     { id: 'aiHealthcareVisionControl', label: t('aiHealthcareVisionControl'), step: '19' },
     { id: 'stressRelief', label: t('stressRelief'), step: '20' },
     { id: 'aiInbodyPortal', label: t('aiInbodyPortal'), step: '21' },
-    { id: 'waterDrinkChatBot', label: t('waterDrinkChatBot'), step: '22' },
     { id: 'printPortal', label: 'Print Portal', step: '23' },
   ]
 
