@@ -255,6 +255,25 @@ html, body, #root {
   align-items: stretch;
 }
 
+.matrix3d-3dviewer {
+  margin-top: 18px;
+  width: 100%;
+  height: 80vh;
+  min-height: 560px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  overflow: hidden;
+  background: rgba(0,0,0,0.22);
+  box-shadow: 0 24px 80px rgba(0,0,0,0.22);
+}
+
+.matrix3d-3dviewer iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+}
+
 .matrix3d-hero-copy,
 .matrix3d-card,
 .matrix3d-upload {
@@ -738,9 +757,43 @@ html, body, #root {
   padding: 10px 12px;
 }
 
+.omni3d-flow-node.is-clickable {
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.omni3d-flow-node.is-clickable:hover {
+  background: rgba(255,255,255,0.05);
+  border-color: var(--omni-accent);
+}
+
+.omni3d-flow-node.is-active {
+  border-color: var(--omni-accent);
+  background: rgba(0,229,255,0.08);
+  box-shadow: 0 0 0 1px var(--omni-accent) inset;
+}
+
 .omni3d-flow-node b { color: var(--omni-accent); font-family: var(--font-mono); }
 .omni3d-flow-node span { color: var(--text); font-size: 12px; }
 .omni3d-flow-arrow { color: var(--text3); font-family: var(--font-mono); text-align: center; line-height: 1; }
+
+.omni3d-3dviewer {
+  margin-top: 14px;
+  width: 100%;
+  height: 70vh;
+  min-height: 480px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  background: rgba(0,0,0,0.22);
+}
+
+.omni3d-3dviewer iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+}
 
 .omni3d-tree {
   display: grid;
