@@ -70,6 +70,19 @@ export default function TwinPanel({ onNext, nextLabel, onPrev, prevLabel }) {
 
       <Card title="Biological Visualization · Cell Model">
         <div style={{
+          width: '100%', height: '70vh', minHeight: 480, marginBottom: 14,
+          border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden',
+          background: 'rgba(0,0,0,0.4)',
+        }}>
+          <iframe
+            src="https://caskanatomy.info/open3dviewer/?model=overview-skeleton&export=on"
+            title="Skeleton 3D Viewer"
+            allow="fullscreen"
+            allowFullScreen
+            style={{ width: '100%', height: '100%', border: 0, display: 'block' }}
+          />
+        </div>
+        <div style={{
           height: 140, background: 'rgba(0,0,0,0.4)', borderRadius: 10,
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 32, overflow: 'hidden', position: 'relative',
         }}>

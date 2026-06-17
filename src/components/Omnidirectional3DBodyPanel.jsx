@@ -5,7 +5,17 @@ const mvpInputs = ['X-ray', 'Hồ sơ bệnh án', 'Xét nghiệm máu']
 const mvpOrgans = ['Tim / Heart', 'Phổi / Lung', 'Gan / Liver', 'Thận / Kidney']
 const levelOnePipeline = ['Ảnh X-ray phổi', 'YOLO / MedSAM', 'Phân đoạn phổi', 'Mesh Reconstruction', '3D Lung Model', 'Digital Twin']
 const levelTwoPipeline = ['DICOM CT', 'MONAI', 'Segmentation', 'Marching Cubes', '3D Mesh', 'Gaussian Splatting', 'Digital Twin Viewer']
-// Bản đồ cơ thể người đầy đủ, song ngữ Anh - Việt, nhóm theo hệ cơ quan
+
+// Organ → iframe URL mapping
+const ORGAN_IFRAME_URLS = {
+  'Shoulder': 'https://caskanatomy.info/open3dviewer/?model=upper-limb&export=on',
+  'Hand':     'https://caskanatomy.info/open3dviewer/?model=hand&export=on',
+  'Thigh':    'https://caskanatomy.info/open3dviewer/?model=lower-limb&export=on',
+}
+const STEP_IFRAME_URLS = {
+  'Digital Twin Viewer': 'https://caskanatomy.info/open3dviewer/?model=upper-limb&export=on',
+}
+
 const bodySystems = [
   {
     system: 'Head & Brain / Đầu & Não',
@@ -97,21 +107,32 @@ function OmniCard({ title, eyebrow, children, accent = 'var(--cyan)' }) {
   )
 }
 
-function Flow({ steps, variant = 'mvp', onStepClick, activeStep }) {
+function Flow({ steps, variant = 'mvp', onStepClick, activeStep, visitedSteps = [] }) {
   return (
     <div className={`omni3d-flow omni3d-flow-${variant}`}>
       {steps.map((step, index) => {
+        const hasLink = !!STEP_IFRAME_URLS[step]
+        const isActive = activeStep === step
+        const isVisited = visitedSteps.includes(step)
         const clickable = typeof onStepClick === 'function'
+
+        let extraClass = ''
+        if (hasLink && isActive) extraClass = 'has-link is-active is-visited'
+        else if (hasLink && isVisited) extraClass = 'has-link is-visited'
+        else if (hasLink) extraClass = 'has-link'
+        else if (isActive) extraClass = 'is-active'
+
         return (
           <React.Fragment key={step}>
             <div
-              className={`omni3d-flow-node ${clickable ? 'is-clickable' : ''} ${activeStep === step ? 'is-active' : ''}`}
+              className={`omni3d-flow-node ${clickable ? 'is-clickable' : ''} ${extraClass}`}
               onClick={clickable ? () => onStepClick(step) : undefined}
               role={clickable ? 'button' : undefined}
               tabIndex={clickable ? 0 : undefined}
             >
               <b>{String(index + 1).padStart(2, '0')}</b>
               <span>{step}</span>
+              {hasLink && <span className="omni3d-link-badge">{isActive ? '▼ open' : '▶ 3D'}</span>}
             </div>
             {index < steps.length - 1 && <div className="omni3d-flow-arrow">↓</div>}
           </React.Fragment>
@@ -121,8 +142,52 @@ function Flow({ steps, variant = 'mvp', onStepClick, activeStep }) {
   )
 }
 
+function IframeViewer({ url, label }) {
+  return (
+    <div className="omni3d-3dviewer">
+      <iframe
+        src={url}
+        title={label || '3D Viewer'}
+        allow="fullscreen"
+        allowFullScreen
+      />
+    </div>
+  )
+}
+
 export default function Omnidirectional3DBodyPanel({ onNext, nextLabel, onPrev, prevLabel }) {
   const [showDigitalTwinViewer, setShowDigitalTwinViewer] = useState(false)
+  const [visitedLevel1, setVisitedLevel1] = useState([])
+
+  // Level 2: Digital Twin Viewer step
+  const [activeStep2, setActiveStep2] = useState(null)
+  const [visitedSteps2, setVisitedSteps2] = useState([])
+
+  // Body tree organ iframes
+  const [activeOrgan, setActiveOrgan] = useState(null)
+  const [visitedOrgans, setVisitedOrgans] = useState([])
+
+  function handleLevel1Step(step) {
+    if (step === 'Digital Twin') {
+      const next = !showDigitalTwinViewer
+      setShowDigitalTwinViewer(next)
+      if (next) setVisitedLevel1(v => v.includes(step) ? v : [...v, step])
+    }
+  }
+
+  function handleLevel2Step(step) {
+    if (!STEP_IFRAME_URLS[step]) return
+    const isCurrentlyActive = activeStep2 === step
+    setActiveStep2(isCurrentlyActive ? null : step)
+    if (!isCurrentlyActive) setVisitedSteps2(v => v.includes(step) ? v : [...v, step])
+  }
+
+  function handleOrganClick(organEn) {
+    if (!ORGAN_IFRAME_URLS[organEn]) return
+    const isCurrentlyActive = activeOrgan === organEn
+    setActiveOrgan(isCurrentlyActive ? null : organEn)
+    if (!isCurrentlyActive) setVisitedOrgans(v => v.includes(organEn) ? v : [...v, organEn])
+  }
 
   return (
     <div className="omni3d-page animate-fade">
@@ -174,21 +239,16 @@ export default function Omnidirectional3DBodyPanel({ onNext, nextLabel, onPrev, 
           </div>
           <Flow
             steps={levelOnePipeline}
-            onStepClick={(step) => {
-              if (step === 'Digital Twin') setShowDigitalTwinViewer((prev) => !prev)
-            }}
+            onStepClick={handleLevel1Step}
             activeStep={showDigitalTwinViewer ? 'Digital Twin' : null}
+            visitedSteps={visitedLevel1}
           />
 
           {showDigitalTwinViewer && (
-            <div className="omni3d-3dviewer">
-              <iframe
-                src="https://caskanatomy.info/open3dviewer/?model=overview-skeleton&export=on"
-                title="Cask Anatomy 3D Viewer"
-                allow="fullscreen"
-                allowFullScreen
-              />
-            </div>
+            <IframeViewer
+              url="https://caskanatomy.info/open3dviewer/?model=overview-skeleton&export=on"
+              label="Cask Anatomy 3D Viewer"
+            />
           )}
         </OmniCard>
 
@@ -204,7 +264,20 @@ export default function Omnidirectional3DBodyPanel({ onNext, nextLabel, onPrev, 
               <span>Explorable Digital Twin Viewer</span>
             </div>
           </div>
-          <Flow steps={levelTwoPipeline} variant="dicom" />
+          <Flow
+            steps={levelTwoPipeline}
+            variant="dicom"
+            onStepClick={handleLevel2Step}
+            activeStep={activeStep2}
+            visitedSteps={visitedSteps2}
+          />
+
+          {activeStep2 === 'Digital Twin Viewer' && (
+            <IframeViewer
+              url={STEP_IFRAME_URLS['Digital Twin Viewer']}
+              label="Digital Twin Viewer — Upper Limb"
+            />
+          )}
         </OmniCard>
       </div>
 
@@ -217,15 +290,32 @@ export default function Omnidirectional3DBodyPanel({ onNext, nextLabel, onPrev, 
                 <div className="omni3d-tree-system" style={{ color: group.accent, borderColor: group.accent }}>
                   {group.system}
                 </div>
-                {group.organs.map((organ) => (
-                  <div
-                    key={organ.en}
-                    className={`omni3d-tree-node ${group.system.startsWith('Pathology') ? 'is-alert' : ''}`}
-                  >
-                    <i />
-                    <span><b>{organ.en}</b> / {organ.vi}</span>
-                  </div>
-                ))}
+                {group.organs.map((organ) => {
+                  const hasLink = !!ORGAN_IFRAME_URLS[organ.en]
+                  const isActive = activeOrgan === organ.en
+                  const isVisited = visitedOrgans.includes(organ.en)
+                  return (
+                    <React.Fragment key={organ.en}>
+                      <div
+                        className={`omni3d-tree-node ${group.system.startsWith('Pathology') ? 'is-alert' : ''} ${hasLink ? 'has-link' : ''} ${hasLink && isActive ? 'is-active' : ''} ${hasLink && isVisited && !isActive ? 'is-visited' : ''}`}
+                        onClick={hasLink ? () => handleOrganClick(organ.en) : undefined}
+                        role={hasLink ? 'button' : undefined}
+                        tabIndex={hasLink ? 0 : undefined}
+                        style={hasLink ? { cursor: 'pointer' } : undefined}
+                      >
+                        <i />
+                        <span><b>{organ.en}</b> / {organ.vi}</span>
+                        {hasLink && <span className="omni3d-link-badge">{isActive ? '▼ open' : '▶ 3D'}</span>}
+                      </div>
+                      {hasLink && isActive && (
+                        <IframeViewer
+                          url={ORGAN_IFRAME_URLS[organ.en]}
+                          label={`${organ.en} 3D Viewer`}
+                        />
+                      )}
+                    </React.Fragment>
+                  )
+                })}
               </div>
             ))}
           </div>
