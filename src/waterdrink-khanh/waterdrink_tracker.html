@@ -277,6 +277,17 @@
       .msg-wrap.bot-wrap { align-self: flex-start; align-items: flex-start; }
       .msg-wrap .msg { max-width: 100%; align-self: stretch; }
       .msg-time { font-size: 10px; font-weight: 700; color: rgba(3,105,161,0.5); letter-spacing: 0.2px; padding: 0 5px; }
+      .msg-review-btn {
+        display: inline-flex; align-items: center; gap: 5px;
+        margin: 2px 5px 0; padding: 5px 12px;
+        border-radius: 8px; border: none; cursor: pointer;
+        font-size: 11px; font-weight: 800; font-family: inherit;
+        background: linear-gradient(135deg, #0ea5e9, #0284c7);
+        color: #fff; box-shadow: 0 3px 10px rgba(14,165,233,0.30);
+        transition: opacity 0.15s;
+      }
+      .msg-review-btn:hover { opacity: 0.85; }
+      .msg-review-btn.active { background: linear-gradient(135deg,#7c3aed,#6d28d9); }
       .composer { display: flex; gap: 10px; margin-top: 12px; }
       input {
         flex: 1;
@@ -921,12 +932,18 @@
         calendarStreak.textContent = `${completed}/31`;
       }
 
+      // proofId → dataUrl map (in-memory, từ React gửi qua postMessage)
+      const proofMap = {};
+      // proofId đang được xem (để toggle active)
+      let activeReviewProofId = null;
+
       function renderChat() {
         chatLog.innerHTML = '';
         messages.forEach((message) => {
           const wrap = document.createElement('div');
           const isUser = message.role === 'user';
           wrap.className = 'msg-wrap ' + (isUser ? 'user' : 'bot-wrap');
+          if (message.proofId) wrap.dataset.proofId = message.proofId;
 
           const bubble = document.createElement('div');
           bubble.className = 'msg ' + (isUser ? 'user' : 'bot');
@@ -954,21 +971,54 @@
           }
           wrap.appendChild(ts);
 
+          // Nút Xem lại ảnh — chỉ hiện nếu message có proofId VÀ đã có dataUrl trong proofMap
+          if (message.proofId && proofMap[message.proofId]) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'msg-review-btn' + (activeReviewProofId === message.proofId ? ' active' : '');
+            btn.textContent = activeReviewProofId === message.proofId ? '✕ Đóng xem lại' : '🔍 Xem lại ảnh đã chụp';
+            btn.dataset.pid = message.proofId;
+            btn.addEventListener('click', () => {
+              const pid = btn.dataset.pid;
+              const isActive = activeReviewProofId === pid;
+              activeReviewProofId = isActive ? null : pid;
+              window.parent?.postMessage?.({
+                type: isActive ? 'BE_MEO_REVIEW_CLOSE' : 'BE_MEO_REVIEW_REQUEST',
+                proofId: pid,
+                dataUrl: proofMap[pid] || null,
+              }, window.location.origin);
+              renderChat();
+            });
+            wrap.appendChild(btn);
+          }
+
           chatLog.appendChild(wrap);
         });
         chatLog.scrollTop = chatLog.scrollHeight;
         saveMessages();
       }
 
+      // Nhận ảnh proof từ React sau khi lưu thành công
+      window.addEventListener('message', (event) => {
+        if (event.origin !== window.location.origin) return;
+        if (event.data?.type === 'BE_MEO_PROOF_SAVED' && event.data.proofId && event.data.dataUrl) {
+          proofMap[event.data.proofId] = event.data.dataUrl;
+          renderChat();
+        }
+      });
+
       function addWater(amount, source = 'Bé Mèo Nước') {
         state.total = Math.max(0, state.total + amount);
         renderState();
-        window.parent?.postMessage?.({ type: 'BE_MEO_WATER_ADDED', amount, source, total: state.total, goal: state.goal }, window.location.origin);
-        return state.total >= state.goal
+        const proofId = 'proof_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+        window.parent?.postMessage?.({ type: 'BE_MEO_WATER_ADDED', amount, source, total: state.total, goal: state.goal, proofId }, window.location.origin);
+        const text = state.total >= state.goal
           ? `Giỏi quá meo! Bạn đã đạt ${state.total}/${state.goal}ml hôm nay rồi đó 🏆💧`
           : `Bé Mèo đã ghi +${amount}ml. Hôm nay bạn đang ở ${state.total}/${state.goal}ml (${Math.round((state.total / state.goal) * 100)}%).`;
+        return { text, proofId };
       }
 
+      // botReply trả về { text, proofId } nếu là lệnh uống nước, ngược lại trả về string
       function botReply(text) {
         const lower = text.toLowerCase();
         const mlMatch = lower.match(/(\d{2,4})\s*(ml|mili|milliliter)?/);
@@ -977,7 +1027,7 @@
         if (/(quên|nhắc|remind|reminder)/i.test(lower)) return 'Mẹo của Bé Mèo: để ly nước ngay cạnh bàn, uống vài ngụm sau khi thức dậy, trước bữa ăn và sau mỗi 45–60 phút làm việc. Meo meo, uống một ngụm ngay bây giờ nhé! 🐱';
         if (/(reset|xóa|xoá)/i.test(lower)) { state.total = 0; renderState(); return 'Bé Mèo đã reset lượng nước hôm nay về 0ml rồi nha.'; }
         if (/(đạt|tiến độ|progress|hôm nay)/i.test(lower)) return `Tiến độ hôm nay: ${state.total}/${state.goal}ml, tương đương ${Math.min(100, Math.round((state.total / state.goal) * 100))}%. Cố lên, Bé Mèo cổ vũ bạn!`;
-        return 'Bé Mèo nghe nè 🐱💧 Bạn có thể nói “Tôi vừa uống 250ml”, hỏi “hôm nay nên uống bao nhiêu?”, hoặc nhờ Bé Mèo gợi ý cách nhớ uống nước.';
+        return 'Bé Mèo nghe nè 🐱💧 Bạn có thể nói "Tôi vừa uống 250ml", hỏi "hôm nay nên uống bao nhiêu?", hoặc nhờ Bé Mèo gợi ý cách nhớ uống nước.';
       }
 
       function sendMessage(text) {
@@ -985,7 +1035,13 @@
         if (!trimmed) return;
         const now = new Date().toISOString();
         messages.push({ role: 'user', text: trimmed, time: now });
-        messages.push({ role: 'bot', text: botReply(trimmed), time: new Date().toISOString() });
+        const reply = botReply(trimmed);
+        if (reply && typeof reply === 'object') {
+          // addWater trả về { text, proofId } — message này có proofId chờ React gửi dataUrl
+          messages.push({ role: 'bot', text: reply.text, proofId: reply.proofId, time: new Date().toISOString() });
+        } else {
+          messages.push({ role: 'bot', text: reply, time: new Date().toISOString() });
+        }
         renderChat();
       }
 
@@ -1071,7 +1127,7 @@
       }
 
       document.querySelectorAll('.tab-btn').forEach((button) => button.addEventListener('click', () => switchTab(button.dataset.tab)));
-      document.querySelectorAll('[data-add]').forEach((button) => button.addEventListener('click', () => { messages.push({ role: 'bot', text: addWater(Number(button.dataset.add), 'Bé Mèo Nước quick button'), time: new Date().toISOString() }); renderChat(); }));
+      document.querySelectorAll('[data-add]').forEach((button) => button.addEventListener('click', () => { const r = addWater(Number(button.dataset.add), 'Bé Mèo Nước quick button'); messages.push({ role: 'bot', text: r.text, proofId: r.proofId, time: new Date().toISOString() }); renderChat(); }));
       document.querySelectorAll('[data-prompt]').forEach((button) => button.addEventListener('click', () => sendMessage(button.dataset.prompt)));
       document.getElementById('setGoal1800').addEventListener('click', () => setGoal(1800));
       document.getElementById('setGoal2000').addEventListener('click', () => setGoal(2000));
