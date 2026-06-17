@@ -144,6 +144,23 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
           @media (max-width: 860px) { .bemeo-chatbot-iframe { min-height: 1800px !important; } }
         `}</style>
 
+        {/* ===== CHATBOT IFRAME ===== */}
+        <div style={{
+          borderRadius: 28, overflow: 'hidden',
+          border: `1px solid ${isDark ? 'rgba(125,211,252,0.26)' : 'rgba(14,165,233,0.24)'}`,
+          boxShadow: isDark ? '0 24px 70px rgba(0,0,0,0.42)' : '0 24px 70px rgba(14,165,233,0.18)',
+          background: '#fff',
+        }}>
+          <iframe
+            ref={iframeRef}
+            title="Bé Mèo Nước chatbot"
+            srcDoc={html}
+            className="bemeo-chatbot-iframe"
+            style={{ width: '100%', minHeight: '1100px', border: 0, display: 'block', background: '#eef8ff' }}
+            sandbox="allow-scripts allow-same-origin allow-forms"
+          />
+        </div>
+
         {/* ===== CAMERA: AI Healthcare Vision ===== */}
         <section style={{
           borderRadius: 28,
@@ -197,23 +214,6 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
             </div>
           </div>
         </section>
-
-        {/* ===== CHATBOT IFRAME ===== */}
-        <div style={{
-          borderRadius: 28, overflow: 'hidden',
-          border: `1px solid ${isDark ? 'rgba(125,211,252,0.26)' : 'rgba(14,165,233,0.24)'}`,
-          boxShadow: isDark ? '0 24px 70px rgba(0,0,0,0.42)' : '0 24px 70px rgba(14,165,233,0.18)',
-          background: '#fff',
-        }}>
-          <iframe
-            ref={iframeRef}
-            title="Bé Mèo Nước chatbot"
-            srcDoc={html}
-            className="bemeo-chatbot-iframe"
-            style={{ width: '100%', minHeight: '1100px', border: 0, display: 'block', background: '#eef8ff' }}
-            sandbox="allow-scripts allow-same-origin allow-forms"
-          />
-        </div>
       </div>
     </div>
   )

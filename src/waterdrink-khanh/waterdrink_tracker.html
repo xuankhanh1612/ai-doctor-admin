@@ -709,6 +709,18 @@
         return [{ role: 'bot', text: 'Meo meo 💧 Bé Mèo Nước đây! Hôm nay mình cùng uống nước đều hơn nha. Bạn có thể nhắn: “Tôi vừa uống 250ml”.' }];
       }
 
+      const PROOF_MAP_KEY = 'be_meo_nuoc_proof_map';
+      function loadProofMap() {
+        try { return JSON.parse(localStorage.getItem(PROOF_MAP_KEY) || '{}'); } catch (e) { return {}; }
+      }
+      function saveProofMap() {
+        try {
+          // Chỉ giữ 30 proof gần nhất để không bị quá dung lượng localStorage
+          const entries = Object.entries(proofMap);
+          const trimmed = Object.fromEntries(entries.slice(-30));
+          localStorage.setItem(PROOF_MAP_KEY, JSON.stringify(trimmed));
+        } catch (e) {}
+      }
       function saveMessages() { localStorage.setItem(CHAT_KEY, JSON.stringify(messages.slice(-80))); }
 
       function switchTab(tab) {
@@ -932,8 +944,8 @@
         calendarStreak.textContent = `${completed}/31`;
       }
 
-      // proofId → dataUrl map (in-memory, từ React gửi qua postMessage)
-      const proofMap = {};
+      // proofId → dataUrl map — persist qua localStorage để nút Xem lại không bị mất khi reload
+      const proofMap = loadProofMap();
       // proofId đang được xem (để toggle active)
       let activeReviewProofId = null;
 
@@ -1003,6 +1015,7 @@
         // srcdoc iframe: origin is null, accept all same-tab messages
         if (event.data?.type === 'BE_MEO_PROOF_SAVED' && event.data.proofId && event.data.dataUrl) {
           proofMap[event.data.proofId] = event.data.dataUrl;
+          saveProofMap();
           renderChat();
         }
         // Camera chụp trực tiếp (không qua chat) → inject tin nhắn bot kèm proofId
