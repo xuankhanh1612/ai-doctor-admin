@@ -6,6 +6,8 @@ import dailyTasksData from './data/daily_tasks.json'
 import journeysData from './data/journeys.json'
 import TaskDetailPopup from './TaskDetailPopup.jsx'
 import JourneyDetailPopup from './JourneyDetailPopup.jsx'
+import HelpButton from './help/HelpButton.jsx'
+import HelpOverlay from './help/HelpOverlay.jsx'
 
 const MEDIAPIPE_OBJECT_DETECTION_WEBCAM_URL = '/src/mediapipe-khanh/index.html?mode=webcam#/vision/object_detector'
 
@@ -492,9 +494,9 @@ export default function HealthJourneyGameStandalone({ onViewMedicalRecord }) {
   const [activeScreen, setActiveScreen] = useState('screen-home')
   // ── Popup state (replaces DOM-based modal-task-detail / modal-chapter-detail) ──
   const [taskPopupKey, setTaskPopupKey] = useState(null)    // taskId | null
-  const taskPopupKeyRef = useRef(null)  // ref for reading inside event listener closure
-  useEffect(() => { taskPopupKeyRef.current = taskPopupKey }, [taskPopupKey])
   const [journeyPopupKey, setJourneyPopupKey] = useState(null) // chapterKey | 'overview' | null
+  // ── Help Center overlay state ──
+  const [helpOpen, setHelpOpen] = useState(false)
 
   useEffect(() => {
     const refreshSnapshot = () => setSnapshot(getTaskSnapshot(user))
@@ -521,10 +523,7 @@ export default function HealthJourneyGameStandalone({ onViewMedicalRecord }) {
       const isImageCapture  = event.data?.type === 'AI_CLINIC_MEDIAPIPE_IMAGE_CAPTURE'
       if (!isWebcamCapture && !isImageCapture) return
 
-      // Accept capture from both legacy DOM modal AND new React popup (taskPopupKey)
-      const legacyDomOpen = getRoot()?.querySelector('#modal-task-detail')?.classList.contains('active')
-      const reactPopupOpen = Boolean(taskPopupKeyRef.current)
-      const taskDetailOpen = legacyDomOpen || reactPopupOpen
+      const taskDetailOpen = getRoot()?.querySelector('#modal-task-detail')?.classList.contains('active')
       if (!taskDetailOpen || !event.data?.dataUrl) return
 
       const captureKind = isWebcamCapture ? 'webcam' : 'image'
@@ -612,11 +611,6 @@ export default function HealthJourneyGameStandalone({ onViewMedicalRecord }) {
     setTaskPopupKey(taskKey)          // new React popup
   }
 
-  // Keep selectedTaskKey in sync when React popup opens from JourneyDetailPopup
-  useEffect(() => {
-    if (taskPopupKey) setSelectedTaskKey(taskPopupKey)
-  }, [taskPopupKey])
-
   const openChapterMissionDetail = (chapterKey) => {
     const chapter = CHAPTER_DETAIL_CONTENT[chapterKey] || CHAPTER_DETAIL_CONTENT.focus
     closeModal('modal-chapter-detail')
@@ -626,6 +620,20 @@ export default function HealthJourneyGameStandalone({ onViewMedicalRecord }) {
   // New popup openers
   const openTaskPopup = (taskId) => { setTaskPopupKey(taskId) }
   const openJourneyPopup = (chapterKey) => { setJourneyPopupKey(chapterKey || 'overview') }
+
+  // ── Help Center → live app deep-link ──
+  // Each HELP_SCREENS entry carries a `target` describing where it lives
+  // in the real app: { screen, modal?, taskPopup?, journeyPopup? }
+  const handleHelpNavigate = (target) => {
+    if (!target) { setHelpOpen(false); return }
+    setHelpOpen(false)
+    if (target.screen) goTo(target.screen)
+    setTimeout(() => {
+      if (target.modal) openModal(target.modal)
+      if (target.taskPopup) openTaskPopup(selectedTaskKey || 'deep_work')
+      if (target.journeyPopup) openJourneyPopup('overview')
+    }, 80)
+  }
 
   const startWaterCamera = async () => {
     setCameraError('')
@@ -3376,6 +3384,14 @@ export default function HealthJourneyGameStandalone({ onViewMedicalRecord }) {
             </span>
           </div>
         </nav>
+
+        {/* ── Help Center: floating HELP button + fullscreen guide overlay ── */}
+        <HelpButton onClick={() => setHelpOpen(true)} />
+        <HelpOverlay
+          open={helpOpen}
+          onClose={() => setHelpOpen(false)}
+          onNavigate={handleHelpNavigate}
+        />
       </div>
 
       {/* ── TaskDetailPopup: Chi tiết Nhiệm Vụ (dynamic from daily_tasks.json) ── */}
@@ -3398,13 +3414,11 @@ export default function HealthJourneyGameStandalone({ onViewMedicalRecord }) {
         <JourneyDetailPopup
           chapterKey={journeyPopupKey === 'overview' ? null : journeyPopupKey}
           snapshot={snapshot}
-          user={user}
           onClose={() => setJourneyPopupKey(null)}
           onViewMedicalRecord={onViewMedicalRecord}
           onOpenTask={(taskId) => {
             setJourneyPopupKey(null)
             setTaskPopupKey(taskId)
-            setSelectedTaskKey(taskId)
           }}
         />
       )}
