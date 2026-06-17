@@ -60,7 +60,13 @@ const RELATED   = buildRelatedMissions(journeysData.journeys || [])
 
 /* ── component ────────────────────────────────────────────────────────────── */
 export default function TaskDetailPopup({ taskId, onClose, onOpenJourney, snapshot, user, onViewMedicalRecord }) {
-  const task     = TASK_MAP[taskId] || TASK_MAP.deep_work || ALL_TASKS[0]
+  /* ── active task — user can switch by clicking the list ── */
+  const [activeTaskId, setActiveTaskId] = useState(taskId)
+
+  /* reset when parent opens popup for a different taskId */
+  useEffect(() => { setActiveTaskId(taskId) }, [taskId])
+
+  const task     = TASK_MAP[activeTaskId] || TASK_MAP[taskId] || TASK_MAP.deep_work || ALL_TASKS[0]
   const todayRec = snapshot?.day?.tasks?.find(t => t.taskId === task?.taskId)
   const progress = pct(todayRec)
 
@@ -277,12 +283,26 @@ export default function TaskDetailPopup({ taskId, onClose, onOpenJourney, snapsh
                 const tPct = pct(tRec)
                 const isMe = t.taskId === task.taskId
                 return (
-                  <div key={t.taskId} style={{
-                    display:'flex', alignItems:'center', gap:10,
-                    padding:'8px 10px', borderRadius:10, marginBottom:4,
-                    background: isMe ? 'rgba(139,92,246,.15)' : 'rgba(255,255,255,.03)',
-                    border: `1px solid ${isMe ? 'rgba(139,92,246,.4)' : 'rgba(255,255,255,.06)'}`,
-                  }}>
+                  <button
+                    key={t.taskId}
+                    type="button"
+                    onClick={() => {
+                      setActiveTaskId(t.taskId)
+                      setSaveMsg('')
+                      setReviewImageUrl(null)
+                      setLastCaptureKind('')
+                    }}
+                    title={`Xem chi tiết: ${t.title?.vi || t.title?.en}`}
+                    style={{
+                      display:'flex', alignItems:'center', gap:10, width:'100%', textAlign:'left',
+                      padding:'8px 10px', borderRadius:10, marginBottom:4,
+                      background: isMe ? 'rgba(139,92,246,.2)' : 'rgba(255,255,255,.03)',
+                      border: `1px solid ${isMe ? 'rgba(139,92,246,.55)' : 'rgba(255,255,255,.06)'}`,
+                      cursor:'pointer', fontFamily:'inherit',
+                      boxShadow: isMe ? '0 0 0 1px rgba(139,92,246,.25)' : 'none',
+                      transition:'background .15s, border-color .15s, box-shadow .15s',
+                    }}
+                  >
                     <span style={{ fontSize:17, flexShrink:0 }}>{t.icon}</span>
                     <div style={{ flex:1, minWidth:0 }}>
                       <div style={{ fontSize:12, fontWeight:isMe?700:500, color:isMe?'#c4b5fd':'var(--text,#e8f0f8)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
@@ -298,7 +318,7 @@ export default function TaskDetailPopup({ taskId, onClose, onOpenJourney, snapsh
                     <div style={{ fontSize:11, fontWeight:700, color:tPct>=100?'#86efac':'#64748b', flexShrink:0 }}>
                       {tPct>=100?'✓':tRec?`${tPct}%`:'—'}
                     </div>
-                  </div>
+                  </button>
                 )
               })}
 

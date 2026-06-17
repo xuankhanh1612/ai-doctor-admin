@@ -492,6 +492,8 @@ export default function HealthJourneyGameStandalone({ onViewMedicalRecord }) {
   const [activeScreen, setActiveScreen] = useState('screen-home')
   // ── Popup state (replaces DOM-based modal-task-detail / modal-chapter-detail) ──
   const [taskPopupKey, setTaskPopupKey] = useState(null)    // taskId | null
+  const taskPopupKeyRef = useRef(null)  // ref for reading inside event listener closure
+  useEffect(() => { taskPopupKeyRef.current = taskPopupKey }, [taskPopupKey])
   const [journeyPopupKey, setJourneyPopupKey] = useState(null) // chapterKey | 'overview' | null
 
   useEffect(() => {
@@ -519,7 +521,10 @@ export default function HealthJourneyGameStandalone({ onViewMedicalRecord }) {
       const isImageCapture  = event.data?.type === 'AI_CLINIC_MEDIAPIPE_IMAGE_CAPTURE'
       if (!isWebcamCapture && !isImageCapture) return
 
-      const taskDetailOpen = getRoot()?.querySelector('#modal-task-detail')?.classList.contains('active')
+      // Accept capture from both legacy DOM modal AND new React popup (taskPopupKey)
+      const legacyDomOpen = getRoot()?.querySelector('#modal-task-detail')?.classList.contains('active')
+      const reactPopupOpen = Boolean(taskPopupKeyRef.current)
+      const taskDetailOpen = legacyDomOpen || reactPopupOpen
       if (!taskDetailOpen || !event.data?.dataUrl) return
 
       const captureKind = isWebcamCapture ? 'webcam' : 'image'
@@ -606,6 +611,11 @@ export default function HealthJourneyGameStandalone({ onViewMedicalRecord }) {
     openModal('modal-task-detail')   // legacy DOM (kept for other callers)
     setTaskPopupKey(taskKey)          // new React popup
   }
+
+  // Keep selectedTaskKey in sync when React popup opens from JourneyDetailPopup
+  useEffect(() => {
+    if (taskPopupKey) setSelectedTaskKey(taskPopupKey)
+  }, [taskPopupKey])
 
   const openChapterMissionDetail = (chapterKey) => {
     const chapter = CHAPTER_DETAIL_CONTENT[chapterKey] || CHAPTER_DETAIL_CONTENT.focus
@@ -3388,11 +3398,13 @@ export default function HealthJourneyGameStandalone({ onViewMedicalRecord }) {
         <JourneyDetailPopup
           chapterKey={journeyPopupKey === 'overview' ? null : journeyPopupKey}
           snapshot={snapshot}
+          user={user}
           onClose={() => setJourneyPopupKey(null)}
           onViewMedicalRecord={onViewMedicalRecord}
           onOpenTask={(taskId) => {
             setJourneyPopupKey(null)
             setTaskPopupKey(taskId)
+            setSelectedTaskKey(taskId)
           }}
         />
       )}
