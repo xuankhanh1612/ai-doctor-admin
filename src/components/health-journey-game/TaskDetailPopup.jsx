@@ -10,7 +10,7 @@
 import { useEffect, useRef, useState } from 'react'
 import dailyTasksData from './data/daily_tasks.json'
 import journeysData   from './data/journeys.json'
-import { completeHealthJourneyActivity, XP_TABLE } from './services/healthJourneyStorage.js'
+import { completeHealthJourneyActivity, XP_TABLE, ACTIVITY_TASK_MAP } from './services/healthJourneyStorage.js'
 import { dataUrlToFile, saveWaterProofImage, syncBeMeoWater } from './services/waterProofUpload.js'
 import { getRecord } from '../../lib/medicalStorage.js'
 import AIVisionWebcam from '../webcam/AIVisionWebcam.jsx'
@@ -34,19 +34,33 @@ function buildTaskMap(tasks) {
   return map
 }
 
+// Mission metadata keyed by activityType (obj.task) — phải khớp với MISSION_META
+// trong JourneyDetailPopup.jsx, KHÔNG dùng index vì thứ tự objectives có thể đổi.
+const RELATED_META = {
+  drink_water:        { key: 'first_step',   icon: '🌅', label: 'First Step' },
+  breath_activation:  { key: 'breath',        icon: '🌬', label: 'Breath' },
+  walk_10000_steps:   { key: 'stride',        icon: '🚶', label: 'Stride' },
+  deep_work_90m:      { key: 'focus',         icon: '🎯', label: 'Focus' },
+  read_20_pages:      { key: 'breakthrough',  icon: '📚', label: 'Breakthrough' },
+  no_sugar_challenge: { key: 'challenge',     icon: '🚫', label: 'Challenge' },
+  cold_shower:        { key: 'flow',          icon: '💧', label: 'Flow' },
+  reflection_journal: { key: 'work',          icon: '💼', label: 'Work' },
+}
+
 function buildRelatedMissions(journeys) {
   const ch1 = journeys.find(j => j.chapter === 1)
   if (!ch1?.requiredObjectives) return []
-  const icons  = ['🌅','🌬','🎯','🚫','📚','💧','🚶','💼']
-  const keys   = ['first_step','breath','focus','challenge','breakthrough','flow','stride','work']
-  const labels = ['First Step','Breath','Focus','Challenge','Breakthrough','Flow','Stride','Work']
-  return ch1.requiredObjectives.map((obj, i) => ({
-    chapterKey: keys[i] || `step_${i}`,
-    taskId:  obj.task,
-    icon:    icons[i] || '⭐',
-    title:   `The ${labels[i] || `Step ${i+1}`}`,
-    subtitle: obj.title?.vi || obj.title?.en || `Hoàn thành ${obj.target} lần`,
-  }))
+  return ch1.requiredObjectives.map((obj, i) => {
+    const meta = RELATED_META[obj.task] || { key: `step_${i}`, icon: '⭐', label: obj.task }
+    return {
+      chapterKey: meta.key,
+      taskId:  obj.task,
+      mappedTaskId: ACTIVITY_TASK_MAP[obj.task] || obj.task,
+      icon:    meta.icon,
+      title:   `The ${meta.label}`,
+      subtitle: obj.title?.vi || obj.title?.en || `Hoàn thành ${obj.target} lần`,
+    }
+  })
 }
 
 function pct(taskState) {
@@ -327,7 +341,7 @@ export default function TaskDetailPopup({ taskId, onClose, onOpenJourney, snapsh
               {/* journey chapter 1 */}
               <div style={S.cardLabel}>Liên kết hành trình Chapter 1</div>
               {RELATED.map((m, i) => {
-                const mPct = pct(snapshot?.day?.tasks?.find(t => t.taskId === m.taskId))
+                const mPct = pct(snapshot?.day?.tasks?.find(t => t.taskId === m.mappedTaskId))
                 return (
                   <div key={m.chapterKey} onClick={() => onOpenJourney?.(m.chapterKey)}
                     style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 0',

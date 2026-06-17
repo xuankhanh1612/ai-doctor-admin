@@ -16,7 +16,15 @@
           "target": 30
         },
         {
-          "task": "walk",
+          "task": "breath_activation",
+          "title": {
+            "en": "Complete 20 deep breathing sessions",
+            "vi": "Hoàn thành 20 lần thở sâu"
+          },
+          "target": 20
+        },
+        {
+          "task": "walk_10000_steps",
           "title": {
             "en": "Complete 20 walking days",
             "vi": "Hoàn thành 20 lần đi bộ"
@@ -24,10 +32,10 @@
           "target": 20
         },
         {
-          "task": "deep_work",
+          "task": "deep_work_90m",
           "title": {
             "en": "Complete 10 Deep Work sessions",
-            "vi": "Hoàn thành 10 Deep Work"
+            "vi": "Hoàn thành 10 Deep Work 90 phút"
           },
           "target": 10
         }

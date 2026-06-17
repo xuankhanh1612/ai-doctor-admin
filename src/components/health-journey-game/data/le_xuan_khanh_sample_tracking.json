@@ -3008,25 +3008,13 @@
       },
       {
         "chapter": 1,
-        "activityType": "read_20_pages",
-        "title": {
-          "vi": "Hoàn thành 10 lần đọc sách",
-          "en": "Complete 10 reading sessions"
-        },
-        "current": 10,
-        "target": 10,
-        "completed": true,
-        "updatedAt": "2026-06-12T18:30:00.000Z"
-      },
-      {
-        "chapter": 1,
         "activityType": "breath_activation",
         "title": {
-          "vi": "Hoàn thành 5 lần thở sâu",
-          "en": "Complete 5 breath sessions"
+          "vi": "Hoàn thành 20 lần thở sâu",
+          "en": "Complete 20 deep breathing sessions"
         },
-        "current": 5,
-        "target": 5,
+        "current": 20,
+        "target": 20,
         "completed": true,
         "updatedAt": "2026-06-12T18:30:00.000Z"
       }
