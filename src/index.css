@@ -650,6 +650,12 @@ html, body, #root {
 .omni3d-avatar-core .kidney { width: 28px; height: 42px; top: 174px; color: var(--green); border-radius: 50%; background: rgba(0,230,118,0.16); }
 .omni3d-avatar-core .kidney.left { left: 32px; }
 .omni3d-avatar-core .kidney.right { right: 32px; }
+.omni3d-avatar-core .arm { width: 16px; height: 92px; top: 50px; color: var(--pink); border-radius: 10px; background: rgba(255,121,198,0.14); }
+.omni3d-avatar-core .arm.left { left: -22px; transform: rotate(6deg); }
+.omni3d-avatar-core .arm.right { right: -22px; transform: rotate(-6deg); }
+.omni3d-avatar-core .leg { width: 22px; height: 96px; top: 196px; color: var(--green); border-radius: 10px; background: rgba(0,230,118,0.13); }
+.omni3d-avatar-core .leg.left { left: 30px; }
+.omni3d-avatar-core .leg.right { right: 30px; }
 
 .omni3d-map-pin {
   position: absolute;
@@ -665,6 +671,8 @@ html, body, #root {
 .omni3d-map-pin.pin-one { top: 18%; left: 12%; }
 .omni3d-map-pin.pin-two { right: 12%; top: 44%; color: var(--red); border-color: rgba(255,82,82,0.32); }
 .omni3d-map-pin.pin-three { bottom: 16%; left: 18%; color: var(--green); border-color: rgba(0,230,118,0.32); }
+.omni3d-map-pin.pin-four { bottom: 10%; right: 16%; color: var(--pink); border-color: rgba(255,121,198,0.32); }
+.omni3d-map-pin.pin-five { top: 8%; right: 28%; color: var(--green); border-color: rgba(0,230,118,0.32); }
 
 .omni3d-layout,
 .omni3d-lower-grid {
@@ -765,6 +773,33 @@ html, body, #root {
 
 .omni3d-tree-node.is-alert { color: var(--red); }
 .omni3d-tree-node.is-alert i { background: var(--red); box-shadow: 0 0 10px var(--red); }
+
+.omni3d-tree-grouped {
+  max-height: 460px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.omni3d-tree-group {
+  display: grid;
+  gap: 7px;
+  margin-bottom: 6px;
+}
+
+.omni3d-tree-system {
+  margin-left: 22px;
+  padding: 4px 10px;
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.03);
+  width: fit-content;
+}
+
+.omni3d-tree-node b { color: var(--text); font-weight: 700; }
 
 .omni3d-stack {
   display: grid;
