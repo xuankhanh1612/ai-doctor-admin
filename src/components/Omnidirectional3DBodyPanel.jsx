@@ -2,10 +2,89 @@ import React from 'react'
 import NavButtons from './NavButtons.jsx'
 
 const mvpInputs = ['X-ray', 'Hồ sơ bệnh án', 'Xét nghiệm máu']
-const mvpOrgans = ['Tim', 'Phổi', 'Gan', 'Thận']
+const mvpOrgans = ['Tim / Heart', 'Phổi / Lung', 'Gan / Liver', 'Thận / Kidney']
 const levelOnePipeline = ['Ảnh X-ray phổi', 'YOLO / MedSAM', 'Phân đoạn phổi', 'Mesh Reconstruction', '3D Lung Model', 'Digital Twin']
 const levelTwoPipeline = ['DICOM CT', 'MONAI', 'Segmentation', 'Marching Cubes', '3D Mesh', 'Gaussian Splatting', 'Digital Twin Viewer']
-const bodyTree = ['Brain', 'Lung', 'Heart', 'Liver', 'Kidney', 'Blood Vessel', 'Tumor', 'Lymph Nodes']
+// Bản đồ cơ thể người đầy đủ, song ngữ Anh - Việt, nhóm theo hệ cơ quan
+const bodySystems = [
+  {
+    system: 'Head & Brain / Đầu & Não',
+    accent: 'var(--violet)',
+    organs: [
+      { en: 'Brain', vi: 'Não' },
+      { en: 'Eye', vi: 'Mắt' },
+      { en: 'Ear', vi: 'Tai' },
+      { en: 'Skull', vi: 'Hộp sọ' },
+    ],
+  },
+  {
+    system: 'Chest / Lồng ngực',
+    accent: 'var(--cyan)',
+    organs: [
+      { en: 'Lung', vi: 'Phổi' },
+      { en: 'Heart', vi: 'Tim' },
+      { en: 'Trachea', vi: 'Khí quản' },
+      { en: 'Esophagus', vi: 'Thực quản' },
+      { en: 'Blood Vessel', vi: 'Mạch máu' },
+    ],
+  },
+  {
+    system: 'Abdomen / Bụng',
+    accent: 'var(--green)',
+    organs: [
+      { en: 'Liver', vi: 'Gan' },
+      { en: 'Stomach', vi: 'Dạ dày' },
+      { en: 'Pancreas', vi: 'Tụy' },
+      { en: 'Spleen', vi: 'Lách' },
+      { en: 'Kidney', vi: 'Thận' },
+      { en: 'Gallbladder', vi: 'Túi mật' },
+      { en: 'Small Intestine', vi: 'Ruột non' },
+      { en: 'Large Intestine', vi: 'Ruột già' },
+      { en: 'Bladder', vi: 'Bàng quang' },
+    ],
+  },
+  {
+    system: 'Skeleton & Muscle / Xương & Cơ',
+    accent: 'var(--amber)',
+    organs: [
+      { en: 'Spine', vi: 'Cột sống' },
+      { en: 'Ribs', vi: 'Xương sườn' },
+      { en: 'Pelvis', vi: 'Xương chậu' },
+      { en: 'Muscle', vi: 'Cơ bắp' },
+    ],
+  },
+  {
+    system: 'Arms / Tay',
+    accent: 'var(--pink)',
+    organs: [
+      { en: 'Shoulder', vi: 'Vai' },
+      { en: 'Upper Arm', vi: 'Cánh tay' },
+      { en: 'Elbow', vi: 'Khuỷu tay' },
+      { en: 'Forearm', vi: 'Cẳng tay' },
+      { en: 'Hand', vi: 'Bàn tay' },
+    ],
+  },
+  {
+    system: 'Legs / Chân',
+    accent: 'var(--green)',
+    organs: [
+      { en: 'Hip', vi: 'Hông' },
+      { en: 'Thigh', vi: 'Đùi' },
+      { en: 'Knee', vi: 'Đầu gối' },
+      { en: 'Lower Leg', vi: 'Cẳng chân' },
+      { en: 'Foot', vi: 'Bàn chân' },
+    ],
+  },
+  {
+    system: 'Pathology / Bệnh lý',
+    accent: 'var(--red)',
+    organs: [
+      { en: 'Tumor', vi: 'Khối u' },
+      { en: 'Lymph Nodes', vi: 'Hạch bạch huyết' },
+      { en: 'Cyst', vi: 'Nang' },
+    ],
+  },
+]
 const stack = ['MONAI', 'MedSAM', '3D Slicer', 'Gaussian Splatting', 'Three.js', 'React']
 
 function OmniCard({ title, eyebrow, children, accent = 'var(--cyan)' }) {
@@ -57,10 +136,16 @@ export default function Omnidirectional3DBodyPanel({ onNext, nextLabel, onPrev, 
             <span className="liver" />
             <span className="kidney left" />
             <span className="kidney right" />
+            <span className="arm left" />
+            <span className="arm right" />
+            <span className="leg left" />
+            <span className="leg right" />
           </div>
-          <div className="omni3d-map-pin pin-one">Lung</div>
-          <div className="omni3d-map-pin pin-two">Tumor</div>
-          <div className="omni3d-map-pin pin-three">Vessel</div>
+          <div className="omni3d-map-pin pin-one">Lung / Phổi</div>
+          <div className="omni3d-map-pin pin-two">Tumor / Khối u</div>
+          <div className="omni3d-map-pin pin-three">Vessel / Mạch máu</div>
+          <div className="omni3d-map-pin pin-four">Arm / Tay</div>
+          <div className="omni3d-map-pin pin-five">Leg / Chân</div>
         </div>
       </section>
 
@@ -97,13 +182,23 @@ export default function Omnidirectional3DBodyPanel({ onNext, nextLabel, onPrev, 
       </div>
 
       <div className="omni3d-lower-grid">
-        <OmniCard title="Human Body World Tree" eyebrow="Navigable anatomy graph" accent="var(--cyan)">
-          <div className="omni3d-tree">
-            <div className="omni3d-tree-root">Human Body</div>
-            {bodyTree.map((node) => (
-              <div key={node} className={`omni3d-tree-node ${node === 'Tumor' ? 'is-alert' : ''}`}>
-                <i />
-                <span>{node}</span>
+        <OmniCard title="Human Body World Tree / Bản đồ cơ thể người" eyebrow="Navigable anatomy graph — song ngữ Anh · Việt" accent="var(--cyan)">
+          <div className="omni3d-tree omni3d-tree-grouped">
+            <div className="omni3d-tree-root">Human Body / Cơ thể người</div>
+            {bodySystems.map((group) => (
+              <div key={group.system} className="omni3d-tree-group">
+                <div className="omni3d-tree-system" style={{ color: group.accent, borderColor: group.accent }}>
+                  {group.system}
+                </div>
+                {group.organs.map((organ) => (
+                  <div
+                    key={organ.en}
+                    className={`omni3d-tree-node ${group.system.startsWith('Pathology') ? 'is-alert' : ''}`}
+                  >
+                    <i />
+                    <span><b>{organ.en}</b> / {organ.vi}</span>
+                  </div>
+                ))}
               </div>
             ))}
           </div>
