@@ -349,7 +349,7 @@ export default function AIVisionWebcam({ onViewMedicalRecord, onCaptureSaved, on
         user, lang, label: t('Ảnh chụp AI Doctor Vision', 'AI Doctor Vision capture'),
       })
       setSavingStatus(`${t('Đã lưu vào Upload Records', 'Saved to Upload Records')}: ${record.filename}`)
-      onCaptureSaved?.(record)
+      onCaptureSaved?.({ ...record, dataUrl: capturePreview.dataUrl })
       setCapturePreview(null)
     } catch (error) {
       console.error('AI Vision capture save failed:', error)

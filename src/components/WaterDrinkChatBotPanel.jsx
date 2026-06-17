@@ -113,8 +113,17 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
       setSnapshot(getTaskSnapshot(user))
 
       // Nếu có proofId đang pending → gửi dataUrl vào iframe để hiện nút xem lại
-      const proofId = pendingProofIdRef.current
-      if (proofId && record.dataUrl) {
+      // Nếu không có (chụp ảnh trực tiếp không qua chat) → tạo proofId mới và inject vào chat
+      const proofId = pendingProofIdRef.current || ('proof_cam_' + Date.now())
+      if (record.dataUrl) {
+        // Nếu không có pending proofId, inject tin nhắn bot kèm proofId vào iframe trước
+        if (!pendingProofIdRef.current) {
+          iframeRef.current?.contentWindow?.postMessage?.({
+            type: 'BE_MEO_CAMERA_PROOF',
+            proofId,
+            ml: 150,
+          }, '*')
+        }
         sendProofToIframe(proofId, record.dataUrl)
         pendingProofIdRef.current = null
       }

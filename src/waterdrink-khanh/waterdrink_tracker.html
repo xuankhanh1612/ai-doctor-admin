@@ -1005,6 +1005,17 @@
           proofMap[event.data.proofId] = event.data.dataUrl;
           renderChat();
         }
+        // Camera chụp trực tiếp (không qua chat) → inject tin nhắn bot kèm proofId
+        if (event.data?.type === 'BE_MEO_CAMERA_PROOF' && event.data.proofId) {
+          const ml = event.data.ml || 150;
+          messages.push({
+            role: 'bot',
+            text: `📸 Bé Mèo đã ghi nhận ảnh uống nước (+${ml}ml) từ camera AI Healthcare Vision!`,
+            proofId: event.data.proofId,
+            time: new Date().toISOString(),
+          });
+          renderChat();
+        }
       });
 
       function addWater(amount, source = 'Bé Mèo Nước') {
