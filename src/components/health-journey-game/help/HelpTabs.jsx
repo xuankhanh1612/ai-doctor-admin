@@ -1,45 +1,76 @@
-import React, { useRef } from 'react'
+import React from 'react'
 import { INTRO_TABS, HELP_SCREENS } from './helpContent'
 
+const MAIN_SCREENS = HELP_SCREENS.filter((s) => s.group === 'main')
+const DETAIL_SCREENS = HELP_SCREENS.filter((s) => s.group === 'detail')
+
 /**
- * Horizontal, scrollable pill-tab bar.
- * First the two "intro" tabs (Main menu / Flow map), then a divider,
- * then the 12 numbered detail-screen tabs (matching
- * health-journey-game-detail-name-all-page.png).
+ * Tab bar laid out as 4 centered rows:
+ *   1. "Menu chính"          — alone, centered
+ *   2. "Sơ đồ liên kết"      — alone, centered
+ *   3. 7 main-menu buttons   — Trang chủ … Profile (real bottom-nav order)
+ *   4. 6 detail-screen tabs  — in the order they branch down from row 3
  */
 export default function HelpTabs({ activeTab, onChange }) {
-  const scrollerRef = useRef(null)
+  const introMenu = INTRO_TABS[0]
+  const introFlow = INTRO_TABS[1]
 
   return (
-    <div className="hj-help-tabs" ref={scrollerRef}>
-      {INTRO_TABS.map((tab) => (
+    <div className="hj-help-tabs">
+      <div className="hj-tab-row hj-tab-row-single">
         <button
-          key={tab.id}
           type="button"
-          className={`hj-tab-pill hj-tab-pill-intro ${activeTab === tab.id ? 'active' : ''}`}
-          style={{ '--tab-color': tab.color }}
-          onClick={() => onChange(tab.id)}
+          className={`hj-tab-pill hj-tab-pill-intro ${activeTab === introMenu.id ? 'active' : ''}`}
+          style={{ '--tab-color': introMenu.color }}
+          onClick={() => onChange(introMenu.id)}
         >
-          <span className="hj-tab-icon">{tab.icon}</span>
-          <span className="hj-tab-label">{tab.label}</span>
+          <span className="hj-tab-icon">{introMenu.icon}</span>
+          <span className="hj-tab-label">{introMenu.label}</span>
         </button>
-      ))}
+      </div>
 
-      <span className="hj-tab-divider" aria-hidden="true" />
-
-      {HELP_SCREENS.map((screen) => (
+      <div className="hj-tab-row hj-tab-row-single">
         <button
-          key={screen.id}
           type="button"
-          className={`hj-tab-pill ${activeTab === screen.id ? 'active' : ''}`}
-          style={{ '--tab-color': screen.color }}
-          onClick={() => onChange(screen.id)}
+          className={`hj-tab-pill hj-tab-pill-intro ${activeTab === introFlow.id ? 'active' : ''}`}
+          style={{ '--tab-color': introFlow.color }}
+          onClick={() => onChange(introFlow.id)}
         >
-          <span className="hj-tab-num">{screen.num}</span>
-          <span className="hj-tab-icon">{screen.icon}</span>
-          <span className="hj-tab-label">{screen.name}</span>
+          <span className="hj-tab-icon">{introFlow.icon}</span>
+          <span className="hj-tab-label">{introFlow.label}</span>
         </button>
-      ))}
+      </div>
+
+      <div className="hj-tab-row hj-tab-row-wrap hj-tab-row-main">
+        {MAIN_SCREENS.map((screen) => (
+          <button
+            key={screen.id}
+            type="button"
+            className={`hj-tab-pill hj-tab-pill-main ${activeTab === screen.id ? 'active' : ''}`}
+            style={{ '--tab-color': screen.color }}
+            onClick={() => onChange(screen.id)}
+          >
+            <span className="hj-tab-icon">{screen.icon}</span>
+            <span className="hj-tab-label">{screen.name}</span>
+          </button>
+        ))}
+      </div>
+
+      <div className="hj-tab-row hj-tab-row-wrap hj-tab-row-detail">
+        {DETAIL_SCREENS.map((screen) => (
+          <button
+            key={screen.id}
+            type="button"
+            className={`hj-tab-pill ${activeTab === screen.id ? 'active' : ''}`}
+            style={{ '--tab-color': screen.color }}
+            onClick={() => onChange(screen.id)}
+          >
+            <span className="hj-tab-num">{screen.num}</span>
+            <span className="hj-tab-icon">{screen.icon}</span>
+            <span className="hj-tab-label">{screen.name}</span>
+          </button>
+        ))}
+      </div>
     </div>
   )
 }
