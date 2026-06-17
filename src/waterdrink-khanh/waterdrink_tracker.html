@@ -986,7 +986,7 @@
                 type: isActive ? 'BE_MEO_REVIEW_CLOSE' : 'BE_MEO_REVIEW_REQUEST',
                 proofId: pid,
                 dataUrl: proofMap[pid] || null,
-              }, window.location.origin);
+              }, '*');
               renderChat();
             });
             wrap.appendChild(btn);
@@ -1000,7 +1000,7 @@
 
       // Nhận ảnh proof từ React sau khi lưu thành công
       window.addEventListener('message', (event) => {
-        if (event.origin !== window.location.origin) return;
+        // srcdoc iframe: origin is null, accept all same-tab messages
         if (event.data?.type === 'BE_MEO_PROOF_SAVED' && event.data.proofId && event.data.dataUrl) {
           proofMap[event.data.proofId] = event.data.dataUrl;
           renderChat();
@@ -1011,7 +1011,7 @@
         state.total = Math.max(0, state.total + amount);
         renderState();
         const proofId = 'proof_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
-        window.parent?.postMessage?.({ type: 'BE_MEO_WATER_ADDED', amount, source, total: state.total, goal: state.goal, proofId }, window.location.origin);
+        window.parent?.postMessage?.({ type: 'BE_MEO_WATER_ADDED', amount, source, total: state.total, goal: state.goal, proofId }, '*');
         const text = state.total >= state.goal
           ? `Giỏi quá meo! Bạn đã đạt ${state.total}/${state.goal}ml hôm nay rồi đó 🏆💧`
           : `Bé Mèo đã ghi +${amount}ml. Hôm nay bạn đang ở ${state.total}/${state.goal}ml (${Math.round((state.total / state.goal) * 100)}%).`;

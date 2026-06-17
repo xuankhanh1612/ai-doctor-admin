@@ -40,7 +40,8 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
     const refresh = () => setSnapshot(getTaskSnapshot(user))
 
     const onMessage = (event) => {
-      if (event.origin !== window.location.origin) return
+      // srcdoc iframe có origin null — chỉ lọc theo type, không check origin
+      if (event.origin !== window.location.origin && event.origin !== 'null') return
 
       // Chatbot ghi nhận uống nước (text chat hoặc nút +ml)
       // → lưu proofId đang pending, chờ ảnh camera gán vào
@@ -84,13 +85,13 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
     }
   }, [user])
 
-  // Gửi proof vào iframe
+  // Gửi proof vào iframe — dùng '*' vì srcDoc iframe có origin null
   const sendProofToIframe = (proofId, dataUrl) => {
     const iframe = iframeRef.current
     if (!iframe?.contentWindow) return
     iframe.contentWindow.postMessage(
       { type: 'BE_MEO_PROOF_SAVED', proofId, dataUrl },
-      window.location.origin
+      '*'
     )
   }
 
