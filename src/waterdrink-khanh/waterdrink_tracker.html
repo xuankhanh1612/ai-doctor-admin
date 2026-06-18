@@ -1023,6 +1023,9 @@
         if (event.data?.type === 'BE_MEO_PROOF_SAVED' && event.data.proofId && event.data.dataUrl) {
           proofMap[event.data.proofId] = event.data.dataUrl;
           saveProofMap();
+          // Reload messages từ localStorage — React đã patch proofId vào tin nhắn cuối
+          // trước khi dispatch SYNC_EVENT (vốn không cross frame được) → cần reload thủ công
+          messages = loadMessages();
           renderChat();
         }
         // Camera chụp trực tiếp (không qua chat) → inject tin nhắn bot kèm proofId
