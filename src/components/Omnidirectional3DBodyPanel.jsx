@@ -8,9 +8,26 @@ const levelTwoPipeline = ['DICOM CT', 'MONAI', 'Segmentation', 'Marching Cubes',
 
 // Organ → iframe URL mapping
 const ORGAN_IFRAME_URLS = {
-  'Shoulder': 'https://caskanatomy.info/open3dviewer/?model=upper-limb&export=on',
-  'Hand':     'https://caskanatomy.info/open3dviewer/?model=hand&export=on',
-  'Thigh':    'https://caskanatomy.info/open3dviewer/?model=lower-limb&export=on',
+  Skeleton: 'https://caskanatomy.info/open3dviewer/?model=overview-skeleton&export=on',
+  Brain: 'https://caskanatomy.info/open3dviewer/?model=overview-skull&export=on',
+  Eye: 'https://caskanatomy.info/open3dviewer/?model=overview-skull&export=on',
+  Ear: 'https://caskanatomy.info/open3dviewer/?model=overview-skull&export=on',
+  Skull: 'https://caskanatomy.info/open3dviewer/?model=exploded-skull&export=on',
+  Heart: 'https://www.caskanatomy.info/3dskillslab/?model=hart_openx',
+  Spine: 'https://caskanatomy.info/open3dviewer/?model=overview-skeleton&export=on',
+  Ribs: 'https://caskanatomy.info/open3dviewer/?model=overview-skeleton&export=on',
+  Pelvis: 'https://caskanatomy.info/open3dviewer/?model=lower-limb&export=on',
+  Muscle: 'https://caskanatomy.info/open3dviewer/?model=upper-limb-axio-appendicular-muscles&subset=muscles-and-bursae-and-ligament-parts-hidden',
+  Shoulder: 'https://caskanatomy.info/open3dviewer/?model=upper-limb&export=on',
+  'Upper Arm': 'https://caskanatomy.info/open3dviewer/?model=upper-limb-arm-muscles&subset=ligament-parts-hidden',
+  Elbow: 'https://caskanatomy.info/open3dviewer/?model=upper-limb-arm-muscles&subset=ligament-parts-hidden',
+  Forearm: 'https://caskanatomy.info/open3dviewer/?model=upper-limb-arm-muscles&subset=ligament-parts-hidden',
+  Hand: 'https://caskanatomy.info/open3dviewer/?model=hand&export=on',
+  Hip: 'https://caskanatomy.info/open3dviewer/?model=lower-limb&export=on',
+  Thigh: 'https://caskanatomy.info/open3dviewer/?model=lower-limb&export=on',
+  Knee: 'https://caskanatomy.info/open3dviewer/?model=lower-limb&export=on',
+  'Lower Leg': 'https://caskanatomy.info/open3dviewer/?model=lower-limb&export=on',
+  Foot: 'https://caskanatomy.info/open3dviewer/?model=lower-limb&export=on',
 }
 const STEP_IFRAME_URLS = {
   'Digital Twin Viewer': 'https://caskanatomy.info/open3dviewer/?model=upper-limb&export=on',
@@ -164,7 +181,7 @@ export default function Omnidirectional3DBodyPanel({ onNext, nextLabel, onPrev, 
   const [visitedSteps2, setVisitedSteps2] = useState([])
 
   // Body tree organ iframes
-  const [activeOrgan, setActiveOrgan] = useState(null)
+  const [activeOrgan, setActiveOrgan] = useState('Skeleton')
   const [visitedOrgans, setVisitedOrgans] = useState([])
 
   function handleLevel1Step(step) {
@@ -283,6 +300,14 @@ export default function Omnidirectional3DBodyPanel({ onNext, nextLabel, onPrev, 
 
       <div className="omni3d-lower-grid">
         <OmniCard title="Human Body World Tree / Bản đồ cơ thể người" eyebrow="Navigable anatomy graph — song ngữ Anh · Việt" accent="var(--cyan)">
+          <IframeViewer
+            url={
+              activeOrgan && ORGAN_IFRAME_URLS[activeOrgan]
+                ? ORGAN_IFRAME_URLS[activeOrgan]
+                : ORGAN_IFRAME_URLS['Skeleton']
+            }
+            label={activeOrgan || 'Human Body Viewer'}
+          />
           <div className="omni3d-tree omni3d-tree-grouped">
             <div className="omni3d-tree-root">Human Body / Cơ thể người</div>
             {bodySystems.map((group) => (
@@ -307,12 +332,7 @@ export default function Omnidirectional3DBodyPanel({ onNext, nextLabel, onPrev, 
                         <span><b>{organ.en}</b> / {organ.vi}</span>
                         {hasLink && <span className="omni3d-link-badge">{isActive ? '▼ open' : '▶ 3D'}</span>}
                       </div>
-                      {hasLink && isActive && (
-                        <IframeViewer
-                          url={ORGAN_IFRAME_URLS[organ.en]}
-                          label={`${organ.en} 3D Viewer`}
-                        />
-                      )}
+                      
                     </React.Fragment>
                   )
                 })}
