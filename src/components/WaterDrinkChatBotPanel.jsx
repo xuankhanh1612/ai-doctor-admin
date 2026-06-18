@@ -3,7 +3,7 @@ import NavButtons from './NavButtons.jsx'
 import { useApp } from '../context/AppContext'
 import { useAuth } from '../context/AuthContext.jsx'
 import { completeHealthJourneyActivity, getTaskSnapshot, HEALTH_JOURNEY_EVENT } from './health-journey-game/services/healthJourneyStorage.js'
-import { syncBeMeoWater } from './health-journey-game/services/waterProofUpload.js'
+import { syncBeMeoWater, saveWaterProofImage } from './health-journey-game/services/waterProofUpload.js'
 import AIVisionWebcam from './webcam/AIVisionWebcam.jsx'
 // @ts-ignore Vite raw HTML import
 import waterDrinkTrackerHtml from '../waterdrink-khanh/waterdrink_tracker.html?raw'
@@ -94,6 +94,19 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
       '*'
     )
   }
+
+  // onSaveCapture — gọi bởi AIVisionWebcam khi user nhấn "💾 Lưu ảnh" trong preview.
+  // Dùng saveWaterProofImage (có healthJourney metadata) thay vì lưu generic,
+  // để Medical Records / proof lookup nhận đúng activityType='drink_water'.
+  const onSaveCapture = (file, { kind }) => saveWaterProofImage(file, user, {
+    source:       `be-meo-nuoc-ai-vision-${kind}`,
+    notesPrefix:  'Bé Mèo Nước · AI Healthcare Vision',
+    activityType: 'drink_water',
+    taskId:       'water',
+    xpEarned:     10,
+    waterAmountMl: 150,
+    proofType:    `ai_healthcare_vision_${kind}_overlay`,
+  })
 
   // Callback từ AIVisionWebcam: ảnh đã confirm lưu thành công
   const handleCaptureSaved = (record) => {
@@ -208,6 +221,7 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
               <AIVisionWebcam
                 onViewMedicalRecord={onViewMedicalRecord}
                 onCaptureSaved={handleCaptureSaved}
+                onSaveCapture={onSaveCapture}
                 reviewImageUrl={reviewImageUrl}
                 onExitReview={() => setReviewImageUrl(null)}
               />

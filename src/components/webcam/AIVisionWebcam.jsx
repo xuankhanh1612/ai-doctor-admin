@@ -15,7 +15,7 @@ const RESOLUTIONS = {
   '1080': { width: 1920, height: 1080 },
 }
 
-export default function AIVisionWebcam({ onViewMedicalRecord, onCaptureSaved, onPreviewCapture, reviewImageUrl, onExitReview }) {
+export default function AIVisionWebcam({ onViewMedicalRecord, onCaptureSaved, onPreviewCapture, onSaveCapture, reviewImageUrl, onExitReview }) {
   const { lang } = useApp()
   const { user } = useAuth()
   const t = (vi, en) => (lang === 'vi' ? vi : en)
@@ -345,11 +345,16 @@ export default function AIVisionWebcam({ onViewMedicalRecord, onCaptureSaved, on
     setSavingStatus(t('Đang lưu ảnh vào Upload Records...', 'Saving photo to Upload Records...'))
     try {
       const file = dataUrlToFile(capturePreview.dataUrl, 'ai_vision_capture.jpg')
-      const record = await saveVisionControlImage(file, {
-        user, lang, label: t('Ảnh chụp AI Doctor Vision', 'AI Doctor Vision capture'),
-      })
+      // onSaveCapture: cho phép parent (vd Health Journey task) tự lưu ảnh với
+      // metadata riêng (activityType, taskId, waterAmountMl...) thay vì luồng
+      // generic saveVisionControlImage. Nếu không truyền, giữ hành vi mặc định.
+      const record = onSaveCapture
+        ? await onSaveCapture(file, { dataUrl: capturePreview.dataUrl, kind: capturePreview.kind })
+        : await saveVisionControlImage(file, {
+            user, lang, label: t('Ảnh chụp AI Doctor Vision', 'AI Doctor Vision capture'),
+          })
       setSavingStatus(`${t('Đã lưu vào Upload Records', 'Saved to Upload Records')}: ${record.filename}`)
-      onCaptureSaved?.({ ...record, dataUrl: capturePreview.dataUrl })
+      onCaptureSaved?.({ ...record, dataUrl: capturePreview.dataUrl, kind: capturePreview.kind })
       setCapturePreview(null)
     } catch (error) {
       console.error('AI Vision capture save failed:', error)
@@ -357,7 +362,7 @@ export default function AIVisionWebcam({ onViewMedicalRecord, onCaptureSaved, on
     } finally {
       setSavingPreview(false)
     }
-  }, [capturePreview, user, lang, onCaptureSaved])
+  }, [capturePreview, user, lang, onCaptureSaved, onSaveCapture])
 
   // ----- capture preview: cancel → reopen camera -----
   const handleCancelPreview = useCallback(async () => {

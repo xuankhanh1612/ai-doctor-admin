@@ -11,7 +11,7 @@ import { useEffect, useRef, useState } from 'react'
 import dailyTasksData from './data/daily_tasks.json'
 import journeysData   from './data/journeys.json'
 import { completeHealthJourneyActivity, XP_TABLE, ACTIVITY_TASK_MAP } from './services/healthJourneyStorage.js'
-import { dataUrlToFile, saveWaterProofImage, syncBeMeoWater } from './services/waterProofUpload.js'
+import { saveWaterProofImage, syncBeMeoWater } from './services/waterProofUpload.js'
 import { getRecord } from '../../lib/medicalStorage.js'
 import AIVisionWebcam from '../webcam/AIVisionWebcam.jsx'
 
@@ -84,7 +84,7 @@ export default function TaskDetailPopup({ taskId, onClose, onOpenJourney, snapsh
   const todayRec = snapshot?.day?.tasks?.find(t => t.taskId === task?.taskId)
   const progress = pct(todayRec)
 
-  /* save state wired to AIVisionWebcam via postMessage bridge */
+  /* save state — set bởi onSaveCapture trong khi đang lưu ảnh */
   const [saving,          setSaving]          = useState(false)
   const [saveMsg,         setSaveMsg]         = useState('')
   const [lastCaptureKind, setLastCaptureKind] = useState('')
@@ -102,58 +102,51 @@ export default function TaskDetailPopup({ taskId, onClose, onOpenJourney, snapsh
          p.capturedAt?.slice(0,10) === new Date().toISOString().slice(0,10)
   ) || proofImages.find(p => p.activityType === task?.activityType)
 
-  /* postMessage bridge — intercept saves from AIVisionWebcam */
+  /* AI_CLINIC_OPEN_UPLOAD_RECORDS — vẫn có thể được gửi từ các iframe khác trong app
+     (vd MediaPipe object-detector iframe cũ ở nơi khác); giữ lại listener tối giản này
+     chỉ cho phần điều hướng, không liên quan tới luồng lưu ảnh hiện tại (AIVisionWebcam
+     là component con trực tiếp, không phải iframe, nên không gửi postMessage capture). */
   useEffect(() => {
-    const h = async (e) => {
+    const h = (e) => {
       if (e.origin !== window.location.origin) return
-
       if (e.data?.type === 'AI_CLINIC_OPEN_UPLOAD_RECORDS') {
         if (onViewMedicalRecord) onViewMedicalRecord()
         else window.dispatchEvent(new CustomEvent('navigate-to-upload'))
-        return
       }
-
-      const isWebcam = e.data?.type === 'AI_CLINIC_MEDIAPIPE_WEBCAM_CAPTURE'
-      const isImage  = e.data?.type === 'AI_CLINIC_MEDIAPIPE_IMAGE_CAPTURE'
-      if ((!isWebcam && !isImage) || !e.data?.dataUrl) return
-
-      const kind = isWebcam ? 'webcam' : 'image'
-      setSaving(true); setSaveMsg('')
-      try {
-        const file = dataUrlToFile(
-          e.data.dataUrl,
-          e.data.filename || `${task.taskId}_ai_${kind}.jpg`
-        )
-        const rec = await saveWaterProofImage(file, user, {
-          source:        `task-detail-popup-ai-vision-${kind}`,
-          notesPrefix:   `Health Journey · ${task.titleVi}`,
-          activityType:  task.activityType,
-          taskId:        task.taskId,
-          xpEarned:      XP_TABLE[task.activityType] || 0,
-          waterAmountMl: task.taskId === 'water' ? 150 : 0,
-          proofType:     `ai_healthcare_vision_${kind}_overlay`,
-        })
-        completeHealthJourneyActivity({
-          user, activityType: task.activityType, value: 1,
-          proofImage: rec.uploadPath, uploadRecord: rec,
-          metadata: { source: `task-detail-popup-ai-vision-${kind}`, taskId: task.taskId },
-        })
-        if (task.taskId === 'water') syncBeMeoWater(150, `TaskDetailPopup AI ${kind}`)
-        setLastCaptureKind(kind)
-        setSaveMsg(`✅ Đã lưu ảnh ${kind === 'image' ? 'Image' : 'Webcam'} vào Medical Records`)
-        e.source?.postMessage?.({ type: 'AI_CLINIC_MEDIAPIPE_CAPTURE_SAVED', kind, uploadPath: rec.uploadPath }, e.origin)
-      } catch (err) {
-        setSaveMsg(`❌ ${err?.message || 'Lỗi lưu ảnh.'}`)
-        e.source?.postMessage?.({ type: 'AI_CLINIC_MEDIAPIPE_CAPTURE_SAVE_FAILED', kind, message: err?.message }, e.origin)
-      } finally { setSaving(false) }
     }
     window.addEventListener('message', h)
     return () => window.removeEventListener('message', h)
-  }, [task, user, onViewMedicalRecord])
+  }, [onViewMedicalRecord])
 
   const close = () => onClose?.()
 
-  /* called by AIVisionWebcam after it saves a "Chụp ảnh" capture to Upload Records */
+  /* onSaveCapture — gọi bởi AIVisionWebcam KHI VÀ CHỈ KHI user nhấn "💾 Lưu ảnh"
+     trong màn preview (không gọi lúc mới chụp). Đây LÀ hàm lưu ảnh thật vào
+     Upload Records/Medical Records, dùng đúng metadata health-journey (activityType,
+     taskId, waterAmountMl...) để "🔍 Xem lại ảnh đã chụp" và Medical Records tra
+     đúng proof theo task. Nếu lưu lỗi, ném lỗi để AIVisionWebcam giữ preview lại
+     (không tăng đếm, không đóng preview). */
+  const onSaveCapture = async (file, { kind }) => {
+    setSaving(true); setSaveMsg('')
+    try {
+      return await saveWaterProofImage(file, user, {
+        source:        `task-detail-popup-ai-vision-${kind}`,
+        notesPrefix:   `Health Journey · ${task.titleVi}`,
+        activityType:  task.activityType,
+        taskId:        task.taskId,
+        xpEarned:      XP_TABLE[task.activityType] || 0,
+        waterAmountMl: task.taskId === 'water' ? 150 : 0,
+        proofType:     `ai_healthcare_vision_${kind}_overlay`,
+      })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  /* onCaptureSaved — gọi bởi AIVisionWebcam NGAY SAU KHI onSaveCapture đã lưu xong.
+     Chỉ xử lý side-effect: tăng đếm nhiệm vụ +1 (journey + daily) và đồng bộ Bé Mèo
+     Nước +150ml nếu là task uống nước. KHÔNG gọi lúc mới chụp/preview, KHÔNG gọi nếu
+     user nhấn "Hủy / Chụp lại". */
   const handleCaptureSaved = async (record) => {
     try {
       completeHealthJourneyActivity({
@@ -162,7 +155,7 @@ export default function TaskDetailPopup({ taskId, onClose, onOpenJourney, snapsh
         metadata: { source: 'task-detail-popup-ai-vision-capture', taskId: task.taskId },
       })
       if (task.taskId === 'water') syncBeMeoWater(150, 'TaskDetailPopup AI capture')
-      setLastCaptureKind('webcam')
+      setLastCaptureKind(record?.kind || 'webcam')
       setSaveMsg('✅ Đã lưu ảnh vào Medical Records · Nhiệm vụ +1')
     } catch (err) {
       setSaveMsg(`❌ ${err?.message || 'Lỗi cập nhật nhiệm vụ.'}`)
@@ -232,7 +225,7 @@ export default function TaskDetailPopup({ taskId, onClose, onOpenJourney, snapsh
 
           {/* ── CAMERA COLUMN — always visible, always max ── */}
           <div style={S.camCol} className="tdp-cam-col">
-            <AIVisionWebcam onViewMedicalRecord={onViewMedicalRecord} onCaptureSaved={handleCaptureSaved} reviewImageUrl={reviewImageUrl} onExitReview={() => setReviewImageUrl(null)} />
+            <AIVisionWebcam onViewMedicalRecord={onViewMedicalRecord} onCaptureSaved={handleCaptureSaved} onSaveCapture={onSaveCapture} reviewImageUrl={reviewImageUrl} onExitReview={() => setReviewImageUrl(null)} />
           </div>
 
           {/* ── INFO PANEL — collapsible ── */}
