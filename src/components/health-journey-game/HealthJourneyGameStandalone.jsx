@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useMemo } from 'react'
 import { useAuth } from '../../context/AuthContext.jsx'
-import { completeHealthJourneyActivity, HEALTH_JOURNEY_EVENT, getTaskSnapshot, XP_TABLE } from './services/healthJourneyStorage.js'
+import { completeHealthJourneyActivity, HEALTH_JOURNEY_EVENT, getTaskSnapshot, XP_TABLE, ACTIVITY_TASK_MAP } from './services/healthJourneyStorage.js'
 import { dataUrlToFile, drawAIWaterBottleOverlay, saveWaterProofImage, syncBeMeoWater } from './services/waterProofUpload.js'
 import dailyTasksData from './data/daily_tasks.json'
 import journeysData from './data/journeys.json'
@@ -35,19 +35,32 @@ function buildTaskDetailContent(tasks) {
   return map
 }
 
+// Mission metadata keyed by activityType (obj.task) — PHẢI khớp với MISSION_META
+// trong JourneyDetailPopup.jsx và RELATED_META trong TaskDetailPopup.jsx.
+// KHÔNG dùng index vì thứ tự requiredObjectives trong journeys.json có thể đổi.
+const CHAPTER_MISSION_META = {
+  drink_water:        { key: 'first_step',   icon: '🌅', label: 'First Step' },
+  breath_activation:  { key: 'breath',        icon: '🌬', label: 'Breath' },
+  walk_10000_steps:   { key: 'stride',        icon: '🚶', label: 'Stride' },
+  deep_work_90m:      { key: 'focus',         icon: '🎯', label: 'Focus' },
+  read_20_pages:      { key: 'breakthrough',  icon: '📚', label: 'Breakthrough' },
+  no_sugar_challenge: { key: 'challenge',     icon: '🚫', label: 'Challenge' },
+  cold_shower:        { key: 'flow',          icon: '💧', label: 'Flow' },
+  reflection_journal: { key: 'work',          icon: '💼', label: 'Work' },
+}
+
 // Build chapter objectives list from journeys.json chapter 1
 function buildChapterDetailContent(journeys) {
   const chapter1 = journeys.find((j) => j.chapter === 1)
   if (!chapter1?.requiredObjectives) return {}
-  const chapterIcons = ['🌅', '🌬', '🎯', '🚫', '📚', '💧', '🚶', '💼']
-  const chapterKeys = ['first_step', 'breath', 'focus', 'challenge', 'breakthrough', 'flow', 'stride', 'work']
   const map = {}
   chapter1.requiredObjectives.forEach((obj, i) => {
-    const key = chapterKeys[i] || `step_${i}`
-    map[key] = {
-      taskId: obj.task,
-      icon: chapterIcons[i] || '⭐',
-      title: `The ${['First Step', 'Breath', 'Focus', 'Challenge', 'Breakthrough', 'Flow', 'Stride', 'Work'][i] || `Step ${i + 1}`}`,
+    const meta = CHAPTER_MISSION_META[obj.task] || { key: `step_${i}`, icon: '⭐', label: obj.task }
+    map[meta.key] = {
+      taskId: ACTIVITY_TASK_MAP[obj.task] || obj.task, // 'drink_water' → 'water' (khớp với daily_tasks.json taskId)
+      activityType: obj.task,                          // 'drink_water' (khớp với journeyProgress.objectives)
+      icon: meta.icon,
+      title: `The ${meta.label}`,
       subtitle: obj.title?.vi || obj.title?.en || `Hoàn thành ${obj.target} lần`,
       target: obj.target,
     }
@@ -607,8 +620,12 @@ export default function HealthJourneyGameStandalone({ onViewMedicalRecord }) {
   const openTaskDetail = (taskKey) => {
     setSelectedTaskKey(taskKey)
     setCameraError('')
-    openModal('modal-task-detail')   // legacy DOM (kept for other callers)
-    setTaskPopupKey(taskKey)          // new React popup
+    // FIX: KHÔNG mở modal DOM cũ ('modal-task-detail') nữa.
+    // Trước đây mở cả modal cũ + popup React mới cùng lúc khiến CẢ HAI
+    // postMessage listener (onMediaPipeCapture ở đây + listener trong
+    // TaskDetailPopup.jsx) cùng nhận 1 event capture → completeHealthJourneyActivity
+    // bị gọi 2 lần cho 1 lần chụp ảnh → đếm sai / không đồng bộ số lần uống nước.
+    setTaskPopupKey(taskKey)          // new React popup — nguồn sự thật duy nhất
   }
 
   const openChapterMissionDetail = (chapterKey) => {
@@ -3271,7 +3288,17 @@ export default function HealthJourneyGameStandalone({ onViewMedicalRecord }) {
                     key={journey.chapter}
                     onClick={(event) => {
                       closeModal('modal-all-chapters')
-                      isUnlocked ? openModal(modalId) : showLockedChapter((journey.title?.en || `Chapter ${journey.chapter}`).toUpperCase(), `Hoàn thành Chapter ${journey.chapter - 1} để mở khóa`, icon)
+                      if (!isUnlocked) {
+                        showLockedChapter((journey.title?.en || `Chapter ${journey.chapter}`).toUpperCase(), `Hoàn thành Chapter ${journey.chapter - 1} để mở khóa`, icon)
+                      } else if (isChapter1) {
+                        // FIX: dùng popup React mới (JourneyDetailPopup) thay vì modal DOM cũ
+                        // ('modal-chapter-detail') — modal cũ dẫn tới openChapterMissionDetail
+                        // → taskId bị lệch (activityType thay vì taskId ngắn) khiến popup mở
+                        // nhầm nhiệm vụ và không ghi nhận đúng số lần uống nước / breathing / v.v.
+                        openJourneyPopup('overview')
+                      } else {
+                        openModal(modalId)
+                      }
                     }}
                     style={{
                       display: "flex", alignItems: "center", gap: "12px",
