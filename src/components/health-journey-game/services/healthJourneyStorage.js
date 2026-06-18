@@ -329,3 +329,40 @@ export function completeHealthJourneyActivity({ user, activityType, value = 1, p
   saveHealthJourneyDb(db)
   return { db, journeyUser, activity, proof, day, objective }
 }
+
+/**
+ * checkAndUnlockChapter1 — gọi từ JourneyDetailPopup sau mỗi lần refresh snapshot.
+ * Nếu TẤT CẢ objectives của chapter 1 đã hoàn thành mà unlockedChapters chưa có 2,
+ * thì tự động unlock Chapter 2 và fire HEALTH_JOURNEY_EVENT để UI cập nhật ngay.
+ */
+export function checkAndUnlockChapter1(user) {
+  if (!user) return false
+  const db = loadHealthJourneyDb()
+  const journeyUser = ensureUser(db, user)
+  const progress = journeyUser.journeyProgress
+
+  const ch1Objectives = progress.objectives.filter((o) => o.chapter === 1)
+  if (ch1Objectives.length === 0) return false
+
+  const chapter1Done = ch1Objectives.every((o) => o.completed || o.current >= o.target)
+  if (!chapter1Done) return false
+  if (progress.unlockedChapters.includes(2)) return true // đã unlock rồi
+
+  const timestamp = new Date().toISOString()
+  progress.unlockedChapters.push(2)
+  progress.currentChapter = 2
+  journeyUser.rewards.claimed.push({
+    id: `reward_chapter_1_${Date.now()}`,
+    chapter: 1,
+    type: 'chapter_unlock',
+    name: { vi: 'Rương Chapter 1 + 500 xu', en: 'Chapter 1 Chest + 500 coins' },
+    coins: 500,
+    chest: 'hydration_starter_chest',
+    claimedAt: timestamp,
+  })
+  journeyUser.profile.coins += 500
+  journeyUser.updatedAt = timestamp
+
+  saveHealthJourneyDb(db)
+  return true
+}

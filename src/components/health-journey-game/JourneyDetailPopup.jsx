@@ -4,6 +4,7 @@ import {
   HEALTH_JOURNEY_EVENT,
   ACTIVITY_TASK_MAP,
   getTaskSnapshot,
+  checkAndUnlockChapter1,
 } from './services/healthJourneyStorage.js'
 
 /**
@@ -91,7 +92,13 @@ export default function JourneyDetailPopup({
       const fresh = getTaskSnapshot(user)
       setSnapshot(fresh)
       const unlockedChs = fresh?.journeyUser?.journeyProgress?.unlockedChapters || [1]
-      if (unlockedChs.includes(2)) setChapter2JustUnlocked(true)
+      if (unlockedChs.includes(2)) {
+        setChapter2JustUnlocked(true)
+      } else {
+        // Kiểm tra xem Chapter 1 đã hoàn thành chưa → nếu rồi thì tự unlock ngay
+        const didUnlock = checkAndUnlockChapter1(user)
+        if (didUnlock) setChapter2JustUnlocked(true)
+      }
     } catch (_) {}
   }, [user])
 
