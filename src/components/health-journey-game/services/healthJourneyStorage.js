@@ -76,6 +76,28 @@ function migrateLargeImages(db) {
   return changed
 }
 
+// BUG FIX (self-heal): trước đây `ensureUser` reset `current: 0` cho user mới
+// nhưng KHÔNG reset `completed`, nên objective giữ nguyên `completed: true`
+// copy từ sample data (vốn đã hoàn thành 30/30) → khiến `chapter1Done` bị tính
+// SAI ngay từ activity đầu tiên (vd uống nước 1 lần trong khi target=30) hoặc,
+// với data cũ đã lưu trước bản fix này, khiến objective bị "kẹt" ở trạng thái
+// completed sai lệch vĩnh viễn → hành trình/Chapter không đồng bộ đúng theo
+// số lần proof thật. Hàm này tính lại `completed` cho MỌI objective của MỌI
+// user mỗi lần load DB, để tự sửa cả user mới lẫn data cũ đã bị lỗi từ trước.
+function repairObjectiveCompletedFlags(db) {
+  let changed = false
+  Object.values(db.users || {}).forEach((user) => {
+    user.journeyProgress?.objectives?.forEach((objective) => {
+      const shouldBeCompleted = Number(objective.current || 0) >= Number(objective.target || 0)
+      if (Boolean(objective.completed) !== shouldBeCompleted) {
+        objective.completed = shouldBeCompleted
+        changed = true
+      }
+    })
+  })
+  return changed
+}
+
 
 
 const defaultDb = () => ({
@@ -105,7 +127,7 @@ const ensureUser = (db, user) => {
   seed.rewards.claimed = []
   seed.journeyProgress.currentChapter = 1
   seed.journeyProgress.unlockedChapters = [1]
-  seed.journeyProgress.objectives = seed.journeyProgress.objectives.map((objective) => ({ ...objective, current: 0 }))
+  seed.journeyProgress.objectives = seed.journeyProgress.objectives.map((objective) => ({ ...objective, current: 0, completed: false }))
   seed.profile.xp = 0
   seed.profile.energy = 100
   seed.profile.coins = 0
@@ -123,7 +145,9 @@ export function loadHealthJourneyDb() {
       return db
     }
     const db = JSON.parse(raw)
-    const changed = migrateLargeImages(db)
+    const changedImages = migrateLargeImages(db)
+    const changedObjectives = repairObjectiveCompletedFlags(db)
+    const changed = changedImages || changedObjectives
     if (changed) {
       try { localStorage.setItem(HEALTH_JOURNEY_DB_KEY, JSON.stringify(db)) } catch (_) { /* quota: skip */ }
     }
