@@ -365,6 +365,7 @@ export default function Omnidirectional3DBodyPanel({ onNext, nextLabel, onPrev, 
               </div>
             ))}
           </div>
+            </div>
             <div style={{padding:'16px',border:'1px solid rgba(255,255,255,.15)',borderRadius:'12px'}}>
               <h4>{activeOrgan || 'Skeleton'}</h4>
               <p><b>System:</b> {organMeta[activeOrgan]?.system || 'General Anatomy'}</p>
