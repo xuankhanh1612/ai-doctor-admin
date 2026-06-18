@@ -593,6 +593,21 @@ export default function MedicalUploader({ patientId, onSelectImage }) {
 
   async function handleDelete(id) {
     if (!confirm(uploadText(lang, 'confirmDelete'))) return
+    // Nếu record có beMeoProofId → xóa đồng bộ ảnh khỏi be_meo_nuoc_proof_map trong localStorage
+    const rec = records.find(r => r.id === id)
+    if (rec?.beMeoProofId) {
+      try {
+        const proofMap = JSON.parse(localStorage.getItem('be_meo_nuoc_proof_map') || '{}')
+        delete proofMap[rec.beMeoProofId]
+        localStorage.setItem('be_meo_nuoc_proof_map', JSON.stringify(proofMap))
+      } catch (_) {}
+      // Xóa luôn proofId khỏi tin nhắn chat để nút Xem lại không còn hiện
+      try {
+        const msgs = JSON.parse(localStorage.getItem('be-meo-nuoc-chat-v1') || '[]')
+        const updated = msgs.map(m => m.proofId === rec.beMeoProofId ? { ...m, proofId: null } : m)
+        localStorage.setItem('be-meo-nuoc-chat-v1', JSON.stringify(updated))
+      } catch (_) {}
+    }
     await deleteRecord(id, recordScope)
     notifyUpload()
     await loadRecords()

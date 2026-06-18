@@ -114,15 +114,22 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
   // onSaveCapture — gọi bởi AIVisionWebcam khi user nhấn "💾 Lưu ảnh" trong preview.
   // Dùng saveWaterProofImage (có healthJourney metadata) thay vì lưu generic,
   // để Medical Records / proof lookup nhận đúng activityType='drink_water'.
-  const onSaveCapture = (file, { kind }) => saveWaterProofImage(file, user, {
-    source:       `be-meo-nuoc-ai-vision-${kind}`,
-    notesPrefix:  'Bé Mèo Nước · AI Healthcare Vision',
-    activityType: 'drink_water',
-    taskId:       'water',
-    xpEarned:     10,
-    waterAmountMl: 150,
-    proofType:    `ai_healthcare_vision_${kind}_overlay`,
-  })
+  const onSaveCapture = (file, { kind }) => {
+    // proofId đang pending (đã có trong chat) hoặc tạo mới để gắn vào record
+    // → khi user xóa record ở trang Upload, beMeoProofId giúp xóa đồng bộ khỏi be_meo_nuoc_proof_map
+    const proofId = pendingProofIdRef.current || ('proof_cam_' + Date.now())
+    if (!pendingProofIdRef.current) pendingProofIdRef.current = proofId
+    return saveWaterProofImage(file, user, {
+      source:        `be-meo-nuoc-ai-vision-${kind}`,
+      notesPrefix:   'Bé Mèo Nước · AI Healthcare Vision',
+      activityType:  'drink_water',
+      taskId:        'water',
+      xpEarned:      10,
+      waterAmountMl: 150,
+      proofType:     `ai_healthcare_vision_${kind}_overlay`,
+      beMeoProofId:  proofId,
+    })
+  }
 
   // Callback từ AIVisionWebcam: ảnh đã confirm lưu thành công
   const handleCaptureSaved = (record) => {
