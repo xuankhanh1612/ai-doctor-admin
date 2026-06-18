@@ -155,9 +155,6 @@ function Flow({ steps, variant = 'mvp', onStepClick, activeStep, visitedSteps = 
           </React.Fragment>
         )
       })}
-    </div>
-  )
-}
 
 function IframeViewer({ url, label }) {
   return (
@@ -334,13 +331,7 @@ export default function Omnidirectional3DBodyPanel({ onNext, nextLabel, onPrev, 
         </OmniCard>
       </div>
 
-      <NavButtons onNext={onNext} nextLabel={nextLabel || 'Digital Twin'} onPrev={onPrev} prevLabel={prevLabel} />
-    </div>
-  )
-}
-</div>
-
-<div className="omni3d-layout">
+      <div className="omni3d-layout">
         <OmniCard title="Level 1" eyebrow="Fast clinical prototype" accent="var(--green)">
           <div className="omni3d-io-grid">
             <div>
@@ -398,3 +389,9 @@ export default function Omnidirectional3DBodyPanel({ onNext, nextLabel, onPrev, 
       </div>
 
       
+
+
+      <NavButtons onNext={onNext}
+    </div>
+  )
+}
