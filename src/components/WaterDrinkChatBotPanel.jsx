@@ -81,15 +81,15 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
     window.addEventListener('message', onMessage)
 
     // Lắng nghe ảnh chụp từ TaskDetailPopup (popup nhiệm vụ uống nước trong Health Journey Game)
-    // → inject tin nhắn bot vào chat + gán dataUrl để nút "🔍 Xem lại" hiện ngay
+    // TaskDetailPopup đã patch proofId vào localStorage TRƯỚC khi syncBeMeoWater dispatch SYNC_EVENT
+    // → iframe đã reload messages với proofId đúng → chỉ cần gửi PROOF_SAVED để cập nhật proofMap
+    //   trong bộ nhớ iframe (phòng trường hợp iframe chưa load proofMap từ localStorage kịp)
     const onTaskProof = (e) => {
-      const { proofId, dataUrl, ml = 150 } = e.detail || {}
+      const { proofId, dataUrl } = e.detail || {}
       if (!proofId || !dataUrl) return
       const iframe = iframeRef.current
       if (!iframe?.contentWindow) return
-      // 1) Inject tin nhắn bot kèm proofId (giống chụp camera trực tiếp)
-      iframe.contentWindow.postMessage({ type: 'BE_MEO_CAMERA_PROOF', proofId, ml }, '*')
-      // 2) Gán dataUrl cho proofId để nút Xem lại hiện ngay
+      // Gán dataUrl vào proofMap trong bộ nhớ iframe → renderChat() → nút Xem lại hiện
       iframe.contentWindow.postMessage({ type: 'BE_MEO_PROOF_SAVED', proofId, dataUrl }, '*')
     }
     window.addEventListener('BE_MEO_TASK_PROOF_SAVED', onTaskProof)
