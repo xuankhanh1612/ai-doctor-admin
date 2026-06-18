@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import journeysData from './data/journeys.json'
 import {
   HEALTH_JOURNEY_EVENT,
@@ -9,67 +9,70 @@ import {
 
 /**
  * JourneyDetailPopup.jsx
- * Popup "Chi tiết Journey" — real-time sync tiến độ uống nước → unlock Chapter 2
+ * Popup "Chi tiết Journey" — hiển thị nội dung đúng chapter khi user nhấn vào
  *
- * FIX: mappedTaskId (drink_water → 'water') được pass chính xác vào onOpenTask
- *      để TaskDetailPopup nhận đúng taskId='water' và ghi nhận mỗi lần chụp ảnh.
+ * - chapterKey = null | 'overview'   → Chapter 1 (default)
+ * - chapterKey = 'chapter_2'         → Chapter 2
+ * - chapterKey = 'chapter_3'         → Chapter 3
+ * ...v.v
  *
- * Luồng:
- *   1. user nhấn "MỞ NHIỆM VỤ NÀY" (The First Step · drink_water · 30 lần)
- *   2. → onOpenTask('water') → cha mount TaskDetailPopup taskId='water'
- *   3. → mỗi lần chụp ảnh → completeHealthJourneyActivity(activityType:'drink_water')
- *   4. → objective.current++ → HEALTH_JOURNEY_EVENT fire
- *   5. → JourneyDetailPopup lắng nghe event → cập nhật live counter
- *   6. → khi đủ 30 → Chapter 2 tự unlock
+ * Mỗi chapter có 4 Task lớn từ daily_tasks, mục tiêu (target) tăng theo độ khó.
  */
 
 const CH_ICONS  = ['🌅','🔥','⚡','👑','⚜️']
-const CH_COLORS = ['rgba(139,92,246,.2)','rgba(59,130,246,.2)','rgba(239,68,68,.2)','rgba(245,158,11,.2)','rgba(34,197,94,.2)']
+const CH_COLORS = [
+  'rgba(139,92,246,.2)',
+  'rgba(59,130,246,.2)',
+  'rgba(239,68,68,.2)',
+  'rgba(245,158,11,.2)',
+  'rgba(34,197,94,.2)',
+]
 
-// Mission metadata keyed by activityType (obj.task) — KHÔNG dùng index, vì
-// thứ tự requiredObjectives trong journeys.json có thể thay đổi/thêm bớt.
+// Map activityType → task metadata for mission display
 const MISSION_META = {
-  drink_water:        { key: 'first_step',   icon: '🌅', label: 'First Step' },
-  breath_activation:  { key: 'breath',        icon: '🌬', label: 'Breath' },
-  walk_10000_steps:   { key: 'stride',        icon: '🚶', label: 'Stride' },
-  deep_work_90m:      { key: 'focus',         icon: '🎯', label: 'Focus' },
-  read_20_pages:      { key: 'breakthrough',  icon: '📚', label: 'Breakthrough' },
-  no_sugar_challenge: { key: 'challenge',     icon: '🚫', label: 'Challenge' },
-  cold_shower:        { key: 'flow',          icon: '💧', label: 'Flow' },
-  reflection_journal: { key: 'work',          icon: '💼', label: 'Work' },
+  drink_water:        { key: 'drink_water',        icon: '💧', label: 'Water Mastery' },
+  breath_activation:  { key: 'breath_activation',  icon: '🌬', label: 'Breath Power' },
+  walk_10000_steps:   { key: 'walk_10000_steps',   icon: '🚶', label: 'Step Warrior' },
+  deep_work_90m:      { key: 'deep_work_90m',      icon: '🎯', label: 'Deep Focus' },
+  read_20_pages:      { key: 'read_20_pages',      icon: '📚', label: 'Book Seeker' },
+  no_sugar_challenge: { key: 'no_sugar_challenge', icon: '🚫', label: 'Sugar Slayer' },
+  cold_shower:        { key: 'cold_shower',         icon: '🚿', label: 'Cold Warrior' },
+  reflection_journal: { key: 'reflection_journal', icon: '📓', label: 'Mind Forge' },
+  import_inbody:      { key: 'import_inbody',      icon: '📈', label: 'Body Scan' },
 }
 const fallbackMeta = (task, i) => ({ key: `step_${i}`, icon: '⭐', label: task || `Step ${i + 1}` })
 
-/**
- * buildMissions — thêm mappedTaskId để pass đúng vào TaskDetailPopup.
- * VD: taskId='drink_water' (activityType trong storage)
- *     mappedTaskId='water'  (taskId trong daily_tasks / TaskDetailPopup)
- */
-function buildMissions(journeys) {
-  const ch1 = journeys.find(j => j.chapter === 1)
-  if (!ch1?.requiredObjectives) return []
-  return ch1.requiredObjectives.map((obj, i) => {
+/** Parse chapterKey string → chapter number (1-5) */
+function chapterNumFromKey(chapterKey) {
+  if (!chapterKey || chapterKey === 'overview') return 1
+  const m = chapterKey.match(/chapter_(\d+)/)
+  return m ? parseInt(m[1], 10) : 1
+}
+
+/** Build missions list for a specific journey chapter */
+function buildMissionsForChapter(journey) {
+  if (!journey?.requiredObjectives) return []
+  return journey.requiredObjectives.map((obj, i) => {
     const meta = MISSION_META[obj.task] || fallbackMeta(obj.task, i)
     return {
-      chapterKey:    meta.key,
-      taskId:        obj.task,                                 // 'drink_water' — dùng cho journeyObj lookup
-      mappedTaskId:  ACTIVITY_TASK_MAP[obj.task] || obj.task,  // 'water' — pass vào TaskDetailPopup
-      icon:          meta.icon,
-      title:         `The ${meta.label}`,
-      subtitle:      obj.title?.vi || obj.title?.en || `Hoàn thành ${obj.target} lần`,
-      target:        obj.target,
-      index:         i,
+      chapterKey:   `${meta.key}_ch${journey.chapter}`,
+      taskId:       obj.task,                                  // activityType for journey storage
+      mappedTaskId: ACTIVITY_TASK_MAP[obj.task] || obj.task,   // daily_tasks taskId for TaskDetailPopup
+      icon:         meta.icon,
+      title:        `The ${meta.label}`,
+      subtitle:     obj.title?.vi || obj.title?.en || `Hoàn thành ${obj.target} lần`,
+      target:       obj.target,
+      index:        i,
     }
   })
 }
-
-const ALL_JOURNEYS = journeysData.journeys || []
-const ALL_MISSIONS = buildMissions(ALL_JOURNEYS)
 
 function pct(taskState) {
   if (!taskState?.target) return 0
   return Math.min(100, Math.round((Number(taskState.current || 0) / Number(taskState.target || 1)) * 100))
 }
+
+const ALL_JOURNEYS = journeysData.journeys || []
 
 // ─────────────────────────────────────────────────────────────────────────────
 export default function JourneyDetailPopup({
@@ -80,9 +83,13 @@ export default function JourneyDetailPopup({
   user,
   onViewMedicalRecord,
 }) {
-  const [selected, setSelected] = useState(chapterKey || null)
+  // Which chapter number is currently selected in the left panel
+  const initialChapterNum = chapterNumFromKey(chapterKey)
+  const [activeChapterNum, setActiveChapterNum] = useState(initialChapterNum)
 
-  // ── Live snapshot: cập nhật mỗi khi HEALTH_JOURNEY_EVENT fire ──────────────
+  // Which mission within the active chapter is selected in the right panel
+  const [selectedMissionKey, setSelectedMissionKey] = useState(null)
+
   const [snapshot, setSnapshot] = useState(initialSnapshot)
   const [newlyUnlockedChapters, setNewlyUnlockedChapters] = useState([])
 
@@ -91,7 +98,6 @@ export default function JourneyDetailPopup({
     try {
       const fresh = getTaskSnapshot(user)
       setSnapshot(fresh)
-      // Kiểm tra & tự động unlock tất cả chapter đủ điều kiện
       const justUnlocked = checkAndUnlockChapters(user, ALL_JOURNEYS)
       if (justUnlocked.length > 0) {
         setNewlyUnlockedChapters(prev => [...new Set([...prev, ...justUnlocked])])
@@ -105,15 +111,27 @@ export default function JourneyDetailPopup({
     return () => window.removeEventListener(HEALTH_JOURNEY_EVENT, refreshSnapshot)
   }, [refreshSnapshot])
 
-  // ── Helpers ────────────────────────────────────────────────────────────────
-  // todayTask: tra theo mappedTaskId (vd 'water') — khớp với daily task records
-  const todayTask  = (mappedId) => snapshot?.day?.tasks?.find(t => t.taskId === mappedId)
-  // journeyObj: tra theo activityType (vd 'drink_water') — khớp với objectives
-  const journeyObj = (actType)  => snapshot?.journeyUser?.journeyProgress?.objectives?.find(o => o.activityType === actType)
-  const unlocked   = snapshot?.journeyUser?.journeyProgress?.unlockedChapters || [1]
+  // ── Compute chapter-aware data ────────────────────────────────────────────
+  const unlocked = snapshot?.journeyUser?.journeyProgress?.unlockedChapters || [1]
 
-  // Tính tiến độ từng chapter
-  const getChapterProgress = (journey) => {
+  const activeJourney = useMemo(
+    () => ALL_JOURNEYS.find(j => j.chapter === activeChapterNum) || ALL_JOURNEYS[0],
+    [activeChapterNum]
+  )
+
+  const activeMissions = useMemo(
+    () => buildMissionsForChapter(activeJourney),
+    [activeJourney]
+  )
+
+  // ── Storage helpers ───────────────────────────────────────────────────────
+  // todayTask: lookup by mappedTaskId (e.g. 'water') from daily task records
+  const todayTask  = (mappedId) => snapshot?.day?.tasks?.find(t => t.taskId === mappedId)
+  // journeyObj: lookup by activityType (e.g. 'drink_water') from journey objectives
+  const journeyObj = (actType)  => snapshot?.journeyUser?.journeyProgress?.objectives?.find(o => o.activityType === actType)
+
+  // Chapter progress calculator
+  const getChapterProgress = useCallback((journey) => {
     const objs = journey.requiredObjectives || []
     if (objs.length === 0) return { pct: 100, curSum: 0, totalTgt: 0, done: unlocked.includes(journey.chapter) }
     const totalTgt = objs.reduce((s, o) => s + (o.target || 1), 0)
@@ -121,26 +139,31 @@ export default function JourneyDetailPopup({
       const obj = journeyObj(o.task)
       return s + Math.min(obj?.current || 0, o.target || 1)
     }, 0)
-    const pct  = totalTgt > 0 ? Math.min(100, Math.round(curSum / totalTgt * 100)) : 0
-    const done = pct >= 100 || unlocked.includes(journey.chapter + 1)
-    return { pct, curSum, totalTgt, done }
-  }
+    const p    = totalTgt > 0 ? Math.min(100, Math.round(curSum / totalTgt * 100)) : 0
+    const done = p >= 100 || unlocked.includes(journey.chapter + 1)
+    return { pct: p, curSum, totalTgt, done }
+  }, [snapshot, unlocked])
 
-  // Chapter 1 overall progress (dùng cho cột trái / mission list)
-  const ch1      = ALL_JOURNEYS.find(j => j.chapter === 1) || {}
-  const { pct: ch1Pct, curSum, totalTgt, done: ch1Done } = getChapterProgress(ch1)
+  const { pct: activePct, curSum: activeSum, totalTgt: activeTgt, done: activeDone } = getChapterProgress(activeJourney)
 
-  const selMission = selected ? ALL_MISSIONS.find(m => m.chapterKey === selected) : null
+  const selMission = selectedMissionKey
+    ? activeMissions.find(m => m.chapterKey === selectedMissionKey)
+    : null
 
-  // firstUnfinished: dùng mappedTaskId để check today progress
   const firstUnfinished =
-    ALL_MISSIONS.find(m => pct(todayTask(m.mappedTaskId)) < 100) || ALL_MISSIONS[0]
+    activeMissions.find(m => pct(todayTask(m.mappedTaskId)) < 100) || activeMissions[0]
 
-  // ── CRITICAL FIX: luôn pass mappedTaskId ('water') vào TaskDetailPopup ─────
   const handleOpenTask = (mission) => {
     const taskIdToOpen = mission?.mappedTaskId || mission?.taskId || mission
     onClose?.()
     onOpenTask?.(taskIdToOpen)
+  }
+
+  const handleSelectChapter = (chNum) => {
+    const isUnlocked = chNum === 1 || unlocked.includes(chNum)
+    if (!isUnlocked) return
+    setActiveChapterNum(chNum)
+    setSelectedMissionKey(null)  // reset mission selection when switching chapter
   }
 
   return (
@@ -156,19 +179,16 @@ export default function JourneyDetailPopup({
 
         <button style={S.closeBtn} onClick={onClose}>✕</button>
         <div style={S.title}>⚔ Chi tiết Hành Trình</div>
-        <div style={S.subtitle}>{ALL_JOURNEYS.length} Chapter · Dữ liệu từ journeys.json</div>
+        <div style={S.subtitle}>{ALL_JOURNEYS.length} Chapter · Nhấn vào Chapter để xem nhiệm vụ</div>
 
-        {/* ── CHAPTER UNLOCK BANNERS ──────────────────────────────────────── */}
+        {/* ── NEWLY UNLOCKED BANNERS ──────────────────────────────────────── */}
         {ALL_JOURNEYS.map((journey, idx) => {
-          if (idx === 0) return null // chapter 1 không cần banner
-          const nextChapter = journey.chapter
-          const isJustUnlocked = newlyUnlockedChapters.includes(nextChapter)
-          const alreadyUnlocked = unlocked.includes(nextChapter)
-          if (!isJustUnlocked && !alreadyUnlocked) return null
-          if (!isJustUnlocked && alreadyUnlocked) return null // chỉ hiện khi vừa unlock
+          if (idx === 0) return null
+          const isJustUnlocked = newlyUnlockedChapters.includes(journey.chapter)
+          if (!isJustUnlocked) return null
           const prevJourney = ALL_JOURNEYS[idx - 1]
           return (
-            <div key={nextChapter} style={{
+            <div key={journey.chapter} style={{
               padding: '10px 14px', marginBottom: 10, borderRadius: 10,
               background: 'linear-gradient(135deg,rgba(34,197,94,.15),rgba(22,163,74,.1))',
               border: '1px solid rgba(34,197,94,.45)',
@@ -177,7 +197,7 @@ export default function JourneyDetailPopup({
               <span style={{ fontSize: 24 }}>🔓</span>
               <div>
                 <div style={{ fontSize: 13, fontWeight: 800, color: '#86efac' }}>
-                  Chapter {nextChapter} · {(journey.title?.en || '').toUpperCase()} đã mở khoá!
+                  Chapter {journey.chapter} · {(journey.title?.en || '').toUpperCase()} đã mở khoá!
                 </div>
                 <div style={{ fontSize: 11, color: '#6ee7b7' }}>
                   Bạn đã hoàn thành tất cả mục tiêu Chapter {prevJourney.chapter} · {journey.title?.vi || ''} 🎉
@@ -187,48 +207,50 @@ export default function JourneyDetailPopup({
           )
         })}
 
-        {/* Banner đã unlock từ trước (không phải vừa unlock) */}
-        {ch1Done && !newlyUnlockedChapters.includes(2) && unlocked.includes(2) && (
-          <div style={{
-            padding: '10px 14px', marginBottom: 10, borderRadius: 10,
-            background: 'linear-gradient(135deg,rgba(34,197,94,.08),rgba(22,163,74,.05))',
-            border: '1px solid rgba(34,197,94,.25)',
-            display: 'flex', alignItems: 'center', gap: 10,
-          }}>
-            <span style={{ fontSize: 20 }}>✅</span>
-            <div style={{ fontSize: 12, color: '#86efac' }}>
-              Chapter 1 đã hoàn thành · Chapter 2 đang mở
-            </div>
-          </div>
-        )}
-
         <div style={S.cols} className="jdp-cols">
 
           {/* ── CỘT TRÁI: chapter list + mission list ──────────────────────── */}
           <div style={S.colLeft} className="jdp-left-col">
 
-            {/* Chapter list */}
+            {/* Chapter list — clicking switches active chapter */}
             <div style={S.sectionLabel}>CÁC CHAPTER</div>
             {ALL_JOURNEYS.map((journey, idx) => {
               const isUnlocked  = idx === 0 || unlocked.includes(journey.chapter)
-              const isCurrent   = idx === 0  // chapter 1 là default active
+              const isActive    = journey.chapter === activeChapterNum
               const prevJourney = idx > 0 ? ALL_JOURNEYS[idx - 1] : null
               const { pct: thisPct, curSum: thisSum, totalTgt: thisTgt, done: thisDone } = getChapterProgress(journey)
-              // Chapter N-1 hoàn thành nhưng chapter N chưa unlock → có thể unlock
               const canUnlock = !isUnlocked && prevJourney && getChapterProgress(prevJourney).done
               return (
                 <div key={journey.chapter} style={{ marginBottom: 6 }}>
                   <div
-                    onClick={() => isUnlocked && setSelected(null)}
+                    onClick={() => {
+                      if (isUnlocked) handleSelectChapter(journey.chapter)
+                      else if (canUnlock) checkAndUnlockChapters(user, ALL_JOURNEYS)
+                    }}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 10,
                       padding: '10px 12px', borderRadius: canUnlock ? '12px 12px 0 0' : 12,
-                      border: `1px solid ${isCurrent ? 'rgba(139,92,246,.4)' : isUnlocked ? 'rgba(34,197,94,.3)' : canUnlock ? 'rgba(245,158,11,.35)' : 'rgba(80,160,255,.12)'}`,
+                      border: `1px solid ${
+                        isActive
+                          ? 'rgba(139,92,246,.7)'
+                          : isUnlocked
+                            ? 'rgba(34,197,94,.3)'
+                            : canUnlock
+                              ? 'rgba(245,158,11,.35)'
+                              : 'rgba(80,160,255,.12)'
+                      }`,
                       borderBottom: canUnlock ? 'none' : undefined,
-                      background: isCurrent ? 'rgba(139,92,246,.08)' : isUnlocked ? 'rgba(34,197,94,.06)' : canUnlock ? 'rgba(245,158,11,.06)' : 'rgba(255,255,255,.02)',
+                      background: isActive
+                        ? 'rgba(139,92,246,.15)'
+                        : isUnlocked
+                          ? 'rgba(34,197,94,.06)'
+                          : canUnlock
+                            ? 'rgba(245,158,11,.06)'
+                            : 'rgba(255,255,255,.02)',
                       opacity: isUnlocked || canUnlock ? 1 : 0.35,
-                      cursor: isUnlocked ? 'pointer' : 'default',
+                      cursor: isUnlocked || canUnlock ? 'pointer' : 'default',
                       transition: 'all .2s',
+                      boxShadow: isActive ? '0 0 0 2px rgba(139,92,246,.3)' : 'none',
                     }}
                   >
                     <div style={{
@@ -237,13 +259,16 @@ export default function JourneyDetailPopup({
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       fontSize: 22, flexShrink: 0,
                     }}>
-                      {isUnlocked ? (CH_ICONS[idx] || '⭐') : canUnlock ? '🔓' : '🔒'}
+                      {isActive ? (CH_ICONS[idx] || '⭐') : isUnlocked ? (CH_ICONS[idx] || '⭐') : canUnlock ? '🔓' : '🔒'}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 10, color: '#64748b', letterSpacing: 1 }}>
-                        CHAPTER {journey.chapter}
+                        CHAPTER {journey.chapter} {isActive ? '· ĐANG XEM' : ''}
                       </div>
-                      <div style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 14, fontWeight: 800 }}>
+                      <div style={{
+                        fontFamily: "'Rajdhani',sans-serif", fontSize: 14, fontWeight: 800,
+                        color: isActive ? '#c4b5fd' : 'inherit',
+                      }}>
                         {(journey.title?.en || `CHAPTER ${journey.chapter}`).toUpperCase()}
                       </div>
                       <div style={{ fontSize: 11, color: '#94a3b8' }}>{journey.title?.vi || ''}</div>
@@ -276,12 +301,10 @@ export default function JourneyDetailPopup({
                       )}
                     </div>
                   </div>
-                  {/* UNLOCK BUTTON — chỉ hiện khi đủ điều kiện mà chưa unlock */}
                   {canUnlock && (
                     <button
                       onClick={() => {
                         checkAndUnlockChapters(user, ALL_JOURNEYS)
-                        // refreshSnapshot sẽ được trigger bởi HEALTH_JOURNEY_EVENT
                       }}
                       style={{
                         width: '100%', padding: '9px 12px',
@@ -303,10 +326,15 @@ export default function JourneyDetailPopup({
 
             <div style={S.glow} />
 
-            {/* Mission list chapter 1 */}
-            <div style={S.sectionLabel}>CHAPTER 1 · NHIỆM VỤ</div>
-            {ALL_MISSIONS.map((m, i) => {
-              // todayTask dùng mappedTaskId ('water'), journeyObj dùng taskId ('drink_water')
+            {/* Mission list — scoped to activeChapterNum */}
+            <div style={S.sectionLabel}>
+              CHAPTER {activeChapterNum} · NHIỆM VỤ · {activeJourney.title?.vi?.toUpperCase() || ''}
+            </div>
+            {activeMissions.length === 0 ? (
+              <div style={{ fontSize: 12, color: '#64748b', padding: '8px 0' }}>
+                Chưa có nhiệm vụ cho chapter này.
+              </div>
+            ) : activeMissions.map((m, i) => {
               const tState = todayTask(m.mappedTaskId)
               const mPct   = pct(tState)
               const jObj   = journeyObj(m.taskId)
@@ -314,12 +342,12 @@ export default function JourneyDetailPopup({
               const jTgt   = jObj?.target || m.target
               const jPct   = jObj ? Math.min(100, Math.round(jCur / jTgt * 100)) : 0
               const jDone  = jObj ? jCur >= jTgt : false
-              const isSel  = selected === m.chapterKey
+              const isSel  = selectedMissionKey === m.chapterKey
               return (
                 <button
                   key={m.chapterKey}
                   type="button"
-                  onClick={() => setSelected(isSel ? null : m.chapterKey)}
+                  onClick={() => setSelectedMissionKey(isSel ? null : m.chapterKey)}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 8,
                     padding: '8px 10px', width: '100%', textAlign: 'left',
@@ -329,7 +357,7 @@ export default function JourneyDetailPopup({
                   }}
                 >
                   <span style={{ fontSize: 9, color: '#64748b', width: 20, flexShrink: 0, textAlign: 'center' }}>
-                    1-{i + 1}
+                    {activeChapterNum}-{i + 1}
                   </span>
                   <div style={{
                     width: 26, height: 26, borderRadius: 7, flexShrink: 0,
@@ -345,7 +373,6 @@ export default function JourneyDetailPopup({
                     <div style={{ fontSize: 10, color: '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {m.subtitle}
                     </div>
-                    {/* Live journey progress bar */}
                     {jObj && (
                       <div style={{ height: 3, background: 'rgba(255,255,255,.07)', borderRadius: 99, marginTop: 3, overflow: 'hidden' }}>
                         <div style={{
@@ -356,9 +383,8 @@ export default function JourneyDetailPopup({
                       </div>
                     )}
                   </div>
-                  {/* Live counter */}
                   <span style={{ fontSize: 11, fontWeight: 700, color: jDone ? '#86efac' : '#64748b', flexShrink: 0 }}>
-                    {jObj ? `${jCur}/${jTgt}` : '—'}
+                    {jObj ? `${jCur}/${jTgt}` : `0/${m.target}`}
                   </span>
                 </button>
               )
@@ -383,32 +409,37 @@ export default function JourneyDetailPopup({
             <button style={{ ...S.btnOutline, marginTop: 8 }} onClick={onClose}>ĐÓNG</button>
           </div>
 
-          {/* ── CỘT PHẢI: detail của mission được chọn ───────────────────── */}
+          {/* ── CỘT PHẢI: chapter overview OR mission detail ──────────────── */}
           <div style={S.colRight}>
             {!selMission ? (
               <ChapterOverview
-                ch1={ch1}
-                ch1Pct={ch1Pct}
-                curSum={curSum}
-                totalTgt={totalTgt}
-                missions={ALL_MISSIONS}
+                journey={activeJourney}
+                chapterNum={activeChapterNum}
+                chPct={activePct}
+                curSum={activeSum}
+                totalTgt={activeTgt}
+                chDone={activeDone}
+                missions={activeMissions}
                 todayTask={todayTask}
                 journeyObj={journeyObj}
-                onSelect={setSelected}
+                onSelectMission={setSelectedMissionKey}
                 onOpenTask={handleOpenTask}
-                ch1Done={ch1Done}
                 allJourneys={ALL_JOURNEYS}
                 unlocked={unlocked}
                 user={user}
+                checkAndUnlock={checkAndUnlockChapters}
+                chIcons={CH_ICONS}
               />
             ) : (
               <MissionDetail
                 mission={selMission}
+                chapterNum={activeChapterNum}
                 todayTask={todayTask}
                 journeyObj={journeyObj}
-                allMissions={ALL_MISSIONS}
+                allMissions={activeMissions}
                 onOpenTask={handleOpenTask}
-                onBack={() => setSelected(null)}
+                onBack={() => setSelectedMissionKey(null)}
+                activeJourney={activeJourney}
               />
             )}
           </div>
@@ -419,35 +450,57 @@ export default function JourneyDetailPopup({
   )
 }
 
-// ── Sub: Chapter overview ─────────────────────────────────────────────────────
-function ChapterOverview({ ch1, ch1Pct, curSum, totalTgt, missions, todayTask, journeyObj, onSelect, onOpenTask, ch1Done, allJourneys, unlocked, user }) {
-  const nextChapter = allJourneys?.find(j => !unlocked.includes(j.chapter))
-  const canUnlockNext = nextChapter && ch1Done && !unlocked.includes(nextChapter.chapter)
+// ── Sub: Chapter overview (right panel) ──────────────────────────────────────
+function ChapterOverview({
+  journey, chapterNum, chPct, curSum, totalTgt, chDone,
+  missions, todayTask, journeyObj, onSelectMission, onOpenTask,
+  allJourneys, unlocked, user, checkAndUnlock, chIcons,
+}) {
+  const nextChapter = allJourneys.find(j => j.chapter === chapterNum + 1)
+  const canUnlockNext = nextChapter && chDone && !unlocked.includes(nextChapter.chapter)
 
   return (
     <div style={{ overflowY: 'auto', height: '100%', paddingRight: 4 }}>
-      <div style={S.sectionLabel}>CHAPTER 1 · TỔNG QUAN</div>
+      {/* Chapter header */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+        <div style={{
+          width: 56, height: 56, borderRadius: 14, flexShrink: 0,
+          background: CH_COLORS[chapterNum - 1] || CH_COLORS[0],
+          display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28,
+        }}>
+          {chIcons[chapterNum - 1] || '⭐'}
+        </div>
+        <div>
+          <div style={{ fontSize: 10, color: '#64748b', letterSpacing: 2 }}>CHAPTER {chapterNum}</div>
+          <div style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 20, fontWeight: 900 }}>
+            {(journey.title?.en || `CHAPTER ${chapterNum}`).toUpperCase()}
+          </div>
+          <div style={{ fontSize: 12, color: '#94a3b8' }}>{journey.title?.vi || ''}</div>
+        </div>
+      </div>
 
-      {ch1.description && (
+      <div style={S.sectionLabel}>TỔNG QUAN CHAPTER {chapterNum}</div>
+
+      {journey.description && (
         <div style={{ fontSize: 13, color: '#94a3b8', marginBottom: 12, lineHeight: 1.6 }}>
-          {ch1.description?.vi || ch1.description?.en || ''}
+          {journey.description?.vi || journey.description?.en || ''}
         </div>
       )}
 
       <div style={S.statCard}>
         <div style={S.rowBetween}>
-          <span style={S.dim}>Tổng tiến độ Chapter 1</span>
-          <span style={{ fontWeight: 700, color: ch1Done ? '#86efac' : '#c4b5fd' }}>{ch1Pct}%</span>
+          <span style={S.dim}>Tổng tiến độ Chapter {chapterNum}</span>
+          <span style={{ fontWeight: 700, color: chDone ? '#86efac' : '#c4b5fd' }}>{chPct}%</span>
         </div>
         <div style={S.barBg}>
           <div style={{
-            ...S.barFill, width: `${ch1Pct}%`,
-            background: ch1Done ? '#22c55e' : 'linear-gradient(90deg,#8b5cf6,#3b82f6)',
+            ...S.barFill, width: `${chPct}%`,
+            background: chDone ? '#22c55e' : 'linear-gradient(90deg,#8b5cf6,#3b82f6)',
           }} />
         </div>
-        <div style={{ fontSize: 11, color: ch1Done ? '#86efac' : '#64748b', marginTop: 4 }}>
-          {ch1Done
-            ? `🎉 Đã hoàn thành — Chapter 2 ${unlocked.includes(2) ? 'đang mở!' : 'sẵn sàng mở khoá!'}`
+        <div style={{ fontSize: 11, color: chDone ? '#86efac' : '#64748b', marginTop: 4 }}>
+          {chDone
+            ? `🎉 Đã hoàn thành Chapter ${chapterNum}${nextChapter ? ` — Chapter ${chapterNum + 1} ${unlocked.includes(chapterNum + 1) ? 'đang mở!' : 'sẵn sàng mở khoá!'}` : ' — Bạn là Huyền Thoại!'}`
             : `${curSum}/${totalTgt} tổng tiến độ các mục tiêu`}
         </div>
       </div>
@@ -455,7 +508,7 @@ function ChapterOverview({ ch1, ch1Pct, curSum, totalTgt, missions, todayTask, j
       {/* UNLOCK NEXT CHAPTER BUTTON */}
       {canUnlockNext && (
         <button
-          onClick={() => checkAndUnlockChapters(user, allJourneys)}
+          onClick={() => checkAndUnlock(user, allJourneys)}
           style={{
             width: '100%', padding: '12px', borderRadius: 12, marginBottom: 12,
             border: '1px solid rgba(245,158,11,.5)',
@@ -464,18 +517,17 @@ function ChapterOverview({ ch1, ch1Pct, curSum, totalTgt, missions, todayTask, j
             cursor: 'pointer', fontFamily: 'inherit',
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
             boxShadow: '0 8px 20px rgba(245,158,11,.2)',
-            animation: 'pulse 2s infinite',
           }}
         >
-          🔓 MỞ KHOÁ CHAPTER {nextChapter.chapter} · {(nextChapter.title?.en || '').toUpperCase()}
+          🔓 MỞ KHOÁ CHAPTER {chapterNum + 1} · {(nextChapter.title?.en || '').toUpperCase()}
         </button>
       )}
 
-      {/* Objectives từ journeys.json */}
-      {ch1.requiredObjectives?.length > 0 && (
+      {/* Objectives list */}
+      {journey.requiredObjectives?.length > 0 && (
         <>
           <div style={{ ...S.sectionLabel, marginTop: 12 }}>MỤC TIÊU BẮT BUỘC</div>
-          {ch1.requiredObjectives.map((obj, i) => {
+          {journey.requiredObjectives.map((obj, i) => {
             const jObj   = journeyObj(obj.task)
             const jCur   = jObj?.current || 0
             const jTgt   = jObj?.target  || obj.target
@@ -485,11 +537,12 @@ function ChapterOverview({ ch1, ch1Pct, curSum, totalTgt, missions, todayTask, j
             return (
               <div
                 key={i}
-                onClick={() => onSelect(m?.chapterKey)}
+                onClick={() => onSelectMission(m?.chapterKey)}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 10,
                   padding: '9px 10px', borderRadius: 10, marginBottom: 4, cursor: 'pointer',
                   background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.07)',
+                  transition: 'background .15s',
                 }}
               >
                 <span style={{ fontSize: 18, flexShrink: 0 }}>{m?.icon || '⭐'}</span>
@@ -498,7 +551,7 @@ function ChapterOverview({ ch1, ch1Pct, curSum, totalTgt, missions, todayTask, j
                     {obj.title?.vi || obj.title?.en || obj.task}
                   </div>
                   <div style={{ fontSize: 10, color: '#64748b' }}>
-                    Target: {jTgt} · Task: {obj.task}
+                    Target: {jTgt} lần · Task: {obj.task}
                   </div>
                   {jObj && (
                     <div style={{ height: 3, background: 'rgba(255,255,255,.07)', borderRadius: 99, marginTop: 3, overflow: 'hidden' }}>
@@ -511,7 +564,7 @@ function ChapterOverview({ ch1, ch1Pct, curSum, totalTgt, missions, todayTask, j
                   )}
                 </div>
                 <span style={{ fontSize: 11, fontWeight: 700, color: done ? '#86efac' : '#64748b' }}>
-                  {jObj ? `${jCur}/${jTgt}` : '—'}
+                  {jObj ? `${jCur}/${jTgt}` : `0/${obj.target}`}
                 </span>
               </div>
             )
@@ -519,12 +572,12 @@ function ChapterOverview({ ch1, ch1Pct, curSum, totalTgt, missions, todayTask, j
         </>
       )}
 
-      {/* Rewards */}
-      {ch1.rewards?.length > 0 && (
+      {/* Rewards if any */}
+      {journey.rewards?.length > 0 && (
         <>
-          <div style={{ ...S.sectionLabel, marginTop: 12 }}>PHẦN THƯỞNG CHAPTER 1</div>
+          <div style={{ ...S.sectionLabel, marginTop: 12 }}>PHẦN THƯỞNG CHAPTER {chapterNum}</div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {ch1.rewards.map((r, i) => (
+            {journey.rewards.map((r, i) => (
               <span key={i} style={S.badgePurple}>
                 {r.icon || '🎁'} {r.label?.vi || r.label?.en || r.type}
               </span>
@@ -536,19 +589,16 @@ function ChapterOverview({ ch1, ch1Pct, curSum, totalTgt, missions, todayTask, j
   )
 }
 
-// ── Sub: Single mission detail ────────────────────────────────────────────────
-function MissionDetail({ mission, todayTask, journeyObj, allMissions, onOpenTask, onBack }) {
-  // todayTask: dùng mappedTaskId ('water')
+// ── Sub: Single mission detail (right panel) ──────────────────────────────────
+function MissionDetail({ mission, chapterNum, todayTask, journeyObj, allMissions, onOpenTask, onBack, activeJourney }) {
   const tState = todayTask(mission.mappedTaskId)
   const tPct   = pct(tState)
-  // journeyObj: dùng taskId ('drink_water')
   const jObj   = journeyObj(mission.taskId)
   const jCur   = jObj?.current || 0
   const jTgt   = jObj?.target  || mission.target
   const jPct   = jObj ? Math.min(100, Math.round(jCur / jTgt * 100)) : 0
   const jDone  = jCur >= jTgt
 
-  const isWater = mission.taskId === 'drink_water'
   const remaining = Math.max(0, jTgt - jCur)
 
   return (
@@ -557,12 +607,12 @@ function MissionDetail({ mission, todayTask, journeyObj, allMissions, onOpenTask
         onClick={onBack}
         style={{ background: 'none', border: 'none', color: '#93c5fd', fontSize: 12, cursor: 'pointer', padding: 0, marginBottom: 10 }}
       >
-        ← Quay lại tổng quan
+        ← Quay lại Chapter {chapterNum} · {activeJourney.title?.vi || ''}
       </button>
 
       <div style={{ textAlign: 'center', marginBottom: 16 }}>
         <div style={{ fontSize: 9, color: '#64748b', letterSpacing: 2 }}>
-          CHAPTER 1 · NHIỆM VỤ {mission.index + 1}
+          CHAPTER {chapterNum} · NHIỆM VỤ {mission.index + 1}
         </div>
         <div style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 22, fontWeight: 900, marginTop: 4 }}>
           {mission.title.toUpperCase()}
@@ -571,7 +621,7 @@ function MissionDetail({ mission, todayTask, journeyObj, allMissions, onOpenTask
         <div style={{ fontSize: 12, color: '#94a3b8' }}>{mission.subtitle}</div>
       </div>
 
-      {/* Journey-level progress (tích lũy nhiều ngày) */}
+      {/* Journey-level cumulative progress */}
       <div style={S.statCard}>
         <div style={S.rowBetween}>
           <span style={S.dim}>Tiến độ hành trình (tích lũy)</span>
@@ -587,10 +637,8 @@ function MissionDetail({ mission, todayTask, journeyObj, allMissions, onOpenTask
         <div style={{ fontSize: 11, color: jDone ? '#86efac' : '#64748b', marginTop: 4 }}>
           {jObj ? `${jCur}/${jTgt} lần tích lũy` : `0/${mission.target} lần`}
           {jDone
-            ? ' · ✓ Hoàn thành — Chapter 2 mở khoá!'
-            : isWater
-              ? ` · Còn ${remaining} lần nữa để mở khoá Chapter 2`
-              : ''}
+            ? ` · ✓ Hoàn thành nhiệm vụ này!`
+            : ` · Còn ${remaining} lần nữa`}
         </div>
       </div>
 
@@ -609,20 +657,9 @@ function MissionDetail({ mission, todayTask, journeyObj, allMissions, onOpenTask
         </div>
         <div style={{ fontSize: 11, color: tPct >= 100 ? '#86efac' : '#64748b', marginTop: 4 }}>
           {tState ? `${tState.current}/${tState.target}` : `0/${mission.target}`}
-          {' · '}{tPct >= 100 ? 'Đã hoàn thành ✓' : 'Đang thực hiện'}
+          {' · '}{tPct >= 100 ? 'Đã hoàn thành hôm nay ✓' : 'Đang thực hiện'}
         </div>
       </div>
-
-      {/* Water-specific guidance */}
-      {isWater && !jDone && (
-        <div style={{
-          padding: '10px 12px', borderRadius: 10, marginBottom: 10,
-          background: 'rgba(14,165,233,.08)', border: '1px solid rgba(14,165,233,.3)',
-          fontSize: 12, color: '#7dd3fc', lineHeight: 1.6,
-        }}>
-          💡 <b>Cách ghi nhận:</b> Nhấn "MỞ NHIỆM VỤ NÀY" → trong popup nhiệm vụ nhấn nút camera để chụp ảnh mỗi lần uống nước. Mỗi lần chụp = +1 lần uống nước. Hoàn thành <b>{jTgt} lần</b> (tích lũy nhiều ngày) để mở khoá Chapter 2: The Discipline.
-        </div>
-      )}
 
       {jDone && (
         <div style={{
@@ -630,11 +667,11 @@ function MissionDetail({ mission, todayTask, journeyObj, allMissions, onOpenTask
           background: 'rgba(34,197,94,.1)', border: '1px solid rgba(34,197,94,.3)',
           fontSize: 12, color: '#86efac', fontWeight: 700,
         }}>
-          🎉 Nhiệm vụ hoàn thành! Chapter 2 · THE DISCIPLINE đã được mở khoá.
+          🎉 Nhiệm vụ này đã hoàn thành! Tiến đến nhiệm vụ tiếp theo.
         </div>
       )}
 
-      {/* CTA — pass mission object (có cả mappedTaskId) vào handleOpenTask */}
+      {/* CTA */}
       <button
         style={{
           ...S.btnPrimary, marginTop: 4,
@@ -653,8 +690,10 @@ function MissionDetail({ mission, todayTask, journeyObj, allMissions, onOpenTask
           : `🎯 MỞ NHIỆM VỤ NÀY · ${jCur}/${jTgt}`}
       </button>
 
-      {/* Other missions */}
-      <div style={{ ...S.sectionLabel, marginTop: 14 }}>CÁC NHIỆM VỤ KHÁC TRONG CHAPTER 1</div>
+      {/* Other missions in this chapter */}
+      <div style={{ ...S.sectionLabel, marginTop: 14 }}>
+        CÁC NHIỆM VỤ KHÁC TRONG CHAPTER {chapterNum}
+      </div>
       {allMissions.filter(m => m.chapterKey !== mission.chapterKey).map(m => {
         const jO  = journeyObj(m.taskId)
         const jD  = jO ? jO.current >= jO.target : false
@@ -681,7 +720,7 @@ function MissionDetail({ mission, todayTask, journeyObj, allMissions, onOpenTask
               <div style={{ fontSize: 10, color: '#64748b' }}>{m.subtitle}</div>
             </div>
             <span style={{ fontSize: 11, fontWeight: 700, color: jD ? '#86efac' : '#64748b' }}>
-              {jO ? `${jC}/${jT}` : '—'}
+              {jO ? `${jC}/${jT}` : `0/${m.target}`}
             </span>
           </button>
         )

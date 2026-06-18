@@ -6,6 +6,10 @@
         "en": "The Awakening",
         "vi": "Thức Tỉnh"
       },
+      "description": {
+        "vi": "Chương đầu tiên — đánh thức cơ thể và tâm trí. Xây dựng 4 thói quen nền tảng: uống nước, thở sâu, đi bộ, và tập trung sâu.",
+        "en": "The first chapter — awakening body and mind. Build 4 foundational habits: hydration, deep breathing, walking, and deep work."
+      },
       "requiredObjectives": [
         {
           "task": "drink_water",
@@ -46,28 +50,180 @@
       "title": {
         "en": "The Discipline",
         "vi": "Kỷ Luật"
-      }
+      },
+      "description": {
+        "vi": "Kỷ luật tạo nên sức mạnh. Chapter này thách thức bạn duy trì nhật ký phản tư, đọc sách, thử thách không đường và tắm nước lạnh để rèn luyện ý chí thép.",
+        "en": "Discipline creates strength. This chapter challenges you to maintain a reflection journal, read books, beat the no-sugar challenge, and take cold showers to forge an iron will."
+      },
+      "requiredObjectives": [
+        {
+          "task": "reflection_journal",
+          "title": {
+            "en": "Complete 15 reflection journal entries",
+            "vi": "Hoàn thành 15 lần viết nhật ký phản tư"
+          },
+          "target": 15
+        },
+        {
+          "task": "read_20_pages",
+          "title": {
+            "en": "Read for 20 sessions",
+            "vi": "Hoàn thành 20 lần đọc sách"
+          },
+          "target": 20
+        },
+        {
+          "task": "no_sugar_challenge",
+          "title": {
+            "en": "Complete 12 no-sugar days",
+            "vi": "Hoàn thành 12 ngày không đường"
+          },
+          "target": 12
+        },
+        {
+          "task": "cold_shower",
+          "title": {
+            "en": "Complete 20 cold showers",
+            "vi": "Hoàn thành 20 lần tắm nước lạnh"
+          },
+          "target": 20
+        }
+      ]
     },
     {
       "chapter": 3,
       "title": {
         "en": "The Transformation",
         "vi": "Chuyển Hóa"
-      }
+      },
+      "description": {
+        "vi": "Cơ thể và tâm trí đang biến đổi. Chapter này yêu cầu bạn duy trì toàn bộ thói quen nền ở mức cao hơn — đi bộ nhiều hơn, uống nước đủ hơn, thở sâu hàng ngày và làm việc sâu liên tục.",
+        "en": "Body and mind are transforming. This chapter requires maintaining all foundational habits at a higher level — more walking, better hydration, daily deep breathing and sustained deep work."
+      },
+      "requiredObjectives": [
+        {
+          "task": "walk_10000_steps",
+          "title": {
+            "en": "Complete 25 walking sessions",
+            "vi": "Hoàn thành 25 lần đi bộ 10.000 bước"
+          },
+          "target": 25
+        },
+        {
+          "task": "drink_water",
+          "title": {
+            "en": "Complete 50 water logs",
+            "vi": "Hoàn thành 50 lần uống nước"
+          },
+          "target": 50
+        },
+        {
+          "task": "breath_activation",
+          "title": {
+            "en": "Complete 25 deep breathing sessions",
+            "vi": "Hoàn thành 25 lần thở sâu"
+          },
+          "target": 25
+        },
+        {
+          "task": "deep_work_90m",
+          "title": {
+            "en": "Complete 20 Deep Work sessions",
+            "vi": "Hoàn thành 20 Deep Work 90 phút"
+          },
+          "target": 20
+        }
+      ]
     },
     {
       "chapter": 4,
       "title": {
         "en": "The Mastery",
         "vi": "Tinh Thông"
-      }
+      },
+      "description": {
+        "vi": "Đạt đến sự tinh thông đòi hỏi sự kiên trì ở mức cao nhất. Chapter này thách thức bạn với mục tiêu khắc nghiệt: không đường dài hạn, đọc sách chuyên sâu, nhật ký liên tục và tắm nước lạnh hàng ngày.",
+        "en": "Mastery demands relentless consistency. This chapter challenges you with demanding targets: extended no-sugar streaks, deep reading, daily journaling, and daily cold showers."
+      },
+      "requiredObjectives": [
+        {
+          "task": "no_sugar_challenge",
+          "title": {
+            "en": "Complete 25 no-sugar days",
+            "vi": "Hoàn thành 25 ngày không đường"
+          },
+          "target": 25
+        },
+        {
+          "task": "read_20_pages",
+          "title": {
+            "en": "Read for 28 sessions",
+            "vi": "Hoàn thành 28 lần đọc sách"
+          },
+          "target": 28
+        },
+        {
+          "task": "reflection_journal",
+          "title": {
+            "en": "Complete 25 reflection journal entries",
+            "vi": "Hoàn thành 25 lần viết nhật ký phản tư"
+          },
+          "target": 25
+        },
+        {
+          "task": "cold_shower",
+          "title": {
+            "en": "Complete 28 cold showers",
+            "vi": "Hoàn thành 28 lần tắm nước lạnh"
+          },
+          "target": 28
+        }
+      ]
     },
     {
       "chapter": 5,
       "title": {
         "en": "The Legend",
         "vi": "Huyền Thoại"
-      }
+      },
+      "description": {
+        "vi": "Chỉ những người thực sự kiên định mới đến được đây. Huyền Thoại yêu cầu hoàn thành tất cả mọi thứ ở mức cực độ — đây là bằng chứng cuối cùng của sự thay đổi lâu dài.",
+        "en": "Only the truly committed reach this point. The Legend requires completing everything at an extreme level — this is the final proof of lasting transformation."
+      },
+      "requiredObjectives": [
+        {
+          "task": "deep_work_90m",
+          "title": {
+            "en": "Complete 29 Deep Work sessions",
+            "vi": "Hoàn thành 29 Deep Work 90 phút"
+          },
+          "target": 29
+        },
+        {
+          "task": "walk_10000_steps",
+          "title": {
+            "en": "Complete 29 walking sessions",
+            "vi": "Hoàn thành 29 lần đi bộ 10.000 bước"
+          },
+          "target": 29
+        },
+        {
+          "task": "drink_water",
+          "title": {
+            "en": "Complete 29 water logs",
+            "vi": "Hoàn thành 29 lần uống nước"
+          },
+          "target": 29
+        },
+        {
+          "task": "reflection_journal",
+          "title": {
+            "en": "Complete 29 reflection journal entries",
+            "vi": "Hoàn thành 29 lần viết nhật ký phản tư"
+          },
+          "target": 29
+        }
+      ]
     }
   ]
 }
