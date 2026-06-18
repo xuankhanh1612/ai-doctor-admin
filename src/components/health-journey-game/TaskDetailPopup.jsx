@@ -162,12 +162,11 @@ export default function TaskDetailPopup({ taskId, onClose, onOpenJourney, snapsh
           ? 'task_detail_' + record.uploadPath.replace(/[^a-z0-9]/gi, '_').slice(-20)
           : 'task_detail_' + Date.now()
 
-        // Gọi syncBeMeoWater TRƯỚC — nó push tin nhắn mới (không có proofId/time) vào localStorage
-        syncBeMeoWater(150, 'TaskDetailPopup AI capture')
+        // Bước 1: syncBeMeoWater push tin nhắn mới vào localStorage (chưa có proofId/time)
+        const syncResult = syncBeMeoWater(150, 'Chi Tiết Task uống nước')
 
         if (record?.dataUrl) {
-          // Patch proofId + time vào tin nhắn CUỐI (vừa được syncBeMeoWater push) trong localStorage
-          // SAU khi syncBeMeoWater chạy xong → đúng tin nhắn mới → SYNC_EVENT → iframe render đúng
+          // Bước 2: Patch proofId + time vào tin nhắn CUỐI vừa push
           try {
             const msgs = JSON.parse(localStorage.getItem('be-meo-nuoc-chat-v1') || '[]')
             if (Array.isArray(msgs) && msgs.length > 0) {
@@ -180,16 +179,18 @@ export default function TaskDetailPopup({ taskId, onClose, onOpenJourney, snapsh
               localStorage.setItem('be-meo-nuoc-chat-v1', JSON.stringify(msgs.slice(-80)))
             }
           } catch (_) {}
-          // Pre-populate proofMap trong localStorage để iframe load được ngay khi renderChat
+
+          // Bước 3: Pre-populate proofMap localStorage
           try {
             const proofMap = JSON.parse(localStorage.getItem('be_meo_nuoc_proof_map') || '{}')
             proofMap[proofId] = record.dataUrl
-            const entries = Object.entries(proofMap)
-            localStorage.setItem('be_meo_nuoc_proof_map', JSON.stringify(Object.fromEntries(entries.slice(-30))))
+            localStorage.setItem('be_meo_nuoc_proof_map',
+              JSON.stringify(Object.fromEntries(Object.entries(proofMap).slice(-30))))
           } catch (_) {}
-          // Gửi BE_MEO_TASK_PROOF_SAVED để WaterDrinkChatBotPanel gửi PROOF_SAVED vào bộ nhớ iframe
+
+          // Bước 4: Gửi BE_MEO_TASK_PROOF_SAVED → WaterDrinkChatBotPanel forward STATE_SYNC + PROOF_SAVED vào iframe
           window.dispatchEvent(new CustomEvent('BE_MEO_TASK_PROOF_SAVED', {
-            detail: { proofId, dataUrl: record.dataUrl, ml: 150 },
+            detail: { proofId, dataUrl: record.dataUrl, ml: 150, syncState: syncResult?.state },
           }))
         }
       }
