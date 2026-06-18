@@ -93,8 +93,10 @@ export default function TaskDetailPopup({ taskId, onClose, onOpenJourney, snapsh
   const [infoOpen, setInfoOpen] = useState(false)
 
   /* "Xem lại ảnh đã chụp" → pushes a dataUrl into AIVisionWebcam for review */
-  const [reviewImageUrl, setReviewImageUrl] = useState(null)
-  const [loadingProof,   setLoadingProof]   = useState(false)
+  const [reviewImageUrl,      setReviewImageUrl]      = useState(null)
+  const [loadingProof,        setLoadingProof]        = useState(false)
+  /* dataUrl của ảnh vừa chụp trong popup này — hiện ngay nút Xem lại mà không cần đợi proof từ storage */
+  const [lastCapturedDataUrl, setLastCapturedDataUrl] = useState(null)
 
   const proofImages = snapshot?.journeyUser?.proofImages || []
   const proof = proofImages.find(
@@ -156,6 +158,8 @@ export default function TaskDetailPopup({ taskId, onClose, onOpenJourney, snapsh
       })
       if (task.taskId === 'water') syncBeMeoWater(150, 'TaskDetailPopup AI capture')
       setLastCaptureKind(record?.kind || 'webcam')
+      // Cache dataUrl ngay để nút "🔍 Xem lại" hiện liền mà không cần đợi proof từ storage
+      if (record?.dataUrl) setLastCapturedDataUrl(record.dataUrl)
       setSaveMsg('✅ Đã lưu ảnh vào Medical Records · Nhiệm vụ +1')
     } catch (err) {
       setSaveMsg(`❌ ${err?.message || 'Lỗi cập nhật nhiệm vụ.'}`)
@@ -164,6 +168,11 @@ export default function TaskDetailPopup({ taskId, onClose, onOpenJourney, snapsh
 
   /* "Xem lại ảnh đã chụp" — load today's proof photo into AIVisionWebcam for review */
   const handleViewProof = async () => {
+    // Nếu vừa chụp trong popup này, dùng dataUrl ngay — không cần fetch server
+    if (lastCapturedDataUrl) {
+      setReviewImageUrl(lastCapturedDataUrl)
+      return
+    }
     if (!proof) return
     setLoadingProof(true)
     setSaveMsg('')
@@ -262,7 +271,7 @@ export default function TaskDetailPopup({ taskId, onClose, onOpenJourney, snapsh
               </div>
 
               {/* proof status */}
-              {proof && (
+              {(proof || lastCapturedDataUrl) && (
                 <div style={S.proofOk}>
                   <div>{lastCaptureKind === 'image' ? '🖼' : '📷'} Đã có ảnh proof hôm nay</div>
                   <button
@@ -298,6 +307,7 @@ export default function TaskDetailPopup({ taskId, onClose, onOpenJourney, snapsh
                       setSaveMsg('')
                       setReviewImageUrl(null)
                       setLastCaptureKind('')
+                      setLastCapturedDataUrl(null)
                     }}
                     title={`Xem chi tiết: ${t.title?.vi || t.title?.en}`}
                     style={{
