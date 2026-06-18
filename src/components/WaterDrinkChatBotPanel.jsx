@@ -138,8 +138,18 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
           flow: 'Bé Mèo Nước -> AI Healthcare Vision Webcam -> drink_water proof',
         },
       })
-      syncBeMeoWater(150, 'Bé Mèo Nước AI Healthcare Vision')
+      const syncResult = syncBeMeoWater(150, 'Bé Mèo Nước AI Healthcare Vision')
       setSnapshot(getTaskSnapshot(user))
+
+      // Đồng bộ state mới (total/goal) vào iframe TRƯỚC — SYNC_EVENT của syncBeMeoWater
+      // không cross frame, nên iframe không tự cập nhật được
+      if (syncResult?.state && iframeRef.current?.contentWindow) {
+        iframeRef.current.contentWindow.postMessage({
+          type: 'BE_MEO_STATE_SYNC',
+          total: syncResult.state.total,
+          goal: syncResult.state.goal,
+        }, '*')
+      }
 
       // Nếu có proofId đang pending → gửi dataUrl vào iframe để hiện nút xem lại
       // Nếu không có (chụp ảnh trực tiếp không qua chat) → tạo proofId mới và inject vào chat

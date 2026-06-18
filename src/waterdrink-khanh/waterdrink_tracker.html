@@ -1014,6 +1014,12 @@
       // Nhận ảnh proof từ React sau khi lưu thành công
       window.addEventListener('message', (event) => {
         // srcdoc iframe: origin is null, accept all same-tab messages
+        // Đồng bộ state (total/goal) từ React sau khi syncBeMeoWater cập nhật localStorage
+        if (event.data?.type === 'BE_MEO_STATE_SYNC') {
+          if (typeof event.data.total === 'number') state.total = event.data.total;
+          if (typeof event.data.goal === 'number') state.goal = event.data.goal;
+          renderState();
+        }
         if (event.data?.type === 'BE_MEO_PROOF_SAVED' && event.data.proofId && event.data.dataUrl) {
           proofMap[event.data.proofId] = event.data.dataUrl;
           saveProofMap();
