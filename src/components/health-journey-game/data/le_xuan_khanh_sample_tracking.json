@@ -3017,6 +3017,198 @@
         "target": 20,
         "completed": true,
         "updatedAt": "2026-06-12T18:30:00.000Z"
+      },
+      {
+        "chapter": 2,
+        "activityType": "reflection_journal",
+        "title": {
+          "en": "Complete 15 reflection journal entries",
+          "vi": "Hoàn thành 15 lần viết nhật ký phản tư"
+        },
+        "current": 0,
+        "target": 15,
+        "completed": false,
+        "updatedAt": "2026-06-18T00:00:00.000Z"
+      },
+      {
+        "chapter": 2,
+        "activityType": "read_20_pages",
+        "title": {
+          "en": "Read for 20 sessions",
+          "vi": "Hoàn thành 20 lần đọc sách"
+        },
+        "current": 0,
+        "target": 20,
+        "completed": false,
+        "updatedAt": "2026-06-18T00:00:00.000Z"
+      },
+      {
+        "chapter": 2,
+        "activityType": "no_sugar_challenge",
+        "title": {
+          "en": "Complete 12 no-sugar days",
+          "vi": "Hoàn thành 12 ngày không đường"
+        },
+        "current": 0,
+        "target": 12,
+        "completed": false,
+        "updatedAt": "2026-06-18T00:00:00.000Z"
+      },
+      {
+        "chapter": 2,
+        "activityType": "cold_shower",
+        "title": {
+          "en": "Complete 20 cold showers",
+          "vi": "Hoàn thành 20 lần tắm nước lạnh"
+        },
+        "current": 0,
+        "target": 20,
+        "completed": false,
+        "updatedAt": "2026-06-18T00:00:00.000Z"
+      },
+      {
+        "chapter": 3,
+        "activityType": "walk_10000_steps",
+        "title": {
+          "en": "Complete 25 walking sessions",
+          "vi": "Hoàn thành 25 lần đi bộ 10.000 bước"
+        },
+        "current": 0,
+        "target": 25,
+        "completed": false,
+        "updatedAt": "2026-06-18T00:00:00.000Z"
+      },
+      {
+        "chapter": 3,
+        "activityType": "drink_water",
+        "title": {
+          "en": "Complete 50 water logs",
+          "vi": "Hoàn thành 50 lần uống nước"
+        },
+        "current": 0,
+        "target": 50,
+        "completed": false,
+        "updatedAt": "2026-06-18T00:00:00.000Z"
+      },
+      {
+        "chapter": 3,
+        "activityType": "breath_activation",
+        "title": {
+          "en": "Complete 25 deep breathing sessions",
+          "vi": "Hoàn thành 25 lần thở sâu"
+        },
+        "current": 0,
+        "target": 25,
+        "completed": false,
+        "updatedAt": "2026-06-18T00:00:00.000Z"
+      },
+      {
+        "chapter": 3,
+        "activityType": "deep_work_90m",
+        "title": {
+          "en": "Complete 20 Deep Work sessions",
+          "vi": "Hoàn thành 20 Deep Work 90 phút"
+        },
+        "current": 0,
+        "target": 20,
+        "completed": false,
+        "updatedAt": "2026-06-18T00:00:00.000Z"
+      },
+      {
+        "chapter": 4,
+        "activityType": "no_sugar_challenge",
+        "title": {
+          "en": "Complete 25 no-sugar days",
+          "vi": "Hoàn thành 25 ngày không đường"
+        },
+        "current": 0,
+        "target": 25,
+        "completed": false,
+        "updatedAt": "2026-06-18T00:00:00.000Z"
+      },
+      {
+        "chapter": 4,
+        "activityType": "read_20_pages",
+        "title": {
+          "en": "Read for 28 sessions",
+          "vi": "Hoàn thành 28 lần đọc sách"
+        },
+        "current": 0,
+        "target": 28,
+        "completed": false,
+        "updatedAt": "2026-06-18T00:00:00.000Z"
+      },
+      {
+        "chapter": 4,
+        "activityType": "reflection_journal",
+        "title": {
+          "en": "Complete 25 reflection journal entries",
+          "vi": "Hoàn thành 25 lần viết nhật ký phản tư"
+        },
+        "current": 0,
+        "target": 25,
+        "completed": false,
+        "updatedAt": "2026-06-18T00:00:00.000Z"
+      },
+      {
+        "chapter": 4,
+        "activityType": "cold_shower",
+        "title": {
+          "en": "Complete 28 cold showers",
+          "vi": "Hoàn thành 28 lần tắm nước lạnh"
+        },
+        "current": 0,
+        "target": 28,
+        "completed": false,
+        "updatedAt": "2026-06-18T00:00:00.000Z"
+      },
+      {
+        "chapter": 5,
+        "activityType": "deep_work_90m",
+        "title": {
+          "en": "Complete 29 Deep Work sessions",
+          "vi": "Hoàn thành 29 Deep Work 90 phút"
+        },
+        "current": 0,
+        "target": 29,
+        "completed": false,
+        "updatedAt": "2026-06-18T00:00:00.000Z"
+      },
+      {
+        "chapter": 5,
+        "activityType": "walk_10000_steps",
+        "title": {
+          "en": "Complete 29 walking sessions",
+          "vi": "Hoàn thành 29 lần đi bộ 10.000 bước"
+        },
+        "current": 0,
+        "target": 29,
+        "completed": false,
+        "updatedAt": "2026-06-18T00:00:00.000Z"
+      },
+      {
+        "chapter": 5,
+        "activityType": "drink_water",
+        "title": {
+          "en": "Complete 29 water logs",
+          "vi": "Hoàn thành 29 lần uống nước"
+        },
+        "current": 0,
+        "target": 29,
+        "completed": false,
+        "updatedAt": "2026-06-18T00:00:00.000Z"
+      },
+      {
+        "chapter": 5,
+        "activityType": "reflection_journal",
+        "title": {
+          "en": "Complete 29 reflection journal entries",
+          "vi": "Hoàn thành 29 lần viết nhật ký phản tư"
+        },
+        "current": 0,
+        "target": 29,
+        "completed": false,
+        "updatedAt": "2026-06-18T00:00:00.000Z"
       }
     ]
   },

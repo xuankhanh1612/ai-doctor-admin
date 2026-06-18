@@ -1,3 +1,4 @@
+import journeysJson from '../data/journeys.json'
 import sampleUserData from '../data/le_xuan_khanh_sample_tracking.json'
 
 export const HEALTH_JOURNEY_EVENT = 'health-journey:updated'
@@ -19,6 +20,49 @@ export const TASK_ACTIVITY_MAP = Object.entries(ACTIVITY_TASK_MAP).reduce((map, 
   map[taskId] = activityType
   return map
 }, {})
+
+/**
+ * Build a flat list of journey objectives from ALL chapters in journeys.json.
+ * Single source of truth for what objectives should exist in every user's profile.
+ */
+function buildAllObjectivesFromJourneys() {
+  return (journeysJson.journeys || []).flatMap((journey) =>
+    (journey.requiredObjectives || []).map((obj) => ({
+      chapter: journey.chapter,
+      activityType: obj.task,
+      title: obj.title || { vi: obj.task, en: obj.task },
+      current: 0,
+      target: obj.target || 1,
+      completed: false,
+      updatedAt: new Date().toISOString(),
+    }))
+  )
+}
+
+/**
+ * ensureAllChapterObjectives — self-heal migration for existing users.
+ * Adds any missing ch2-5 objectives without touching ch1 progress already saved.
+ * Returns true if db was modified.
+ */
+function ensureAllChapterObjectives(db) {
+  const allExpected = buildAllObjectivesFromJourneys()
+  let changed = false
+  Object.values(db.users || {}).forEach((user) => {
+    if (!user.journeyProgress) return
+    const existing = user.journeyProgress.objectives || []
+    allExpected.forEach((expected) => {
+      const alreadyExists = existing.some(
+        (o) => o.activityType === expected.activityType && o.chapter === expected.chapter
+      )
+      if (!alreadyExists) {
+        existing.push({ ...expected })
+        changed = true
+      }
+    })
+    if (changed) user.journeyProgress.objectives = existing
+  })
+  return changed
+}
 
 export const XP_TABLE = {
   import_inbody: 100,
@@ -127,7 +171,7 @@ const ensureUser = (db, user) => {
   seed.rewards.claimed = []
   seed.journeyProgress.currentChapter = 1
   seed.journeyProgress.unlockedChapters = [1]
-  seed.journeyProgress.objectives = seed.journeyProgress.objectives.map((objective) => ({ ...objective, current: 0, completed: false }))
+  seed.journeyProgress.objectives = buildAllObjectivesFromJourneys()
   seed.profile.xp = 0
   seed.profile.energy = 100
   seed.profile.coins = 0
@@ -146,8 +190,9 @@ export function loadHealthJourneyDb() {
     }
     const db = JSON.parse(raw)
     const changedImages = migrateLargeImages(db)
+    const changedMissingObjectives = ensureAllChapterObjectives(db)
     const changedObjectives = repairObjectiveCompletedFlags(db)
-    const changed = changedImages || changedObjectives
+    const changed = changedImages || changedMissingObjectives || changedObjectives
     if (changed) {
       try { localStorage.setItem(HEALTH_JOURNEY_DB_KEY, JSON.stringify(db)) } catch (_) { /* quota: skip */ }
     }
@@ -254,33 +299,20 @@ function updateDailyTask(journeyUser, activityType, timestamp, proof) {
 }
 
 function updateJourney(journeyUser, activityType, timestamp) {
-  const objective = journeyUser.journeyProgress.objectives.find((entry) => entry.activityType === activityType)
-  if (!objective) return null
+  // Increment ALL objectives matching this activityType across ALL chapters.
+  // e.g. drink_water appears in Ch1 AND Ch3 — both counters advance simultaneously.
+  const matchingObjectives = journeyUser.journeyProgress.objectives.filter(
+    (entry) => entry.activityType === activityType
+  )
+  if (matchingObjectives.length === 0) return null
 
-  objective.current += 1
-  objective.updatedAt = timestamp
-  objective.completed = objective.current >= objective.target
+  matchingObjectives.forEach((objective) => {
+    objective.current += 1
+    objective.updatedAt = timestamp
+    objective.completed = objective.current >= objective.target
+  })
 
-  const chapter1Done = journeyUser.journeyProgress.objectives
-    .filter((entry) => entry.chapter === 1)
-    .every((entry) => entry.completed)
-
-  if (chapter1Done && !journeyUser.journeyProgress.unlockedChapters.includes(2)) {
-    journeyUser.journeyProgress.unlockedChapters.push(2)
-    journeyUser.journeyProgress.currentChapter = 2
-    journeyUser.rewards.claimed.push({
-      id: `reward_chapter_1_${Date.now()}`,
-      chapter: 1,
-      type: 'chapter_unlock',
-      name: { vi: 'Rương Chapter 1 + 500 xu', en: 'Chapter 1 Chest + 500 coins' },
-      coins: 500,
-      chest: 'hydration_starter_chest',
-      claimedAt: timestamp,
-    })
-    journeyUser.profile.coins += 500
-  }
-
-  return objective
+  return matchingObjectives[0]
 }
 
 export function completeHealthJourneyActivity({ user, activityType, value = 1, proofImage = '', uploadRecord = null, metadata = {} }) {
