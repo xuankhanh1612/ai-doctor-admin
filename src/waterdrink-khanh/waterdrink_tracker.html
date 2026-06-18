@@ -988,7 +988,8 @@
             const btn = document.createElement('button');
             btn.type = 'button';
             btn.className = 'msg-review-btn' + (activeReviewProofId === message.proofId ? ' active' : '');
-            btn.textContent = activeReviewProofId === message.proofId ? '✕ Đóng xem lại' : '🔍 Xem lại ảnh đã chụp';
+            const msgTime = message.time ? (() => { const d = new Date(message.time); return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`; })() : '';
+            btn.textContent = activeReviewProofId === message.proofId ? '✕ Đóng xem lại' : ('🔍 Xem lại ảnh đã chụp' + (msgTime ? ' lúc ' + msgTime : ''));
             btn.dataset.pid = message.proofId;
             btn.addEventListener('click', () => {
               const pid = btn.dataset.pid;
@@ -1021,9 +1022,12 @@
         // Camera chụp trực tiếp (không qua chat) → inject tin nhắn bot kèm proofId
         if (event.data?.type === 'BE_MEO_CAMERA_PROOF' && event.data.proofId) {
           const ml = event.data.ml || 150;
+          const total = state.total;
+          const goal = state.goal || 2000;
+          const pct = Math.min(100, Math.round((total / goal) * 100));
           messages.push({
             role: 'bot',
-            text: `📸 Bé Mèo đã ghi nhận ảnh uống nước (+${ml}ml) từ camera AI Healthcare Vision!`,
+            text: `📸 Bé Mèo đã ghi nhận ảnh uống nước (+${ml}ml) từ camera AI Healthcare Vision! Hôm nay bạn đang ở ${total}/${goal}ml (${pct}%).`,
             proofId: event.data.proofId,
             time: new Date().toISOString(),
           });
