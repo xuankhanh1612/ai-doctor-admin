@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import NavButtons from './NavButtons.jsx'
 
 const mvpInputs = ['X-ray', 'Hồ sơ bệnh án', 'Xét nghiệm máu']
@@ -183,6 +183,17 @@ export default function Omnidirectional3DBodyPanel({ onNext, nextLabel, onPrev, 
   // Body tree organ iframes
   const [activeOrgan, setActiveOrgan] = useState('Skeleton')
   const [visitedOrgans, setVisitedOrgans] = useState([])
+  const [search, setSearch] = useState('')
+
+  const organMeta = useMemo(() => {
+    const map = {}
+    bodySystems.forEach(group => {
+      group.organs.forEach(o => {
+        map[o.en] = { ...o, system: group.system }
+      })
+    })
+    return map
+  }, [])
 
   function handleLevel1Step(step) {
     if (step === 'Digital Twin') {
@@ -300,6 +311,21 @@ export default function Omnidirectional3DBodyPanel({ onNext, nextLabel, onPrev, 
 
       <div className="omni3d-lower-grid">
         <OmniCard title="Human Body World Tree / Bản đồ cơ thể người" eyebrow="Navigable anatomy graph — song ngữ Anh · Việt" accent="var(--cyan)">
+          <div style={{marginBottom:'12px'}}>
+            <input
+              value={search}
+              onChange={(e)=>setSearch(e.target.value)}
+              placeholder="Search organ..."
+              style={{width:'100%',padding:'10px',borderRadius:'8px'}}
+            />
+          </div>
+
+          <div style={{marginBottom:'12px',fontWeight:'600'}}>
+            Human Body → {organMeta[activeOrgan]?.system || 'System'} → {activeOrgan || 'Skeleton'}
+          </div>
+
+          <div style={{display:'grid',gridTemplateColumns:'1.5fr 1fr',gap:'16px'}}>
+            <div>
           <IframeViewer
             url={
               activeOrgan && ORGAN_IFRAME_URLS[activeOrgan]
@@ -315,14 +341,14 @@ export default function Omnidirectional3DBodyPanel({ onNext, nextLabel, onPrev, 
                 <div className="omni3d-tree-system" style={{ color: group.accent, borderColor: group.accent }}>
                   {group.system}
                 </div>
-                {group.organs.map((organ) => {
+                {group.organs.filter((organ)=>!search || organ.en.toLowerCase().includes(search.toLowerCase()) || organ.vi.toLowerCase().includes(search.toLowerCase())).map((organ) => {
                   const hasLink = !!ORGAN_IFRAME_URLS[organ.en]
                   const isActive = activeOrgan === organ.en
                   const isVisited = visitedOrgans.includes(organ.en)
                   return (
                     <React.Fragment key={organ.en}>
                       <div
-                        className={`omni3d-tree-node ${group.system.startsWith('Pathology') ? 'is-alert' : ''} ${hasLink ? 'has-link' : ''} ${hasLink && isActive ? 'is-active' : ''} ${hasLink && isVisited && !isActive ? 'is-visited' : ''}`}
+                        className={`omni3d-tree-node selected-node ${group.system.startsWith('Pathology') ? 'is-alert' : ''} ${hasLink ? 'has-link' : ''} ${hasLink && isActive ? 'is-active' : ''} ${hasLink && isVisited && !isActive ? 'is-visited' : ''}`}
                         onClick={hasLink ? () => handleOrganClick(organ.en) : undefined}
                         role={hasLink ? 'button' : undefined}
                         tabIndex={hasLink ? 0 : undefined}
@@ -338,6 +364,12 @@ export default function Omnidirectional3DBodyPanel({ onNext, nextLabel, onPrev, 
                 })}
               </div>
             ))}
+          </div>
+            <div style={{padding:'16px',border:'1px solid rgba(255,255,255,.15)',borderRadius:'12px'}}>
+              <h4>{activeOrgan || 'Skeleton'}</h4>
+              <p><b>System:</b> {organMeta[activeOrgan]?.system || 'General Anatomy'}</p>
+              <p><b>Viewer:</b> {activeOrgan && ORGAN_IFRAME_URLS[activeOrgan] ? 'Available' : 'Default Skeleton'}</p>
+            </div>
           </div>
         </OmniCard>
 
