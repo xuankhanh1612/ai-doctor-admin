@@ -394,7 +394,7 @@ export default function Omnidirectional3DBodyPanel({ onNext, nextLabel, onPrev, 
       
 
 
-      <NavButtons onNext={onNext}
+      <NavButtons onNext={onNext} nextLabel={nextLabel || 'Digital Twin'} onPrev={onPrev} prevLabel={prevLabel} />
     </div>
   )
 }
