@@ -252,90 +252,8 @@ export default function Omnidirectional3DBodyPanel({ onNext, nextLabel, onPrev, 
         </div>
       </section>
 
-      <div style={{width:"100%",marginBottom:"24px"}}>
-<div className="omni3d-lower-grid">
-        <OmniCard title="Human Body World Tree / Bản đồ cơ thể người" eyebrow="Navigable anatomy graph — song ngữ Anh · Việt" accent="var(--cyan)">
-          <div style={{marginBottom:'12px'}}>
-            <input
-              value={search}
-              onChange={(e)=>setSearch(e.target.value)}
-              placeholder="Search organ..."
-              style={{width:'100%',padding:'10px',borderRadius:'8px'}}
-            />
-          </div>
-
-          <div style={{marginBottom:'12px',fontWeight:'600'}}>
-            Human Body → {organMeta[activeOrgan]?.system || 'System'} → {activeOrgan || 'Skeleton'}
-          </div>
-
-          <div style={{display:'grid',gridTemplateColumns:'1.5fr 1fr',gap:'16px'}}>
-            <div>
-          <IframeViewer
-            url={
-              activeOrgan && ORGAN_IFRAME_URLS[activeOrgan]
-                ? ORGAN_IFRAME_URLS[activeOrgan]
-                : ORGAN_IFRAME_URLS['Skeleton']
-            }
-            label={activeOrgan || 'Human Body Viewer'}
-          />
-          <div className="omni3d-tree omni3d-tree-grouped">
-            <div className="omni3d-tree-root">Human Body / Cơ thể người</div>
-            {bodySystems.map((group) => (
-              <div key={group.system} className="omni3d-tree-group">
-                <div className="omni3d-tree-system" style={{ color: group.accent, borderColor: group.accent }}>
-                  {group.system}
-                </div>
-                {group.organs.filter((organ)=>!search || organ.en.toLowerCase().includes(search.toLowerCase()) || organ.vi.toLowerCase().includes(search.toLowerCase())).map((organ) => {
-                  const hasLink = !!ORGAN_IFRAME_URLS[organ.en]
-                  const isActive = activeOrgan === organ.en
-                  const isVisited = visitedOrgans.includes(organ.en)
-                  return (
-                    <React.Fragment key={organ.en}>
-                      <div
-                        className={`omni3d-tree-node selected-node ${group.system.startsWith('Pathology') ? 'is-alert' : ''} ${hasLink ? 'has-link' : ''} ${hasLink && isActive ? 'is-active' : ''} ${hasLink && isVisited && !isActive ? 'is-visited' : ''}`}
-                        onClick={hasLink ? () => handleOrganClick(organ.en) : undefined}
-                        role={hasLink ? 'button' : undefined}
-                        tabIndex={hasLink ? 0 : undefined}
-                        style={hasLink ? { cursor: 'pointer' } : undefined}
-                      >
-                        <i />
-                        <span><b>{organ.en}</b> / {organ.vi}</span>
-                        {hasLink && <span className="omni3d-link-badge">{isActive ? '▼ open' : '▶ 3D'}</span>}
-                      </div>
-                      
-                    </React.Fragment>
-                  )
-                })}
-              </div>
-            ))}
-          </div>
-            </div>
-            <div style={{padding:'16px',border:'1px solid rgba(255,255,255,.15)',borderRadius:'12px'}}>
-              <h4>{activeOrgan || 'Skeleton'}</h4>
-              <p><b>System:</b> {organMeta[activeOrgan]?.system || 'General Anatomy'}</p>
-              <p><b>Viewer:</b> {activeOrgan && ORGAN_IFRAME_URLS[activeOrgan] ? 'Available' : 'Default Skeleton'}</p>
-            </div>
-          </div>
-        </OmniCard>
-
-        <OmniCard title="Pipeline Stack" eyebrow="Model + Viewer implementation" accent="var(--amber)">
-          <div className="omni3d-stack">
-            {stack.map((item, index) => (
-              <div key={item} className="omni3d-stack-chip">
-                <b>{index === stack.length - 1 ? '=' : '+'}</b>
-                <span>{item}</span>
-              </div>
-            ))}
-          </div>
-          <p className="omni3d-note">
-            MONAI và MedSAM tạo phân đoạn y khoa; 3D Slicer và Marching Cubes tạo mesh;
-            Gaussian Splatting, Three.js và React biến kết quả thành viewer 3D có thể khám phá.
-          </p>
-        </OmniCard>
-      </div>
-
       <div className="omni3d-layout">
-        <OmniCard title="Level 1" eyebrow="Fast clinical prototype" accent="var(--green)">
+        <OmniCard title="Level 1 (MVP)" eyebrow="Fast clinical prototype" accent="var(--green)">
           <div className="omni3d-io-grid">
             <div>
               <strong>Input</strong>
@@ -391,8 +309,85 @@ export default function Omnidirectional3DBodyPanel({ onNext, nextLabel, onPrev, 
         </OmniCard>
       </div>
 
-      
+      <div className="omni3d-lower-grid">
+        <OmniCard title="Human Body World Tree / Bản đồ cơ thể người" eyebrow="Navigable anatomy graph — song ngữ Anh · Việt" accent="var(--cyan)">
+          <div style={{marginBottom:'12px'}}>
+            <input
+              value={search}
+              onChange={(e)=>setSearch(e.target.value)}
+              placeholder="Search organ..."
+              style={{width:'100%',padding:'10px',borderRadius:'8px'}}
+            />
+          </div>
 
+          <div style={{marginBottom:'12px',fontWeight:'600'}}>
+            Human Body → {organMeta[activeOrgan]?.system || 'System'} → {activeOrgan || 'Skeleton'}
+          </div>
+
+          <div style={{display:'grid',gridTemplateColumns:'1.5fr 1fr',gap:'16px'}}>
+            <div>
+          <IframeViewer
+            url={
+              activeOrgan && ORGAN_IFRAME_URLS[activeOrgan]
+                ? ORGAN_IFRAME_URLS[activeOrgan]
+                : ORGAN_IFRAME_URLS['Skeleton']
+            }
+            label={activeOrgan || 'Human Body Viewer'}
+          />
+          <div className="omni3d-tree omni3d-tree-grouped">
+            <div className="omni3d-tree-root">Human Body / Cơ thể người</div>
+            {bodySystems.map((group) => (
+              <div key={group.system} className="omni3d-tree-group">
+                <div className="omni3d-tree-system" style={{ color: group.accent, borderColor: group.accent }}>
+                  {group.system}
+                </div>
+                {group.organs.filter((organ)=>!search || organ.en.toLowerCase().includes(search.toLowerCase()) || organ.vi.toLowerCase().includes(search.toLowerCase())).map((organ) => {
+                  const hasLink = !!ORGAN_IFRAME_URLS[organ.en]
+                  const isActive = activeOrgan === organ.en
+                  const isVisited = visitedOrgans.includes(organ.en)
+                  return (
+                    <React.Fragment key={organ.en}>
+                      <div
+                        className={`omni3d-tree-node selected-node ${group.system.startsWith('Pathology') ? 'is-alert' : ''} ${hasLink ? 'has-link' : ''} ${hasLink && isActive ? 'is-active' : ''} ${hasLink && isVisited && !isActive ? 'is-visited' : ''}`}
+                        onClick={hasLink ? () => handleOrganClick(organ.en) : undefined}
+                        role={hasLink ? 'button' : undefined}
+                        tabIndex={hasLink ? 0 : undefined}
+                        style={hasLink ? { cursor: 'pointer' } : undefined}
+                      >
+                        <i />
+                        <span><b>{organ.en}</b> / {organ.vi}</span>
+                        {hasLink && <span className="omni3d-link-badge">{isActive ? '▼ open' : '▶ 3D'}</span>}
+                      </div>
+                      
+                    </React.Fragment>
+                  )
+                })}
+              </div>
+            ))}
+          </div>
+            <div style={{padding:'16px',border:'1px solid rgba(255,255,255,.15)',borderRadius:'12px'}}>
+              <h4>{activeOrgan || 'Skeleton'}</h4>
+              <p><b>System:</b> {organMeta[activeOrgan]?.system || 'General Anatomy'}</p>
+              <p><b>Viewer:</b> {activeOrgan && ORGAN_IFRAME_URLS[activeOrgan] ? 'Available' : 'Default Skeleton'}</p>
+            </div>
+          </div>
+        </OmniCard>
+
+        <OmniCard title="Pipeline Stack" eyebrow="Model + Viewer implementation" accent="var(--amber)">
+          <div className="omni3d-stack">
+            {stack.map((item, index) => (
+              <div key={item} className="omni3d-stack-chip">
+                <b>{index === stack.length - 1 ? '=' : '+'}</b>
+                <span>{item}</span>
+              </div>
+            ))}
+          </div>
+          <p className="omni3d-note">
+            MONAI và MedSAM tạo phân đoạn y khoa; 3D Slicer và Marching Cubes tạo mesh;
+            Gaussian Splatting, Three.js và React biến kết quả thành viewer 3D có thể khám phá.
+          </p>
+        </OmniCard>
+      </div>
 
       <NavButtons onNext={onNext} nextLabel={nextLabel || 'Digital Twin'} onPrev={onPrev} prevLabel={prevLabel} />
     </div>
