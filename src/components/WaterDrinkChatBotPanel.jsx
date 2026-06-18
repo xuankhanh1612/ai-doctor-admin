@@ -85,11 +85,19 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
     // → iframe đã reload messages với proofId đúng → chỉ cần gửi PROOF_SAVED để cập nhật proofMap
     //   trong bộ nhớ iframe (phòng trường hợp iframe chưa load proofMap từ localStorage kịp)
     const onTaskProof = (e) => {
-      const { proofId, dataUrl } = e.detail || {}
+      const { proofId, dataUrl, syncState } = e.detail || {}
       if (!proofId || !dataUrl) return
       const iframe = iframeRef.current
       if (!iframe?.contentWindow) return
-      // Gán dataUrl vào proofMap trong bộ nhớ iframe → renderChat() → nút Xem lại hiện
+      // Gửi STATE_SYNC trước để iframe cập nhật total/goal đúng trước khi renderChat
+      if (syncState) {
+        iframe.contentWindow.postMessage({
+          type: 'BE_MEO_STATE_SYNC',
+          total: syncState.total,
+          goal: syncState.goal,
+        }, '*')
+      }
+      // Gán dataUrl vào proofMap bộ nhớ iframe → renderChat() → nút Xem lại hiện
       iframe.contentWindow.postMessage({ type: 'BE_MEO_PROOF_SAVED', proofId, dataUrl }, '*')
     }
     window.addEventListener('BE_MEO_TASK_PROOF_SAVED', onTaskProof)
@@ -145,31 +153,48 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
           flow: 'Bé Mèo Nước -> AI Healthcare Vision Webcam -> drink_water proof',
         },
       })
+      // Tạo proofId trước (pending từ chat hoặc mới)
+      const proofId = pendingProofIdRef.current || ('proof_cam_' + Date.now())
+
+      // Bước 1: syncBeMeoWater push tin nhắn mới vào localStorage (chưa có proofId)
       const syncResult = syncBeMeoWater(150, 'Bé Mèo Nước AI Healthcare Vision')
       setSnapshot(getTaskSnapshot(user))
 
-      // Đồng bộ state mới (total/goal) vào iframe TRƯỚC — SYNC_EVENT của syncBeMeoWater
-      // không cross frame, nên iframe không tự cập nhật được
-      if (syncResult?.state && iframeRef.current?.contentWindow) {
-        iframeRef.current.contentWindow.postMessage({
-          type: 'BE_MEO_STATE_SYNC',
-          total: syncResult.state.total,
-          goal: syncResult.state.goal,
-        }, '*')
-      }
-
-      // Nếu có proofId đang pending → gửi dataUrl vào iframe để hiện nút xem lại
-      // Nếu không có (chụp ảnh trực tiếp không qua chat) → tạo proofId mới và inject vào chat
-      const proofId = pendingProofIdRef.current || ('proof_cam_' + Date.now())
       if (record.dataUrl) {
-        // Nếu không có pending proofId, inject tin nhắn bot kèm proofId vào iframe trước
-        if (!pendingProofIdRef.current) {
-          iframeRef.current?.contentWindow?.postMessage?.({
-            type: 'BE_MEO_CAMERA_PROOF',
-            proofId,
-            ml: 150,
+        // Bước 2: Patch proofId + time vào tin nhắn CUỐI vừa push — cùng pattern TaskDetailPopup
+        // → khi SYNC_EVENT trigger iframe loadMessages(), tin nhắn đã có proofId
+        try {
+          const msgs = JSON.parse(localStorage.getItem('be-meo-nuoc-chat-v1') || '[]')
+          if (Array.isArray(msgs) && msgs.length > 0) {
+            const last = msgs[msgs.length - 1]
+            msgs[msgs.length - 1] = {
+              ...last,
+              proofId,
+              time: last.time || new Date().toISOString(),
+            }
+            localStorage.setItem('be-meo-nuoc-chat-v1', JSON.stringify(msgs.slice(-80)))
+          }
+        } catch (_) {}
+
+        // Bước 3: Pre-populate proofMap localStorage để iframe renderChat() thấy ngay
+        try {
+          const proofMap = JSON.parse(localStorage.getItem('be_meo_nuoc_proof_map') || '{}')
+          proofMap[proofId] = record.dataUrl
+          localStorage.setItem('be_meo_nuoc_proof_map',
+            JSON.stringify(Object.fromEntries(Object.entries(proofMap).slice(-30))))
+        } catch (_) {}
+
+        // Bước 4: Gửi STATE_SYNC vào iframe để cập nhật total/goal trước khi render
+        if (syncResult?.state && iframeRef.current?.contentWindow) {
+          iframeRef.current.contentWindow.postMessage({
+            type: 'BE_MEO_STATE_SYNC',
+            total: syncResult.state.total,
+            goal: syncResult.state.goal,
           }, '*')
         }
+
+        // Bước 5: Gửi PROOF_SAVED → iframe cập nhật proofMap bộ nhớ + renderChat()
+        // Lúc này iframe loadMessages() từ localStorage đã có proofId → nút Xem lại hiện đúng
         sendProofToIframe(proofId, record.dataUrl)
         pendingProofIdRef.current = null
       }
