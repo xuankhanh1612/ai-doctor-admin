@@ -155,6 +155,9 @@ function Flow({ steps, variant = 'mvp', onStepClick, activeStep, visitedSteps = 
           </React.Fragment>
         )
       })}
+    </div>
+  )
+}
 
 function IframeViewer({ url, label }) {
   return (
