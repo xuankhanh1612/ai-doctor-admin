@@ -252,64 +252,8 @@ export default function Omnidirectional3DBodyPanel({ onNext, nextLabel, onPrev, 
         </div>
       </section>
 
-      <div className="omni3d-layout">
-        <OmniCard title="Level 1 (MVP)" eyebrow="Fast clinical prototype" accent="var(--green)">
-          <div className="omni3d-io-grid">
-            <div>
-              <strong>Input</strong>
-              {mvpInputs.map(item => <span key={item}>{item}</span>)}
-            </div>
-            <div>
-              <strong>Output</strong>
-              <span>Human Body Avatar 3D</span>
-              <span>Cơ quan cơ bản: {mvpOrgans.join(' · ')}</span>
-            </div>
-          </div>
-          <Flow
-            steps={levelOnePipeline}
-            onStepClick={handleLevel1Step}
-            activeStep={showDigitalTwinViewer ? 'Digital Twin' : null}
-            visitedSteps={visitedLevel1}
-          />
-
-          {showDigitalTwinViewer && (
-            <IframeViewer
-              url="https://caskanatomy.info/open3dviewer/?model=overview-skeleton&export=on"
-              label="Cask Anatomy 3D Viewer"
-            />
-          )}
-        </OmniCard>
-
-        <OmniCard title="Level 2" eyebrow="Medical-grade reconstruction" accent="var(--violet)">
-          <div className="omni3d-io-grid">
-            <div>
-              <strong>Input</strong>
-              <span>CT Scan DICOM</span>
-            </div>
-            <div>
-              <strong>Output</strong>
-              <span>3D Reconstruction chuẩn y khoa</span>
-              <span>Explorable Digital Twin Viewer</span>
-            </div>
-          </div>
-          <Flow
-            steps={levelTwoPipeline}
-            variant="dicom"
-            onStepClick={handleLevel2Step}
-            activeStep={activeStep2}
-            visitedSteps={visitedSteps2}
-          />
-
-          {activeStep2 === 'Digital Twin Viewer' && (
-            <IframeViewer
-              url={STEP_IFRAME_URLS['Digital Twin Viewer']}
-              label="Digital Twin Viewer — Upper Limb"
-            />
-          )}
-        </OmniCard>
-      </div>
-
-      <div className="omni3d-lower-grid">
+      <div style={{width:"100%",marginBottom:"24px"}}>
+<div className="omni3d-lower-grid">
         <OmniCard title="Human Body World Tree / Bản đồ cơ thể người" eyebrow="Navigable anatomy graph — song ngữ Anh · Việt" accent="var(--cyan)">
           <div style={{marginBottom:'12px'}}>
             <input
@@ -394,3 +338,63 @@ export default function Omnidirectional3DBodyPanel({ onNext, nextLabel, onPrev, 
     </div>
   )
 }
+</div>
+
+<div className="omni3d-layout">
+        <OmniCard title="Level 1" eyebrow="Fast clinical prototype" accent="var(--green)">
+          <div className="omni3d-io-grid">
+            <div>
+              <strong>Input</strong>
+              {mvpInputs.map(item => <span key={item}>{item}</span>)}
+            </div>
+            <div>
+              <strong>Output</strong>
+              <span>Human Body Avatar 3D</span>
+              <span>Cơ quan cơ bản: {mvpOrgans.join(' · ')}</span>
+            </div>
+          </div>
+          <Flow
+            steps={levelOnePipeline}
+            onStepClick={handleLevel1Step}
+            activeStep={showDigitalTwinViewer ? 'Digital Twin' : null}
+            visitedSteps={visitedLevel1}
+          />
+
+          {showDigitalTwinViewer && (
+            <IframeViewer
+              url="https://caskanatomy.info/open3dviewer/?model=overview-skeleton&export=on"
+              label="Cask Anatomy 3D Viewer"
+            />
+          )}
+        </OmniCard>
+
+        <OmniCard title="Level 2" eyebrow="Medical-grade reconstruction" accent="var(--violet)">
+          <div className="omni3d-io-grid">
+            <div>
+              <strong>Input</strong>
+              <span>CT Scan DICOM</span>
+            </div>
+            <div>
+              <strong>Output</strong>
+              <span>3D Reconstruction chuẩn y khoa</span>
+              <span>Explorable Digital Twin Viewer</span>
+            </div>
+          </div>
+          <Flow
+            steps={levelTwoPipeline}
+            variant="dicom"
+            onStepClick={handleLevel2Step}
+            activeStep={activeStep2}
+            visitedSteps={visitedSteps2}
+          />
+
+          {activeStep2 === 'Digital Twin Viewer' && (
+            <IframeViewer
+              url={STEP_IFRAME_URLS['Digital Twin Viewer']}
+              label="Digital Twin Viewer — Upper Limb"
+            />
+          )}
+        </OmniCard>
+      </div>
+
+      
