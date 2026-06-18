@@ -156,7 +156,19 @@ export default function TaskDetailPopup({ taskId, onClose, onOpenJourney, snapsh
         proofImage: record?.uploadPath, uploadRecord: record,
         metadata: { source: 'task-detail-popup-ai-vision-capture', taskId: task.taskId },
       })
-      if (task.taskId === 'water') syncBeMeoWater(150, 'TaskDetailPopup AI capture')
+      if (task.taskId === 'water') {
+        syncBeMeoWater(150, 'TaskDetailPopup AI capture')
+        // Báo cho WaterDrinkChatBotPanel biết có ảnh mới từ Task Detail Popup
+        // để hiện nút "🔍 Xem lại ảnh đã chụp" ngay trong chatbot Bé Mèo Nước
+        if (record?.dataUrl) {
+          const proofId = record.uploadPath
+            ? 'task_detail_' + record.uploadPath.replace(/[^a-z0-9]/gi, '_').slice(-20)
+            : 'task_detail_' + Date.now()
+          window.dispatchEvent(new CustomEvent('BE_MEO_TASK_PROOF_SAVED', {
+            detail: { proofId, dataUrl: record.dataUrl, ml: 150 },
+          }))
+        }
+      }
       setLastCaptureKind(record?.kind || 'webcam')
       // Cache dataUrl ngay để nút "🔍 Xem lại" hiện liền mà không cần đợi proof từ storage
       if (record?.dataUrl) setLastCapturedDataUrl(record.dataUrl)

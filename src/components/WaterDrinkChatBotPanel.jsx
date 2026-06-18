@@ -79,9 +79,25 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
 
     window.addEventListener(HEALTH_JOURNEY_EVENT, refresh)
     window.addEventListener('message', onMessage)
+
+    // Lắng nghe ảnh chụp từ TaskDetailPopup (popup nhiệm vụ uống nước trong Health Journey Game)
+    // → inject tin nhắn bot vào chat + gán dataUrl để nút "🔍 Xem lại" hiện ngay
+    const onTaskProof = (e) => {
+      const { proofId, dataUrl, ml = 150 } = e.detail || {}
+      if (!proofId || !dataUrl) return
+      const iframe = iframeRef.current
+      if (!iframe?.contentWindow) return
+      // 1) Inject tin nhắn bot kèm proofId (giống chụp camera trực tiếp)
+      iframe.contentWindow.postMessage({ type: 'BE_MEO_CAMERA_PROOF', proofId, ml }, '*')
+      // 2) Gán dataUrl cho proofId để nút Xem lại hiện ngay
+      iframe.contentWindow.postMessage({ type: 'BE_MEO_PROOF_SAVED', proofId, dataUrl }, '*')
+    }
+    window.addEventListener('BE_MEO_TASK_PROOF_SAVED', onTaskProof)
+
     return () => {
       window.removeEventListener(HEALTH_JOURNEY_EVENT, refresh)
       window.removeEventListener('message', onMessage)
+      window.removeEventListener('BE_MEO_TASK_PROOF_SAVED', onTaskProof)
     }
   }, [user])
 
