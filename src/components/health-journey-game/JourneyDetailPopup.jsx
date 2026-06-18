@@ -4,7 +4,7 @@ import {
   HEALTH_JOURNEY_EVENT,
   ACTIVITY_TASK_MAP,
   getTaskSnapshot,
-  checkAndUnlockChapter1,
+  checkAndUnlockChapters,
 } from './services/healthJourneyStorage.js'
 
 /**
@@ -84,20 +84,17 @@ export default function JourneyDetailPopup({
 
   // ── Live snapshot: cập nhật mỗi khi HEALTH_JOURNEY_EVENT fire ──────────────
   const [snapshot, setSnapshot] = useState(initialSnapshot)
-  const [chapter2JustUnlocked, setChapter2JustUnlocked] = useState(false)
+  const [newlyUnlockedChapters, setNewlyUnlockedChapters] = useState([])
 
   const refreshSnapshot = useCallback(() => {
     if (!user) return
     try {
       const fresh = getTaskSnapshot(user)
       setSnapshot(fresh)
-      const unlockedChs = fresh?.journeyUser?.journeyProgress?.unlockedChapters || [1]
-      if (unlockedChs.includes(2)) {
-        setChapter2JustUnlocked(true)
-      } else {
-        // Kiểm tra xem Chapter 1 đã hoàn thành chưa → nếu rồi thì tự unlock ngay
-        const didUnlock = checkAndUnlockChapter1(user)
-        if (didUnlock) setChapter2JustUnlocked(true)
+      // Kiểm tra & tự động unlock tất cả chapter đủ điều kiện
+      const justUnlocked = checkAndUnlockChapters(user, ALL_JOURNEYS)
+      if (justUnlocked.length > 0) {
+        setNewlyUnlockedChapters(prev => [...new Set([...prev, ...justUnlocked])])
       }
     } catch (_) {}
   }, [user])
@@ -115,16 +112,23 @@ export default function JourneyDetailPopup({
   const journeyObj = (actType)  => snapshot?.journeyUser?.journeyProgress?.objectives?.find(o => o.activityType === actType)
   const unlocked   = snapshot?.journeyUser?.journeyProgress?.unlockedChapters || [1]
 
-  // Chapter 1 overall progress
+  // Tính tiến độ từng chapter
+  const getChapterProgress = (journey) => {
+    const objs = journey.requiredObjectives || []
+    if (objs.length === 0) return { pct: 100, curSum: 0, totalTgt: 0, done: unlocked.includes(journey.chapter) }
+    const totalTgt = objs.reduce((s, o) => s + (o.target || 1), 0)
+    const curSum   = objs.reduce((s, o) => {
+      const obj = journeyObj(o.task)
+      return s + Math.min(obj?.current || 0, o.target || 1)
+    }, 0)
+    const pct  = totalTgt > 0 ? Math.min(100, Math.round(curSum / totalTgt * 100)) : 0
+    const done = pct >= 100 || unlocked.includes(journey.chapter + 1)
+    return { pct, curSum, totalTgt, done }
+  }
+
+  // Chapter 1 overall progress (dùng cho cột trái / mission list)
   const ch1      = ALL_JOURNEYS.find(j => j.chapter === 1) || {}
-  const objs     = ch1.requiredObjectives || []
-  const totalTgt = objs.reduce((s, o) => s + (o.target || 1), 0)
-  const curSum   = objs.reduce((s, o) => {
-    const obj = journeyObj(o.task)
-    return s + Math.min(obj?.current || 0, o.target || 1)
-  }, 0)
-  const ch1Pct = totalTgt > 0 ? Math.min(100, Math.round(curSum / totalTgt * 100)) : 0
-  const ch1Done = ch1Pct >= 100 || unlocked.includes(2)
+  const { pct: ch1Pct, curSum, totalTgt, done: ch1Done } = getChapterProgress(ch1)
 
   const selMission = selected ? ALL_MISSIONS.find(m => m.chapterKey === selected) : null
 
@@ -154,22 +158,46 @@ export default function JourneyDetailPopup({
         <div style={S.title}>⚔ Chi tiết Hành Trình</div>
         <div style={S.subtitle}>{ALL_JOURNEYS.length} Chapter · Dữ liệu từ journeys.json</div>
 
-        {/* ── CHAPTER 2 UNLOCK BANNER ──────────────────────────────────────── */}
-        {(ch1Done || chapter2JustUnlocked) && (
+        {/* ── CHAPTER UNLOCK BANNERS ──────────────────────────────────────── */}
+        {ALL_JOURNEYS.map((journey, idx) => {
+          if (idx === 0) return null // chapter 1 không cần banner
+          const nextChapter = journey.chapter
+          const isJustUnlocked = newlyUnlockedChapters.includes(nextChapter)
+          const alreadyUnlocked = unlocked.includes(nextChapter)
+          if (!isJustUnlocked && !alreadyUnlocked) return null
+          if (!isJustUnlocked && alreadyUnlocked) return null // chỉ hiện khi vừa unlock
+          const prevJourney = ALL_JOURNEYS[idx - 1]
+          return (
+            <div key={nextChapter} style={{
+              padding: '10px 14px', marginBottom: 10, borderRadius: 10,
+              background: 'linear-gradient(135deg,rgba(34,197,94,.15),rgba(22,163,74,.1))',
+              border: '1px solid rgba(34,197,94,.45)',
+              display: 'flex', alignItems: 'center', gap: 10,
+            }}>
+              <span style={{ fontSize: 24 }}>🔓</span>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 800, color: '#86efac' }}>
+                  Chapter {nextChapter} · {(journey.title?.en || '').toUpperCase()} đã mở khoá!
+                </div>
+                <div style={{ fontSize: 11, color: '#6ee7b7' }}>
+                  Bạn đã hoàn thành tất cả mục tiêu Chapter {prevJourney.chapter} · {journey.title?.vi || ''} 🎉
+                </div>
+              </div>
+            </div>
+          )
+        })}
+
+        {/* Banner đã unlock từ trước (không phải vừa unlock) */}
+        {ch1Done && !newlyUnlockedChapters.includes(2) && unlocked.includes(2) && (
           <div style={{
             padding: '10px 14px', marginBottom: 10, borderRadius: 10,
-            background: 'linear-gradient(135deg,rgba(34,197,94,.15),rgba(22,163,74,.1))',
-            border: '1px solid rgba(34,197,94,.45)',
+            background: 'linear-gradient(135deg,rgba(34,197,94,.08),rgba(22,163,74,.05))',
+            border: '1px solid rgba(34,197,94,.25)',
             display: 'flex', alignItems: 'center', gap: 10,
           }}>
-            <span style={{ fontSize: 24 }}>🔓</span>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 800, color: '#86efac' }}>
-                Chapter 2 · THE DISCIPLINE đã mở khoá!
-              </div>
-              <div style={{ fontSize: 11, color: '#6ee7b7' }}>
-                Bạn đã hoàn thành tất cả mục tiêu Chapter 1 · The Awakening 🎉
-              </div>
+            <span style={{ fontSize: 20 }}>✅</span>
+            <div style={{ fontSize: 12, color: '#86efac' }}>
+              Chapter 1 đã hoàn thành · Chapter 2 đang mở
             </div>
           </div>
         )}
@@ -182,65 +210,93 @@ export default function JourneyDetailPopup({
             {/* Chapter list */}
             <div style={S.sectionLabel}>CÁC CHAPTER</div>
             {ALL_JOURNEYS.map((journey, idx) => {
-              const isUnlocked = idx === 0 || unlocked.includes(journey.chapter)
-              const isCh1      = idx === 0
-              const isCh2      = idx === 1
-              const thisPct    = isCh1 ? ch1Pct : 0
+              const isUnlocked  = idx === 0 || unlocked.includes(journey.chapter)
+              const isCurrent   = idx === 0  // chapter 1 là default active
+              const prevJourney = idx > 0 ? ALL_JOURNEYS[idx - 1] : null
+              const { pct: thisPct, curSum: thisSum, totalTgt: thisTgt, done: thisDone } = getChapterProgress(journey)
+              // Chapter N-1 hoàn thành nhưng chapter N chưa unlock → có thể unlock
+              const canUnlock = !isUnlocked && prevJourney && getChapterProgress(prevJourney).done
               return (
-                <div
-                  key={journey.chapter}
-                  onClick={() => isUnlocked && setSelected(null)}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 10,
-                    padding: '10px 12px', borderRadius: 12, marginBottom: 6,
-                    border: `1px solid ${isCh1 ? 'rgba(139,92,246,.4)' : isUnlocked ? 'rgba(34,197,94,.3)' : 'rgba(80,160,255,.12)'}`,
-                    background: isCh1 ? 'rgba(139,92,246,.08)' : isUnlocked ? 'rgba(34,197,94,.06)' : 'rgba(255,255,255,.02)',
-                    opacity: isUnlocked ? 1 : isCh2 ? 0.55 : 0.3,
-                    cursor: isUnlocked ? 'pointer' : 'default',
-                    transition: 'all .2s',
-                  }}
-                >
-                  <div style={{
-                    width: 44, height: 44, borderRadius: 10,
-                    background: CH_COLORS[idx] || CH_COLORS[0],
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 22, flexShrink: 0,
-                  }}>
-                    {isUnlocked ? (CH_ICONS[idx] || '⭐') : '🔒'}
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 10, color: '#64748b', letterSpacing: 1 }}>
-                      CHAPTER {journey.chapter}
+                <div key={journey.chapter} style={{ marginBottom: 6 }}>
+                  <div
+                    onClick={() => isUnlocked && setSelected(null)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      padding: '10px 12px', borderRadius: canUnlock ? '12px 12px 0 0' : 12,
+                      border: `1px solid ${isCurrent ? 'rgba(139,92,246,.4)' : isUnlocked ? 'rgba(34,197,94,.3)' : canUnlock ? 'rgba(245,158,11,.35)' : 'rgba(80,160,255,.12)'}`,
+                      borderBottom: canUnlock ? 'none' : undefined,
+                      background: isCurrent ? 'rgba(139,92,246,.08)' : isUnlocked ? 'rgba(34,197,94,.06)' : canUnlock ? 'rgba(245,158,11,.06)' : 'rgba(255,255,255,.02)',
+                      opacity: isUnlocked || canUnlock ? 1 : 0.35,
+                      cursor: isUnlocked ? 'pointer' : 'default',
+                      transition: 'all .2s',
+                    }}
+                  >
+                    <div style={{
+                      width: 44, height: 44, borderRadius: 10,
+                      background: CH_COLORS[idx] || CH_COLORS[0],
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 22, flexShrink: 0,
+                    }}>
+                      {isUnlocked ? (CH_ICONS[idx] || '⭐') : canUnlock ? '🔓' : '🔒'}
                     </div>
-                    <div style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 14, fontWeight: 800 }}>
-                      {(journey.title?.en || `CHAPTER ${journey.chapter}`).toUpperCase()}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 10, color: '#64748b', letterSpacing: 1 }}>
+                        CHAPTER {journey.chapter}
+                      </div>
+                      <div style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 14, fontWeight: 800 }}>
+                        {(journey.title?.en || `CHAPTER ${journey.chapter}`).toUpperCase()}
+                      </div>
+                      <div style={{ fontSize: 11, color: '#94a3b8' }}>{journey.title?.vi || ''}</div>
+                      {isUnlocked && journey.requiredObjectives?.length > 0 && (
+                        <>
+                          <div style={{ height: 4, background: 'rgba(255,255,255,.07)', borderRadius: 99, marginTop: 4, overflow: 'hidden' }}>
+                            <div style={{
+                              height: 4, width: `${thisPct}%`,
+                              background: thisDone ? '#22c55e' : 'linear-gradient(90deg,#8b5cf6,#3b82f6)',
+                              borderRadius: 99, transition: 'width .4s',
+                            }} />
+                          </div>
+                          <div style={{ fontSize: 10, color: thisDone ? '#86efac' : '#64748b', marginTop: 2 }}>
+                            {thisDone ? '✓ Hoàn thành' : `${thisPct}% · ${thisSum}/${thisTgt}`}
+                          </div>
+                        </>
+                      )}
+                      {isUnlocked && !journey.requiredObjectives?.length && (
+                        <div style={{ fontSize: 10, color: '#86efac', marginTop: 2 }}>✓ Đã mở khoá</div>
+                      )}
+                      {!isUnlocked && !canUnlock && (
+                        <div style={{ fontSize: 10, color: '#64748b', marginTop: 2 }}>
+                          Hoàn thành Chapter {journey.chapter - 1} để mở
+                        </div>
+                      )}
+                      {canUnlock && (
+                        <div style={{ fontSize: 10, color: '#fbbf24', marginTop: 2 }}>
+                          ✅ Đủ điều kiện · Nhấn để mở khoá ngay!
+                        </div>
+                      )}
                     </div>
-                    <div style={{ fontSize: 11, color: '#94a3b8' }}>{journey.title?.vi || ''}</div>
-                    {isCh1 && (
-                      <>
-                        <div style={{ height: 4, background: 'rgba(255,255,255,.07)', borderRadius: 99, marginTop: 4, overflow: 'hidden' }}>
-                          <div style={{
-                            height: 4, width: `${thisPct}%`,
-                            background: ch1Done ? '#22c55e' : 'linear-gradient(90deg,#8b5cf6,#3b82f6)',
-                            borderRadius: 99, transition: 'width .4s',
-                          }} />
-                        </div>
-                        <div style={{ fontSize: 10, color: ch1Done ? '#86efac' : '#64748b', marginTop: 2 }}>
-                          {ch1Done ? '✓ Hoàn thành' : `${ch1Pct}% · ${curSum}/${totalTgt}`}
-                        </div>
-                      </>
-                    )}
-                    {isCh2 && !isUnlocked && (
-                      <div style={{ fontSize: 10, color: '#64748b', marginTop: 2 }}>
-                        Hoàn thành tất cả mục tiêu Chapter 1 để mở khoá
-                      </div>
-                    )}
-                    {!isUnlocked && !isCh2 && (
-                      <div style={{ fontSize: 10, color: '#64748b', marginTop: 2 }}>
-                        Hoàn thành Chapter {journey.chapter - 1} để mở
-                      </div>
-                    )}
                   </div>
+                  {/* UNLOCK BUTTON — chỉ hiện khi đủ điều kiện mà chưa unlock */}
+                  {canUnlock && (
+                    <button
+                      onClick={() => {
+                        checkAndUnlockChapters(user, ALL_JOURNEYS)
+                        // refreshSnapshot sẽ được trigger bởi HEALTH_JOURNEY_EVENT
+                      }}
+                      style={{
+                        width: '100%', padding: '9px 12px',
+                        borderRadius: '0 0 12px 12px',
+                        border: '1px solid rgba(245,158,11,.5)',
+                        borderTop: 'none',
+                        background: 'linear-gradient(135deg,rgba(245,158,11,.25),rgba(234,88,12,.2))',
+                        color: '#fbbf24', fontWeight: 800, fontSize: 12,
+                        cursor: 'pointer', fontFamily: 'inherit',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                      }}
+                    >
+                      🔓 MỞ KHOÁ CHAPTER {journey.chapter} NGAY
+                    </button>
+                  )}
                 </div>
               )
             })}
@@ -341,6 +397,9 @@ export default function JourneyDetailPopup({
                 onSelect={setSelected}
                 onOpenTask={handleOpenTask}
                 ch1Done={ch1Done}
+                allJourneys={ALL_JOURNEYS}
+                unlocked={unlocked}
+                user={user}
               />
             ) : (
               <MissionDetail
@@ -361,7 +420,10 @@ export default function JourneyDetailPopup({
 }
 
 // ── Sub: Chapter overview ─────────────────────────────────────────────────────
-function ChapterOverview({ ch1, ch1Pct, curSum, totalTgt, missions, todayTask, journeyObj, onSelect, onOpenTask, ch1Done }) {
+function ChapterOverview({ ch1, ch1Pct, curSum, totalTgt, missions, todayTask, journeyObj, onSelect, onOpenTask, ch1Done, allJourneys, unlocked, user }) {
+  const nextChapter = allJourneys?.find(j => !unlocked.includes(j.chapter))
+  const canUnlockNext = nextChapter && ch1Done && !unlocked.includes(nextChapter.chapter)
+
   return (
     <div style={{ overflowY: 'auto', height: '100%', paddingRight: 4 }}>
       <div style={S.sectionLabel}>CHAPTER 1 · TỔNG QUAN</div>
@@ -385,10 +447,29 @@ function ChapterOverview({ ch1, ch1Pct, curSum, totalTgt, missions, todayTask, j
         </div>
         <div style={{ fontSize: 11, color: ch1Done ? '#86efac' : '#64748b', marginTop: 4 }}>
           {ch1Done
-            ? '🎉 Đã hoàn thành — Chapter 2 mở khoá!'
+            ? `🎉 Đã hoàn thành — Chapter 2 ${unlocked.includes(2) ? 'đang mở!' : 'sẵn sàng mở khoá!'}`
             : `${curSum}/${totalTgt} tổng tiến độ các mục tiêu`}
         </div>
       </div>
+
+      {/* UNLOCK NEXT CHAPTER BUTTON */}
+      {canUnlockNext && (
+        <button
+          onClick={() => checkAndUnlockChapters(user, allJourneys)}
+          style={{
+            width: '100%', padding: '12px', borderRadius: 12, marginBottom: 12,
+            border: '1px solid rgba(245,158,11,.5)',
+            background: 'linear-gradient(135deg,rgba(245,158,11,.2),rgba(234,88,12,.15))',
+            color: '#fbbf24', fontWeight: 800, fontSize: 14,
+            cursor: 'pointer', fontFamily: 'inherit',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            boxShadow: '0 8px 20px rgba(245,158,11,.2)',
+            animation: 'pulse 2s infinite',
+          }}
+        >
+          🔓 MỞ KHOÁ CHAPTER {nextChapter.chapter} · {(nextChapter.title?.en || '').toUpperCase()}
+        </button>
+      )}
 
       {/* Objectives từ journeys.json */}
       {ch1.requiredObjectives?.length > 0 && (

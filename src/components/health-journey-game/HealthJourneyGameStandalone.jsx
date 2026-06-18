@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useMemo } from 'react'
 import { useAuth } from '../../context/AuthContext.jsx'
-import { completeHealthJourneyActivity, HEALTH_JOURNEY_EVENT, getTaskSnapshot, XP_TABLE, ACTIVITY_TASK_MAP } from './services/healthJourneyStorage.js'
+import { completeHealthJourneyActivity, HEALTH_JOURNEY_EVENT, getTaskSnapshot, XP_TABLE, ACTIVITY_TASK_MAP, checkAndUnlockChapters } from './services/healthJourneyStorage.js'
 import { dataUrlToFile, drawAIWaterBottleOverlay, saveWaterProofImage, syncBeMeoWater } from './services/waterProofUpload.js'
 import dailyTasksData from './data/daily_tasks.json'
 import journeysData from './data/journeys.json'
@@ -512,7 +512,11 @@ export default function HealthJourneyGameStandalone({ onViewMedicalRecord }) {
   const [helpOpen, setHelpOpen] = useState(false)
 
   useEffect(() => {
-    const refreshSnapshot = () => setSnapshot(getTaskSnapshot(user))
+    const refreshSnapshot = () => {
+      setSnapshot(getTaskSnapshot(user))
+      // Tự động unlock chapter nếu đủ điều kiện
+      checkAndUnlockChapters(user, journeysData.journeys || [])
+    }
     window.addEventListener(HEALTH_JOURNEY_EVENT, refreshSnapshot)
     return () => window.removeEventListener(HEALTH_JOURNEY_EVENT, refreshSnapshot)
   }, [user])
@@ -1145,43 +1149,87 @@ export default function HealthJourneyGameStandalone({ onViewMedicalRecord }) {
               return s + Math.min(obj?.current || 0, o.target || 1)
             }, 0)
             const chapterPct = totalObjectiveTarget > 0 ? Math.min(100, Math.round(currentObjectiveSum / totalObjectiveTarget * 100)) : 0
-            const modalId = isChapter1 ? 'modal-chapter-detail' : `modal-chapter-detail${journey.chapter}`
+            const chapterDone = objectives.length > 0 ? chapterPct >= 100 : isUnlocked
+
+            // Kiểm tra có thể unlock chapter này không
+            const prevJourney = idx > 0 ? allJourneys[idx - 1] : null
+            const prevDone = prevJourney ? (() => {
+              const prevObjs = prevJourney.requiredObjectives || []
+              if (prevObjs.length === 0) return snapshot.journeyUser?.journeyProgress?.unlockedChapters?.includes(prevJourney.chapter)
+              const prevTgt = prevObjs.reduce((s, o) => s + (o.target || 1), 0)
+              const prevCur = prevObjs.reduce((s, o) => {
+                const obj = journeyObjective(o.task)
+                return s + Math.min(obj?.current || 0, o.target || 1)
+              }, 0)
+              return prevTgt > 0 && prevCur >= prevTgt
+            })() : false
+            const canUnlock = !isUnlocked && prevDone
+
             return (
-              <div
-                key={journey.chapter}
-                className="chapter-item"
-                onClick={(event) => { isUnlocked ? openJourneyPopup(isChapter1 ? 'overview' : `chapter_${journey.chapter}`) : showLockedChapter(`Chapter ${journey.chapter}`, `Hoàn thành Chapter ${journey.chapter - 1} để mở khóa`, '🔒') }}
-                style={{
-                  margin: "0 12px 8px",
-                  borderColor: isChapter1 ? "rgba(139,92,246,.4)" : undefined,
-                  background: isChapter1 ? "rgba(139,92,246,.07)" : undefined,
-                  opacity: isUnlocked ? 1 : idx === 1 ? 0.6 : 0.35,
-                }}
-              >
-                <div className="chapter-thumb" style={{ background: bgColor }}>
-                  {icon}
-                </div>
-                <div className="chapter-info">
-                  <div className="chapter-num">
-                    CHAPTER {journey.chapter}
+              <div key={journey.chapter} style={{ margin: '0 12px 8px' }}>
+                <div
+                  className="chapter-item"
+                  onClick={() => {
+                    if (isUnlocked) openJourneyPopup(isChapter1 ? 'overview' : `chapter_${journey.chapter}`)
+                    else if (canUnlock) checkAndUnlockChapters(user, allJourneys)
+                    else showLockedChapter(`Chapter ${journey.chapter}`, `Hoàn thành Chapter ${journey.chapter - 1} để mở khóa`, '🔒')
+                  }}
+                  style={{
+                    margin: 0,
+                    borderRadius: canUnlock ? '12px 12px 0 0' : undefined,
+                    borderColor: isChapter1 ? 'rgba(139,92,246,.4)' : canUnlock ? 'rgba(245,158,11,.4)' : undefined,
+                    borderBottom: canUnlock ? 'none' : undefined,
+                    background: isChapter1 ? 'rgba(139,92,246,.07)' : canUnlock ? 'rgba(245,158,11,.07)' : undefined,
+                    opacity: isUnlocked || canUnlock ? 1 : idx === 1 ? 0.6 : 0.35,
+                  }}
+                >
+                  <div className="chapter-thumb" style={{ background: bgColor }}>
+                    {isUnlocked ? icon : canUnlock ? '🔓' : '🔒'}
                   </div>
-                  <div className="chapter-name">
-                    {(journey.title?.en || `CHAPTER ${journey.chapter}`).toUpperCase()}
-                  </div>
-                  <div className="progress-wrap" style={{ height: "4px", marginTop: "4px" }}>
-                    <div className="progress-bar" style={{ width: `${isChapter1 ? chapterPct : 0}%`, background: "linear-gradient(90deg,var(--purple),var(--blue))" }}>
+                  <div className="chapter-info">
+                    <div className="chapter-num">
+                      CHAPTER {journey.chapter}
+                    </div>
+                    <div className="chapter-name">
+                      {(journey.title?.en || `CHAPTER ${journey.chapter}`).toUpperCase()}
+                    </div>
+                    <div className="progress-wrap" style={{ height: "4px", marginTop: "4px" }}>
+                      <div className="progress-bar" style={{
+                        width: `${isUnlocked ? chapterPct : 0}%`,
+                        background: chapterDone ? '#22c55e' : 'linear-gradient(90deg,var(--purple),var(--blue))',
+                      }} />
+                    </div>
+                    <div className="chapter-prog" style={{ color: canUnlock ? '#fbbf24' : isUnlocked ? undefined : 'var(--text-muted)' }}>
+                      {isUnlocked
+                        ? (chapterDone ? '✓ Hoàn thành' : isChapter1
+                            ? (waterObjective ? `Uống nước ${waterObjective.current}/${waterObjective.target} · ${chapterPct}%` : `${chapterPct}% · Tiếp tục`)
+                            : `${chapterPct}% · Đang chơi`)
+                        : canUnlock ? '✅ Đủ điều kiện · Nhấn để mở khoá!'
+                        : `Khóa · Hoàn thành Ch.${journey.chapter - 1}`}
                     </div>
                   </div>
-                  <div className="chapter-prog" style={{ color: isUnlocked ? undefined : "var(--text-muted)" }}>
-                    {isChapter1
-                      ? (waterObjective ? `Uống nước ${waterObjective.current}/${waterObjective.target} · ${chapterPct}%` : `${chapterPct}% · Tiếp tục`)
-                      : isUnlocked ? '0% · Chưa bắt đầu' : `Khóa · Hoàn thành Ch.${journey.chapter - 1}`
-                    }
+                  <div style={{ color: isUnlocked ? (isChapter1 ? 'var(--blue-glow)' : 'var(--text-muted)') : canUnlock ? '#fbbf24' : 'var(--text-muted)', fontSize: '18px' }}>
+                    {isUnlocked ? '›' : canUnlock ? '🔓' : '🔒'}
                   </div>
                 </div>
-                <div style={{ color: isUnlocked ? (isChapter1 ? "var(--blue-glow)" : "var(--text-muted)") : "var(--text-muted)", fontSize: "18px" }}>
-                  {isUnlocked ? '›' : '🔒'}
-                </div>
+                {/* UNLOCK BUTTON — hiện khi đủ điều kiện */}
+                {canUnlock && (
+                  <button
+                    onClick={() => checkAndUnlockChapters(user, allJourneys)}
+                    style={{
+                      width: '100%', padding: '9px 16px',
+                      borderRadius: '0 0 12px 12px',
+                      border: '1px solid rgba(245,158,11,.45)',
+                      borderTop: 'none',
+                      background: 'linear-gradient(135deg,rgba(245,158,11,.22),rgba(234,88,12,.18))',
+                      color: '#fbbf24', fontWeight: 800, fontSize: 12,
+                      cursor: 'pointer', fontFamily: 'inherit',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                    }}
+                  >
+                    🔓 MỞ KHOÁ CHAPTER {journey.chapter} · {(journey.title?.en || '').toUpperCase()}
+                  </button>
+                )}
               </div>
             )
           })}
@@ -3282,75 +3330,116 @@ export default function HealthJourneyGameStandalone({ onViewMedicalRecord }) {
                   return s + Math.min(obj?.current || 0, o.target || 1)
                 }, 0)
                 const chPct = totalTarget > 0 ? Math.min(100, Math.round(currentSum / totalTarget * 100)) : 0
-                const modalId = isChapter1 ? 'modal-chapter-detail' : `modal-chapter-detail${journey.chapter}`
+                const chDone = objectives.length > 0 ? chPct >= 100 : isUnlocked
+
+                // canUnlock logic
+                const prevJourney = idx > 0 ? allJourneys[idx - 1] : null
+                const prevDone = prevJourney ? (() => {
+                  const pObjs = prevJourney.requiredObjectives || []
+                  if (pObjs.length === 0) return snapshot.journeyUser?.journeyProgress?.unlockedChapters?.includes(prevJourney.chapter)
+                  const pTgt = pObjs.reduce((s, o) => s + (o.target || 1), 0)
+                  const pCur = pObjs.reduce((s, o) => {
+                    const obj = journeyObjective(o.task)
+                    return s + Math.min(obj?.current || 0, o.target || 1)
+                  }, 0)
+                  return pTgt > 0 && pCur >= pTgt
+                })() : false
+                const canUnlock = !isUnlocked && prevDone
+
                 return (
-                  <div
-                    key={journey.chapter}
-                    onClick={(event) => {
-                      closeModal('modal-all-chapters')
-                      if (!isUnlocked) {
-                        showLockedChapter((journey.title?.en || `Chapter ${journey.chapter}`).toUpperCase(), `Hoàn thành Chapter ${journey.chapter - 1} để mở khóa`, icon)
-                      } else if (isChapter1) {
-                        // FIX: dùng popup React mới (JourneyDetailPopup) thay vì modal DOM cũ
-                        // ('modal-chapter-detail') — modal cũ dẫn tới openChapterMissionDetail
-                        // → taskId bị lệch (activityType thay vì taskId ngắn) khiến popup mở
-                        // nhầm nhiệm vụ và không ghi nhận đúng số lần uống nước / breathing / v.v.
-                        openJourneyPopup('overview')
-                      } else {
-                        openModal(modalId)
-                      }
-                    }}
-                    style={{
-                      display: "flex", alignItems: "center", gap: "12px",
-                      background: isChapter1 ? "rgba(139,92,246,0.10)" : "rgba(255,255,255,0.03)",
-                      border: isChapter1 ? "1px solid rgba(139,92,246,0.4)" : "1px solid rgba(255,255,255,0.08)",
-                      borderRadius: "12px", padding: "12px", marginBottom: "10px", cursor: "pointer",
-                      position: "relative", overflow: "hidden",
-                      opacity: isUnlocked ? 1 : idx === 1 ? 0.6 : 0.45,
-                    }}
-                  >
-                    {isChapter1 && (
-                      <div style={{ position: "absolute", left: "0", top: "0", bottom: "0", width: "3px", background: "linear-gradient(180deg,var(--purple),var(--blue))", borderRadius: "2px 0 0 2px" }}></div>
-                    )}
-                    <div style={{ width: "48px", height: "48px", borderRadius: "10px", background: isChapter1 ? "rgba(139,92,246,0.25)" : "rgba(59,130,246,0.12)", border: isChapter1 ? "1px solid rgba(139,92,246,0.5)" : "1px solid rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "26px", flexShrink: "0", filter: isUnlocked ? "none" : "grayscale(0.6)", opacity: isUnlocked ? 1 : 0.7 }}>
-                      {icon}
-                    </div>
-                    <div style={{ flex: "1", minWidth: "0", opacity: isUnlocked ? 1 : 0.6 }}>
-                      <div style={{ fontSize: "9px", color: "var(--text-muted)", letterSpacing: "1.5px", textTransform: "uppercase", marginBottom: "2px" }}>
-                        CHAPTER {journey.chapter}
-                      </div>
-                      <div style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: "16px", fontWeight: "800", color: isChapter1 ? "#fff" : "var(--text-dim)" }}>
-                        {(journey.title?.en || `Chapter ${journey.chapter}`).toUpperCase()}
-                      </div>
+                  <div key={journey.chapter} style={{ marginBottom: "10px" }}>
+                    <div
+                      onClick={() => {
+                        closeModal('modal-all-chapters')
+                        if (canUnlock) { checkAndUnlockChapters(user, allJourneys); return }
+                        if (!isUnlocked) { showLockedChapter((journey.title?.en || `Chapter ${journey.chapter}`).toUpperCase(), `Hoàn thành Chapter ${journey.chapter - 1} để mở khóa`, icon); return }
+                        if (isChapter1) openJourneyPopup('overview')
+                        else openJourneyPopup(`chapter_${journey.chapter}`)
+                      }}
+                      style={{
+                        display: "flex", alignItems: "center", gap: "12px",
+                        background: isChapter1 ? "rgba(139,92,246,0.10)" : canUnlock ? "rgba(245,158,11,0.08)" : "rgba(255,255,255,0.03)",
+                        border: isChapter1 ? "1px solid rgba(139,92,246,0.4)" : canUnlock ? "1px solid rgba(245,158,11,0.4)" : "1px solid rgba(255,255,255,0.08)",
+                        borderRadius: canUnlock ? "12px 12px 0 0" : "12px",
+                        borderBottom: canUnlock ? "none" : undefined,
+                        padding: "12px", cursor: "pointer",
+                        position: "relative", overflow: "hidden",
+                        opacity: isUnlocked || canUnlock ? 1 : idx === 1 ? 0.6 : 0.45,
+                      }}
+                    >
                       {isChapter1 && (
-                        <>
-                          <div style={{ height: "4px", background: "rgba(255,255,255,0.07)", borderRadius: "99px", margin: "5px 0 3px", overflow: "hidden" }}>
-                            <div style={{ height: "4px", width: `${chPct}%`, background: "linear-gradient(90deg,var(--purple),var(--blue))", borderRadius: "99px" }}></div>
-                          </div>
-                          <div style={{ fontSize: "10px", color: "var(--blue-glow)" }}>
-                            {waterObjective ? `Uống nước ${waterObjective.current}/${waterObjective.target} · ${chPct}%` : `${chPct}% · Tiếp tục`}
-                          </div>
-                        </>
+                        <div style={{ position: "absolute", left: "0", top: "0", bottom: "0", width: "3px", background: "linear-gradient(180deg,var(--purple),var(--blue))", borderRadius: "2px 0 0 2px" }}></div>
                       )}
-                      {!isChapter1 && (
-                        <div style={{ fontSize: "10px", color: "var(--text-muted)", marginTop: "4px" }}>
-                          {isUnlocked ? '0% · Chưa bắt đầu' : `Hoàn thành Ch.${journey.chapter - 1} để mở khóa`}
+                      <div style={{ width: "48px", height: "48px", borderRadius: "10px", background: isChapter1 ? "rgba(139,92,246,0.25)" : "rgba(59,130,246,0.12)", border: isChapter1 ? "1px solid rgba(139,92,246,0.5)" : "1px solid rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "26px", flexShrink: "0" }}>
+                        {isUnlocked ? icon : canUnlock ? '🔓' : '🔒'}
+                      </div>
+                      <div style={{ flex: "1", minWidth: "0" }}>
+                        <div style={{ fontSize: "9px", color: "var(--text-muted)", letterSpacing: "1.5px", textTransform: "uppercase", marginBottom: "2px" }}>
+                          CHAPTER {journey.chapter}
                         </div>
-                      )}
-                    </div>
-                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", flexShrink: "0" }}>
-                      {isChapter1 && <div className="badge badge-green" style={{ fontSize: "9px", padding: "2px 6px" }}>Đang chơi</div>}
-                      <div style={{ color: isUnlocked ? (isChapter1 ? "var(--blue-glow)" : "var(--text-muted)") : "var(--text-muted)", fontSize: "18px" }}>
-                        {isUnlocked ? '›' : '🔒'}
+                        <div style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: "16px", fontWeight: "800", color: isUnlocked || canUnlock ? "#fff" : "var(--text-dim)" }}>
+                          {(journey.title?.en || `Chapter ${journey.chapter}`).toUpperCase()}
+                        </div>
+                        {isUnlocked && objectives.length > 0 && (
+                          <>
+                            <div style={{ height: "4px", background: "rgba(255,255,255,0.07)", borderRadius: "99px", margin: "5px 0 3px", overflow: "hidden" }}>
+                              <div style={{ height: "4px", width: `${chPct}%`, background: chDone ? "#22c55e" : "linear-gradient(90deg,var(--purple),var(--blue))", borderRadius: "99px" }}></div>
+                            </div>
+                            <div style={{ fontSize: "10px", color: chDone ? "#86efac" : "var(--blue-glow)" }}>
+                              {chDone ? '✓ Hoàn thành' : isChapter1
+                                ? (waterObjective ? `Uống nước ${waterObjective.current}/${waterObjective.target} · ${chPct}%` : `${chPct}% · Tiếp tục`)
+                                : `${chPct}% · Đang chơi`}
+                            </div>
+                          </>
+                        )}
+                        {isUnlocked && objectives.length === 0 && (
+                          <div style={{ fontSize: "10px", color: "#86efac", marginTop: "4px" }}>✓ Đã mở khoá</div>
+                        )}
+                        {!isUnlocked && canUnlock && (
+                          <div style={{ fontSize: "10px", color: "#fbbf24", marginTop: "4px" }}>✅ Đủ điều kiện · Nhấn để mở khoá!</div>
+                        )}
+                        {!isUnlocked && !canUnlock && (
+                          <div style={{ fontSize: "10px", color: "var(--text-muted)", marginTop: "4px" }}>
+                            Hoàn thành Ch.{journey.chapter - 1} để mở khóa
+                          </div>
+                        )}
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", flexShrink: "0" }}>
+                        {isChapter1 && <div className="badge badge-green" style={{ fontSize: "9px", padding: "2px 6px" }}>Đang chơi</div>}
+                        <div style={{ color: canUnlock ? "#fbbf24" : isUnlocked ? (isChapter1 ? "var(--blue-glow)" : "var(--text-muted)") : "var(--text-muted)", fontSize: "18px" }}>
+                          {isUnlocked ? '›' : canUnlock ? '🔓' : '🔒'}
+                        </div>
                       </div>
                     </div>
+                    {/* Unlock button */}
+                    {canUnlock && (
+                      <button
+                        onClick={() => { closeModal('modal-all-chapters'); checkAndUnlockChapters(user, allJourneys) }}
+                        style={{
+                          width: '100%', padding: '9px 16px',
+                          borderRadius: '0 0 12px 12px',
+                          border: '1px solid rgba(245,158,11,.4)',
+                          borderTop: 'none',
+                          background: 'linear-gradient(135deg,rgba(245,158,11,.2),rgba(234,88,12,.15))',
+                          color: '#fbbf24', fontWeight: 800, fontSize: 12,
+                          cursor: 'pointer', fontFamily: 'inherit',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                        }}
+                      >
+                        🔓 MỞ KHOÁ CHAPTER {journey.chapter} · {(journey.title?.en || '').toUpperCase()}
+                      </button>
+                    )}
                   </div>
                 )
               })}
             </div>
             <div style={{ padding: "0 14px 14px" }}>
-              <button className="btn-primary" onClick={(event) => { closeModal('modal-all-chapters'); openJourneyPopup('overview') }}>
-                TIẾP TỤC CHAPTER 1
+              <button className="btn-primary" onClick={(event) => {
+                const currentChapter = snapshot.journeyUser?.journeyProgress?.currentChapter || 1
+                closeModal('modal-all-chapters')
+                openJourneyPopup('overview')
+              }}>
+                TIẾP TỤC CHAPTER {snapshot.journeyUser?.journeyProgress?.currentChapter || 1}
               </button>
             </div>
           </div>

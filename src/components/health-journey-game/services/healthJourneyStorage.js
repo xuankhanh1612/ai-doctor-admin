@@ -331,38 +331,85 @@ export function completeHealthJourneyActivity({ user, activityType, value = 1, p
 }
 
 /**
- * checkAndUnlockChapter1 — gọi từ JourneyDetailPopup sau mỗi lần refresh snapshot.
- * Nếu TẤT CẢ objectives của chapter 1 đã hoàn thành mà unlockedChapters chưa có 2,
- * thì tự động unlock Chapter 2 và fire HEALTH_JOURNEY_EVENT để UI cập nhật ngay.
+ * isChapterCompleted — kiểm tra chapter N đã hoàn thành chưa.
+ * Chapter được coi là hoàn thành khi:
+ *   - Tất cả requiredObjectives của chapter đó đã đạt target (nếu có)
+ *   - HOẶC chapter không có objectives nhưng đã được unlock (mặc định pass)
+ * journeysData được truyền vào để tránh import vòng.
  */
-export function checkAndUnlockChapter1(user) {
-  if (!user) return false
+export function isChapterCompleted(progress, chapterNum, journeysData) {
+  const journey = (journeysData || []).find((j) => j.chapter === chapterNum)
+  const objectives = journey?.requiredObjectives || []
+
+  // Nếu chapter không có objectives: coi như hoàn thành khi đã được unlock
+  if (objectives.length === 0) return progress.unlockedChapters?.includes(chapterNum) ?? false
+
+  return objectives.every((obj) => {
+    const o = progress.objectives?.find((x) => x.activityType === obj.task)
+    return o ? (o.current >= (o.target || obj.target || 1)) : false
+  })
+}
+
+/**
+ * checkAndUnlockChapters — gọi từ UI sau mỗi lần refresh snapshot.
+ * Duyệt qua TẤT CẢ chapters, nếu chapter N đã hoàn thành và chapter N+1 chưa unlock
+ * thì tự động unlock chapter N+1, ghi reward, fire HEALTH_JOURNEY_EVENT.
+ * Trả về mảng số chapter vừa được unlock trong lần gọi này (rỗng nếu không có gì mới).
+ *
+ * @param {object} user              - auth user object
+ * @param {Array}  journeysJsonData  - mảng journeys từ journeys.json
+ */
+export function checkAndUnlockChapters(user, journeysJsonData) {
+  if (!user) return []
+  const allJourneys = journeysJsonData || []
+  if (allJourneys.length === 0) return []
+
   const db = loadHealthJourneyDb()
   const journeyUser = ensureUser(db, user)
   const progress = journeyUser.journeyProgress
-
-  const ch1Objectives = progress.objectives.filter((o) => o.chapter === 1)
-  if (ch1Objectives.length === 0) return false
-
-  const chapter1Done = ch1Objectives.every((o) => o.completed || o.current >= o.target)
-  if (!chapter1Done) return false
-  if (progress.unlockedChapters.includes(2)) return true // đã unlock rồi
-
   const timestamp = new Date().toISOString()
-  progress.unlockedChapters.push(2)
-  progress.currentChapter = 2
-  journeyUser.rewards.claimed.push({
-    id: `reward_chapter_1_${Date.now()}`,
-    chapter: 1,
-    type: 'chapter_unlock',
-    name: { vi: 'Rương Chapter 1 + 500 xu', en: 'Chapter 1 Chest + 500 coins' },
-    coins: 500,
-    chest: 'hydration_starter_chest',
-    claimedAt: timestamp,
-  })
-  journeyUser.profile.coins += 500
-  journeyUser.updatedAt = timestamp
+  const newlyUnlocked = []
 
-  saveHealthJourneyDb(db)
-  return true
+  for (let i = 0; i < allJourneys.length - 1; i++) {
+    const current = allJourneys[i]
+    const next = allJourneys[i + 1]
+    if (progress.unlockedChapters.includes(next.chapter)) continue // đã unlock rồi
+
+    const currentDone = isChapterCompleted(progress, current.chapter, allJourneys)
+    if (!currentDone) break // chain bị gián đoạn, không cần kiểm tra tiếp
+
+    // Unlock chapter tiếp theo
+    progress.unlockedChapters.push(next.chapter)
+    progress.currentChapter = next.chapter
+    journeyUser.rewards.claimed.push({
+      id: `reward_chapter_${current.chapter}_${Date.now()}_${i}`,
+      chapter: current.chapter,
+      type: 'chapter_unlock',
+      name: {
+        vi: `Hoàn thành Chapter ${current.chapter} · Mở khoá Chapter ${next.chapter}`,
+        en: `Chapter ${current.chapter} Complete · Chapter ${next.chapter} Unlocked`,
+      },
+      coins: 500,
+      chest: `chapter_${current.chapter}_chest`,
+      claimedAt: timestamp,
+    })
+    journeyUser.profile.coins += 500
+    newlyUnlocked.push(next.chapter)
+  }
+
+  if (newlyUnlocked.length > 0) {
+    journeyUser.updatedAt = timestamp
+    saveHealthJourneyDb(db)
+  }
+  return newlyUnlocked
+}
+
+// Alias cũ để không break code cũ
+export function checkAndUnlockChapter1(user, journeysJsonData) {
+  const unlocked = checkAndUnlockChapters(user, journeysJsonData)
+  return unlocked.includes(2) || (user && (() => {
+    const db = loadHealthJourneyDb()
+    const ju = ensureUser(db, user)
+    return ju.journeyProgress.unlockedChapters.includes(2)
+  })())
 }
