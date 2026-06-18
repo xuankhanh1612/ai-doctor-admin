@@ -123,6 +123,7 @@ export async function saveWaterProofImage(file, user, {
   xpEarned = 10,
   waterAmountMl = WATER_AMOUNT_ML,
   proofType = 'webcam_bottle_photo_ai_overlay',
+  beMeoProofId = null,
 } = {}) {
   const [dataUrl, base64Data] = await Promise.all([fileToDataUrl(file), fileToBase64(file)])
   const filename = `${safeUploadSegment(taskId)}_ai_${new Date().toISOString().replace(/[:.]/g, '-')}.jpg`
@@ -147,6 +148,7 @@ export async function saveWaterProofImage(file, user, {
     sourceModule: source,
     uploadFolder: uploadPath.split('/').slice(0, -1).join('/'),
     uploadPath,
+    beMeoProofId: beMeoProofId || null,
     healthJourney: {
       activityType,
       taskId,
