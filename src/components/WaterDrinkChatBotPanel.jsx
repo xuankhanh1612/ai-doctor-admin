@@ -4,6 +4,7 @@ import { useApp } from '../context/AppContext'
 import { useAuth } from '../context/AuthContext.jsx'
 import { completeHealthJourneyActivity, getTaskSnapshot, HEALTH_JOURNEY_EVENT } from './health-journey-game/services/healthJourneyStorage.js'
 import { syncBeMeoWater, saveWaterProofImage } from './health-journey-game/services/waterProofUpload.js'
+import { getAllRecords } from '../lib/medicalStorage.js'
 import AIVisionWebcam from './webcam/AIVisionWebcam.jsx'
 // @ts-ignore Vite raw HTML import
 import waterDrinkTrackerHtml from '../waterdrink-khanh/waterdrink_tracker.html?raw'
@@ -28,6 +29,10 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
   // proofId cuối cùng nhận từ BE_MEO_WATER_ADDED (chờ ảnh camera gán vào)
   const pendingProofIdRef = useRef(null)
 
+  // === FIX: Lưu toàn bộ proofId→dataUrl trong React memory để restore khi iframe reload ===
+  // Key: proofId, Value: dataUrl (base64 ảnh)
+  const proofMapRef = useRef({})
+
   const html = useMemo(() => waterDrinkTrackerHtml
     .replaceAll('__MEO_NHAY_MAT__', meoNhayMatUrl)
     .replaceAll('__MEO_BU_AI__', meoBuAiUrl)
@@ -35,9 +40,64 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
     .replaceAll('__ROBOT_TU_THE_1__', robotTuThe1Url)
     .replaceAll('__ROBOT_TU_THE_2__', robotTuThe2Url), [])
 
+  // === FIX: Khi component mount (kể cả sau khi quay lại trang, vì component bị unmount/remount
+  // → proofMapRef reset về {}), nạp lại toàn bộ proofId→dataUrl từ IndexedDB (medicalStorage),
+  // đây là nguồn dữ liệu bền vững nhất — không phụ thuộc localStorage quota hay React memory cũ.
+  // Mỗi record uống nước được lưu qua saveWaterProofImage() đã có sẵn beMeoProofId + dataUrl.
+  const [proofMapReady, setProofMapReady] = useState(false)
+  useEffect(() => {
+    let cancelled = false
+    setProofMapReady(false)
+    getAllRecords({ ownerEmail: user?.email })
+      .then((records) => {
+        if (cancelled) return
+        records.forEach((record) => {
+          if (record?.beMeoProofId && record?.dataUrl) {
+            proofMapRef.current[record.beMeoProofId] = record.dataUrl
+          }
+        })
+        setProofMapReady(true)
+      })
+      .catch((err) => {
+        console.error('WaterDrinkChatBotPanel: lỗi nạp proofMap từ IndexedDB', err)
+        if (!cancelled) setProofMapReady(true)
+      })
+    return () => { cancelled = true }
+  }, [user])
+
+  // Gửi toàn bộ proofMap đã nạp vào iframe ngay khi iframe sẵn sàng VÀ proofMap đã load xong
+  // (đợi cả 2 điều kiện vì thứ tự iframe onLoad vs IndexedDB load không cố định)
+  const [iframeReady, setIframeReady] = useState(false)
+  useEffect(() => {
+    if (!iframeReady || !proofMapReady) return
+    const iframe = iframeRef.current
+    if (!iframe?.contentWindow) return
+    const entries = Object.entries(proofMapRef.current)
+      .filter(([, dataUrl]) => dataUrl && dataUrl !== '__PENDING__')
+      .map(([proofId, dataUrl]) => ({ proofId, dataUrl }))
+    if (entries.length > 0) {
+      iframe.contentWindow.postMessage({ type: 'BE_MEO_PROOF_BULK_RESTORE', proofMapEntries: entries }, '*')
+    }
+  }, [iframeReady, proofMapReady])
+
   // Lắng nghe message từ iframe
   useEffect(() => {
     const refresh = () => setSnapshot(getTaskSnapshot(user))
+
+    // Helper: gửi toàn bộ proofMap hiện tại vào iframe (bulk restore)
+    const bulkRestoreToIframe = (iframe, filterIds) => {
+      if (!iframe?.contentWindow) return
+      const entries = Object.entries(proofMapRef.current)
+        .filter(([pid, dataUrl]) => {
+          if (!dataUrl || dataUrl === '__PENDING__') return false
+          if (filterIds && !filterIds.includes(pid)) return false
+          return true
+        })
+        .map(([proofId, dataUrl]) => ({ proofId, dataUrl }))
+      if (entries.length > 0) {
+        iframe.contentWindow.postMessage({ type: 'BE_MEO_PROOF_BULK_RESTORE', proofMapEntries: entries }, '*')
+      }
+    }
 
     const onMessage = (event) => {
       // srcdoc iframe có origin null — chỉ lọc theo type, không check origin
@@ -64,6 +124,15 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
         return
       }
 
+      // === FIX: Iframe yêu cầu restore lại proofIds bị mất (sau khi tab mới / hard reload)
+      if (event.data?.type === 'BE_MEO_PROOF_RESTORE_REQUEST') {
+        const iframe = iframeRef.current
+        if (iframe?.contentWindow) {
+          bulkRestoreToIframe(iframe, event.data.pendingProofIds)
+        }
+        return
+      }
+
       // Iframe yêu cầu xem lại ảnh đã chụp
       if (event.data?.type === 'BE_MEO_REVIEW_REQUEST' && event.data.dataUrl) {
         setReviewImageUrl(event.data.dataUrl)
@@ -87,6 +156,8 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
     const onTaskProof = (e) => {
       const { proofId, dataUrl, syncState } = e.detail || {}
       if (!proofId || !dataUrl) return
+      // === FIX: Lưu vào proofMapRef để restore khi quay lại trang
+      proofMapRef.current[proofId] = dataUrl
       const iframe = iframeRef.current
       if (!iframe?.contentWindow) return
       // Gửi STATE_SYNC trước để iframe cập nhật total/goal đúng trước khi renderChat
@@ -102,10 +173,24 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
     }
     window.addEventListener('BE_MEO_TASK_PROOF_SAVED', onTaskProof)
 
+    // === FIX: Lắng nghe sự kiện xoá ảnh từ trang Upload Record (MedicalUploader.handleDelete)
+    // → gỡ proofId khỏi proofMapRef (React memory) và forward vào iframe để gỡ nút "Xem lại"
+    //   ngay lập tức, không cần đợi reload trang "Bé Mèo Nước"
+    const onTaskProofDeleted = (e) => {
+      const { proofId } = e.detail || {}
+      if (!proofId) return
+      delete proofMapRef.current[proofId]
+      const iframe = iframeRef.current
+      if (!iframe?.contentWindow) return
+      iframe.contentWindow.postMessage({ type: 'BE_MEO_PROOF_DELETED', proofId }, '*')
+    }
+    window.addEventListener('BE_MEO_TASK_PROOF_DELETED', onTaskProofDeleted)
+
     return () => {
       window.removeEventListener(HEALTH_JOURNEY_EVENT, refresh)
       window.removeEventListener('message', onMessage)
       window.removeEventListener('BE_MEO_TASK_PROOF_SAVED', onTaskProof)
+      window.removeEventListener('BE_MEO_TASK_PROOF_DELETED', onTaskProofDeleted)
     }
   }, [user])
 
@@ -184,6 +269,9 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
             JSON.stringify(Object.fromEntries(Object.entries(proofMap).slice(-30))))
         } catch (_) {}
 
+        // === FIX: Lưu vào proofMapRef (React memory) để restore khi quay lại trang
+        proofMapRef.current[proofId] = record.dataUrl
+
         // Bước 4: Gửi STATE_SYNC vào iframe để cập nhật total/goal trước khi render
         if (syncResult?.state && iframeRef.current?.contentWindow) {
           iframeRef.current.contentWindow.postMessage({
@@ -229,6 +317,7 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
             className="bemeo-chatbot-iframe"
             style={{ width: '100%', minHeight: '1100px', border: 0, display: 'block', background: '#eef8ff' }}
             sandbox="allow-scripts allow-same-origin allow-forms"
+            onLoad={() => setIframeReady(true)}
           />
         </div>
 
