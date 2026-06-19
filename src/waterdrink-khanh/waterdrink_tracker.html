@@ -709,63 +709,64 @@
         return [{ role: 'bot', text: 'Meo meo 💧 Bé Mèo Nước đây! Hôm nay mình cùng uống nước đều hơn nha. Bạn có thể nhắn: “Tôi vừa uống 250ml”.' }];
       }
 
-      const PROOF_MAP_KEY = 'be_meo_nuoc_proof_map';
-      // proofMap lưu 2 tầng:
-      //   - sessionStorage: dataUrl (base64 ảnh lớn, tồn tại trong tab session)
-      //   - localStorage: metadata {hasProof: true, time} (nhỏ, persist lâu dài)
-      // Khi iframe reload trong cùng tab → sessionStorage vẫn còn → nút Xem lại hiện
-      // Khi mở tab mới → sessionStorage mất nhưng localStorage còn flag hasProof
-      //   → iframe gửi BE_MEO_PROOF_NEED_RELOAD để React re-inject dataUrl từ React state
-      function loadProofMap() {
-        // Merge metadata từ localStorage + dataUrl từ sessionStorage
-        const result = {};
-        try {
-          const meta = JSON.parse(localStorage.getItem(PROOF_MAP_KEY + '_meta') || '{}');
-          Object.keys(meta).forEach((pid) => {
-            // Thử lấy dataUrl từ sessionStorage trước
-            const dataUrl = sessionStorage.getItem(PROOF_MAP_KEY + '_' + pid);
-            if (dataUrl) {
-              result[pid] = dataUrl;
-            } else if (meta[pid]?.hasProof) {
-              // Đánh dấu cần React re-inject (sẽ được bổ sung khi React gửi BE_MEO_PROOF_SAVED)
-              result[pid] = '__PENDING__';
-            }
-          });
-        } catch (e) {}
-        // Fallback: thử đọc format cũ (dataUrl thẳng trong localStorage) nếu có
-        try {
-          const old = JSON.parse(localStorage.getItem(PROOF_MAP_KEY) || '{}');
-          Object.entries(old).forEach(([pid, dataUrl]) => {
-            if (dataUrl && dataUrl !== '__PENDING__' && !result[pid]) {
-              result[pid] = dataUrl;
-              // Migrate sang sessionStorage
-              try { sessionStorage.setItem(PROOF_MAP_KEY + '_' + pid, dataUrl); } catch (_) {}
-            }
-          });
-          // Xoá format cũ nếu migrate thành công để giải phóng quota
-          if (Object.keys(old).length > 0) {
-            localStorage.removeItem(PROOF_MAP_KEY);
-          }
-        } catch (e) {}
-        return result;
+      // ── IndexedDB cho proofMap (base64 ảnh lớn, localStorage không đủ dung lượng) ──
+      const IDB_NAME = 'be_meo_nuoc_db';
+      const IDB_STORE = 'proof_map';
+      let _idb = null;
+
+      function openIDB() {
+        if (_idb) return Promise.resolve(_idb);
+        return new Promise((resolve, reject) => {
+          const req = indexedDB.open(IDB_NAME, 1);
+          req.onupgradeneeded = e => e.target.result.createObjectStore(IDB_STORE);
+          req.onsuccess = e => { _idb = e.target.result; resolve(_idb); };
+          req.onerror = () => reject(req.error);
+        });
       }
-      function saveProofMap() {
-        try {
-          // Lưu metadata (rất nhỏ) vào localStorage
-          const entries = Object.entries(proofMap);
-          const recent = entries.slice(-30);
-          const meta = {};
-          recent.forEach(([pid, dataUrl]) => {
-            if (dataUrl && dataUrl !== '__PENDING__') {
-              meta[pid] = { hasProof: true, time: Date.now() };
-              // Lưu dataUrl vào sessionStorage (tồn tại trong tab)
-              try { sessionStorage.setItem(PROOF_MAP_KEY + '_' + pid, dataUrl); } catch (_) {}
-            } else if (dataUrl === '__PENDING__') {
-              meta[pid] = { hasProof: true, pending: true, time: Date.now() };
-            }
-          });
-          localStorage.setItem(PROOF_MAP_KEY + '_meta', JSON.stringify(meta));
-        } catch (e) {}
+
+      async function idbGet(key) {
+        const db = await openIDB();
+        return new Promise((resolve) => {
+          const tx = db.transaction(IDB_STORE, 'readonly');
+          const req = tx.objectStore(IDB_STORE).get(key);
+          req.onsuccess = () => resolve(req.result ?? null);
+          req.onerror = () => resolve(null);
+        });
+      }
+
+      async function idbSet(key, value) {
+        const db = await openIDB();
+        return new Promise((resolve) => {
+          const tx = db.transaction(IDB_STORE, 'readwrite');
+          tx.objectStore(IDB_STORE).put(value, key);
+          tx.oncomplete = resolve;
+          tx.onerror = resolve;
+        });
+      }
+
+      async function idbDelete(key) {
+        const db = await openIDB();
+        return new Promise((resolve) => {
+          const tx = db.transaction(IDB_STORE, 'readwrite');
+          tx.objectStore(IDB_STORE).delete(key);
+          tx.oncomplete = resolve;
+          tx.onerror = resolve;
+        });
+      }
+
+      // proofMap trong bộ nhớ: proofId → dataUrl (được load async từ IndexedDB khi cần)
+      function loadProofMap() { return {}; }  // khởi tạo rỗng, load async bên dưới
+      async function saveProofMap(proofId, dataUrl) { await idbSet(proofId, dataUrl); }
+      async function deleteProofFromIDB(proofId) { await idbDelete(proofId); }
+
+      // Load tất cả proofId có trong messages vào proofMap khi iframe khởi động
+      async function hydrateProofMap() {
+        const proofIds = messages.map(m => m.proofId).filter(Boolean);
+        await Promise.all(proofIds.map(async (pid) => {
+          const dataUrl = await idbGet(pid);
+          if (dataUrl) proofMap[pid] = dataUrl;
+        }));
+        renderChat();
       }
       function saveMessages() { localStorage.setItem(CHAT_KEY, JSON.stringify(messages.slice(-80))); }
 
@@ -990,10 +991,12 @@
         calendarStreak.textContent = `${completed}/31`;
       }
 
-      // proofId → dataUrl map — persist qua localStorage để nút Xem lại không bị mất khi reload
-      const proofMap = loadProofMap();
+      // proofId → dataUrl map — lưu trong IndexedDB (base64 lớn, localStorage không đủ)
+      const proofMap = loadProofMap();  // khởi tạo {} rỗng
       // proofId đang được xem (để toggle active)
       let activeReviewProofId = null;
+      // Load async các ảnh proof từ IndexedDB vào proofMap rồi re-render
+      hydrateProofMap();
 
       function renderChat() {
         chatLog.innerHTML = '';
@@ -1029,8 +1032,8 @@
           }
           wrap.appendChild(ts);
 
-          // Nút Xem lại ảnh — chỉ hiện nếu message có proofId VÀ đã có dataUrl thực (không PENDING)
-          if (message.proofId && proofMap[message.proofId] && proofMap[message.proofId] !== '__PENDING__') {
+          // Nút Xem lại ảnh — chỉ hiện nếu message có proofId VÀ đã có dataUrl trong proofMap
+          if (message.proofId && proofMap[message.proofId]) {
             const btn = document.createElement('button');
             btn.type = 'button';
             btn.className = 'msg-review-btn' + (activeReviewProofId === message.proofId ? ' active' : '');
@@ -1068,47 +1071,10 @@
         }
         if (event.data?.type === 'BE_MEO_PROOF_SAVED' && event.data.proofId && event.data.dataUrl) {
           proofMap[event.data.proofId] = event.data.dataUrl;
-          saveProofMap();
+          // Lưu vào IndexedDB async (không block render)
+          saveProofMap(event.data.proofId, event.data.dataUrl);
           // Reload messages từ localStorage — React đã patch proofId vào tin nhắn cuối
-          // trước khi dispatch SYNC_EVENT (vốn không cross frame được) → cần reload thủ công
           messages = loadMessages();
-          renderChat();
-        }
-        // React gửi bulk restore toàn bộ proofMap sau khi iframe reload (quay lại trang)
-        if (event.data?.type === 'BE_MEO_PROOF_BULK_RESTORE' && event.data.proofMapEntries) {
-          let changed = false;
-          event.data.proofMapEntries.forEach(({ proofId, dataUrl }) => {
-            if (proofId && dataUrl) {
-              proofMap[proofId] = dataUrl;
-              changed = true;
-            }
-          });
-          if (changed) {
-            saveProofMap();
-            messages = loadMessages();
-            renderChat();
-          }
-        }
-        // === FIX: User đã xoá ảnh ở trang Upload Record → gỡ proof khỏi bộ nhớ iframe,
-        // gỡ khỏi sessionStorage/localStorage meta, và clear proofId trên tin nhắn liên quan
-        // để nút "🔍 Xem lại" biến mất ngay, không cần reload trang
-        if (event.data?.type === 'BE_MEO_PROOF_DELETED' && event.data.proofId) {
-          const pid = event.data.proofId;
-          delete proofMap[pid];
-          if (activeReviewProofId === pid) activeReviewProofId = null;
-          try { sessionStorage.removeItem(PROOF_MAP_KEY + '_' + pid); } catch (_) {}
-          try {
-            const meta = JSON.parse(localStorage.getItem(PROOF_MAP_KEY + '_meta') || '{}');
-            delete meta[pid];
-            localStorage.setItem(PROOF_MAP_KEY + '_meta', JSON.stringify(meta));
-          } catch (_) {}
-          // Gỡ proofId khỏi message tương ứng để renderChat() không còn cố hiện nút
-          let msgChanged = false;
-          messages = messages.map((m) => {
-            if (m.proofId === pid) { msgChanged = true; return { ...m, proofId: null }; }
-            return m;
-          });
-          if (msgChanged) saveMessages();
           renderChat();
         }
         // Camera chụp trực tiếp (không qua chat) → inject tin nhắn bot kèm proofId
@@ -1270,16 +1236,6 @@
       renderQuestion();
       drawInfographicCharts();
       window.addEventListener('resize', drawInfographicCharts);
-
-      // Sau khi render, kiểm tra xem có proofId nào đang PENDING không
-      // (proofId có trong localStorage meta nhưng sessionStorage đã mất → tab mới hoặc hard reload)
-      // → yêu cầu React gửi lại bulk restore toàn bộ dataUrl
-      const pendingProofIds = Object.entries(proofMap)
-        .filter(([, v]) => v === '__PENDING__')
-        .map(([pid]) => pid);
-      if (pendingProofIds.length > 0) {
-        window.parent?.postMessage?.({ type: 'BE_MEO_PROOF_RESTORE_REQUEST', pendingProofIds }, '*');
-      }
     </script>
   </body>
 </html>
