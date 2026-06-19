@@ -180,7 +180,13 @@ export default function TaskDetailPopup({ taskId, onClose, onOpenJourney, snapsh
             }
           } catch (_) {}
 
-          // Bước 3: proofMap lưu trong IndexedDB của iframe — React không cần pre-populate localStorage
+          // Bước 3: Pre-populate proofMap localStorage
+          try {
+            const proofMap = JSON.parse(localStorage.getItem('be_meo_nuoc_proof_map') || '{}')
+            proofMap[proofId] = record.dataUrl
+            localStorage.setItem('be_meo_nuoc_proof_map',
+              JSON.stringify(Object.fromEntries(Object.entries(proofMap).slice(-30))))
+          } catch (_) {}
 
           // Bước 4: Gửi BE_MEO_TASK_PROOF_SAVED → WaterDrinkChatBotPanel forward STATE_SYNC + PROOF_SAVED vào iframe
           window.dispatchEvent(new CustomEvent('BE_MEO_TASK_PROOF_SAVED', {

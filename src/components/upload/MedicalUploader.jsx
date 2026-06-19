@@ -593,33 +593,34 @@ export default function MedicalUploader({ patientId, onSelectImage }) {
 
   async function handleDelete(id) {
     if (!confirm(uploadText(lang, 'confirmDelete'))) return
-    // Nếu record có beMeoProofId → xóa đồng bộ ảnh khỏi IndexedDB + chat localStorage
+    // Nếu record có beMeoProofId → xóa đồng bộ ảnh khỏi proof map (localStorage metadata
+    // + sessionStorage dataUrl) để không sót base64 ảnh trong bộ nhớ trình duyệt
     const rec = records.find(r => r.id === id)
     if (rec?.beMeoProofId) {
-      // Xóa dataUrl khỏi IndexedDB (cùng origin với iframe srcdoc → truy cập trực tiếp được)
+      const pid = rec.beMeoProofId
+      // Xoá metadata trong localStorage (format mới, nhẹ)
       try {
-        // Dùng version mở không kèm onupgradeneeded để tránh tạo DB mới nếu chưa có
-        const openReq = indexedDB.open('be_meo_nuoc_db')
-        openReq.onsuccess = e => {
-          const db = e.target.result
-          if (!db.objectStoreNames.contains('proof_map')) { db.close(); return }
-          try {
-            const tx = db.transaction('proof_map', 'readwrite')
-            tx.objectStore('proof_map').delete(rec.beMeoProofId)
-            tx.oncomplete = () => db.close()
-            tx.onerror = () => db.close()
-          } catch (_) { db.close() }
-        }
-        openReq.onerror = () => {} // DB chưa tồn tại → không cần làm gì
+        const meta = JSON.parse(localStorage.getItem('be_meo_nuoc_proof_map_meta') || '{}')
+        delete meta[pid]
+        localStorage.setItem('be_meo_nuoc_proof_map_meta', JSON.stringify(meta))
       } catch (_) {}
-      // Xóa proofId khỏi tin nhắn chat để nút "🔍 Xem lại" không còn hiện
+      // Xoá dataUrl thật trong sessionStorage (nơi ảnh base64 thực sự nằm sau fix mới)
+      try { sessionStorage.removeItem('be_meo_nuoc_proof_map_' + pid) } catch (_) {}
+      // Xoá luôn format cũ (legacy, nếu còn sót) để không bao giờ tái xuất hiện
+      try {
+        const proofMap = JSON.parse(localStorage.getItem('be_meo_nuoc_proof_map') || '{}')
+        delete proofMap[pid]
+        localStorage.setItem('be_meo_nuoc_proof_map', JSON.stringify(proofMap))
+      } catch (_) {}
+      // Xóa luôn proofId khỏi tin nhắn chat để nút Xem lại không còn hiện
       try {
         const msgs = JSON.parse(localStorage.getItem('be-meo-nuoc-chat-v1') || '[]')
-        const updated = msgs.map(m =>
-          m.proofId === rec.beMeoProofId ? { ...m, proofId: null } : m
-        )
+        const updated = msgs.map(m => m.proofId === pid ? { ...m, proofId: null } : m)
         localStorage.setItem('be-meo-nuoc-chat-v1', JSON.stringify(updated))
       } catch (_) {}
+      // Báo ngay cho WaterDrinkChatBotPanel (nếu đang mount trong tab này) để forward
+      // vào iframe và gỡ nút "Xem lại" tức thì, không cần đợi reload trang
+      window.dispatchEvent(new CustomEvent('BE_MEO_TASK_PROOF_DELETED', { detail: { proofId: pid } }))
     }
     await deleteRecord(id, recordScope)
     notifyUpload()
