@@ -445,3 +445,120 @@ export function checkAndUnlockChapter1(user, journeysJsonData) {
     return ju.journeyProgress.unlockedChapters.includes(2)
   })())
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BONUS POINTS & LEADERBOARD SYSTEM
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const LEADERBOARD_KEY = 'health_journey_leaderboard_v1'
+
+/**
+ * Calculate total score for a user based on:
+ * - XP accumulated from activities
+ * - Bonus points for each completed chapter
+ * - Multiplier for higher chapters
+ */
+export function calculateUserScore(journeyUser, journeysData) {
+  const baseXP = journeyUser.profile?.xp || 0
+  const unlockedChapters = journeyUser.journeyProgress?.unlockedChapters || [1]
+
+  // Sum bonus points for each completed chapter
+  const chapterBonus = (journeysData || []).reduce((sum, journey) => {
+    const isCompleted = isChapterCompleted(
+      journeyUser.journeyProgress,
+      journey.chapter,
+      journeysData
+    )
+    return sum + (isCompleted ? (journey.bonusPoints || 0) : 0)
+  }, 0)
+
+  // Streak bonus: extra 10 pts per day of current streak
+  const activityLog = journeyUser.activityLog || []
+  const streak = calculateStreak(activityLog)
+  const streakBonus = streak * 10
+
+  return {
+    total: baseXP + chapterBonus + streakBonus,
+    baseXP,
+    chapterBonus,
+    streakBonus,
+    streak,
+    completedChapters: (journeysData || [])
+      .filter(j => isChapterCompleted(journeyUser.journeyProgress, j.chapter, journeysData))
+      .map(j => j.chapter),
+    currentChapter: journeyUser.journeyProgress?.currentChapter || 1,
+    displayName: journeyUser.user?.displayName || journeyUser.user?.userId || 'Hero',
+    avatar: journeyUser.user?.avatar || '',
+    userId: journeyUser.user?.userId || 'guest',
+  }
+}
+
+/**
+ * Calculate consecutive active days (streak)
+ */
+function calculateStreak(activityLog) {
+  if (!activityLog || activityLog.length === 0) return 0
+  const days = [...new Set(activityLog.map(a => a.timestamp?.slice(0, 10)).filter(Boolean))].sort().reverse()
+  if (days.length === 0) return 0
+  let streak = 0
+  const today = todayISODate()
+  let expected = today
+  for (const day of days) {
+    if (day === expected) {
+      streak++
+      const d = new Date(expected)
+      d.setDate(d.getDate() - 1)
+      expected = d.toISOString().slice(0, 10)
+    } else if (day < expected) {
+      break
+    }
+  }
+  return streak
+}
+
+/**
+ * Get full leaderboard across all users in the DB.
+ * Returns sorted array of user score objects.
+ */
+export function getLeaderboard(journeysData) {
+  const db = loadHealthJourneyDb()
+  const entries = Object.values(db.users || {}).map(u => calculateUserScore(u, journeysData))
+  return entries.sort((a, b) => b.total - a.total).map((entry, i) => ({ ...entry, rank: i + 1 }))
+}
+
+/**
+ * Award bonus points when a chapter is completed (called alongside checkAndUnlockChapters).
+ * Returns the bonus awarded (0 if chapter was already rewarded).
+ */
+export function awardChapterCompletionBonus(user, chapterNum, journeysData) {
+  if (!user) return 0
+  const db = loadHealthJourneyDb()
+  const journeyUser = ensureUser(db, user)
+  const journey = (journeysData || []).find(j => j.chapter === chapterNum)
+  if (!journey?.bonusPoints) return 0
+
+  // Check if bonus already claimed for this chapter
+  const alreadyClaimed = (journeyUser.rewards?.claimed || []).some(
+    r => r.chapter === chapterNum && r.type === 'chapter_bonus'
+  )
+  if (alreadyClaimed) return 0
+
+  const bonus = journey.bonusPoints || 0
+  const timestamp = new Date().toISOString()
+
+  journeyUser.rewards.claimed.push({
+    id: `bonus_ch${chapterNum}_${Date.now()}`,
+    chapter: chapterNum,
+    type: 'chapter_bonus',
+    name: {
+      vi: `🎉 Thưởng hoàn thành Chapter ${chapterNum} · +${bonus} điểm`,
+      en: `🎉 Chapter ${chapterNum} Completion Bonus · +${bonus} pts`,
+    },
+    bonusPoints: bonus,
+    claimedAt: timestamp,
+  })
+  journeyUser.profile.xp += bonus
+  journeyUser.updatedAt = timestamp
+  saveHealthJourneyDb(db)
+  return bonus
+}
