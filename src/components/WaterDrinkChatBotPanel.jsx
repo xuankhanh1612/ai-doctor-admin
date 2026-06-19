@@ -75,9 +75,13 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
     const entries = Object.entries(proofMapRef.current)
       .filter(([, dataUrl]) => dataUrl && dataUrl !== '__PENDING__')
       .map(([proofId, dataUrl]) => ({ proofId, dataUrl }))
-    if (entries.length > 0) {
-      iframe.contentWindow.postMessage({ type: 'BE_MEO_PROOF_BULK_RESTORE', proofMapEntries: entries }, '*')
-    }
+    // Gửi cả validProofIds để iframe xoá các proofId cũ không còn trong IndexedDB
+    const validProofIds = entries.map(({ proofId }) => proofId)
+    iframe.contentWindow.postMessage({
+      type: 'BE_MEO_PROOF_BULK_RESTORE',
+      proofMapEntries: entries,
+      validProofIds,
+    }, '*')
   }, [iframeReady, proofMapReady])
 
   // Lắng nghe message từ iframe
@@ -94,9 +98,12 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
           return true
         })
         .map(([proofId, dataUrl]) => ({ proofId, dataUrl }))
-      if (entries.length > 0) {
-        iframe.contentWindow.postMessage({ type: 'BE_MEO_PROOF_BULK_RESTORE', proofMapEntries: entries }, '*')
-      }
+      const validProofIds = entries.map(({ proofId }) => proofId)
+      iframe.contentWindow.postMessage({
+        type: 'BE_MEO_PROOF_BULK_RESTORE',
+        proofMapEntries: entries,
+        validProofIds,
+      }, '*')
     }
 
     const onMessage = (event) => {

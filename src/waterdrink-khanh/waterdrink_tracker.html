@@ -1083,8 +1083,24 @@
               changed = true;
             }
           });
+          // Nếu React gửi kèm validProofIds → xoá bất kỳ proofId nào trong proofMap
+          // mà KHÔNG có trong danh sách hợp lệ (tức đã bị xoá ở Upload Record)
+          if (Array.isArray(event.data.validProofIds)) {
+            const validSet = new Set(event.data.validProofIds);
+            Object.keys(proofMap).forEach((pid) => {
+              if (!validSet.has(pid)) {
+                delete proofMap[pid];
+                changed = true;
+                // Xoá proofId khỏi tin nhắn để nút "Xem lại" không còn hiện
+                messages = messages.map((m) =>
+                  m.proofId === pid ? { ...m, proofId: null } : m
+                );
+              }
+            });
+          }
           if (changed) {
             saveProofMap();
+            saveMessages();
             messages = loadMessages();
             renderChat();
           }
