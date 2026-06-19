@@ -329,12 +329,20 @@
       .calendar-head span { display: block; margin-top: 3px; color: var(--muted); font-size: 11px; font-weight: 800; }
       .calendar-streak { border-radius: 999px; padding: 7px 10px; background: linear-gradient(135deg, var(--water), var(--aqua)); color: #fff; font-size: 12px; font-weight: 950; white-space: nowrap; }
       .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
-      .calendar-day { min-height: 46px; border: 1px solid rgba(14, 165, 233, 0.16); border-radius: 14px; background: rgba(255, 255, 255, 0.74); color: #0f172a; padding: 6px 4px; text-align: center; font-weight: 950; }
+      .calendar-day { min-height: 46px; border: 1px solid rgba(14, 165, 233, 0.16); border-radius: 14px; background: rgba(255, 255, 255, 0.74); color: #0f172a; padding: 6px 4px; text-align: center; font-weight: 950; cursor: pointer; transition: transform 0.12s ease, box-shadow 0.12s ease, outline 0.12s ease; }
+      .calendar-day:hover:not(.future) { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(14,165,233,0.22); }
       .calendar-day small { display: block; margin-top: 2px; color: #64748b; font-size: 9px; font-weight: 800; }
       .calendar-day.active { outline: 3px solid rgba(14, 165, 233, 0.24); background: #ecfeff; }
+      .calendar-day.selected { outline: 3px solid #0ea5e9 !important; box-shadow: 0 0 0 6px rgba(14,165,233,0.12), 0 6px 20px rgba(14,165,233,0.28) !important; transform: translateY(-2px) scale(1.06); z-index: 2; position: relative; }
       .calendar-day.done { background: linear-gradient(135deg, rgba(14, 165, 233, 0.94), rgba(20, 184, 166, 0.94)); color: #fff; }
       .calendar-day.done small { color: rgba(255, 255, 255, 0.86); }
-      .calendar-day.future { opacity: 0.48; }
+      .calendar-day.future { opacity: 0.48; cursor: default; }
+      .day-filter-bar { display: flex; align-items: center; gap: 10px; margin-top: 12px; padding: 10px 14px; border-radius: 16px; background: linear-gradient(135deg, rgba(14,165,233,0.10), rgba(20,184,166,0.08)); border: 1px solid rgba(14,165,233,0.22); animation: fadeIn 0.2s ease; }
+      .day-filter-bar .day-filter-label { flex: 1; font-size: 13px; font-weight: 900; color: #0369a1; }
+      .day-filter-bar .day-filter-water { font-size: 13px; font-weight: 900; color: #0284c7; background: rgba(14,165,233,0.12); border-radius: 999px; padding: 4px 12px; }
+      .day-filter-bar .day-filter-clear { border: none; border-radius: 999px; padding: 5px 12px; background: rgba(14,165,233,0.14); color: #0369a1; font-size: 11px; font-weight: 900; cursor: pointer; transition: background 0.14s; }
+      .day-filter-bar .day-filter-clear:hover { background: rgba(14,165,233,0.28); }
+      .chat-filter-notice { text-align: center; padding: 8px 14px; border-radius: 12px; background: linear-gradient(135deg,rgba(14,165,233,0.10),rgba(20,184,166,0.08)); border: 1px dashed rgba(14,165,233,0.30); font-size: 12px; font-weight: 800; color: #0369a1; margin-bottom: 10px; }
       .infographic-section { margin-top: 18px; padding-top: 18px; border-top: 1px solid rgba(14, 165, 233, 0.16); display: grid; gap: 14px; }
       .infographic-title { margin: 0; text-align: center; color: #059669; text-transform: uppercase; letter-spacing: 0.08em; font-size: 13px; font-weight: 950; }
       .info-card { background: rgba(255,255,255,0.86); border: 1px solid rgba(14,165,233,0.14); border-top: 5px solid #10b981; border-radius: 22px; box-shadow: 0 12px 30px rgba(14,165,233,0.08); padding: 16px; }
@@ -439,6 +447,11 @@
                 <div class="calendar-streak" id="calendarStreak">0/31</div>
               </div>
               <div class="calendar-grid" id="hydrationCalendar"></div>
+              <div id="dayFilterBar" class="day-filter-bar" style="display:none;">
+                <span class="day-filter-label" id="dayFilterLabel">📅 Đang xem ngày ...</span>
+                <span class="day-filter-water" id="dayFilterWater">💧 0ml</span>
+                <button class="day-filter-clear" id="dayFilterClear">✕ Xem tất cả</button>
+              </div>
             </div>
           </aside>
         </section>
@@ -602,6 +615,7 @@
       let activeQuestion = 0;
       let quizScore = 0;
       let answered = false;
+      let selectedDay = null; // null = xem tất cả, 'YYYY-MM-DD' = lọc theo ngày
 
       const flashcards = [
         { icon: '👁️', title: 'Vitamin A', back: 'Duy trì thị lực, tăng cường miễn dịch và bảo vệ da. Có trong cà rốt, gan, bí đỏ.' },
@@ -954,10 +968,9 @@
         state.date = today;
         state.history = state.history || {};
         state.history[today] = { total: state.total, goal: state.goal, percent: pct };
-        totalMl.textContent = state.total;
-        goalMl.textContent = state.goal;
-        percent.textContent = pct + '%';
-        waterFill.style.height = pct + '%';
+        // Nếu đang xem ngày khác → không cập nhật số liệu nước lên hôm nay
+        // updateWaterStats() sẽ quyết định hiển thị theo selectedDay
+        updateWaterStats();
         renderCalendar();
         saveState();
       }
@@ -980,14 +993,76 @@
           const dayPct = Math.min(100, Math.round((dayTotal / dayGoal) * 100));
           const isDone = dayTotal >= dayGoal;
           if (isDone) completed += 1;
+          const isSelected = selectedDay === dayKey;
+          const isFuture = day > todayDay || day > daysInMonth;
           const cell = document.createElement('div');
-          cell.className = `calendar-day${day === todayDay ? ' active' : ''}${isDone ? ' done' : ''}${day > todayDay || day > daysInMonth ? ' future' : ''}`;
+          cell.className = `calendar-day${day === todayDay ? ' active' : ''}${isDone ? ' done' : ''}${isFuture ? ' future' : ''}${isSelected ? ' selected' : ''}`;
           cell.title = day <= daysInMonth ? `Ngày ${day}: ${dayTotal}/${dayGoal}ml (${dayPct}%)` : `Ngày ${day}: ngoài tháng hiện tại`;
           cell.innerHTML = `<span>${day}</span><small>${dayTotal}ml</small>`;
+          if (!isFuture) {
+            cell.addEventListener('click', () => selectDay(dayKey, day, dayTotal, dayGoal));
+          }
           hydrationCalendar.appendChild(cell);
         }
-        calendarSummary.textContent = `Hôm nay: ${state.total}/${state.goal}ml · ${Math.min(100, Math.round((state.total / state.goal) * 100))}% mục tiêu`;
+        calendarSummary.textContent = selectedDay
+          ? (() => {
+              const selEntry = state.history?.[selectedDay];
+              const selTotal = selEntry?.total || 0;
+              const selGoal = selEntry?.goal || state.goal;
+              const selPct = Math.min(100, Math.round((selTotal / selGoal) * 100));
+              const [, , dd] = selectedDay.split('-');
+              return `Ngày ${parseInt(dd,10)}: ${selTotal}/${selGoal}ml · ${selPct}% mục tiêu`;
+            })()
+          : `Hôm nay: ${state.total}/${state.goal}ml · ${Math.min(100, Math.round((state.total / state.goal) * 100))}% mục tiêu`;
         calendarStreak.textContent = `${completed}/31`;
+        // Cập nhật day filter bar
+        const dayFilterBar = document.getElementById('dayFilterBar');
+        const dayFilterLabel = document.getElementById('dayFilterLabel');
+        const dayFilterWater = document.getElementById('dayFilterWater');
+        if (dayFilterBar) {
+          if (selectedDay) {
+            const selEntry = state.history?.[selectedDay];
+            const selTotal = selEntry?.total || 0;
+            const selGoal = selEntry?.goal || state.goal;
+            const [sy, sm, sd] = selectedDay.split('-');
+            dayFilterLabel.textContent = `📅 Đang xem ngày ${parseInt(sd,10)}/${parseInt(sm,10)}/${sy}`;
+            dayFilterWater.textContent = `💧 ${selTotal}/${selGoal}ml`;
+            dayFilterBar.style.display = 'flex';
+          } else {
+            dayFilterBar.style.display = 'none';
+          }
+        }
+        // Cập nhật thống kê nước trên toàn trang theo ngày được chọn
+        updateWaterStats();
+      }
+
+      function selectDay(dayKey, dayNum, dayTotal, dayGoal) {
+        if (selectedDay === dayKey) {
+          // Click lần 2 vào cùng ngày → bỏ chọn, xem tất cả
+          selectedDay = null;
+        } else {
+          selectedDay = dayKey;
+        }
+        renderCalendar();
+        renderChat();
+      }
+
+      function updateWaterStats() {
+        // Cập nhật số liệu nước (totalMl, goalMl, percent, waterFill) theo ngày được chọn
+        let displayTotal, displayGoal;
+        if (selectedDay && selectedDay !== today) {
+          const entry = state.history?.[selectedDay];
+          displayTotal = entry?.total || 0;
+          displayGoal = entry?.goal || state.goal;
+        } else {
+          displayTotal = state.total;
+          displayGoal = state.goal;
+        }
+        const pct = Math.min(100, Math.round((displayTotal / displayGoal) * 100));
+        if (totalMl) totalMl.textContent = displayTotal;
+        if (goalMl) goalMl.textContent = displayGoal;
+        if (percent) percent.textContent = pct + '%';
+        if (waterFill) waterFill.style.height = pct + '%';
       }
 
       // proofId → dataUrl map — persist qua localStorage để nút Xem lại không bị mất khi reload
@@ -997,7 +1072,31 @@
 
       function renderChat() {
         chatLog.innerHTML = '';
-        messages.forEach((message) => {
+        // Lọc tin nhắn theo ngày được chọn
+        let displayMessages = messages;
+        if (selectedDay) {
+          displayMessages = messages.filter((msg) => {
+            if (!msg.time) return false;
+            return msg.time.slice(0, 10) === selectedDay;
+          });
+          // Hiển thị thông báo lọc
+          const [sy, sm, sd] = selectedDay.split('-');
+          const notice = document.createElement('div');
+          notice.className = 'chat-filter-notice';
+          const selEntry = state.history?.[selectedDay];
+          const selTotal = selEntry?.total || 0;
+          const selGoal = selEntry?.goal || state.goal;
+          notice.innerHTML = `📅 Đang xem chat ngày <b>${parseInt(sd,10)}/${parseInt(sm,10)}/${sy}</b> · 💧 <b>${selTotal}/${selGoal}ml</b> · ${displayMessages.length} tin nhắn`;
+          chatLog.appendChild(notice);
+          if (displayMessages.length === 0) {
+            const empty = document.createElement('div');
+            empty.style.cssText = 'text-align:center;padding:28px 14px;color:#64748b;font-size:13px;font-weight:800;';
+            empty.textContent = '🐱 Không có tin nhắn nào trong ngày này.';
+            chatLog.appendChild(empty);
+            return;
+          }
+        }
+        displayMessages.forEach((message) => {
           const wrap = document.createElement('div');
           const isUser = message.role === 'user';
           wrap.className = 'msg-wrap ' + (isUser ? 'user' : 'bot-wrap');
@@ -1271,6 +1370,7 @@
       document.getElementById('resetDay').addEventListener('click', () => { state.total = 0; if (state.history) state.history[today] = { total: 0, goal: state.goal, percent: 0 }; renderState(); messages.push({ role: 'bot', text: 'Bé Mèo đã reset lượng nước hôm nay. Calendar 31 ngày cũng cập nhật ngày hiện tại về 0ml nha 💧', time: new Date().toISOString() }); renderChat(); });
       document.getElementById('clearChat').addEventListener('click', () => { messages = [{ role: 'bot', text: 'Chat đã được làm mới. Bé Mèo Nước vẫn ở đây để nhắc bạn uống nước nha 🐱💧', time: new Date().toISOString() }]; renderChat(); });
       document.getElementById('chatForm').addEventListener('submit', (event) => { event.preventDefault(); sendMessage(chatInput.value); chatInput.value = ''; });
+      document.getElementById('dayFilterClear').addEventListener('click', () => { selectedDay = null; renderCalendar(); renderChat(); });
       window.addEventListener(SYNC_EVENT, (event) => { state = loadState(); messages = loadMessages(); renderState(); renderChat(); });
       document.getElementById('flipCard').addEventListener('click', () => { cardFlipped = !cardFlipped; renderCard(); });
       document.getElementById('prevCard').addEventListener('click', () => { activeCard = (activeCard - 1 + flashcards.length) % flashcards.length; cardFlipped = false; renderCard(); });
