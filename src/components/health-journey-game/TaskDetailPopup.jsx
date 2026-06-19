@@ -7,7 +7,7 @@
  *   - Cột info có thể thu/mở (toggle) để nhường chỗ cho webcam
  */
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import dailyTasksData from './data/daily_tasks.json'
 import journeysData   from './data/journeys.json'
 import { completeHealthJourneyActivity, XP_TABLE, ACTIVITY_TASK_MAP } from './services/healthJourneyStorage.js'
@@ -98,6 +98,9 @@ export default function TaskDetailPopup({ taskId, onClose, onOpenJourney, snapsh
   /* dataUrl của ảnh vừa chụp trong popup này — hiện ngay nút Xem lại mà không cần đợi proof từ storage */
   const [lastCapturedDataUrl, setLastCapturedDataUrl] = useState(null)
 
+  /* proofId được tạo sẵn trong onSaveCapture, dùng chung với handleCaptureSaved */
+  const pendingProofIdRef = useRef(null)
+
   const proofImages = snapshot?.journeyUser?.proofImages || []
   const proof = proofImages.find(
     p => p.activityType === task?.activityType &&
@@ -131,6 +134,12 @@ export default function TaskDetailPopup({ taskId, onClose, onOpenJourney, snapsh
   const onSaveCapture = async (file, { kind }) => {
     setSaving(true); setSaveMsg('')
     try {
+      // Tạo proofId trước để truyền beMeoProofId vào record (cần thiết cho flow
+      // "Xem lại ảnh" trong chatbot Bé Mèo Nước và để handleDelete sync đúng)
+      const proofId = task.taskId === 'water'
+        ? ('task_detail_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6))
+        : null
+      pendingProofIdRef.current = proofId
       return await saveWaterProofImage(file, user, {
         source:        `task-detail-popup-ai-vision-${kind}`,
         notesPrefix:   `Health Journey · ${task.titleVi}`,
@@ -139,6 +148,7 @@ export default function TaskDetailPopup({ taskId, onClose, onOpenJourney, snapsh
         xpEarned:      XP_TABLE[task.activityType] || 0,
         waterAmountMl: task.taskId === 'water' ? 150 : 0,
         proofType:     `ai_healthcare_vision_${kind}_overlay`,
+        beMeoProofId:  proofId,
       })
     } finally {
       setSaving(false)
@@ -157,10 +167,11 @@ export default function TaskDetailPopup({ taskId, onClose, onOpenJourney, snapsh
         metadata: { source: 'task-detail-popup-ai-vision-capture', taskId: task.taskId },
       })
       if (task.taskId === 'water') {
-        // Tạo proofId trước khi syncBeMeoWater để patch vào tin nhắn localStorage
-        const proofId = record?.uploadPath
-          ? 'task_detail_' + record.uploadPath.replace(/[^a-z0-9]/gi, '_').slice(-20)
-          : 'task_detail_' + Date.now()
+        // Dùng proofId đã tạo trong onSaveCapture (đã gán vào beMeoProofId của record)
+        // → đảm bảo proofId khớp hoàn toàn giữa record IndexedDB và localStorage chat
+        const proofId = pendingProofIdRef.current
+          || ('task_detail_' + Date.now())
+        pendingProofIdRef.current = null
 
         // Bước 1: syncBeMeoWater push tin nhắn mới vào localStorage (chưa có proofId/time)
         const syncResult = syncBeMeoWater(150, 'Chi Tiết Task uống nước')
