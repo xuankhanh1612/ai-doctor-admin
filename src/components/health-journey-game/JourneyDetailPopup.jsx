@@ -211,8 +211,11 @@ export default function JourneyDetailPopup({
                 <div style={{ fontSize: 18, fontWeight: 900, color: '#fbbf24', fontFamily: "'Rajdhani',sans-serif" }}>
                   {myScore.total.toLocaleString()} điểm
                 </div>
-                <div style={{ fontSize: 10, color: '#64748b' }}>
-                  XP: {myScore.baseXP} · Chapter bonus: {myScore.chapterBonus} · Streak: +{myScore.streakBonus} ({myScore.streak} ngày)
+                <div style={{ fontSize: 10, color: '#64748b', display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <span style={{ color: '#93c5fd' }}>⚡{myScore.baseXP} XP</span>
+                  {myScore.chapterBonus > 0 && <><span>+</span><span style={{ color: '#fbbf24' }}>🎁{myScore.chapterBonus} bonus</span></>}
+                  {myScore.streakBonus > 0 && <><span>+</span><span style={{ color: '#f97316' }}>🔥{myScore.streakBonus} streak ({myScore.streak}d)</span></>}
+                  <span style={{ color: '#475569' }}>= {myScore.total}</span>
                 </div>
               </div>
             </div>

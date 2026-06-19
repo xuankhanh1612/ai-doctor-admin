@@ -468,23 +468,25 @@ export const LEADERBOARD_KEY = 'health_journey_leaderboard_v1'
  * - Multiplier for higher chapters
  */
 export function calculateUserScore(journeyUser, journeysData) {
-  const baseXP = journeyUser.profile?.xp || 0
-  const unlockedChapters = journeyUser.journeyProgress?.unlockedChapters || [1]
+  // baseXP = activity XP only (NOT including chapter bonuses — those are tracked separately)
+  // Chapter bonuses are stored in rewards.claimed with type='chapter_bonus'
+  // so we read them from there to avoid double-counting when awardChapterCompletionBonus
+  // also writes to profile.xp.
+  const claimedBonuses = (journeyUser.rewards?.claimed || []).filter(r => r.type === 'chapter_bonus')
+  const chapterBonus = claimedBonuses.reduce((s, r) => s + (r.bonusPoints || 0), 0)
 
-  // Sum bonus points for each completed chapter
-  const chapterBonus = (journeysData || []).reduce((sum, journey) => {
-    const isCompleted = isChapterCompleted(
-      journeyUser.journeyProgress,
-      journey.chapter,
-      journeysData
-    )
-    return sum + (isCompleted ? (journey.bonusPoints || 0) : 0)
-  }, 0)
+  // baseXP = total profile XP minus any chapter bonuses already baked in
+  const rawXP = journeyUser.profile?.xp || 0
+  const baseXP = Math.max(0, rawXP - chapterBonus)
 
-  // Streak bonus: extra 10 pts per day of current streak
+  // Streak bonus: extra 10 pts per consecutive active day
   const activityLog = journeyUser.activityLog || []
   const streak = calculateStreak(activityLog)
   const streakBonus = streak * 10
+
+  const completedChapters = (journeysData || [])
+    .filter(j => isChapterCompleted(journeyUser.journeyProgress, j.chapter, journeysData))
+    .map(j => j.chapter)
 
   return {
     total: baseXP + chapterBonus + streakBonus,
@@ -492,9 +494,7 @@ export function calculateUserScore(journeyUser, journeysData) {
     chapterBonus,
     streakBonus,
     streak,
-    completedChapters: (journeysData || [])
-      .filter(j => isChapterCompleted(journeyUser.journeyProgress, j.chapter, journeysData))
-      .map(j => j.chapter),
+    completedChapters,
     currentChapter: journeyUser.journeyProgress?.currentChapter || 1,
     displayName: journeyUser.user?.displayName || journeyUser.user?.userId || 'Hero',
     avatar: journeyUser.user?.avatar || '',
