@@ -135,14 +135,19 @@ export default function JourneyDetailPopup({
   )
 
   const todayTask  = (mappedId) => snapshot?.day?.tasks?.find(t => t.taskId === mappedId)
-  const journeyObj = (actType)  => snapshot?.journeyUser?.journeyProgress?.objectives?.find(o => o.activityType === actType)
+  // journeyObj: lookup by activityType + optional chapter (journeys.json target is source of truth)
+  const journeyObj = (actType, chapter) => {
+    const objectives = snapshot?.journeyUser?.journeyProgress?.objectives || []
+    if (chapter != null) return objectives.find(o => o.activityType === actType && o.chapter === chapter)
+    return objectives.find(o => o.activityType === actType)
+  }
 
   const getChapterProgress = useCallback((journey) => {
     const objs = journey.requiredObjectives || []
     if (objs.length === 0) return { pct: 100, curSum: 0, totalTgt: 0, done: unlocked.includes(journey.chapter) }
     const totalTgt = objs.reduce((s, o) => s + (o.target || 1), 0)
     const curSum   = objs.reduce((s, o) => {
-      const obj = journeyObj(o.task)
+      const obj = journeyObj(o.task, journey.chapter)
       return s + Math.min(obj?.current || 0, o.target || 1)
     }, 0)
     const p    = totalTgt > 0 ? Math.min(100, Math.round(curSum / totalTgt * 100)) : 0
@@ -423,9 +428,9 @@ export default function JourneyDetailPopup({
               ) : activeMissions.map((m, i) => {
                 const tState = todayTask(m.mappedTaskId)
                 const mPct   = pct(tState)
-                const jObj   = journeyObj(m.taskId)
+                const jObj   = journeyObj(m.taskId, activeChapterNum)
                 const jCur   = jObj?.current || 0
-                const jTgt   = jObj?.target || m.target
+                const jTgt   = m.target || jObj?.target || 1   // journeys.json is source of truth
                 const jPct   = jObj ? Math.min(100, Math.round(jCur / jTgt * 100)) : 0
                 const jDone  = jObj ? jCur >= jTgt : false
                 const isSel  = selectedMissionKey === m.chapterKey
@@ -763,9 +768,9 @@ function ChapterOverview({
         <>
           <div style={{ ...S.sectionLabel, marginTop: 12 }}>MỤC TIÊU BẮT BUỘC</div>
           {journey.requiredObjectives.map((obj, i) => {
-            const jObj   = journeyObj(obj.task)
+            const jObj   = journeyObj(obj.task, journey.chapter)
             const jCur   = jObj?.current || 0
-            const jTgt   = jObj?.target  || obj.target
+            const jTgt   = obj.target || jObj?.target || 1   // journeys.json is source of truth
             const objPct = jObj ? Math.min(100, Math.round(jCur / jTgt * 100)) : 0
             const done   = jCur >= jTgt
             const m      = missions[i]
@@ -827,9 +832,9 @@ function ChapterOverview({
 function MissionDetail({ mission, chapterNum, todayTask, journeyObj, allMissions, onOpenTask, onBack, activeJourney }) {
   const tState = todayTask(mission.mappedTaskId)
   const tPct   = pct(tState)
-  const jObj   = journeyObj(mission.taskId)
+  const jObj   = journeyObj(mission.taskId, chapterNum)
   const jCur   = jObj?.current || 0
-  const jTgt   = jObj?.target  || mission.target
+  const jTgt   = mission.target || jObj?.target || 1   // journeys.json is source of truth
   const jPct   = jObj ? Math.min(100, Math.round(jCur / jTgt * 100)) : 0
   const jDone  = jCur >= jTgt
   const remaining = Math.max(0, jTgt - jCur)
@@ -916,10 +921,10 @@ function MissionDetail({ mission, chapterNum, todayTask, journeyObj, allMissions
         CÁC NHIỆM VỤ KHÁC TRONG CHAPTER {chapterNum}
       </div>
       {allMissions.filter(m => m.chapterKey !== mission.chapterKey).map(m => {
-        const jO  = journeyObj(m.taskId)
-        const jD  = jO ? jO.current >= jO.target : false
+        const jO  = journeyObj(m.taskId, chapterNum)
+        const jD  = jO ? (jO.current >= (m.target || jO.target || 1)) : false
         const jC  = jO?.current || 0
-        const jT  = jO?.target  || m.target
+        const jT  = m.target || jO?.target || 1  // journeys.json is source of truth
         return (
           <button
             key={m.chapterKey}

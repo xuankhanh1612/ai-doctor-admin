@@ -41,7 +41,10 @@ function buildAllObjectivesFromJourneys() {
 
 /**
  * ensureAllChapterObjectives — self-heal migration for existing users.
- * Adds any missing ch2-5 objectives without touching ch1 progress already saved.
+ * 1. Adds any missing objectives (new chapters/tasks).
+ * 2. Syncs `target` for ALL existing objectives to match journeys.json (source of truth).
+ *    This fixes stale targets when journeys.json is updated (e.g. Chapter 1 halved).
+ *    `current` progress is preserved; `completed` is recomputed against the new target.
  * Returns true if db was modified.
  */
 function ensureAllChapterObjectives(db) {
@@ -51,11 +54,17 @@ function ensureAllChapterObjectives(db) {
     if (!user.journeyProgress) return
     const existing = user.journeyProgress.objectives || []
     allExpected.forEach((expected) => {
-      const alreadyExists = existing.some(
+      const found = existing.find(
         (o) => o.activityType === expected.activityType && o.chapter === expected.chapter
       )
-      if (!alreadyExists) {
+      if (!found) {
+        // Objective missing entirely — add it
         existing.push({ ...expected })
+        changed = true
+      } else if (found.target !== expected.target) {
+        // Target changed in journeys.json — sync it and recompute completed
+        found.target = expected.target
+        found.completed = Number(found.current || 0) >= expected.target
         changed = true
       }
     })
