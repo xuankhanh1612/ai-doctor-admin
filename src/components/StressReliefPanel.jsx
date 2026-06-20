@@ -85,6 +85,12 @@ const DEFAULT_GAMES = [
     src: 'https://nekopedia.framer.ai/',
   },
   {
+    id: 'mixer',
+    caption: 'key-role',
+    captionEn: 'Khám phá thế giới hỗn tạp âm thanh',
+    src: 'https://key-role-470759.framer.app/',
+  },
+  {
     id: 'castle',
     caption: 'Không gian thở chậm – Vui vẻ',
     captionEn: 'Focus Breathing Space – Funny',
@@ -93,7 +99,7 @@ const DEFAULT_GAMES = [
   },
 ]
 
-const ICONS = ['🕹️', '🚀', '🐦', '🪈', '🥁', '🧠', 'Rubik', '🌟', '🏆', 'moon', 'ship', '✈️', '🐈', '🌿']
+const ICONS = ['🕹️', '🚀', '🐦', '🪈', '🥁', '🧠', 'Rubik', '🌟', '🏆', 'moon', 'ship', '✈️', '🐈', 'mixer', '🌿']
 
 function loadCustomGames() {
   try {
