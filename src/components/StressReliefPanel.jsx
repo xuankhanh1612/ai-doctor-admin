@@ -13,6 +13,12 @@ const DEFAULT_GAMES = [
     src: 'https://patienthelperz01.framer.website/',
   },
   {
+    id: 'patienthelperxrcc',
+    caption: 'patienthelperxrcc',
+    captionEn: '3D Bệnh nhân đau chỗ nào gửi kết quả Online trước',
+    src: 'https://portal.xrcc.events/hackathon/XRCC_26/project/ac7f951f-d453-4e77-b413-634e8254b3b4',
+  },
+  {
     id: 'knight',
     caption: 'Game Knight Platformer với Khánh',
     captionEn: 'Knight Platformer Game',
@@ -117,7 +123,7 @@ const DEFAULT_GAMES = [
   },
 ]
 
-const ICONS = ['🚶', '🕹️', '🚀', '🐦', '🪈', '🥁', '🧠', 'Rubik', '🌟', '🏆', 'moon', 'ship', '✈️', '🐈', 'mixer', '🎤', 'text', '🌿']
+const ICONS = ['🚶', '🧠', '🕹️', '🚀', '🐦', '🪈', '🥁', '🧠', 'Rubik', '🌟', '🏆', 'moon', 'ship', '✈️', '🐈', 'mixer', '🎤', 'text', '🌿']
 
 function loadCustomGames() {
   try {
