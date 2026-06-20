@@ -97,6 +97,12 @@ const DEFAULT_GAMES = [
     src: 'https://distinct-article-782574.framer.app/',
   },
   {
+    id: 'text',
+    caption: 'text-shader',
+    captionEn: 'Khám phá thế giới 3D chữ viết',
+    src: 'https://text-shader.framer.ai/',
+  },
+  {
     id: 'castle',
     caption: 'Không gian thở chậm – Vui vẻ',
     captionEn: 'Focus Breathing Space – Funny',
@@ -105,7 +111,7 @@ const DEFAULT_GAMES = [
   },
 ]
 
-const ICONS = ['🕹️', '🚀', '🐦', '🪈', '🥁', '🧠', 'Rubik', '🌟', '🏆', 'moon', 'ship', '✈️', '🐈', 'mixer', '🎤', '🌿']
+const ICONS = ['🕹️', '🚀', '🐦', '🪈', '🥁', '🧠', 'Rubik', '🌟', '🏆', 'moon', 'ship', '✈️', '🐈', 'mixer', '🎤', 'text', '🌿']
 
 function loadCustomGames() {
   try {
