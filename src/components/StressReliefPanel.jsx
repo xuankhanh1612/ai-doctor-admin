@@ -14,9 +14,9 @@ const DEFAULT_GAMES = [
   },
   {
     id: 'patienthelperxrcc',
-    caption: 'patienthelperxrcc',
+    caption: 'https://portal.xrcc.events/hackathon/XRCC_26/project/ac7f951f-d453-4e77-b413-634e8254b3b4',
     captionEn: '3D Bệnh nhân đau chỗ nào gửi kết quả Online trước',
-    src: 'https://portal.xrcc.events/hackathon/XRCC_26/project/ac7f951f-d453-4e77-b413-634e8254b3b4',
+    src: 'https://pain-path.vercel.app/',
   },
   {
     id: 'medconnect',
@@ -47,6 +47,12 @@ const DEFAULT_GAMES = [
     caption: 'ASCII Media',
     captionEn: 'ASCII Khanh Media',
     src: 'https://glyphstream.framer.website/',
+  },
+  {
+    id: 'ASCII2',
+    caption: 'ASCII2 Media',
+    captionEn: 'ASCII2 Khanh Media',
+    src: 'https://simplest-pepper-794964.framer.app/studio',
   },
   {
     id: 'soundofyourname',
@@ -129,7 +135,7 @@ const DEFAULT_GAMES = [
   },
 ]
 
-const ICONS = ['🚶', '🧠', '💊', '🕹️', '🚀', '🐦', '🪈', '🥁', '🧠', 'Rubik', '🌟', '🏆', 'moon', 'ship', '✈️', '🐈', 'mixer', '🎤', 'text', '🌿']
+const ICONS = ['🚶', '🧠', '💊', '🕹️', '🚀', '🐦', 'ASCII', '🪈', '🥁', '🧠', 'Rubik', '🌟', '🏆', 'moon', 'ship', '✈️', '🐈', 'mixer', '🎤', 'text', '🌿']
 
 function loadCustomGames() {
   try {
