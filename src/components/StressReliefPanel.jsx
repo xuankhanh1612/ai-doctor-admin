@@ -91,6 +91,12 @@ const DEFAULT_GAMES = [
     src: 'https://key-role-470759.framer.app/',
   },
   {
+    id: 'distinct',
+    caption: 'mic-role',
+    captionEn: 'Khám phá thế giới 3D âm thanh',
+    src: 'https://distinct-article-782574.framer.app/',
+  },
+  {
     id: 'castle',
     caption: 'Không gian thở chậm – Vui vẻ',
     captionEn: 'Focus Breathing Space – Funny',
@@ -99,7 +105,7 @@ const DEFAULT_GAMES = [
   },
 ]
 
-const ICONS = ['🕹️', '🚀', '🐦', '🪈', '🥁', '🧠', 'Rubik', '🌟', '🏆', 'moon', 'ship', '✈️', '🐈', 'mixer', '🌿']
+const ICONS = ['🕹️', '🚀', '🐦', '🪈', '🥁', '🧠', 'Rubik', '🌟', '🏆', 'moon', 'ship', '✈️', '🐈', 'mixer', '🎤', '🌿']
 
 function loadCustomGames() {
   try {
