@@ -139,6 +139,12 @@ const DEFAULT_GAMES = [
     src: 'https://spiky-line-352679.framer.app/',
   },
   {
+    id: 'football',
+    caption: 'a fully playable football penalty with an intelligent AI goalkeeper.',
+    captionEn: 'Đá phạt đền với AI',
+    src: 'https://shy-color-507920.framer.app/',
+  },
+  {
     id: 'castle',
     caption: 'Không gian thở chậm – Vui vẻ',
     captionEn: 'Focus Breathing Space – Funny',
@@ -147,7 +153,7 @@ const DEFAULT_GAMES = [
   },
 ]
 
-const ICONS = ['🚶', '🧠', '💊', '🕹️', '🚀', '🐦', 'ASCII', '🪈', '🥁', '🧠', 'Rubik', '🌟', '🏆', 'moon', 'ship', '✈️', '🐈', 'mixer', '🎤', 'text', '🙌', '✨', '🌿']
+const ICONS = ['🚶', '🧠', '💊', '🕹️', '🚀', '🐦', 'ASCII', '🪈', '🥁', '🧠', 'Rubik', '🌟', '🏆', 'moon', 'ship', '✈️', '🐈', 'mixer', '🎤', 'text', '🙌', '✨', '⚽🎮', '🌿']
 
 function loadCustomGames() {
   try {
