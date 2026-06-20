@@ -25,15 +25,33 @@ const DEFAULT_GAMES = [
     src: 'https://angry-bird-nft-khanh.vercel.app/',
   },
   {
+    id: 'ASCII',
+    caption: 'ASCII Media',
+    captionEn: 'ASCII Khanh Media',
+    src: 'https://glyphstream.framer.website/',
+  },
+  {
+    id: 'soundofyourname',
+    caption: 'soundofyourname Media',
+    captionEn: 'soundofyourname Khanh Media',
+    src: 'https://soundofyourname.framer.website/',
+  },
+  {
+    id: 'soundofyourname',
+    caption: 'CHOICE Funny AI report',
+    captionEn: 'Khám phá tính cách cá nhân của bạn',
+    src: 'https://professional-report-707776.framer.app/',
+  },
+  {
     id: 'castle',
-    caption: 'Không gian thở chậm – Castle',
-    captionEn: 'Focus Breathing Space – Castle',
+    caption: 'Không gian thở chậm – Vui vẻ,
+    captionEn: 'Focus Breathing Space – Funny',
     src: STRESS_RELIEF_URL,
     hasMask: true,
   },
 ]
 
-const ICONS = ['🕹️', '🚀', '🐦', '🌿']
+const ICONS = ['🕹️', '🚀', '🐦', '🪈', '🥁', '🧠', '🌿']
 
 function loadCustomGames() {
   try {
