@@ -133,6 +133,12 @@ const DEFAULT_GAMES = [
     src: 'https://framemon.framer.website/',
   },
   {
+    id: 'LightLife',
+    caption: 'Light to Life',
+    captionEn: 'Khám phá thế giới điện Light to Life',
+    src: 'https://spiky-line-352679.framer.app/',
+  },
+  {
     id: 'castle',
     caption: 'Không gian thở chậm – Vui vẻ',
     captionEn: 'Focus Breathing Space – Funny',
@@ -141,7 +147,7 @@ const DEFAULT_GAMES = [
   },
 ]
 
-const ICONS = ['🚶', '🧠', '💊', '🕹️', '🚀', '🐦', 'ASCII', '🪈', '🥁', '🧠', 'Rubik', '🌟', '🏆', 'moon', 'ship', '✈️', '🐈', 'mixer', '🎤', 'text', '✨', '🌿']
+const ICONS = ['🚶', '🧠', '💊', '🕹️', '🚀', '🐦', 'ASCII', '🪈', '🥁', '🧠', 'Rubik', '🌟', '🏆', 'moon', 'ship', '✈️', '🐈', 'mixer', '🎤', 'text', '🙌', '✨', '🌿']
 
 function loadCustomGames() {
   try {
