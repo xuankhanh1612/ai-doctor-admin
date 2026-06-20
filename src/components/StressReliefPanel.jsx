@@ -56,7 +56,7 @@ const DEFAULT_GAMES = [
   },
   {
     id: 'type',
-    caption: 'speed type',
+    caption: 'speed type LEADERBOARD',
     captionEn: 'Đánh máy chữ siêu tốc độ',
     src: 'https://type-invaders-by-eric-kimani.framer.website/',
   },
@@ -67,6 +67,12 @@ const DEFAULT_GAMES = [
     src: 'https://strange-tenure-258776.framer.app/',
   },
   {
+    id: 'shipitnow',
+    caption: 'shipitnow',
+    captionEn: 'Khám phá các hành tinh framer',
+    src: 'https://shipitnow.framer.website/',
+  },
+  {
     id: 'castle',
     caption: 'Không gian thở chậm – Vui vẻ',
     captionEn: 'Focus Breathing Space – Funny',
@@ -75,7 +81,7 @@ const DEFAULT_GAMES = [
   },
 ]
 
-const ICONS = ['🕹️', '🚀', '🐦', '🪈', '🥁', '🧠', 'Rubik', '🌟', '🏆 LEADERBOARD', 'strange', '🌿']
+const ICONS = ['🕹️', '🚀', '🐦', '🪈', '🥁', '🧠', 'Rubik', '🌟', '🏆', 'moon', 'ship', '🌿']
 
 function loadCustomGames() {
   try {
