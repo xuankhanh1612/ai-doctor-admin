@@ -145,6 +145,12 @@ const DEFAULT_GAMES = [
     src: 'https://delicate-behaviors-350621.framer.app/',
   },
   {
+    id: 'simulator',
+    caption: 'simulator 3D by hand',
+    captionEn: 'Làm đồ gốm sứ bằng camera',
+    src: 'https://pottery-simulator.framer.website/',
+  },
+  {
     id: 'football',
     caption: 'a fully playable football penalty with an intelligent AI goalkeeper.',
     captionEn: 'Đá phạt đền với AI',
@@ -159,7 +165,7 @@ const DEFAULT_GAMES = [
   },
 ]
 
-const ICONS = ['🚶', '🧠', '💊', '🕹️', '🚀', '🐦', 'ASCII', '🪈', '🥁', '🧠', 'Rubik🎲', '🌟', '🏆', 'moon', 'ship', '✈️', '🐈', 'mixer', '🎤', 'text', '🙌', '✨', '🎮', '⚽', '🌿']
+const ICONS = ['🚶', '🧠', '💊', '🕹️', '🚀', '🐦', 'ASCII', '🪈', '🥁', '🧠', 'Rubik🎲', '🌟', '🏆', 'moon', 'ship', '✈️', '🐈', 'mixer', '🎤', 'text', '🙌', '✨', '🎮', '🏞', '⚽', '🌿']
 
 function loadCustomGames() {
   try {
