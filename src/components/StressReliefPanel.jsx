@@ -7,6 +7,12 @@ const CUSTOM_GAMES_KEY = 'stress_relief_custom_games'
 
 const DEFAULT_GAMES = [
   {
+    id: 'patienthelperz01',
+    caption: 'patienthelperz01',
+    captionEn: 'Bệnh nhân đau chỗ nào gửi kết quả Online trước',
+    src: 'https://patienthelperz01.framer.website/',
+  },
+  {
     id: 'knight',
     caption: 'Game Knight Platformer với Khánh',
     captionEn: 'Knight Platformer Game',
@@ -111,7 +117,7 @@ const DEFAULT_GAMES = [
   },
 ]
 
-const ICONS = ['🕹️', '🚀', '🐦', '🪈', '🥁', '🧠', 'Rubik', '🌟', '🏆', 'moon', 'ship', '✈️', '🐈', 'mixer', '🎤', 'text', '🌿']
+const ICONS = ['🚶', '🕹️', '🚀', '🐦', '🪈', '🥁', '🧠', 'Rubik', '🌟', '🏆', 'moon', 'ship', '✈️', '🐈', 'mixer', '🎤', 'text', '🌿']
 
 function loadCustomGames() {
   try {
