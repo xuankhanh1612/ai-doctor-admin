@@ -73,6 +73,18 @@ const DEFAULT_GAMES = [
     src: 'https://shipitnow.framer.website/',
   },
   {
+    id: 'spendmoney',
+    caption: 'spendilonsmoney',
+    captionEn: 'Khám phá cách xài tiền',
+    src: 'https://spendilonsmoney.framer.website/',
+  },
+  {
+    id: 'nekopedia',
+    caption: 'nekopedia',
+    captionEn: 'Khám phá thế giới mèo',
+    src: 'https://nekopedia.framer.ai/',
+  },
+  {
     id: 'castle',
     caption: 'Không gian thở chậm – Vui vẻ',
     captionEn: 'Focus Breathing Space – Funny',
@@ -81,7 +93,7 @@ const DEFAULT_GAMES = [
   },
 ]
 
-const ICONS = ['🕹️', '🚀', '🐦', '🪈', '🥁', '🧠', 'Rubik', '🌟', '🏆', 'moon', 'ship', '🌿']
+const ICONS = ['🕹️', '🚀', '🐦', '🪈', '🥁', '🧠', 'Rubik', '🌟', '🏆', 'moon', 'ship', '✈️', '🐈', '🌿']
 
 function loadCustomGames() {
   try {
