@@ -21,7 +21,7 @@ const DEFAULT_GAMES = [
   {
     id: 'medconnect',
     caption: 'medconnect',
-    captionEn: '3D xr hướng dẫn sử dụng thuốc,
+    captionEn: '3D xr hướng dẫn sử dụng thuốc',
     src: 'https://medconnect-xr.netlify.app/',
   },
   {
