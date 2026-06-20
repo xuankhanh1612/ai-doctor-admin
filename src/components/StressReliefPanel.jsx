@@ -37,7 +37,7 @@ const DEFAULT_GAMES = [
     src: 'https://soundofyourname.framer.website/',
   },
   {
-    id: 'soundofyourname',
+    id: 'CHOICE',
     caption: 'CHOICE Funny AI report',
     captionEn: 'Khám phá tính cách cá nhân của bạn',
     src: 'https://professional-report-707776.framer.app/',
