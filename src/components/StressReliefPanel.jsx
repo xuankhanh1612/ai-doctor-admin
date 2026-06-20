@@ -55,6 +55,18 @@ const DEFAULT_GAMES = [
     src: 'https://caelara.framer.website/',
   },
   {
+    id: 'type',
+    caption: 'speed type',
+    captionEn: 'Đánh máy chữ siêu tốc độ',
+    src: 'https://type-invaders-by-eric-kimani.framer.website/',
+  },
+  {
+    id: 'strange',
+    caption: 'star strange',
+    captionEn: 'Khám phá các hành tinh',
+    src: 'https://strange-tenure-258776.framer.app/',
+  },
+  {
     id: 'castle',
     caption: 'Không gian thở chậm – Vui vẻ',
     captionEn: 'Focus Breathing Space – Funny',
@@ -63,7 +75,7 @@ const DEFAULT_GAMES = [
   },
 ]
 
-const ICONS = ['🕹️', '🚀', '🐦', '🪈', '🥁', '🧠', 'Rubik', '🌟', '🌿']
+const ICONS = ['🕹️', '🚀', '🐦', '🪈', '🥁', '🧠', 'Rubik', '🌟', '🏆 LEADERBOARD', 'strange', '🌿']
 
 function loadCustomGames() {
   try {
