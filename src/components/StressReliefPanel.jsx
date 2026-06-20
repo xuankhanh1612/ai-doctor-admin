@@ -44,7 +44,7 @@ const DEFAULT_GAMES = [
   },
   {
     id: 'castle',
-    caption: 'Không gian thở chậm – Vui vẻ,
+    caption: 'Không gian thở chậm – Vui vẻ',
     captionEn: 'Focus Breathing Space – Funny',
     src: STRESS_RELIEF_URL,
     hasMask: true,
