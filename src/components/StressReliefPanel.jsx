@@ -139,6 +139,12 @@ const DEFAULT_GAMES = [
     src: 'https://spiky-line-352679.framer.app/',
   },
   {
+    id: 'horse',
+    caption: 'a fully playable horse with 1-3 AI players',
+    captionEn: 'Cờ cá ngựa với AI',
+    src: 'https://delicate-behaviors-350621.framer.app/',
+  },
+  {
     id: 'football',
     caption: 'a fully playable football penalty with an intelligent AI goalkeeper.',
     captionEn: 'Đá phạt đền với AI',
@@ -153,7 +159,7 @@ const DEFAULT_GAMES = [
   },
 ]
 
-const ICONS = ['🚶', '🧠', '💊', '🕹️', '🚀', '🐦', 'ASCII', '🪈', '🥁', '🧠', 'Rubik', '🌟', '🏆', 'moon', 'ship', '✈️', '🐈', 'mixer', '🎤', 'text', '🙌', '✨', '⚽🎮', '🌿']
+const ICONS = ['🚶', '🧠', '💊', '🕹️', '🚀', '🐦', 'ASCII', '🪈', '🥁', '🧠', 'Rubik🎲', '🌟', '🏆', 'moon', 'ship', '✈️', '🐈', 'mixer', '🎤', 'text', '🙌', '✨', '🎮', '⚽', '🌿']
 
 function loadCustomGames() {
   try {
