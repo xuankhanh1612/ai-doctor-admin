@@ -127,6 +127,12 @@ const DEFAULT_GAMES = [
     src: 'https://text-shader.framer.ai/',
   },
   {
+    id: 'framemon',
+    caption: 'framemon',
+    captionEn: 'Khám phá thế giới 3D framemon',
+    src: 'https://framemon.framer.website/',
+  },
+  {
     id: 'castle',
     caption: 'Không gian thở chậm – Vui vẻ',
     captionEn: 'Focus Breathing Space – Funny',
@@ -135,7 +141,7 @@ const DEFAULT_GAMES = [
   },
 ]
 
-const ICONS = ['🚶', '🧠', '💊', '🕹️', '🚀', '🐦', 'ASCII', '🪈', '🥁', '🧠', 'Rubik', '🌟', '🏆', 'moon', 'ship', '✈️', '🐈', 'mixer', '🎤', 'text', '🌿']
+const ICONS = ['🚶', '🧠', '💊', '🕹️', '🚀', '🐦', 'ASCII', '🪈', '🥁', '🧠', 'Rubik', '🌟', '🏆', 'moon', 'ship', '✈️', '🐈', 'mixer', '🎤', 'text', '✨', '🌿']
 
 function loadCustomGames() {
   try {
