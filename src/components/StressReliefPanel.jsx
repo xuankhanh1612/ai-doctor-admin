@@ -19,6 +19,12 @@ const DEFAULT_GAMES = [
     src: 'https://portal.xrcc.events/hackathon/XRCC_26/project/ac7f951f-d453-4e77-b413-634e8254b3b4',
   },
   {
+    id: 'medconnect',
+    caption: 'medconnect',
+    captionEn: '3D xr hướng dẫn sử dụng thuốc,
+    src: 'https://medconnect-xr.netlify.app/',
+  },
+  {
     id: 'knight',
     caption: 'Game Knight Platformer với Khánh',
     captionEn: 'Knight Platformer Game',
@@ -123,7 +129,7 @@ const DEFAULT_GAMES = [
   },
 ]
 
-const ICONS = ['🚶', '🧠', '🕹️', '🚀', '🐦', '🪈', '🥁', '🧠', 'Rubik', '🌟', '🏆', 'moon', 'ship', '✈️', '🐈', 'mixer', '🎤', 'text', '🌿']
+const ICONS = ['🚶', '🧠', '💊', '🕹️', '🚀', '🐦', '🪈', '🥁', '🧠', 'Rubik', '🌟', '🏆', 'moon', 'ship', '✈️', '🐈', 'mixer', '🎤', 'text', '🌿']
 
 function loadCustomGames() {
   try {
