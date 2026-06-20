@@ -43,6 +43,18 @@ const DEFAULT_GAMES = [
     src: 'https://professional-report-707776.framer.app/',
   },
   {
+    id: 'Rubik',
+    caption: 'neon Rubik cube',
+    captionEn: 'Cách giải lật Rubik CUBE 3D',
+    src: 'https://lovable-track-707836.framer.app/',
+  },
+  {
+    id: 'star',
+    caption: 'my star',
+    captionEn: 'Cách tạo bầu trời riêng của bạn',
+    src: 'https://caelara.framer.website/',
+  },
+  {
     id: 'castle',
     caption: 'Không gian thở chậm – Vui vẻ',
     captionEn: 'Focus Breathing Space – Funny',
@@ -51,7 +63,7 @@ const DEFAULT_GAMES = [
   },
 ]
 
-const ICONS = ['🕹️', '🚀', '🐦', '🪈', '🥁', '🧠', '🌿']
+const ICONS = ['🕹️', '🚀', '🐦', '🪈', '🥁', '🧠', 'Rubik', '🌟', '🌿']
 
 function loadCustomGames() {
   try {
