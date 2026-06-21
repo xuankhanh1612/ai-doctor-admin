@@ -1432,13 +1432,26 @@
 
       // Sau khi render, kiểm tra xem có proofId nào đang PENDING không
       // (proofId có trong localStorage meta nhưng sessionStorage đã mất → tab mới hoặc hard reload)
-      // → yêu cầu React gửi lại bulk restore toàn bộ dataUrl
-      const pendingProofIds = Object.entries(proofMap)
-        .filter(([, v]) => v === '__PENDING__')
-        .map(([pid]) => pid);
-      if (pendingProofIds.length > 0) {
-        window.parent?.postMessage?.({ type: 'BE_MEO_PROOF_RESTORE_REQUEST', pendingProofIds }, '*');
+      // → yêu cầu React gửi lại bulk restore toàn bộ dataUrl.
+      // === FIX: KHÔNG chỉ hỏi 1 LẦN DUY NHẤT. Ngay khi iframe vừa load xong (vd: sau khi deploy lại
+      // / hard reload trang), React có thể CHƯA đọc xong IndexedDB (getAllRecords là async) → lần hỏi
+      // đầu tiên này có thể bị trả lời "chưa có gì" → nếu không hỏi lại, nút "Xem lại ảnh" sẽ kẹt ở
+      // trạng thái PENDING (ẩn) mãi mãi dù dữ liệu thật ra vẫn còn nguyên trong IndexedDB.
+      // → Thử lại định kỳ (backoff tăng dần) cho tới khi không còn proofId nào PENDING, hoặc hết lượt thử.
+      let proofRestoreAttempts = 0;
+      const MAX_PROOF_RESTORE_ATTEMPTS = 10;
+      function requestPendingProofRestore() {
+        const stillPending = Object.entries(proofMap)
+          .filter(([, v]) => v === '__PENDING__')
+          .map(([pid]) => pid);
+        if (stillPending.length === 0) return; // React đã inject đủ dataUrl → dừng hỏi
+        proofRestoreAttempts += 1;
+        window.parent?.postMessage?.({ type: 'BE_MEO_PROOF_RESTORE_REQUEST', pendingProofIds: stillPending }, '*');
+        if (proofRestoreAttempts < MAX_PROOF_RESTORE_ATTEMPTS) {
+          setTimeout(requestPendingProofRestore, 500 * proofRestoreAttempts); // 0.5s, 1s, 1.5s, ... ~23s tổng
+        }
       }
+      requestPendingProofRestore();
     </script>
   </body>
 </html>
