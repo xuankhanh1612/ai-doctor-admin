@@ -304,7 +304,7 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
   return (
     <div style={{ minHeight: '100%', background: isDark ? '#050b18' : '#eef8ff', padding: '22px clamp(14px, 3vw, 28px) 36px' }}>
       <div style={{ maxWidth: 1180, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <NavButtons onNext={onNext} nextLabel={nextLabel || 'Buổi Sáng'} onPrev={onPrev} prevLabel={prevLabel} />
+        <NavButtons onNext={onNext} nextLabel={nextLabel} onPrev={onPrev} prevLabel={prevLabel} />
 
         <style>{`
           @media (max-width: 860px) { .bemeo-chatbot-iframe { min-height: 1800px !important; } }
@@ -382,9 +382,9 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
             </div>
           </div>
         </section>
-      </div>
-    </div>
-  )
+
+        {/* ===== NAV BUTTONS BOTTOM ===== */}
+        <NavButtons onNext={onNext} nextLabel={nextLabel} onPrev={onPrev} prevLabel={prevLabel} />
 }
 
 function statPill(isDark) {
