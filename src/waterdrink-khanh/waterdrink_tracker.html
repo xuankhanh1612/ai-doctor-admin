@@ -715,12 +715,55 @@
 
       function saveState() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
 
+      function getDayGreeting() {
+        var hour = new Date().getHours();
+        var greetings = hour < 10
+          ? [
+              'Chào buổi sáng! ☀️ Bé Mèo Nước đây~ Uống một ly nước ấm ngay bây giờ nhé, cơ thể mình đang khát sau một đêm dài đó bạn ơi! 🐱💧',
+              'Meo meo! 🌅 Sáng sớm rồi nè~ Một ly nước trước khi làm gì hết là bí quyết tươi tỉnh cả ngày của Bé Mèo đó! Bạn uống chưa? 💧✨',
+              'Ngủ dậy chưa bạn ơi? 🌤️ Bé Mèo Nước đang chờ nè! Cơ thể mình cần nước trước cả cà phê hay trà đó~ Uống ngay nào! 🐱☕',
+            ]
+          : hour < 12
+          ? [
+              'Chào buổi sáng! 🌞 Bé Mèo Nước đây~ Buổi sáng năng động cần đủ nước nhé! Đã uống được bao nhiêu ml rồi? 💧🐱',
+              'Meo~ Gần trưa rồi đó! 🕙 Đừng để cơ thể khát mà không hay nha~ Bé Mèo nhắc bạn uống một ly nước ngay đi! 💧✨',
+              'Hey bạn ơi! ☀️ Bé Mèo check in buổi sáng nè~ Nhớ uống đều 200-250ml mỗi tiếng để da đẹp, đầu óc tỉnh táo nhé! 🐱💕',
+            ]
+          : hour < 14
+          ? [
+              'Buổi trưa rồi nè! 🍱 Bé Mèo nhắc bạn uống nước trước khi ăn cơm nhé~ Uống nước lúc này giúp tiêu hóa tốt hơn đó! 💧🐱',
+              'Meo meo~ Trưa rồi bạn ơi! 🌤️ Nắng nóng thì cơ thể mất nước nhanh hơn đó~ Bé Mèo đang nhắc bạn uống đủ nước! 💧😸',
+              'Giữa ngày check in nào! ☀️ Bé Mèo Nước đây~ Cơ thể bạn đang cần được tiếp nước rồi đó! Uống một ly to đi nào~ 🐱💧',
+            ]
+          : hour < 18
+          ? [
+              'Buổi chiều xin chào! 🌤️ Bé Mèo Nước đây~ Chiều hay buồn ngủ không? Uống nước vào thay vì cà phê thử xem, tỉnh lắm đó! 💧🐱',
+              'Meo~ Chiều rồi nè bạn! ☕ Đừng quên uống nước nhé~ Nhiều người hay bỏ quên giờ chiều lắm, Bé Mèo nhắc trước đó! 💧✨',
+              'Hey! 🍅 Bé Mèo check in buổi chiều nè~ Bạn đang làm việc chăm chỉ thì nhớ uống nước đều để não không bị mệt nhé! 🐱💕',
+            ]
+          : [
+              'Buổi tối chào bạn! 🌙 Bé Mèo Nước đây~ Sắp nghỉ ngơi rồi, uống thêm một chút nước ấm trước khi ngủ nhé! Ngủ ngon nào~ 🐱💧',
+              'Meo meo~ Tối rồi đó! ⭐ Bé Mèo nhắc bạn uống nước trước khi ngủ nhé~ Cơ thể sẽ cảm ơn bạn vào sáng mai đó! 💧😸',
+              'Chào buổi tối! 🌙 Bé Mèo Nước đây nè~ Nhớ uống thêm nước trước khi ngủ để cơ thể phục hồi tốt trong đêm nhé bạn! 🐱💕',
+            ];
+        return greetings[Math.floor(Math.random() * greetings.length)];
+      }
+
       function loadMessages() {
         try {
-          const parsed = JSON.parse(localStorage.getItem(CHAT_KEY) || '[]');
-          if (Array.isArray(parsed) && parsed.length) return parsed;
+          var parsed = JSON.parse(localStorage.getItem(CHAT_KEY) || '[]');
+          if (Array.isArray(parsed) && parsed.length) {
+            // Chi lay tin nhan tu hom nay (co truong time khop today)
+            // Tin nhan cu hom qua hoac khong co time se bi bo qua khi sang ngay moi
+            var todayMsgs = parsed.filter(function(m) {
+              if (!m.time) return false;
+              return m.time.slice(0, 10) === today;
+            });
+            if (todayMsgs.length > 0) return todayMsgs;
+          }
         } catch (error) {}
-        return [{ role: 'bot', text: 'Meo meo 💧 Bé Mèo Nước đây! Hôm nay mình cùng uống nước đều hơn nha. Bạn có thể nhắn: “Tôi vừa uống 250ml”.' }];
+        // Khong co tin nhan nao tu hom nay → hien thi cau chao de thuong theo gio
+        return [{ role: 'bot', text: getDayGreeting(), time: new Date().toISOString() }];
       }
 
       const PROOF_MAP_KEY = 'be_meo_nuoc_proof_map';
