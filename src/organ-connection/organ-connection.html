@@ -1,0 +1,1825 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Healthy Customizer - Cỗ Máy Giả Lập Nội Tạng</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .plate-item {
+            transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+            transform: scale(0) translate(-50%, -50%);
+            opacity: 0;
+            position: absolute;
+            transform-origin: top left;
+        }
+        .plate-item.active { transform: scale(1) translate(-50%, -50%); opacity: 1; }
+        .tab-btn.active { background-color: #0f172a; color: white; font-weight: 700; shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+
+        .progress-bar {
+            transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        /* Custom Scrollbar cho danh sách dài */
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-track { background: #f1f5f9; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .custom-scroll::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        .receipt-paper {
+            background: #fff;
+            background-image: linear-gradient(to bottom, rgba(240, 243, 246, 1) 1px, transparent 1px);
+            background-size: 100% 24px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08);
+        }
+        @keyframes pulse-red {
+            0%, 100% { filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.6)); }
+            50% { filter: drop-shadow(0 0 16px rgba(239, 68, 68, 0.9)); }
+        }
+        .hazard-active { animation: pulse-red 2s infinite; }
+    </style>
+</head>
+<body class="bg-[#f8fafc] text-slate-800 font-sans h-screen flex flex-col overflow-hidden">
+
+    <!-- HEADER -->
+    <header class="bg-white px-6 py-3 flex items-center justify-between border-b border-slate-200 shrink-0 z-20 shadow-xs">
+        <div class="flex items-center space-x-3">
+            <div class="text-3xl">🥗</div>
+            <div>
+                <div class="font-black text-lg text-slate-900 tracking-tight flex items-center gap-2">
+                    HEALTHY CUSTOMIZER <span class="text-xs bg-emerald-600 text-white font-bold px-2 py-0.5 rounded-full">v3.1</span>
+                </div>
+                <div class="text-xs text-slate-400">Starbucks-style Organ Formula Builder</div>
+            </div>
+        </div>
+        <div class="flex items-center gap-3">
+
+<button onclick="toggleOrganMap()" class="text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition-colors px-3 py-1.5 rounded-lg">
+🧬 Organ Connection
+</button>
+
+<button onclick="toggleResultModal()" class="text-xs font-bold text-white bg-gradient-to-r from-fuchsia-600 to-amber-500 hover:from-fuchsia-700 hover:to-amber-600 transition-colors px-3 py-1.5 rounded-lg shadow-sm">
+✨ Show Result
+</button>
+
+<button onclick="toggleHealthCard()" class="text-xs font-bold text-white bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-600 hover:to-teal-500 transition-colors px-3 py-1.5 rounded-lg shadow-sm flex items-center gap-1.5">
+  <span>🃏</span> Export My Health Level Card
+</button>
+
+            <button onclick="resetAll()" class="text-xs font-bold text-slate-500 hover:text-rose-600 transition-colors px-3 py-1.5 rounded-lg border border-slate-200 hover:border-rose-200">
+                🔄 Làm lại từ đầu
+            </button>
+            <div class="bg-slate-900 text-white px-4 py-1.5 rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm">
+                <span>⚡ 46 Bio-Ingredients</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- WORKSPACE -->
+    <div class="flex-1 flex overflow-hidden">
+        
+        <!-- CỘT TRÁI: 6 TABS NAVIGATION -->
+        <aside class="w-[360px] bg-white border-r border-slate-200 flex flex-col shrink-0 z-10">
+            
+            <!-- 2x3 Tab Grid -->
+            <div class="p-3.5 bg-slate-100 border-b border-slate-200 shrink-0">
+                <span class="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-2 px-1">Quy trình 6 bước cá nhân hóa:</span>
+                <div class="grid grid-cols-3 gap-1.5">
+                    <button onclick="switchTab('target')" id="tab-target" class="tab-btn py-2 px-1 rounded-xl text-xs font-extrabold bg-indigo-600 text-white shadow-xs transition-all">
+                        🎯 Mục tiêu
+                    </button>
+                    <button onclick="switchTab('base')" id="tab-base" class="tab-btn py-2 px-1 rounded-xl text-xs font-bold bg-white text-slate-600 hover:bg-slate-50 border border-slate-200 transition-all">
+                        🍚 Nền (5)
+                    </button>
+                    <button onclick="switchTab('protein')" id="tab-protein" class="tab-btn py-2 px-1 rounded-xl text-xs font-bold bg-white text-slate-600 hover:bg-slate-50 border border-slate-200 transition-all">
+                        🥩 Đạm (9)
+                    </button>
+                    <button onclick="switchTab('veg')" id="tab-veg" class="tab-btn py-2 px-1 rounded-xl text-xs font-bold bg-white text-slate-600 hover:bg-slate-50 border border-slate-200 transition-all">
+                        🥦 Rau (9)
+                    </button>
+                    <button onclick="switchTab('top')" id="tab-top" class="tab-btn py-2 px-1 rounded-xl text-xs font-bold bg-white text-slate-600 hover:bg-slate-50 border border-slate-200 transition-all">
+                        🫒 Super (10)
+                    </button>
+                    <button onclick="switchTab('avoid')" id="tab-avoid" class="tab-btn py-2 px-1 rounded-xl text-xs font-bold bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 transition-all">
+                        🚫 Tránh (5)
+                    </button>
+                </div>
+            </div>
+
+            <!-- TAB PANELS (Scrollable) -->
+            <div class="flex-1 overflow-y-auto p-4 custom-scroll relative">
+                
+                <!-- 1. TAB TARGET -->
+                <div id="panel-target" class="menu-panel space-y-2.5 block">
+                    <div class="p-3 bg-indigo-50 border border-indigo-100 rounded-xl mb-4">
+                        <div class="text-xs font-bold text-indigo-900 mb-1">Cơ chế "Base Drink"</div>
+                        <div class="text-[11px] text-indigo-700 leading-relaxed">Chọn 1 cơ quan làm Trọng tâm. Các nguyên liệu bồi bổ đúng cơ quan này sẽ được <strong>nhân hệ số x1.5 điểm</strong>.</div>
+                    </div>
+                </div>
+
+                <!-- 2. TAB BASE -->
+                <div id="panel-base" class="menu-panel space-y-2 hidden"></div>
+
+                <!-- 3. TAB PROTEIN -->
+                <div id="panel-protein" class="menu-panel space-y-2 hidden"></div>
+
+                <!-- 4. TAB VEG -->
+                <div id="panel-veg" class="menu-panel space-y-2 hidden"></div>
+
+                <!-- 5. TAB SUPERFOOD -->
+                <div id="panel-top" class="menu-panel space-y-2 hidden"></div>
+
+                <!-- 6. TAB AVOID (HAZARDS) -->
+                <div id="panel-avoid" class="menu-panel space-y-2 hidden">
+                    <div class="p-3 bg-rose-50 border border-rose-200 rounded-xl mb-4">
+                        <div class="text-xs font-bold text-rose-900 mb-1">⚠️ Cảnh báo hãm phanh</div>
+                        <div class="text-[11px] text-rose-700 leading-relaxed">Mô phỏng thói quen thực tế. Thêm các món này sẽ trực tiếp trừ vỡ quỹ điểm nội tạng mà bạn vừa cất công gom phía trên.</div>
+                    </div>
+                </div>
+
+            </div>
+        </aside>
+
+        <!-- CỘT GIỮA: MẶT BÀN & CHIẾC ĐĨA -->
+        <main class="flex-1 flex flex-col bg-[#eff3f7] relative overflow-hidden justify-between items-center py-8">
+            
+            <div class="text-center z-10">
+                <span class="text-[11px] font-black text-slate-400 uppercase tracking-widest block mb-1">Visual Stage</span>
+                <h2 class="text-2xl font-black text-slate-800 tracking-tight">Mâm Cơm Thần Kỳ</h2>
+                <p class="text-xs text-slate-500 mt-0.5" id="stage-subtitle">Hãy chọn 1 mục tiêu sức khỏe để bắt đầu</p>
+            </div>
+
+            <!-- KHU VỰC BÀN ĂN -->
+            <div class="relative flex items-center justify-center my-auto w-full max-w-[500px] h-[420px]">
+                
+                <!-- Chiếc Đĩa Lành Mạnh -->
+                <div class="w-[360px] h-[360px] rounded-full bg-white border-[18px] border-[#f8fafc] shadow-2xl relative flex items-center justify-center transition-all duration-700" id="main-plate">
+                    <!-- Guidelines -->
+                    <div class="absolute w-full h-[2px] bg-slate-100 top-1/2 left-0 -translate-y-1/2"></div>
+                    <div class="absolute h-full w-[2px] bg-slate-100 left-1/2 top-0 -translate-x-1/2"></div>
+                    
+                    <!-- 4 Vị trí thức ăn bay vào -->
+                    <div id="plate-base" class="plate-item top-[38%] left-[32%] text-[75px] drop-shadow-md z-10"></div>
+                    <div id="plate-veg" class="plate-item top-[62%] left-[68%] text-[75px] drop-shadow-md z-20"></div>
+                    <div id="plate-protein" class="plate-item top-[32%] left-[68%] text-[75px] drop-shadow-md z-30"></div>
+                    <div id="plate-top" class="plate-item top-[50%] left-[50%] text-[65px] drop-shadow-lg z-40"></div>
+                </div>
+
+                <!-- KHU VỰC "TỘI LỖI" NẰM TRÊN BÀN -->
+                <div class="absolute bottom-4 right-6 flex flex-col items-center">
+                    <div id="table-hazard" class="text-[70px] transition-all duration-500 transform scale-0 opacity-0 select-none drop-shadow-2xl">🍺</div>
+                    <span id="hazard-tag" class="text-[10px] font-black bg-rose-600 text-white px-2 py-0.5 rounded-full shadow-md mt-1 opacity-0 transition-opacity">CHẤT PHÁ HOẠI</span>
+                </div>
+
+            </div>
+
+            <div class="text-xs font-semibold text-slate-400 tracking-wide">
+                Gợi ý: Thử chọn <span class="text-indigo-600 font-bold">Mục tiêu Gan</span> + <span class="text-emerald-600 font-bold">Bông cải</span> + <span class="text-rose-600 font-bold">Bia</span> để xem AI phản ứng.
+            </div>
+
+        </main>
+
+        <!-- CỘT PHẢI: BẢNG ĐIỂM & STARBUCKS RECEIPT -->
+        <aside class="w-[360px] bg-white border-l border-slate-200 flex flex-col shrink-0 overflow-hidden z-10">
+            
+            <!-- NỬA TRÊN: LIVE BIO-ANALYTICS -->
+            <div class="p-5 border-b border-slate-100 bg-slate-50 shrink-0">
+                <div class="flex justify-between items-center mb-3">
+                    <span class="text-[10px] font-black text-slate-400 uppercase tracking-wider">Hệ thống đo lường</span>
+                    <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 flex items-center gap-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Phản ứng nội tạng
+                    </span>
+                </div>
+
+                <div class="space-y-3.5">
+                    <!-- Gan -->
+                    <div>
+                        <div class="flex justify-between text-xs font-bold mb-1 text-slate-700">
+                            <span class="flex items-center gap-1.5" id="label-bar-liver"><img src="__ORGAN_LIVER__" class="w-4 h-4 object-contain inline-block" alt="Gan"/> Giải độc Gan</span>
+                            <span id="score-liver-text" class="font-mono text-slate-400 font-semibold">0/10</span>
+                        </div>
+                        <div class="h-2 w-full bg-slate-200 rounded-full overflow-hidden p-0.5" id="track-liver">
+                            <div id="score-liver" class="progress-bar h-full bg-amber-500 rounded-full w-0"></div>
+                        </div>
+                    </div>
+
+                    <!-- Thận -->
+                    <div>
+                        <div class="flex justify-between text-xs font-bold mb-1 text-slate-700">
+                            <span class="flex items-center gap-1.5" id="label-bar-kidney">💧 Lọc Thận & Niệu</span>
+                            <span id="score-kidney-text" class="font-mono text-slate-400 font-semibold">0/10</span>
+                        </div>
+                        <div class="h-2 w-full bg-slate-200 rounded-full overflow-hidden p-0.5" id="track-kidney">
+                            <div id="score-kidney" class="progress-bar h-full bg-sky-400 rounded-full w-0"></div>
+                        </div>
+                    </div>
+
+                    <!-- Tim Mạch -->
+                    <div>
+                        <div class="flex justify-between text-xs font-bold mb-1 text-slate-700">
+                            <span class="flex items-center gap-1.5" id="label-bar-heart">❤️ Máu & Tim mạch</span>
+                            <span id="score-heart-text" class="font-mono text-slate-400 font-semibold">0/10</span>
+                        </div>
+                        <div class="h-2 w-full bg-slate-200 rounded-full overflow-hidden p-0.5" id="track-heart">
+                            <div id="score-heart" class="progress-bar h-full bg-rose-500 rounded-full w-0"></div>
+                        </div>
+                    </div>
+
+                    <!-- Tiêu hóa -->
+                    <div>
+                        <div class="flex justify-between text-xs font-bold mb-1 text-slate-700">
+                            <span class="flex items-center gap-1.5" id="label-bar-stomach">🦠 Niêm mạc Dạ dày</span>
+                            <span id="score-stomach-text" class="font-mono text-slate-400 font-semibold">0/10</span>
+                        </div>
+                        <div class="h-2 w-full bg-slate-200 rounded-full overflow-hidden p-0.5" id="track-stomach">
+                            <div id="score-stomach" class="progress-bar h-full bg-emerald-500 rounded-full w-0"></div>
+                        </div>
+                    </div>
+
+                    <!-- Não bộ -->
+                    <div>
+                        <div class="flex justify-between text-xs font-bold mb-1 text-slate-700">
+                            <span class="flex items-center gap-1.5" id="label-bar-brain">🧠 Thần kinh & Não</span>
+                            <span id="score-brain-text" class="font-mono text-slate-400 font-semibold">0/10</span>
+                        </div>
+                        <div class="h-2 w-full bg-slate-200 rounded-full overflow-hidden p-0.5" id="track-brain">
+                            <div id="score-brain" class="progress-bar h-full bg-purple-500 rounded-full w-0"></div>
+                        </div>
+                    </div>
+                    <!-- Phổi -->
+                    <div>
+                        <div class="flex justify-between text-xs font-bold mb-1 text-slate-700">
+                            <span class="flex items-center gap-1.5" id="label-bar-lungs">🌬️ Hô hấp & Phổi</span>
+                            <span id="score-lungs-text" class="font-mono text-slate-400 font-semibold">0/10</span>
+                        </div>
+                        <div class="h-2 w-full bg-slate-200 rounded-full overflow-hidden p-0.5" id="track-lungs">
+                            <div id="score-lungs" class="progress-bar h-full bg-cyan-400 rounded-full w-0"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- NỬA DƯỚI: STARBUCKS RECEIPT & AI CHAT -->
+            <div class="flex-1 overflow-y-auto p-5 custom-scroll space-y-5 bg-slate-100/60">
+                
+                <!-- HỘP THOẠI AI -->
+                <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm" id="ai-card">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="text-lg">💬</span>
+                        <span class="text-xs font-black text-slate-800 uppercase tracking-wide">Bác sĩ AI chẩn đoán:</span>
+                    </div>
+                    <div id="ai-msg" class="text-xs text-slate-600 leading-relaxed italic">
+                        "Hệ thống đang chờ bạn đưa ra lựa chọn nguyên liệu..."
+                    </div>
+                </div>
+
+                <!-- TỜ TEM DÁN CỐC STARBUCKS -->
+                <div class="receipt-paper border border-slate-200 rounded-xl p-5 font-mono text-xs text-slate-700 relative">
+                    <div class="absolute -top-3 right-4 bg-emerald-700 text-white font-black text-[9px] px-2 py-0.5 rounded uppercase tracking-widest">
+                        Custom Formula
+                    </div>
+                    
+                    <div class="text-center pb-3 border-b border-dashed border-slate-300">
+                        <div class="font-black text-sm tracking-tight text-slate-900">STARBUCKS ORGANIC</div>
+                        <div class="text-[10px] text-slate-400 mt-0.5">Mã mâm cơm: #BIO-2026</div>
+                    </div>
+
+                    <div class="py-3 space-y-2 border-b border-dashed border-slate-300 text-[11px]">
+                        <div class="flex justify-between">
+                            <span class="text-slate-400">Khách hàng:</span>
+                            <span class="font-bold text-slate-800">CƠ QUAN NỘI TẠNG</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-slate-400">Trọng tâm:</span>
+                            <span class="font-extrabold text-indigo-600" id="rc-target">Chưa đặt</span>
+                        </div>
+                    </div>
+
+                    <div class="py-3 space-y-1.5 border-b border-dashed border-slate-300 text-[11px]">
+                        <div class="text-[10px] font-bold text-slate-400 mb-1">THÀNH PHẦN LẮP GHÉP:</div>
+                        <div class="flex justify-between"><span class="text-slate-500">Nền:</span> <strong id="rc-base">---</strong></div>
+                        <div class="flex justify-between"><span class="text-slate-500">Đạm:</span> <strong id="rc-protein">---</strong></div>
+                        <div class="flex justify-between"><span class="text-slate-500">Rau:</span> <strong id="rc-veg">---</strong></div>
+                        <div class="flex justify-between"><span class="text-slate-500">Super:</span> <strong id="rc-top">---</strong></div>
+                        <div class="flex justify-between text-rose-600 font-semibold"><span class="text-rose-400">Phá hoại:</span> <span id="rc-avoid">Không có</span></div>
+                    </div>
+
+                    <div class="pt-3 text-center text-[10px] text-slate-400">
+                        "Uống/Ăn có trách nhiệm với từng tế bào"
+                    </div>
+                </div>
+
+            </div>
+
+        </aside>
+
+    </div>
+
+    <!-- MÃ LOGIC JAVASCRIPT -->
+    <script>
+        // DATABASE 46 NGUYÊN LIỆU CHUẨN Y KHOA
+        const db = {
+            target: [
+                { id: 'liver', name: 'Trọng tâm: Gan', emoji: '🫀', img: '__ORGAN_LIVER__', desc: 'Ưu tiên x1.5 điểm Giải độc & lọc cồn', organKey: 'liver' },
+                { id: 'kidney', name: '💧 Trọng tâm: Thận', emoji: '💧', desc: 'Ưu tiên x1.5 điểm Lọc màng & tiết niệu', organKey: 'kidney' },
+                { id: 'heart', name: '❤️ Trọng tâm: Tim mạch', emoji: '❤️', desc: 'Ưu tiên x1.5 điểm Bền mạch & hạ mỡ máu', organKey: 'heart' },
+                { id: 'stomach', name: '🦠 Trọng tâm: Tiêu hóa', emoji: '🦠', desc: 'Ưu tiên x1.5 điểm Tráng niêm mạc & enzyme', organKey: 'stomach' },
+                { id: 'brain', name: '🧠 Trọng tâm: Não bộ', emoji: '🧠', desc: 'Ưu tiên x1.5 điểm Tuần hoàn & thông mạch não', organKey: 'brain' },
+                { id: 'lungs', name: '🌬️ Trọng tâm: Phổi', emoji: '🌬️', desc: 'Ưu tiên x1.5 điểm Thanh phế & hô hấp', organKey: 'lungs' }
+            ],
+            base: [
+                { id: 'yenmach', name: 'Yến mạch nguyên cám', emoji: '🥣', heart: 7, liver: 5, stomach: 9, kidney: 5, brain: 6, lungs: 5, tag: 'Tráng dạ dày' },
+                { id: 'gaobasmati', name: 'Gạo Basmati', emoji: '🍚', heart: 5, liver: 4, stomach: 8, kidney: 4, brain: 4, lungs: 3, tag: 'GI thấp' },
+                { id: 'miengaolut', name: 'Miến gạo lứt', emoji: '🍜', heart: 4, liver: 5, stomach: 7, kidney: 4, brain: 4, lungs: 3, tag: 'Nhẹ bụng' },
+                { id: 'khoaimon', name: 'Khoai môn hấp', emoji: '🍠', heart: 3, liver: 5, stomach: 8, kidney: 6, brain: 3, lungs: 4, tag: 'Nhiều xơ' },
+                { id: 'daukho', name: 'Đậu tổng hợp', emoji: '🫘', heart: 8, liver: 6, stomach: 4, kidney: 5, brain: 7, lungs: 5, tag: 'Siêu đạm thô' }
+            ],
+            protein: [
+                { id: 'trungga', name: 'Trứng gà ta luộc', emoji: '🥚', heart: 5, liver: 5, stomach: 7, kidney: 4, brain: 8, lungs: 4, tag: 'Giàu Choline' },
+                { id: 'tom', name: 'Tôm hấp nước dừa', emoji: '🦐', heart: 6, liver: 4, stomach: 5, kidney: 4, brain: 5, lungs: 4, tag: 'Canxi tinh khiết' },
+                { id: 'cathu', name: 'Cá thu đại dương', emoji: '🐟', heart: 8, liver: 5, stomach: 5, kidney: 4, brain: 8, lungs: 7, tag: 'Dồi dào DHA' },
+                { id: 'dauhu', name: 'Đậu hũ non', emoji: '🧈', heart: 7, liver: 6, stomach: 8, kidney: 5, brain: 5, lungs: 5, tag: 'Thanh nhiệt' },
+                { id: 'ucvit', name: 'Ức vịt áp chảo', emoji: '🦆', heart: 3, liver: 2, stomach: 4, kidney: 2, brain: 3, lungs: 2, tag: 'Tính hàn' },
+                { id: 'cangu', name: 'Cá ngừ phi-lê', emoji: '🐠', heart: 7, liver: 5, stomach: 4, kidney: 4, brain: 8, lungs: 6, tag: 'Bổ máu' },
+                { id: 'cahoi', name: 'Cá hồi Na Uy', emoji: '🍣', heart: 8, liver: 3, stomach: 5, kidney: 4, brain: 7, lungs: 8, tag: 'Vua Omega-3' },
+                { id: 'ucga', name: 'Ức gà xé phay', emoji: '🍗', heart: 5, liver: 2, stomach: 6, kidney: 3, brain: 4, lungs: 3, tag: 'Đạm nạc' },
+                { id: 'thitbo', name: 'Thịt bò thăn đỏ', emoji: '🥩', heart: 2, liver: 1, stomach: 2, kidney: -2, brain: 3, lungs: 2, tag: 'Nặng thận' }
+            ],
+            veg: [
+                { id: 'cailoxoan', name: 'Cải xoăn Kale', emoji: '🥬', heart: 8, liver: 7, stomach: 5, kidney: 4, brain: 7, lungs: 9, tag: 'Vua chống oxy hóa' },
+                { id: 'raucai', name: 'Rau cải mầm', emoji: '🥗', heart: 6, liver: 6, stomach: 7, kidney: 5, brain: 5, lungs: 7, tag: 'Kích thích tiêu hóa' },
+                { id: 'bido', name: 'Bí đỏ nướng', emoji: '🎃', heart: 5, liver: 5, stomach: 8, kidney: 5, brain: 6, lungs: 8, tag: 'Bổ thần kinh' },
+                { id: 'mangtay', name: 'Măng tây xanh', emoji: '🌱', heart: 6, liver: 7, stomach: 5, kidney: 8, brain: 5, lungs: 5, tag: 'Lợi tiểu cực mạnh' },
+                { id: 'dualeo', name: 'Dưa leo baby', emoji: '🥒', heart: 5, liver: 4, stomach: 8, kidney: 7, brain: 4, lungs: 4, tag: 'Cấp nước sinh học' },
+                { id: 'bokchoy', name: 'Cải thìa (Bok Choy)', emoji: '🥬', heart: 7, liver: 7, stomach: 6, kidney: 6, brain: 5, lungs: 7, tag: 'Giàu Folate' },
+                { id: 'bongcai', name: 'Bông cải xanh', emoji: '🥦', heart: 4, liver: 9, stomach: 3, kidney: 5, brain: 6, lungs: 8, tag: 'Sulforaphane lọc gan' },
+                { id: 'carot', name: 'Cà rốt hấp chín', emoji: '🥕', heart: 3, liver: 4, stomach: 8, kidney: 4, brain: 4, lungs: 9, tag: 'Xơ hòa tan' },
+                { id: 'nambaongu', name: 'Nấm bào ngư', emoji: '🍄', heart: 5, liver: 6, stomach: 4, kidney: 7, brain: 5, lungs: 6, tag: 'Tăng đề kháng' }
+            ],
+            top: [
+                { id: 'hatoccho', name: 'Hạt óc chó', emoji: '🌰', heart: 9, liver: 4, stomach: 4, kidney: 5, brain: 9, lungs: 6, tag: 'Dinh dưỡng não' },
+                { id: 'hatchia', name: 'Hạt chia ngâm', emoji: '⚫', heart: 8, liver: 5, stomach: 8, kidney: 5, brain: 7, lungs: 6, tag: 'Quét sạch thành ruột' },
+                { id: 'vietquat', name: 'Việt quất tươi', emoji: '🫐', heart: 6, liver: 8, stomach: 5, kidney: 5, brain: 9, lungs: 7, tag: 'Bảo vệ vi mạch' },
+                { id: 'bo', name: 'Bơ sáp lát', emoji: '🥑', heart: 8, liver: 6, stomach: 6, kidney: 4, brain: 8, lungs: 6, tag: 'Chất béo đơn không no' },
+                { id: 'nghe', name: 'Tinh bột nghệ', emoji: '🟡', heart: 6, liver: 9, stomach: 8, kidney: 4, brain: 7, lungs: 8, tag: 'Curcumin chống viêm' },
+                { id: 'toi', name: 'Tỏi đen cô đơn', emoji: '🧄', heart: 8, liver: 7, stomach: 5, kidney: 4, brain: 5, lungs: 9, tag: 'Kháng sinh tự nhiên' },
+                { id: 'traxanh', name: 'Bột Matcha trà xanh', emoji: '🍵', heart: 6, liver: 8, stomach: 4, kidney: 5, brain: 8, lungs: 7, tag: 'L-theanine thư giãn' },
+                { id: 'dichuu', name: 'Dầu Oliu Extra', emoji: '🫒', heart: 7, liver: 5, stomach: 6, kidney: 4, brain: 6, lungs: 5, tag: 'Polyphenol' },
+                { id: 'meden', name: 'Mè đen rang', emoji: '🧋', heart: 4, liver: 4, stomach: 5, kidney: 8, brain: 6, lungs: 5, tag: 'Bổ thận âm' },
+                { id: 'muoihin', name: 'Muối tinh chế', emoji: '🧂', heart: -2, liver: -1, stomach: -1, kidney: -6, brain: -2, lungs: -3, tag: 'Giữ nước độc hại' }
+            ],
+            avoid: [
+                { id: 'bia', name: 'Bia tươi / Cồn', emoji: '🍺', heart: -4, liver: -8, stomach: -5, kidney: -4, brain: -6, lungs: -5, tag: 'Hủy hoại tế bào gan' },
+                { id: 'nuocngot', name: 'Nước ngọt có gas', emoji: '🥤', heart: -5, liver: -4, stomach: -5, kidney: -4, brain: -6, lungs: -3, tag: 'Quá tải tụy & sỏi thận' },
+                { id: 'xucxich', name: 'Xúc xích công nghiệp', emoji: '🌭', heart: -6, liver: -5, stomach: -4, kidney: -4, brain: -3, lungs: -6, tag: 'Nitrat gây ung thư' },
+                { id: 'khoga', name: 'Khô gà tẩm gia vị', emoji: '🍗', heart: -2, liver: -2, stomach: -2, kidney: -4, brain: -1, lungs: -2, tag: 'Thừa lượng muối Natri' },
+                { id: 'mitom', name: 'Mì ăn liền chiên', emoji: '🍜', heart: -5, liver: -5, stomach: -6, kidney: -5, brain: -4, lungs: -5, tag: 'Chất béo chuyển hóa' }
+            ]
+        };
+
+        let currentSelection = { target: null, base: null, protein: null, veg: null, top: null, avoid: null };
+        let lastFinalScores = { liver: 0, kidney: 0, heart: 0, stomach: 0, brain: 0, lungs: 0 };
+        let lastHasItem = false;
+
+        window.onload = () => {
+            renderList('target'); renderList('base'); renderList('protein'); 
+            renderList('veg'); renderList('top'); renderList('avoid');
+        }
+
+        function renderList(cat) {
+            const container = document.getElementById(`panel-${cat}`);
+            const items = db[cat];
+            
+            let html = '';
+            items.forEach(it => {
+                const isHazard = (cat === 'avoid');
+                const isTarget = (cat === 'target');
+                const emojiToShow = it.emoji || '🎯';
+                const iconHtml = it.img
+                    ? `<img src="${it.img}" class="w-7 h-7 object-contain" alt=""/>`
+                    : `<span class="text-2xl">${emojiToShow}</span>`;
+
+                html += `
+                    <button onclick="selectItem('${cat}', '${it.id}')" id="btn-${cat}-${it.id}" class="w-full text-left p-2.5 border-2 border-slate-200 rounded-xl transition-all flex items-center justify-between group hover:border-slate-400 bg-white">
+                        <div class="flex items-center gap-3">
+                            <span class="w-10 h-10 bg-slate-50 flex items-center justify-center rounded-lg shadow-2xs group-hover:scale-110 transition-transform">${iconHtml}</span>
+                            <div>
+                                <div class="font-bold text-xs ${isHazard ? 'text-rose-600' : 'text-slate-800'}">${it.name}</div>
+                                <div class="text-[10px] text-slate-400 mt-0.5">${it.desc || it.tag}</div>
+                            </div>
+                        </div>
+                        ${!isTarget && !isHazard ? `
+                            <div class="hidden group-hover:flex items-center gap-1 text-[9px] font-mono bg-slate-100 px-1.5 py-0.5 rounded text-slate-500">
+                                <span>🟤${it.liver}</span><span>💧${it.kidney}</span>
+                            </div>
+                        ` : ''}
+                    </button>
+                `;
+            });
+            container.innerHTML += html;
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                if(btn.id === 'tab-target') btn.className = "tab-btn py-2 px-1 rounded-xl text-xs font-bold bg-white text-slate-600 hover:bg-slate-50 border border-slate-200 transition-all";
+                else if(btn.id === 'tab-avoid') btn.className = "tab-btn py-2 px-1 rounded-xl text-xs font-bold bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 transition-all";
+                else btn.className = "tab-btn py-2 px-1 rounded-xl text-xs font-bold bg-white text-slate-600 hover:bg-slate-50 border border-slate-200 transition-all";
+            });
+            
+            const active = document.getElementById(`tab-${tabId}`);
+            if(tabId === 'target') active.className = "tab-btn py-2 px-1 rounded-xl text-xs font-extrabold bg-indigo-600 text-white shadow-xs transition-all";
+            else if(tabId === 'avoid') active.className = "tab-btn py-2 px-1 rounded-xl text-xs font-extrabold bg-rose-600 text-white shadow-xs transition-all";
+            else active.className = "tab-btn py-2 px-1 rounded-xl text-xs font-extrabold bg-slate-900 text-white shadow-xs transition-all";
+
+            document.querySelectorAll('.menu-panel').forEach(p => p.classList.replace('block', 'hidden'));
+            document.getElementById(`panel-${tabId}`).classList.replace('hidden', 'block');
+        }
+
+        function selectItem(cat, itemId) {
+            const itemData = db[cat].find(i => i.id === itemId);
+            
+            if(currentSelection[cat]?.id === itemId) {
+                currentSelection[cat] = null;
+                document.getElementById(`btn-${cat}-${itemId}`).classList.remove('border-indigo-600', 'border-emerald-500', 'border-rose-600', 'bg-indigo-50', 'bg-emerald-50', 'bg-rose-50');
+                if(cat !== 'target' && cat !== 'avoid') document.getElementById(`plate-${cat}`).classList.remove('active');
+                if(cat === 'avoid') hideHazardTable();
+            } else {
+                document.getElementById(`panel-${cat}`).querySelectorAll('button').forEach(b => {
+                    b.classList.remove('border-indigo-600', 'border-emerald-500', 'border-rose-600', 'bg-indigo-50', 'bg-emerald-50', 'bg-rose-50');
+                });
+                
+                const btn = document.getElementById(`btn-${cat}-${itemId}`);
+                if(cat === 'target') btn.classList.add('border-indigo-600', 'bg-indigo-50');
+                else if(cat === 'avoid') btn.classList.add('border-rose-600', 'bg-rose-50');
+                else btn.classList.add('border-emerald-500', 'bg-emerald-50');
+
+                currentSelection[cat] = itemData;
+
+                if(cat === 'avoid') showHazardTable(itemData.emoji);
+                else if(cat !== 'target') {
+                    const el = document.getElementById(`plate-${cat}`);
+                    el.innerText = itemData.emoji;
+                    el.classList.remove('active'); void el.offsetWidth; el.classList.add('active');
+                }
+            }
+
+            updateReceipt();
+            calculateScores();
+        }
+
+        function showHazardTable(emoji) {
+            const hz = document.getElementById('table-hazard');
+            const tag = document.getElementById('hazard-tag');
+            hz.innerText = emoji;
+            hz.className = "text-[70px] transition-all duration-500 transform scale-100 opacity-100 select-none drop-shadow-2xl hazard-active";
+            tag.classList.replace('opacity-0', 'opacity-100');
+            document.getElementById('main-plate').style.transform = "scale(0.92) translateX(-20px)";
+        }
+
+        function hideHazardTable() {
+            document.getElementById('table-hazard').className = "text-[70px] transition-all duration-500 transform scale-0 opacity-0 select-none drop-shadow-2xl";
+            document.getElementById('hazard-tag').classList.replace('opacity-100', 'opacity-0');
+            document.getElementById('main-plate').style.transform = "scale(1) translateX(0)";
+        }
+
+        // TÍNH TOÁN ĐIỂM SỐ SINH HỌC
+        function calculateScores() {
+            let sums = { liver: 0, kidney: 0, heart: 0, stomach: 0, brain: 0, lungs: 0 };
+            let hasItem = false;
+
+            // 1. Cộng dồn đồ ăn tốt
+            ['base', 'protein', 'veg', 'top'].forEach(c => {
+                let it = currentSelection[c];
+                if(it) {
+                    hasItem = true;
+                    sums.liver += it.liver; sums.kidney += it.kidney;
+                    sums.heart += it.heart; sums.stomach += it.stomach; sums.brain += it.brain; sums.lungs += (it.lungs||0);
+                }
+            });
+
+            // 2. Trừ điểm đồ ăn phá hoại
+            let haz = currentSelection.avoid;
+            if(haz) {
+                sums.liver += haz.liver || 0; sums.kidney += haz.kidney || 0;
+                sums.heart += haz.heart || 0; sums.stomach += haz.stomach || 0; sums.brain += haz.brain || 0; sums.lungs += haz.lungs || 0;
+            }
+
+            // Reset highlight
+            ['liver', 'kidney', 'heart', 'stomach', 'brain', 'lungs'].forEach(k => {
+                document.getElementById(`track-${k}`).classList.remove('ring-2', 'ring-amber-400', 'bg-amber-50');
+                document.getElementById(`label-bar-${k}`).innerHTML = document.getElementById(`label-bar-${k}`).innerHTML.replace(' ⭐', '');
+            });
+
+            // 3. NHÂN TRỌNG SỐ TARGET (x1.5)
+            let targetOrgan = currentSelection.target?.organKey;
+            if(targetOrgan && hasItem) {
+                sums[targetOrgan] = Math.round(sums[targetOrgan] * 1.5);
+                document.getElementById(`track-${targetOrgan}`).classList.add('ring-2', 'ring-amber-400', 'bg-amber-50');
+                document.getElementById(`label-bar-${targetOrgan}`).innerHTML += ' ⭐';
+            }
+
+            // Tính điểm tối đa thực tế cho từng organ:
+            // = tổng 4 điểm cao nhất trong 4 category (base, protein, veg, top),
+            //   sau đó nhân 1.5 nếu organ đó là target (cùng logic với sums)
+            const organKeys = ['liver', 'kidney', 'heart', 'stomach', 'brain', 'lungs'];
+            const goodCats = ['base', 'protein', 'veg', 'top'];
+            const organMax = {};
+            organKeys.forEach(o => {
+                let total = 0;
+                goodCats.forEach(cat => {
+                    const best = Math.max(...db[cat].map(it => it[o] || 0));
+                    total += Math.max(0, best); // chỉ cộng nếu max dương
+                });
+                // Nhân 1.5 nếu organ này là target (giống logic sums)
+                if (currentSelection.target?.organKey === o) total = Math.round(total * 1.5);
+                organMax[o] = total || 1; // tránh chia 0
+            });
+
+            // Quy đổi sang thang 10 dựa theo điểm tối đa riêng của từng organ
+            const clamp = (val, organ) => {
+                if(!hasItem && !haz) return 0;
+                let sc = Math.round((val / organMax[organ]) * 10);
+                return Math.max(-10, Math.min(10, sc));
+            }
+
+            let final = {
+                liver:   clamp(sums.liver,   'liver'),
+                kidney:  clamp(sums.kidney,  'kidney'),
+                heart:   clamp(sums.heart,   'heart'),
+                stomach: clamp(sums.stomach, 'stomach'),
+                brain:   clamp(sums.brain,   'brain'),
+                lungs:   clamp(sums.lungs,   'lungs')
+            };
+            lastFinalScores = final;
+            lastHasItem = hasItem;
+
+            // Animate và cập nhật trạng thái các thanh chạy
+            Object.keys(final).forEach(k => {
+                const textEl = document.getElementById(`score-${k}-text`);
+                const bar = document.getElementById(`score-${k}`);
+                
+                if (final[k] < 0) {
+                    // Xử lý khi điểm rơi vào mức Âm (Báo động nhiễm độc)
+                    textEl.innerText = `${final[k]}/10 ⚠️`;
+                    textEl.className = "font-mono text-rose-600 font-black animate-pulse";
+                    bar.style.width = "100%"; // Làm đầy thanh để tạo hiệu ứng cảnh báo nghiêm trọng
+                    bar.className = "progress-bar h-full bg-red-700 rounded-full"; 
+                } else {
+                    // Xử lý điểm Dương bình thường
+                    textEl.innerText = `${final[k]}/10`;
+                    textEl.className = "font-mono text-slate-400 font-semibold";
+                    bar.style.width = `${final[k] * 10}%`;
+                    
+                    if(final[k] <= 3 && haz) bar.className = "progress-bar h-full bg-rose-600 rounded-full";
+                    else if(k === 'liver') bar.className = "progress-bar h-full bg-amber-500 rounded-full";
+                    else if(k === 'kidney') bar.className = "progress-bar h-full bg-sky-400 rounded-full";
+                    else if(k === 'heart') bar.className = "progress-bar h-full bg-rose-500 rounded-full";
+                    else if(k === 'stomach') bar.className = "progress-bar h-full bg-emerald-500 rounded-full";
+                    else if(k === 'lungs') bar.className = "progress-bar h-full bg-cyan-400 rounded-full";
+                    else bar.className = "progress-bar h-full bg-purple-500 rounded-full";
+                }
+            });
+
+            triggerDoctorAI(final, currentSelection);
+        }
+
+        function triggerDoctorAI(scores, sel) {
+            const box = document.getElementById('ai-card');
+            const msg = document.getElementById('ai-msg');
+
+            box.className = "bg-white border rounded-2xl p-4 shadow-sm transition-all duration-300";
+
+            if(sel.avoid?.id === 'bia' && sel.target?.organKey === 'liver') {
+                box.classList.add('border-rose-500', 'bg-rose-50/80');
+                msg.innerHTML = `🔥 <strong>Nghịch lý lâm sàng:</strong> Bạn đặt mục tiêu bảo vệ Gan, nhưng lại vừa rót một ly Bia (-8 Gan)? Cồn đang trực tiếp vô hiệu hóa toàn bộ nỗ lực ăn uống của bạn!`;
+            } 
+            else if(sel.avoid?.id === 'nuocngot') {
+                box.classList.add('border-rose-500', 'bg-rose-50/80');
+                msg.innerHTML = `⚠️ <strong>Báo động Thận & Tụy:</strong> Lượng đường Fructose lỏng trong nước ngọt đang tạo ra một cơn bão Insulin. Thận của bạn phải gồng mình lọc rác.`;
+            }
+            else if(sel.target?.organKey === 'liver' && sel.veg?.id === 'bongcai' && sel.top?.id === 'nghe') {
+                box.classList.add('border-emerald-500', 'bg-emerald-50');
+                msg.innerHTML = `🌟 <strong>Đại tiệc của Gan:</strong> Sulforaphane (Bông cải) + Curcumin (Nghệ) + Trọng số Mục tiêu tạo ra mâm cơm giải độc hoàn hảo nhất thế giới! Khen ngợi!`;
+            }
+            else if(sel.top?.id === 'hatoccho' && sel.protein?.id === 'cathu') {
+                box.classList.add('border-indigo-500', 'bg-indigo-50');
+                msg.innerHTML = `🧠 <strong>Sóng Alpha não bộ:</strong> Bộ đơn Cá thu đại dương và Hạt óc chó đang bơm trực tiếp DHA và chất béo cấu trúc vào chất xám của bạn.`;
+            }
+            else if(!sel.base && !sel.protein && !sel.veg) {
+                msg.innerHTML = `"Hãy chọn 1 Mục tiêu sức khỏe bên trái, sau đó lần रहकर thêm Nền, Đạm và Rau..."`;
+            }
+            else {
+                msg.innerHTML = `Công thức khá cân bằng! Hãy thử bấm sang tab <strong>🚫 Tránh ăn</strong> và chọn "Bia" hoặc "Nước ngọt" để thử thách sức chịu đựng của mâm cơm này xem sao?`;
+            }
+        }
+
+        function updateReceipt() {
+            document.getElementById('rc-target').innerText = currentSelection.target ? currentSelection.target.name.replace('Trọng tâm: ', '') : 'Chưa chọn';
+            document.getElementById('rc-base').innerText = currentSelection.base?.name || '---';
+            document.getElementById('rc-protein').innerText = currentSelection.protein?.name || '---';
+            document.getElementById('rc-veg').innerText = currentSelection.veg?.name || '---';
+            document.getElementById('rc-top').innerText = currentSelection.top?.name || '---';
+            
+            const av = document.getElementById('rc-avoid');
+            if(currentSelection.avoid) {
+                av.innerText = `+ ${currentSelection.avoid.name}`;
+                av.className = "font-black text-rose-600 bg-rose-100 px-1 rounded";
+            } else {
+                av.innerText = "Không có";
+                av.className = "text-slate-400 font-normal";
+            }
+        }
+
+        
+function toggleOrganMap(){
+  const m=document.getElementById('organ-map-modal');
+  const isHidden = m.style.display==='none'||m.style.display==='';
+  m.style.display = isHidden ? 'flex' : 'none';
+  if(isHidden) {
+    requestAnimationFrame(()=>{ m.classList.add('modal-visible'); renderOrganConnections(); });
+  } else {
+    m.classList.remove('modal-visible');
+  }
+}
+
+function getOrganColor(organ) {
+  const colors = { brain:'#8b5cf6', heart:'#ef4444', liver:'#f59e0b', kidney:'#3b82f6', stomach:'#10b981', lungs:'#06b6d4' };
+  return colors[organ]||'#6366f1';
+}
+
+// ============== SHOW RESULT (RADAR LỤC GIÁC) ==============
+const RESULT_ORGAN_META = [
+  { key:'brain',   label:'Não bộ',  img:'__ORGAN_BRAINPRO__',   emoji:'🧠' },
+  { key:'heart',   label:'Tim mạch',img:'__ORGAN_HEARTPRO__',   emoji:'❤️' },
+  { key:'liver',   label:'Gan',     img:'__ORGAN_LIVERPRO__',   emoji:'🟤' },
+  { key:'kidney',  label:'Thận',    img:'__ORGAN_KIDNEYPRO__',  emoji:'💧' },
+  { key:'stomach', label:'Dạ dày',  img:'__ORGAN_STOMACHPRO__', emoji:'🦠' },
+  { key:'lungs',   label:'Phổi',    img:'__ORGAN_LUNGSPRO__',   emoji:'🌬️' }
+];
+
+function toggleResultModal(){
+  const m=document.getElementById('result-modal');
+  const isHidden = m.style.display==='none'||m.style.display==='';
+  m.style.display = isHidden ? 'flex' : 'none';
+  if(isHidden) {
+    requestAnimationFrame(()=>{ m.classList.add('modal-visible'); renderResultRadar(); });
+  } else {
+    m.classList.remove('modal-visible');
+  }
+}
+
+function resultScoreLabel(v){
+  // v: -10..10 -> nhãn xếp loại kiểu "Khá / Cao / Bình thường / Thấp / Báo động"
+  if(v <= 0) return { txt:'Báo động', color:'#f87171' };
+  if(v <= 3) return { txt:'Thấp', color:'#fb923c' };
+  if(v <= 6) return { txt:'Bình thường', color:'#facc15' };
+  if(v <= 8) return { txt:'Khá', color:'#34d399' };
+  return { txt:'Rất tốt', color:'#22d3ee' };
+}
+
+function renderResultRadar(){
+  const svg = document.getElementById('result-radar-svg');
+  const listEl = document.getElementById('result-organ-list');
+  const summaryEl = document.getElementById('result-ai-summary');
+  const emptyHint = document.getElementById('result-empty-hint');
+  svg.innerHTML = '';
+  listEl.innerHTML = '';
+  summaryEl.innerHTML = '';
+
+  if(!lastHasItem){
+    emptyHint.style.display = 'flex';
+    svg.style.display = 'none';
+    return;
+  }
+  emptyHint.style.display = 'none';
+  svg.style.display = '';
+
+  const cx = 240, cy = 230, maxR = 165;
+  const n = RESULT_ORGAN_META.length;
+  const angleFor = i => -Math.PI/2 + i*(2*Math.PI/n);
+
+  // Giá trị hiển thị trên radar: kẹp về 0..10 (điểm âm coi như đáy 0, vẫn cảnh báo riêng ở bảng bên phải)
+  const values = RESULT_ORGAN_META.map(m => Math.max(0, lastFinalScores[m.key]||0));
+
+  const ptAt = (i, val) => {
+    const r = (val/10) * maxR;
+    const a = angleFor(i);
+    return [cx + r*Math.cos(a), cy + r*Math.sin(a)];
+  };
+
+  let svgHtml = '';
+
+  // Vòng lưới nền (4 mức) + trục
+  [0.25,0.5,0.75,1].forEach(frac=>{
+    const pts = RESULT_ORGAN_META.map((_,i)=>{
+      const [x,y] = ptAt(i, 10*frac);
+      return `${x},${y}`;
+    }).join(' ');
+    svgHtml += `<polygon points="${pts}" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>`;
+  });
+  RESULT_ORGAN_META.forEach((_,i)=>{
+    const [x,y] = ptAt(i, 10);
+    svgHtml += `<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>`;
+  });
+
+  // Polygon dữ liệu
+  const dataPts = RESULT_ORGAN_META.map((m,i)=>ptAt(i, values[i])).map(p=>p.join(',')).join(' ');
+  svgHtml += `
+    <defs>
+      <linearGradient id="resultRadarFill" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" style="stop-color:#a855f7;stop-opacity:0.55"/>
+        <stop offset="100%" style="stop-color:#f43f5e;stop-opacity:0.45"/>
+      </linearGradient>
+    </defs>
+    <polygon points="${dataPts}" fill="url(#resultRadarFill)" stroke="#e879f9" stroke-width="2.5" stroke-linejoin="round">
+      <animate attributeName="points" from="${RESULT_ORGAN_META.map((_,i)=>ptAt(i,0).join(',')).join(' ')}" to="${dataPts}" dur="0.8s" fill="freeze" calcMode="spline" keySplines="0.34 0.8 0.64 1"/>
+    </polygon>`;
+
+  // Chấm tại từng đỉnh + icon ảnh + nhãn ở rìa ngoài
+  RESULT_ORGAN_META.forEach((m,i)=>{
+    const [vx,vy] = ptAt(i, values[i]);
+    const color = getOrganColor(m.key);
+    svgHtml += `<circle cx="${vx}" cy="${vy}" r="4.5" fill="${color}" stroke="#0b0a1f" stroke-width="1.5"/>`;
+
+    const [lx,ly] = ptAt(i, 12.6);
+    const iconSize = 34;
+    svgHtml += `
+      <g transform="translate(${lx-iconSize/2},${ly-iconSize/2})">
+        <circle cx="${iconSize/2}" cy="${iconSize/2}" r="${iconSize/2+4}" fill="rgba(15,12,40,0.85)" stroke="rgba(255,255,255,0.15)"/>
+        <image href="${m.img}" x="2" y="2" width="${iconSize-4}" height="${iconSize-4}" preserveAspectRatio="xMidYMid meet"/>
+      </g>
+      <text x="${lx}" y="${ly+iconSize/2+14}" text-anchor="middle" font-size="11" font-weight="700" fill="#ffffff">${m.label}</text>
+      <text x="${lx}" y="${ly+iconSize/2+27}" text-anchor="middle" font-size="10" font-weight="700" fill="${color}">${lastFinalScores[m.key]}/10</text>`;
+  });
+
+  svg.innerHTML = svgHtml;
+
+  // Danh sách bên phải kiểu "Phân tích AI"
+  let listHtml = '';
+  RESULT_ORGAN_META.forEach(m=>{
+    const v = lastFinalScores[m.key];
+    const lbl = resultScoreLabel(v);
+    listHtml += `
+      <div class="flex items-center gap-2.5 bg-white/5 border border-white/10 rounded-xl px-2.5 py-2">
+        <img src="${m.img}" class="w-8 h-8 object-contain shrink-0"/>
+        <div class="flex-1 min-w-0">
+          <div class="text-white text-xs font-bold">${m.label}</div>
+          <div class="text-[10px] font-bold" style="color:${lbl.color}">${lbl.txt}</div>
+        </div>
+        <div class="text-sm font-mono font-black" style="color:${lbl.color}">${v}/10</div>
+      </div>`;
+  });
+  listEl.innerHTML = listHtml;
+
+  // Tóm tắt AI
+  const avg = values.reduce((a,b)=>a+b,0) / n;
+  const worst = RESULT_ORGAN_META.slice().sort((a,b)=>lastFinalScores[a.key]-lastFinalScores[b.key])[0];
+  const best = RESULT_ORGAN_META.slice().sort((a,b)=>lastFinalScores[b.key]-lastFinalScores[a.key])[0];
+  const haz = currentSelection.avoid;
+
+  let summary = `<strong>📊 Điểm trung bình: ${avg.toFixed(1)}/10.</strong> `;
+  summary += `Cơ quan khỏe nhất hiện tại là <strong style="color:${getOrganColor(best.key)}">${best.label}</strong> (${lastFinalScores[best.key]}/10). `;
+  if(lastFinalScores[worst.key] <= 3){
+    summary += `Cần chú ý <strong style="color:#f87171">${worst.label}</strong> (${lastFinalScores[worst.key]}/10) đang ở mức thấp${haz ? `, có thể do "${haz.name}" trong khẩu phần` : ''}.`;
+  } else {
+    summary += `Các cơ quan còn lại đang ở mức ổn định, hãy tiếp tục duy trì công thức này!`;
+  }
+  summaryEl.innerHTML = summary;
+}
+
+function renderOrganConnections(){
+  const svg = document.getElementById('organ-lines');
+  svg.innerHTML='';
+
+  const goodItems = ['base','protein','veg','top'].map(k=>currentSelection[k]).filter(Boolean);
+  const hazardItem = currentSelection.avoid || null;
+  const allItems = [...goodItems, ...(hazardItem ? [hazardItem] : [])];
+  const organKeys = ['brain','heart','liver','kidney','stomach','lungs'];
+
+  // Reset all food-node slots (5 slots: 4 good + 1 hazard)
+  document.querySelectorAll('.food-node').forEach((el)=>{
+    el.style.opacity='0';
+    el.style.transform='scale(0.5) translateX(-20px)';
+    el.querySelector('.food-emoji').textContent = '';
+    el.querySelector('.food-name').textContent = '';
+    el.querySelector('.food-tag').textContent = '';
+    el.querySelector('.food-scores').innerHTML = '';
+    el.classList.remove('food-node-hazard');
+    el.style.borderColor = '';
+  });
+
+  // Reset organ nodes
+  document.querySelectorAll('.organ-node').forEach(el=>{
+    el.classList.remove('organ-active','organ-dimmed','organ-damaged');
+    const badge = el.querySelector('.organ-score-badge');
+    badge.textContent=''; badge.style.opacity='0'; badge.style.transform='scale(0.5)';
+    badge.style.background='';
+  });
+
+  if(allItems.length===0){
+    document.getElementById('empty-hint').style.display='flex';
+    return;
+  }
+  document.getElementById('empty-hint').style.display='none';
+
+  // Calculate net organ totals (good + hazard combined)
+  const organTotals = {};
+  organKeys.forEach(o=>{ organTotals[o]=0; });
+  goodItems.forEach(it=>{ organKeys.forEach(o=>{ organTotals[o]+=(it[o]||0); }); });
+  if(hazardItem){ organKeys.forEach(o=>{ organTotals[o]+=(hazardItem[o]||0); }); }
+
+  // Show food nodes — good items first, then hazard
+  goodItems.forEach((it,i)=>{
+    const node = document.querySelectorAll('.food-node')[i];
+    if(!node) return;
+    const topOrgan = organKeys.slice().sort((a,b)=>(it[b]||0)-(it[a]||0))[0];
+    const organEmojis={brain:'🧠',heart:'❤️',liver:'<img src="__ORGAN_LIVER__" class="inline-block w-3 h-3 object-contain align-middle" alt=""/>',kidney:'💧',stomach:'🦠',lungs:'🌬️'};
+    node.querySelector('.food-emoji').textContent = it.emoji;
+    node.querySelector('.food-name').textContent = it.name.length>14 ? it.name.substring(0,14)+'…' : it.name;
+    node.querySelector('.food-tag').textContent = it.tag||'';
+    node.querySelector('.food-scores').innerHTML = `<span style="color:${getOrganColor(topOrgan)};font-size:10px;font-weight:700">${organEmojis[topOrgan]} +${it[topOrgan]||0}pts</span>`;
+    setTimeout(()=>{
+      node.style.transition='all 0.5s cubic-bezier(0.34,1.56,0.64,1)';
+      node.style.opacity='1'; node.style.transform='scale(1) translateX(0)';
+    }, 80+i*110);
+  });
+
+  // Show hazard node (slot index 4)
+  if(hazardItem){
+    const hNode = document.querySelectorAll('.food-node')[4];
+    if(hNode){
+      // worst organ hit
+      const worstOrgan = organKeys.slice().sort((a,b)=>(hazardItem[a]||0)-(hazardItem[b]||0))[0];
+      const worstVal = hazardItem[worstOrgan]||0;
+      hNode.querySelector('.food-emoji').textContent = hazardItem.emoji;
+      hNode.querySelector('.food-name').textContent = hazardItem.name.length>14 ? hazardItem.name.substring(0,14)+'…' : hazardItem.name;
+      hNode.querySelector('.food-tag').textContent = hazardItem.tag||'';
+      hNode.querySelector('.food-scores').innerHTML = `<span style="color:#f87171;font-size:10px;font-weight:700">☠️ ${worstVal}pts</span>`;
+      hNode.classList.add('food-node-hazard');
+      setTimeout(()=>{
+        hNode.style.transition='all 0.5s cubic-bezier(0.34,1.56,0.64,1)';
+        hNode.style.opacity='1'; hNode.style.transform='scale(1) translateX(0)';
+      }, 80+goodItems.length*110);
+    }
+  }
+
+  // Determine organ states considering net totals
+  const damagedOrgans = new Set();
+  const boostedOrgans = new Set();
+  organKeys.forEach(o=>{
+    const net = organTotals[o];
+    // Track per-organ: positive contributions from good food
+    let goodSum = 0;
+    goodItems.forEach(it=>{ goodSum += (it[o]||0); });
+    if(hazardItem && (hazardItem[o]||0)<0) damagedOrgans.add(o);
+    if(goodSum>0) boostedOrgans.add(o);
+  });
+
+  organKeys.forEach(o=>{
+    const node = document.querySelector(`.organ-node[data-organ="${o}"]`);
+    if(!node) return;
+    const net = organTotals[o];
+    const badge = node.querySelector('.organ-score-badge');
+    const isDamaged = damagedOrgans.has(o);
+    const isBoosted = boostedOrgans.has(o);
+
+    if(net===0 && !isDamaged && !isBoosted){
+      node.classList.add('organ-dimmed'); return;
+    }
+
+    if(isDamaged && net<0){
+      // Net negative: organ is being destroyed
+      node.classList.add('organ-damaged');
+      badge.textContent = `${net}`;
+      badge.style.background='#dc2626';
+    } else if(isDamaged && net>=0){
+      // Hazard hits but good food compensates
+      node.classList.add('organ-active');
+      badge.textContent = `${net>0?'+':''}${net}`;
+      badge.style.background = net>3 ? getOrganColor(o) : '#f59e0b';
+    } else if(isBoosted){
+      node.classList.add('organ-active');
+      badge.textContent = `+${net}`;
+      badge.style.background = getOrganColor(o);
+    } else {
+      node.classList.add('organ-dimmed');
+    }
+
+    if(badge.textContent){
+      setTimeout(()=>{ badge.style.opacity='1'; badge.style.transform='scale(1)'; }, 420);
+    }
+  });
+
+  // Draw SVG lines after DOM paints (must exceed the last food-node's
+  // stagger delay of 80+3*110=410ms so getBoundingClientRect() reads the
+  // node's final position, not its pre-animation scale/offset)
+  setTimeout(()=>{
+    const svgRect = svg.getBoundingClientRect();
+
+    // --- GOOD FOOD lines (positive, colored beziers) ---
+    goodItems.forEach((it,i)=>{
+      const foodNode = document.querySelectorAll('.food-node')[i];
+      if(!foodNode) return;
+      const foodRect = foodNode.getBoundingClientRect();
+      const fx = foodRect.right - svgRect.left;
+      const fy = foodRect.top + foodRect.height/2 - svgRect.top;
+
+      organKeys.forEach(o=>{
+        if((it[o]||0)<=0) return;
+        const organNode = document.querySelector(`.organ-node[data-organ="${o}"]`);
+        if(!organNode) return;
+        const oRect = organNode.getBoundingClientRect();
+        const ox = oRect.left - svgRect.left;
+        const oy = oRect.top + oRect.height/2 - svgRect.top;
+        const score = it[o];
+        const color = getOrganColor(o);
+        const opacity = 0.18 + (score/10)*0.65;
+        const strokeW = 0.8 + (score/10)*2.8;
+        const pathLen = Math.sqrt((ox-fx)**2+(oy-fy)**2);
+        const uid = `pos_${i}_${o}`;
+        const ctrl1x = fx+(ox-fx)*0.4, ctrl1y = fy;
+        const ctrl2x = fx+(ox-fx)*0.6, ctrl2y = oy;
+        svg.innerHTML += `
+          <defs>
+            <linearGradient id="grad_${uid}" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" style="stop-color:#6366f1;stop-opacity:0.5"/>
+              <stop offset="100%" style="stop-color:${color};stop-opacity:0.9"/>
+            </linearGradient>
+          </defs>
+          <path id="${uid}" d="M${fx},${fy} C${ctrl1x},${ctrl1y} ${ctrl2x},${ctrl2y} ${ox},${oy}"
+            fill="none" stroke="url(#grad_${uid})" stroke-width="${strokeW}" stroke-opacity="${opacity}"
+            stroke-dasharray="${pathLen}" stroke-dashoffset="${pathLen}">
+            <animate attributeName="stroke-dashoffset" from="${pathLen}" to="0" dur="0.7s" begin="${0.25+i*0.1}s" fill="freeze" calcMode="spline" keySplines="0.4 0 0.2 1"/>
+          </path>
+          <circle r="3.5" fill="${color}" opacity="0.9">
+            <animateMotion dur="2.8s" repeatCount="indefinite" begin="${0.25+i*0.1+0.7}s">
+              <mpath href="#${uid}"/>
+            </animateMotion>
+          </circle>`;
+      });
+    });
+
+    // --- HAZARD lines (negative, red jagged/dashed danger lines) ---
+    if(hazardItem){
+      const hIdx = goodItems.length; // slot 4
+      const hNode = document.querySelectorAll('.food-node')[4];
+      if(hNode){
+        const hRect = hNode.getBoundingClientRect();
+        const fx = hRect.right - svgRect.left;
+        const fy = hRect.top + hRect.height/2 - svgRect.top;
+
+        organKeys.forEach(o=>{
+          const val = hazardItem[o]||0;
+          if(val>=0) return; // only negative
+          const organNode = document.querySelector(`.organ-node[data-organ="${o}"]`);
+          if(!organNode) return;
+          const oRect = organNode.getBoundingClientRect();
+          const ox = oRect.left - svgRect.left;
+          const oy = oRect.top + oRect.height/2 - svgRect.top;
+          const severity = Math.abs(val); // 1-10
+          const strokeW = 0.8 + (severity/10)*3.5;
+          const opacity = 0.3 + (severity/10)*0.65;
+          const pathLen = Math.sqrt((ox-fx)**2+(oy-fy)**2);
+          const uid = `neg_${o}`;
+          const ctrl1x = fx+(ox-fx)*0.35, ctrl1y = fy+30;
+          const ctrl2x = fx+(ox-fx)*0.65, ctrl2y = oy-30;
+          // Red dashed danger line with skull dot traveling it
+          svg.innerHTML += `
+            <defs>
+              <linearGradient id="grad_${uid}" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" style="stop-color:#f43f5e;stop-opacity:0.7"/>
+                <stop offset="100%" style="stop-color:#dc2626;stop-opacity:1"/>
+              </linearGradient>
+            </defs>
+            <path id="${uid}" d="M${fx},${fy} C${ctrl1x},${ctrl1y} ${ctrl2x},${ctrl2y} ${ox},${oy}"
+              fill="none" stroke="url(#grad_${uid})" stroke-width="${strokeW}" stroke-opacity="${opacity}"
+              stroke-dasharray="6 4"
+              stroke-dashoffset="${pathLen}">
+              <animate attributeName="stroke-dashoffset" from="${pathLen}" to="0" dur="0.9s" begin="${0.15+hIdx*0.1}s" fill="freeze"/>
+              <animate attributeName="stroke-dashoffset" from="0" to="-20" dur="1s" begin="${0.15+hIdx*0.1+0.9}s" repeatCount="indefinite"/>
+            </path>
+            <circle r="5" fill="#dc2626" opacity="0.95">
+              <animateMotion dur="2s" repeatCount="indefinite" begin="${0.15+hIdx*0.1+0.9}s">
+                <mpath href="#${uid}"/>
+              </animateMotion>
+            </circle>
+            <text font-size="9" text-anchor="middle" dominant-baseline="central" opacity="0.9">
+              <animateMotion dur="2s" repeatCount="indefinite" begin="${0.15+hIdx*0.1+0.9}s">
+                <mpath href="#${uid}"/>
+              </animateMotion>☠
+            </text>`;
+        });
+      }
+    }
+  }, 520);
+}
+
+function resetAll() {
+            currentSelection = { target: null, base: null, protein: null, veg: null, top: null, avoid: null };
+            document.querySelectorAll('.menu-panel button').forEach(b => b.classList.remove('border-indigo-600', 'border-emerald-500', 'border-rose-600', 'bg-indigo-50', 'bg-emerald-50', 'bg-rose-50'));
+            document.querySelectorAll('.plate-item').forEach(p => p.classList.remove('active'));
+            hideHazardTable(); updateReceipt(); calculateScores();
+        }
+    </script>
+
+<style>
+#organ-map-modal { opacity:0; transition: opacity 0.3s ease; }
+#organ-map-modal.modal-visible { opacity:1; }
+
+.food-node { opacity:0; transform:scale(0.5) translateX(-20px); }
+.food-node-hazard {
+  border: 1px solid rgba(239,68,68,0.5) !important;
+  background: rgba(127,29,29,0.4) !important;
+  box-shadow: 0 0 12px rgba(239,68,68,0.25);
+}
+.food-node-hazard .food-tag { color: #fca5a5 !important; }
+.organ-node { transition: all 0.4s ease; }
+.organ-node.organ-active .organ-img { filter: drop-shadow(0 0 12px currentColor); transform:scale(1.05); }
+.organ-node.organ-dimmed { opacity:0.25; filter:grayscale(0.8); }
+.organ-node.organ-damaged .organ-img {
+  filter: drop-shadow(0 0 14px #dc2626) brightness(0.85) saturate(1.4);
+  transform: scale(1.05);
+  animation: damage-pulse 1.2s ease-in-out infinite;
+}
+@keyframes damage-pulse {
+  0%,100%{ filter: drop-shadow(0 0 10px #dc2626) brightness(0.85); }
+  50%{ filter: drop-shadow(0 0 22px #f43f5e) brightness(0.7) saturate(1.8); }
+}
+.organ-score-badge { opacity:0; transform:scale(0.5); transition: all 0.4s cubic-bezier(0.34,1.56,0.64,1); transition-delay:0.2s; }
+.organ-img { transition: all 0.4s ease; }
+
+@keyframes pulse-glow {
+  0%,100%{opacity:0.7} 50%{opacity:1}
+}
+.organ-active { animation:pulse-glow 2.5s ease-in-out infinite; }
+
+.modal-panel {
+  background: linear-gradient(135deg, #0f0c29, #141428, #1a1035);
+}
+.grid-bg {
+  background-image:
+    linear-gradient(rgba(99,102,241,0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(99,102,241,0.08) 1px, transparent 1px);
+  background-size:40px 40px;
+}
+.connection-label {
+  background: rgba(15,12,40,0.85);
+  border:1px solid rgba(255,255,255,0.1);
+  backdrop-filter:blur(8px);
+}
+.organ-node-wrap {
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:4px;
+}
+</style>
+
+<div id="organ-map-modal" style="display:none;background:rgba(5,4,20,0.9)" class="fixed inset-0 z-50 flex items-center justify-center">
+  <div class="modal-panel rounded-3xl w-[96vw] max-w-[1100px] h-[88vh] relative overflow-hidden flex flex-col">
+    
+    <!-- Grid background -->
+    <div class="grid-bg absolute inset-0 pointer-events-none"></div>
+    
+    <!-- Header -->
+    <div class="relative z-10 flex items-center justify-between px-8 pt-6 pb-4 border-b border-white/10 shrink-0">
+      <div>
+        <h2 class="text-2xl font-black text-white tracking-tight flex items-center gap-3">
+          <span class="text-3xl">🧬</span> Food → Organ Connection Map
+        </h2>
+        <p class="text-sm text-indigo-300 mt-0.5">Xem đường truyền dinh dưỡng từ thức ăn đến nội tạng</p>
+      </div>
+      <button onclick="toggleOrganMap()" class="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white font-bold text-lg flex items-center justify-center transition-all">✕</button>
+    </div>
+
+    <!-- Body: Food | SVG | Organs -->
+    <div id="connection-container" class="relative flex-1 flex items-stretch overflow-hidden">
+      
+      <!-- SVG for lines -->
+      <svg id="organ-lines" class="absolute inset-0 w-full h-full pointer-events-none z-10"></svg>
+      
+      <!-- LEFT: Food Nodes -->
+      <div class="relative z-20 flex flex-col px-6 py-4 w-[260px] shrink-0 overflow-y-auto" style="scrollbar-width:none">
+        <div class="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-3">Thức ăn đã chọn</div>
+        <div class="flex flex-col gap-3">
+          <div class="food-node flex items-center gap-3 connection-label rounded-2xl px-3 py-2">
+            <span class="food-emoji text-3xl leading-none w-9 text-center shrink-0"></span>
+            <div class="flex-1 min-w-0">
+              <div class="food-name text-white text-xs font-bold truncate"></div>
+              <div class="food-tag text-indigo-300 text-[10px]"></div>
+              <div class="food-scores mt-0.5"></div>
+            </div>
+          </div>
+          <div class="food-node flex items-center gap-3 connection-label rounded-2xl px-3 py-2">
+            <span class="food-emoji text-3xl leading-none w-9 text-center shrink-0"></span>
+            <div class="flex-1 min-w-0">
+              <div class="food-name text-white text-xs font-bold truncate"></div>
+              <div class="food-tag text-indigo-300 text-[10px]"></div>
+              <div class="food-scores mt-0.5"></div>
+            </div>
+          </div>
+          <div class="food-node flex items-center gap-3 connection-label rounded-2xl px-3 py-2">
+            <span class="food-emoji text-3xl leading-none w-9 text-center shrink-0"></span>
+            <div class="flex-1 min-w-0">
+              <div class="food-name text-white text-xs font-bold truncate"></div>
+              <div class="food-tag text-indigo-300 text-[10px]"></div>
+              <div class="food-scores mt-0.5"></div>
+            </div>
+          </div>
+          <div class="food-node flex items-center gap-3 connection-label rounded-2xl px-3 py-2">
+            <span class="food-emoji text-3xl leading-none w-9 text-center shrink-0"></span>
+            <div class="flex-1 min-w-0">
+              <div class="food-name text-white text-xs font-bold truncate"></div>
+              <div class="food-tag text-indigo-300 text-[10px]"></div>
+              <div class="food-scores mt-0.5"></div>
+            </div>
+          </div>
+
+          <!-- Hazard divider + slot -->
+          <div id="hazard-divider" style="display:none" class="flex items-center gap-2 mt-1">
+            <div class="flex-1 h-px bg-rose-700/50"></div>
+            <span class="text-[9px] font-black text-rose-400 uppercase tracking-widest">⚠ Chất phá hoại</span>
+            <div class="flex-1 h-px bg-rose-700/50"></div>
+          </div>
+          <div class="food-node flex items-center gap-3 connection-label rounded-2xl px-3 py-2">
+            <span class="food-emoji text-3xl leading-none w-9 text-center shrink-0"></span>
+            <div class="flex-1 min-w-0">
+              <div class="food-name text-white text-xs font-bold truncate"></div>
+              <div class="food-tag text-rose-300 text-[10px]"></div>
+              <div class="food-scores mt-0.5"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Empty hint -->
+        <div id="empty-hint" style="display:none" class="flex flex-col items-center justify-center text-center py-8 gap-3 mt-4">
+          <div class="text-5xl opacity-40">🍽️</div>
+          <div class="text-sm text-white/50 font-semibold">Hãy chọn thức ăn<br/>để xem kết nối</div>
+        </div>
+      </div>
+
+      <!-- CENTER: body silhouette + SVG spacer -->
+      <div class="flex-1 flex items-center justify-center pointer-events-none">
+        <img src="__ORGAN_FULLBODYBOX__" class="h-[70%] max-h-[420px] object-contain opacity-20 select-none" style="filter: brightness(2) saturate(0)"/>
+      </div>
+
+      <!-- RIGHT: Organ Nodes -->
+      <div class="relative z-20 flex flex-col items-center py-4 px-5 w-[190px] shrink-0" style="gap:0">
+        <div class="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-2 self-start">Nội tạng</div>
+        
+        <div class="organ-node organ-node-wrap w-full flex flex-row items-center gap-2 py-2 px-2 rounded-xl" data-organ="brain">
+          <div class="relative shrink-0">
+            <img src="__ORGAN_BRAINPRO__" class="organ-img w-11 h-11 object-contain drop-shadow-xl"/>
+            <span class="organ-score-badge absolute -top-2 -right-2 text-[9px] font-black text-white px-1 py-0.5 rounded-full whitespace-nowrap"></span>
+          </div>
+          <div class="text-white text-[11px] font-bold">🧠 Não bộ</div>
+        </div>
+
+        <div class="organ-node organ-node-wrap w-full flex flex-row items-center gap-2 py-2 px-2 rounded-xl" data-organ="lungs">
+          <div class="relative shrink-0">
+            <img src="__ORGAN_LUNGSPRO__" class="organ-img w-11 h-11 object-contain drop-shadow-xl"/>
+            <span class="organ-score-badge absolute -top-2 -right-2 text-[9px] font-black text-white px-1 py-0.5 rounded-full whitespace-nowrap"></span>
+          </div>
+          <div class="text-white text-[11px] font-bold">🌬️ Phổi</div>
+        </div>
+
+        <div class="organ-node organ-node-wrap w-full flex flex-row items-center gap-2 py-2 px-2 rounded-xl" data-organ="heart">
+          <div class="relative shrink-0">
+            <img src="__ORGAN_HEARTPRO__" class="organ-img w-11 h-11 object-contain drop-shadow-xl"/>
+            <span class="organ-score-badge absolute -top-2 -right-2 text-[9px] font-black text-white px-1 py-0.5 rounded-full whitespace-nowrap"></span>
+          </div>
+          <div class="text-white text-[11px] font-bold">❤️ Tim mạch</div>
+        </div>
+
+        <div class="organ-node organ-node-wrap w-full flex flex-row items-center gap-2 py-2 px-2 rounded-xl" data-organ="liver">
+          <div class="relative shrink-0">
+            <img src="__ORGAN_LIVERPRO__" class="organ-img w-11 h-11 object-contain drop-shadow-xl"/>
+            <span class="organ-score-badge absolute -top-2 -right-2 text-[9px] font-black text-white px-1 py-0.5 rounded-full whitespace-nowrap"></span>
+          </div>
+          <div class="text-white text-[11px] font-bold">🟤 Gan</div>
+        </div>
+
+        <div class="organ-node organ-node-wrap w-full flex flex-row items-center gap-2 py-2 px-2 rounded-xl" data-organ="stomach">
+          <div class="relative shrink-0">
+            <img src="__ORGAN_STOMACHPRO__" class="organ-img w-11 h-11 object-contain drop-shadow-xl"/>
+            <span class="organ-score-badge absolute -top-2 -right-2 text-[9px] font-black text-white px-1 py-0.5 rounded-full whitespace-nowrap"></span>
+          </div>
+          <div class="text-white text-[11px] font-bold">🦠 Dạ dày</div>
+        </div>
+
+        <div class="organ-node organ-node-wrap w-full flex flex-row items-center gap-2 py-2 px-2 rounded-xl" data-organ="kidney">
+          <div class="relative shrink-0">
+            <img src="__ORGAN_KIDNEYPRO__" class="organ-img w-11 h-11 object-contain drop-shadow-xl"/>
+            <span class="organ-score-badge absolute -top-2 -right-2 text-[9px] font-black text-white px-1 py-0.5 rounded-full whitespace-nowrap"></span>
+          </div>
+          <div class="text-white text-[11px] font-bold">💧 Thận</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="relative z-10 px-8 py-3 border-t border-white/10 flex items-center gap-6 text-[11px] text-white/50 shrink-0">
+      <span class="flex items-center gap-1.5"><span class="w-8 h-0.5 bg-gradient-to-r from-indigo-500 to-purple-500 inline-block rounded"></span>Dinh dưỡng mạnh</span>
+      <span class="flex items-center gap-1.5"><span class="w-6 h-0.5 bg-gradient-to-r from-rose-600 to-red-700 inline-block rounded" style="border-top:1px dashed #f43f5e"></span>Phá hoại nội tạng</span>
+      <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-purple-400 inline-block"></span>Luồng tốt</span>
+      <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-red-500 inline-block"></span>Luồng độc ☠</span>
+      <span class="ml-auto text-indigo-400 font-semibold">Đường dày = ảnh hưởng mạnh • Chấm chạy = dòng đang lưu thông</span>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== SHOW RESULT MODAL (RADAR) ===================== -->
+<div id="result-modal" style="display:none;background:rgba(5,4,20,0.9)" class="fixed inset-0 z-50 flex items-center justify-center">
+  <div class="modal-panel rounded-3xl w-[96vw] max-w-[1000px] h-[88vh] relative overflow-hidden flex flex-col">
+
+    <div class="grid-bg absolute inset-0 pointer-events-none"></div>
+
+    <!-- Header -->
+    <div class="relative z-10 flex items-center justify-between px-8 pt-6 pb-4 border-b border-white/10 shrink-0">
+      <div>
+        <h2 class="text-2xl font-black text-white tracking-tight flex items-center gap-3">
+          <span class="text-3xl">✨</span> Kết quả tổng kết sức khỏe
+        </h2>
+        <p class="text-sm text-indigo-300 mt-0.5">Lục giác chỉ số nội tạng dựa trên công thức bạn vừa tạo</p>
+      </div>
+      <button onclick="toggleResultModal()" class="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white font-bold text-lg flex items-center justify-center transition-all">✕</button>
+    </div>
+
+    <!-- Body -->
+    <div class="relative z-10 flex-1 flex items-stretch overflow-hidden">
+
+      <!-- LEFT: Radar -->
+      <div class="flex-1 flex flex-col items-center justify-center px-6 py-4 overflow-y-auto" style="scrollbar-width:none">
+        <div class="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-2 self-start ml-2">Các chỉ số nội tạng</div>
+        <svg id="result-radar-svg" viewBox="0 0 480 480" class="w-full max-w-[460px]"></svg>
+        <div id="result-empty-hint" style="display:none" class="text-center -mt-10">
+          <div class="text-5xl opacity-40 mb-2">🍽️</div>
+          <div class="text-sm text-white/50 font-semibold">Hãy chọn thức ăn ở trang chính<br/>để xem kết quả tổng kết</div>
+        </div>
+      </div>
+
+      <!-- RIGHT: AI Analysis -->
+      <div class="w-[300px] shrink-0 border-l border-white/10 px-5 py-5 overflow-y-auto" style="scrollbar-width:none">
+        <div class="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-3">Phân tích AI</div>
+        <div id="result-organ-list" class="flex flex-col gap-2.5"></div>
+        <div id="result-ai-summary" class="mt-5 p-3 rounded-xl bg-indigo-500/10 border border-indigo-400/20 text-[12px] text-indigo-100 leading-relaxed"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ===================== HEALTH CARD EXPORT MODAL ===================== -->
+<style>
+#health-card-modal { opacity:0; transition:opacity 0.3s ease; }
+#health-card-modal.modal-visible { opacity:1; }
+
+@keyframes card-shine {
+  from { transform:translateX(-120%) rotate(25deg); }
+  to   { transform:translateX(120%) rotate(25deg); }
+}
+@keyframes hc-float {
+  0%,100% { transform:translateY(-5px) rotateY(var(--ry,0deg)); }
+  50%      { transform:translateY(5px)  rotateY(var(--ry,0deg)); }
+}
+@keyframes hc-organ-pop {
+  0%   { opacity:0; transform:scale(0.4) translateY(12px); }
+  70%  { transform:scale(1.1) translateY(-2px); }
+  100% { opacity:1; transform:scale(1) translateY(0); }
+}
+@keyframes hc-pulse-glow {
+  0%,100% { filter:drop-shadow(0 0 6px currentColor); }
+  50%      { filter:drop-shadow(0 0 18px currentColor); }
+}
+@keyframes hc-score-tick {
+  from { stroke-dashoffset:251; }
+}
+
+.hc-organ-item { animation:hc-organ-pop 0.5s cubic-bezier(0.34,1.56,0.64,1) both; }
+.hc-organ-item.pro { animation:hc-organ-pop 0.5s cubic-bezier(0.34,1.56,0.64,1) both, hc-pulse-glow 2.5s ease-in-out infinite 0.6s; }
+
+.hc-card-wrap {
+  perspective:1800px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.hc-card {
+  width:400px;
+  min-height:700px;
+  border-radius:32px;
+  position:relative;
+  transform-style:preserve-3d;
+  background:linear-gradient(170deg,#7fe0d7 0%,#5bc8bd 40%,#3db8ac 100%);
+  box-shadow:0 40px 100px rgba(0,0,0,.55), 0 0 0 1.5px rgba(255,255,255,0.25) inset;
+  overflow:hidden;
+  transition:transform 0.1s linear;
+}
+.hc-card-shine {
+  position:absolute;
+  inset:0;
+  background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,.38) 50%,transparent 70%);
+  animation:card-shine 5s linear infinite;
+  pointer-events:none;
+  z-index:10;
+}
+.hc-glass {
+  position:absolute;
+  inset:0;
+  border-radius:32px;
+  border:2px solid rgba(255,255,255,.4);
+  box-shadow:inset 0 2px 4px rgba(255,255,255,.75);
+  pointer-events:none;
+  z-index:11;
+}
+.hc-bubble {
+  position:absolute;
+  left:14px;
+  top:14px;
+  background:#ffe44f;
+  color:#333;
+  font-size:11px;
+  font-weight:900;
+  padding:6px 13px;
+  border-radius:999px;
+  z-index:5;
+  box-shadow:0 2px 8px rgba(0,0,0,.15);
+}
+.hc-k {
+  font-size:58px;
+  font-weight:900;
+  color:#0d8f4f;
+  text-align:center;
+  line-height:1;
+  position:relative;
+  z-index:5;
+  text-shadow:0 4px 16px rgba(0,100,60,.25);
+}
+.hc-title {
+  background:#ffe44f;
+  color:#d33b00;
+  font-size:28px;
+  font-weight:900;
+  border-radius:20px;
+  padding:10px 14px;
+  text-align:center;
+  margin:0 14px;
+  position:relative;
+  z-index:5;
+  box-shadow:0 4px 14px rgba(255,180,0,.3);
+  letter-spacing:0.5px;
+}
+.hc-header {
+  padding:14px 14px 10px;
+  position:relative;
+  z-index:5;
+}
+.hc-body {
+  display:flex;
+  gap:10px;
+  padding:10px 14px;
+  position:relative;
+  z-index:5;
+}
+.hc-left {
+  width:46%;
+  background:rgba(255,255,255,.12);
+  border:2px solid rgba(255,255,255,.35);
+  border-radius:24px;
+  backdrop-filter:blur(8px);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+}
+.hc-left img { width:100%; }
+.hc-right {
+  width:54%;
+  background:rgba(255,255,255,.12);
+  border:2px solid rgba(255,255,255,.35);
+  border-radius:24px;
+  backdrop-filter:blur(8px);
+  padding:8px;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+.hc-organ-row {
+  display:flex;
+  align-items:center;
+  gap:7px;
+  background:rgba(255,255,255,.13);
+  border-radius:14px;
+  padding:5px 7px;
+}
+.hc-organ-row img { width:46px; height:46px; object-fit:contain; }
+.hc-organ-info { flex:1; }
+.hc-organ-name {
+  background:#1d964d;
+  color:white;
+  border-radius:9px;
+  padding:4px 7px;
+  font-weight:900;
+  font-size:11px;
+  text-align:center;
+  margin-bottom:3px;
+}
+.hc-organ-name.danger { background:#c0392b; }
+.hc-score-ring-wrap {
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.hc-score-ring {
+  transform:rotate(-90deg);
+}
+.hc-score-text {
+  font-size:11px;
+  font-weight:900;
+  fill:white;
+  dominant-baseline:central;
+  text-anchor:middle;
+  transform:rotate(90deg) translateX(2px);
+}
+.hc-veg { width:100%; margin-top:2px; animation:hc-float 4s ease-in-out infinite; }
+
+/* RADAR mini at bottom */
+.hc-radar-strip {
+  margin:4px 14px 10px;
+  background:rgba(0,0,0,.22);
+  border:1px solid rgba(255,255,255,.18);
+  border-radius:20px;
+  padding:10px;
+  position:relative;
+  z-index:5;
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+.hc-formula-col {
+  flex:1;
+  font-size:9.5px;
+  color:rgba(255,255,255,.85);
+  line-height:1.6;
+}
+.hc-formula-col strong { color:white; font-size:10px; }
+.hc-formula-col .hc-avoid { color:#f87171; }
+.hc-ai-quote {
+  font-size:9px;
+  color:rgba(255,255,255,.65);
+  font-style:italic;
+  border-top:1px solid rgba(255,255,255,.12);
+  padding-top:6px;
+  margin-top:4px;
+  line-height:1.5;
+}
+
+</style>
+
+<div id="health-card-modal" style="display:none;background:rgba(5,4,20,0.92)" class="fixed inset-0 z-50 flex items-center justify-center">
+  <div class="modal-panel rounded-3xl w-[96vw] max-w-[900px] relative overflow-hidden flex flex-col" style="background:linear-gradient(135deg,#0f0c29,#141428,#1a1035);max-height:92vh;">
+    <div class="grid-bg absolute inset-0 pointer-events-none"></div>
+
+    <!-- Header -->
+    <div class="relative z-10 flex items-center justify-between px-7 pt-5 pb-4 border-b border-white/10 shrink-0">
+      <div>
+        <h2 class="text-xl font-black text-white tracking-tight flex items-center gap-3">
+          <span class="text-2xl">🃏</span> Export My Health Level Card
+        </h2>
+        <p class="text-xs text-emerald-300 mt-0.5">Di chuyển chuột trên thẻ để xem hiệu ứng 3D • Tổng hợp toàn bộ chỉ số nội tạng</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <button onclick="toggleHealthCard()" class="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white font-bold text-lg flex items-center justify-center transition-all">✕</button>
+      </div>
+    </div>
+
+    <!-- Body -->
+    <div class="relative z-10 flex-1 flex items-center justify-center gap-8 px-7 py-6 overflow-hidden">
+
+      <!-- THE CARD -->
+      <div class="hc-card-wrap shrink-0" id="hc-card-wrap">
+        <div class="hc-card" id="hc-card">
+          <div class="hc-card-shine"></div>
+          <div class="hc-glass"></div>
+
+          <div class="hc-bubble" id="hc-bubble-label">Vitamin K</div>
+
+          <div class="hc-header">
+            <div class="hc-k" id="hc-k-letter">K</div>
+            <div class="hc-title">CHIẾN THẦN SỨC KHỎE</div>
+          </div>
+
+          <div class="hc-body">
+            <div class="hc-left">
+              <img id="hc-boy-img" src="__ORGAN_BOY__" alt="Hero">
+            </div>
+            <div class="hc-right" id="hc-organ-list">
+              <!-- organs rendered by JS -->
+            </div>
+          </div>
+
+          <div class="hc-radar-strip">
+            <svg id="hc-radar-mini" viewBox="0 0 130 120" width="130" height="120" style="shrink:0"></svg>
+            <div class="hc-formula-col" id="hc-formula-col">
+              <!-- formula rendered by JS -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT PANEL: Detailed breakdown -->
+      <div class="flex-1 flex flex-col gap-4 overflow-y-auto" style="max-height:72vh;scrollbar-width:none">
+        <div class="text-[10px] font-black text-emerald-400 uppercase tracking-widest">Phân tích chi tiết</div>
+
+        <!-- Radar large -->
+        <div class="bg-white/5 border border-white/10 rounded-2xl p-4">
+          <div class="text-xs font-bold text-white mb-2">📊 Lục giác chỉ số nội tạng</div>
+          <svg id="hc-radar-large" viewBox="0 0 380 360" class="w-full max-w-[380px] mx-auto block"></svg>
+        </div>
+
+        <!-- Organ breakdown list -->
+        <div class="bg-white/5 border border-white/10 rounded-2xl p-4">
+          <div class="text-xs font-bold text-white mb-3">🫀 Trạng thái từng cơ quan</div>
+          <div id="hc-organ-breakdown" class="flex flex-col gap-2"></div>
+        </div>
+
+        <!-- Formula recap -->
+        <div class="bg-white/5 border border-white/10 rounded-2xl p-4">
+          <div class="text-xs font-bold text-white mb-2">📋 Công thức đã chọn</div>
+          <div id="hc-formula-recap" class="text-xs text-white/70 space-y-1.5"></div>
+        </div>
+
+        <!-- AI summary -->
+        <div class="bg-indigo-500/10 border border-indigo-400/20 rounded-2xl p-4">
+          <div class="text-xs font-bold text-indigo-300 mb-2">💬 Nhận định AI</div>
+          <div id="hc-ai-recap" class="text-xs text-indigo-100 leading-relaxed"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== HEALTH CARD LOGIC =====
+
+const HC_ORGAN_META = [
+  { key:'brain',   label:'Não Bộ',  norm:'__ORGAN_BRAIN__',   pro:'__ORGAN_BRAINPRO__',   color:'#8b5cf6', emoji:'🧠' },
+  { key:'liver',   label:'Gan',     norm:'__ORGAN_LIVER__',   pro:'__ORGAN_LIVERPRO__',   color:'#f59e0b', emoji:'🟤' },
+  { key:'kidney',  label:'Thận',    norm:'__ORGAN_KIDNEY__',  pro:'__ORGAN_KIDNEYPRO__',  color:'#3b82f6', emoji:'💧' },
+  { key:'lungs',   label:'Phổi',    norm:'__ORGAN_LUNGS__',   pro:'__ORGAN_LUNGSPRO__',   color:'#06b6d4', emoji:'🌬️' },
+  { key:'heart',   label:'Tim',     norm:'__ORGAN_HEART__',   pro:'__ORGAN_HEARTPRO__',   color:'#ef4444', emoji:'❤️' },
+];
+const HC_STOMACH = { key:'stomach', label:'Dạ Dày', norm:'__ORGAN_STOMACH__', pro:'__ORGAN_STOMACHPRO__', color:'#10b981', emoji:'🦠' };
+
+function toggleHealthCard(){
+  const m = document.getElementById('health-card-modal');
+  const isHidden = m.style.display==='none'||m.style.display==='';
+  m.style.display = isHidden ? 'flex' : 'none';
+  if(isHidden){
+    requestAnimationFrame(()=>{
+      m.classList.add('modal-visible');
+      buildHealthCard();
+      setupCardTilt();
+    });
+  } else {
+    m.classList.remove('modal-visible');
+    teardownCardTilt();
+  }
+}
+
+function buildHealthCard(){
+  if(!lastHasItem){
+    // Show empty state
+    document.getElementById('hc-organ-list').innerHTML = `<div style="color:rgba(255,255,255,.6);font-size:12px;padding:20px;text-align:center">Hãy chọn thức ăn<br>để xem thẻ sức khỏe</div>`;
+    return;
+  }
+
+  const scores = lastFinalScores;
+
+  // --- Determine "pro" threshold: score >= 6 => pro image ---
+  const PRO_THRESHOLD = 6;
+
+
+  // --- Bubble label: target organ name ---
+  const targetName = currentSelection.target?.name?.replace('Trọng tâm: ','').replace('❤️ ','').replace('💧 ','').replace('🧠 ','').replace('🌬️ ','').replace('🦠 ','') || 'Vitamin K';
+  document.getElementById('hc-bubble-label').textContent = targetName;
+  document.getElementById('hc-k-letter').textContent = targetName[0] || 'K';
+
+  // --- Build organ rows in card (5 organs + veg image) ---
+  const allOrgans = [...HC_ORGAN_META, HC_STOMACH];
+  let organHtml = '';
+  allOrgans.forEach((o, idx) => {
+    const v = scores[o.key] || 0;
+    const isPro = v >= PRO_THRESHOLD;
+    const img = isPro ? o.pro : o.norm;
+    const isDanger = v <= 0;
+    const nameClass = isDanger ? 'hc-organ-name danger' : 'hc-organ-name';
+    // Ring circle: radius 10, circumference ~62.8
+    const pct = Math.max(0, v) / 10;
+    const circ = 62.8;
+    const dash = pct * circ;
+    const ringColor = isDanger ? '#f87171' : o.color;
+    organHtml += `
+      <div class="hc-organ-row hc-organ-item ${isPro?'pro':''}" style="animation-delay:${idx*0.07}s;color:${o.color}">
+        <img src="${img}" alt="${o.label}" ${isPro ? 'style="filter:drop-shadow(0 0 8px '+o.color+')"' : ''}>
+        <div class="hc-organ-info">
+          <div class="${nameClass}">${o.label}${isPro?' ✦':''}</div>
+          <div class="hc-score-ring-wrap" style="display:flex;align-items:center;gap:4px">
+            <svg class="hc-score-ring" width="38" height="38" viewBox="0 0 44 44">
+              <circle cx="22" cy="22" r="10" fill="none" stroke="rgba(255,255,255,.15)" stroke-width="4"/>
+              <circle cx="22" cy="22" r="10" fill="none" stroke="${ringColor}" stroke-width="4"
+                stroke-dasharray="${dash} ${circ}" stroke-linecap="round"
+                style="transition:stroke-dasharray 0.8s ease">
+                <animate attributeName="stroke-dasharray" from="0 ${circ}" to="${dash} ${circ}" dur="0.8s" fill="freeze" begin="${idx*0.07+0.3}s"/>
+              </circle>
+              <text class="hc-score-text" x="22" y="22" font-size="8" font-weight="900" fill="white" text-anchor="middle" dominant-baseline="central">${v}</text>
+            </svg>
+            <span style="font-size:12px;font-weight:900;color:${isDanger?'#f87171':o.color};line-height:1">${v}<span style="font-size:9px;color:rgba(255,255,255,.5);font-weight:600">/10</span></span>
+          </div>
+        </div>
+      </div>`;
+  });
+  // veg moved to formula strip
+  document.getElementById('hc-organ-list').innerHTML = organHtml;
+
+  // --- Mini radar in card ---
+  renderHcRadar('hc-radar-mini', 65, 60, 50, 4);
+
+  // --- Large radar in panel ---
+  renderHcRadar('hc-radar-large', 190, 180, 118, 26);
+
+  // --- Formula col in card ---
+  const sel = currentSelection;
+  const aiText = document.getElementById('ai-msg')?.innerHTML || '';
+  document.getElementById('hc-formula-col').innerHTML = `
+    <strong>Công thức:</strong><br>
+    ${sel.base ? '🍚 '+sel.base.name.substring(0,18) : ''}<br>
+    ${sel.protein ? '🥩 '+sel.protein.name.substring(0,18) : ''}<br>
+    ${sel.veg ? '🥦 '+sel.veg.name.substring(0,18) : ''}<br>
+    ${sel.top ? '⭐ '+sel.top.name.substring(0,18) : ''}
+    ${sel.avoid ? '<br><span class="hc-avoid">⚠ '+sel.avoid.name.substring(0,16)+'</span>' : ''}
+    <div style="text-align:center;margin:6px 0 2px">
+      <img src="__ORGAN_VEGETABLES__" style="width:100%;max-width:90px;opacity:0.92;animation:hc-float 4s ease-in-out infinite;display:inline-block" alt="veg">
+    </div>
+    <div class="hc-ai-quote">${aiText.replace(/<[^>]*>/g,'').substring(0,90)}...</div>
+  `;
+
+  // --- Right panel: organ breakdown ---
+  let breakdownHtml = '';
+  allOrgans.forEach(o => {
+    const v = scores[o.key] || 0;
+    const isPro = v >= PRO_THRESHOLD;
+    const lbl = resultScoreLabel(v);
+    const img = isPro ? o.pro : o.norm;
+    const bar = Math.max(0, v) * 10;
+    breakdownHtml += `
+      <div class="flex items-center gap-3 bg-white/5 rounded-xl px-3 py-2">
+        <img src="${img}" class="w-9 h-9 object-contain shrink-0" style="${isPro?'filter:drop-shadow(0 0 6px '+o.color+')':''}">
+        <div class="flex-1">
+          <div class="flex justify-between items-center mb-1">
+            <span class="text-white text-xs font-bold">${o.label} ${isPro?'✦ PRO':''}</span>
+            <span class="text-xs font-mono font-black" style="color:${lbl.color}">${v}/10</span>
+          </div>
+          <div class="h-1.5 rounded-full bg-white/10">
+            <div class="h-full rounded-full transition-all duration-700" style="width:${bar}%;background:${o.color}"></div>
+          </div>
+          <div class="text-[10px] font-bold mt-0.5" style="color:${lbl.color}">${lbl.txt}</div>
+        </div>
+      </div>`;
+  });
+  document.getElementById('hc-organ-breakdown').innerHTML = breakdownHtml;
+
+  // --- Formula recap ---
+  const cats = [
+    { label:'🎯 Mục tiêu', val: sel.target?.name?.replace('Trọng tâm: ','') },
+    { label:'🍚 Nền', val: sel.base?.name },
+    { label:'🥩 Đạm', val: sel.protein?.name },
+    { label:'🥦 Rau', val: sel.veg?.name },
+    { label:'⭐ Super', val: sel.top?.name },
+    { label:'🚫 Phá hoại', val: sel.avoid?.name, danger: true },
+  ];
+  document.getElementById('hc-formula-recap').innerHTML = cats.map(c =>
+    `<div class="flex justify-between gap-2">
+       <span class="opacity-60">${c.label}:</span>
+       <span class="font-bold text-right ${c.danger?'text-rose-400':'text-white'}">${c.val || '---'}</span>
+     </div>`
+  ).join('');
+
+  // --- AI summary ---
+  const sArr = Object.values(lastFinalScores);
+  const avg = (sArr.reduce((a,b)=>a+b,0)/sArr.length).toFixed(1);
+  const bestO = allOrgans.slice().sort((a,b)=>scores[b.key]-scores[a.key])[0];
+  const worstO = allOrgans.slice().sort((a,b)=>scores[a.key]-scores[b.key])[0];
+  const haz = sel.avoid;
+  let summary = `<strong>Điểm trung bình: ${avg}/10.</strong> `;
+  summary += `Cơ quan khỏe nhất là <strong style="color:${bestO.color}">${bestO.label}</strong> (${scores[bestO.key]}/10${scores[bestO.key]>=PRO_THRESHOLD?' — đạt cấp độ <b>PRO ✦</b>':''}).`;
+  if(scores[worstO.key] <= 3){
+    summary += ` Cần chú ý <strong style="color:#f87171">${worstO.label}</strong> (${scores[worstO.key]}/10) đang ở mức thấp${haz?' — do ảnh hưởng của "'+haz.name+'"':''}.`;
+  }
+  document.getElementById('hc-ai-recap').innerHTML = summary;
+}
+
+function renderHcRadar(svgId, cx, cy, maxR, labelR_extra){
+  const svg = document.getElementById(svgId);
+  if(!svg) return;
+  const PRO_T = 6;
+  const allOrgans6 = [
+    { key:'brain',   color:'#8b5cf6', norm:'__ORGAN_BRAIN__',   pro:'__ORGAN_BRAINPRO__'   },
+    { key:'heart',   color:'#ef4444', norm:'__ORGAN_HEART__',   pro:'__ORGAN_HEARTPRO__'   },
+    { key:'liver',   color:'#f59e0b', norm:'__ORGAN_LIVER__',   pro:'__ORGAN_LIVERPRO__'   },
+    { key:'kidney',  color:'#3b82f6', norm:'__ORGAN_KIDNEY__',  pro:'__ORGAN_KIDNEYPRO__'  },
+    { key:'stomach', color:'#10b981', norm:'__ORGAN_STOMACH__', pro:'__ORGAN_STOMACHPRO__' },
+    { key:'lungs',   color:'#06b6d4', norm:'__ORGAN_LUNGS__',   pro:'__ORGAN_LUNGSPRO__'   },
+  ];
+  const n = 6;
+  const ang = i => -Math.PI/2 + i*(2*Math.PI/n);
+  const pt = (i, val) => {
+    const r = (Math.max(0,val)/10)*maxR;
+    return [cx + r*Math.cos(ang(i)), cy + r*Math.sin(ang(i))];
+  };
+  // ptR: place a point at an absolute radius (used for icons/labels sitting
+  // just outside the hexagon, regardless of the 0-10 score scale)
+  const ptR = (i, r) => [cx + r*Math.cos(ang(i)), cy + r*Math.sin(ang(i))];
+  // Icon size scales with radar size
+  const iconR = Math.round(maxR * 0.22);
+  let h = '';
+  // Grid
+  [.25,.5,.75,1].forEach(f=>{
+    const pts = allOrgans6.map((_,i)=>pt(i,10*f).join(',')).join(' ');
+    h += `<polygon points="${pts}" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="0.8"/>`;
+  });
+  allOrgans6.forEach((_,i)=>{
+    const [x,y]=pt(i,10);
+    h += `<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="rgba(255,255,255,0.1)" stroke-width="0.8"/>`;
+  });
+  // Data polygon
+  const dataPts = allOrgans6.map((o,i)=>pt(i, lastFinalScores[o.key]||0).join(',')).join(' ');
+  const zeroPts = allOrgans6.map((_,i)=>pt(i,0).join(',')).join(' ');
+  h += `
+    <defs>
+      <linearGradient id="hcGrad_${svgId}" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" style="stop-color:#a855f7;stop-opacity:0.55"/>
+        <stop offset="100%" style="stop-color:#f43f5e;stop-opacity:0.45"/>
+      </linearGradient>
+    </defs>
+    <polygon points="${dataPts}" fill="url(#hcGrad_${svgId})" stroke="#e879f9" stroke-width="2" stroke-linejoin="round">
+      <animate attributeName="points" from="${zeroPts}" to="${dataPts}" dur="0.9s" fill="freeze" calcMode="spline" keySplines="0.34 0.8 0.64 1"/>
+    </polygon>`;
+  // Dots
+  allOrgans6.forEach((o,i)=>{
+    const [vx,vy]=pt(i, lastFinalScores[o.key]||0);
+    h += `<circle cx="${vx}" cy="${vy}" r="3.5" fill="${o.color}" stroke="#0b0a1f" stroke-width="1.2"/>`;
+  });
+  // Organ icons + score at corners (only for large radar - iconR > 18)
+  allOrgans6.forEach((o,i)=>{
+    const score = lastFinalScores[o.key]||0;
+    const isPro = score >= PRO_T;
+    const img = isPro ? o.pro : o.norm;
+    const [lx,ly] = ptR(i, maxR + labelR_extra);
+    if(iconR >= 16) {
+      // Large radar: show organ image circle + score
+      h += `
+        <circle cx="${lx}" cy="${ly}" r="${iconR+3}" fill="rgba(10,8,30,0.82)" stroke="${o.color}" stroke-width="${isPro?2:1}" stroke-opacity="0.7"/>
+        <image href="${img}" x="${lx-iconR}" y="${ly-iconR}" width="${iconR*2}" height="${iconR*2}" preserveAspectRatio="xMidYMid meet"${isPro?' style="filter:drop-shadow(0 0 4px '+o.color+')"':''}/>
+        <text x="${lx}" y="${ly+iconR+12}" text-anchor="middle" font-size="11" font-weight="900" fill="${o.color}">${score}/10</text>`;
+    } else {
+      // Mini radar: just score label
+      h += `<text x="${lx}" y="${ly}" text-anchor="middle" font-size="8" font-weight="700" fill="${o.color}">${score}</text>`;
+    }
+  });
+  svg.innerHTML = h;
+}
+
+// 3D tilt on the card
+let _hcTiltActive = false;
+function setupCardTilt(){
+  _hcTiltActive = true;
+  const card = document.getElementById('hc-card');
+  const wrap = document.getElementById('hc-card-wrap');
+  wrap.addEventListener('mousemove', _hcMouseMove);
+  wrap.addEventListener('mouseleave', _hcMouseLeave);
+}
+function teardownCardTilt(){
+  _hcTiltActive = false;
+  const wrap = document.getElementById('hc-card-wrap');
+  wrap.removeEventListener('mousemove', _hcMouseMove);
+  wrap.removeEventListener('mouseleave', _hcMouseLeave);
+}
+function _hcMouseMove(e){
+  const card = document.getElementById('hc-card');
+  const r = card.getBoundingClientRect();
+  const x = ((e.clientX - r.left) / r.width - 0.5) * 24;
+  const y = ((e.clientY - r.top)  / r.height - 0.5) * -24;
+  card.style.transform = `rotateX(${y}deg) rotateY(${x}deg)`;
+}
+function _hcMouseLeave(){
+  const card = document.getElementById('hc-card');
+  card.style.transition = 'transform 0.5s cubic-bezier(0.34,1.56,0.64,1)';
+  card.style.transform = 'rotateX(0deg) rotateY(0deg)';
+  setTimeout(()=>{ card.style.transition = 'transform 0.1s linear'; }, 500);
+}
+
+</script>
+
+</body>
+</html>
