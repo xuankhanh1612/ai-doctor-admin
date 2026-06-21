@@ -105,10 +105,10 @@ export function syncBeMeoWater(amount = WATER_AMOUNT_ML, source = 'health-journe
   try {
     const messages = JSON.parse(localStorage.getItem(BE_MEO_CHAT_KEY) || '[]')
     const nextMessages = Array.isArray(messages) ? messages : []
-    nextMessages.push({ role: 'bot', text: botText })
+    nextMessages.push({ role: 'bot', text: botText, time: new Date().toISOString() })
     localStorage.setItem(BE_MEO_CHAT_KEY, JSON.stringify(nextMessages.slice(-80)))
   } catch {
-    localStorage.setItem(BE_MEO_CHAT_KEY, JSON.stringify([{ role: 'bot', text: botText }]))
+    localStorage.setItem(BE_MEO_CHAT_KEY, JSON.stringify([{ role: 'bot', text: botText, time: new Date().toISOString() }]))
   }
 
   window.dispatchEvent(new CustomEvent(BE_MEO_SYNC_EVENT, { detail: { amount, source, state, botText } }))
