@@ -385,6 +385,9 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
 
         {/* ===== NAV BUTTONS BOTTOM ===== */}
         <NavButtons onNext={onNext} nextLabel={nextLabel} onPrev={onPrev} prevLabel={prevLabel} />
+      </div>
+    </div>
+  )
 }
 
 function statPill(isDark) {
