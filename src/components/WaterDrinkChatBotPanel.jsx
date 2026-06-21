@@ -17,7 +17,7 @@ import robotTuThe2Url from '../waterdrink-khanh/Robot-mang-giong-noi-nguoi-thuon
 
 export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, nextLabel, onViewMedicalRecord }) {
   const { theme } = useApp()
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const isDark = theme === 'dark'
 
   const [snapshot, setSnapshot] = useState(() => getTaskSnapshot(user))
@@ -45,9 +45,22 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
   // đây là nguồn dữ liệu bền vững nhất — không phụ thuộc localStorage quota hay React memory cũ.
   // Mỗi record uống nước được lưu qua saveWaterProofImage() đã có sẵn beMeoProofId + dataUrl.
   const [proofMapReady, setProofMapReady] = useState(false)
+  // === FIX: ref song song với proofMapReady, đọc được ngay (không bị stale closure)
+  // bên trong handler BE_MEO_PROOF_RESTORE_REQUEST ở effect khác bên dưới.
+  const proofMapReadyRef = useRef(false)
   useEffect(() => {
+    // === FIX: KHÔNG load proofMap khi AuthContext chưa khôi phục session xong (authLoading=true).
+    // Lý do: useAuth() trả user=null ở lần render đầu tiên (AuthProvider khôi phục session trong
+    // useEffect riêng, mà effect của component con luôn chạy TRƯỚC effect của component cha) →
+    // nếu fetch ngay lúc này, getAllRecords({ ownerEmail: undefined }) sẽ luôn trả về RỖNG (canSeeRecord
+    // yêu cầu ownerEmail khớp), khiến proofMapReady=true với proofMap rỗng → effect bulk-restore
+    // authoritative bên dưới gửi validProofIds=[] cho iframe → iframe xoá sạch toàn bộ nút "Xem lại
+    // ảnh" + proofId trong tin nhắn rồi lưu đè localStorage. Đây chính là lý do bug xảy ra ở MỌI lần
+    // tải lại trang đầu tiên (vd: sau khi deploy lại web) — không phải race condition ngẫu nhiên.
+    if (authLoading) return
     let cancelled = false
     setProofMapReady(false)
+    proofMapReadyRef.current = false
     getAllRecords({ ownerEmail: user?.email })
       .then((records) => {
         if (cancelled) return
@@ -56,14 +69,20 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
             proofMapRef.current[record.beMeoProofId] = record.dataUrl
           }
         })
+        proofMapReadyRef.current = true
         setProofMapReady(true)
       })
       .catch((err) => {
         console.error('WaterDrinkChatBotPanel: lỗi nạp proofMap từ IndexedDB', err)
-        if (!cancelled) setProofMapReady(true)
+        if (!cancelled) {
+          // === FIX: KHÔNG đánh dấu ready khi load lỗi — nếu đánh dấu ready, effect bulk-restore
+          // bên dưới sẽ gửi validProofIds RỖNG cho iframe → iframe hiểu nhầm "tất cả proof đã bị xoá"
+          // và xoá sạch nút "Xem lại ảnh" + proofId trong tin nhắn (mất dữ liệu vĩnh viễn).
+          // Cứ để proofMapReady = false, người dùng vẫn thấy ảnh cũ (qua sessionStorage trong iframe).
+        }
       })
     return () => { cancelled = true }
-  }, [user])
+  }, [user, authLoading])
 
   // Gửi toàn bộ proofMap đã nạp vào iframe ngay khi iframe sẵn sàng VÀ proofMap đã load xong
   // (đợi cả 2 điều kiện vì thứ tự iframe onLoad vs IndexedDB load không cố định)
@@ -98,12 +117,18 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
           return true
         })
         .map(([proofId, dataUrl]) => ({ proofId, dataUrl }))
-      const validProofIds = entries.map(({ proofId }) => proofId)
-      iframe.contentWindow.postMessage({
-        type: 'BE_MEO_PROOF_BULK_RESTORE',
-        proofMapEntries: entries,
-        validProofIds,
-      }, '*')
+      const payload = { type: 'BE_MEO_PROOF_BULK_RESTORE', proofMapEntries: entries }
+      // === FIX: CHỈ gửi validProofIds (báo iframe xoá proofId không còn tồn tại) khi proofMap
+      // ĐÃ CHẮC CHẮN load xong từ IndexedDB (proofMapReadyRef.current === true). Nếu gửi lúc
+      // proofMap còn rỗng (vd: iframe vừa load đã hỏi ngay BE_MEO_PROOF_RESTORE_REQUEST, trước khi
+      // getAllRecords() resolve) → iframe sẽ hiểu nhầm TẤT CẢ proof đã bị xoá và xoá sạch nút
+      // "Xem lại ảnh" + proofId trong tin nhắn, rồi lưu đè localStorage → mất dữ liệu vĩnh viễn.
+      // Việc dọn dẹp proof thật sự đã bị xoá vẫn diễn ra an toàn ở effect bulk-restore "authoritative"
+      // phía trên (chỉ chạy khi proofMapReady === true).
+      if (proofMapReadyRef.current) {
+        payload.validProofIds = entries.map(({ proofId }) => proofId)
+      }
+      iframe.contentWindow.postMessage(payload, '*')
     }
 
     const onMessage = (event) => {
