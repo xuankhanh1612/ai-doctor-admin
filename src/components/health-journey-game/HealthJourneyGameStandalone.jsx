@@ -509,7 +509,10 @@ export default function HealthJourneyGameStandalone({ onViewMedicalRecord }) {
   const [taskPopupKey, setTaskPopupKey] = useState(null)    // taskId | null
   const [journeyPopupKey, setJourneyPopupKey] = useState(null) // chapterKey | 'overview' | null
   // ── Help Center overlay state ──
-  const [helpOpen, setHelpOpen] = useState(false)
+  // Tự động mở Help Center ngay khi vào trang Health Journey Game (mỗi lần mount lại trang
+  // này — vì panel bị unmount/remount mỗi khi chuyển qua trang khác rồi quay lại, theo App.jsx).
+  // User bấm nút "✕" trong HelpOverlay (đã có sẵn, gọi onClose) để đóng khi không cần nữa.
+  const [helpOpen, setHelpOpen] = useState(true)
 
   useEffect(() => {
     const refreshSnapshot = () => {
