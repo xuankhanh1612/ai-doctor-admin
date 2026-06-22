@@ -1,4 +1,4 @@
-import React, { useRef } from 'react'
+import React, { useEffect, useRef } from 'react'
 import NavButtons from './NavButtons.jsx'
 import { useApp } from '../context/AppContext' 
 
@@ -11,10 +11,19 @@ export default function HealthJourneyGamePanel({ onNext, nextLabel, onViewMedica
   const { lang } = useApp()
   const gameRef = useRef(null)
 
-  // Gửi custom event xuống HealthJourneyGameStandalone và cuộn game vào tầm nhìn.
+  // Scroll trang lên khi game chuyển màn hình (từ cả 2 nguồn: 7 nút nav dưới game + flipped map).
+  useEffect(() => {
+    const onScreenChange = () => {
+      gameRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+    window.addEventListener('hjg-screen-changed', onScreenChange)
+    return () => window.removeEventListener('hjg-screen-changed', onScreenChange)
+  }, [])
+
+  // Dispatch hjg-navigate → HealthJourneyGameStandalone xử lý qua goTo().
+  // Scroll được xử lý duy nhất bởi hjg-screen-changed (goTo() tự dispatch nó).
   const dispatchNavigate = (target) => {
     window.dispatchEvent(new CustomEvent('hjg-navigate', { detail: target }))
-    gameRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
   // Nav-row click: { screen: 'screen-home' | 'screen-nhiem-vu' | … }
