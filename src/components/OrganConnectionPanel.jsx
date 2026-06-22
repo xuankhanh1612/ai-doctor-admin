@@ -384,7 +384,7 @@ function OrganMapModal({ open, onClose, selection }) {
   const organLabels = { brain:'🧠 Não bộ', lungs:'🌬️ Phổi', heart:'❤️ Tim mạch', liver:'🟤 Gan', stomach:'🦠 Dạ dày', kidney:'💧 Thận' }
 
   return (
-    <div style={{ position:'fixed', inset:0, zIndex:50, background:'rgba(5,4,20,0.9)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+    <div style={{ position:'fixed', inset:0, zIndex:9999, background:'rgba(5,4,20,0.9)', display:'flex', alignItems:'center', justifyContent:'center', padding:'12px', overflowY:'auto' }}>
       <style>{`
         .oc-modal { background:linear-gradient(135deg,#0f0c29,#141428,#1a1035); }
         .oc-grid-bg { background-image:linear-gradient(rgba(99,102,241,0.08) 1px,transparent 1px),linear-gradient(90deg,rgba(99,102,241,0.08) 1px,transparent 1px); background-size:40px 40px; }
@@ -407,7 +407,7 @@ function OrganMapModal({ open, onClose, selection }) {
           .oc-map-organ-col .oc-organ-node { flex:1 1 80px; justify-content:center; flex-direction:column; text-align:center; }
         }
       `}</style>
-      <div className="oc-modal" style={{ borderRadius:24, width:'96vw', maxWidth:1100, height:'96vh', position:'relative', overflow:'hidden', display:'flex', flexDirection:'column' }}>
+      <div className="oc-modal" style={{ borderRadius:24, width:'96vw', maxWidth:1100, height:'min(96vh, calc(100vh - 24px))', maxHeight:'calc(100vh - 24px)', position:'relative', overflow:'hidden', display:'flex', flexDirection:'column', flexShrink:0 }}>
         <div className="oc-grid-bg" style={{ position:'absolute', inset:0, pointerEvents:'none' }} />
 
         {/* Header */}
@@ -524,11 +524,11 @@ function ResultModal({ open, onClose, scores, hasItem, selection }) {
   const worst = RESULT_ORGAN_META.slice().sort((a, b) => (scores[a.key] || 0) - (scores[b.key] || 0))[0]
 
   return (
-    <div style={{ position:'fixed', inset:0, zIndex:50, background:'rgba(5,4,20,0.9)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+    <div style={{ position:'fixed', inset:0, zIndex:9999, background:'rgba(5,4,20,0.9)', display:'flex', alignItems:'center', justifyContent:'center', padding:'12px', overflowY:'auto' }}>
       <style>{`.rm-grid-bg { background-image:linear-gradient(rgba(99,102,241,0.08) 1px,transparent 1px),linear-gradient(90deg,rgba(99,102,241,0.08) 1px,transparent 1px); background-size:40px 40px; }
         @media(max-width:768px){.rm-body{flex-direction:column!important;overflow:auto!important}.rm-right-panel{width:100%!important;border-left:none!important;border-top:1px solid rgba(255,255,255,0.1)!important}}
       `}</style>
-      <div style={{ background:'linear-gradient(135deg,#0f0c29,#141428,#1a1035)', borderRadius:24, width:'96vw', maxWidth:1000, height:'96vh', position:'relative', overflow:'hidden', display:'flex', flexDirection:'column' }}>
+      <div style={{ background:'linear-gradient(135deg,#0f0c29,#141428,#1a1035)', borderRadius:24, width:'96vw', maxWidth:1000, height:'min(96vh, calc(100vh - 24px))', maxHeight:'calc(100vh - 24px)', position:'relative', overflow:'hidden', display:'flex', flexDirection:'column', flexShrink:0 }}>
         <div className="rm-grid-bg" style={{ position:'absolute', inset:0, pointerEvents:'none' }} />
         <div style={{ position:'relative', zIndex:10, display:'flex', alignItems:'center', justifyContent:'space-between', padding:'20px 32px 16px', borderBottom:'1px solid rgba(255,255,255,0.1)', flexShrink:0 }}>
           <div>
@@ -621,7 +621,7 @@ function HealthCardModal({ open, onClose, scores, hasItem, selection }) {
   const worstO = allOrgans.slice().sort((a,b)=>(scores[a.key]||0)-(scores[b.key]||0))[0]
 
   return (
-    <div style={{ position:'fixed', inset:0, zIndex:50, background:'rgba(5,4,20,0.92)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+    <div style={{ position:'fixed', inset:0, zIndex:9999, background:'rgba(5,4,20,0.92)', display:'flex', alignItems:'center', justifyContent:'center', padding:'12px', overflowY:'auto' }}>
       <style>{`
         .hc-grid-bg { background-image:linear-gradient(rgba(99,102,241,0.08) 1px,transparent 1px),linear-gradient(90deg,rgba(99,102,241,0.08) 1px,transparent 1px); background-size:40px 40px; }
         @keyframes hc-card-shine { from{transform:translateX(-120%) rotate(25deg)} to{transform:translateX(120%) rotate(25deg)} }
@@ -629,7 +629,7 @@ function HealthCardModal({ open, onClose, scores, hasItem, selection }) {
         .hc-shine { animation:hc-card-shine 5s linear infinite; }
         .hc-veg-float { animation:hc-float 4s ease-in-out infinite; }
       `}</style>
-      <div className="hc-grid-bg" style={{ background:'linear-gradient(135deg,#0f0c29,#141428,#1a1035)', borderRadius:24, width:'96vw', maxWidth:900, maxHeight:'96vh', position:'relative', overflow:'hidden', display:'flex', flexDirection:'column' }}>
+      <div className="hc-grid-bg" style={{ background:'linear-gradient(135deg,#0f0c29,#141428,#1a1035)', borderRadius:24, width:'96vw', maxWidth:900, maxHeight:'calc(100vh - 24px)', position:'relative', overflow:'hidden', display:'flex', flexDirection:'column', flexShrink:0 }}>
         <div style={{ position:'relative', zIndex:10, display:'flex', alignItems:'center', justifyContent:'space-between', padding:'20px 28px 16px', borderBottom:'1px solid rgba(255,255,255,0.1)', flexShrink:0 }}>
           <div>
             <h2 style={{ color:'#fff', fontSize:20, fontWeight:900, display:'flex', alignItems:'center', gap:12, margin:0 }}>🃏 Export My Health Level Card</h2>
