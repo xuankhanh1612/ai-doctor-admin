@@ -66,7 +66,7 @@ export default function HelpOverlay({ open, onClose, onNavigate }) {
       <div className="hj-help-body">
         <div className="hj-help-body-main">
           {activeTab === 'flow' ? (
-            <HelpFlowMap onJumpToScreen={handleJumpToScreen} onJumpToDetail={handleJumpToDetail} />
+            <HelpFlowMap onJumpToScreen={handleJumpToScreen} onJumpToDetail={handleJumpToDetail} onNavigate={onNavigate} />
           ) : (
             <HelpScreenViewer mode={activeTab === 'menu' ? 'menu' : 'screen'} screen={activeScreen} />
           )}

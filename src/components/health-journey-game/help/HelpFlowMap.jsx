@@ -53,7 +53,7 @@ function ShortConnector({ x, y1, y2, color, id }) {
   )
 }
 
-export default function HelpFlowMap({ onJumpToScreen, onJumpToDetail, flipped = false }) {
+export default function HelpFlowMap({ onJumpToScreen, onJumpToDetail, onNavigate, flipped = false }) {
   // When flipped: nav sits at bottom, screen in middle, detail at top.
   // dirSign drives offsets that point "toward the center" from each row.
   const NAV_Y    = flipped ? VB_H - 46  : 46
@@ -126,7 +126,7 @@ export default function HelpFlowMap({ onJumpToScreen, onJumpToDetail, flipped = 
             key={nav.id}
             transform={`translate(${colX(i)}, ${NAV_Y})`}
             className="hj-flow-node hj-flow-node-nav"
-            onClick={() => onJumpToScreen?.(nav.id)}
+            onClick={() => onNavigate ? onNavigate({ screen: nav.id }) : onJumpToScreen?.(nav.id)}
           >
             <circle r={nav.isCenter ? 27 : 23} className="hj-flow-nav-circle" stroke={nav.color} />
             <text textAnchor="middle" dy="7" className="hj-flow-nav-icon">{nav.icon}</text>
@@ -140,7 +140,7 @@ export default function HelpFlowMap({ onJumpToScreen, onJumpToDetail, flipped = 
             key={`s-${nav.id}`}
             transform={`translate(${colX(i) - 46}, ${screenCardY})`}
             className="hj-flow-node hj-flow-node-screen"
-            onClick={() => onJumpToScreen?.(nav.id)}
+            onClick={() => onNavigate ? onNavigate({ screen: nav.id }) : onJumpToScreen?.(nav.id)}
           >
             <rect width="92" height="64" rx="10" className="hj-flow-card" stroke={nav.color} />
             <text x="46" y="26" textAnchor="middle" className="hj-flow-card-icon">{nav.icon}</text>
