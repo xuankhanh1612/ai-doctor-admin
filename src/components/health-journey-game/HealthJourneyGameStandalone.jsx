@@ -660,6 +660,17 @@ export default function HealthJourneyGameStandalone({ onViewMedicalRecord }) {
     }, 80)
   }
 
+  // ── Flipped HelpFlowMap (bên ngoài game panel) → điều hướng vào game ──
+  // Dùng ref để tránh stale closure trong event listener.
+  const handleHelpNavigateRef = useRef(null)
+  handleHelpNavigateRef.current = handleHelpNavigate
+
+  useEffect(() => {
+    const onFlippedNavigate = (e) => handleHelpNavigateRef.current?.(e.detail)
+    window.addEventListener('hjg-navigate', onFlippedNavigate)
+    return () => window.removeEventListener('hjg-navigate', onFlippedNavigate)
+  }, [])
+
   const startWaterCamera = async () => {
     setCameraError('')
     try {
