@@ -1,9 +1,6 @@
-import React, { useMemo } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import NavButtons from './NavButtons.jsx'
 import { useApp } from '../context/AppContext'
-
-// @ts-ignore Vite raw HTML import
-import organConnectionHtml from '../organ-connection/organ-connection.html?raw'
 
 import organBoyUrl        from '../organ-connection/assets/boy.png'
 import organBrainUrl      from '../organ-connection/assets/brain.png'
@@ -21,100 +18,1097 @@ import organStomachUrl    from '../organ-connection/assets/stomach.png'
 import organStomachProUrl from '../organ-connection/assets/stomachpro.png'
 import organVegetablesUrl from '../organ-connection/assets/vegetables.png'
 
-// Topbar height ~56px. Popups inside the iframe use vh units relative to the
-// iframe's own viewport, so giving the iframe the full remaining screen height
-// (100svh - topbar) makes popups as tall as possible.
-// NavButtons are overlaid at the bottom via position:absolute so they don't
-// reduce the iframe's height at all.
-const TOPBAR_H = 56  // px
+// ─── Database ────────────────────────────────────────────────────────────────
+const DB = {
+  target: [
+    { id: 'liver',   name: 'Trọng tâm: Gan',       emoji: '🫀', img: organLiverUrl,  desc: 'Ưu tiên x1.5 điểm Giải độc & lọc cồn',         organKey: 'liver' },
+    { id: 'kidney',  name: '💧 Trọng tâm: Thận',   emoji: '💧',                       desc: 'Ưu tiên x1.5 điểm Lọc màng & tiết niệu',       organKey: 'kidney' },
+    { id: 'heart',   name: '❤️ Trọng tâm: Tim mạch',emoji: '❤️',                      desc: 'Ưu tiên x1.5 điểm Bền mạch & hạ mỡ máu',       organKey: 'heart' },
+    { id: 'stomach', name: '🦠 Trọng tâm: Tiêu hóa',emoji: '🦠',                     desc: 'Ưu tiên x1.5 điểm Tráng niêm mạc & enzyme',    organKey: 'stomach' },
+    { id: 'brain',   name: '🧠 Trọng tâm: Não bộ', emoji: '🧠',                       desc: 'Ưu tiên x1.5 điểm Tuần hoàn & thông mạch não', organKey: 'brain' },
+    { id: 'lungs',   name: '🌬️ Trọng tâm: Phổi',  emoji: '🌬️',                      desc: 'Ưu tiên x1.5 điểm Thanh phế & hô hấp',         organKey: 'lungs' },
+  ],
+  base: [
+    { id: 'yenmach',    name: 'Yến mạch nguyên cám', emoji: '🥣', heart:5,liver:5,stomach:9,kidney:5,brain:6,lungs:5,  tag:'Tráng dạ dày' },
+    { id: 'gaobasmati', name: 'Gạo Basmati',          emoji: '🍚', heart:5,liver:4,stomach:8,kidney:4,brain:4,lungs:3,  tag:'GI thấp' },
+    { id: 'miengaolut', name: 'Miến gạo lứt',          emoji: '🍜', heart:4,liver:5,stomach:7,kidney:4,brain:4,lungs:3,  tag:'Nhẹ bụng' },
+    { id: 'khoaimon',   name: 'Khoai môn hấp',         emoji: '🍠', heart:3,liver:5,stomach:8,kidney:6,brain:3,lungs:4,  tag:'Nhiều xơ' },
+    { id: 'daukho',     name: 'Đậu tổng hợp',           emoji: '🫘', heart:8,liver:6,stomach:4,kidney:5,brain:7,lungs:5,  tag:'Siêu đạm thô' },
+  ],
+  protein: [
+    { id: 'trungga',  name: 'Trứng gà ta luộc',  emoji: '🥚', heart:5,liver:5,stomach:7,kidney:4,brain:8,lungs:4,  tag:'Giàu Choline' },
+    { id: 'tom',      name: 'Tôm hấp nước dừa',  emoji: '🦐', heart:6,liver:4,stomach:5,kidney:4,brain:5,lungs:4,  tag:'Canxi tinh khiết' },
+    { id: 'cathu',    name: 'Cá thu đại dương',   emoji: '🐟', heart:8,liver:5,stomach:5,kidney:4,brain:8,lungs:7,  tag:'Dồi dào DHA' },
+    { id: 'dauhu',    name: 'Đậu hũ non',          emoji: '🧈', heart:7,liver:6,stomach:8,kidney:5,brain:5,lungs:5,  tag:'Thanh nhiệt' },
+    { id: 'ucvit',    name: 'Ức vịt áp chảo',     emoji: '🦆', heart:3,liver:2,stomach:4,kidney:2,brain:3,lungs:2,  tag:'Tính hàn' },
+    { id: 'cangu',    name: 'Cá ngừ phi-lê',       emoji: '🐠', heart:7,liver:5,stomach:4,kidney:4,brain:8,lungs:6,  tag:'Bổ máu' },
+    { id: 'cahoi',    name: 'Cá hồi Na Uy',        emoji: '🍣', heart:8,liver:3,stomach:5,kidney:4,brain:7,lungs:8,  tag:'Vua Omega-3' },
+    { id: 'ucga',     name: 'Ức gà xé phay',       emoji: '🍗', heart:5,liver:2,stomach:6,kidney:3,brain:4,lungs:3,  tag:'Đạm nạc' },
+    { id: 'thitbo',   name: 'Thịt bò thăn đỏ',    emoji: '🥩', heart:2,liver:1,stomach:2,kidney:-2,brain:3,lungs:2, tag:'Nặng thận' },
+  ],
+  veg: [
+    { id: 'cailoxoan', name: 'Cải xoăn Kale',       emoji: '🥬', heart:8,liver:7,stomach:5,kidney:4,brain:7,lungs:9,  tag:'Vua chống oxy hóa' },
+    { id: 'raucai',    name: 'Rau cải mầm',           emoji: '🥗', heart:6,liver:6,stomach:7,kidney:5,brain:5,lungs:7,  tag:'Kích thích tiêu hóa' },
+    { id: 'bido',      name: 'Bí đỏ nướng',           emoji: '🎃', heart:5,liver:5,stomach:8,kidney:5,brain:6,lungs:8,  tag:'Bổ thần kinh' },
+    { id: 'mangtay',   name: 'Măng tây xanh',         emoji: '🌱', heart:6,liver:7,stomach:5,kidney:8,brain:5,lungs:5,  tag:'Lợi tiểu cực mạnh' },
+    { id: 'dualeo',    name: 'Dưa leo baby',           emoji: '🥒', heart:5,liver:4,stomach:8,kidney:7,brain:4,lungs:4,  tag:'Cấp nước sinh học' },
+    { id: 'bokchoy',   name: 'Cải thìa (Bok Choy)',   emoji: '🥬', heart:7,liver:7,stomach:6,kidney:6,brain:5,lungs:7,  tag:'Giàu Folate' },
+    { id: 'bongcai',   name: 'Bông cải xanh',         emoji: '🥦', heart:4,liver:9,stomach:3,kidney:5,brain:6,lungs:8,  tag:'Sulforaphane lọc gan' },
+    { id: 'carot',     name: 'Cà rốt hấp chín',       emoji: '🥕', heart:3,liver:4,stomach:8,kidney:4,brain:4,lungs:9,  tag:'Xơ hòa tan' },
+    { id: 'nambaongu', name: 'Nấm bào ngư',           emoji: '🍄', heart:5,liver:6,stomach:4,kidney:7,brain:5,lungs:6,  tag:'Tăng đề kháng' },
+  ],
+  top: [
+    { id: 'hatoccho', name: 'Hạt óc chó',          emoji: '🌰', heart:9,liver:4,stomach:4,kidney:5,brain:9,lungs:6,  tag:'Dinh dưỡng não' },
+    { id: 'hatchia',  name: 'Hạt chia ngâm',        emoji: '⚫', heart:8,liver:5,stomach:8,kidney:5,brain:7,lungs:6,  tag:'Quét sạch thành ruột' },
+    { id: 'vietquat', name: 'Việt quất tươi',       emoji: '🫐', heart:6,liver:8,stomach:5,kidney:5,brain:9,lungs:7,  tag:'Bảo vệ vi mạch' },
+    { id: 'bo',       name: 'Bơ sáp lát',           emoji: '🥑', heart:8,liver:6,stomach:6,kidney:4,brain:8,lungs:6,  tag:'Chất béo đơn không no' },
+    { id: 'nghe',     name: 'Tinh bột nghệ',        emoji: '🟡', heart:6,liver:9,stomach:8,kidney:4,brain:7,lungs:8,  tag:'Curcumin chống viêm' },
+    { id: 'toi',      name: 'Tỏi đen cô đơn',       emoji: '🧄', heart:8,liver:7,stomach:5,kidney:4,brain:5,lungs:9,  tag:'Kháng sinh tự nhiên' },
+    { id: 'traxanh',  name: 'Bột Matcha trà xanh',  emoji: '🍵', heart:6,liver:8,stomach:4,kidney:5,brain:8,lungs:7,  tag:'L-theanine thư giãn' },
+    { id: 'dichuu',   name: 'Dầu Oliu Extra',        emoji: '🫒', heart:7,liver:5,stomach:6,kidney:4,brain:6,lungs:5,  tag:'Polyphenol' },
+    { id: 'meden',    name: 'Mè đen rang',           emoji: '🧋', heart:4,liver:4,stomach:5,kidney:8,brain:6,lungs:5,  tag:'Bổ thận âm' },
+    { id: 'muoihin',  name: 'Muối tinh chế',         emoji: '🧂', heart:-2,liver:-1,stomach:-1,kidney:-6,brain:-2,lungs:-3, tag:'Giữ nước độc hại' },
+  ],
+  avoid: [
+    { id: 'bia',      name: 'Bia tươi / Cồn',          emoji: '🍺', heart:-4,liver:-8,stomach:-5,kidney:-4,brain:-6,lungs:-5,  tag:'Hủy hoại tế bào gan' },
+    { id: 'nuocngot', name: 'Nước ngọt có gas',         emoji: '🥤', heart:-5,liver:-4,stomach:-5,kidney:-4,brain:-6,lungs:-3,  tag:'Quá tải tụy & sỏi thận' },
+    { id: 'xucxich',  name: 'Xúc xích công nghiệp',    emoji: '🌭', heart:-6,liver:-5,stomach:-4,kidney:-4,brain:-3,lungs:-6,  tag:'Nitrat gây ung thư' },
+    { id: 'khoga',    name: 'Khô gà tẩm gia vị',       emoji: '🍗', heart:-2,liver:-2,stomach:-2,kidney:-4,brain:-1,lungs:-2,  tag:'Thừa lượng muối Natri' },
+    { id: 'mitom',    name: 'Mì ăn liền chiên',         emoji: '🍜', heart:-5,liver:-5,stomach:-6,kidney:-5,brain:-4,lungs:-5,  tag:'Chất béo chuyển hóa' },
+  ],
+}
+
+const ORGAN_KEYS = ['liver', 'kidney', 'heart', 'stomach', 'brain', 'lungs']
+const GOOD_CATS  = ['base', 'protein', 'veg', 'top']
+
+const ORGAN_COLOR = { brain:'#8b5cf6', heart:'#ef4444', liver:'#f59e0b', kidney:'#3b82f6', stomach:'#10b981', lungs:'#06b6d4' }
+
+const RESULT_ORGAN_META = [
+  { key:'brain',   label:'Não bộ',   img: organBrainProUrl,   emoji:'🧠' },
+  { key:'heart',   label:'Tim mạch', img: organHeartProUrl,   emoji:'❤️' },
+  { key:'liver',   label:'Gan',      img: organLiverProUrl,   emoji:'🟤' },
+  { key:'kidney',  label:'Thận',     img: organKidneyProUrl,  emoji:'💧' },
+  { key:'stomach', label:'Dạ dày',   img: organStomachProUrl, emoji:'🦠' },
+  { key:'lungs',   label:'Phổi',     img: organLungsProUrl,   emoji:'🌬️' },
+]
+
+const HC_ORGAN_META = [
+  { key:'brain',   label:'Não Bộ',  norm: organBrainUrl,   pro: organBrainProUrl,   color:'#8b5cf6', emoji:'🧠' },
+  { key:'liver',   label:'Gan',     norm: organLiverUrl,   pro: organLiverProUrl,   color:'#f59e0b', emoji:'🟤' },
+  { key:'kidney',  label:'Thận',    norm: organKidneyUrl,  pro: organKidneyProUrl,  color:'#3b82f6', emoji:'💧' },
+  { key:'lungs',   label:'Phổi',    norm: organLungsUrl,   pro: organLungsProUrl,   color:'#06b6d4', emoji:'🌬️' },
+  { key:'heart',   label:'Tim',     norm: organHeartUrl,   pro: organHeartProUrl,   color:'#ef4444', emoji:'❤️' },
+]
+const HC_STOMACH = { key:'stomach', label:'Dạ Dày', norm: organStomachUrl, pro: organStomachProUrl, color:'#10b981', emoji:'🦠' }
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+function getOrganMax(selection) {
+  const organMax = {}
+  ORGAN_KEYS.forEach(o => {
+    let total = 0
+    GOOD_CATS.forEach(cat => {
+      const best = Math.max(...DB[cat].map(it => it[o] || 0))
+      total += Math.max(0, best)
+    })
+    if (selection.target?.organKey === o) total = Math.round(total * 1.5)
+    organMax[o] = total || 1
+  })
+  return organMax
+}
+
+function calculateScores(selection) {
+  let sums = { liver:0, kidney:0, heart:0, stomach:0, brain:0, lungs:0 }
+  let hasItem = false
+
+  GOOD_CATS.forEach(c => {
+    const it = selection[c]
+    if (it) {
+      hasItem = true
+      ORGAN_KEYS.forEach(o => { sums[o] += (it[o] || 0) })
+    }
+  })
+
+  const haz = selection.avoid
+  if (haz) {
+    ORGAN_KEYS.forEach(o => { sums[o] += (haz[o] || 0) })
+  }
+
+  const targetOrgan = selection.target?.organKey
+  if (targetOrgan && hasItem) {
+    sums[targetOrgan] = Math.round(sums[targetOrgan] * 1.5)
+  }
+
+  const organMax = getOrganMax(selection)
+
+  const clamp = (val, organ) => {
+    if (!hasItem && !haz) return 0
+    const sc = Math.round((val / organMax[organ]) * 10)
+    return Math.max(-10, Math.min(10, sc))
+  }
+
+  return {
+    scores: {
+      liver:   clamp(sums.liver,   'liver'),
+      kidney:  clamp(sums.kidney,  'kidney'),
+      heart:   clamp(sums.heart,   'heart'),
+      stomach: clamp(sums.stomach, 'stomach'),
+      brain:   clamp(sums.brain,   'brain'),
+      lungs:   clamp(sums.lungs,   'lungs'),
+    },
+    hasItem,
+    targetOrgan,
+  }
+}
+
+function resultScoreLabel(v) {
+  if (v <= 0)  return { txt:'Báo động',   color:'#f87171' }
+  if (v <= 3)  return { txt:'Thấp',        color:'#fb923c' }
+  if (v <= 6)  return { txt:'Bình thường', color:'#facc15' }
+  if (v <= 8)  return { txt:'Khá',         color:'#34d399' }
+  return              { txt:'Rất tốt',     color:'#22d3ee' }
+}
+
+function getDoctorAIMsg(selection, scores) {
+  const { avoid, target, veg, top, protein } = selection
+  if (avoid?.id === 'bia' && target?.organKey === 'liver') {
+    return `🔥 <strong>Nghịch lý lâm sàng:</strong> Bạn đặt mục tiêu bảo vệ Gan, nhưng lại vừa rót một ly Bia (-8 Gan)? Cồn đang trực tiếp vô hiệu hóa toàn bộ nỗ lực ăn uống của bạn!`
+  }
+  if (avoid?.id === 'nuocngot') {
+    return `⚠️ <strong>Báo động Thận & Tụy:</strong> Lượng đường Fructose lỏng trong nước ngọt đang tạo ra một cơn bão Insulin. Thận của bạn phải gồng mình lọc rác.`
+  }
+  if (target?.organKey === 'liver' && veg?.id === 'bongcai' && top?.id === 'nghe') {
+    return `🌟 <strong>Đại tiệc của Gan:</strong> Sulforaphane (Bông cải) + Curcumin (Nghệ) + Trọng số Mục tiêu tạo ra mâm cơm giải độc hoàn hảo nhất thế giới! Khen ngợi!`
+  }
+  if (top?.id === 'hatoccho' && protein?.id === 'cathu') {
+    return `🧠 <strong>Sóng Alpha não bộ:</strong> Bộ đơn Cá thu đại dương và Hạt óc chó đang bơm trực tiếp DHA và chất béo cấu trúc vào chất xám của bạn.`
+  }
+  if (!selection.base && !selection.protein && !selection.veg) {
+    return `"Hãy chọn 1 Mục tiêu sức khỏe bên trái, sau đó thêm Nền, Đạm và Rau..."`
+  }
+  return `Công thức khá cân bằng! Hãy thử bấm sang tab <strong>🚫 Tránh ăn</strong> và chọn "Bia" hoặc "Nước ngọt" để thử thách sức chịu đựng của mâm cơm này xem sao?`
+}
+
+// ─── RadarSVG ────────────────────────────────────────────────────────────────
+function RadarSVG({ scores, cx, cy, maxR, labelExtra, svgW, svgH, showIcons = true }) {
+  const n = RESULT_ORGAN_META.length
+  const ang = i => -Math.PI / 2 + i * (2 * Math.PI / n)
+  const pt = (i, val) => {
+    const r = (Math.max(0, val) / 10) * maxR
+    const a = ang(i)
+    return [cx + r * Math.cos(a), cy + r * Math.sin(a)]
+  }
+  const ptR = (i, r) => [cx + r * Math.cos(ang(i)), cy + r * Math.sin(ang(i))]
+  const iconR = Math.round(maxR * 0.22)
+  const dataPts = RESULT_ORGAN_META.map((m, i) => pt(i, scores[m.key] || 0).join(',')).join(' ')
+  const zeroPts = RESULT_ORGAN_META.map((_, i) => pt(i, 0).join(',')).join(' ')
+
+  return (
+    <svg viewBox={`0 0 ${svgW} ${svgH}`} style={{ width: '100%', maxWidth: svgW }}>
+      <defs>
+        <linearGradient id="radarFill" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" style={{ stopColor: '#a855f7', stopOpacity: 0.55 }} />
+          <stop offset="100%" style={{ stopColor: '#f43f5e', stopOpacity: 0.45 }} />
+        </linearGradient>
+      </defs>
+      {[0.25, 0.5, 0.75, 1].map((frac, fi) => (
+        <polygon key={fi}
+          points={RESULT_ORGAN_META.map((_, i) => pt(i, 10 * frac).join(',')).join(' ')}
+          fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="1" />
+      ))}
+      {RESULT_ORGAN_META.map((_, i) => {
+        const [x, y] = pt(i, 10)
+        return <line key={i} x1={cx} y1={cy} x2={x} y2={y} stroke="rgba(255,255,255,0.12)" strokeWidth="1" />
+      })}
+      <polygon points={dataPts} fill="url(#radarFill)" stroke="#e879f9" strokeWidth="2.5" strokeLinejoin="round">
+        <animate attributeName="points" from={zeroPts} to={dataPts} dur="0.8s" fill="freeze" calcMode="spline" keySplines="0.34 0.8 0.64 1" />
+      </polygon>
+      {RESULT_ORGAN_META.map((m, i) => {
+        const [vx, vy] = pt(i, scores[m.key] || 0)
+        const color = ORGAN_COLOR[m.key]
+        const [lx, ly] = ptR(i, maxR + labelExtra)
+        const sc = scores[m.key] || 0
+        return (
+          <g key={m.key}>
+            <circle cx={vx} cy={vy} r="4.5" fill={color} stroke="#0b0a1f" strokeWidth="1.5" />
+            {showIcons && iconR >= 16 ? (
+              <>
+                <circle cx={lx} cy={ly} r={iconR + 4} fill="rgba(15,12,40,0.85)" stroke="rgba(255,255,255,0.15)" />
+                <image href={m.img} x={lx - iconR} y={ly - iconR} width={iconR * 2} height={iconR * 2} preserveAspectRatio="xMidYMid meet" />
+                <text x={lx} y={ly + iconR + 14} textAnchor="middle" fontSize="11" fontWeight="700" fill="#ffffff">{m.label}</text>
+                <text x={lx} y={ly + iconR + 27} textAnchor="middle" fontSize="10" fontWeight="700" fill={color}>{sc}/10</text>
+              </>
+            ) : (
+              <text x={lx} y={ly} textAnchor="middle" fontSize="8" fontWeight="700" fill={color}>{sc}</text>
+            )}
+          </g>
+        )
+      })}
+    </svg>
+  )
+}
+
+// ─── OrganMapModal ────────────────────────────────────────────────────────────
+function OrganMapModal({ open, onClose, selection }) {
+  const svgRef = useRef(null)
+  const containerRef = useRef(null)
+
+  const goodItems = GOOD_CATS.map(k => selection[k]).filter(Boolean)
+  const hazardItem = selection.avoid || null
+  const allItems = [...goodItems, ...(hazardItem ? [hazardItem] : [])]
+  const organKeys = ['brain', 'heart', 'liver', 'kidney', 'stomach', 'lungs']
+
+  const organTotals = {}
+  organKeys.forEach(o => { organTotals[o] = 0 })
+  goodItems.forEach(it => { organKeys.forEach(o => { organTotals[o] += (it[o] || 0) }) })
+  if (hazardItem) { organKeys.forEach(o => { organTotals[o] += (hazardItem[o] || 0) }) }
+
+  const damagedOrgans = new Set()
+  const boostedOrgans = new Set()
+  organKeys.forEach(o => {
+    let goodSum = 0
+    goodItems.forEach(it => { goodSum += (it[o] || 0) })
+    if (hazardItem && (hazardItem[o] || 0) < 0) damagedOrgans.add(o)
+    if (goodSum > 0) boostedOrgans.add(o)
+  })
+
+  useEffect(() => {
+    if (!open || !svgRef.current || !containerRef.current) return
+    const timeout = setTimeout(() => {
+      const svg = svgRef.current
+      const container = containerRef.current
+      if (!svg || !container) return
+      svg.innerHTML = ''
+      const svgRect = svg.getBoundingClientRect()
+
+      // Good food lines
+      goodItems.forEach((it, i) => {
+        const foodNode = container.querySelectorAll('.oc-food-node')[i]
+        if (!foodNode) return
+        const foodRect = foodNode.getBoundingClientRect()
+        const fx = foodRect.right - svgRect.left
+        const fy = foodRect.top + foodRect.height / 2 - svgRect.top
+
+        organKeys.forEach(o => {
+          if ((it[o] || 0) <= 0) return
+          const organNode = container.querySelector(`.oc-organ-node[data-organ="${o}"]`)
+          if (!organNode) return
+          const oRect = organNode.getBoundingClientRect()
+          const ox = oRect.left - svgRect.left
+          const oy = oRect.top + oRect.height / 2 - svgRect.top
+          const score = it[o]
+          const color = ORGAN_COLOR[o]
+          const opacity = 0.18 + (score / 10) * 0.65
+          const strokeW = 0.8 + (score / 10) * 2.8
+          const pathLen = Math.sqrt((ox - fx) ** 2 + (oy - fy) ** 2)
+          const uid = `pos_${i}_${o}`
+          const ctrl1x = fx + (ox - fx) * 0.4, ctrl1y = fy
+          const ctrl2x = fx + (ox - fx) * 0.6, ctrl2y = oy
+          svg.innerHTML += `
+            <defs>
+              <linearGradient id="grad_${uid}" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" style="stop-color:#6366f1;stop-opacity:0.5"/>
+                <stop offset="100%" style="stop-color:${color};stop-opacity:0.9"/>
+              </linearGradient>
+            </defs>
+            <path id="${uid}" d="M${fx},${fy} C${ctrl1x},${ctrl1y} ${ctrl2x},${ctrl2y} ${ox},${oy}"
+              fill="none" stroke="url(#grad_${uid})" stroke-width="${strokeW}" stroke-opacity="${opacity}"
+              stroke-dasharray="${pathLen}" stroke-dashoffset="${pathLen}">
+              <animate attributeName="stroke-dashoffset" from="${pathLen}" to="0" dur="0.7s" begin="${0.25 + i * 0.1}s" fill="freeze" calcMode="spline" keySplines="0.4 0 0.2 1"/>
+            </path>
+            <circle r="3.5" fill="${color}" opacity="0.9">
+              <animateMotion dur="2.8s" repeatCount="indefinite" begin="${0.25 + i * 0.1 + 0.7}s">
+                <mpath href="#${uid}"/>
+              </animateMotion>
+            </circle>`
+        })
+      })
+
+      // Hazard lines
+      if (hazardItem) {
+        const hNode = container.querySelectorAll('.oc-food-node')[4]
+        if (hNode) {
+          const hRect = hNode.getBoundingClientRect()
+          const fx = hRect.right - svgRect.left
+          const fy = hRect.top + hRect.height / 2 - svgRect.top
+          organKeys.forEach(o => {
+            const val = hazardItem[o] || 0
+            if (val >= 0) return
+            const organNode = container.querySelector(`.oc-organ-node[data-organ="${o}"]`)
+            if (!organNode) return
+            const oRect = organNode.getBoundingClientRect()
+            const ox = oRect.left - svgRect.left
+            const oy = oRect.top + oRect.height / 2 - svgRect.top
+            const severity = Math.abs(val)
+            const strokeW = 0.8 + (severity / 10) * 3.5
+            const opacity = 0.3 + (severity / 10) * 0.65
+            const pathLen = Math.sqrt((ox - fx) ** 2 + (oy - fy) ** 2)
+            const uid = `neg_${o}`
+            const ctrl1x = fx + (ox - fx) * 0.35, ctrl1y = fy + 30
+            const ctrl2x = fx + (ox - fx) * 0.65, ctrl2y = oy - 30
+            svg.innerHTML += `
+              <defs>
+                <linearGradient id="grad_${uid}" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" style="stop-color:#f43f5e;stop-opacity:0.7"/>
+                  <stop offset="100%" style="stop-color:#dc2626;stop-opacity:1"/>
+                </linearGradient>
+              </defs>
+              <path id="${uid}" d="M${fx},${fy} C${ctrl1x},${ctrl1y} ${ctrl2x},${ctrl2y} ${ox},${oy}"
+                fill="none" stroke="url(#grad_${uid})" stroke-width="${strokeW}" stroke-opacity="${opacity}"
+                stroke-dasharray="6 4" stroke-dashoffset="${pathLen}">
+                <animate attributeName="stroke-dashoffset" from="${pathLen}" to="0" dur="0.9s" begin="${0.15 + goodItems.length * 0.1}s" fill="freeze"/>
+                <animate attributeName="stroke-dashoffset" from="0" to="-20" dur="1s" begin="${0.15 + goodItems.length * 0.1 + 0.9}s" repeatCount="indefinite"/>
+              </path>
+              <circle r="5" fill="#dc2626" opacity="0.95">
+                <animateMotion dur="2s" repeatCount="indefinite" begin="${0.15 + goodItems.length * 0.1 + 0.9}s">
+                  <mpath href="#${uid}"/>
+                </animateMotion>
+              </circle>
+              <text font-size="9" text-anchor="middle" dominant-baseline="central" opacity="0.9">
+                <animateMotion dur="2s" repeatCount="indefinite" begin="${0.15 + goodItems.length * 0.1 + 0.9}s">
+                  <mpath href="#${uid}"/>
+                </animateMotion>☠
+              </text>`
+          })
+        }
+      }
+    }, 520)
+    return () => clearTimeout(timeout)
+  }, [open, selection])
+
+  if (!open) return null
+
+  const organImgMap = {
+    brain: organBrainProUrl, lungs: organLungsProUrl, heart: organHeartProUrl,
+    liver: organLiverProUrl, stomach: organStomachProUrl, kidney: organKidneyProUrl,
+  }
+  const organLabels = { brain:'🧠 Não bộ', lungs:'🌬️ Phổi', heart:'❤️ Tim mạch', liver:'🟤 Gan', stomach:'🦠 Dạ dày', kidney:'💧 Thận' }
+
+  return (
+    <div style={{ position:'fixed', inset:0, zIndex:50, background:'rgba(5,4,20,0.9)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+      <style>{`
+        .oc-modal { background:linear-gradient(135deg,#0f0c29,#141428,#1a1035); }
+        .oc-grid-bg { background-image:linear-gradient(rgba(99,102,241,0.08) 1px,transparent 1px),linear-gradient(90deg,rgba(99,102,241,0.08) 1px,transparent 1px); background-size:40px 40px; }
+        .oc-food-node { opacity:0; transform:scale(0.5) translateX(-20px); transition:all 0.5s cubic-bezier(0.34,1.56,0.64,1); }
+        .oc-food-node.visible { opacity:1; transform:scale(1) translateX(0); }
+        .oc-food-node-hazard { border:1px solid rgba(239,68,68,0.5)!important; background:rgba(127,29,29,0.4)!important; box-shadow:0 0 12px rgba(239,68,68,0.25); }
+        .oc-organ-node { transition:all 0.4s ease; }
+        .oc-organ-node.organ-active .oc-organ-img { filter:drop-shadow(0 0 12px currentColor); transform:scale(1.05); }
+        .oc-organ-node.organ-dimmed { opacity:0.25; filter:grayscale(0.8); }
+        .oc-organ-node.organ-damaged .oc-organ-img { filter:drop-shadow(0 0 14px #dc2626) brightness(0.85) saturate(1.4); transform:scale(1.05); animation:oc-damage-pulse 1.2s ease-in-out infinite; }
+        @keyframes oc-damage-pulse { 0%,100%{ filter:drop-shadow(0 0 10px #dc2626) brightness(0.85); } 50%{ filter:drop-shadow(0 0 22px #f43f5e) brightness(0.7) saturate(1.8); } }
+        .oc-badge { opacity:0; transform:scale(0.5); transition:all 0.4s cubic-bezier(0.34,1.56,0.64,1); transition-delay:0.2s; }
+        .oc-badge.visible { opacity:1; transform:scale(1); }
+        .oc-organ-img { transition:all 0.4s ease; }
+      `}</style>
+      <div className="oc-modal" style={{ borderRadius:24, width:'96vw', maxWidth:1100, height:'96vh', position:'relative', overflow:'hidden', display:'flex', flexDirection:'column' }}>
+        <div className="oc-grid-bg" style={{ position:'absolute', inset:0, pointerEvents:'none' }} />
+
+        {/* Header */}
+        <div style={{ position:'relative', zIndex:10, display:'flex', alignItems:'center', justifyContent:'space-between', padding:'20px 32px 16px', borderBottom:'1px solid rgba(255,255,255,0.1)', flexShrink:0 }}>
+          <div>
+            <h2 style={{ color:'#fff', fontSize:22, fontWeight:900, display:'flex', alignItems:'center', gap:12, margin:0 }}>
+              🧬 Food → Organ Connection Map
+            </h2>
+            <p style={{ color:'#a5b4fc', fontSize:13, margin:'4px 0 0' }}>Xem đường truyền dinh dưỡng từ thức ăn đến nội tạng</p>
+          </div>
+          <button onClick={onClose} style={{ width:36, height:36, borderRadius:'50%', background:'rgba(255,255,255,0.1)', border:'none', color:'#fff', fontSize:18, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>✕</button>
+        </div>
+
+        {/* Body */}
+        <div ref={containerRef} style={{ position:'relative', flex:1, display:'flex', alignItems:'stretch', overflow:'hidden' }}>
+          <svg ref={svgRef} style={{ position:'absolute', inset:0, width:'100%', height:'100%', pointerEvents:'none', zIndex:10 }} />
+
+          {/* Left: Food nodes */}
+          <div style={{ position:'relative', zIndex:20, display:'flex', flexDirection:'column', padding:'16px 24px', width:260, flexShrink:0, overflowY:'auto', scrollbarWidth:'none' }}>
+            <div style={{ fontSize:10, fontWeight:900, color:'#818cf8', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:12 }}>Thức ăn đã chọn</div>
+            <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+              {[0,1,2,3].map(i => {
+                const it = goodItems[i]
+                const topOrgan = it ? ORGAN_KEYS.slice().sort((a,b)=>(it[b]||0)-(it[a]||0))[0] : null
+                return (
+                  <div key={i} className={`oc-food-node${it ? ' visible' : ''}`} style={{ display:'flex', alignItems:'center', gap:12, background:'rgba(15,12,40,0.85)', border:'1px solid rgba(255,255,255,0.1)', backdropFilter:'blur(8px)', borderRadius:16, padding:'8px 12px' }}>
+                    <span style={{ fontSize:28, lineHeight:1, width:36, textAlign:'center', flexShrink:0 }}>{it?.emoji || ''}</span>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ color:'#fff', fontSize:12, fontWeight:700 }}>{it ? (it.name.length > 14 ? it.name.substring(0,14)+'…' : it.name) : ''}</div>
+                      <div style={{ color:'#a5b4fc', fontSize:10 }}>{it?.tag || ''}</div>
+                      {it && topOrgan && <div style={{ color: ORGAN_COLOR[topOrgan], fontSize:10, fontWeight:700, marginTop:2 }}>+{it[topOrgan]}pts</div>}
+                    </div>
+                  </div>
+                )
+              })}
+
+              {hazardItem && (
+                <>
+                  <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:4 }}>
+                    <div style={{ flex:1, height:1, background:'rgba(239,68,68,0.3)' }} />
+                    <span style={{ fontSize:9, fontWeight:900, color:'#f87171', textTransform:'uppercase', letterSpacing:'0.1em', whiteSpace:'nowrap' }}>⚠ Chất phá hoại</span>
+                    <div style={{ flex:1, height:1, background:'rgba(239,68,68,0.3)' }} />
+                  </div>
+                  <div className="oc-food-node oc-food-node-hazard visible" style={{ display:'flex', alignItems:'center', gap:12, background:'rgba(127,29,29,0.4)', border:'1px solid rgba(239,68,68,0.5)', borderRadius:16, padding:'8px 12px' }}>
+                    <span style={{ fontSize:28, lineHeight:1, width:36, textAlign:'center', flexShrink:0 }}>{hazardItem.emoji}</span>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ color:'#fff', fontSize:12, fontWeight:700 }}>{hazardItem.name.length > 14 ? hazardItem.name.substring(0,14)+'…' : hazardItem.name}</div>
+                      <div style={{ color:'#fca5a5', fontSize:10 }}>{hazardItem.tag}</div>
+                      <div style={{ color:'#f87171', fontSize:10, fontWeight:700, marginTop:2 }}>☠️ {ORGAN_KEYS.slice().sort((a,b)=>(hazardItem[a]||0)-(hazardItem[b]||0))[0] && (hazardItem[ORGAN_KEYS.slice().sort((a,b)=>(hazardItem[a]||0)-(hazardItem[b]||0))[0]]||0)}pts</div>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {allItems.length === 0 && (
+                <div style={{ display:'flex', flexDirection:'column', alignItems:'center', textAlign:'center', padding:'32px 0', gap:12, marginTop:16 }}>
+                  <div style={{ fontSize:48, opacity:0.4 }}>🍽️</div>
+                  <div style={{ fontSize:13, color:'rgba(255,255,255,0.5)', fontWeight:600 }}>Hãy chọn thức ăn<br/>để xem kết nối</div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Center: body silhouette */}
+          <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', pointerEvents:'none' }}>
+            <img src={organFullBodyBoxUrl} style={{ height:'70%', maxHeight:420, objectFit:'contain', opacity:0.2, filter:'brightness(2) saturate(0)', userSelect:'none' }} alt="" />
+          </div>
+
+          {/* Right: Organ nodes */}
+          <div style={{ position:'relative', zIndex:20, display:'flex', flexDirection:'column', alignItems:'center', padding:'16px 20px', width:190, flexShrink:0 }}>
+            <div style={{ fontSize:10, fontWeight:900, color:'#818cf8', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:8, alignSelf:'flex-start' }}>Nội tạng</div>
+            {['brain','lungs','heart','liver','stomach','kidney'].map(o => {
+              const net = organTotals[o]
+              const isDamaged = damagedOrgans.has(o)
+              const isBoosted = boostedOrgans.has(o)
+              let cls = 'oc-organ-node'
+              if (allItems.length === 0 || (net === 0 && !isDamaged && !isBoosted)) cls += ' organ-dimmed'
+              else if (isDamaged && net < 0) cls += ' organ-damaged'
+              else cls += ' organ-active'
+              const badgeColor = (isDamaged && net < 0) ? '#dc2626' : (isDamaged && net >= 0) ? (net > 3 ? ORGAN_COLOR[o] : '#f59e0b') : ORGAN_COLOR[o]
+              const badgeText = allItems.length > 0 && (isBoosted || isDamaged) ? (net > 0 ? `+${net}` : `${net}`) : ''
+              return (
+                <div key={o} className={cls} data-organ={o} style={{ width:'100%', display:'flex', flexDirection:'row', alignItems:'center', gap:8, padding:'8px', borderRadius:12, color: ORGAN_COLOR[o] }}>
+                  <div style={{ position:'relative', flexShrink:0 }}>
+                    <img src={organImgMap[o]} className="oc-organ-img" style={{ width:44, height:44, objectFit:'contain' }} alt="" />
+                    {badgeText && (
+                      <span className="oc-badge visible" style={{ position:'absolute', top:-8, right:-8, fontSize:9, fontWeight:900, color:'#fff', background:badgeColor, padding:'2px 4px', borderRadius:999, whiteSpace:'nowrap' }}>{badgeText}</span>
+                    )}
+                  </div>
+                  <div style={{ color:'#fff', fontSize:11, fontWeight:700 }}>{organLabels[o]}</div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Footer legend */}
+        <div style={{ position:'relative', zIndex:10, padding:'12px 32px', borderTop:'1px solid rgba(255,255,255,0.1)', display:'flex', alignItems:'center', gap:24, fontSize:11, color:'rgba(255,255,255,0.5)', flexShrink:0, flexWrap:'wrap' }}>
+          <span style={{ display:'flex', alignItems:'center', gap:6 }}><span style={{ width:32, height:2, background:'linear-gradient(to right, #6366f1, #a855f7)', display:'inline-block', borderRadius:2 }}></span>Dinh dưỡng mạnh</span>
+          <span style={{ display:'flex', alignItems:'center', gap:6 }}><span style={{ width:24, height:2, background:'linear-gradient(to right, #f43f5e, #dc2626)', display:'inline-block', borderRadius:2, borderTop:'1px dashed #f43f5e' }}></span>Phá hoại nội tạng</span>
+          <span style={{ marginLeft:'auto', color:'#818cf8', fontWeight:600 }}>Đường dày = ảnh hưởng mạnh • Chấm chạy = dòng đang lưu thông</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── ResultModal ──────────────────────────────────────────────────────────────
+function ResultModal({ open, onClose, scores, hasItem, selection }) {
+  if (!open) return null
+  const haz = selection.avoid
+  const avg = Object.values(scores).reduce((a, b) => a + b, 0) / RESULT_ORGAN_META.length
+  const best = RESULT_ORGAN_META.slice().sort((a, b) => (scores[b.key] || 0) - (scores[a.key] || 0))[0]
+  const worst = RESULT_ORGAN_META.slice().sort((a, b) => (scores[a.key] || 0) - (scores[b.key] || 0))[0]
+
+  return (
+    <div style={{ position:'fixed', inset:0, zIndex:50, background:'rgba(5,4,20,0.9)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+      <style>{`.rm-grid-bg { background-image:linear-gradient(rgba(99,102,241,0.08) 1px,transparent 1px),linear-gradient(90deg,rgba(99,102,241,0.08) 1px,transparent 1px); background-size:40px 40px; }`}</style>
+      <div style={{ background:'linear-gradient(135deg,#0f0c29,#141428,#1a1035)', borderRadius:24, width:'96vw', maxWidth:1000, height:'96vh', position:'relative', overflow:'hidden', display:'flex', flexDirection:'column' }}>
+        <div className="rm-grid-bg" style={{ position:'absolute', inset:0, pointerEvents:'none' }} />
+        <div style={{ position:'relative', zIndex:10, display:'flex', alignItems:'center', justifyContent:'space-between', padding:'20px 32px 16px', borderBottom:'1px solid rgba(255,255,255,0.1)', flexShrink:0 }}>
+          <div>
+            <h2 style={{ color:'#fff', fontSize:22, fontWeight:900, display:'flex', alignItems:'center', gap:12, margin:0 }}>✨ Kết quả tổng kết sức khỏe</h2>
+            <p style={{ color:'#a5b4fc', fontSize:13, margin:'4px 0 0' }}>Lục giác chỉ số nội tạng dựa trên công thức bạn vừa tạo</p>
+          </div>
+          <button onClick={onClose} style={{ width:36, height:36, borderRadius:'50%', background:'rgba(255,255,255,0.1)', border:'none', color:'#fff', fontSize:18, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>✕</button>
+        </div>
+
+        <div style={{ position:'relative', zIndex:10, flex:1, display:'flex', alignItems:'stretch', overflow:'hidden' }}>
+          {/* Left: Radar */}
+          <div style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'16px 24px', overflowY:'auto', scrollbarWidth:'none' }}>
+            <div style={{ fontSize:10, fontWeight:900, color:'#818cf8', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:8, alignSelf:'flex-start', marginLeft:8 }}>Các chỉ số nội tạng</div>
+            {!hasItem ? (
+              <div style={{ textAlign:'center' }}>
+                <div style={{ fontSize:48, opacity:0.4 }}>🍽️</div>
+                <div style={{ fontSize:13, color:'rgba(255,255,255,0.5)', fontWeight:600, marginTop:8 }}>Hãy chọn thức ăn ở trang chính<br/>để xem kết quả tổng kết</div>
+              </div>
+            ) : (
+              <RadarSVG scores={scores} cx={240} cy={230} maxR={165} labelExtra={38} svgW={480} svgH={480} showIcons={true} />
+            )}
+          </div>
+
+          {/* Right: AI Analysis */}
+          <div style={{ width:300, flexShrink:0, borderLeft:'1px solid rgba(255,255,255,0.1)', padding:'20px', overflowY:'auto', scrollbarWidth:'none' }}>
+            <div style={{ fontSize:10, fontWeight:900, color:'#818cf8', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:12 }}>Phân tích AI</div>
+            <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+              {RESULT_ORGAN_META.map(m => {
+                const v = scores[m.key] || 0
+                const lbl = resultScoreLabel(v)
+                return (
+                  <div key={m.key} style={{ display:'flex', alignItems:'center', gap:10, background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:12, padding:'8px 10px' }}>
+                    <img src={m.img} style={{ width:32, height:32, objectFit:'contain', flexShrink:0 }} alt={m.label} />
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ color:'#fff', fontSize:12, fontWeight:700 }}>{m.label}</div>
+                      <div style={{ fontSize:10, fontWeight:700, color:lbl.color }}>{lbl.txt}</div>
+                    </div>
+                    <div style={{ fontSize:14, fontFamily:'monospace', fontWeight:900, color:lbl.color }}>{v}/10</div>
+                  </div>
+                )
+              })}
+            </div>
+            {hasItem && (
+              <div style={{ marginTop:20, padding:12, borderRadius:12, background:'rgba(99,102,241,0.1)', border:'1px solid rgba(99,102,241,0.2)', fontSize:12, color:'#c7d2fe', lineHeight:1.6 }}>
+                <strong>📊 Điểm trung bình: {avg.toFixed(1)}/10.</strong>{' '}
+                Cơ quan khỏe nhất là <strong style={{ color: ORGAN_COLOR[best.key] }}>{best.label}</strong> ({scores[best.key]}/10).{' '}
+                {(scores[worst.key] || 0) <= 3
+                  ? <>Cần chú ý <strong style={{ color:'#f87171' }}>{worst.label}</strong> ({scores[worst.key]}/10) đang ở mức thấp{haz ? `, có thể do "${haz.name}"` : ''}.</>
+                  : 'Các cơ quan còn lại đang ở mức ổn định, hãy tiếp tục duy trì công thức này!'}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── HealthCardModal ──────────────────────────────────────────────────────────
+function HealthCardModal({ open, onClose, scores, hasItem, selection }) {
+  const cardRef = useRef(null)
+  const wrapRef = useRef(null)
+
+  const handleMouseMove = useCallback(e => {
+    if (!cardRef.current) return
+    const r = cardRef.current.getBoundingClientRect()
+    const x = ((e.clientX - r.left) / r.width - 0.5) * 24
+    const y = ((e.clientY - r.top) / r.height - 0.5) * -24
+    cardRef.current.style.transition = 'transform 0.1s linear'
+    cardRef.current.style.transform = `rotateX(${y}deg) rotateY(${x}deg)`
+  }, [])
+
+  const handleMouseLeave = useCallback(() => {
+    if (!cardRef.current) return
+    cardRef.current.style.transition = 'transform 0.5s cubic-bezier(0.34,1.56,0.64,1)'
+    cardRef.current.style.transform = 'rotateX(0deg) rotateY(0deg)'
+  }, [])
+
+  if (!open) return null
+
+  const PRO = 6
+  const allOrgans = [...HC_ORGAN_META, HC_STOMACH]
+  const sel = selection
+  const aiText = getDoctorAIMsg(selection, scores).replace(/<[^>]*>/g, '')
+  const targetName = sel.target?.name?.replace('Trọng tâm: ','').replace(/^[^\w]/,'').trim() || 'Vitamin K'
+
+  const sArr = Object.values(scores)
+  const avg = (sArr.reduce((a,b)=>a+b,0)/sArr.length).toFixed(1)
+  const bestO = allOrgans.slice().sort((a,b)=>(scores[b.key]||0)-(scores[a.key]||0))[0]
+  const worstO = allOrgans.slice().sort((a,b)=>(scores[a.key]||0)-(scores[b.key]||0))[0]
+
+  return (
+    <div style={{ position:'fixed', inset:0, zIndex:50, background:'rgba(5,4,20,0.92)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+      <style>{`
+        .hc-grid-bg { background-image:linear-gradient(rgba(99,102,241,0.08) 1px,transparent 1px),linear-gradient(90deg,rgba(99,102,241,0.08) 1px,transparent 1px); background-size:40px 40px; }
+        @keyframes hc-card-shine { from{transform:translateX(-120%) rotate(25deg)} to{transform:translateX(120%) rotate(25deg)} }
+        @keyframes hc-float { 0%,100%{transform:translateY(-5px)} 50%{transform:translateY(5px)} }
+        .hc-shine { animation:hc-card-shine 5s linear infinite; }
+        .hc-veg-float { animation:hc-float 4s ease-in-out infinite; }
+      `}</style>
+      <div className="hc-grid-bg" style={{ background:'linear-gradient(135deg,#0f0c29,#141428,#1a1035)', borderRadius:24, width:'96vw', maxWidth:900, maxHeight:'96vh', position:'relative', overflow:'hidden', display:'flex', flexDirection:'column' }}>
+        <div style={{ position:'relative', zIndex:10, display:'flex', alignItems:'center', justifyContent:'space-between', padding:'20px 28px 16px', borderBottom:'1px solid rgba(255,255,255,0.1)', flexShrink:0 }}>
+          <div>
+            <h2 style={{ color:'#fff', fontSize:20, fontWeight:900, display:'flex', alignItems:'center', gap:12, margin:0 }}>🃏 Export My Health Level Card</h2>
+            <p style={{ color:'#6ee7b7', fontSize:12, margin:'4px 0 0' }}>Di chuyển chuột trên thẻ để xem hiệu ứng 3D • Tổng hợp toàn bộ chỉ số nội tạng</p>
+          </div>
+          <button onClick={onClose} style={{ width:36, height:36, borderRadius:'50%', background:'rgba(255,255,255,0.1)', border:'none', color:'#fff', fontSize:18, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>✕</button>
+        </div>
+
+        <div style={{ position:'relative', zIndex:10, flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:32, padding:'24px 28px', overflow:'hidden' }}>
+          {/* Card */}
+          <div ref={wrapRef} onMouseMove={handleMouseMove} onMouseLeave={handleMouseLeave} style={{ perspective:1800, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+            <div ref={cardRef} style={{ width:380, minHeight:660, borderRadius:32, position:'relative', transformStyle:'preserve-3d', background:'linear-gradient(170deg,#7fe0d7 0%,#5bc8bd 40%,#3db8ac 100%)', boxShadow:'0 40px 100px rgba(0,0,0,.55),0 0 0 1.5px rgba(255,255,255,0.25) inset', overflow:'hidden' }}>
+              {/* Shine */}
+              <div className="hc-shine" style={{ position:'absolute', inset:0, background:'linear-gradient(115deg,transparent 30%,rgba(255,255,255,.38) 50%,transparent 70%)', pointerEvents:'none', zIndex:10 }} />
+              <div style={{ position:'absolute', inset:0, borderRadius:32, border:'2px solid rgba(255,255,255,.4)', boxShadow:'inset 0 2px 4px rgba(255,255,255,.75)', pointerEvents:'none', zIndex:11 }} />
+
+              {/* Bubble */}
+              <div style={{ position:'absolute', left:14, top:14, background:'#ffe44f', color:'#333', fontSize:11, fontWeight:900, padding:'6px 13px', borderRadius:999, zIndex:5, boxShadow:'0 2px 8px rgba(0,0,0,.15)' }}>{targetName}</div>
+
+              {/* Header */}
+              <div style={{ padding:'14px 14px 10px', position:'relative', zIndex:5 }}>
+                <div style={{ fontSize:52, fontWeight:900, color:'#0d8f4f', textAlign:'center', lineHeight:1, textShadow:'0 4px 16px rgba(0,100,60,.25)' }}>{targetName[0] || 'K'}</div>
+                <div style={{ background:'#ffe44f', color:'#d33b00', fontSize:24, fontWeight:900, borderRadius:20, padding:'10px 14px', textAlign:'center', margin:'0 14px', boxShadow:'0 4px 14px rgba(255,180,0,.3)' }}>CHIẾN THẦN SỨC KHỎE</div>
+              </div>
+
+              {/* Body */}
+              <div style={{ display:'flex', gap:10, padding:'10px 14px', position:'relative', zIndex:5 }}>
+                <div style={{ width:'46%', background:'rgba(255,255,255,.12)', border:'2px solid rgba(255,255,255,.35)', borderRadius:24, backdropFilter:'blur(8px)', overflow:'hidden' }}>
+                  <img src={organBoyUrl} alt="Hero" style={{ width:'100%' }} />
+                </div>
+                <div style={{ width:'54%', background:'rgba(255,255,255,.12)', border:'2px solid rgba(255,255,255,.35)', borderRadius:24, backdropFilter:'blur(8px)', padding:8, display:'flex', flexDirection:'column', gap:6 }}>
+                  {allOrgans.map((o, idx) => {
+                    const v = scores[o.key] || 0
+                    const isPro = v >= PRO
+                    const img = isPro ? o.pro : o.norm
+                    const isDanger = v <= 0
+                    const circ = 62.8
+                    const dash = Math.max(0, v) / 10 * circ
+                    const ringColor = isDanger ? '#f87171' : o.color
+                    return (
+                      <div key={o.key} style={{ display:'flex', alignItems:'center', gap:7, background:'rgba(255,255,255,.13)', borderRadius:14, padding:'5px 7px' }}>
+                        <img src={img} alt={o.label} style={{ width:40, height:40, objectFit:'contain', ...(isPro ? { filter:`drop-shadow(0 0 8px ${o.color})` } : {}) }} />
+                        <div style={{ flex:1 }}>
+                          <div style={{ background: isDanger ? '#c0392b' : '#1d964d', color:'#fff', borderRadius:9, padding:'4px 7px', fontWeight:900, fontSize:10, textAlign:'center', marginBottom:3 }}>{o.label}{isPro ? ' ✦' : ''}</div>
+                          <div style={{ display:'flex', alignItems:'center', gap:4 }}>
+                            <svg width="36" height="36" viewBox="0 0 44 44" style={{ transform:'rotate(-90deg)' }}>
+                              <circle cx="22" cy="22" r="10" fill="none" stroke="rgba(255,255,255,.15)" strokeWidth="4"/>
+                              <circle cx="22" cy="22" r="10" fill="none" stroke={ringColor} strokeWidth="4" strokeDasharray={`${dash} ${circ}`} strokeLinecap="round">
+                                <animate attributeName="stroke-dasharray" from={`0 ${circ}`} to={`${dash} ${circ}`} dur="0.8s" fill="freeze" begin={`${idx*0.07+0.3}s`}/>
+                              </circle>
+                              <text x="22" y="22" fontSize="8" fontWeight="900" fill="white" textAnchor="middle" dominantBaseline="central" style={{ transform:'rotate(90deg) translateX(2px)' }}>{v}</text>
+                            </svg>
+                            <span style={{ fontSize:11, fontWeight:900, color: isDanger ? '#f87171' : o.color }}>{v}<span style={{ fontSize:9, color:'rgba(255,255,255,.5)', fontWeight:600 }}>/10</span></span>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Bottom strip */}
+              <div style={{ margin:'4px 14px 10px', background:'rgba(0,0,0,.22)', border:'1px solid rgba(255,255,255,.18)', borderRadius:20, padding:10, position:'relative', zIndex:5, display:'flex', alignItems:'center', gap:10 }}>
+                <div style={{ flexShrink:0 }}>
+                  <img src={organVegetablesUrl} className="hc-veg-float" style={{ width:80, opacity:0.92 }} alt="" />
+                </div>
+                <div style={{ flex:1, fontSize:9.5, color:'rgba(255,255,255,.85)', lineHeight:1.6 }}>
+                  <strong style={{ color:'#fff' }}>Công thức:</strong><br/>
+                  {sel.base && <>{sel.base.name.substring(0,18)}<br/></>}
+                  {sel.protein && <>{sel.protein.name.substring(0,18)}<br/></>}
+                  {sel.veg && <>{sel.veg.name.substring(0,18)}<br/></>}
+                  {sel.top && <>{sel.top.name.substring(0,18)}<br/></>}
+                  {sel.avoid && <span style={{ color:'#f87171' }}>⚠ {sel.avoid.name.substring(0,16)}</span>}
+                  <div style={{ fontSize:9, color:'rgba(255,255,255,.65)', fontStyle:'italic', borderTop:'1px solid rgba(255,255,255,.12)', paddingTop:6, marginTop:4, lineHeight:1.5 }}>{aiText.substring(0,90)}...</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right panel */}
+          <div style={{ flex:1, display:'flex', flexDirection:'column', gap:16, overflowY:'auto', maxHeight:'80vh', scrollbarWidth:'none' }}>
+            <div style={{ fontSize:10, fontWeight:900, color:'#34d399', textTransform:'uppercase', letterSpacing:'0.1em' }}>Phân tích chi tiết</div>
+            <div style={{ background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:16, padding:16 }}>
+              <div style={{ fontSize:12, fontWeight:700, color:'#fff', marginBottom:8 }}>📊 Lục giác chỉ số nội tạng</div>
+              <RadarSVG scores={scores} cx={190} cy={180} maxR={118} labelExtra={26} svgW={380} svgH={360} showIcons={true} />
+            </div>
+            <div style={{ background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:16, padding:16 }}>
+              <div style={{ fontSize:12, fontWeight:700, color:'#fff', marginBottom:12 }}>🫀 Trạng thái từng cơ quan</div>
+              <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                {allOrgans.map(o => {
+                  const v = scores[o.key] || 0
+                  const isPro = v >= PRO
+                  const img = isPro ? o.pro : o.norm
+                  const lbl = resultScoreLabel(v)
+                  return (
+                    <div key={o.key} style={{ display:'flex', alignItems:'center', gap:12, background:'rgba(255,255,255,0.05)', borderRadius:12, padding:'8px 12px' }}>
+                      <img src={img} style={{ width:36, height:36, objectFit:'contain', flexShrink:0, ...(isPro ? { filter:`drop-shadow(0 0 6px ${o.color})` } : {}) }} alt={o.label}/>
+                      <div style={{ flex:1 }}>
+                        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:4 }}>
+                          <span style={{ color:'#fff', fontSize:12, fontWeight:700 }}>{o.label}{isPro ? ' ✦ PRO' : ''}</span>
+                          <span style={{ fontSize:12, fontFamily:'monospace', fontWeight:900, color:lbl.color }}>{v}/10</span>
+                        </div>
+                        <div style={{ height:6, borderRadius:999, background:'rgba(255,255,255,0.1)' }}>
+                          <div style={{ height:'100%', borderRadius:999, width:`${Math.max(0,v)*10}%`, background:o.color, transition:'width 0.7s ease' }} />
+                        </div>
+                        <div style={{ fontSize:10, fontWeight:700, color:lbl.color, marginTop:2 }}>{lbl.txt}</div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+            <div style={{ background:'rgba(99,102,241,0.1)', border:'1px solid rgba(99,102,241,0.2)', borderRadius:16, padding:16 }}>
+              <div style={{ fontSize:12, fontWeight:700, color:'#a5b4fc', marginBottom:8 }}>💬 Nhận định AI</div>
+              <div style={{ fontSize:12, color:'#c7d2fe', lineHeight:1.6 }}>
+                <strong>Điểm trung bình: {avg}/10.</strong>{' '}
+                Cơ quan khỏe nhất là <strong style={{ color: bestO.color }}>{bestO.label}</strong> ({scores[bestO.key] || 0}/10{(scores[bestO.key]||0)>=PRO ? ' — đạt cấp độ PRO ✦' : ''}).
+                {(scores[worstO.key] || 0) <= 3 && <> Cần chú ý <strong style={{ color:'#f87171' }}>{worstO.label}</strong> ({scores[worstO.key] || 0}/10){sel.avoid ? ` — do ảnh hưởng của "${sel.avoid.name}"` : ''}.</>}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
+const EMPTY_SEL = { target:null, base:null, protein:null, veg:null, top:null, avoid:null }
 
 export default function OrganConnectionPanel({ onNext, onPrev, prevLabel, nextLabel }) {
   const { theme } = useApp()
   const isDark = theme === 'dark'
 
-  const html = useMemo(() => organConnectionHtml
-    .replaceAll('__ORGAN_BOY__',         organBoyUrl)
-    .replaceAll('__ORGAN_BRAIN__',       organBrainUrl)
-    .replaceAll('__ORGAN_BRAINPRO__',    organBrainProUrl)
-    .replaceAll('__ORGAN_FULLBODYBOX__', organFullBodyBoxUrl)
-    .replaceAll('__ORGAN_HEART__',       organHeartUrl)
-    .replaceAll('__ORGAN_HEARTPRO__',    organHeartProUrl)
-    .replaceAll('__ORGAN_KIDNEY__',      organKidneyUrl)
-    .replaceAll('__ORGAN_KIDNEYPRO__',   organKidneyProUrl)
-    .replaceAll('__ORGAN_LIVER__',       organLiverUrl)
-    .replaceAll('__ORGAN_LIVERPRO__',    organLiverProUrl)
-    .replaceAll('__ORGAN_LUNGS__',       organLungsUrl)
-    .replaceAll('__ORGAN_LUNGSPRO__',    organLungsProUrl)
-    .replaceAll('__ORGAN_STOMACH__',     organStomachUrl)
-    .replaceAll('__ORGAN_STOMACHPRO__',  organStomachProUrl)
-    .replaceAll('__ORGAN_VEGETABLES__',  organVegetablesUrl)
-  , [])
+  const [activeTab, setActiveTab]       = useState('target')
+  const [selection, setSelection]       = useState(EMPTY_SEL)
+  const [showOrganMap, setShowOrganMap]  = useState(false)
+  const [showResult, setShowResult]     = useState(false)
+  const [showHealthCard, setShowHealthCard] = useState(false)
 
+  const { scores, hasItem, targetOrgan } = calculateScores(selection)
+  const aiMsg = getDoctorAIMsg(selection, scores)
+
+  const selectItem = (cat, itemId) => {
+    const itemData = DB[cat].find(i => i.id === itemId)
+    setSelection(prev => {
+      if (prev[cat]?.id === itemId) {
+        // deselect
+        if (cat !== 'target' && cat !== 'avoid') {
+          const el = document.getElementById(`plate-${cat}`)
+          if (el) el.classList.remove('active')
+        }
+        return { ...prev, [cat]: null }
+      }
+      // select
+      return { ...prev, [cat]: itemData }
+    })
+  }
+
+  const resetAll = () => setSelection({ ...EMPTY_SEL })
+
+  // Plate animation via class
+  useEffect(() => {
+    GOOD_CATS.forEach(cat => {
+      const el = document.getElementById(`plate-${cat}`)
+      if (!el) return
+      if (selection[cat]) {
+        el.textContent = selection[cat].emoji
+        el.classList.remove('plate-active')
+        void el.offsetWidth
+        el.classList.add('plate-active')
+      } else {
+        el.classList.remove('plate-active')
+      }
+    })
+  }, [selection])
+
+  const TOPBAR_H = 56
   const iframeH = `calc(100svh - ${TOPBAR_H}px)`
 
   return (
-    // Outer wrapper: exactly as tall as the iframe, position:relative so
-    // NavButtons can be absolutely positioned at the bottom.
-    <div style={{
-      position: 'relative',
-      height: iframeH,
-      background: isDark ? '#0a0d1a' : '#f8fafc',
-      flexShrink: 0,
-    }}>
+    <div style={{ position:'relative', height:iframeH, background: isDark ? '#0a0d1a' : '#f8fafc', flexShrink:0, display:'flex', flexDirection:'column', overflow:'hidden' }}>
       <style>{`
-        .organ-iframe {
-          width: 100%;
-          border: none;
-          display: block;
-          height: 100%;
+        /* Plate items */
+        .plate-item {
+          transition: all 0.5s cubic-bezier(0.34,1.56,0.64,1);
+          transform: scale(0) translate(-50%,-50%);
+          opacity:0;
+          position:absolute;
+          transform-origin:top left;
         }
-        /* Tablet */
-        @media (max-width: 1024px) {
-          .organ-panel-wrap {
-            height: clamp(560px, calc(100svh - ${TOPBAR_H}px), 1200px) !important;
-          }
+        .plate-item.plate-active { transform:scale(1) translate(-50%,-50%); opacity:1; }
+
+        /* Progress bars */
+        .oc-progress { transition:width 0.5s cubic-bezier(0.4,0,0.2,1); }
+
+        /* Tab active states */
+        .oc-tab-active-indigo { background:#4f46e5!important; color:#fff!important; font-weight:800!important; }
+        .oc-tab-active-slate  { background:#0f172a!important; color:#fff!important; font-weight:800!important; }
+        .oc-tab-active-rose   { background:#dc2626!important; color:#fff!important; font-weight:800!important; }
+
+        /* Hazard pulse */
+        @keyframes oc-pulse-red { 0%,100%{filter:drop-shadow(0 0 8px rgba(239,68,68,0.6))} 50%{filter:drop-shadow(0 0 16px rgba(239,68,68,0.9))} }
+        .hazard-active { animation:oc-pulse-red 2s infinite; }
+
+        /* Custom scrollbar */
+        .oc-scroll::-webkit-scrollbar { width:6px; }
+        .oc-scroll::-webkit-scrollbar-track { background:#f1f5f9; }
+        .oc-scroll::-webkit-scrollbar-thumb { background:#cbd5e1; border-radius:4px; }
+
+        /* Receipt bg */
+        .receipt-paper {
+          background:#fff;
+          background-image:linear-gradient(to bottom,rgba(240,243,246,1) 1px,transparent 1px);
+          background-size:100% 24px;
+          box-shadow:0 10px 25px -5px rgba(0,0,0,0.08);
         }
-        /* Phone */
-        @media (max-width: 640px) {
-          .organ-panel-wrap {
-            height: clamp(480px, calc(100svh - ${TOPBAR_H}px), 900px) !important;
-          }
-        }
-        /* NavButtons overlay */
+
+        /* Nav overlay */
         .organ-nav-overlay {
-          position: absolute;
-          bottom: 0;
-          left: 0;
-          right: 0;
-          padding: 0 clamp(12px, 3vw, 24px);
-          /* subtle backdrop so buttons are readable over iframe content */
-          background: linear-gradient(to top,
-            ${isDark ? 'rgba(10,13,26,0.92)' : 'rgba(248,250,252,0.92)'} 70%,
-            transparent);
-          pointer-events: none; /* let clicks through to iframe below */
+          position:absolute; bottom:0; left:0; right:0;
+          padding:0 clamp(12px,3vw,24px);
+          background:linear-gradient(to top, ${isDark?'rgba(10,13,26,0.92)':'rgba(248,250,252,0.92)'} 70%, transparent);
+          pointer-events:none;
         }
-        .organ-nav-overlay > * {
-          pointer-events: auto; /* re-enable for the buttons themselves */
-        }
+        .organ-nav-overlay > * { pointer-events:auto; }
       `}</style>
 
-      {/* ── IFRAME fills the full wrapper height ── */}
-      <iframe
-        className="organ-iframe"
-        srcDoc={html}
-        title="Ăn gì hôm nay – Organ Connection"
-        sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-downloads"
-      />
+      {/* ── HEADER ── */}
+      <header style={{ background:'#fff', padding:'12px 24px', display:'flex', alignItems:'center', justifyContent:'space-between', borderBottom:'1px solid #e2e8f0', flexShrink:0, zIndex:20, boxShadow:'0 1px 2px rgba(0,0,0,0.04)' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+          <div style={{ fontSize:28 }}>🥗</div>
+          <div>
+            <div style={{ fontWeight:900, fontSize:17, color:'#0f172a', letterSpacing:'-0.01em', display:'flex', alignItems:'center', gap:8 }}>
+              HEALTHY CUSTOMIZER
+              <span style={{ fontSize:11, background:'#059669', color:'#fff', fontWeight:700, padding:'2px 8px', borderRadius:999 }}>v3.1</span>
+            </div>
+            <div style={{ fontSize:11, color:'#94a3b8' }}>Organ Formula Builder</div>
+          </div>
+        </div>
+        <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+          <button onClick={() => setShowOrganMap(true)} style={{ fontSize:11, fontWeight:700, color:'#fff', background:'#4f46e5', border:'none', padding:'6px 12px', borderRadius:8, cursor:'pointer' }}>🧬 Organ Connection</button>
+          <button onClick={() => setShowResult(true)} style={{ fontSize:11, fontWeight:700, color:'#fff', background:'linear-gradient(to right,#c026d3,#f59e0b)', border:'none', padding:'6px 12px', borderRadius:8, cursor:'pointer' }}>✨ Show Result</button>
+          <button onClick={() => setShowHealthCard(true)} style={{ fontSize:11, fontWeight:700, color:'#fff', background:'linear-gradient(to right,#10b981,#14b8a6)', border:'none', padding:'6px 12px', borderRadius:8, cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}><span>🃏</span> Export My Health Level Card</button>
+          <button onClick={resetAll} style={{ fontSize:11, fontWeight:700, color:'#64748b', background:'#fff', border:'1px solid #e2e8f0', padding:'6px 12px', borderRadius:8, cursor:'pointer' }}>🔄 Làm lại từ đầu</button>
+          <div style={{ background:'#0f172a', color:'#fff', padding:'6px 16px', borderRadius:12, fontSize:11, fontWeight:700, display:'flex', alignItems:'center', gap:8 }}>⚡ 46 Bio-Ingredients</div>
+        </div>
+      </header>
 
-      {/* ── NAV BUTTONS overlaid at the bottom ── */}
+      {/* ── WORKSPACE ── */}
+      <div style={{ flex:1, display:'flex', overflow:'hidden' }}>
+
+        {/* LEFT: Tabs */}
+        <aside style={{ width:360, background:'#fff', borderRight:'1px solid #e2e8f0', display:'flex', flexDirection:'column', flexShrink:0, zIndex:10 }}>
+          {/* Tab grid */}
+          <div style={{ padding:8, background:'#f1f5f9', borderBottom:'1px solid #e2e8f0', flexShrink:0 }}>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:4 }}>
+              {[
+                { id:'target',  label:'🎯 Mục tiêu', count:'' },
+                { id:'base',    label:'🍚 Nền', count:'(5)' },
+                { id:'protein', label:'🥩 Đạm', count:'(9)' },
+                { id:'veg',     label:'🥦 Rau', count:'(9)' },
+                { id:'top',     label:'🫒 Super', count:'(10)' },
+                { id:'avoid',   label:'🚫 Tránh', count:'(5)' },
+              ].map(t => {
+                const isActive = activeTab === t.id
+                const isAvoid = t.id === 'avoid'
+                let style = { padding:'6px 4px', borderRadius:12, fontSize:11, fontWeight:700, cursor:'pointer', border:'none', transition:'all 0.15s', width:'100%' }
+                if (isActive) {
+                  style = { ...style, background: t.id === 'target' ? '#4f46e5' : isAvoid ? '#dc2626' : '#0f172a', color:'#fff' }
+                } else {
+                  style = { ...style, background: isAvoid ? '#fff1f2' : '#fff', color: isAvoid ? '#be123c' : '#475569', border: isAvoid ? '1px solid #fecdd3' : '1px solid #e2e8f0' }
+                }
+                return (
+                  <button key={t.id} onClick={() => setActiveTab(t.id)} style={style}>
+                    {t.label} {t.count}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Tab panels */}
+          <div className="oc-scroll" style={{ flex:1, overflowY:'auto', padding:8 }}>
+            {activeTab === 'target' && (
+              <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+                <div style={{ padding:12, background:'#eef2ff', border:'1px solid #e0e7ff', borderRadius:12, marginBottom:8 }}>
+                  <div style={{ fontSize:11, fontWeight:700, color:'#1e1b4b', marginBottom:4 }}>Cơ chế "Base Drink"</div>
+                  <div style={{ fontSize:10, color:'#4338ca', lineHeight:1.6 }}>Chọn 1 cơ quan làm Trọng tâm. Các nguyên liệu bồi bổ đúng cơ quan này sẽ được <strong>nhân hệ số x1.5 điểm</strong>.</div>
+                </div>
+                {DB.target.map(it => <ItemButton key={it.id} cat="target" item={it} selection={selection} onSelect={selectItem} />)}
+              </div>
+            )}
+            {activeTab === 'base' && (
+              <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                {DB.base.map(it => <ItemButton key={it.id} cat="base" item={it} selection={selection} onSelect={selectItem} />)}
+              </div>
+            )}
+            {activeTab === 'protein' && (
+              <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                {DB.protein.map(it => <ItemButton key={it.id} cat="protein" item={it} selection={selection} onSelect={selectItem} />)}
+              </div>
+            )}
+            {activeTab === 'veg' && (
+              <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                {DB.veg.map(it => <ItemButton key={it.id} cat="veg" item={it} selection={selection} onSelect={selectItem} />)}
+              </div>
+            )}
+            {activeTab === 'top' && (
+              <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                {DB.top.map(it => <ItemButton key={it.id} cat="top" item={it} selection={selection} onSelect={selectItem} />)}
+              </div>
+            )}
+            {activeTab === 'avoid' && (
+              <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                <div style={{ padding:12, background:'#fff1f2', border:'1px solid #fecdd3', borderRadius:12, marginBottom:4 }}>
+                  <div style={{ fontSize:11, fontWeight:700, color:'#7f1d1d', marginBottom:4 }}>⚠️ Cảnh báo hãm phanh</div>
+                  <div style={{ fontSize:10, color:'#be123c', lineHeight:1.6 }}>Mô phỏng thói quen thực tế. Thêm các món này sẽ trực tiếp trừ vỡ quỹ điểm nội tạng mà bạn vừa cất công gom phía trên.</div>
+                </div>
+                {DB.avoid.map(it => <ItemButton key={it.id} cat="avoid" item={it} selection={selection} onSelect={selectItem} />)}
+              </div>
+            )}
+          </div>
+        </aside>
+
+        {/* CENTER: Visual Stage */}
+        <main style={{ flex:1, display:'flex', flexDirection:'column', background:'#eff3f7', position:'relative', overflow:'hidden', justifyContent:'space-between', alignItems:'center', padding:'32px 0' }}>
+          <div style={{ textAlign:'center', zIndex:10 }}>
+            <span style={{ fontSize:10, fontWeight:900, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'0.15em', display:'block', marginBottom:4 }}>Visual Stage</span>
+            <h2 style={{ fontSize:24, fontWeight:900, color:'#1e293b', margin:0 }}>Mâm Cơm Thần Kỳ</h2>
+            <p style={{ fontSize:11, color:'#64748b', marginTop:4 }}>
+              {selection.target ? `Mục tiêu: ${selection.target.name.replace('Trọng tâm: ','')}` : 'Hãy chọn 1 mục tiêu sức khỏe để bắt đầu'}
+            </p>
+          </div>
+
+          {/* Plate */}
+          <div style={{ position:'relative', display:'flex', alignItems:'center', justifyContent:'center', width:'100%', maxWidth:500, height:420 }}>
+            <div id="main-plate" style={{ width:360, height:360, borderRadius:'50%', background:'#fff', border:'18px solid #f8fafc', boxShadow:'0 25px 50px -12px rgba(0,0,0,0.25)', position:'relative', display:'flex', alignItems:'center', justifyContent:'center', transition:'all 0.7s ease', transform: selection.avoid ? 'scale(0.92) translateX(-20px)' : 'scale(1) translateX(0)' }}>
+              <div style={{ position:'absolute', width:'100%', height:2, background:'#f1f5f9', top:'50%', left:0, transform:'translateY(-50%)' }} />
+              <div style={{ position:'absolute', height:'100%', width:2, background:'#f1f5f9', left:'50%', top:0, transform:'translateX(-50%)' }} />
+              <div id="plate-base"    className="plate-item" style={{ top:'38%', left:'32%', fontSize:75 }} />
+              <div id="plate-veg"     className="plate-item" style={{ top:'62%', left:'68%', fontSize:75 }} />
+              <div id="plate-protein" className="plate-item" style={{ top:'32%', left:'68%', fontSize:75 }} />
+              <div id="plate-top"     className="plate-item" style={{ top:'50%', left:'50%', fontSize:65 }} />
+            </div>
+
+            {/* Hazard */}
+            <div style={{ position:'absolute', bottom:16, right:24, display:'flex', flexDirection:'column', alignItems:'center' }}>
+              <div className={selection.avoid ? 'hazard-active' : ''} style={{ fontSize:70, transform: selection.avoid ? 'scale(1)' : 'scale(0)', opacity: selection.avoid ? 1 : 0, transition:'all 0.5s ease', userSelect:'none' }}>
+                {selection.avoid?.emoji || '🍺'}
+              </div>
+              <span style={{ fontSize:10, fontWeight:900, background:'#dc2626', color:'#fff', padding:'2px 8px', borderRadius:999, marginTop:4, opacity: selection.avoid ? 1 : 0, transition:'opacity 0.3s' }}>CHẤT PHÁ HOẠI</span>
+            </div>
+          </div>
+
+          <div style={{ fontSize:11, fontWeight:600, color:'#94a3b8' }}>
+            Gợi ý: Thử chọn <span style={{ color:'#4f46e5', fontWeight:700 }}>Mục tiêu Gan</span> + <span style={{ color:'#059669', fontWeight:700 }}>Bông cải</span> + <span style={{ color:'#dc2626', fontWeight:700 }}>Bia</span> để xem AI phản ứng.
+          </div>
+        </main>
+
+        {/* RIGHT: Analytics */}
+        <aside style={{ width:360, background:'#fff', borderLeft:'1px solid #e2e8f0', display:'flex', flexDirection:'column', flexShrink:0, overflow:'hidden', zIndex:10 }}>
+          {/* Score bars */}
+          <div style={{ padding:12, borderBottom:'1px solid #f1f5f9', background:'#f8fafc', flexShrink:0 }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
+              <span style={{ fontSize:10, fontWeight:900, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'0.1em' }}>Hệ thống đo lường</span>
+              <span style={{ fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:4, background:'#dcfce7', color:'#166534', display:'flex', alignItems:'center', gap:4 }}>
+                <span style={{ width:6, height:6, borderRadius:'50%', background:'#22c55e', animation:'pulse 2s infinite', display:'inline-block' }} /> Phản ứng nội tạng
+              </span>
+            </div>
+            <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+              {[
+                { key:'liver',   label:'Giải độc Gan',      icon: <img src={organLiverUrl} style={{width:16,height:16,objectFit:'contain'}} alt=""/>, color:'#f59e0b' },
+                { key:'kidney',  label:'Lọc Thận & Niệu',   icon:'💧', color:'#38bdf8' },
+                { key:'heart',   label:'Máu & Tim mạch',    icon:'❤️', color:'#ef4444' },
+                { key:'stomach', label:'Niêm mạc Dạ dày',   icon:'🦠', color:'#10b981' },
+                { key:'brain',   label:'Thần kinh & Não',   icon:'🧠', color:'#a855f7' },
+                { key:'lungs',   label:'Hô hấp & Phổi',     icon:'🌬️', color:'#06b6d4' },
+              ].map(({ key, label, icon, color }) => {
+                const v = scores[key] || 0
+                const isNeg = v < 0
+                const isTarget = targetOrgan === key
+                return (
+                  <div key={key}>
+                    <div style={{ display:'flex', justifyContent:'space-between', fontSize:11, fontWeight:700, marginBottom:4, color:'#334155' }}>
+                      <span style={{ display:'flex', alignItems:'center', gap:6, ...(isTarget ? { padding:'0 4px', borderRadius:4, background:'#fef3c7' } : {}) }}>
+                        {typeof icon === 'string' ? icon : icon} {label}{isTarget ? ' ⭐' : ''}
+                      </span>
+                      <span style={{ fontFamily:'monospace', color: isNeg ? '#dc2626' : '#94a3b8', fontWeight:600, ...(isNeg ? { animation:'pulse 1s infinite' } : {}) }}>
+                        {v}/10{isNeg ? ' ⚠️' : ''}
+                      </span>
+                    </div>
+                    <div style={{ height:8, width:'100%', background:'#e2e8f0', borderRadius:999, overflow:'hidden', padding:2, ...(isTarget ? { ring:'2px solid #fbbf24' } : {}) }}>
+                      <div className="oc-progress" style={{ height:'100%', borderRadius:999, background: isNeg ? '#b91c1c' : color, width: isNeg ? '100%' : `${v * 10}%` }} />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Bottom: AI + receipt */}
+          <div className="oc-scroll" style={{ flex:1, overflowY:'auto', padding:12, display:'flex', flexDirection:'column', gap:12, background:'rgba(241,245,249,0.6)' }}>
+            {/* AI card */}
+            <div style={{ background:'#fff', border: selection.avoid?.id === 'bia' && selection.target?.organKey === 'liver' ? '1px solid #ef4444' : '1px solid #e2e8f0', borderRadius:16, padding:12, boxShadow:'0 1px 3px rgba(0,0,0,0.06)' }}>
+              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}>
+                <span style={{ fontSize:18 }}>💬</span>
+                <span style={{ fontSize:11, fontWeight:900, color:'#0f172a', textTransform:'uppercase', letterSpacing:'0.05em' }}>Bác sĩ AI chẩn đoán:</span>
+              </div>
+              <div style={{ fontSize:11, color:'#475569', lineHeight:1.6, fontStyle:'italic' }} dangerouslySetInnerHTML={{ __html: aiMsg }} />
+            </div>
+
+            {/* Receipt */}
+            <div className="receipt-paper" style={{ border:'1px solid #e2e8f0', borderRadius:12, padding:12, fontFamily:'monospace', fontSize:11, color:'#334155', position:'relative' }}>
+              <div style={{ position:'absolute', top:-12, right:16, background:'#065f46', color:'#fff', fontWeight:900, fontSize:9, padding:'2px 8px', borderRadius:999, textTransform:'uppercase', letterSpacing:'0.1em' }}>Custom Formula</div>
+              <div style={{ textAlign:'center', paddingBottom:8, borderBottom:'2px dashed #cbd5e1' }}>
+                <div style={{ fontWeight:900, fontSize:13, color:'#0f172a' }}>CÔNG THỨC NỘI TẠNG</div>
+                <div style={{ fontSize:10, color:'#94a3b8', marginTop:2 }}>Mã mâm cơm: #BIO-2026</div>
+              </div>
+              <div style={{ padding:'8px 0', borderBottom:'2px dashed #cbd5e1', display:'flex', flexDirection:'column', gap:4 }}>
+                <div style={{ display:'flex', justifyContent:'space-between', fontSize:10 }}><span style={{ color:'#94a3b8' }}>Trọng tâm:</span> <strong style={{ color:'#4f46e5' }}>{selection.target ? selection.target.name.replace('Trọng tâm: ','').replace(/^[❤️💧🧠🌬️🦠]/,'').trim() : 'Chưa đặt'}</strong></div>
+              </div>
+              <div style={{ padding:'8px 0', borderBottom:'2px dashed #cbd5e1', display:'flex', flexDirection:'column', gap:4 }}>
+                <div style={{ fontSize:10, fontWeight:700, color:'#94a3b8', marginBottom:2 }}>THÀNH PHẦN LẮP GHÉP:</div>
+                {[['Nền','base'],['Đạm','protein'],['Rau','veg'],['Super','top']].map(([l,k]) => (
+                  <div key={k} style={{ display:'flex', justifyContent:'space-between', fontSize:10 }}><span style={{ color:'#64748b' }}>{l}:</span> <strong>{selection[k]?.name || '---'}</strong></div>
+                ))}
+                <div style={{ display:'flex', justifyContent:'space-between', fontSize:10, color: selection.avoid ? '#dc2626' : undefined }}>
+                  <span style={{ color:'#fca5a5' }}>Phá hoại:</span>
+                  <span style={{ fontWeight: selection.avoid ? 900 : 400, background: selection.avoid ? '#fee2e2' : undefined, padding: selection.avoid ? '0 4px' : undefined, borderRadius: selection.avoid ? 4 : undefined }}>
+                    {selection.avoid ? `+ ${selection.avoid.name}` : 'Không có'}
+                  </span>
+                </div>
+              </div>
+              <div style={{ paddingTop:8, textAlign:'center', fontSize:10, color:'#94a3b8' }}>
+                "Uống/Ăn có trách nhiệm với từng tế bào"
+              </div>
+            </div>
+          </div>
+        </aside>
+      </div>
+
+      {/* Modals */}
+      <OrganMapModal open={showOrganMap} onClose={() => setShowOrganMap(false)} selection={selection} />
+      <ResultModal open={showResult} onClose={() => setShowResult(false)} scores={scores} hasItem={hasItem} selection={selection} />
+      <HealthCardModal open={showHealthCard} onClose={() => setShowHealthCard(false)} scores={scores} hasItem={hasItem} selection={selection} />
+
+      {/* Nav overlay */}
       <div className="organ-nav-overlay">
-        <NavButtons
-          onPrev={onPrev}
-          prevLabel={prevLabel}
-          onNext={onNext}
-          nextLabel={nextLabel}
-        />
+        <NavButtons onPrev={onPrev} prevLabel={prevLabel} onNext={onNext} nextLabel={nextLabel} />
       </div>
     </div>
+  )
+}
+
+// ─── ItemButton ───────────────────────────────────────────────────────────────
+function ItemButton({ cat, item, selection, onSelect }) {
+  const isSelected = selection[cat]?.id === item.id
+  const isHazard = cat === 'avoid'
+  const isTarget = cat === 'target'
+
+  let borderColor = '#e2e8f0'
+  let bg = '#fff'
+  if (isSelected) {
+    if (isTarget)  { borderColor = '#4f46e5'; bg = '#eef2ff' }
+    else if (isHazard) { borderColor = '#dc2626'; bg = '#fff1f2' }
+    else           { borderColor = '#10b981'; bg = '#f0fdf4' }
+  }
+
+  return (
+    <button
+      onClick={() => onSelect(cat, item.id)}
+      style={{ width:'100%', textAlign:'left', padding:6, border:`2px solid ${borderColor}`, borderRadius:12, transition:'all 0.15s', display:'flex', alignItems:'center', justifyContent:'space-between', background:bg, cursor:'pointer' }}
+    >
+      <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+        <span style={{ width:32, height:32, background:'#f8fafc', display:'flex', alignItems:'center', justifyContent:'center', borderRadius:8, fontSize:20, flexShrink:0 }}>
+          {item.img ? <img src={item.img} style={{ width:28, height:28, objectFit:'contain' }} alt="" /> : item.emoji}
+        </span>
+        <div>
+          <div style={{ fontWeight:700, fontSize:11, color: isHazard ? '#be123c' : '#0f172a' }}>{item.name}</div>
+          <div style={{ fontSize:10, color:'#94a3b8', marginTop:2 }}>{item.desc || item.tag}</div>
+        </div>
+      </div>
+      {!isTarget && !isHazard && (
+        <div style={{ fontSize:9, fontFamily:'monospace', background:'#f1f5f9', padding:'2px 6px', borderRadius:4, color:'#64748b', whiteSpace:'nowrap', opacity: isSelected ? 1 : 0 }}>
+          🟤{item.liver} 💧{item.kidney}
+        </div>
+      )}
+    </button>
   )
 }
