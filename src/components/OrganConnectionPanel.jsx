@@ -399,6 +399,13 @@ function OrganMapModal({ open, onClose, selection }) {
         .oc-badge { opacity:0; transform:scale(0.5); transition:all 0.4s cubic-bezier(0.34,1.56,0.64,1); transition-delay:0.2s; }
         .oc-badge.visible { opacity:1; transform:scale(1); }
         .oc-organ-img { transition:all 0.4s ease; }
+        @media (max-width:768px) {
+          .oc-map-body { flex-direction:column!important; overflow:auto!important; }
+          .oc-map-food-col { width:100%!important; flex-direction:row!important; flex-wrap:wrap!important; padding:12px!important; max-height:none!important; }
+          .oc-map-organ-col { width:100%!important; flex-direction:row!important; flex-wrap:wrap!important; padding:12px!important; }
+          .oc-map-food-col .oc-food-node { flex:1 1 120px; min-width:100px; }
+          .oc-map-organ-col .oc-organ-node { flex:1 1 80px; justify-content:center; flex-direction:column; text-align:center; }
+        }
       `}</style>
       <div className="oc-modal" style={{ borderRadius:24, width:'96vw', maxWidth:1100, height:'96vh', position:'relative', overflow:'hidden', display:'flex', flexDirection:'column' }}>
         <div className="oc-grid-bg" style={{ position:'absolute', inset:0, pointerEvents:'none' }} />
@@ -415,7 +422,7 @@ function OrganMapModal({ open, onClose, selection }) {
         </div>
 
         {/* Body */}
-        <div ref={containerRef} style={{ position:'relative', flex:1, display:'flex', alignItems:'stretch', overflow:'hidden' }}>
+        <div ref={containerRef} className="oc-map-body" style={{ position:'relative', flex:1, display:'flex', alignItems:'stretch', overflow:'hidden' }}>
           <svg ref={svgRef} style={{ position:'absolute', inset:0, width:'100%', height:'100%', pointerEvents:'none', zIndex:10 }} />
 
           {/* Left: Food nodes */}
@@ -471,7 +478,7 @@ function OrganMapModal({ open, onClose, selection }) {
 
           {/* Right: Organ nodes */}
           <div style={{ position:'relative', zIndex:20, display:'flex', flexDirection:'column', alignItems:'center', padding:'16px 20px', width:190, flexShrink:0 }}>
-            <div style={{ fontSize:10, fontWeight:900, color:'#818cf8', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:8, alignSelf:'flex-start' }}>Nội tạng</div>
+            <div style={{ fontSize:11, fontWeight:900, color:'#818cf8', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:8, alignSelf:'flex-start' }}>Nội tạng</div>
             {['brain','lungs','heart','liver','stomach','kidney'].map(o => {
               const net = organTotals[o]
               const isDamaged = damagedOrgans.has(o)
@@ -490,7 +497,7 @@ function OrganMapModal({ open, onClose, selection }) {
                       <span className="oc-badge visible" style={{ position:'absolute', top:-8, right:-8, fontSize:9, fontWeight:900, color:'#fff', background:badgeColor, padding:'2px 4px', borderRadius:999, whiteSpace:'nowrap' }}>{badgeText}</span>
                     )}
                   </div>
-                  <div style={{ color:'#fff', fontSize:11, fontWeight:700 }}>{organLabels[o]}</div>
+                  <div style={{ color:'#fff', fontSize:13, fontWeight:700 }}>{organLabels[o]}</div>
                 </div>
               )
             })}
@@ -498,7 +505,7 @@ function OrganMapModal({ open, onClose, selection }) {
         </div>
 
         {/* Footer legend */}
-        <div style={{ position:'relative', zIndex:10, padding:'12px 32px', borderTop:'1px solid rgba(255,255,255,0.1)', display:'flex', alignItems:'center', gap:24, fontSize:11, color:'rgba(255,255,255,0.5)', flexShrink:0, flexWrap:'wrap' }}>
+        <div style={{ position:'relative', zIndex:10, padding:'12px 32px', borderTop:'1px solid rgba(255,255,255,0.1)', display:'flex', alignItems:'center', gap:24, fontSize:12, color:'rgba(255,255,255,0.5)', flexShrink:0, flexWrap:'wrap' }}>
           <span style={{ display:'flex', alignItems:'center', gap:6 }}><span style={{ width:32, height:2, background:'linear-gradient(to right, #6366f1, #a855f7)', display:'inline-block', borderRadius:2 }}></span>Dinh dưỡng mạnh</span>
           <span style={{ display:'flex', alignItems:'center', gap:6 }}><span style={{ width:24, height:2, background:'linear-gradient(to right, #f43f5e, #dc2626)', display:'inline-block', borderRadius:2, borderTop:'1px dashed #f43f5e' }}></span>Phá hoại nội tạng</span>
           <span style={{ marginLeft:'auto', color:'#818cf8', fontWeight:600 }}>Đường dày = ảnh hưởng mạnh • Chấm chạy = dòng đang lưu thông</span>
@@ -518,7 +525,9 @@ function ResultModal({ open, onClose, scores, hasItem, selection }) {
 
   return (
     <div style={{ position:'fixed', inset:0, zIndex:50, background:'rgba(5,4,20,0.9)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-      <style>{`.rm-grid-bg { background-image:linear-gradient(rgba(99,102,241,0.08) 1px,transparent 1px),linear-gradient(90deg,rgba(99,102,241,0.08) 1px,transparent 1px); background-size:40px 40px; }`}</style>
+      <style>{`.rm-grid-bg { background-image:linear-gradient(rgba(99,102,241,0.08) 1px,transparent 1px),linear-gradient(90deg,rgba(99,102,241,0.08) 1px,transparent 1px); background-size:40px 40px; }
+        @media(max-width:768px){.rm-body{flex-direction:column!important;overflow:auto!important}.rm-right-panel{width:100%!important;border-left:none!important;border-top:1px solid rgba(255,255,255,0.1)!important}}
+      `}</style>
       <div style={{ background:'linear-gradient(135deg,#0f0c29,#141428,#1a1035)', borderRadius:24, width:'96vw', maxWidth:1000, height:'96vh', position:'relative', overflow:'hidden', display:'flex', flexDirection:'column' }}>
         <div className="rm-grid-bg" style={{ position:'absolute', inset:0, pointerEvents:'none' }} />
         <div style={{ position:'relative', zIndex:10, display:'flex', alignItems:'center', justifyContent:'space-between', padding:'20px 32px 16px', borderBottom:'1px solid rgba(255,255,255,0.1)', flexShrink:0 }}>
@@ -529,10 +538,10 @@ function ResultModal({ open, onClose, scores, hasItem, selection }) {
           <button onClick={onClose} style={{ width:36, height:36, borderRadius:'50%', background:'rgba(255,255,255,0.1)', border:'none', color:'#fff', fontSize:18, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>✕</button>
         </div>
 
-        <div style={{ position:'relative', zIndex:10, flex:1, display:'flex', alignItems:'stretch', overflow:'hidden' }}>
+        <div className="rm-body" style={{ position:'relative', zIndex:10, flex:1, display:'flex', alignItems:'stretch', overflow:'hidden' }}>
           {/* Left: Radar */}
           <div style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'16px 24px', overflowY:'auto', scrollbarWidth:'none' }}>
-            <div style={{ fontSize:10, fontWeight:900, color:'#818cf8', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:8, alignSelf:'flex-start', marginLeft:8 }}>Các chỉ số nội tạng</div>
+            <div style={{ fontSize:11, fontWeight:900, color:'#818cf8', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:8, alignSelf:'flex-start', marginLeft:8 }}>Các chỉ số nội tạng</div>
             {!hasItem ? (
               <div style={{ textAlign:'center' }}>
                 <div style={{ fontSize:48, opacity:0.4 }}>🍽️</div>
@@ -544,8 +553,8 @@ function ResultModal({ open, onClose, scores, hasItem, selection }) {
           </div>
 
           {/* Right: AI Analysis */}
-          <div style={{ width:300, flexShrink:0, borderLeft:'1px solid rgba(255,255,255,0.1)', padding:'20px', overflowY:'auto', scrollbarWidth:'none' }}>
-            <div style={{ fontSize:10, fontWeight:900, color:'#818cf8', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:12 }}>Phân tích AI</div>
+          <div className="rm-right-panel" style={{ width:300, flexShrink:0, borderLeft:'1px solid rgba(255,255,255,0.1)', padding:'20px', overflowY:'auto', scrollbarWidth:'none' }}>
+            <div style={{ fontSize:11, fontWeight:900, color:'#818cf8', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:12 }}>Phân tích AI</div>
             <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
               {RESULT_ORGAN_META.map(m => {
                 const v = scores[m.key] || 0
@@ -554,16 +563,16 @@ function ResultModal({ open, onClose, scores, hasItem, selection }) {
                   <div key={m.key} style={{ display:'flex', alignItems:'center', gap:10, background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:12, padding:'8px 10px' }}>
                     <img src={m.img} style={{ width:32, height:32, objectFit:'contain', flexShrink:0 }} alt={m.label} />
                     <div style={{ flex:1, minWidth:0 }}>
-                      <div style={{ color:'#fff', fontSize:12, fontWeight:700 }}>{m.label}</div>
-                      <div style={{ fontSize:10, fontWeight:700, color:lbl.color }}>{lbl.txt}</div>
+                      <div style={{ color:'#fff', fontSize:13, fontWeight:700 }}>{m.label}</div>
+                      <div style={{ fontSize:11, fontWeight:700, color:lbl.color }}>{lbl.txt}</div>
                     </div>
-                    <div style={{ fontSize:14, fontFamily:'monospace', fontWeight:900, color:lbl.color }}>{v}/10</div>
+                    <div style={{ fontSize:15, fontFamily:'monospace', fontWeight:900, color:lbl.color }}>{v}/10</div>
                   </div>
                 )
               })}
             </div>
             {hasItem && (
-              <div style={{ marginTop:20, padding:12, borderRadius:12, background:'rgba(99,102,241,0.1)', border:'1px solid rgba(99,102,241,0.2)', fontSize:12, color:'#c7d2fe', lineHeight:1.6 }}>
+              <div style={{ marginTop:20, padding:12, borderRadius:12, background:'rgba(99,102,241,0.1)', border:'1px solid rgba(99,102,241,0.2)', fontSize:13, color:'#c7d2fe', lineHeight:1.6 }}>
                 <strong>📊 Điểm trung bình: {avg.toFixed(1)}/10.</strong>{' '}
                 Cơ quan khỏe nhất là <strong style={{ color: ORGAN_COLOR[best.key] }}>{best.label}</strong> ({scores[best.key]}/10).{' '}
                 {(scores[worst.key] || 0) <= 3
@@ -802,8 +811,11 @@ export default function OrganConnectionPanel({ onNext, onPrev, prevLabel, nextLa
   const iframeH = `calc(100svh - ${TOPBAR_H}px)`
 
   return (
-    <div style={{ height:iframeH, background: isDark ? '#0a0d1a' : '#f8fafc', display:'flex', flexDirection:'column', overflow:'hidden' }}>
+    <div className="oc-root" style={{ height:iframeH, background: isDark ? '#0a0d1a' : '#f8fafc', display:'flex', flexDirection:'column', overflow:'hidden' }}>
       <style>{`
+        /* ── Base font scale ── */
+        .oc-root { font-size: clamp(13px, 1.5vw, 16px); }
+
         /* Plate items */
         .plate-item {
           transition: all 0.5s cubic-bezier(0.34,1.56,0.64,1);
@@ -848,34 +860,102 @@ export default function OrganConnectionPanel({ onNext, onPrev, prevLabel, nextLa
           border-top:1px solid ${isDark?'rgba(255,255,255,0.08)':'#e2e8f0'};
           z-index:20;
         }
+
+        /* ── Responsive: Workspace layout ── */
+        .oc-workspace {
+          flex:1;
+          display:flex;
+          overflow:hidden;
+        }
+        .oc-aside-left, .oc-aside-right {
+          width: clamp(220px, 26vw, 360px);
+          background:#fff;
+          display:flex;
+          flex-direction:column;
+          flex-shrink:0;
+          z-index:10;
+        }
+        .oc-aside-left { border-right:1px solid #e2e8f0; }
+        .oc-aside-right { border-left:1px solid #e2e8f0; overflow:hidden; }
+        .oc-main-center { flex:1; display:flex; flex-direction:column; background:#eff3f7; position:relative; overflow:hidden; justify-content:space-between; align-items:center; padding:clamp(12px,3vh,32px) 0; }
+
+        /* ── Tablet: 768px–1024px ── */
+        @media (max-width:1024px) {
+          .oc-aside-left, .oc-aside-right { width: clamp(200px, 28vw, 280px); }
+          .oc-header-btns button { font-size:11px!important; padding:5px 9px!important; }
+          .oc-header-badge { display:none!important; }
+        }
+
+        /* ── Mobile: ≤ 768px ── */
+        @media (max-width:768px) {
+          .oc-workspace { flex-direction:column; overflow:auto; }
+          .oc-aside-left {
+            width:100%!important;
+            border-right:none!important;
+            border-bottom:1px solid #e2e8f0;
+            flex-shrink:0;
+            max-height: 42vh;
+          }
+          .oc-main-center {
+            min-height:260px;
+            padding:16px 0;
+          }
+          .oc-aside-right {
+            width:100%!important;
+            border-left:none!important;
+            border-top:1px solid #e2e8f0;
+            flex-shrink:0;
+            max-height:54vh;
+          }
+          .oc-header { flex-direction:column; align-items:flex-start!important; gap:8px; padding:10px 16px!important; }
+          .oc-header-btns { flex-wrap:wrap; gap:6px!important; }
+          .oc-header-btns button { font-size:11px!important; padding:5px 9px!important; }
+          .oc-header-badge { display:none!important; }
+          .oc-header-title { font-size:15px!important; }
+          .oc-header-sub  { font-size:10px!important; }
+          .oc-visual-title { font-size:18px!important; }
+          .oc-plate-wrap { height:280px!important; }
+          .oc-plate-circle { width:240px!important; height:240px!important; }
+          .plate-item { font-size:52px!important; }
+          .oc-hazard-emoji { font-size:48px!important; }
+        }
+
+        /* ── Small mobile: ≤ 480px ── */
+        @media (max-width:480px) {
+          .oc-aside-left { max-height:38vh; }
+          .oc-aside-right { max-height:48vh; }
+          .oc-main-center { min-height:220px; }
+          .oc-plate-circle { width:200px!important; height:200px!important; }
+          .oc-header-title { font-size:13px!important; }
+        }
       `}</style>
 
       {/* ── HEADER ── */}
-      <header style={{ background:'#fff', padding:'12px 24px', display:'flex', alignItems:'center', justifyContent:'space-between', borderBottom:'1px solid #e2e8f0', flexShrink:0, zIndex:20, boxShadow:'0 1px 2px rgba(0,0,0,0.04)' }}>
+      <header className="oc-header" style={{ background:'#fff', padding:'12px 24px', display:'flex', alignItems:'center', justifyContent:'space-between', borderBottom:'1px solid #e2e8f0', flexShrink:0, zIndex:20, boxShadow:'0 1px 2px rgba(0,0,0,0.04)' }}>
         <div style={{ display:'flex', alignItems:'center', gap:12 }}>
           <div style={{ fontSize:28 }}>🥗</div>
           <div>
-            <div style={{ fontWeight:900, fontSize:17, color:'#0f172a', letterSpacing:'-0.01em', display:'flex', alignItems:'center', gap:8 }}>
+            <div className="oc-header-title" style={{ fontWeight:900, fontSize:17, color:'#0f172a', letterSpacing:'-0.01em', display:'flex', alignItems:'center', gap:8 }}>
               HEALTHY CUSTOMIZER
               <span style={{ fontSize:11, background:'#059669', color:'#fff', fontWeight:700, padding:'2px 8px', borderRadius:999 }}>v3.1</span>
             </div>
-            <div style={{ fontSize:11, color:'#94a3b8' }}>Organ Formula Builder</div>
+            <div className="oc-header-sub" style={{ fontSize:12, color:'#94a3b8' }}>Organ Formula Builder</div>
           </div>
         </div>
-        <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
-          <button onClick={() => setShowOrganMap(true)} style={{ fontSize:11, fontWeight:700, color:'#fff', background:'#4f46e5', border:'none', padding:'6px 12px', borderRadius:8, cursor:'pointer' }}>🧬 Organ Connection</button>
-          <button onClick={() => setShowResult(true)} style={{ fontSize:11, fontWeight:700, color:'#fff', background:'linear-gradient(to right,#c026d3,#f59e0b)', border:'none', padding:'6px 12px', borderRadius:8, cursor:'pointer' }}>✨ Show Result</button>
-          <button onClick={() => setShowHealthCard(true)} style={{ fontSize:11, fontWeight:700, color:'#fff', background:'linear-gradient(to right,#10b981,#14b8a6)', border:'none', padding:'6px 12px', borderRadius:8, cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}><span>🃏</span> Export My Health Level Card</button>
-          <button onClick={resetAll} style={{ fontSize:11, fontWeight:700, color:'#64748b', background:'#fff', border:'1px solid #e2e8f0', padding:'6px 12px', borderRadius:8, cursor:'pointer' }}>🔄 Làm lại từ đầu</button>
-          <div style={{ background:'#0f172a', color:'#fff', padding:'6px 16px', borderRadius:12, fontSize:11, fontWeight:700, display:'flex', alignItems:'center', gap:8 }}>⚡ 46 Bio-Ingredients</div>
+        <div className="oc-header-btns" style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+          <button onClick={() => setShowOrganMap(true)} style={{ fontSize:12, fontWeight:700, color:'#fff', background:'#4f46e5', border:'none', padding:'6px 12px', borderRadius:8, cursor:'pointer' }}>🧬 Organ Connection</button>
+          <button onClick={() => setShowResult(true)} style={{ fontSize:12, fontWeight:700, color:'#fff', background:'linear-gradient(to right,#c026d3,#f59e0b)', border:'none', padding:'6px 12px', borderRadius:8, cursor:'pointer' }}>✨ Show Result</button>
+          <button onClick={() => setShowHealthCard(true)} style={{ fontSize:12, fontWeight:700, color:'#fff', background:'linear-gradient(to right,#10b981,#14b8a6)', border:'none', padding:'6px 12px', borderRadius:8, cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}><span>🃏</span> Export My Health Level Card</button>
+          <button onClick={resetAll} style={{ fontSize:12, fontWeight:700, color:'#64748b', background:'#fff', border:'1px solid #e2e8f0', padding:'6px 12px', borderRadius:8, cursor:'pointer' }}>🔄 Làm lại từ đầu</button>
+          <div className="oc-header-badge" style={{ background:'#0f172a', color:'#fff', padding:'6px 16px', borderRadius:12, fontSize:12, fontWeight:700, display:'flex', alignItems:'center', gap:8 }}>⚡ 46 Bio-Ingredients</div>
         </div>
       </header>
 
       {/* ── WORKSPACE ── */}
-      <div style={{ flex:1, display:'flex', overflow:'hidden' }}>
+      <div className="oc-workspace">
 
         {/* LEFT: Tabs */}
-        <aside style={{ width:360, background:'#fff', borderRight:'1px solid #e2e8f0', display:'flex', flexDirection:'column', flexShrink:0, zIndex:10 }}>
+        <aside className="oc-aside-left">
           {/* Tab grid */}
           <div style={{ padding:8, background:'#f1f5f9', borderBottom:'1px solid #e2e8f0', flexShrink:0 }}>
             <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:4 }}>
@@ -889,7 +969,7 @@ export default function OrganConnectionPanel({ onNext, onPrev, prevLabel, nextLa
               ].map(t => {
                 const isActive = activeTab === t.id
                 const isAvoid = t.id === 'avoid'
-                let style = { padding:'6px 4px', borderRadius:12, fontSize:11, fontWeight:700, cursor:'pointer', border:'none', transition:'all 0.15s', width:'100%' }
+                let style = { padding:'6px 4px', borderRadius:12, fontSize:12, fontWeight:700, cursor:'pointer', border:'none', transition:'all 0.15s', width:'100%' }
                 if (isActive) {
                   style = { ...style, background: t.id === 'target' ? '#4f46e5' : isAvoid ? '#dc2626' : '#0f172a', color:'#fff' }
                 } else {
@@ -909,8 +989,8 @@ export default function OrganConnectionPanel({ onNext, onPrev, prevLabel, nextLa
             {activeTab === 'target' && (
               <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
                 <div style={{ padding:12, background:'#eef2ff', border:'1px solid #e0e7ff', borderRadius:12, marginBottom:8 }}>
-                  <div style={{ fontSize:11, fontWeight:700, color:'#1e1b4b', marginBottom:4 }}>Cơ chế "Base Drink"</div>
-                  <div style={{ fontSize:10, color:'#4338ca', lineHeight:1.6 }}>Chọn 1 cơ quan làm Trọng tâm. Các nguyên liệu bồi bổ đúng cơ quan này sẽ được <strong>nhân hệ số x1.5 điểm</strong>.</div>
+                  <div style={{ fontSize:13, fontWeight:700, color:'#1e1b4b', marginBottom:4 }}>Cơ chế "Base Drink"</div>
+                  <div style={{ fontSize:12, color:'#4338ca', lineHeight:1.6 }}>Chọn 1 cơ quan làm Trọng tâm. Các nguyên liệu bồi bổ đúng cơ quan này sẽ được <strong>nhân hệ số x1.5 điểm</strong>.</div>
                 </div>
                 {DB.target.map(it => <ItemButton key={it.id} cat="target" item={it} selection={selection} onSelect={selectItem} />)}
               </div>
@@ -938,8 +1018,8 @@ export default function OrganConnectionPanel({ onNext, onPrev, prevLabel, nextLa
             {activeTab === 'avoid' && (
               <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
                 <div style={{ padding:12, background:'#fff1f2', border:'1px solid #fecdd3', borderRadius:12, marginBottom:4 }}>
-                  <div style={{ fontSize:11, fontWeight:700, color:'#7f1d1d', marginBottom:4 }}>⚠️ Cảnh báo hãm phanh</div>
-                  <div style={{ fontSize:10, color:'#be123c', lineHeight:1.6 }}>Mô phỏng thói quen thực tế. Thêm các món này sẽ trực tiếp trừ vỡ quỹ điểm nội tạng mà bạn vừa cất công gom phía trên.</div>
+                  <div style={{ fontSize:13, fontWeight:700, color:'#7f1d1d', marginBottom:4 }}>⚠️ Cảnh báo hãm phanh</div>
+                  <div style={{ fontSize:12, color:'#be123c', lineHeight:1.6 }}>Mô phỏng thói quen thực tế. Thêm các món này sẽ trực tiếp trừ vỡ quỹ điểm nội tạng mà bạn vừa cất công gom phía trên.</div>
                 </div>
                 {DB.avoid.map(it => <ItemButton key={it.id} cat="avoid" item={it} selection={selection} onSelect={selectItem} />)}
               </div>
@@ -948,18 +1028,18 @@ export default function OrganConnectionPanel({ onNext, onPrev, prevLabel, nextLa
         </aside>
 
         {/* CENTER: Visual Stage */}
-        <main style={{ flex:1, display:'flex', flexDirection:'column', background:'#eff3f7', position:'relative', overflow:'hidden', justifyContent:'space-between', alignItems:'center', padding:'32px 0' }}>
+        <main className="oc-main-center">
           <div style={{ textAlign:'center', zIndex:10 }}>
-            <span style={{ fontSize:10, fontWeight:900, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'0.15em', display:'block', marginBottom:4 }}>Visual Stage</span>
-            <h2 style={{ fontSize:24, fontWeight:900, color:'#1e293b', margin:0 }}>Mâm Cơm Thần Kỳ</h2>
-            <p style={{ fontSize:11, color:'#64748b', marginTop:4 }}>
+            <span style={{ fontSize:11, fontWeight:900, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'0.15em', display:'block', marginBottom:4 }}>Visual Stage</span>
+            <h2 className="oc-visual-title" style={{ fontSize:24, fontWeight:900, color:'#1e293b', margin:0 }}>Mâm Cơm Thần Kỳ</h2>
+            <p style={{ fontSize:12, color:'#64748b', marginTop:4 }}>
               {selection.target ? `Mục tiêu: ${selection.target.name.replace('Trọng tâm: ','')}` : 'Hãy chọn 1 mục tiêu sức khỏe để bắt đầu'}
             </p>
           </div>
 
           {/* Plate */}
-          <div style={{ position:'relative', display:'flex', alignItems:'center', justifyContent:'center', width:'100%', maxWidth:500, height:420 }}>
-            <div id="main-plate" style={{ width:360, height:360, borderRadius:'50%', background:'#fff', border:'18px solid #f8fafc', boxShadow:'0 25px 50px -12px rgba(0,0,0,0.25)', position:'relative', display:'flex', alignItems:'center', justifyContent:'center', transition:'all 0.7s ease', transform: selection.avoid ? 'scale(0.92) translateX(-20px)' : 'scale(1) translateX(0)' }}>
+          <div className="oc-plate-wrap" style={{ position:'relative', display:'flex', alignItems:'center', justifyContent:'center', width:'100%', maxWidth:500, height:420 }}>
+            <div className="oc-plate-circle" id="main-plate" style={{ width:360, height:360, borderRadius:'50%', background:'#fff', border:'18px solid #f8fafc', boxShadow:'0 25px 50px -12px rgba(0,0,0,0.25)', position:'relative', display:'flex', alignItems:'center', justifyContent:'center', transition:'all 0.7s ease', transform: selection.avoid ? 'scale(0.92) translateX(-20px)' : 'scale(1) translateX(0)' }}>
               <div style={{ position:'absolute', width:'100%', height:2, background:'#f1f5f9', top:'50%', left:0, transform:'translateY(-50%)' }} />
               <div style={{ position:'absolute', height:'100%', width:2, background:'#f1f5f9', left:'50%', top:0, transform:'translateX(-50%)' }} />
               <div id="plate-base"    className="plate-item" style={{ top:'38%', left:'32%', fontSize:75 }} />
@@ -970,25 +1050,25 @@ export default function OrganConnectionPanel({ onNext, onPrev, prevLabel, nextLa
 
             {/* Hazard */}
             <div style={{ position:'absolute', bottom:16, right:24, display:'flex', flexDirection:'column', alignItems:'center' }}>
-              <div className={selection.avoid ? 'hazard-active' : ''} style={{ fontSize:70, transform: selection.avoid ? 'scale(1)' : 'scale(0)', opacity: selection.avoid ? 1 : 0, transition:'all 0.5s ease', userSelect:'none' }}>
+              <div className={`oc-hazard-emoji${selection.avoid ? ' hazard-active' : ''}`} style={{ fontSize:70, transform: selection.avoid ? 'scale(1)' : 'scale(0)', opacity: selection.avoid ? 1 : 0, transition:'all 0.5s ease', userSelect:'none' }}>
                 {selection.avoid?.emoji || '🍺'}
               </div>
               <span style={{ fontSize:10, fontWeight:900, background:'#dc2626', color:'#fff', padding:'2px 8px', borderRadius:999, marginTop:4, opacity: selection.avoid ? 1 : 0, transition:'opacity 0.3s' }}>CHẤT PHÁ HOẠI</span>
             </div>
           </div>
 
-          <div style={{ fontSize:11, fontWeight:600, color:'#94a3b8' }}>
+          <div style={{ fontSize:12, fontWeight:600, color:'#94a3b8' }}>
             Gợi ý: Thử chọn <span style={{ color:'#4f46e5', fontWeight:700 }}>Mục tiêu Gan</span> + <span style={{ color:'#059669', fontWeight:700 }}>Bông cải</span> + <span style={{ color:'#dc2626', fontWeight:700 }}>Bia</span> để xem AI phản ứng.
           </div>
         </main>
 
         {/* RIGHT: Analytics */}
-        <aside style={{ width:360, background:'#fff', borderLeft:'1px solid #e2e8f0', display:'flex', flexDirection:'column', flexShrink:0, overflow:'hidden', zIndex:10 }}>
+        <aside className="oc-aside-right">
           {/* Score bars */}
           <div style={{ padding:12, borderBottom:'1px solid #f1f5f9', background:'#f8fafc', flexShrink:0 }}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
-              <span style={{ fontSize:10, fontWeight:900, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'0.1em' }}>Hệ thống đo lường</span>
-              <span style={{ fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:4, background:'#dcfce7', color:'#166534', display:'flex', alignItems:'center', gap:4 }}>
+              <span style={{ fontSize:11, fontWeight:900, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'0.1em' }}>Hệ thống đo lường</span>
+              <span style={{ fontSize:11, fontWeight:700, padding:'2px 8px', borderRadius:4, background:'#dcfce7', color:'#166534', display:'flex', alignItems:'center', gap:4 }}>
                 <span style={{ width:6, height:6, borderRadius:'50%', background:'#22c55e', animation:'pulse 2s infinite', display:'inline-block' }} /> Phản ứng nội tạng
               </span>
             </div>
@@ -1006,7 +1086,7 @@ export default function OrganConnectionPanel({ onNext, onPrev, prevLabel, nextLa
                 const isTarget = targetOrgan === key
                 return (
                   <div key={key}>
-                    <div style={{ display:'flex', justifyContent:'space-between', fontSize:11, fontWeight:700, marginBottom:4, color:'#334155' }}>
+                    <div style={{ display:'flex', justifyContent:'space-between', fontSize:13, fontWeight:700, marginBottom:4, color:'#334155' }}>
                       <span style={{ display:'flex', alignItems:'center', gap:6, ...(isTarget ? { padding:'0 4px', borderRadius:4, background:'#fef3c7' } : {}) }}>
                         {typeof icon === 'string' ? icon : icon} {label}{isTarget ? ' ⭐' : ''}
                       </span>
@@ -1029,34 +1109,34 @@ export default function OrganConnectionPanel({ onNext, onPrev, prevLabel, nextLa
             <div style={{ background:'#fff', border: selection.avoid?.id === 'bia' && selection.target?.organKey === 'liver' ? '1px solid #ef4444' : '1px solid #e2e8f0', borderRadius:16, padding:12, boxShadow:'0 1px 3px rgba(0,0,0,0.06)' }}>
               <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}>
                 <span style={{ fontSize:18 }}>💬</span>
-                <span style={{ fontSize:11, fontWeight:900, color:'#0f172a', textTransform:'uppercase', letterSpacing:'0.05em' }}>Bác sĩ AI chẩn đoán:</span>
+                <span style={{ fontSize:12, fontWeight:900, color:'#0f172a', textTransform:'uppercase', letterSpacing:'0.05em' }}>Bác sĩ AI chẩn đoán:</span>
               </div>
-              <div style={{ fontSize:11, color:'#475569', lineHeight:1.6, fontStyle:'italic' }} dangerouslySetInnerHTML={{ __html: aiMsg }} />
+              <div style={{ fontSize:13, color:'#475569', lineHeight:1.6, fontStyle:'italic' }} dangerouslySetInnerHTML={{ __html: aiMsg }} />
             </div>
 
             {/* Receipt */}
-            <div className="receipt-paper" style={{ border:'1px solid #e2e8f0', borderRadius:12, padding:12, fontFamily:'monospace', fontSize:11, color:'#334155', position:'relative' }}>
-              <div style={{ position:'absolute', top:-12, right:16, background:'#065f46', color:'#fff', fontWeight:900, fontSize:9, padding:'2px 8px', borderRadius:999, textTransform:'uppercase', letterSpacing:'0.1em' }}>Custom Formula</div>
+            <div className="receipt-paper" style={{ border:'1px solid #e2e8f0', borderRadius:12, padding:12, fontFamily:'monospace', fontSize:12, color:'#334155', position:'relative' }}>
+              <div style={{ position:'absolute', top:-12, right:16, background:'#065f46', color:'#fff', fontWeight:900, fontSize:10, padding:'2px 8px', borderRadius:999, textTransform:'uppercase', letterSpacing:'0.1em' }}>Custom Formula</div>
               <div style={{ textAlign:'center', paddingBottom:8, borderBottom:'2px dashed #cbd5e1' }}>
-                <div style={{ fontWeight:900, fontSize:13, color:'#0f172a' }}>CÔNG THỨC NỘI TẠNG</div>
-                <div style={{ fontSize:10, color:'#94a3b8', marginTop:2 }}>Mã mâm cơm: #BIO-2026</div>
+                <div style={{ fontWeight:900, fontSize:14, color:'#0f172a' }}>CÔNG THỨC NỘI TẠNG</div>
+                <div style={{ fontSize:11, color:'#94a3b8', marginTop:2 }}>Mã mâm cơm: #BIO-2026</div>
               </div>
               <div style={{ padding:'8px 0', borderBottom:'2px dashed #cbd5e1', display:'flex', flexDirection:'column', gap:4 }}>
-                <div style={{ display:'flex', justifyContent:'space-between', fontSize:10 }}><span style={{ color:'#94a3b8' }}>Trọng tâm:</span> <strong style={{ color:'#4f46e5' }}>{selection.target ? selection.target.name.replace('Trọng tâm: ','').replace(/^[❤️💧🧠🌬️🦠]/,'').trim() : 'Chưa đặt'}</strong></div>
+                <div style={{ display:'flex', justifyContent:'space-between', fontSize:12 }}><span style={{ color:'#94a3b8' }}>Trọng tâm:</span> <strong style={{ color:'#4f46e5' }}>{selection.target ? selection.target.name.replace('Trọng tâm: ','').replace(/^[❤️💧🧠🌬️🦠]/,'').trim() : 'Chưa đặt'}</strong></div>
               </div>
               <div style={{ padding:'8px 0', borderBottom:'2px dashed #cbd5e1', display:'flex', flexDirection:'column', gap:4 }}>
-                <div style={{ fontSize:10, fontWeight:700, color:'#94a3b8', marginBottom:2 }}>THÀNH PHẦN LẮP GHÉP:</div>
+                <div style={{ fontSize:11, fontWeight:700, color:'#94a3b8', marginBottom:2 }}>THÀNH PHẦN LẮP GHÉP:</div>
                 {[['Nền','base'],['Đạm','protein'],['Rau','veg'],['Super','top']].map(([l,k]) => (
-                  <div key={k} style={{ display:'flex', justifyContent:'space-between', fontSize:10 }}><span style={{ color:'#64748b' }}>{l}:</span> <strong>{selection[k]?.name || '---'}</strong></div>
+                  <div key={k} style={{ display:'flex', justifyContent:'space-between', fontSize:12 }}><span style={{ color:'#64748b' }}>{l}:</span> <strong>{selection[k]?.name || '---'}</strong></div>
                 ))}
-                <div style={{ display:'flex', justifyContent:'space-between', fontSize:10, color: selection.avoid ? '#dc2626' : undefined }}>
+                <div style={{ display:'flex', justifyContent:'space-between', fontSize:12, color: selection.avoid ? '#dc2626' : undefined }}>
                   <span style={{ color:'#fca5a5' }}>Phá hoại:</span>
                   <span style={{ fontWeight: selection.avoid ? 900 : 400, background: selection.avoid ? '#fee2e2' : undefined, padding: selection.avoid ? '0 4px' : undefined, borderRadius: selection.avoid ? 4 : undefined }}>
                     {selection.avoid ? `+ ${selection.avoid.name}` : 'Không có'}
                   </span>
                 </div>
               </div>
-              <div style={{ paddingTop:8, textAlign:'center', fontSize:10, color:'#94a3b8' }}>
+              <div style={{ paddingTop:8, textAlign:'center', fontSize:11, color:'#94a3b8' }}>
                 "Uống/Ăn có trách nhiệm với từng tế bào"
               </div>
             </div>
@@ -1101,12 +1181,12 @@ function ItemButton({ cat, item, selection, onSelect }) {
           {item.img ? <img src={item.img} style={{ width:28, height:28, objectFit:'contain' }} alt="" /> : item.emoji}
         </span>
         <div>
-          <div style={{ fontWeight:700, fontSize:11, color: isHazard ? '#be123c' : '#0f172a' }}>{item.name}</div>
-          <div style={{ fontSize:10, color:'#94a3b8', marginTop:2 }}>{item.desc || item.tag}</div>
+          <div style={{ fontWeight:700, fontSize:13, color: isHazard ? '#be123c' : '#0f172a' }}>{item.name}</div>
+          <div style={{ fontSize:11, color:'#94a3b8', marginTop:2 }}>{item.desc || item.tag}</div>
         </div>
       </div>
       {!isTarget && !isHazard && (
-        <div style={{ fontSize:9, fontFamily:'monospace', background:'#f1f5f9', padding:'2px 6px', borderRadius:4, color:'#64748b', whiteSpace:'nowrap', opacity: isSelected ? 1 : 0 }}>
+        <div style={{ fontSize:10, fontFamily:'monospace', background:'#f1f5f9', padding:'2px 6px', borderRadius:4, color:'#64748b', whiteSpace:'nowrap', opacity: isSelected ? 1 : 0 }}>
           🟤{item.liver} 💧{item.kidney}
         </div>
       )}
