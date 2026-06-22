@@ -291,9 +291,9 @@
   box-sizing: border-box;
 }
 .hj-lightbox img {
-  width: min(184vw, 100%);
-  max-width: none;
+  width: auto;
   height: auto;
+  max-width: min(184vw, 100%);
   max-height: none;
   object-fit: contain;
   border-radius: 12px;
