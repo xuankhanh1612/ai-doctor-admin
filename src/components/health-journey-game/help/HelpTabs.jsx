@@ -48,14 +48,7 @@ export default function HelpTabs({ activeTab, onChange, onNavigate }) {
             type="button"
             className={`hj-tab-pill hj-tab-pill-main ${activeTab === screen.id ? 'active' : ''}`}
             style={{ '--tab-color': screen.color }}
-            onClick={() => {
-              if (screen.target && onNavigate) {
-                // điều hướng thẳng đến trang và đóng popup
-                onNavigate(screen.target)
-              } else {
-                onChange(screen.id)
-              }
-            }}
+            onClick={() => onChange(screen.id)}
           >
             <span className="hj-tab-icon">{screen.icon}</span>
             <span className="hj-tab-label">{screen.name}</span>
