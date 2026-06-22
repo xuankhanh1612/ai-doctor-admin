@@ -21,11 +21,11 @@ import organStomachUrl    from '../organ-connection/assets/stomach.png'
 import organStomachProUrl from '../organ-connection/assets/stomachpro.png'
 import organVegetablesUrl from '../organ-connection/assets/vegetables.png'
 
-// Topbar ~56px, GlobalBottomNav ~88px (fixed, sits above content).
-// We want the iframe to fill the visible viewport minus topbar and the nav strip itself.
-// Use CSS custom property so it's easy to tweak.
+// Topbar ~56px, NavButtons row ~76px.
+// On laptop/desktop we want the iframe to take all remaining vertical space.
+// The GlobalBottomNav is position:fixed so it doesn't affect document flow —
+// we don't need to subtract it from the iframe height.
 const TOPBAR_H  = 56   // px
-const NAVBAR_H  = 88   // px – floating bottom nav (paddingBottom on <main>)
 const NAV_ROW_H = 76   // px – our NavButtons row
 
 export default function OrganConnectionPanel({ onNext, onPrev, prevLabel, nextLabel }) {
@@ -50,8 +50,8 @@ export default function OrganConnectionPanel({ onNext, onPrev, prevLabel, nextLa
     .replaceAll('__ORGAN_VEGETABLES__',  organVegetablesUrl)
   , [])
 
-  // Total iframe height = viewport minus topbar, bottom nav bar and our nav-buttons row.
-  const iframeH = `calc(100svh - ${TOPBAR_H}px - ${NAVBAR_H}px - ${NAV_ROW_H}px)`
+  // Laptop/desktop: fill all space below topbar minus our nav-buttons row
+  const iframeH = `calc(100svh - ${TOPBAR_H}px - ${NAV_ROW_H}px)`
 
   return (
     <div style={{
@@ -60,28 +60,26 @@ export default function OrganConnectionPanel({ onNext, onPrev, prevLabel, nextLa
       background: isDark ? '#0a0d1a' : '#f8fafc',
     }}>
       <style>{`
-        /* Make the inner organ-connection page fully responsive */
         .organ-iframe {
           width: 100%;
           border: none;
           display: block;
-          /* height is set via inline style but we override on narrow screens */
         }
+        /* Tablet */
         @media (max-width: 1024px) {
           .organ-iframe {
-            /* tablet: still big but let the page content breathe */
-            height: clamp(560px, calc(100svh - ${TOPBAR_H}px - ${NAV_ROW_H}px), 1100px) !important;
+            height: clamp(560px, calc(100svh - ${TOPBAR_H}px - ${NAV_ROW_H}px), 1200px) !important;
           }
         }
+        /* Phone */
         @media (max-width: 640px) {
           .organ-iframe {
-            /* phone: shorter viewport, allow internal scroll */
-            height: clamp(480px, calc(100svh - ${TOPBAR_H}px - ${NAV_ROW_H + 20}px), 900px) !important;
+            height: clamp(480px, calc(100svh - ${TOPBAR_H}px - ${NAV_ROW_H + 16}px), 900px) !important;
           }
         }
       `}</style>
 
-      {/* ── IFRAME ── fills the viewport vertically on desktop */}
+      {/* ── IFRAME ── */}
       <iframe
         className="organ-iframe"
         style={{ height: iframeH }}
