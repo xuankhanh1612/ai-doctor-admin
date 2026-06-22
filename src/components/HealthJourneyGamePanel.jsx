@@ -34,11 +34,15 @@ export default function HealthJourneyGamePanel({ onNext, nextLabel, onViewMedica
         <div>
           <div className="ai-healthcare-vision-kicker">HEALTH JOURNEY GAME</div>
           <h2>🎮 Health Journey Game</h2>
-          <p>
-            {lang === 'vi'
-              ? 'Game động lực rèn luyện sức khoẻ gồm 7 màn hình chính, tối ưu responsive cho điện thoại. Các nút trong game mở được màn hình chính và màn hình chi tiết liên quan từ file HTML gốc.'
-              : 'A motivational health-training game with 7 primary mobile-first screens. In-game buttons navigate across the main screens and related detail screens from the source HTML.'}
-          </p>
+          <ul className="health-journey-game-flow-links">
+            <li>🏠 Trang chủ → 📊 Thống kê</li>
+            <li>📋 Nhiệm vụ → 📝 Chi tiết nhiệm vụ</li>
+            <li>⚔️ Hành trình → 📖 Hành trình – Chapter</li>
+            <li>🎤 AI Coach → 💡 AI Coach – Gợi ý</li>
+            <li>🏪 Cửa hàng</li>
+            <li>🎁 Rewards → 🎁 Daily Reward, 🏆 Leaderboard</li>
+            <li>👤 Profile</li>
+          </ul>
         </div>
         <div className="health-journey-game-screen-list" aria-label="7 main Health Journey Game screens">
           {GAME_SCREENS.map((screen, index) => (
