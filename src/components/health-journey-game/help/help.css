@@ -282,20 +282,25 @@
   z-index: 9999;
   background: rgba(2, 4, 10, 0.92);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
+  overflow: auto;
   cursor: zoom-out;
   animation: hjOverlayFadeIn 0.15s ease;
+  padding: 64px 16px 32px;
+  box-sizing: border-box;
 }
 .hj-lightbox img {
-  max-width: 92vw;
-  max-height: 90vh;
+  width: min(184vw, 100%);
+  max-width: none;
+  height: auto;
+  max-height: none;
   object-fit: contain;
   border-radius: 12px;
   box-shadow: 0 0 60px rgba(139, 92, 246, 0.35);
 }
 .hj-lightbox-close {
-  position: absolute;
+  position: fixed;
   top: 18px;
   right: 18px;
   width: 38px;
@@ -306,6 +311,7 @@
   color: #fff;
   font-size: 16px;
   cursor: pointer;
+  z-index: 10000;
 }
 
 /* ---------- Robot chatbot panel ---------- */
