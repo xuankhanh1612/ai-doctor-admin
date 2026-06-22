@@ -3447,6 +3447,50 @@ export default function HealthJourneyGameStandalone({ onViewMedicalRecord }) {
             </div>
           </div>
         </div>
+        {/* MODAL: LOCKED CHAPTER NOTICE */}
+        <div className="modal-overlay" onClick={handleOverlayClick} id="modal-locked-chapter">
+          <div className="modal-box" style={{ textAlign: "center", padding: "32px 20px 24px", margin: "auto 20px" }}>
+            <div className="modal-close" onClick={(event) => { closeModal('modal-locked-chapter'); }}>
+              ✕
+            </div>
+            <div id="locked-chapter-icon" style={{ fontSize: "52px", marginBottom: "12px" }}>
+              🔒
+            </div>
+            <div id="locked-chapter-name" style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: "22px", fontWeight: "900", color: "#fff", marginBottom: "8px" }}>
+            </div>
+            <div id="locked-chapter-msg" style={{ fontSize: "13px", color: "var(--text-dim)", marginBottom: "20px", lineHeight: "1.5" }}>
+            </div>
+            <div style={{ background: "rgba(139,92,246,0.08)", border: "1px solid rgba(139,92,246,0.2)", borderRadius: "10px", padding: "12px", marginBottom: "20px" }}>
+              <div style={{ fontSize: "10px", color: "var(--text-muted)", marginBottom: "4px" }}>
+                Tiến độ hiện tại
+              </div>
+              <div style={{ fontSize: "12px", color: "var(--blue-glow)", fontWeight: "600" }}>
+                {(() => {
+                  const currentChapter = snapshot.journeyUser?.journeyProgress?.currentChapter || 1
+                  const curJourney = allJourneys.find((j) => j.chapter === currentChapter) || {}
+                  const objectives = curJourney.requiredObjectives || []
+                  const totalTarget = objectives.reduce((s, o) => s + (o.target || 1), 0)
+                  const currentSum = objectives.reduce((s, o) => {
+                    const obj = journeyObjective(o.task)
+                    return s + Math.min(obj?.current || 0, o.target || 1)
+                  }, 0)
+                  const curPct = totalTarget > 0 ? Math.min(100, Math.round(currentSum / totalTarget * 100)) : 0
+                  return `Chapter ${currentChapter} · ${(curJourney.title?.en || 'THE AWAKENING').toUpperCase()} · ${curPct}%`
+                })()}
+              </div>
+            </div>
+            <button className="btn-primary" onClick={(event) => {
+              closeModal('modal-locked-chapter')
+              closeModal('modal-all-chapters')
+              openJourneyPopup('overview')
+            }}>
+              TIẾP TỤC CHAPTER {snapshot.journeyUser?.journeyProgress?.currentChapter || 1}
+            </button>
+            <button className="btn-outline" style={{ width: "100%", marginTop: "8px" }} onClick={(event) => { closeModal('modal-locked-chapter'); }}>
+              ĐÓNG
+            </button>
+          </div>
+        </div>
         {/* ═══════════════════════════════ BOTTOM NAV ═══════════════════════════════ */}
         <nav id="bottom-nav">
           <div className={`nav-item${activeScreen === 'screen-home' ? ' active' : ''}`} id="nav-home" onClick={(event) => { goTo('screen-home'); }}>
