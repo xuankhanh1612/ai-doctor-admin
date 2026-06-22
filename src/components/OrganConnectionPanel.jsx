@@ -399,12 +399,11 @@ function OrganMapModal({ open, onClose, selection }) {
         .oc-badge { opacity:0; transform:scale(0.5); transition:all 0.4s cubic-bezier(0.34,1.56,0.64,1); transition-delay:0.2s; }
         .oc-badge.visible { opacity:1; transform:scale(1); }
         .oc-organ-img { transition:all 0.4s ease; }
+        .oc-map-desktop { display:flex; flex:1; align-items:stretch; overflow:hidden; position:relative; }
+        .oc-map-mobile  { display:none; flex:1; overflow-y:auto; padding:16px; gap:16px; flex-direction:column; }
         @media (max-width:768px) {
-          .oc-map-body { flex-direction:column!important; overflow:auto!important; }
-          .oc-map-food-col { width:100%!important; flex-direction:row!important; flex-wrap:wrap!important; padding:12px!important; max-height:none!important; }
-          .oc-map-organ-col { width:100%!important; flex-direction:row!important; flex-wrap:wrap!important; padding:12px!important; }
-          .oc-map-food-col .oc-food-node { flex:1 1 120px; min-width:100px; }
-          .oc-map-organ-col .oc-organ-node { flex:1 1 80px; justify-content:center; flex-direction:column; text-align:center; }
+          .oc-map-desktop { display:none !important; }
+          .oc-map-mobile  { display:flex !important; }
         }
       `}</style>
       <div className="oc-modal" style={{ borderRadius:24, width:'96vw', maxWidth:1100, height:'min(96vh, calc(100vh - 24px))', maxHeight:'calc(100vh - 24px)', position:'relative', overflow:'hidden', display:'flex', flexDirection:'column', flexShrink:0 }}>
@@ -421,8 +420,8 @@ function OrganMapModal({ open, onClose, selection }) {
           <button onClick={onClose} style={{ width:36, height:36, borderRadius:'50%', background:'rgba(255,255,255,0.1)', border:'none', color:'#fff', fontSize:18, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>✕</button>
         </div>
 
-        {/* Body */}
-        <div ref={containerRef} className="oc-map-body" style={{ position:'relative', flex:1, display:'flex', alignItems:'stretch', overflow:'hidden' }}>
+        {/* ── Desktop body (SVG lines) ── */}
+        <div ref={containerRef} className="oc-map-desktop">
           <svg ref={svgRef} style={{ position:'absolute', inset:0, width:'100%', height:'100%', pointerEvents:'none', zIndex:10 }} />
 
           {/* Left: Food nodes */}
@@ -443,7 +442,6 @@ function OrganMapModal({ open, onClose, selection }) {
                   </div>
                 )
               })}
-
               {hazardItem && (
                 <>
                   <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:4 }}>
@@ -461,7 +459,6 @@ function OrganMapModal({ open, onClose, selection }) {
                   </div>
                 </>
               )}
-
               {allItems.length === 0 && (
                 <div style={{ display:'flex', flexDirection:'column', alignItems:'center', textAlign:'center', padding:'32px 0', gap:12, marginTop:16 }}>
                   <div style={{ fontSize:48, opacity:0.4 }}>🍽️</div>
@@ -502,6 +499,87 @@ function OrganMapModal({ open, onClose, selection }) {
               )
             })}
           </div>
+        </div>
+
+        {/* ── Mobile body: sơ đồ liên kết dạng card ── */}
+        <div className="oc-map-mobile">
+          {allItems.length === 0 ? (
+            <div style={{ display:'flex', flexDirection:'column', alignItems:'center', textAlign:'center', padding:'48px 0', gap:12 }}>
+              <div style={{ fontSize:56, opacity:0.35 }}>🍽️</div>
+              <div style={{ fontSize:14, color:'rgba(255,255,255,0.5)', fontWeight:600 }}>Hãy chọn thức ăn<br/>để xem kết nối</div>
+            </div>
+          ) : (
+            <>
+              {/* Food → Organ connection cards */}
+              {allItems.map((it, idx) => {
+                const isHazard = it === hazardItem
+                const sortedOrgans = ORGAN_KEYS.slice().sort((a,b) => isHazard ? (it[a]||0)-(it[b]||0) : (it[b]||0)-(it[a]||0))
+                const relevantOrgans = sortedOrgans.filter(o => (it[o]||0) !== 0).slice(0,4)
+                return (
+                  <div key={it.id} style={{ background: isHazard ? 'rgba(127,29,29,0.45)' : 'rgba(15,12,40,0.85)', border: isHazard ? '1px solid rgba(239,68,68,0.4)' : '1px solid rgba(255,255,255,0.1)', borderRadius:18, padding:14, backdropFilter:'blur(8px)' }}>
+                    {/* Food header */}
+                    <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:12 }}>
+                      <div style={{ width:44, height:44, background:'rgba(255,255,255,0.1)', borderRadius:12, display:'flex', alignItems:'center', justifyContent:'center', fontSize:26, flexShrink:0 }}>{it.emoji}</div>
+                      <div style={{ flex:1 }}>
+                        <div style={{ color: isHazard ? '#fca5a5' : '#fff', fontSize:13, fontWeight:800 }}>{it.name}</div>
+                        <div style={{ fontSize:11, color: isHazard ? '#f87171' : '#818cf8', marginTop:2 }}>{isHazard ? '⚠ Chất phá hoại' : it.tag}</div>
+                      </div>
+                      <div style={{ fontSize:10, fontWeight:900, color: isHazard ? '#f87171' : '#34d399', background: isHazard ? 'rgba(239,68,68,0.15)' : 'rgba(52,211,153,0.12)', padding:'3px 8px', borderRadius:999, border: isHazard ? '1px solid rgba(239,68,68,0.3)' : '1px solid rgba(52,211,153,0.25)', whiteSpace:'nowrap' }}>
+                        {isHazard ? '☠️ Phá hoại' : '✦ Bổ trợ'}
+                      </div>
+                    </div>
+                    {/* Arrow */}
+                    <div style={{ textAlign:'center', fontSize:16, color:'rgba(255,255,255,0.3)', marginBottom:10, letterSpacing:4 }}>{'↓ ↓ ↓'}</div>
+                    {/* Organ impact chips */}
+                    <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
+                      {relevantOrgans.map(o => {
+                        const val = it[o] || 0
+                        const color = ORGAN_COLOR[o]
+                        const isNeg = val < 0
+                        const barW = Math.abs(val) / 10 * 100
+                        return (
+                          <div key={o} style={{ flex:'1 1 130px', background:'rgba(255,255,255,0.05)', border:`1px solid ${isNeg ? 'rgba(239,68,68,0.3)' : color+'44'}`, borderRadius:12, padding:'8px 10px' }}>
+                            <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:6 }}>
+                              <img src={organImgMap[o]} style={{ width:28, height:28, objectFit:'contain', flexShrink:0 }} alt="" />
+                              <div style={{ flex:1 }}>
+                                <div style={{ fontSize:11, fontWeight:700, color:'#fff' }}>{organLabels[o]}</div>
+                                <div style={{ fontSize:12, fontWeight:900, color: isNeg ? '#f87171' : color }}>{val > 0 ? '+' : ''}{val} pts</div>
+                              </div>
+                            </div>
+                            <div style={{ height:5, borderRadius:999, background:'rgba(255,255,255,0.08)', overflow:'hidden' }}>
+                              <div style={{ height:'100%', width:`${barW}%`, background: isNeg ? '#dc2626' : color, borderRadius:999, transition:'width 0.6s ease' }} />
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )
+              })}
+
+              {/* Organ summary row */}
+              <div style={{ background:'rgba(99,102,241,0.1)', border:'1px solid rgba(99,102,241,0.25)', borderRadius:18, padding:14 }}>
+                <div style={{ fontSize:10, fontWeight:900, color:'#818cf8', textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:12 }}>Tổng tác động lên nội tạng</div>
+                <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
+                  {['brain','lungs','heart','liver','stomach','kidney'].map(o => {
+                    const net = organTotals[o]
+                    const isDamaged = damagedOrgans.has(o)
+                    const color = ORGAN_COLOR[o]
+                    const isNeg = net < 0
+                    return (
+                      <div key={o} style={{ flex:'1 1 130px', display:'flex', alignItems:'center', gap:8, background:'rgba(255,255,255,0.04)', border:`1px solid ${isNeg ? 'rgba(239,68,68,0.3)' : color+'33'}`, borderRadius:12, padding:'8px 10px' }}>
+                        <img src={organImgMap[o]} style={{ width:32, height:32, objectFit:'contain', flexShrink:0, ...(isDamaged && isNeg ? { filter:'drop-shadow(0 0 8px #dc2626) brightness(0.85)' } : net > 0 ? { filter:`drop-shadow(0 0 6px ${color})` } : {}) }} alt="" />
+                        <div>
+                          <div style={{ fontSize:11, color:'rgba(255,255,255,0.7)', fontWeight:600 }}>{organLabels[o]}</div>
+                          <div style={{ fontSize:14, fontWeight:900, color: isNeg ? '#f87171' : net > 0 ? color : 'rgba(255,255,255,0.3)' }}>{net > 0 ? '+' : ''}{net}</div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Footer legend */}
@@ -628,6 +706,16 @@ function HealthCardModal({ open, onClose, scores, hasItem, selection }) {
         @keyframes hc-float { 0%,100%{transform:translateY(-5px)} 50%{transform:translateY(5px)} }
         .hc-shine { animation:hc-card-shine 5s linear infinite; }
         .hc-veg-float { animation:hc-float 4s ease-in-out infinite; }
+        .hc-body { display:flex; align-items:flex-start; justify-content:center; gap:32px; padding:24px 28px; overflow:hidden; flex:1; }
+        .hc-left-col { display:flex; align-items:flex-start; justify-content:center; overflow-y:auto; overflow-x:hidden; flex-shrink:0; max-height:100%; padding-right:4px; scrollbar-width:thin; scrollbar-color:rgba(255,255,255,0.2) transparent; }
+        .hc-left-col::-webkit-scrollbar { width:5px; }
+        .hc-left-col::-webkit-scrollbar-track { background:transparent; }
+        .hc-left-col::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.2); border-radius:4px; }
+        @media (max-width:900px) {
+          .hc-body { flex-direction:column; align-items:center; overflow-y:auto; padding:16px; gap:20px; }
+          .hc-left-col { max-height:none; overflow:visible; width:100%; justify-content:center; padding-right:0; }
+          .hc-right-col { width:100% !important; max-height:none !important; }
+        }
       `}</style>
       <div className="hc-grid-bg" style={{ background:'linear-gradient(135deg,#0f0c29,#141428,#1a1035)', borderRadius:24, width:'96vw', maxWidth:900, maxHeight:'calc(100vh - 24px)', position:'relative', overflow:'hidden', display:'flex', flexDirection:'column', flexShrink:0 }}>
         <div style={{ position:'relative', zIndex:10, display:'flex', alignItems:'center', justifyContent:'space-between', padding:'20px 28px 16px', borderBottom:'1px solid rgba(255,255,255,0.1)', flexShrink:0 }}>
@@ -638,8 +726,9 @@ function HealthCardModal({ open, onClose, scores, hasItem, selection }) {
           <button onClick={onClose} style={{ width:36, height:36, borderRadius:'50%', background:'rgba(255,255,255,0.1)', border:'none', color:'#fff', fontSize:18, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>✕</button>
         </div>
 
-        <div style={{ position:'relative', zIndex:10, flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:32, padding:'24px 28px', overflow:'hidden' }}>
-          {/* Card */}
+        <div className="hc-body" style={{ position:'relative', zIndex:10 }}>
+          {/* Card — left col with scroll */}
+          <div className="hc-left-col">
           <div ref={wrapRef} onMouseMove={handleMouseMove} onMouseLeave={handleMouseLeave} style={{ perspective:1800, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
             <div ref={cardRef} style={{ width:380, minHeight:660, borderRadius:32, position:'relative', transformStyle:'preserve-3d', background:'linear-gradient(170deg,#7fe0d7 0%,#5bc8bd 40%,#3db8ac 100%)', boxShadow:'0 40px 100px rgba(0,0,0,.55),0 0 0 1.5px rgba(255,255,255,0.25) inset', overflow:'hidden' }}>
               {/* Shine */}
@@ -708,9 +797,10 @@ function HealthCardModal({ open, onClose, scores, hasItem, selection }) {
               </div>
             </div>
           </div>
+          </div>{/* end hc-left-col */}
 
           {/* Right panel */}
-          <div style={{ flex:1, display:'flex', flexDirection:'column', gap:16, overflowY:'auto', maxHeight:'80vh', scrollbarWidth:'none' }}>
+          <div className="hc-right-col" style={{ flex:1, display:'flex', flexDirection:'column', gap:16, overflowY:'auto', maxHeight:'calc(100vh - 160px)', scrollbarWidth:'none' }}>
             <div style={{ fontSize:10, fontWeight:900, color:'#34d399', textTransform:'uppercase', letterSpacing:'0.1em' }}>Phân tích chi tiết</div>
             <div style={{ background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:16, padding:16 }}>
               <div style={{ fontSize:12, fontWeight:700, color:'#fff', marginBottom:8 }}>📊 Lục giác chỉ số nội tạng</div>
