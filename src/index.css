@@ -1765,6 +1765,26 @@ html, body, #root {
   }
 }
 
+/* Flipped flow map panel — no header text, just the doubled SVG */
+.health-journey-game-header-flipped {
+  padding: 0 !important;
+  background: none !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.health-journey-game-flow-map-box {
+  height: 320px;
+}
+
+.health-journey-game-flow-map-box--large {
+  height: 640px;
+}
+
+.health-journey-game-flow-map-box--large .hj-flow-svg {
+  min-height: 600px;
+}
+
 /* ============================================================
    WebcamControls — AI Doctor webcam UI (WEBCAM_CONTROLS_GUIDE.md)
    ============================================================ */

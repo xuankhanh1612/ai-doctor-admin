@@ -54,9 +54,28 @@ function ShortConnector({ x, y1, y2, color, id }) {
 }
 
 export default function HelpFlowMap({ onJumpToScreen, onJumpToDetail, flipped = false }) {
-  const NAV_Y = flipped ? VB_H - 46 : 46
+  // When flipped: nav sits at bottom, screen in middle, detail at top.
+  // dirSign drives offsets that point "toward the center" from each row.
+  const NAV_Y    = flipped ? VB_H - 46  : 46
   const SCREEN_Y = flipped ? VB_H - 168 : 168
   const DETAIL_Y = flipped ? VB_H - 320 : 320
+
+  // Connector anchors: edges of circles/cards closest to next row
+  // Non-flipped: nav bottom (NAV_Y+26) → screen top (SCREEN_Y-30)
+  // Flipped:     nav top   (NAV_Y-26) → screen bottom (SCREEN_Y+30)
+  const navToScreenY1   = flipped ? NAV_Y - 26    : NAV_Y + 26
+  const navToScreenY2   = flipped ? SCREEN_Y + 30 : SCREEN_Y - 30
+  const screenToDetailY1 = flipped ? SCREEN_Y - 34 : SCREEN_Y + 34
+  const screenToDetailY2 = flipped ? DETAIL_Y + 26 : DETAIL_Y - 26
+
+  // Nav label: below circle normally, above circle when flipped
+  const navLabelY = flipped ? -34 : 42
+
+  // Screen card top-left Y (card is 64px tall, centred on SCREEN_Y)
+  const screenCardY = flipped ? SCREEN_Y - 34 : SCREEN_Y - 30
+
+  // Detail badge top-left Y
+  const detailBadgeY = flipped ? DETAIL_Y - 14 : DETAIL_Y - 26
 
   return (
     <div className="hj-flow-map-wrap">
@@ -67,8 +86,8 @@ export default function HelpFlowMap({ onJumpToScreen, onJumpToDetail, flipped = 
             key={`c-${nav.id}`}
             id={`nav-${nav.id}`}
             x={colX(i)}
-            y1={NAV_Y + 26}
-            y2={SCREEN_Y - 30}
+            y1={navToScreenY1}
+            y2={navToScreenY2}
             color={nav.color}
           />
         ))}
@@ -81,8 +100,8 @@ export default function HelpFlowMap({ onJumpToScreen, onJumpToDetail, flipped = 
               key={`d-${nav.id}`}
               id={`detail-${nav.id}`}
               x={colX(i) - (nav.detailId2 ? 22 : 0)}
-              y1={SCREEN_Y + 34}
-              y2={DETAIL_Y - 26}
+              y1={screenToDetailY1}
+              y2={screenToDetailY2}
               color={nav.color}
             />
           )
@@ -94,8 +113,8 @@ export default function HelpFlowMap({ onJumpToScreen, onJumpToDetail, flipped = 
               key={`d2-${nav.id}`}
               id={`detail2-${nav.id}`}
               x={colX(i) + 22}
-              y1={SCREEN_Y + 34}
-              y2={DETAIL_Y - 26}
+              y1={screenToDetailY1}
+              y2={screenToDetailY2}
               color={nav.color}
             />
           )
@@ -111,7 +130,7 @@ export default function HelpFlowMap({ onJumpToScreen, onJumpToDetail, flipped = 
           >
             <circle r={nav.isCenter ? 27 : 23} className="hj-flow-nav-circle" stroke={nav.color} />
             <text textAnchor="middle" dy="7" className="hj-flow-nav-icon">{nav.icon}</text>
-            <text textAnchor="middle" y="42" className="hj-flow-node-label" fill={nav.color}>{nav.label}</text>
+            <text textAnchor="middle" y={navLabelY} className="hj-flow-node-label" fill={nav.color}>{nav.label}</text>
           </g>
         ))}
 
@@ -119,7 +138,7 @@ export default function HelpFlowMap({ onJumpToScreen, onJumpToDetail, flipped = 
         {NAV_FLOW.map((nav, i) => (
           <g
             key={`s-${nav.id}`}
-            transform={`translate(${colX(i) - 46}, ${SCREEN_Y - 30})`}
+            transform={`translate(${colX(i) - 46}, ${screenCardY})`}
             className="hj-flow-node hj-flow-node-screen"
             onClick={() => onJumpToScreen?.(nav.id)}
           >
@@ -140,7 +159,7 @@ export default function HelpFlowMap({ onJumpToScreen, onJumpToDetail, flipped = 
             return (
               <g
                 key={detailId}
-                transform={`translate(${colX(i) + offsetX - 40}, ${DETAIL_Y - 26})`}
+                transform={`translate(${colX(i) + offsetX - 40}, ${detailBadgeY})`}
                 className="hj-flow-node hj-flow-node-detail"
                 onClick={() => onJumpToDetail?.(detailId)}
               >
