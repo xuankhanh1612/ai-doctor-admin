@@ -802,7 +802,7 @@ export default function OrganConnectionPanel({ onNext, onPrev, prevLabel, nextLa
   const iframeH = `calc(100svh - ${TOPBAR_H}px)`
 
   return (
-    <div style={{ position:'relative', height:iframeH, background: isDark ? '#0a0d1a' : '#f8fafc', flexShrink:0, display:'flex', flexDirection:'column', overflow:'hidden' }}>
+    <div style={{ height:iframeH, background: isDark ? '#0a0d1a' : '#f8fafc', display:'flex', flexDirection:'column', overflow:'hidden' }}>
       <style>{`
         /* Plate items */
         .plate-item {
@@ -839,14 +839,15 @@ export default function OrganConnectionPanel({ onNext, onPrev, prevLabel, nextLa
           box-shadow:0 10px 25px -5px rgba(0,0,0,0.08);
         }
 
-        /* Nav overlay */
-        .organ-nav-overlay {
-          position:absolute; bottom:0; left:0; right:0;
-          padding:0 clamp(12px,3vw,24px);
-          background:linear-gradient(to top, ${isDark?'rgba(10,13,26,0.92)':'rgba(248,250,252,0.92)'} 70%, transparent);
-          pointer-events:none;
+        /* Nav bar */
+        .organ-nav-bar {
+          display:flex;
+          flex-shrink:0;
+          padding:8px clamp(12px,3vw,24px);
+          background:${isDark?'#0a0d1a':'#f8fafc'};
+          border-top:1px solid ${isDark?'rgba(255,255,255,0.08)':'#e2e8f0'};
+          z-index:20;
         }
-        .organ-nav-overlay > * { pointer-events:auto; }
       `}</style>
 
       {/* ── HEADER ── */}
@@ -1068,8 +1069,8 @@ export default function OrganConnectionPanel({ onNext, onPrev, prevLabel, nextLa
       <ResultModal open={showResult} onClose={() => setShowResult(false)} scores={scores} hasItem={hasItem} selection={selection} />
       <HealthCardModal open={showHealthCard} onClose={() => setShowHealthCard(false)} scores={scores} hasItem={hasItem} selection={selection} />
 
-      {/* Nav overlay */}
-      <div className="organ-nav-overlay">
+      {/* Nav bar */}
+      <div className="organ-nav-bar">
         <NavButtons onPrev={onPrev} prevLabel={prevLabel} onNext={onNext} nextLabel={nextLabel} />
       </div>
     </div>
