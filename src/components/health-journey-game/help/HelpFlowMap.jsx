@@ -53,10 +53,14 @@ function ShortConnector({ x, y1, y2, color, id }) {
   )
 }
 
-export default function HelpFlowMap({ onJumpToScreen, onJumpToDetail }) {
+export default function HelpFlowMap({ onJumpToScreen, onJumpToDetail, flipped = false }) {
+  const NAV_Y = flipped ? VB_H - 46 : 46
+  const SCREEN_Y = flipped ? VB_H - 168 : 168
+  const DETAIL_Y = flipped ? VB_H - 320 : 320
+
   return (
     <div className="hj-flow-map-wrap">
-      <svg viewBox={`0 0 ${VB_W} ${VB_H}`} className="hj-flow-svg" preserveAspectRatio="xMidYMin meet">
+      <svg viewBox={`0 0 ${VB_W} ${VB_H}`} className="hj-flow-svg" preserveAspectRatio="xMidYMid meet">
         {/* connectors: nav -> screen */}
         {NAV_FLOW.map((nav, i) => (
           <ConnectorPath
