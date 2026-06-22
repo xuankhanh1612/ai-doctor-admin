@@ -611,6 +611,8 @@ export default function HealthJourneyGameStandalone({ onViewMedicalRecord }) {
   const goTo = (screenId) => {
     setHelpOpen(false)           // ẩn helper popup khi điều hướng
     setActiveScreen(screenId)
+    // Thông báo panel cha cuộn game vào tầm nhìn (cả 7 nút nav dưới game và flipped map đều dùng chung sự kiện này)
+    window.dispatchEvent(new CustomEvent('hjg-screen-changed', { detail: { screen: screenId } }))
     // Scroll to top of the new screen after render
     setTimeout(() => {
       getRoot()?.querySelector(`#${screenId}`)?.scrollTo?.(0, 0)
