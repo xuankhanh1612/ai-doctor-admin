@@ -609,6 +609,7 @@ export default function HealthJourneyGameStandalone({ onViewMedicalRecord }) {
   const getRoot = () => containerRef.current
 
   const goTo = (screenId) => {
+    setHelpOpen(false)           // ẩn helper popup khi điều hướng
     setActiveScreen(screenId)
     // Scroll to top of the new screen after render
     setTimeout(() => {

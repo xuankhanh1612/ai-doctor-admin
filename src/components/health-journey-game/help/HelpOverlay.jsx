@@ -61,7 +61,7 @@ export default function HelpOverlay({ open, onClose, onNavigate }) {
         <button type="button" className="hj-help-close" onClick={onClose} aria-label="Đóng">✕</button>
       </div>
 
-      <HelpTabs activeTab={activeTab} onChange={setActiveTab} />
+      <HelpTabs activeTab={activeTab} onChange={setActiveTab} onNavigate={onNavigate} />
 
       <div className="hj-help-body">
         <div className="hj-help-body-main">

@@ -23,7 +23,7 @@ import img11 from './screens/11-leaderboard.png'
 import img12 from './screens/12-daily-reward.png'
 
 export const HELP_ASSETS = {
-  mainMenu: imgMainMenu,
+  mainMenu: imgFlowReference,
   flowReference: imgFlowReference,
 }
 

@@ -11,7 +11,7 @@ const DETAIL_SCREENS = HELP_SCREENS.filter((s) => s.group === 'detail')
  *   3. 7 main-menu buttons   — Trang chủ … Profile (real bottom-nav order)
  *   4. 6 detail-screen tabs  — in the order they branch down from row 3
  */
-export default function HelpTabs({ activeTab, onChange }) {
+export default function HelpTabs({ activeTab, onChange, onNavigate }) {
   const introMenu = INTRO_TABS[0]
   const introFlow = INTRO_TABS[1]
 
@@ -48,7 +48,14 @@ export default function HelpTabs({ activeTab, onChange }) {
             type="button"
             className={`hj-tab-pill hj-tab-pill-main ${activeTab === screen.id ? 'active' : ''}`}
             style={{ '--tab-color': screen.color }}
-            onClick={() => onChange(screen.id)}
+            onClick={() => {
+              if (screen.target && onNavigate) {
+                // điều hướng thẳng đến trang và đóng popup
+                onNavigate(screen.target)
+              } else {
+                onChange(screen.id)
+              }
+            }}
           >
             <span className="hj-tab-icon">{screen.icon}</span>
             <span className="hj-tab-label">{screen.name}</span>
