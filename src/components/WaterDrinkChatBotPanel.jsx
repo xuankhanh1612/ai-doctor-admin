@@ -83,9 +83,15 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
     // Reset nội dung mỗi lần effect chạy lại (idempotent — an toàn với React StrictMode
     // double-invoke effect ở dev: lần chạy trước đã được dọn dẹp ở cleanup bên dưới).
     shadow.innerHTML = `<style>${styleText}</style>${bodyHtml}`
+    // FIX BUG: document.currentScript trả về null khi script được inject động qua appendChild()
+    // → Expose shadow root qua window.__beMeoShadowRoot__ TRƯỚC khi script chạy,
+    //   để script có thể tự xác định root node mà không cần currentScript.
+    window.__beMeoShadowRoot__ = shadow
     const scriptEl = document.createElement('script')
     scriptEl.textContent = scriptText
     shadow.appendChild(scriptEl) // chèn xong là chạy ngay (script đồng bộ, không async/defer)
+    // Dọn dẹp global sau khi script đã đọc xong (script chạy đồng bộ nên đây là an toàn)
+    delete window.__beMeoShadowRoot__
     scriptElRef.current = scriptEl
     setWidgetReady(true)
     return () => {

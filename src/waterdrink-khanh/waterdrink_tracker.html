@@ -615,8 +615,25 @@
     (function () {
       // === Chạy được cả trong Shadow DOM (React inject trực tiếp, không qua iframe) lẫn document
       // bình thường (mở file .html này trực tiếp trên browser) — root tự nhận diện qua getRootNode().
-      const scriptEl = document.currentScript;
-      const root = scriptEl.getRootNode();
+      // FIX BUG: document.currentScript trả về null khi script được inject động qua appendChild()
+      // (spec JS chỉ set currentScript khi HTML parser parse script, không phải khi inject bằng JS).
+      // → Fallback: WaterDrinkChatBotPanel.jsx inject window.__beMeoShadowRoot__ trước khi append
+      //   script, widget đọc từ đó; nếu không có (mở file .html trực tiếp) thì fallback document.
+      const scriptEl = document.currentScript || null;
+      let root;
+      try {
+        if (scriptEl) {
+          root = scriptEl.getRootNode();
+        } else if (window.__beMeoShadowRoot__) {
+          root = window.__beMeoShadowRoot__;
+        } else {
+          root = document;
+        }
+        // Nếu getRootNode() trả về window hoặc null → fallback document
+        if (!root || root === window) root = document;
+      } catch (_) {
+        root = document;
+      }
 
       const STORAGE_KEY = 'be-meo-nuoc-water-state-v1';
       const CHAT_KEY = 'be-meo-nuoc-chat-v1';
@@ -774,7 +791,17 @@
               if (!m.time) return false;
               return m.time.slice(0, 10) === today;
             });
-            if (todayMsgs.length > 0) return todayMsgs;
+            if (todayMsgs.length > 0) {
+              // FIX BUG: Đảm bảo tin nhắn đầu tiên trong ngày luôn là lời chào của bot.
+              // Trường hợp xảy ra khi người dùng đã uống nước qua nút quick/TaskDetailPopup
+              // mà chưa mở tab chatbot lần nào trong ngày — localStorage chỉ có tin bot ghi
+              // lượng nước, không có greeting → giao diện thiếu lời chào mừng buổi sáng/chiều/tối.
+              if (todayMsgs[0].role !== 'bot' || !/Chào|Meo|Hey|Buổi/i.test(todayMsgs[0].text || '')) {
+                var greetingTime = new Date(today + 'T00:00:01');
+                todayMsgs.unshift({ role: 'bot', text: getDayGreeting(), time: greetingTime.toISOString() });
+              }
+              return todayMsgs;
+            }
           }
         } catch (error) {}
         // Khong co tin nhan nao tu hom nay → hien thi cau chao de thuong theo gio
