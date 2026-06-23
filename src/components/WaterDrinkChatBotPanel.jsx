@@ -23,13 +23,16 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
   const [snapshot, setSnapshot] = useState(() => getTaskSnapshot(user))
   const [reviewImageUrl, setReviewImageUrl] = useState(null)
 
-  // Ref tới iframe chatbot để gửi postMessage vào
-  const iframeRef = useRef(null)
+  // Host <div> chứa Shadow DOM của Bé Mèo Nước (trước đây là iframe, giờ widget được inject
+  // trực tiếp vào trang qua Shadow DOM để vẫn cách ly CSS/JS mà không cần <iframe>).
+  const hostRef = useRef(null)
+  // Ref tới <script> đã inject vào shadow root — dùng để gọi hook dọn dẹp khi unmount.
+  const scriptElRef = useRef(null)
 
   // proofId cuối cùng nhận từ BE_MEO_WATER_ADDED (chờ ảnh camera gán vào)
   const pendingProofIdRef = useRef(null)
 
-  // === FIX: Lưu toàn bộ proofId→dataUrl trong React memory để restore khi iframe reload ===
+  // === FIX: Lưu toàn bộ proofId→dataUrl trong React memory để restore khi widget remount ===
   // Key: proofId, Value: dataUrl (base64 ảnh)
   const proofMapRef = useRef({})
 
@@ -40,6 +43,21 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
     .replaceAll('__ROBOT_TU_THE_1__', robotTuThe1Url)
     .replaceAll('__ROBOT_TU_THE_2__', robotTuThe2Url), [])
 
+  // Tách HTML gốc (vốn dùng cho srcDoc của iframe) thành 3 phần để inject thẳng vào Shadow DOM:
+  // style (CSS), bodyHtml (markup tĩnh), scriptText (toàn bộ logic JS của widget).
+  const { styleText, bodyHtml, scriptText } = useMemo(() => {
+    const doc = new DOMParser().parseFromString(html, 'text/html')
+    const styleEl = doc.querySelector('style')
+    const scriptEl = doc.querySelector('script')
+    const scriptContent = scriptEl ? scriptEl.textContent : ''
+    if (scriptEl) scriptEl.remove() // tránh dangerouslySetInnerHTML chèn lại script (không tự chạy nhưng dư thừa)
+    return {
+      styleText: styleEl ? styleEl.textContent : '',
+      bodyHtml: doc.body ? doc.body.innerHTML : '',
+      scriptText: scriptContent,
+    }
+  }, [html])
+
   // === FIX: Khi component mount (kể cả sau khi quay lại trang, vì component bị unmount/remount
   // → proofMapRef reset về {}), nạp lại toàn bộ proofId→dataUrl từ IndexedDB (medicalStorage),
   // đây là nguồn dữ liệu bền vững nhất — không phụ thuộc localStorage quota hay React memory cũ.
@@ -48,13 +66,42 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
   // === FIX: ref song song với proofMapReady, đọc được ngay (không bị stale closure)
   // bên trong handler BE_MEO_PROOF_RESTORE_REQUEST ở effect khác bên dưới.
   const proofMapReadyRef = useRef(false)
+
+  // === Inject widget Bé Mèo Nước vào Shadow DOM của hostRef — đây là phần thay thế cho
+  // <iframe srcDoc={html}>. Shadow DOM vẫn cách ly CSS/JS của widget khỏi phần còn lại của trang
+  // (CSS global như `* { box-sizing }`, `body {...}`, `button {...}` trong widget sẽ không rò ra
+  // ngoài ảnh hưởng UI admin), nhưng không còn là document/window riêng như iframe nữa.
+  // Vì vậy: postMessage giữa widget ↔ React giờ đi thẳng qua `window` (không qua contentWindow),
+  // và mọi listener widget gắn trên `window` (resize, SYNC_EVENT, message) phải được gỡ tay lúc
+  // unmount — xem hook `scriptEl.__beMeoNuocCleanup` được định nghĩa trong waterdrink_tracker.html.
+  const [widgetReady, setWidgetReady] = useState(false)
+  useEffect(() => {
+    const host = hostRef.current
+    if (!host) return
+    let shadow = host.shadowRoot
+    if (!shadow) shadow = host.attachShadow({ mode: 'open' })
+    // Reset nội dung mỗi lần effect chạy lại (idempotent — an toàn với React StrictMode
+    // double-invoke effect ở dev: lần chạy trước đã được dọn dẹp ở cleanup bên dưới).
+    shadow.innerHTML = `<style>${styleText}</style>${bodyHtml}`
+    const scriptEl = document.createElement('script')
+    scriptEl.textContent = scriptText
+    shadow.appendChild(scriptEl) // chèn xong là chạy ngay (script đồng bộ, không async/defer)
+    scriptElRef.current = scriptEl
+    setWidgetReady(true)
+    return () => {
+      scriptEl.__beMeoNuocCleanup?.()
+      scriptElRef.current = null
+      setWidgetReady(false)
+    }
+  }, [styleText, bodyHtml, scriptText])
+
   useEffect(() => {
     // === FIX: KHÔNG load proofMap khi AuthContext chưa khôi phục session xong (authLoading=true).
     // Lý do: useAuth() trả user=null ở lần render đầu tiên (AuthProvider khôi phục session trong
     // useEffect riêng, mà effect của component con luôn chạy TRƯỚC effect của component cha) →
     // nếu fetch ngay lúc này, getAllRecords({ ownerEmail: undefined }) sẽ luôn trả về RỖNG (canSeeRecord
     // yêu cầu ownerEmail khớp), khiến proofMapReady=true với proofMap rỗng → effect bulk-restore
-    // authoritative bên dưới gửi validProofIds=[] cho iframe → iframe xoá sạch toàn bộ nút "Xem lại
+    // authoritative bên dưới gửi validProofIds=[] cho widget → widget xoá sạch toàn bộ nút "Xem lại
     // ảnh" + proofId trong tin nhắn rồi lưu đè localStorage. Đây chính là lý do bug xảy ra ở MỌI lần
     // tải lại trang đầu tiên (vd: sau khi deploy lại web) — không phải race condition ngẫu nhiên.
     if (authLoading) return
@@ -76,40 +123,36 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
         console.error('WaterDrinkChatBotPanel: lỗi nạp proofMap từ IndexedDB', err)
         if (!cancelled) {
           // === FIX: KHÔNG đánh dấu ready khi load lỗi — nếu đánh dấu ready, effect bulk-restore
-          // bên dưới sẽ gửi validProofIds RỖNG cho iframe → iframe hiểu nhầm "tất cả proof đã bị xoá"
+          // bên dưới sẽ gửi validProofIds RỖNG cho widget → widget hiểu nhầm "tất cả proof đã bị xoá"
           // và xoá sạch nút "Xem lại ảnh" + proofId trong tin nhắn (mất dữ liệu vĩnh viễn).
-          // Cứ để proofMapReady = false, người dùng vẫn thấy ảnh cũ (qua sessionStorage trong iframe).
+          // Cứ để proofMapReady = false, người dùng vẫn thấy ảnh cũ (qua sessionStorage trong widget).
         }
       })
     return () => { cancelled = true }
   }, [user, authLoading])
 
-  // Gửi toàn bộ proofMap đã nạp vào iframe ngay khi iframe sẵn sàng VÀ proofMap đã load xong
-  // (đợi cả 2 điều kiện vì thứ tự iframe onLoad vs IndexedDB load không cố định)
-  const [iframeReady, setIframeReady] = useState(false)
+  // Gửi toàn bộ proofMap đã nạp vào widget ngay khi widget sẵn sàng VÀ proofMap đã load xong
+  // (đợi cả 2 điều kiện vì thứ tự widget inject xong vs IndexedDB load không cố định)
   useEffect(() => {
-    if (!iframeReady || !proofMapReady) return
-    const iframe = iframeRef.current
-    if (!iframe?.contentWindow) return
+    if (!widgetReady || !proofMapReady) return
     const entries = Object.entries(proofMapRef.current)
       .filter(([, dataUrl]) => dataUrl && dataUrl !== '__PENDING__')
       .map(([proofId, dataUrl]) => ({ proofId, dataUrl }))
-    // Gửi cả validProofIds để iframe xoá các proofId cũ không còn trong IndexedDB
+    // Gửi cả validProofIds để widget xoá các proofId cũ không còn trong IndexedDB
     const validProofIds = entries.map(({ proofId }) => proofId)
-    iframe.contentWindow.postMessage({
+    window.postMessage({
       type: 'BE_MEO_PROOF_BULK_RESTORE',
       proofMapEntries: entries,
       validProofIds,
     }, '*')
-  }, [iframeReady, proofMapReady])
+  }, [widgetReady, proofMapReady])
 
-  // Lắng nghe message từ iframe
+  // Lắng nghe message từ widget
   useEffect(() => {
     const refresh = () => setSnapshot(getTaskSnapshot(user))
 
-    // Helper: gửi toàn bộ proofMap hiện tại vào iframe (bulk restore)
-    const bulkRestoreToIframe = (iframe, filterIds) => {
-      if (!iframe?.contentWindow) return
+    // Helper: gửi toàn bộ proofMap hiện tại vào widget (bulk restore)
+    const bulkRestoreToWidget = (filterIds) => {
       const entries = Object.entries(proofMapRef.current)
         .filter(([pid, dataUrl]) => {
           if (!dataUrl || dataUrl === '__PENDING__') return false
@@ -118,22 +161,22 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
         })
         .map(([proofId, dataUrl]) => ({ proofId, dataUrl }))
       const payload = { type: 'BE_MEO_PROOF_BULK_RESTORE', proofMapEntries: entries }
-      // === FIX: CHỈ gửi validProofIds (báo iframe xoá proofId không còn tồn tại) khi proofMap
+      // === FIX: CHỈ gửi validProofIds (báo widget xoá proofId không còn tồn tại) khi proofMap
       // ĐÃ CHẮC CHẮN load xong từ IndexedDB (proofMapReadyRef.current === true). Nếu gửi lúc
-      // proofMap còn rỗng (vd: iframe vừa load đã hỏi ngay BE_MEO_PROOF_RESTORE_REQUEST, trước khi
-      // getAllRecords() resolve) → iframe sẽ hiểu nhầm TẤT CẢ proof đã bị xoá và xoá sạch nút
-      // "Xem lại ảnh" + proofId trong tin nhắn, rồi lưu đè localStorage → mất dữ liệu vĩnh viễn.
+      // proofMap còn rỗng (vd: widget vừa inject xong đã hỏi ngay BE_MEO_PROOF_RESTORE_REQUEST,
+      // trước khi getAllRecords() resolve) → widget sẽ hiểu nhầm TẤT CẢ proof đã bị xoá và xoá sạch
+      // nút "Xem lại ảnh" + proofId trong tin nhắn, rồi lưu đè localStorage → mất dữ liệu vĩnh viễn.
       // Việc dọn dẹp proof thật sự đã bị xoá vẫn diễn ra an toàn ở effect bulk-restore "authoritative"
       // phía trên (chỉ chạy khi proofMapReady === true).
       if (proofMapReadyRef.current) {
         payload.validProofIds = entries.map(({ proofId }) => proofId)
       }
-      iframe.contentWindow.postMessage(payload, '*')
+      window.postMessage(payload, '*')
     }
 
     const onMessage = (event) => {
-      // srcdoc iframe có origin null — chỉ lọc theo type, không check origin
-      if (event.origin !== window.location.origin && event.origin !== 'null') return
+      // Widget chạy trong Shadow DOM của cùng window/document — origin luôn khớp window.location.origin.
+      if (event.origin !== window.location.origin) return
 
       // Chatbot ghi nhận uống nước (text chat hoặc nút +ml)
       // → lưu proofId đang pending, chờ ảnh camera gán vào
@@ -156,22 +199,19 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
         return
       }
 
-      // === FIX: Iframe yêu cầu restore lại proofIds bị mất (sau khi tab mới / hard reload)
+      // === FIX: Widget yêu cầu restore lại proofIds bị mất (sau khi tab mới / hard reload)
       if (event.data?.type === 'BE_MEO_PROOF_RESTORE_REQUEST') {
-        const iframe = iframeRef.current
-        if (iframe?.contentWindow) {
-          bulkRestoreToIframe(iframe, event.data.pendingProofIds)
-        }
+        bulkRestoreToWidget(event.data.pendingProofIds)
         return
       }
 
-      // Iframe yêu cầu xem lại ảnh đã chụp
+      // Widget yêu cầu xem lại ảnh đã chụp
       if (event.data?.type === 'BE_MEO_REVIEW_REQUEST' && event.data.dataUrl) {
         setReviewImageUrl(event.data.dataUrl)
         return
       }
 
-      // Iframe đóng xem lại
+      // Widget đóng xem lại
       if (event.data?.type === 'BE_MEO_REVIEW_CLOSE') {
         setReviewImageUrl(null)
         return
@@ -183,38 +223,34 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
 
     // Lắng nghe ảnh chụp từ TaskDetailPopup (popup nhiệm vụ uống nước trong Health Journey Game)
     // TaskDetailPopup đã patch proofId vào localStorage TRƯỚC khi syncBeMeoWater dispatch SYNC_EVENT
-    // → iframe đã reload messages với proofId đúng → chỉ cần gửi PROOF_SAVED để cập nhật proofMap
-    //   trong bộ nhớ iframe (phòng trường hợp iframe chưa load proofMap từ localStorage kịp)
+    // → widget đã reload messages với proofId đúng → chỉ cần gửi PROOF_SAVED để cập nhật proofMap
+    //   trong bộ nhớ widget (phòng trường hợp widget chưa load proofMap từ localStorage kịp)
     const onTaskProof = (e) => {
       const { proofId, dataUrl, syncState } = e.detail || {}
       if (!proofId || !dataUrl) return
       // === FIX: Lưu vào proofMapRef để restore khi quay lại trang
       proofMapRef.current[proofId] = dataUrl
-      const iframe = iframeRef.current
-      if (!iframe?.contentWindow) return
-      // Gửi STATE_SYNC trước để iframe cập nhật total/goal đúng trước khi renderChat
+      // Gửi STATE_SYNC trước để widget cập nhật total/goal đúng trước khi renderChat
       if (syncState) {
-        iframe.contentWindow.postMessage({
+        window.postMessage({
           type: 'BE_MEO_STATE_SYNC',
           total: syncState.total,
           goal: syncState.goal,
         }, '*')
       }
-      // Gán dataUrl vào proofMap bộ nhớ iframe → renderChat() → nút Xem lại hiện
-      iframe.contentWindow.postMessage({ type: 'BE_MEO_PROOF_SAVED', proofId, dataUrl }, '*')
+      // Gán dataUrl vào proofMap bộ nhớ widget → renderChat() → nút Xem lại hiện
+      window.postMessage({ type: 'BE_MEO_PROOF_SAVED', proofId, dataUrl }, '*')
     }
     window.addEventListener('BE_MEO_TASK_PROOF_SAVED', onTaskProof)
 
     // === FIX: Lắng nghe sự kiện xoá ảnh từ trang Upload Record (MedicalUploader.handleDelete)
-    // → gỡ proofId khỏi proofMapRef (React memory) và forward vào iframe để gỡ nút "Xem lại"
+    // → gỡ proofId khỏi proofMapRef (React memory) và forward vào widget để gỡ nút "Xem lại"
     //   ngay lập tức, không cần đợi reload trang "Bé Mèo Nước"
     const onTaskProofDeleted = (e) => {
       const { proofId } = e.detail || {}
       if (!proofId) return
       delete proofMapRef.current[proofId]
-      const iframe = iframeRef.current
-      if (!iframe?.contentWindow) return
-      iframe.contentWindow.postMessage({ type: 'BE_MEO_PROOF_DELETED', proofId }, '*')
+      window.postMessage({ type: 'BE_MEO_PROOF_DELETED', proofId }, '*')
     }
     window.addEventListener('BE_MEO_TASK_PROOF_DELETED', onTaskProofDeleted)
 
@@ -226,11 +262,9 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
     }
   }, [user])
 
-  // Gửi proof vào iframe — dùng '*' vì srcDoc iframe có origin null
-  const sendProofToIframe = (proofId, dataUrl) => {
-    const iframe = iframeRef.current
-    if (!iframe?.contentWindow) return
-    iframe.contentWindow.postMessage(
+  // Gửi proof vào widget — dùng '*' vì postMessage không cần targetOrigin chặt khi cùng window
+  const sendProofToWidget = (proofId, dataUrl) => {
+    window.postMessage(
       { type: 'BE_MEO_PROOF_SAVED', proofId, dataUrl },
       '*'
     )
@@ -279,7 +313,7 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
 
       if (record.dataUrl) {
         // Bước 2: Patch proofId + time vào tin nhắn CUỐI vừa push — cùng pattern TaskDetailPopup
-        // → khi SYNC_EVENT trigger iframe loadMessages(), tin nhắn đã có proofId
+        // → khi SYNC_EVENT trigger widget loadMessages(), tin nhắn đã có proofId
         try {
           const msgs = JSON.parse(localStorage.getItem('be-meo-nuoc-chat-v1') || '[]')
           if (Array.isArray(msgs) && msgs.length > 0) {
@@ -293,7 +327,7 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
           }
         } catch (_) {}
 
-        // Bước 3: Pre-populate proofMap localStorage để iframe renderChat() thấy ngay
+        // Bước 3: Pre-populate proofMap localStorage để widget renderChat() thấy ngay
         try {
           const proofMap = JSON.parse(localStorage.getItem('be_meo_nuoc_proof_map') || '{}')
           proofMap[proofId] = record.dataUrl
@@ -304,18 +338,18 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
         // === FIX: Lưu vào proofMapRef (React memory) để restore khi quay lại trang
         proofMapRef.current[proofId] = record.dataUrl
 
-        // Bước 4: Gửi STATE_SYNC vào iframe để cập nhật total/goal trước khi render
-        if (syncResult?.state && iframeRef.current?.contentWindow) {
-          iframeRef.current.contentWindow.postMessage({
+        // Bước 4: Gửi STATE_SYNC vào widget để cập nhật total/goal trước khi render
+        if (syncResult?.state) {
+          window.postMessage({
             type: 'BE_MEO_STATE_SYNC',
             total: syncResult.state.total,
             goal: syncResult.state.goal,
           }, '*')
         }
 
-        // Bước 5: Gửi PROOF_SAVED → iframe cập nhật proofMap bộ nhớ + renderChat()
-        // Lúc này iframe loadMessages() từ localStorage đã có proofId → nút Xem lại hiện đúng
-        sendProofToIframe(proofId, record.dataUrl)
+        // Bước 5: Gửi PROOF_SAVED → widget cập nhật proofMap bộ nhớ + renderChat()
+        // Lúc này widget loadMessages() từ localStorage đã có proofId → nút Xem lại hiện đúng
+        sendProofToWidget(proofId, record.dataUrl)
         pendingProofIdRef.current = null
       }
     } catch (error) {
@@ -330,24 +364,25 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
     <div style={{ minHeight: '100%', background: isDark ? '#050b18' : '#eef8ff', padding: '22px clamp(14px, 3vw, 28px) 36px' }}>
       <div style={{ maxWidth: 1180, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
         <style>{`
-          @media (max-width: 860px) { .bemeo-chatbot-iframe { min-height: 1800px !important; } }
+          /* Lưu ý: KHÔNG set background ở đây — style của trang ngoài luôn thắng rule :host bên
+             trong Shadow DOM của widget, nên nền gradient thật của widget (định nghĩa trong
+             waterdrink_tracker.html, áp cho :host) mới là nền hiển thị cuối cùng. */
+          .bemeo-chatbot-host { width: 100%; min-height: 1100px; display: block; }
+          @media (max-width: 860px) { .bemeo-chatbot-host { min-height: 1800px !important; } }
         `}</style>
 
-        {/* ===== CHATBOT IFRAME ===== */}
+        {/* ===== CHATBOT WIDGET (Shadow DOM — không còn dùng iframe) ===== */}
         <div style={{
           borderRadius: 28, overflow: 'hidden',
           border: `1px solid ${isDark ? 'rgba(125,211,252,0.26)' : 'rgba(14,165,233,0.24)'}`,
           boxShadow: isDark ? '0 24px 70px rgba(0,0,0,0.42)' : '0 24px 70px rgba(14,165,233,0.18)',
           background: '#fff',
         }}>
-          <iframe
-            ref={iframeRef}
-            title="Bé Mèo Nước chatbot"
-            srcDoc={html}
-            className="bemeo-chatbot-iframe"
-            style={{ width: '100%', minHeight: '1100px', border: 0, display: 'block', background: '#eef8ff' }}
-            sandbox="allow-scripts allow-same-origin allow-forms"
-            onLoad={() => setIframeReady(true)}
+          <div
+            ref={hostRef}
+            role="group"
+            aria-label="Bé Mèo Nước chatbot"
+            className="bemeo-chatbot-host"
           />
         </div>
 

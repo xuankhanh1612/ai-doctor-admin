@@ -5,7 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Bé Mèo Nước · Học tập & Đố vui</title>
     <style>
-      :root {
+      /* === :host áp dụng khi style này nằm trong Shadow DOM (React inject trực tiếp, không qua
+         iframe nữa) — :root chỉ khớp <html> của document thật, vô dụng trong Shadow DOM, nên cần
+         khai báo song song :host để custom properties + font vẫn được set đúng trong cả 2 trường
+         hợp. Khi mở file .html này độc lập ngoài browser, :host không khớp gì (vô hại), :root vẫn
+         hoạt động như cũ. */
+      :root, :host {
         --water: #0ea5e9;
         --aqua: #14b8a6;
         --mint: #ccfbf1;
@@ -17,9 +22,13 @@
       }
 
       * { box-sizing: border-box; }
-      body {
-        margin: 0;
-        min-height: 100vh;
+      /* === Tương tự :root/:host ở trên — bên trong Shadow DOM không tồn tại <body> thật nào để
+         selector `body` khớp, nên màu chữ + nền gradient phải đặt thêm vào :host (chính là cái
+         <div ref={hostRef}> bên React). `min-height: 100vh` CHỈ áp cho `body` thật (trang mở rời),
+         không áp cho :host vì sẽ làm widget cao hết cỡ màn hình khi nhúng trong trang admin —
+         chiều cao của widget khi nhúng do `.bemeo-chatbot-host` (style của React component) quyết định. */
+      body { margin: 0; min-height: 100vh; }
+      body, :host {
         color: var(--ink);
         background:
           radial-gradient(circle at 12% 10%, rgba(125, 211, 252, 0.65), transparent 30%),
@@ -603,6 +612,12 @@
     </main>
 
     <script>
+    (function () {
+      // === Chạy được cả trong Shadow DOM (React inject trực tiếp, không qua iframe) lẫn document
+      // bình thường (mở file .html này trực tiếp trên browser) — root tự nhận diện qua getRootNode().
+      const scriptEl = document.currentScript;
+      const root = scriptEl.getRootNode();
+
       const STORAGE_KEY = 'be-meo-nuoc-water-state-v1';
       const CHAT_KEY = 'be-meo-nuoc-chat-v1';
       const SYNC_EVENT = 'be-meo-nuoc:water-added';
@@ -673,26 +688,26 @@
         { q: 'Mục tiêu của calendar 31 ngày trong Bé Mèo Nước là gì?', a: ['Theo dõi thói quen uống nước từng ngày', 'Chấm điểm môn toán', 'Đếm số lần mở ứng dụng khác'], correct: 0, hint: 'Nó nằm dưới nút Reset ngày.', explain: 'Calendar 31 ngày giúp bạn nhìn lại lượng nước từng ngày, xem ngày nào đạt mục tiêu và duy trì thói quen lâu dài.' }
       ];
 
-      const totalMl = document.getElementById('totalMl');
-      const goalMl = document.getElementById('goalMl');
-      const percent = document.getElementById('percent');
-      const waterFill = document.getElementById('waterFill');
-      const chatLog = document.getElementById('chatLog');
-      const chatInput = document.getElementById('chatInput');
-      const flashcard = document.getElementById('flashcard');
-      const cardCounter = document.getElementById('cardCounter');
-      const questionText = document.getElementById('questionText');
-      const answers = document.getElementById('answers');
-      const explainBox = document.getElementById('explainBox');
-      const nextQuestion = document.getElementById('nextQuestion');
-      const quizProgressText = document.getElementById('quizProgressText');
-      const quizProgressBar = document.getElementById('quizProgressBar');
-      const quizPlay = document.getElementById('quizPlay');
-      const quizResult = document.getElementById('quizResult');
-      const scoreText = document.getElementById('scoreText');
-      const hydrationCalendar = document.getElementById('hydrationCalendar');
-      const calendarSummary = document.getElementById('calendarSummary');
-      const calendarStreak = document.getElementById('calendarStreak');
+      const totalMl = root.getElementById('totalMl');
+      const goalMl = root.getElementById('goalMl');
+      const percent = root.getElementById('percent');
+      const waterFill = root.getElementById('waterFill');
+      const chatLog = root.getElementById('chatLog');
+      const chatInput = root.getElementById('chatInput');
+      const flashcard = root.getElementById('flashcard');
+      const cardCounter = root.getElementById('cardCounter');
+      const questionText = root.getElementById('questionText');
+      const answers = root.getElementById('answers');
+      const explainBox = root.getElementById('explainBox');
+      const nextQuestion = root.getElementById('nextQuestion');
+      const quizProgressText = root.getElementById('quizProgressText');
+      const quizProgressBar = root.getElementById('quizProgressBar');
+      const quizPlay = root.getElementById('quizPlay');
+      const quizResult = root.getElementById('quizResult');
+      const scoreText = root.getElementById('scoreText');
+      const hydrationCalendar = root.getElementById('hydrationCalendar');
+      const calendarSummary = root.getElementById('calendarSummary');
+      const calendarStreak = root.getElementById('calendarStreak');
 
       function loadState() {
         try {
@@ -770,9 +785,9 @@
       // proofMap lưu 2 tầng:
       //   - sessionStorage: dataUrl (base64 ảnh lớn, tồn tại trong tab session)
       //   - localStorage: metadata {hasProof: true, time} (nhỏ, persist lâu dài)
-      // Khi iframe reload trong cùng tab → sessionStorage vẫn còn → nút Xem lại hiện
+      // Khi widget remount trong cùng tab → sessionStorage vẫn còn → nút Xem lại hiện
       // Khi mở tab mới → sessionStorage mất nhưng localStorage còn flag hasProof
-      //   → iframe gửi BE_MEO_PROOF_NEED_RELOAD để React re-inject dataUrl từ React state
+      //   → widget gửi BE_MEO_PROOF_NEED_RELOAD để React re-inject dataUrl từ React state
       function loadProofMap() {
         // Merge metadata từ localStorage + dataUrl từ sessionStorage
         const result = {};
@@ -827,8 +842,8 @@
       function saveMessages() { localStorage.setItem(CHAT_KEY, JSON.stringify(messages.slice(-80))); }
 
       function switchTab(tab) {
-        document.querySelectorAll('.tab-btn').forEach((button) => button.classList.toggle('active', button.dataset.tab === tab));
-        document.querySelectorAll('.tab-panel').forEach((panel) => panel.classList.toggle('active', panel.id === `tab-${tab}`));
+        root.querySelectorAll('.tab-btn').forEach((button) => button.classList.toggle('active', button.dataset.tab === tab));
+        root.querySelectorAll('.tab-panel').forEach((panel) => panel.classList.toggle('active', panel.id === `tab-${tab}`));
         if (tab === 'study') window.requestAnimationFrame(drawInfographicCharts);
       }
 
@@ -849,7 +864,7 @@
       }
 
       function drawVitaminDonut() {
-        const canvas = document.getElementById('vitaminDonutChart');
+        const canvas = root.getElementById('vitaminDonutChart');
         if (!canvas) return;
         const { ctx, width, height } = setupCanvas(canvas);
         const cx = width * 0.34;
@@ -898,7 +913,7 @@
       }
 
       function drawWaterMinerals() {
-        const canvas = document.getElementById('waterMineralsChart');
+        const canvas = root.getElementById('waterMineralsChart');
         if (!canvas) return;
         const { ctx, width, height } = setupCanvas(canvas);
         const labels = ['Canxi', 'Magie', 'Natri', 'Kali', 'Bicarbonate'];
@@ -939,7 +954,7 @@
       }
 
       function drawFoodRadar() {
-        const canvas = document.getElementById('foodRadarChart');
+        const canvas = root.getElementById('foodRadarChart');
         if (!canvas) return;
         const { ctx, width, height } = setupCanvas(canvas);
         const labels = ['Canxi', 'Sắt', 'Kẽm', 'Magie', 'Kali'];
@@ -1059,9 +1074,9 @@
           : `Hôm nay: ${state.total}/${state.goal}ml · ${Math.min(100, Math.round((state.total / state.goal) * 100))}% mục tiêu`;
         calendarStreak.textContent = `${completed}/31`;
         // Cập nhật day filter bar
-        const dayFilterBar = document.getElementById('dayFilterBar');
-        const dayFilterLabel = document.getElementById('dayFilterLabel');
-        const dayFilterWater = document.getElementById('dayFilterWater');
+        const dayFilterBar = root.getElementById('dayFilterBar');
+        const dayFilterLabel = root.getElementById('dayFilterLabel');
+        const dayFilterWater = root.getElementById('dayFilterWater');
         if (dayFilterBar) {
           if (selectedDay) {
             const selEntry = state.history?.[selectedDay];
@@ -1183,7 +1198,7 @@
               const pid = btn.dataset.pid;
               const isActive = activeReviewProofId === pid;
               activeReviewProofId = isActive ? null : pid;
-              window.parent?.postMessage?.({
+              window.postMessage({
                 type: isActive ? 'BE_MEO_REVIEW_CLOSE' : 'BE_MEO_REVIEW_REQUEST',
                 proofId: pid,
                 dataUrl: proofMap[pid] || null,
@@ -1200,8 +1215,9 @@
       }
 
       // Nhận ảnh proof từ React sau khi lưu thành công
-      window.addEventListener('message', (event) => {
-        // srcdoc iframe: origin is null, accept all same-tab messages
+      // === Đặt tên hàm (thay vì arrow function inline) để có thể removeEventListener khi
+      // component React unmount (không còn là iframe document tự dọn dẹp khi unmount nữa).
+      function onWindowMessage(event) {
         // Đồng bộ state (total/goal) từ React sau khi syncBeMeoWater cập nhật localStorage
         if (event.data?.type === 'BE_MEO_STATE_SYNC') {
           if (typeof event.data.total === 'number') state.total = event.data.total;
@@ -1216,7 +1232,7 @@
           messages = loadMessages();
           renderChat();
         }
-        // React gửi bulk restore toàn bộ proofMap sau khi iframe reload (quay lại trang)
+        // React gửi bulk restore toàn bộ proofMap sau khi widget remount (quay lại trang)
         if (event.data?.type === 'BE_MEO_PROOF_BULK_RESTORE' && event.data.proofMapEntries) {
           let changed = false;
           event.data.proofMapEntries.forEach(({ proofId, dataUrl }) => {
@@ -1247,7 +1263,7 @@
             renderChat();
           }
         }
-        // === FIX: User đã xoá ảnh ở trang Upload Record → gỡ proof khỏi bộ nhớ iframe,
+        // === FIX: User đã xoá ảnh ở trang Upload Record → gỡ proof khỏi bộ nhớ widget,
         // gỡ khỏi sessionStorage/localStorage meta, và clear proofId trên tin nhắn liên quan
         // để nút "🔍 Xem lại" biến mất ngay, không cần reload trang
         if (event.data?.type === 'BE_MEO_PROOF_DELETED' && event.data.proofId) {
@@ -1283,13 +1299,14 @@
           });
           renderChat();
         }
-      });
+      }
+      window.addEventListener('message', onWindowMessage);
 
       function addWater(amount, source = 'Bé Mèo Nước') {
         state.total = Math.max(0, state.total + amount);
         renderState();
         const proofId = 'proof_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
-        window.parent?.postMessage?.({ type: 'BE_MEO_WATER_ADDED', amount, source, total: state.total, goal: state.goal, proofId }, '*');
+        window.postMessage({ type: 'BE_MEO_WATER_ADDED', amount, source, total: state.total, goal: state.goal, proofId }, '*');
         const text = state.total >= state.goal
           ? `Giỏi quá meo! Bạn đã đạt ${state.total}/${state.goal}ml hôm nay rồi đó 🏆💧`
           : `Bé Mèo đã ghi +${amount}ml. Hôm nay bạn đang ở ${state.total}/${state.goal}ml (${Math.round((state.total / state.goal) * 100)}%).`;
@@ -1404,24 +1421,25 @@
         renderQuestion();
       }
 
-      document.querySelectorAll('.tab-btn').forEach((button) => button.addEventListener('click', () => switchTab(button.dataset.tab)));
-      document.querySelectorAll('[data-add]').forEach((button) => button.addEventListener('click', () => { const r = addWater(Number(button.dataset.add), 'Bé Mèo Nước quick button'); messages.push({ role: 'bot', text: r.text, proofId: r.proofId, time: new Date().toISOString() }); renderChat(); }));
-      document.querySelectorAll('[data-prompt]').forEach((button) => button.addEventListener('click', () => sendMessage(button.dataset.prompt)));
-      document.getElementById('setGoal1800').addEventListener('click', () => setGoal(1800));
-      document.getElementById('setGoal2000').addEventListener('click', () => setGoal(2000));
-      document.getElementById('setGoal2500').addEventListener('click', () => setGoal(2500));
-      document.getElementById('resetDay').addEventListener('click', () => { state.total = 0; if (state.history) state.history[today] = { total: 0, goal: state.goal, percent: 0 }; renderState(); messages.push({ role: 'bot', text: 'Bé Mèo đã reset lượng nước hôm nay. Calendar 31 ngày cũng cập nhật ngày hiện tại về 0ml nha 💧', time: new Date().toISOString() }); renderChat(); });
-      document.getElementById('clearChat').addEventListener('click', () => { messages = [{ role: 'bot', text: 'Chat đã được làm mới. Bé Mèo Nước vẫn ở đây để nhắc bạn uống nước nha 🐱💧', time: new Date().toISOString() }]; renderChat(); });
-      document.getElementById('chatForm').addEventListener('submit', (event) => { event.preventDefault(); sendMessage(chatInput.value); chatInput.value = ''; });
-      document.getElementById('dayFilterClear').addEventListener('click', () => { selectedDay = null; renderCalendar(); renderChat(); });
-      window.addEventListener(SYNC_EVENT, (event) => { state = loadState(); messages = loadMessages(); renderState(); renderChat(); });
-      document.getElementById('flipCard').addEventListener('click', () => { cardFlipped = !cardFlipped; renderCard(); });
-      document.getElementById('prevCard').addEventListener('click', () => { activeCard = (activeCard - 1 + flashcards.length) % flashcards.length; cardFlipped = false; renderCard(); });
-      document.getElementById('nextCard').addEventListener('click', () => { activeCard = (activeCard + 1) % flashcards.length; cardFlipped = false; renderCard(); });
-      document.getElementById('showHint').addEventListener('click', showHint);
-      document.getElementById('nextQuestion').addEventListener('click', goNextQuestion);
-      document.getElementById('restartQuiz').addEventListener('click', restartQuiz);
-      document.getElementById('restartQuizResult').addEventListener('click', restartQuiz);
+      root.querySelectorAll('.tab-btn').forEach((button) => button.addEventListener('click', () => switchTab(button.dataset.tab)));
+      root.querySelectorAll('[data-add]').forEach((button) => button.addEventListener('click', () => { const r = addWater(Number(button.dataset.add), 'Bé Mèo Nước quick button'); messages.push({ role: 'bot', text: r.text, proofId: r.proofId, time: new Date().toISOString() }); renderChat(); }));
+      root.querySelectorAll('[data-prompt]').forEach((button) => button.addEventListener('click', () => sendMessage(button.dataset.prompt)));
+      root.getElementById('setGoal1800').addEventListener('click', () => setGoal(1800));
+      root.getElementById('setGoal2000').addEventListener('click', () => setGoal(2000));
+      root.getElementById('setGoal2500').addEventListener('click', () => setGoal(2500));
+      root.getElementById('resetDay').addEventListener('click', () => { state.total = 0; if (state.history) state.history[today] = { total: 0, goal: state.goal, percent: 0 }; renderState(); messages.push({ role: 'bot', text: 'Bé Mèo đã reset lượng nước hôm nay. Calendar 31 ngày cũng cập nhật ngày hiện tại về 0ml nha 💧', time: new Date().toISOString() }); renderChat(); });
+      root.getElementById('clearChat').addEventListener('click', () => { messages = [{ role: 'bot', text: 'Chat đã được làm mới. Bé Mèo Nước vẫn ở đây để nhắc bạn uống nước nha 🐱💧', time: new Date().toISOString() }]; renderChat(); });
+      root.getElementById('chatForm').addEventListener('submit', (event) => { event.preventDefault(); sendMessage(chatInput.value); chatInput.value = ''; });
+      root.getElementById('dayFilterClear').addEventListener('click', () => { selectedDay = null; renderCalendar(); renderChat(); });
+      function onSyncEvent() { state = loadState(); messages = loadMessages(); renderState(); renderChat(); }
+      window.addEventListener(SYNC_EVENT, onSyncEvent);
+      root.getElementById('flipCard').addEventListener('click', () => { cardFlipped = !cardFlipped; renderCard(); });
+      root.getElementById('prevCard').addEventListener('click', () => { activeCard = (activeCard - 1 + flashcards.length) % flashcards.length; cardFlipped = false; renderCard(); });
+      root.getElementById('nextCard').addEventListener('click', () => { activeCard = (activeCard + 1) % flashcards.length; cardFlipped = false; renderCard(); });
+      root.getElementById('showHint').addEventListener('click', showHint);
+      root.getElementById('nextQuestion').addEventListener('click', goNextQuestion);
+      root.getElementById('restartQuiz').addEventListener('click', restartQuiz);
+      root.getElementById('restartQuizResult').addEventListener('click', restartQuiz);
 
       renderState();
       renderChat();
@@ -1433,25 +1451,42 @@
       // Sau khi render, kiểm tra xem có proofId nào đang PENDING không
       // (proofId có trong localStorage meta nhưng sessionStorage đã mất → tab mới hoặc hard reload)
       // → yêu cầu React gửi lại bulk restore toàn bộ dataUrl.
-      // === FIX: KHÔNG chỉ hỏi 1 LẦN DUY NHẤT. Ngay khi iframe vừa load xong (vd: sau khi deploy lại
+      // === FIX: KHÔNG chỉ hỏi 1 LẦN DUY NHẤT. Ngay khi widget vừa load xong (vd: sau khi deploy lại
       // / hard reload trang), React có thể CHƯA đọc xong IndexedDB (getAllRecords là async) → lần hỏi
       // đầu tiên này có thể bị trả lời "chưa có gì" → nếu không hỏi lại, nút "Xem lại ảnh" sẽ kẹt ở
       // trạng thái PENDING (ẩn) mãi mãi dù dữ liệu thật ra vẫn còn nguyên trong IndexedDB.
       // → Thử lại định kỳ (backoff tăng dần) cho tới khi không còn proofId nào PENDING, hoặc hết lượt thử.
       let proofRestoreAttempts = 0;
+      let proofRestoreTimeoutId = null;
+      let destroyed = false;
       const MAX_PROOF_RESTORE_ATTEMPTS = 10;
       function requestPendingProofRestore() {
+        if (destroyed) return;
         const stillPending = Object.entries(proofMap)
           .filter(([, v]) => v === '__PENDING__')
           .map(([pid]) => pid);
         if (stillPending.length === 0) return; // React đã inject đủ dataUrl → dừng hỏi
         proofRestoreAttempts += 1;
-        window.parent?.postMessage?.({ type: 'BE_MEO_PROOF_RESTORE_REQUEST', pendingProofIds: stillPending }, '*');
+        window.postMessage({ type: 'BE_MEO_PROOF_RESTORE_REQUEST', pendingProofIds: stillPending }, '*');
         if (proofRestoreAttempts < MAX_PROOF_RESTORE_ATTEMPTS) {
-          setTimeout(requestPendingProofRestore, 500 * proofRestoreAttempts); // 0.5s, 1s, 1.5s, ... ~23s tổng
+          proofRestoreTimeoutId = setTimeout(requestPendingProofRestore, 500 * proofRestoreAttempts); // 0.5s, 1s, 1.5s, ... ~23s tổng
         }
       }
       requestPendingProofRestore();
+
+      // === Hook dọn dẹp cho React gọi khi component unmount (vd: rời trang "Bé Mèo Nước").
+      // Trước đây khi còn dùng <iframe>, browser tự huỷ toàn bộ document con (kèm mọi listener)
+      // khi iframe bị unmount — giờ widget chạy thẳng trong Shadow DOM của trang chính nên các
+      // listener gắn trên `window` (resize, SYNC_EVENT, message) phải được gỡ tay, nếu không sẽ
+      // bị gọi lại trên các phần tử đã bị xoá khỏi DOM → lỗi/leak.
+      scriptEl.__beMeoNuocCleanup = function beMeoNuocCleanup() {
+        destroyed = true;
+        if (proofRestoreTimeoutId) clearTimeout(proofRestoreTimeoutId);
+        window.removeEventListener('resize', drawInfographicCharts);
+        window.removeEventListener(SYNC_EVENT, onSyncEvent);
+        window.removeEventListener('message', onWindowMessage);
+      };
+    })();
     </script>
   </body>
 </html>
