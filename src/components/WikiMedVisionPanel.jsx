@@ -65,7 +65,7 @@ function getLangConfig(lang) {
 // PixelRAG only indexes English Wikipedia, so non-English queries need translation.
 async function translateToEnglish(text) {
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await fetch('/api/anthropic-proxy', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
