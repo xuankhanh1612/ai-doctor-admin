@@ -2,9 +2,11 @@ import React, { useState, useRef, useCallback, useEffect } from 'react'
 import { useApp } from '../context/AppContext'
 
 // ─── PixelRAG API ────────────────────────────────────────────────────────────
-const PIXELRAG_BASE   = 'https://api.pixelrag.ai'   // search endpoint
-const PIXELRAG_TILES  = 'https://pixelrag.ai/api'      // tile image endpoint
-const ANTHROPIC_MODEL = 'claude-sonnet-4-6'
+const PIXELRAG_BASE  = 'https://api.pixelrag.ai'  // search endpoint
+const PIXELRAG_TILES = 'https://pixelrag.ai/api'   // tile image endpoint
+
+// ─── Gemini config ───────────────────────────────────────────────────────────
+const GEMINI_MODEL = 'gemini-2.0-flash'
 
 async function pixelSearch(query, imageBase64 = null, nDocs = 6) {
   const queries = []
@@ -68,37 +70,37 @@ function tileUrl(articleId, tileIndex, chunkIndex) {
   return `${PIXELRAG_TILES}/tile/${articleId}/${tileIndex}/${chunkIndex}`
 }
 
-// ─── Anthropic API — routed through /api/anthropic-proxy to avoid CORS ──────
-// Direct browser → api.anthropic.com is blocked by CORS.
-// Vercel serverless function at /api/anthropic-proxy injects the API key
-// server-side and forwards the response.
-async function callClaude(messages, systemPrompt) {
-  const payload = {
-    model: ANTHROPIC_MODEL,
-    max_tokens: 1000,
-    system: systemPrompt,
-    messages,
-  }
-  console.log('[callClaude] payload:', JSON.stringify(payload, null, 2))
+// ─── Gemini API — routed through /api/gemini-proxy to avoid CORS ────────────
+// Gemini 2.0 Flash is free (Google AI Studio key, no credit card needed).
+// Converts Anthropic-style {role, content}[] → Gemini {role, parts}[] format.
+async function callGemini(messages, systemPrompt) {
+  // Convert messages: Anthropic → Gemini format
+  // Gemini uses 'user' and 'model' roles (not 'assistant')
+  const geminiMessages = messages.map(m => ({
+    role: m.role === 'assistant' ? 'model' : 'user',
+    parts: [{ text: String(m.content) }],
+  }))
 
-  const res = await fetch('/api/anthropic-proxy', {
+  const payload = {
+    model: GEMINI_MODEL,
+    systemPrompt,
+    messages: geminiMessages,
+  }
+
+  const res = await fetch('/api/gemini-proxy', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   })
 
   const data = await res.json().catch(() => ({}))
-  console.log('[callClaude] response status:', res.status, 'body:', JSON.stringify(data))
-
   if (!res.ok) {
-    // Anthropic error shape: { error: { type, message } } or { error: "string" }
-    const msg = typeof data?.error === 'string'
-      ? data.error
-      : data?.error?.message || JSON.stringify(data)
-    throw new Error(`Claude API error: ${res.status} — ${msg}`)
+    const msg = data?.error?.message || data?.error || JSON.stringify(data)
+    throw new Error(`Gemini API error: ${res.status} — ${msg}`)
   }
 
-  return data.content?.map(b => b.text || '').join('') || ''
+  // Gemini response: { candidates: [{ content: { parts: [{ text }] } }] }
+  return data.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('') || ''
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -467,7 +469,7 @@ Your job: answer medical and scientific questions clearly, accurately, and in a 
 
       console.log('[Claude] messages:', history.length, '| first:', history[0]?.role)
 
-      const reply = await callClaude(history, SYSTEM_PROMPT)
+      const reply = await callGemini(history, SYSTEM_PROMPT)
       setMessages(prev => [...prev, { role: 'assistant', content: reply, tiles }])
     } catch (e) {
       console.error('[Claude] error:', e)
