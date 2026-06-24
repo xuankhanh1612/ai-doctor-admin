@@ -193,17 +193,17 @@ function fileToBase64(file) {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function TileCard({ hit, idx, tileUnavailable, openDirectly, openWiki }) {
+function TileCard({ hit, idx, tileUnavailable, openDirectly, openWiki, lang, originalQuery }) {
   const [loaded, setLoaded] = useState(false)
   const [err, setErr] = useState(false)
   const url = tileUrl(hit.article_id, hit.tile_index, hit.chunk_index)
-  // Use language-specific Wikipedia URL
-  // Tile images always come from English Wikipedia — always link to EN article by curid.
-  // hit.url is the English Wikipedia article slug e.g. "Human_brain"
-  // Use /wiki/<slug> for a direct, correct link. Fall back to curid only if slug missing.
-  const wikiUrl = hit.url
-    ? `https://en.wikipedia.org/wiki/${hit.url}`
-    : `https://en.wikipedia.org/?curid=${hit.article_id}`
+  // EN: use hit.url slug (e.g. "Human_brain") → en.wikipedia.org/wiki/Human_brain
+  // VI: use originalQuery (e.g. "não người") → vi.wikipedia.org/wiki/Não_người (URL-encoded)
+  const wikiUrl = lang === 'vi' && originalQuery
+    ? `https://vi.wikipedia.org/wiki/${encodeURIComponent(originalQuery.trim())}`
+    : hit.url
+      ? `https://en.wikipedia.org/wiki/${hit.url}`
+      : `https://en.wikipedia.org/?curid=${hit.article_id}`
 
   React.useEffect(() => {
     console.log(`[TileCard #${idx + 1}] fetching:`, url, 'hit:', hit)
@@ -458,6 +458,8 @@ function SearchTab({ isDark, lc, lang }) {
                 tileUnavailable={lc.tileUnavailable}
                 openDirectly={lc.openDirectly}
                 openWiki={lc.openWiki}
+                lang={lang}
+                originalQuery={query}
               />
             ))}
           </div>
@@ -613,9 +615,11 @@ function AgentTab({ isDark, lc, lang }) {
                     <div
                       key={ti}
                       onClick={() => {
-                        const url = hit.url
-                          ? `https://en.wikipedia.org/wiki/${hit.url}`
-                          : `https://en.wikipedia.org/?curid=${hit.article_id}`
+                        const url = lang === 'vi' && trimmed
+                          ? `https://vi.wikipedia.org/wiki/${encodeURIComponent(trimmed)}`
+                          : hit.url
+                            ? `https://en.wikipedia.org/wiki/${hit.url}`
+                            : `https://en.wikipedia.org/?curid=${hit.article_id}`
                         window.open(url, '_blank')
                       }}
                       style={{
