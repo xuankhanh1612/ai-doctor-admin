@@ -73,21 +73,31 @@ function tileUrl(articleId, tileIndex, chunkIndex) {
 // Vercel serverless function at /api/anthropic-proxy injects the API key
 // server-side and forwards the response.
 async function callClaude(messages, systemPrompt) {
+  const payload = {
+    model: ANTHROPIC_MODEL,
+    max_tokens: 1000,
+    system: systemPrompt,
+    messages,
+  }
+  console.log('[callClaude] payload:', JSON.stringify(payload, null, 2))
+
   const res = await fetch('/api/anthropic-proxy', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: ANTHROPIC_MODEL,
-      max_tokens: 1000,
-      system: systemPrompt,
-      messages,
-    }),
+    body: JSON.stringify(payload),
   })
+
+  const data = await res.json().catch(() => ({}))
+  console.log('[callClaude] response status:', res.status, 'body:', JSON.stringify(data))
+
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}))
-    throw new Error(`Claude API error: ${res.status} — ${err?.error || 'unknown'}`)
+    // Anthropic error shape: { error: { type, message } } or { error: "string" }
+    const msg = typeof data?.error === 'string'
+      ? data.error
+      : data?.error?.message || JSON.stringify(data)
+    throw new Error(`Claude API error: ${res.status} — ${msg}`)
   }
-  const data = await res.json()
+
   return data.content?.map(b => b.text || '').join('') || ''
 }
 
