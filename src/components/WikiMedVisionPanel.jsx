@@ -5,8 +5,9 @@ import { useApp } from '../context/AppContext'
 const PIXELRAG_BASE  = 'https://api.pixelrag.ai'  // search endpoint
 const PIXELRAG_TILES = 'https://pixelrag.ai/api'   // tile image endpoint
 
-// ─── Gemini config ───────────────────────────────────────────────────────────
-const GEMINI_MODEL = 'gemini-2.0-flash'
+// ─── Groq config ─────────────────────────────────────────────────────────────
+// Free at groq.com — no credit card, very high rate limits
+const GROQ_MODEL = 'llama-3.3-70b-versatile'
 
 async function pixelSearch(query, imageBase64 = null, nDocs = 6) {
   const queries = []
@@ -70,24 +71,24 @@ function tileUrl(articleId, tileIndex, chunkIndex) {
   return `${PIXELRAG_TILES}/tile/${articleId}/${tileIndex}/${chunkIndex}`
 }
 
-// ─── Gemini API — routed through /api/gemini-proxy to avoid CORS ────────────
-// Gemini 2.0 Flash is free (Google AI Studio key, no credit card needed).
-// Converts Anthropic-style {role, content}[] → Gemini {role, parts}[] format.
-async function callGemini(messages, systemPrompt) {
-  // Convert messages: Anthropic → Gemini format
-  // Gemini uses 'user' and 'model' roles (not 'assistant')
-  const geminiMessages = messages.map(m => ({
-    role: m.role === 'assistant' ? 'model' : 'user',
-    parts: [{ text: String(m.content) }],
-  }))
+// ─── Groq API — routed through /api/groq-proxy to avoid CORS ────────────────
+// Groq (groq.com) — free, no credit card, OpenAI-compatible.
+async function callAI(messages, systemPrompt) {
+  // Groq uses OpenAI-compatible format: [{role, content}]
+  // Prepend system prompt as a system message
+  const groqMessages = [
+    { role: 'system', content: systemPrompt },
+    ...messages.map(m => ({ role: m.role, content: String(m.content) })),
+  ]
 
   const payload = {
-    model: GEMINI_MODEL,
-    systemPrompt,
-    messages: geminiMessages,
+    model: GROQ_MODEL,
+    messages: groqMessages,
+    max_tokens: 1024,
+    temperature: 0.7,
   }
 
-  const res = await fetch('/api/gemini-proxy', {
+  const res = await fetch('/api/groq-proxy', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -96,11 +97,11 @@ async function callGemini(messages, systemPrompt) {
   const data = await res.json().catch(() => ({}))
   if (!res.ok) {
     const msg = data?.error?.message || data?.error || JSON.stringify(data)
-    throw new Error(`Gemini API error: ${res.status} — ${msg}`)
+    throw new Error(`Groq API error: ${res.status} — ${msg}`)
   }
 
-  // Gemini response: { candidates: [{ content: { parts: [{ text }] } }] }
-  return data.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('') || ''
+  // OpenAI-compatible response: { choices: [{ message: { content } }] }
+  return data.choices?.[0]?.message?.content || ''
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -469,7 +470,7 @@ Your job: answer medical and scientific questions clearly, accurately, and in a 
 
       console.log('[Claude] messages:', history.length, '| first:', history[0]?.role)
 
-      const reply = await callGemini(history, SYSTEM_PROMPT)
+      const reply = await callAI(history, SYSTEM_PROMPT)
       setMessages(prev => [...prev, { role: 'assistant', content: reply, tiles }])
     } catch (e) {
       console.error('[Claude] error:', e)
