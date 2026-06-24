@@ -199,7 +199,11 @@ function TileCard({ hit, idx, tileUnavailable, openDirectly, openWiki }) {
   const url = tileUrl(hit.article_id, hit.tile_index, hit.chunk_index)
   // Use language-specific Wikipedia URL
   // Tile images always come from English Wikipedia — always link to EN article by curid.
-  const wikiUrl = `https://en.wikipedia.org/?curid=${hit.article_id}`
+  // hit.url is the English Wikipedia article slug e.g. "Human_brain"
+  // Use /wiki/<slug> for a direct, correct link. Fall back to curid only if slug missing.
+  const wikiUrl = hit.url
+    ? `https://en.wikipedia.org/wiki/${hit.url}`
+    : `https://en.wikipedia.org/?curid=${hit.article_id}`
 
   React.useEffect(() => {
     console.log(`[TileCard #${idx + 1}] fetching:`, url, 'hit:', hit)
@@ -608,7 +612,12 @@ function AgentTab({ isDark, lc, lang }) {
                   {msg.tiles.map((hit, ti) => (
                     <div
                       key={ti}
-                      onClick={() => window.open(`https://en.wikipedia.org/?curid=${hit.article_id}`, '_blank')}
+                      onClick={() => {
+                        const url = hit.url
+                          ? `https://en.wikipedia.org/wiki/${hit.url}`
+                          : `https://en.wikipedia.org/?curid=${hit.article_id}`
+                        window.open(url, '_blank')
+                      }}
                       style={{
                         minWidth: 160, borderRadius: 12, overflow: 'hidden', cursor: 'pointer',
                         border: '1px solid rgba(99,102,241,0.25)',
