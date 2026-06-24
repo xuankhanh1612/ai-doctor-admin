@@ -2,7 +2,8 @@ import React, { useState, useRef, useCallback, useEffect } from 'react'
 import { useApp } from '../context/AppContext'
 
 // ─── PixelRAG API ────────────────────────────────────────────────────────────
-const PIXELRAG_BASE = 'https://api.pixelrag.ai'
+const PIXELRAG_BASE   = 'https://api.pixelrag.ai'   // search endpoint
+const PIXELRAG_TILES  = 'https://pixelrag.ai/api'      // tile image endpoint
 const ANTHROPIC_MODEL = 'claude-sonnet-4-6'
 
 async function pixelSearch(query, imageBase64 = null, nDocs = 6) {
@@ -62,10 +63,9 @@ async function pixelSearch(query, imageBase64 = null, nDocs = 6) {
   return { hits, _raw: raw }
 }
 
-function tileUrl(articleId, tileIndex, chunkIndex, path) {
-  // If API returned a direct path, use the /path/ endpoint which is more reliable
-  if (path) return `${PIXELRAG_BASE}/path/${encodeURIComponent(path)}`
-  return `${PIXELRAG_BASE}/tile/${articleId}/${tileIndex}/${chunkIndex}`
+function tileUrl(articleId, tileIndex, chunkIndex) {
+  // Correct endpoint: pixelrag.ai/api/tile/{article_id}/{tile_index}/{chunk_index}
+  return `${PIXELRAG_TILES}/tile/${articleId}/${tileIndex}/${chunkIndex}`
 }
 
 // ─── Anthropic API (calls claude-sonnet-4-6) ─────────────────────────────────
@@ -100,8 +100,7 @@ function fileToBase64(file) {
 function TileCard({ hit, idx }) {
   const [loaded, setLoaded] = useState(false)
   const [err, setErr] = useState(false)
-  // Use path-based URL first (more reliable), fall back to tile/{id}/{tile}/{chunk}
-  const url = tileUrl(hit.article_id, hit.tile_index, hit.chunk_index, hit.path)
+  const url = tileUrl(hit.article_id, hit.tile_index, hit.chunk_index)
   const wikiUrl = `https://en.wikipedia.org/?curid=${hit.article_id}`
 
   // Log each tile attempt for debugging
