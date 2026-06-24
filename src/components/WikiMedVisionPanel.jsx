@@ -17,7 +17,46 @@ async function pixelSearch(query, imageBase64 = null, nDocs = 6) {
     body: JSON.stringify({ queries, n_docs: nDocs }),
   })
   if (!res.ok) throw new Error(`PixelRAG search failed: ${res.status}`)
-  return res.json()
+  const raw = await res.json()
+
+  // DEBUG: log raw response to console so we can inspect the real shape
+  console.log('[PixelRAG] raw response:', JSON.stringify(raw, null, 2))
+
+  // Normalize hits — handle all known response shapes:
+  // 1. { hits: [...] }                     — expected shape
+  // 2. { results: [...] }                  — alternate key
+  // 3. { hits: { hits: [...] } }           — Elasticsearch nested
+  // 4. Array directly                      — bare array
+  // 5. { data: { hits: [...] } }           — wrapped
+  let hits = []
+  if (Array.isArray(raw)) {
+    hits = raw
+  } else if (Array.isArray(raw?.hits)) {
+    hits = raw.hits
+  } else if (Array.isArray(raw?.hits?.hits)) {
+    // Elasticsearch shape — map _source fields
+    hits = raw.hits.hits.map(h => h._source || h)
+  } else if (Array.isArray(raw?.results)) {
+    hits = raw.results
+  } else if (Array.isArray(raw?.data?.hits)) {
+    hits = raw.data.hits
+  } else if (Array.isArray(raw?.data)) {
+    hits = raw.data
+  }
+
+  // Normalize field names — API might use snake_case or camelCase
+  hits = hits.map(h => ({
+    article_id:  h.article_id  ?? h.articleId  ?? h.article  ?? h.id  ?? '',
+    tile_index:  h.tile_index  ?? h.tileIndex  ?? h.tile      ?? 0,
+    chunk_index: h.chunk_index ?? h.chunkIndex ?? h.chunk     ?? 0,
+    score:       h.score       ?? h._score     ?? null,
+    title:       h.title       ?? h.article_title ?? '',
+    ...h,
+  }))
+
+  console.log('[PixelRAG] normalized hits:', hits.length, hits[0] ?? '(none)')
+
+  return { hits, _raw: raw }
 }
 
 function tileUrl(articleId, tileIndex, chunkIndex) {
@@ -57,6 +96,12 @@ function TileCard({ hit, idx }) {
   const [loaded, setLoaded] = useState(false)
   const [err, setErr] = useState(false)
   const url = tileUrl(hit.article_id, hit.tile_index, hit.chunk_index)
+  const wikiUrl = `https://en.wikipedia.org/?curid=${hit.article_id}`
+
+  // Log each tile attempt for debugging
+  React.useEffect(() => {
+    console.log(`[TileCard #${idx + 1}] fetching:`, url, 'hit:', hit)
+  }, [url])
 
   return (
     <div style={{
@@ -70,7 +115,7 @@ function TileCard({ hit, idx }) {
     }}
       onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 12px 36px rgba(99,102,241,0.3)' }}
       onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = '' }}
-      onClick={() => window.open(`https://en.wikipedia.org/?curid=${hit.article_id}`, '_blank')}
+      onClick={() => window.open(wikiUrl, '_blank')}
     >
       {/* rank badge */}
       <div style={{
@@ -88,15 +133,17 @@ function TileCard({ hit, idx }) {
         padding: '3px 8px', fontSize: 10, fontWeight: 700,
       }}>ID {hit.article_id}</div>
 
-      {/* tile image */}
+      {/* tile image — crossOrigin prevents CORS tainting canvas; referrerPolicy for stricter servers */}
       <div style={{ width: '100%', height: 220, background: 'rgba(10,5,30,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         {!err ? (
           <img
             src={url}
             alt={`Wikipedia tile ${hit.article_id}`}
+            crossOrigin="anonymous"
+            referrerPolicy="no-referrer"
             style={{ width: '100%', height: '100%', objectFit: 'cover', display: loaded ? 'block' : 'none' }}
-            onLoad={() => setLoaded(true)}
-            onError={() => setErr(true)}
+            onLoad={() => { console.log(`[TileCard #${idx + 1}] loaded ✓`, url); setLoaded(true) }}
+            onError={(e) => { console.warn(`[TileCard #${idx + 1}] img error ✗`, url, e.type); setErr(true) }}
           />
         ) : null}
         {!loaded && !err && (
@@ -106,18 +153,32 @@ function TileCard({ hit, idx }) {
           </div>
         )}
         {err && (
-          <div style={{ textAlign: 'center', color: 'rgba(255,255,255,0.35)', fontSize: 12 }}>
-            <div style={{ fontSize: 28 }}>🖼️</div>
-            <div>Tile unavailable</div>
+          <div style={{ textAlign: 'center', color: 'rgba(255,255,255,0.35)', fontSize: 12, padding: 12 }}>
+            <div style={{ fontSize: 28, marginBottom: 6 }}>🖼️</div>
+            <div style={{ marginBottom: 4 }}>Tile unavailable</div>
+            <a
+              href={url}
+              target="_blank"
+              rel="noreferrer"
+              onClick={e => e.stopPropagation()}
+              style={{ fontSize: 10, color: '#6366f1', textDecoration: 'underline' }}
+            >open tile directly ↗</a>
           </div>
         )}
       </div>
 
       {/* footer */}
       <div style={{ padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ fontSize: 11, color: 'rgba(165,180,252,0.8)', fontWeight: 700 }}>
-          Tile {hit.tile_index} · Chunk {hit.chunk_index}
-        </span>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <span style={{ fontSize: 11, color: 'rgba(165,180,252,0.8)', fontWeight: 700 }}>
+            Tile {hit.tile_index} · Chunk {hit.chunk_index}
+          </span>
+          {hit.title && (
+            <span style={{ fontSize: 10, color: 'rgba(148,163,184,0.6)', fontWeight: 600, maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {hit.title}
+            </span>
+          )}
+        </div>
         <span style={{ fontSize: 11, color: 'rgba(99,102,241,0.8)', fontWeight: 700 }}>↗ Wikipedia</span>
       </div>
     </div>
@@ -297,6 +358,24 @@ function SearchTab({ isDark }) {
           <div style={{ fontSize: 15, fontWeight: 700 }}>No visual results found.</div>
           <div style={{ fontSize: 13, marginTop: 6 }}>Try a different query or add an image.</div>
         </div>
+      )}
+
+      {/* ── DEBUG PANEL: shows raw API response ── remove before prod ── */}
+      {results && (
+        <details style={{ marginTop: 16 }}>
+          <summary style={{ fontSize: 11, fontWeight: 800, color: 'rgba(99,102,241,0.6)', cursor: 'pointer', userSelect: 'none', padding: '6px 0' }}>
+            🛠 Debug: raw API response ({results.hits?.length ?? 0} hits normalized)
+          </summary>
+          <pre style={{
+            marginTop: 8, padding: 14, borderRadius: 10,
+            background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(99,102,241,0.2)',
+            color: 'rgba(165,180,252,0.8)', fontSize: 10, lineHeight: 1.5,
+            overflowX: 'auto', maxHeight: 320, overflowY: 'auto',
+            whiteSpace: 'pre-wrap', wordBreak: 'break-all',
+          }}>
+            {JSON.stringify(results._raw ?? results, null, 2)}
+          </pre>
+        </details>
       )}
 
       <style>{`@keyframes spin { to { transform: rotate(360deg) } } @keyframes pulse { 0%,100%{opacity:0.4} 50%{opacity:0.8} }`}</style>
