@@ -1506,7 +1506,11 @@
       // khi iframe bị unmount — giờ widget chạy thẳng trong Shadow DOM của trang chính nên các
       // listener gắn trên `window` (resize, SYNC_EVENT, message) phải được gỡ tay, nếu không sẽ
       // bị gọi lại trên các phần tử đã bị xoá khỏi DOM → lỗi/leak.
-      scriptEl.__beMeoNuocCleanup = function beMeoNuocCleanup() {
+      // FIX BUG: scriptEl (= document.currentScript) là null khi script được inject động
+      // → không thể gán trực tiếp vào scriptEl. Dùng window.__beMeoNuocPendingCleanup__ làm
+      //   bridge: script gán vào đây ngay sau khi chạy xong, WaterDrinkChatBotPanel.jsx đọc
+      //   và chuyển vào scriptElRef (hoặc gọi trực tiếp) trong effect cleanup.
+      window.__beMeoNuocPendingCleanup__ = function beMeoNuocCleanup() {
         destroyed = true;
         if (proofRestoreTimeoutId) clearTimeout(proofRestoreTimeoutId);
         window.removeEventListener('resize', drawInfographicCharts);
