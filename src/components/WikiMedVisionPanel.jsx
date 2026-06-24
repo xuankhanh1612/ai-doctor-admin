@@ -198,7 +198,14 @@ function TileCard({ hit, idx, wikiBase, tileUnavailable, openDirectly, openWiki 
   const [err, setErr] = useState(false)
   const url = tileUrl(hit.article_id, hit.tile_index, hit.chunk_index)
   // Use language-specific Wikipedia URL
-  const wikiUrl = `${wikiBase}/?curid=${hit.article_id}`
+  // curid is English Wikipedia's ID — only valid on en.wikipedia.org.
+  // For other languages, search by article title instead.
+  const enTitle = (hit.url || hit.title || '').replace(/ /g, '_')
+  const wikiUrl = wikiBase === 'https://en.wikipedia.org'
+    ? `${wikiBase}/?curid=${hit.article_id}`
+    : enTitle
+      ? `${wikiBase}/wiki/Special:Search?search=${encodeURIComponent(hit.title || enTitle)}&ns0=1`
+      : `${wikiBase}/?curid=${hit.article_id}`
 
   React.useEffect(() => {
     console.log(`[TileCard #${idx + 1}] fetching:`, url, 'hit:', hit)
@@ -608,7 +615,14 @@ function AgentTab({ isDark, lc, lang }) {
                   {msg.tiles.map((hit, ti) => (
                     <div
                       key={ti}
-                      onClick={() => window.open(`${lc.wikiBase}/?curid=${hit.article_id}`, '_blank')}
+                      onClick={() => {
+                        const enT = (hit.url || hit.title || '').replace(/ /g, '_')
+                        const url = lc.wikiBase === 'https://en.wikipedia.org'
+                          ? `${lc.wikiBase}/?curid=${hit.article_id}`
+                          : enT ? `${lc.wikiBase}/wiki/Special:Search?search=${encodeURIComponent(hit.title || enT)}&ns0=1`
+                          : `${lc.wikiBase}/?curid=${hit.article_id}`
+                        window.open(url, '_blank')
+                      }}
                       style={{
                         minWidth: 160, borderRadius: 12, overflow: 'hidden', cursor: 'pointer',
                         border: '1px solid rgba(99,102,241,0.25)',
