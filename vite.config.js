@@ -56,7 +56,8 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react(), inbodyOcrDevMiddleware(env)],
-    assetsInclude: ['**/*.PNG', '**/*.JPG', '**/*.JPEG', '**/*.HEIC'],
+    // Include .wasm so Vite processes `?url` imports from node_modules/@mediapipe
+    assetsInclude: ['**/*.wasm', '**/*.PNG', '**/*.JPG', '**/*.JPEG', '**/*.HEIC'],
     build: {
       rollupOptions: {
         input: {

@@ -5,10 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "predev": "node scripts-copy-mediapipe-wasm.mjs",
     "build": "vite build",
-    "preview": "vite preview",
-    "prebuild": "node scripts-copy-mediapipe-wasm.mjs"
+    "preview": "vite preview"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
