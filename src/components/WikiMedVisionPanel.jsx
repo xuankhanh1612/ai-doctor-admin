@@ -22,22 +22,24 @@ async function pixelSearch(query, imageBase64 = null, nDocs = 6) {
   // DEBUG: log raw response to console so we can inspect the real shape
   console.log('[PixelRAG] raw response:', JSON.stringify(raw, null, 2))
 
-  // Normalize hits — handle all known response shapes:
-  // 1. { hits: [...] }                     — expected shape
-  // 2. { results: [...] }                  — alternate key
-  // 3. { hits: { hits: [...] } }           — Elasticsearch nested
-  // 4. Array directly                      — bare array
-  // 5. { data: { hits: [...] } }           — wrapped
+  // Normalize hits — actual API shape: { results: [ { hits: [...] } ] }
+  // Also handle legacy/alternate shapes just in case.
   let hits = []
   if (Array.isArray(raw)) {
+    // bare array of hits
     hits = raw
   } else if (Array.isArray(raw?.hits)) {
+    // { hits: [...] }
     hits = raw.hits
   } else if (Array.isArray(raw?.hits?.hits)) {
-    // Elasticsearch shape — map _source fields
+    // Elasticsearch: { hits: { hits: [...] } }
     hits = raw.hits.hits.map(h => h._source || h)
   } else if (Array.isArray(raw?.results)) {
-    hits = raw.results
+    // { results: [ { hits: [...] }, ... ] }  <- ACTUAL shape from PixelRAG
+    // Merge hits arrays from every result entry (one per query submitted)
+    hits = raw.results.flatMap(r =>
+      Array.isArray(r?.hits) ? r.hits : Array.isArray(r) ? r : []
+    )
   } else if (Array.isArray(raw?.data?.hits)) {
     hits = raw.data.hits
   } else if (Array.isArray(raw?.data)) {
@@ -45,12 +47,13 @@ async function pixelSearch(query, imageBase64 = null, nDocs = 6) {
   }
 
   // Normalize field names — API might use snake_case or camelCase
+  // 'url' from PixelRAG is the Wikipedia article slug e.g. "DNA_replication"
   hits = hits.map(h => ({
     article_id:  h.article_id  ?? h.articleId  ?? h.article  ?? h.id  ?? '',
     tile_index:  h.tile_index  ?? h.tileIndex  ?? h.tile      ?? 0,
     chunk_index: h.chunk_index ?? h.chunkIndex ?? h.chunk     ?? 0,
     score:       h.score       ?? h._score     ?? null,
-    title:       h.title       ?? h.article_title ?? '',
+    title:       h.title       ?? h.article_title ?? (h.url ? h.url.replace(/_/g, ' ') : ''),
     ...h,
   }))
 
@@ -59,7 +62,9 @@ async function pixelSearch(query, imageBase64 = null, nDocs = 6) {
   return { hits, _raw: raw }
 }
 
-function tileUrl(articleId, tileIndex, chunkIndex) {
+function tileUrl(articleId, tileIndex, chunkIndex, path) {
+  // If API returned a direct path, use the /path/ endpoint which is more reliable
+  if (path) return `${PIXELRAG_BASE}/path/${encodeURIComponent(path)}`
   return `${PIXELRAG_BASE}/tile/${articleId}/${tileIndex}/${chunkIndex}`
 }
 
@@ -95,7 +100,8 @@ function fileToBase64(file) {
 function TileCard({ hit, idx }) {
   const [loaded, setLoaded] = useState(false)
   const [err, setErr] = useState(false)
-  const url = tileUrl(hit.article_id, hit.tile_index, hit.chunk_index)
+  // Use path-based URL first (more reliable), fall back to tile/{id}/{tile}/{chunk}
+  const url = tileUrl(hit.article_id, hit.tile_index, hit.chunk_index, hit.path)
   const wikiUrl = `https://en.wikipedia.org/?curid=${hit.article_id}`
 
   // Log each tile attempt for debugging
