@@ -154,6 +154,38 @@ function tileUrl(articleId, tileIndex, chunkIndex) {
   return `${PIXELRAG_TILES}/tile/${articleId}/${tileIndex}/${chunkIndex}`
 }
 
+// ─── Resolve the REAL Vietnamese Wikipedia URL for an English article ───────
+// PixelRAG only indexes en.wikipedia.org, so hit.url is always an English slug
+// (e.g. "Mitosis"). Guessing vi.wikipedia.org/wiki/<the user's original query>
+// is wrong whenever the query isn't the exact article title (e.g. "phân bào
+// nguyên phân" → no such VI article exists, even though "Mitosis" does and its
+// real VI counterpart is "Nguyên_phân"). Instead, ask the English Wikipedia API
+// for the interlanguage link to Vietnamese — this is the same mechanism the
+// language switcher in the screenshot uses, and it's authoritative.
+const _viWikiUrlCache = new Map()
+
+async function resolveViWikiUrl(enSlug) {
+  if (!enSlug) return null
+  if (_viWikiUrlCache.has(enSlug)) return _viWikiUrlCache.get(enSlug)
+  try {
+    const api = `https://en.wikipedia.org/w/api.php?action=query&prop=langlinks&lllang=vi&titles=${encodeURIComponent(enSlug)}&format=json&origin=*`
+    const res = await fetch(api)
+    if (!res.ok) throw new Error(`langlinks failed: ${res.status}`)
+    const data = await res.json()
+    const pages = data?.query?.pages || {}
+    const page = Object.values(pages)[0]
+    const viTitle = page?.langlinks?.[0]?.['*']
+    const url = viTitle
+      ? `https://vi.wikipedia.org/wiki/${encodeURIComponent(viTitle.replace(/ /g, '_'))}`
+      : null
+    _viWikiUrlCache.set(enSlug, url)
+    return url
+  } catch {
+    _viWikiUrlCache.set(enSlug, null)
+    return null
+  }
+}
+
 async function callAI(messages, systemPrompt) {
   const groqMessages = [
     { role: 'system', content: systemPrompt },
@@ -198,16 +230,24 @@ function TileCard({ hit, idx, tileUnavailable, openDirectly, openWiki, lang, ori
   const [err, setErr] = useState(false)
   const url = tileUrl(hit.article_id, hit.tile_index, hit.chunk_index)
   // EN: use hit.url slug (e.g. "Human_brain") → en.wikipedia.org/wiki/Human_brain
-  // VI: use originalQuery (e.g. "não người") → vi.wikipedia.org/wiki/Não_người (URL-encoded)
-  const wikiUrl = lang === 'vi' && originalQuery
-    ? `https://vi.wikipedia.org/wiki/${encodeURIComponent(originalQuery.trim())}`
-    : hit.url
-      ? `https://en.wikipedia.org/wiki/${hit.url}`
-      : `https://en.wikipedia.org/?curid=${hit.article_id}`
+  const enWikiUrl = hit.url
+    ? `https://en.wikipedia.org/wiki/${hit.url}`
+    : `https://en.wikipedia.org/?curid=${hit.article_id}`
 
   React.useEffect(() => {
     console.log(`[TileCard #${idx + 1}] fetching:`, url, 'hit:', hit)
   }, [url])
+
+  // VI: resolve the REAL Vietnamese article via Wikipedia's langlinks API
+  // (never guess from the user's raw query — that only works by coincidence).
+  const handleOpen = async () => {
+    if (lang === 'vi' && hit.url) {
+      const viUrl = await resolveViWikiUrl(hit.url)
+      window.open(viUrl || enWikiUrl, '_blank')
+    } else {
+      window.open(enWikiUrl, '_blank')
+    }
+  }
 
   return (
     <div style={{
@@ -221,7 +261,7 @@ function TileCard({ hit, idx, tileUnavailable, openDirectly, openWiki, lang, ori
     }}
       onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 12px 36px rgba(99,102,241,0.3)' }}
       onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = '' }}
-      onClick={() => window.open(wikiUrl, '_blank')}
+      onClick={handleOpen}
     >
       <div style={{
         position: 'absolute', top: 10, left: 10, zIndex: 2,
@@ -560,13 +600,14 @@ function AgentTab({ isDark, lc, lang }) {
       console.log('[Claude] messages:', history.length, '| first:', history[0]?.role)
 
       const reply = await callAI(history, lc.systemPrompt)
-      setMessages(prev => [...prev, { role: 'assistant', content: reply, tiles }])
+      setMessages(prev => [...prev, { role: 'assistant', content: reply, tiles, userQuery: trimmed }])
     } catch (e) {
       console.error('[Claude] error:', e)
       setMessages(prev => [...prev, {
         role: 'assistant',
         content: `⚠️ Error: ${e.message}`,
         tiles,
+        userQuery: trimmed,
       }])
     }
     setLoading(false)
@@ -614,13 +655,16 @@ function AgentTab({ isDark, lc, lang }) {
                   {msg.tiles.map((hit, ti) => (
                     <div
                       key={ti}
-                      onClick={() => {
-                        const url = lang === 'vi' && trimmed
-                          ? `https://vi.wikipedia.org/wiki/${encodeURIComponent(trimmed)}`
-                          : hit.url
-                            ? `https://en.wikipedia.org/wiki/${hit.url}`
-                            : `https://en.wikipedia.org/?curid=${hit.article_id}`
-                        window.open(url, '_blank')
+                      onClick={async () => {
+                        const enUrl = hit.url
+                          ? `https://en.wikipedia.org/wiki/${hit.url}`
+                          : `https://en.wikipedia.org/?curid=${hit.article_id}`
+                        if (lang === 'vi' && hit.url) {
+                          const viUrl = await resolveViWikiUrl(hit.url)
+                          window.open(viUrl || enUrl, '_blank')
+                        } else {
+                          window.open(enUrl, '_blank')
+                        }
                       }}
                       style={{
                         minWidth: 160, borderRadius: 12, overflow: 'hidden', cursor: 'pointer',
