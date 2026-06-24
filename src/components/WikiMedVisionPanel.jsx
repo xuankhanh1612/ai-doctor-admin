@@ -19,6 +19,7 @@ const WIKI_LANG_CONFIG = {
     agentGreeting: 'Xin chào! Tôi là **Wiki Med Vision Agent** — kết hợp PixelRAG + AI.\n\nTôi có thể tìm kiếm hơn 8.28 triệu bài viết Wikipedia bằng hình ảnh và trả lời câu hỏi y tế với bằng chứng trực quan.\n\nHãy thử hỏi: *"Tim bơm máu như thế nào?"* hoặc *"ADN nhân đôi là gì?"*',
     agentInputPlaceholder: 'Hỏi Wiki Med Vision Agent… (Enter để gửi)',
     searchingText: '🔍 Đang tìm kiếm Wikipedia bằng hình ảnh…',
+    translatingText: '🌐 Đang dịch sang tiếng Anh để tìm kiếm…',
     generatingText: '🧠 Đang tạo câu trả lời…',
     resultsLabel: (n) => `✨ ${n} kết quả trực quan từ 8.28 triệu bài Wikipedia`,
     clickTip: 'Nhấn vào tile → mở Wikipedia',
@@ -40,6 +41,7 @@ Nhiệm vụ: trả lời câu hỏi y tế và khoa học rõ ràng, chính xá
     agentGreeting: "Hello! I'm **Wiki Med Vision Agent** — powered by PixelRAG + Claude.\n\nI can search 8.28 million Wikipedia articles visually and answer your medical questions with retrieved image evidence.\n\nTry asking: *\"Explain how the heart pumps blood\"* or *\"What is DNA replication?\"*",
     agentInputPlaceholder: 'Ask Wiki Med Vision Agent… (Enter to send)',
     searchingText: '🔍 Searching Wikipedia visually…',
+    translatingText: '🔍 Searching Wikipedia visually…',
     generatingText: '🧠 Generating response…',
     resultsLabel: (n) => `✨ ${n} visual hits from 8.28M Wikipedia articles`,
     clickTip: 'Click any tile → open Wikipedia',
@@ -59,9 +61,46 @@ function getLangConfig(lang) {
   return WIKI_LANG_CONFIG[lang] || WIKI_LANG_CONFIG['en']
 }
 
-async function pixelSearch(query, imageBase64 = null, nDocs = 6) {
+// ─── Translate non-English query to English via Anthropic API ────────────────
+// PixelRAG only indexes English Wikipedia, so non-English queries need translation.
+async function translateToEnglish(text) {
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 100,
+        messages: [{
+          role: 'user',
+          content: `Translate this medical/scientific search query to English. Reply with ONLY the English translation, nothing else:\n\n${text}`,
+        }],
+      }),
+    })
+    if (!res.ok) return text // fallback to original on error
+    const data = await res.json()
+    const translated = data?.content?.[0]?.text?.trim()
+    console.log(`[translate] "${text}" → "${translated}"`)
+    return translated || text
+  } catch {
+    return text // fallback silently
+  }
+}
+
+// Detect if a string contains non-ASCII (non-Latin) characters → likely non-English
+function isNonEnglish(text) {
+  return /[^\x00-\x7F]/.test(text)
+}
+
+async function pixelSearch(query, imageBase64 = null, nDocs = 6, lang = 'en') {
+  // PixelRAG only has English Wikipedia — translate non-English queries
+  let searchQuery = query
+  if (query?.trim() && lang !== 'en' && isNonEnglish(query)) {
+    searchQuery = await translateToEnglish(query.trim())
+  }
+
   const queries = []
-  if (query?.trim()) queries.push({ text: query.trim() })
+  if (searchQuery?.trim()) queries.push({ text: searchQuery.trim() })
   if (imageBase64) queries.push({ image: imageBase64 })
   if (!queries.length) throw new Error('Need text or image query')
 
@@ -239,12 +278,13 @@ function TileCard({ hit, idx, wikiBase, tileUnavailable, openDirectly, openWiki 
 }
 
 
-function SearchTab({ isDark, lc }) {
+function SearchTab({ isDark, lc, lang }) {
   const [query, setQuery] = useState('')
   const [imageFile, setImageFile] = useState(null)
   const [imagePreview, setImagePreview] = useState(null)
   const [results, setResults] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [translating, setTranslating] = useState(false)
   const [error, setError] = useState(null)
   const [nDocs, setNDocs] = useState(6)
   const fileRef = useRef(null)
@@ -260,13 +300,16 @@ function SearchTab({ isDark, lc }) {
   const handleSearch = async () => {
     if (!query.trim() && !imageFile) return
     setLoading(true)
+    setTranslating(lang !== 'en' && isNonEnglish(query))
     setError(null)
     setResults(null)
     try {
       const b64 = imageFile ? await fileToBase64(imageFile) : null
-      const data = await pixelSearch(query, b64, nDocs)
+      const data = await pixelSearch(query, b64, nDocs, lang)
+      setTranslating(false)
       setResults(data)
     } catch (e) {
+      setTranslating(false)
       setError(e.message)
     } finally {
       setLoading(false)
@@ -375,6 +418,12 @@ function SearchTab({ isDark, lc }) {
         </div>
       )}
 
+      {translating && (
+        <div style={{ padding: '10px 16px', marginBottom: 12, borderRadius: 12, background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.2)', fontSize: 13, color: '#a5b4fc', fontWeight: 700 }}>
+          {lc.translatingText}
+        </div>
+      )}
+
       {loading && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
           {Array.from({ length: nDocs }).map((_, i) => (
@@ -437,7 +486,7 @@ function SearchTab({ isDark, lc }) {
 }
 
 
-function AgentTab({ isDark, lc }) {
+function AgentTab({ isDark, lc, lang }) {
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
@@ -476,7 +525,7 @@ function AgentTab({ isDark, lc }) {
     let contextText = ''
 
     try {
-      const searchData = await pixelSearch(trimmed, null, 4)
+      const searchData = await pixelSearch(trimmed, null, 4, lang)
       tiles = searchData?.hits || []
       setSearching(false)
       if (tiles.length > 0) {
@@ -603,7 +652,7 @@ function AgentTab({ isDark, lc }) {
                 ))}
               </div>
               <span style={{ fontSize: 13, color: 'rgba(165,180,252,0.7)' }}>
-                {searching ? lc.searchingText : lc.generatingText}
+                {searching ? (lang !== 'en' && lc.translatingText ? lc.translatingText : lc.searchingText) : lc.generatingText}
               </span>
             </div>
           </div>
@@ -747,8 +796,8 @@ export default function WikiMedVisionPanel({ onNext, onPrev, prevLabel, nextLabe
           </div>
 
           {/* Panel content */}
-          {tab === 'search' && <SearchTab isDark={isDark} lc={lc} />}
-          {tab === 'agent' && <AgentTab isDark={isDark} lc={lc} />}
+          {tab === 'search' && <SearchTab isDark={isDark} lc={lc} lang={lang} />}
+          {tab === 'agent' && <AgentTab isDark={isDark} lc={lc} lang={lang} />}
         </div>
 
         {/* ── Nav buttons ── */}
