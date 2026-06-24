@@ -6,7 +6,11 @@ import { useAuth } from '../context/AuthContext'
 import { PATIENT } from '../data/mockData.js'
 import NavButtons from './NavButtons.jsx'
 
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`
+// Use the locally-installed pdfjs-dist worker (no CDN dependency).
+pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+  'pdfjs-dist/build/pdf.worker.min.mjs',
+  import.meta.url,
+).toString()
 
 const Tag = ({ children, color = 'cyan' }) => {
   const colors = {

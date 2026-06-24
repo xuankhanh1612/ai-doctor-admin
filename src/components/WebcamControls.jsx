@@ -6,8 +6,10 @@ import {
 } from 'lucide-react'
 import { FaceLandmarker, FilesetResolver, DrawingUtils, ObjectDetector } from '@mediapipe/tasks-vision'
 import { useApp } from '../context/AppContext'
+import { MEDIAPIPE_VISION_WASM_URL } from '../lib/mediapipeWasmPath'
 
-const MEDIAPIPE_WASM_URL = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm'
+// WASM files served directly from node_modules via Vite ?url import — no CDN, no public/wasm copy needed.
+const MEDIAPIPE_WASM_URL = MEDIAPIPE_VISION_WASM_URL
 const FACE_LANDMARKER_MODEL_URL =
   'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task'
 const OBJECT_DETECTOR_MODEL_URL =

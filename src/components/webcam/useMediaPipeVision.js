@@ -1,7 +1,9 @@
 import { useCallback, useRef, useState } from 'react'
+import { MEDIAPIPE_VISION_WASM_URL } from '../../lib/mediapipeWasmPath'
 
-// Loaded on demand from CDN at runtime (browser fetches these, no bundling needed).
-const WASM_URL = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm'
+// WASM files served directly from node_modules via Vite ?url import — no CDN, no public/wasm copy needed.
+// Model .task/.tflite files are still fetched from Google Storage at runtime (too large to bundle).
+const WASM_URL = MEDIAPIPE_VISION_WASM_URL
 const FACE_MODEL_URL = 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task'
 const POSE_MODEL_URL = 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task'
 const OBJECT_MODEL_URL = 'https://storage.googleapis.com/mediapipe-models/object_detector/efficientdet_lite0/float16/1/efficientdet_lite0.tflite'
