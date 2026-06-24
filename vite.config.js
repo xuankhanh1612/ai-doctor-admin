@@ -73,6 +73,18 @@ export default defineConfig(({ mode }) => {
       proxy: {
         // Proxy /api/* (trừ /api/inbody-analyze đã được middleware ở trên xử
         // lý riêng) và /health sang FastAPI backend.
+        '/api/anthropic-proxy': {
+          target: 'https://api.anthropic.com',
+          changeOrigin: true,
+          rewrite: () => '/v1/messages',
+          configure: (proxy) => {
+            proxy.on('proxyReq', (proxyReq) => {
+              const key = process.env.ANTHROPIC_API_KEY || ''
+              proxyReq.setHeader('x-api-key', key)
+              proxyReq.setHeader('anthropic-version', '2023-06-01')
+            })
+          },
+        },
         '/api': {
           target: 'https://ai-doctor-engine.vercel.app',
           changeOrigin: true,

@@ -68,9 +68,12 @@ function tileUrl(articleId, tileIndex, chunkIndex) {
   return `${PIXELRAG_TILES}/tile/${articleId}/${tileIndex}/${chunkIndex}`
 }
 
-// ─── Anthropic API (calls claude-sonnet-4-6) ─────────────────────────────────
+// ─── Anthropic API — routed through /api/anthropic-proxy to avoid CORS ──────
+// Direct browser → api.anthropic.com is blocked by CORS.
+// Vercel serverless function at /api/anthropic-proxy injects the API key
+// server-side and forwards the response.
 async function callClaude(messages, systemPrompt) {
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
+  const res = await fetch('/api/anthropic-proxy', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -80,7 +83,10 @@ async function callClaude(messages, systemPrompt) {
       messages,
     }),
   })
-  if (!res.ok) throw new Error(`Claude API error: ${res.status}`)
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(`Claude API error: ${res.status} — ${err?.error || 'unknown'}`)
+  }
   const data = await res.json()
   return data.content?.map(b => b.text || '').join('') || ''
 }
