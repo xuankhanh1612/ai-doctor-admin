@@ -73,7 +73,7 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
   // ngoài ảnh hưởng UI admin), nhưng không còn là document/window riêng như iframe nữa.
   // Vì vậy: postMessage giữa widget ↔ React giờ đi thẳng qua `window` (không qua contentWindow),
   // và mọi listener widget gắn trên `window` (resize, SYNC_EVENT, message) phải được gỡ tay lúc
-  // unmount — xem hook `scriptEl.__beMeoNuocCleanup` được định nghĩa trong waterdrink_tracker.html.
+  // unmount — xem window.__beMeoNuocPendingCleanup__ được định nghĩa trong waterdrink_tracker.html.
   const [widgetReady, setWidgetReady] = useState(false)
   useEffect(() => {
     const host = hostRef.current
@@ -92,10 +92,15 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
     shadow.appendChild(scriptEl) // chèn xong là chạy ngay (script đồng bộ, không async/defer)
     // Dọn dẹp global sau khi script đã đọc xong (script chạy đồng bộ nên đây là an toàn)
     delete window.__beMeoShadowRoot__
+    // FIX BUG: document.currentScript = null khi inject động → script không thể gán cleanup
+    // vào scriptEl trực tiếp. Script gán vào window.__beMeoNuocPendingCleanup__ làm bridge;
+    // chúng ta lấy ra ngay sau khi script chạy xong (đồng bộ) rồi xóa global để tránh leak.
+    const cleanupFn = window.__beMeoNuocPendingCleanup__ ?? null
+    delete window.__beMeoNuocPendingCleanup__
     scriptElRef.current = scriptEl
     setWidgetReady(true)
     return () => {
-      scriptEl.__beMeoNuocCleanup?.()
+      cleanupFn?.()
       scriptElRef.current = null
       setWidgetReady(false)
     }
