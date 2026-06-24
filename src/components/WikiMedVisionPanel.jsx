@@ -61,29 +61,34 @@ function getLangConfig(lang) {
   return WIKI_LANG_CONFIG[lang] || WIKI_LANG_CONFIG['en']
 }
 
-// ─── Translate non-English query to English via Anthropic API ────────────────
+// ─── Translate non-English query to English via Groq proxy ──────────────────
 // PixelRAG only indexes English Wikipedia, so non-English queries need translation.
+// Uses the same /api/groq-proxy already used by AgentTab — no extra setup needed.
 async function translateToEnglish(text) {
   try {
-    const res = await fetch('/api/anthropic-proxy', {
+    const res = await fetch('/api/groq-proxy', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 100,
-        messages: [{
-          role: 'user',
-          content: `Translate this medical/scientific search query to English. Reply with ONLY the English translation, nothing else:\n\n${text}`,
-        }],
+        model: GROQ_MODEL,
+        max_tokens: 60,
+        temperature: 0,
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a medical translator. Translate the user query to English. Reply with ONLY the English translation — no explanation, no extra text.',
+          },
+          { role: 'user', content: text },
+        ],
       }),
     })
-    if (!res.ok) return text // fallback to original on error
+    if (!res.ok) return text
     const data = await res.json()
-    const translated = data?.content?.[0]?.text?.trim()
+    const translated = data?.choices?.[0]?.message?.content?.trim()
     console.log(`[translate] "${text}" → "${translated}"`)
     return translated || text
   } catch {
-    return text // fallback silently
+    return text
   }
 }
 
