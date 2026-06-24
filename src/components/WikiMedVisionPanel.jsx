@@ -6,8 +6,58 @@ const PIXELRAG_BASE  = 'https://api.pixelrag.ai'  // search endpoint
 const PIXELRAG_TILES = 'https://pixelrag.ai/api'   // tile image endpoint
 
 // ─── Groq config ─────────────────────────────────────────────────────────────
-// Free at groq.com — no credit card, very high rate limits
 const GROQ_MODEL = 'llama-3.3-70b-versatile'
+
+// ─── Language config ──────────────────────────────────────────────────────────
+// Wikipedia language prefix and query language based on UI language
+const WIKI_LANG_CONFIG = {
+  vi: {
+    wikiBase: 'https://vi.wikipedia.org',
+    searchPlaceholder: 'Tìm Wikipedia theo hình ảnh… vd: giải phẫu tim, nhân đôi ADN',
+    quickQueries: ['giải phẫu tim', 'nhân đôi ADN', 'não người', 'phân bào nguyên phân', 'tuần hoàn máu', 'thiếu vitamin'],
+    quickPrompts: ['Tim hoạt động như thế nào?', 'Giải thích nguyên phân', 'Nguyên nhân thiếu máu?', 'ADN và ARN', 'Giải thích nhóm máu'],
+    agentGreeting: 'Xin chào! Tôi là **Wiki Med Vision Agent** — kết hợp PixelRAG + AI.\n\nTôi có thể tìm kiếm hơn 8.28 triệu bài viết Wikipedia bằng hình ảnh và trả lời câu hỏi y tế với bằng chứng trực quan.\n\nHãy thử hỏi: *"Tim bơm máu như thế nào?"* hoặc *"ADN nhân đôi là gì?"*',
+    agentInputPlaceholder: 'Hỏi Wiki Med Vision Agent… (Enter để gửi)',
+    searchingText: '🔍 Đang tìm kiếm Wikipedia bằng hình ảnh…',
+    generatingText: '🧠 Đang tạo câu trả lời…',
+    resultsLabel: (n) => `✨ ${n} kết quả trực quan từ 8.28 triệu bài Wikipedia`,
+    clickTip: 'Nhấn vào tile → mở Wikipedia',
+    noResults: { title: 'Không tìm thấy kết quả.', sub: 'Hãy thử từ khóa khác hoặc thêm hình ảnh.' },
+    imageActive: (name, hasText) => `🖼️ ${name} · đang tìm theo ảnh${hasText ? ' + văn bản' : ''}`,
+    searchBtn: (loading) => loading ? '⏳ Đang tìm…' : '🚀 Tìm kiếm',
+    tileUnavailable: 'Tile không khả dụng',
+    openDirectly: 'mở trực tiếp ↗',
+    openWiki: '↗ Wikipedia',
+    systemPrompt: `Bạn là Wiki Med Vision Agent, trợ lý kiến thức y tế AI tích hợp PixelRAG — hệ thống truy xuất hình ảnh từ 8.28 triệu bài Wikipedia.
+
+Nhiệm vụ: trả lời câu hỏi y tế và khoa học rõ ràng, chính xác, thân thiện BẰNG TIẾNG VIỆT. Khi nhận kết quả tile Wikipedia từ PixelRAG, hãy tham chiếu chúng tự nhiên như bằng chứng trực quan. Hãy súc tích nhưng đầy đủ. Dùng markdown để định dạng. Luôn khuyến khích người dùng tham khảo chuyên gia y tế cho quyết định sức khỏe cá nhân.`,
+  },
+  en: {
+    wikiBase: 'https://en.wikipedia.org',
+    searchPlaceholder: 'Search Wikipedia visually… e.g. cardiac anatomy, DNA replication',
+    quickQueries: ['cardiac anatomy', 'DNA replication', 'human brain', 'cell mitosis', 'blood circulation', 'vitamin deficiency'],
+    quickPrompts: ['How does the heart work?', 'Explain mitosis', 'What causes anemia?', 'DNA vs RNA', 'Blood types explained'],
+    agentGreeting: "Hello! I'm **Wiki Med Vision Agent** — powered by PixelRAG + Claude.\n\nI can search 8.28 million Wikipedia articles visually and answer your medical questions with retrieved image evidence.\n\nTry asking: *\"Explain how the heart pumps blood\"* or *\"What is DNA replication?\"*",
+    agentInputPlaceholder: 'Ask Wiki Med Vision Agent… (Enter to send)',
+    searchingText: '🔍 Searching Wikipedia visually…',
+    generatingText: '🧠 Generating response…',
+    resultsLabel: (n) => `✨ ${n} visual hits from 8.28M Wikipedia articles`,
+    clickTip: 'Click any tile → open Wikipedia',
+    noResults: { title: 'No visual results found.', sub: 'Try a different query or add an image.' },
+    imageActive: (name, hasText) => `🖼️ ${name} · image query active${hasText ? ' + text query' : ''}`,
+    searchBtn: (loading) => loading ? '⏳ Searching…' : '🚀 Search',
+    tileUnavailable: 'Tile unavailable',
+    openDirectly: 'open tile directly ↗',
+    openWiki: '↗ Wikipedia',
+    systemPrompt: `You are Wiki Med Vision Agent, an AI medical knowledge assistant integrated with PixelRAG — a visual retrieval system over 8.28 million Wikipedia articles.
+
+Your job: answer medical and scientific questions clearly, accurately, and in a friendly tone. When you receive retrieved Wikipedia tile results, reference them naturally in your answer as visual evidence. Be concise but thorough. Use markdown for formatting. Always encourage the user to verify with a medical professional for personal health decisions.`,
+  },
+}
+
+function getLangConfig(lang) {
+  return WIKI_LANG_CONFIG[lang] || WIKI_LANG_CONFIG['en']
+}
 
 async function pixelSearch(query, imageBase64 = null, nDocs = 6) {
   const queries = []
@@ -23,24 +73,16 @@ async function pixelSearch(query, imageBase64 = null, nDocs = 6) {
   if (!res.ok) throw new Error(`PixelRAG search failed: ${res.status}`)
   const raw = await res.json()
 
-  // DEBUG: log raw response to console so we can inspect the real shape
   console.log('[PixelRAG] raw response:', JSON.stringify(raw, null, 2))
 
-  // Normalize hits — actual API shape: { results: [ { hits: [...] } ] }
-  // Also handle legacy/alternate shapes just in case.
   let hits = []
   if (Array.isArray(raw)) {
-    // bare array of hits
     hits = raw
   } else if (Array.isArray(raw?.hits)) {
-    // { hits: [...] }
     hits = raw.hits
   } else if (Array.isArray(raw?.hits?.hits)) {
-    // Elasticsearch: { hits: { hits: [...] } }
     hits = raw.hits.hits.map(h => h._source || h)
   } else if (Array.isArray(raw?.results)) {
-    // { results: [ { hits: [...] }, ... ] }  <- ACTUAL shape from PixelRAG
-    // Merge hits arrays from every result entry (one per query submitted)
     hits = raw.results.flatMap(r =>
       Array.isArray(r?.hits) ? r.hits : Array.isArray(r) ? r : []
     )
@@ -50,8 +92,6 @@ async function pixelSearch(query, imageBase64 = null, nDocs = 6) {
     hits = raw.data
   }
 
-  // Normalize field names — API might use snake_case or camelCase
-  // 'url' from PixelRAG is the Wikipedia article slug e.g. "DNA_replication"
   hits = hits.map(h => ({
     article_id:  h.article_id  ?? h.articleId  ?? h.article  ?? h.id  ?? '',
     tile_index:  h.tile_index  ?? h.tileIndex  ?? h.tile      ?? 0,
@@ -67,15 +107,10 @@ async function pixelSearch(query, imageBase64 = null, nDocs = 6) {
 }
 
 function tileUrl(articleId, tileIndex, chunkIndex) {
-  // Correct endpoint: pixelrag.ai/api/tile/{article_id}/{tile_index}/{chunk_index}
   return `${PIXELRAG_TILES}/tile/${articleId}/${tileIndex}/${chunkIndex}`
 }
 
-// ─── Groq API — routed through /api/groq-proxy to avoid CORS ────────────────
-// Groq (groq.com) — free, no credit card, OpenAI-compatible.
 async function callAI(messages, systemPrompt) {
-  // Groq uses OpenAI-compatible format: [{role, content}]
-  // Prepend system prompt as a system message
   const groqMessages = [
     { role: 'system', content: systemPrompt },
     ...messages.map(m => ({ role: m.role, content: String(m.content) })),
@@ -100,11 +135,9 @@ async function callAI(messages, systemPrompt) {
     throw new Error(`Groq API error: ${res.status} — ${msg}`)
   }
 
-  // OpenAI-compatible response: { choices: [{ message: { content } }] }
   return data.choices?.[0]?.message?.content || ''
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
 function fileToBase64(file) {
   return new Promise((resolve, reject) => {
     const r = new FileReader()
@@ -116,13 +149,13 @@ function fileToBase64(file) {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function TileCard({ hit, idx }) {
+function TileCard({ hit, idx, wikiBase, tileUnavailable, openDirectly, openWiki }) {
   const [loaded, setLoaded] = useState(false)
   const [err, setErr] = useState(false)
   const url = tileUrl(hit.article_id, hit.tile_index, hit.chunk_index)
-  const wikiUrl = `https://en.wikipedia.org/?curid=${hit.article_id}`
+  // Use language-specific Wikipedia URL
+  const wikiUrl = `${wikiBase}/?curid=${hit.article_id}`
 
-  // Log each tile attempt for debugging
   React.useEffect(() => {
     console.log(`[TileCard #${idx + 1}] fetching:`, url, 'hit:', hit)
   }, [url])
@@ -141,7 +174,6 @@ function TileCard({ hit, idx }) {
       onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = '' }}
       onClick={() => window.open(wikiUrl, '_blank')}
     >
-      {/* rank badge */}
       <div style={{
         position: 'absolute', top: 10, left: 10, zIndex: 2,
         background: 'linear-gradient(135deg,#6366f1,#8b5cf6)',
@@ -149,7 +181,6 @@ function TileCard({ hit, idx }) {
         fontSize: 11, fontWeight: 800, letterSpacing: 0.5,
       }}>#{idx + 1}</div>
 
-      {/* article id chip */}
       <div style={{
         position: 'absolute', top: 10, right: 10, zIndex: 2,
         background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(6px)',
@@ -157,7 +188,6 @@ function TileCard({ hit, idx }) {
         padding: '3px 8px', fontSize: 10, fontWeight: 700,
       }}>ID {hit.article_id}</div>
 
-      {/* tile image — crossOrigin prevents CORS tainting canvas; referrerPolicy for stricter servers */}
       <div style={{ width: '100%', height: 220, background: 'rgba(10,5,30,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         {!err ? (
           <img
@@ -179,19 +209,18 @@ function TileCard({ hit, idx }) {
         {err && (
           <div style={{ textAlign: 'center', color: 'rgba(255,255,255,0.35)', fontSize: 12, padding: 12 }}>
             <div style={{ fontSize: 28, marginBottom: 6 }}>🖼️</div>
-            <div style={{ marginBottom: 4 }}>Tile unavailable</div>
+            <div style={{ marginBottom: 4 }}>{tileUnavailable}</div>
             <a
               href={url}
               target="_blank"
               rel="noreferrer"
               onClick={e => e.stopPropagation()}
               style={{ fontSize: 10, color: '#6366f1', textDecoration: 'underline' }}
-            >open tile directly ↗</a>
+            >{openDirectly}</a>
           </div>
         )}
       </div>
 
-      {/* footer */}
       <div style={{ padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           <span style={{ fontSize: 11, color: 'rgba(165,180,252,0.8)', fontWeight: 700 }}>
@@ -203,14 +232,14 @@ function TileCard({ hit, idx }) {
             </span>
           )}
         </div>
-        <span style={{ fontSize: 11, color: 'rgba(99,102,241,0.8)', fontWeight: 700 }}>↗ Wikipedia</span>
+        <span style={{ fontSize: 11, color: 'rgba(99,102,241,0.8)', fontWeight: 700 }}>{openWiki}</span>
       </div>
     </div>
   )
 }
 
 
-function SearchTab({ isDark }) {
+function SearchTab({ isDark, lc }) {
   const [query, setQuery] = useState('')
   const [imageFile, setImageFile] = useState(null)
   const [imagePreview, setImagePreview] = useState(null)
@@ -257,7 +286,7 @@ function SearchTab({ isDark }) {
               value={query}
               onChange={e => setQuery(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleSearch()}
-              placeholder="Search Wikipedia visually… e.g. cardiac anatomy, DNA replication"
+              placeholder={lc.searchPlaceholder}
               style={{
                 width: '100%', boxSizing: 'border-box',
                 padding: '14px 16px 14px 42px', borderRadius: 14,
@@ -272,7 +301,6 @@ function SearchTab({ isDark }) {
             />
           </div>
 
-          {/* n_docs selector */}
           <select
             value={nDocs}
             onChange={e => setNDocs(Number(e.target.value))}
@@ -285,7 +313,6 @@ function SearchTab({ isDark }) {
             {[3, 6, 9, 12].map(n => <option key={n} value={n}>{n} results</option>)}
           </select>
 
-          {/* Image upload */}
           <button
             onClick={() => fileRef.current?.click()}
             title="Search by image"
@@ -298,7 +325,6 @@ function SearchTab({ isDark }) {
           >🖼️</button>
           <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => handleImageSelect(e.target.files[0])} />
 
-          {/* Search button */}
           <button
             onClick={handleSearch}
             disabled={loading || (!query.trim() && !imageFile)}
@@ -309,17 +335,15 @@ function SearchTab({ isDark }) {
               transition: 'all 0.18s', whiteSpace: 'nowrap',
             }}
           >
-            {loading ? '⏳ Searching…' : '🚀 Search'}
+            {lc.searchBtn(loading)}
           </button>
         </div>
 
-        {/* Image preview */}
         {imagePreview && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 12, background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.2)' }}>
             <img src={imagePreview} alt="Query" style={{ height: 48, width: 48, objectFit: 'cover', borderRadius: 8 }} />
             <span style={{ flex: 1, fontSize: 13, color: isDark ? '#c4b5fd' : '#5b21b6', fontWeight: 700 }}>
-              🖼️ {imageFile?.name} · image query active
-              {query.trim() && ' + text query'}
+              {lc.imageActive(imageFile?.name, query.trim())}
             </span>
             <button onClick={clearImage} style={{ border: 'none', background: 'none', color: '#ef4444', fontSize: 18, cursor: 'pointer' }}>✕</button>
           </div>
@@ -327,7 +351,7 @@ function SearchTab({ isDark }) {
 
         {/* Quick queries */}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {['cardiac anatomy', 'DNA replication', 'human brain', 'cell mitosis', 'blood circulation', 'vitamin deficiency'].map(q => (
+          {lc.quickQueries.map(q => (
             <button
               key={q}
               onClick={() => { setQuery(q); }}
@@ -345,14 +369,12 @@ function SearchTab({ isDark }) {
         </div>
       </div>
 
-      {/* Error */}
       {error && (
         <div style={{ padding: 16, borderRadius: 12, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5', marginBottom: 16, fontSize: 14 }}>
           ⚠️ {error}
         </div>
       )}
 
-      {/* Loading shimmer */}
       {loading && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
           {Array.from({ length: nDocs }).map((_, i) => (
@@ -361,17 +383,25 @@ function SearchTab({ isDark }) {
         </div>
       )}
 
-      {/* Results grid */}
       {results?.hits?.length > 0 && !loading && (
         <>
           <div style={{ marginBottom: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{ fontSize: 13, fontWeight: 800, color: isDark ? '#a5b4fc' : '#4338ca' }}>
-              ✨ {results.hits.length} visual hits from 8.28M Wikipedia articles
+              {lc.resultsLabel(results.hits.length)}
             </span>
-            <span style={{ fontSize: 11, color: 'rgba(148,163,184,0.7)', marginLeft: 'auto' }}>Click any tile → open Wikipedia</span>
+            <span style={{ fontSize: 11, color: 'rgba(148,163,184,0.7)', marginLeft: 'auto' }}>{lc.clickTip}</span>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
-            {results.hits.map((hit, i) => <TileCard key={`${hit.article_id}-${hit.tile_index}-${i}`} hit={hit} idx={i} />)}
+            {results.hits.map((hit, i) => (
+              <TileCard
+                key={`${hit.article_id}-${hit.tile_index}-${i}`}
+                hit={hit} idx={i}
+                wikiBase={lc.wikiBase}
+                tileUnavailable={lc.tileUnavailable}
+                openDirectly={lc.openDirectly}
+                openWiki={lc.openWiki}
+              />
+            ))}
           </div>
         </>
       )}
@@ -379,12 +409,11 @@ function SearchTab({ isDark }) {
       {results?.hits?.length === 0 && !loading && (
         <div style={{ textAlign: 'center', padding: '48px 0', color: 'rgba(148,163,184,0.6)' }}>
           <div style={{ fontSize: 48, marginBottom: 12 }}>🔬</div>
-          <div style={{ fontSize: 15, fontWeight: 700 }}>No visual results found.</div>
-          <div style={{ fontSize: 13, marginTop: 6 }}>Try a different query or add an image.</div>
+          <div style={{ fontSize: 15, fontWeight: 700 }}>{lc.noResults.title}</div>
+          <div style={{ fontSize: 13, marginTop: 6 }}>{lc.noResults.sub}</div>
         </div>
       )}
 
-      {/* ── DEBUG PANEL: shows raw API response ── remove before prod ── */}
       {results && (
         <details style={{ marginTop: 16 }}>
           <summary style={{ fontSize: 11, fontWeight: 800, color: 'rgba(99,102,241,0.6)', cursor: 'pointer', userSelect: 'none', padding: '6px 0' }}>
@@ -408,11 +437,11 @@ function SearchTab({ isDark }) {
 }
 
 
-function AgentTab({ isDark }) {
+function AgentTab({ isDark, lc }) {
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
-      content: "Hello! I'm **Wiki Med Vision Agent** — powered by PixelRAG + Claude.\n\nI can search 8.28 million Wikipedia articles visually and answer your medical questions with retrieved image evidence.\n\nTry asking: *\"Explain how the heart pumps blood\"* or *\"What is DNA replication?\"*",
+      content: lc.agentGreeting,
       tiles: null,
     }
   ])
@@ -421,13 +450,18 @@ function AgentTab({ isDark }) {
   const [searching, setSearching] = useState(false)
   const logRef = useRef(null)
 
+  // Reset messages when language config changes (language switch)
+  useEffect(() => {
+    setMessages([{
+      role: 'assistant',
+      content: lc.agentGreeting,
+      tiles: null,
+    }])
+  }, [lc])
+
   useEffect(() => {
     if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight
   }, [messages, loading])
-
-  const SYSTEM_PROMPT = `You are Wiki Med Vision Agent, an AI medical knowledge assistant integrated with PixelRAG — a visual retrieval system over 8.28 million Wikipedia articles.
-
-Your job: answer medical and scientific questions clearly, accurately, and in a friendly tone. When you receive retrieved Wikipedia tile results, reference them naturally in your answer as visual evidence. Be concise but thorough. Use markdown for formatting. Always encourage the user to verify with a medical professional for personal health decisions.`
 
   const sendMessage = async () => {
     const trimmed = input.trim()
@@ -442,7 +476,6 @@ Your job: answer medical and scientific questions clearly, accurately, and in a 
     let contextText = ''
 
     try {
-      // Step 1: search PixelRAG
       const searchData = await pixelSearch(trimmed, null, 4)
       tiles = searchData?.hits || []
       setSearching(false)
@@ -455,9 +488,6 @@ Your job: answer medical and scientific questions clearly, accurately, and in a 
     }
 
     try {
-      // Step 2: call Claude with context
-      // Anthropic requires messages to start with 'user' and alternate roles.
-      // messages[0] is the static intro (role:'assistant') — skip it.
       const history = messages
         .filter(m => m.role === 'user' || m.role === 'assistant')
         .slice(messages[0]?.role === 'assistant' ? 1 : 0)
@@ -465,12 +495,11 @@ Your job: answer medical and scientific questions clearly, accurately, and in a 
 
       history.push({ role: 'user', content: trimmed + contextText })
 
-      // Safety guard: must start with user role
       while (history.length > 0 && history[0].role !== 'user') history.shift()
 
       console.log('[Claude] messages:', history.length, '| first:', history[0]?.role)
 
-      const reply = await callAI(history, SYSTEM_PROMPT)
+      const reply = await callAI(history, lc.systemPrompt)
       setMessages(prev => [...prev, { role: 'assistant', content: reply, tiles }])
     } catch (e) {
       console.error('[Claude] error:', e)
@@ -484,7 +513,6 @@ Your job: answer medical and scientific questions clearly, accurately, and in a 
   }
 
   const renderMarkdown = (text) => {
-    // basic markdown → HTML
     return text
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
       .replace(/\*(.*?)\*/g, '<em>$1</em>')
@@ -502,12 +530,10 @@ Your job: answer medical and scientific questions clearly, accurately, and in a 
       }}>
         {messages.map((msg, i) => (
           <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: msg.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: '90%', alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
-            {/* Sender label */}
             <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.5, color: msg.role === 'user' ? '#a5b4fc' : '#7c3aed', paddingLeft: 4 }}>
               {msg.role === 'user' ? '👤 YOU' : '🤖 WIKI MED VISION AGENT'}
             </div>
 
-            {/* Bubble */}
             <div style={{
               padding: '13px 17px', borderRadius: msg.role === 'user' ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
               background: msg.role === 'user'
@@ -519,7 +545,6 @@ Your job: answer medical and scientific questions clearly, accurately, and in a 
               backdropFilter: 'blur(8px)',
             }} dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }} />
 
-            {/* Tiles from PixelRAG */}
             {msg.tiles?.length > 0 && (
               <div style={{ width: '100%' }}>
                 <div style={{ fontSize: 11, fontWeight: 800, color: 'rgba(139,92,246,0.7)', marginBottom: 8, paddingLeft: 4 }}>
@@ -529,7 +554,7 @@ Your job: answer medical and scientific questions clearly, accurately, and in a 
                   {msg.tiles.map((hit, ti) => (
                     <div
                       key={ti}
-                      onClick={() => window.open(`https://en.wikipedia.org/?curid=${hit.article_id}`, '_blank')}
+                      onClick={() => window.open(`${lc.wikiBase}/?curid=${hit.article_id}`, '_blank')}
                       style={{
                         minWidth: 160, borderRadius: 12, overflow: 'hidden', cursor: 'pointer',
                         border: '1px solid rgba(99,102,241,0.25)',
@@ -547,7 +572,7 @@ Your job: answer medical and scientific questions clearly, accurately, and in a 
                         onError={e => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex' }}
                       />
                       <div style={{ display: 'none', height: 110, alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.3)', fontSize: 11 }}>
-                        Tile unavailable
+                        {lc.tileUnavailable}
                       </div>
                       <div style={{ padding: '6px 10px', fontSize: 10, color: 'rgba(165,180,252,0.7)', fontWeight: 700 }}>
                         ID {hit.article_id} · T{hit.tile_index}
@@ -560,7 +585,6 @@ Your job: answer medical and scientific questions clearly, accurately, and in a 
           </div>
         ))}
 
-        {/* Loading indicator */}
         {loading && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignSelf: 'flex-start', maxWidth: '80%' }}>
             <div style={{ fontSize: 11, fontWeight: 800, color: '#7c3aed', paddingLeft: 4 }}>🤖 WIKI MED VISION AGENT</div>
@@ -579,7 +603,7 @@ Your job: answer medical and scientific questions clearly, accurately, and in a 
                 ))}
               </div>
               <span style={{ fontSize: 13, color: 'rgba(165,180,252,0.7)' }}>
-                {searching ? '🔍 Searching Wikipedia visually…' : '🧠 Generating response…'}
+                {searching ? lc.searchingText : lc.generatingText}
               </span>
             </div>
           </div>
@@ -588,9 +612,8 @@ Your job: answer medical and scientific questions clearly, accurately, and in a 
 
       {/* Composer */}
       <div style={{ padding: '14px 20px', borderTop: '1px solid rgba(99,102,241,0.15)', background: 'rgba(5,3,15,0.4)', backdropFilter: 'blur(12px)' }}>
-        {/* Quick prompts */}
         <div style={{ display: 'flex', gap: 8, marginBottom: 10, overflowX: 'auto' }}>
-          {['How does the heart work?', 'Explain mitosis', 'What causes anemia?', 'DNA vs RNA', 'Blood types explained'].map(p => (
+          {lc.quickPrompts.map(p => (
             <button key={p} onClick={() => setInput(p)} style={{
               padding: '5px 12px', borderRadius: 999, whiteSpace: 'nowrap',
               background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.2)',
@@ -604,7 +627,7 @@ Your job: answer medical and scientific questions clearly, accurately, and in a 
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendMessage()}
-            placeholder="Ask Wiki Med Vision Agent… (Enter to send)"
+            placeholder={lc.agentInputPlaceholder}
             style={{
               flex: 1, padding: '13px 16px', borderRadius: 14,
               border: '1px solid rgba(99,102,241,0.3)',
@@ -635,9 +658,12 @@ Your job: answer medical and scientific questions clearly, accurately, and in a 
 
 // ─── Main Panel ───────────────────────────────────────────────────────────────
 export default function WikiMedVisionPanel({ onNext, onPrev, prevLabel, nextLabel }) {
-  const { theme } = useApp()
+  const { theme, lang } = useApp()
   const isDark = theme === 'dark'
   const [tab, setTab] = useState('search')
+
+  // Get language-specific config — defaults to English for unknown langs
+  const lc = getLangConfig(lang)
 
   const bg = isDark
     ? 'linear-gradient(135deg, #050314 0%, #0c0a1e 50%, #080520 100%)'
@@ -668,13 +694,15 @@ export default function WikiMedVisionPanel({ onNext, onPrev, prevLabel, nextLabe
                 <span style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6,#a78bfa)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Vision</span>
               </h1>
               <p style={{ margin: 0, color: isDark ? '#94a3b8' : '#64748b', fontSize: 14, maxWidth: 560, lineHeight: 1.65 }}>
-                Search Wikipedia by text or image — PixelRAG retrieves visual tile screenshots. Ask the Agent to synthesize answers with visual evidence from real Wikipedia pages.
+                {lang === 'vi'
+                  ? 'Tìm kiếm Wikipedia bằng văn bản hoặc hình ảnh — PixelRAG truy xuất ảnh chụp màn hình tile trực quan. Hỏi Agent để tổng hợp câu trả lời với bằng chứng trực quan từ Wikipedia.'
+                  : 'Search Wikipedia by text or image — PixelRAG retrieves visual tile screenshots. Ask the Agent to synthesize answers with visual evidence from real Wikipedia pages.'}
               </p>
             </div>
 
             {/* Stats */}
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-              {[['8.28M', 'Wikipedia articles'], ['Visual', 'tile search'], ['No key', 'required']].map(([val, lbl]) => (
+              {[['8.28M', lang === 'vi' ? 'Bài Wikipedia' : 'Wikipedia articles'], ['Visual', lang === 'vi' ? 'Tìm theo ảnh' : 'tile search'], ['No key', lang === 'vi' ? 'Không cần key' : 'required']].map(([val, lbl]) => (
                 <div key={lbl} style={{ borderRadius: 16, padding: '10px 14px', background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.15)', textAlign: 'center', minWidth: 80 }}>
                   <div style={{ fontWeight: 900, fontSize: 16, color: isDark ? '#a5b4fc' : '#4338ca' }}>{val}</div>
                   <div style={{ fontSize: 11, fontWeight: 700, color: isDark ? '#64748b' : '#94a3b8', marginTop: 2 }}>{lbl}</div>
@@ -694,8 +722,8 @@ export default function WikiMedVisionPanel({ onNext, onPrev, prevLabel, nextLabe
           {/* Tabs */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0, borderBottom: `1px solid ${cardBorder}` }}>
             {[
-              { id: 'search', icon: '🔍', label: 'Search', sub: 'Visual Wikipedia retrieval' },
-              { id: 'agent', icon: '🤖', label: 'Agent', sub: 'PixelRAG + Claude synthesis' },
+              { id: 'search', icon: '🔍', label: lang === 'vi' ? 'Tìm kiếm' : 'Search', sub: lang === 'vi' ? 'Truy xuất Wikipedia trực quan' : 'Visual Wikipedia retrieval' },
+              { id: 'agent', icon: '🤖', label: 'Agent', sub: lang === 'vi' ? 'PixelRAG + AI tổng hợp' : 'PixelRAG + Claude synthesis' },
             ].map(t => (
               <button
                 key={t.id}
@@ -719,8 +747,8 @@ export default function WikiMedVisionPanel({ onNext, onPrev, prevLabel, nextLabe
           </div>
 
           {/* Panel content */}
-          {tab === 'search' && <SearchTab isDark={isDark} />}
-          {tab === 'agent' && <AgentTab isDark={isDark} />}
+          {tab === 'search' && <SearchTab isDark={isDark} lc={lc} />}
+          {tab === 'agent' && <AgentTab isDark={isDark} lc={lc} />}
         </div>
 
         {/* ── Nav buttons ── */}
@@ -730,7 +758,7 @@ export default function WikiMedVisionPanel({ onNext, onPrev, prevLabel, nextLabe
               padding: '11px 22px', borderRadius: 12, border: `1px solid ${cardBorder}`,
               background: cardBg, color: isDark ? '#94a3b8' : '#64748b',
               fontWeight: 700, fontSize: 13, cursor: 'pointer',
-            }}>← {prevLabel || 'Back'}</button>
+            }}>← {prevLabel || (lang === 'vi' ? 'Quay lại' : 'Back')}</button>
           )}
           {onNext && (
             <button onClick={onNext} style={{
@@ -738,7 +766,7 @@ export default function WikiMedVisionPanel({ onNext, onPrev, prevLabel, nextLabe
               background: 'linear-gradient(135deg,#6366f1,#8b5cf6)',
               color: '#fff', fontWeight: 800, fontSize: 13, cursor: 'pointer',
               marginLeft: 'auto',
-            }}>{nextLabel || 'Next'} →</button>
+            }}>{nextLabel || (lang === 'vi' ? 'Tiếp theo' : 'Next')} →</button>
           )}
         </div>
 
