@@ -76,7 +76,7 @@ async function translateToEnglish(text) {
         messages: [
           {
             role: 'system',
-            content: 'You are a medical translator. Translate the user query to English. Reply with ONLY the English translation — no explanation, no extra text.',
+            content: 'You are a Vietnamese medical translator. The user will give you a Vietnamese medical or scientific search query. Translate it from Vietnamese to English. Reply with ONLY the English translation — no explanation, no extra text. Example: "não người" → "human brain", "tim mạch" → "cardiovascular", "ung thư" → "cancer".',
           },
           { role: 'user', content: text },
         ],
