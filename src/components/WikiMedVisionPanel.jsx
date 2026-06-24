@@ -443,17 +443,27 @@ Your job: answer medical and scientific questions clearly, accurately, and in a 
 
     try {
       // Step 2: call Claude with context
+      // Anthropic requires messages to start with 'user' and alternate roles.
+      // messages[0] is the static intro (role:'assistant') — skip it.
       const history = messages
-        .filter(m => m.role !== 'assistant' || m !== messages[0]) // skip intro
-        .map(m => ({ role: m.role, content: m.content }))
+        .filter(m => m.role === 'user' || m.role === 'assistant')
+        .slice(messages[0]?.role === 'assistant' ? 1 : 0)
+        .map(m => ({ role: m.role, content: String(m.content) }))
+
       history.push({ role: 'user', content: trimmed + contextText })
+
+      // Safety guard: must start with user role
+      while (history.length > 0 && history[0].role !== 'user') history.shift()
+
+      console.log('[Claude] messages:', history.length, '| first:', history[0]?.role)
 
       const reply = await callClaude(history, SYSTEM_PROMPT)
       setMessages(prev => [...prev, { role: 'assistant', content: reply, tiles }])
     } catch (e) {
+      console.error('[Claude] error:', e)
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: `⚠️ Error calling Claude: ${e.message}\n\nMake sure the Anthropic API is accessible from this environment.`,
+        content: `⚠️ Error: ${e.message}`,
         tiles,
       }])
     }
