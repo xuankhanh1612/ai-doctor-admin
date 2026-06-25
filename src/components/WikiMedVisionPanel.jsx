@@ -114,8 +114,88 @@ function MicButton({ onTranscript, lang, isDark }) {
   )
 }
 
-// ─── Language config ──────────────────────────────────────────────────────────
-// Wikipedia language prefix and query language based on UI language
+// ─── TTS (Text-to-Speech) hook + button ──────────────────────────────────────
+// Dùng Web Speech API (speechSynthesis) — không cần server.
+// Tự chọn giọng VI hoặc EN tương ứng với lang hiện tại.
+
+function stripMarkdown(text) {
+  return text
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/\*(.*?)\*/g, '$1')
+    .replace(/`(.*?)`/g, '$1')
+    .replace(/#{1,6}\s/g, '')
+    .replace(/<[^>]+>/g, '')
+    .replace(/\n{2,}/g, '. ')
+    .replace(/\n/g, ' ')
+    .trim()
+}
+
+function useTTS(lang = 'en') {
+  const [speaking, setSpeaking] = useState(false)
+  const utterRef = useRef(null)
+
+  const speak = useCallback((text) => {
+    if (!window.speechSynthesis) return
+    // Nếu đang đọc cùng text → dừng lại
+    if (speaking) {
+      window.speechSynthesis.cancel()
+      setSpeaking(false)
+      return
+    }
+    window.speechSynthesis.cancel()
+    const clean = stripMarkdown(text)
+    const utter = new SpeechSynthesisUtterance(clean)
+    utter.lang = lang === 'vi' ? 'vi-VN' : 'en-US'
+    utter.rate = 0.95
+    utter.pitch = 1
+
+    // Chọn giọng phù hợp nếu có
+    const voices = window.speechSynthesis.getVoices()
+    const preferred = voices.find(v => v.lang.startsWith(lang === 'vi' ? 'vi' : 'en') && v.localService)
+      || voices.find(v => v.lang.startsWith(lang === 'vi' ? 'vi' : 'en'))
+    if (preferred) utter.voice = preferred
+
+    utter.onstart  = () => setSpeaking(true)
+    utter.onend    = () => setSpeaking(false)
+    utter.onerror  = () => setSpeaking(false)
+    utterRef.current = utter
+    window.speechSynthesis.speak(utter)
+  }, [speaking, lang])
+
+  // Dừng khi unmount
+  useEffect(() => () => window.speechSynthesis?.cancel(), [])
+
+  return { speaking, speak }
+}
+
+function SpeakButton({ text, lang, size = 'normal' }) {
+  const { speaking, speak } = useTTS(lang)
+  const isSmall = size === 'small'
+  return (
+    <button
+      onClick={() => speak(text)}
+      title={speaking
+        ? (lang === 'vi' ? 'Dừng đọc' : 'Stop speaking')
+        : (lang === 'vi' ? 'Đọc to kết quả' : 'Read aloud')}
+      style={{
+        padding: isSmall ? '4px 8px' : '6px 10px',
+        borderRadius: 8,
+        border: `1px solid ${speaking ? 'rgba(139,92,246,0.6)' : 'rgba(99,102,241,0.25)'}`,
+        background: speaking ? 'linear-gradient(135deg,#7c3aed,#6366f1)' : 'rgba(99,102,241,0.08)',
+        color: speaking ? '#fff' : 'rgba(139,92,246,0.85)',
+        fontSize: isSmall ? 13 : 15,
+        cursor: 'pointer',
+        transition: 'all 0.18s',
+        lineHeight: 1,
+        animation: speaking ? 'micPulse 1.4s ease-in-out infinite' : 'none',
+        flexShrink: 0,
+      }}
+      title={speaking ? (lang === 'vi' ? 'Dừng đọc' : 'Stop') : (lang === 'vi' ? 'Đọc to' : 'Read aloud')}
+    >
+      {speaking ? '⏸' : '🔊'}
+    </button>
+  )
+}
 const WIKI_LANG_CONFIG = {
   vi: {
     wikiBase: 'https://vi.wikipedia.org',
@@ -904,6 +984,11 @@ function SearchTab({ isDark, lc, lang }) {
             <span style={{ fontSize: 13, fontWeight: 800, color: isDark ? '#a5b4fc' : '#4338ca' }}>
               {lc.resultsLabel(results.hits.length)}
             </span>
+            <SpeakButton
+              text={results.hits.map((h, i) => `${i + 1}. ${h.displayTitle || h.title}`).join('. ')}
+              lang={lang}
+              size="small"
+            />
             <span style={{ fontSize: 11, color: 'rgba(148,163,184,0.7)', marginLeft: 'auto' }}>{lc.clickTip}</span>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
@@ -1293,6 +1378,12 @@ function AgentTab({ isDark, lc, lang }) {
               fontSize: 14, lineHeight: 1.65,
               backdropFilter: 'blur(8px)',
             }} dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }} />
+
+            {msg.role === 'assistant' && msg.content && (
+              <div style={{ display: 'flex', justifyContent: 'flex-start', paddingLeft: 4 }}>
+                <SpeakButton text={msg.content} lang={lang} size="small" />
+              </div>
+            )}
 
             {msg.tiles?.length > 0 && (
               <div style={{ width: '100%' }}>
