@@ -637,9 +637,6 @@ function TileCard({ hit, idx, tileUnavailable, openDirectly, openWiki, lang, ori
 
       <div style={{ padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <span style={{ fontSize: 11, color: 'rgba(165,180,252,0.8)', fontWeight: 700 }}>
-            Tile {hit.tile_index} · Chunk {hit.chunk_index}
-          </span>
           {displayTitle && (
             <span style={{ fontSize: 10, color: 'rgba(148,163,184,0.6)', fontWeight: 600, maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {displayTitle}
@@ -1245,7 +1242,6 @@ function AgentTab({ isDark, lc, lang }) {
                             {hit.displayTitle}
                           </div>
                         )}
-                        ID {hit.article_id} · T{hit.tile_index}
                         {hit.viCaption && (
                           <div style={{
                             marginTop: 4, fontWeight: 500, color: 'rgba(203,213,225,0.8)',
