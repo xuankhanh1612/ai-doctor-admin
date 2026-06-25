@@ -252,7 +252,7 @@ const WIKI_LANG_CONFIG = {
     searchingText: '🔍 Đang tìm kiếm Wikipedia bằng hình ảnh…',
     translatingText: '🔍 Đang dùng tiếng Việt để tìm kiếm…',
     generatingText: '🧠 Đang tạo câu trả lời…',
-    resultsLabel: (n) => `✨ ${n} kết quả trực quan từ Wikipedia · 28.1M tiles`,
+    resultsLabel: (n) => `✨ ${n} kết quả trực quan từ Wikipedia`,
     clickTip: 'Nhấn vào tile → mở Wikipedia',
     noResults: { title: 'Không tìm thấy kết quả.', sub: 'Hãy thử từ khóa khác hoặc thêm hình ảnh.' },
     imageActive: (name, hasText) => `🖼️ ${name} · đang tìm theo ảnh${hasText ? ' + văn bản' : ''}`,
@@ -274,7 +274,7 @@ Nhiệm vụ: trả lời câu hỏi y tế và khoa học rõ ràng, chính xá
     searchingText: '🔍 Searching Wikipedia visually…',
     translatingText: '🔍 Searching Wikipedia visually…',
     generatingText: '🧠 Generating response…',
-    resultsLabel: (n) => `✨ ${n} visual hits from Wikipedia articles · 28.1M tiles`,
+    resultsLabel: (n) => `✨ ${n} visual hits from Wikipedia articles`,
     clickTip: 'Click any tile → open Wikipedia',
     noResults: { title: 'No visual results found.', sub: 'Try a different query or add an image.' },
     imageActive: (name, hasText) => `🖼️ ${name} · image query active${hasText ? ' + text query' : ''}`,
@@ -1367,7 +1367,7 @@ export default function WikiMedVisionPanel({ onNext, onPrev, prevLabel, nextLabe
             <div>
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, borderRadius: 999, padding: '5px 14px', marginBottom: 10, background: 'linear-gradient(135deg,rgba(99,102,241,0.15),rgba(139,92,246,0.1))', border: '1px solid rgba(99,102,241,0.25)' }}>
                 <span style={{ fontSize: 12 }}>🔮</span>
-                <span style={{ fontSize: 11, fontWeight: 900, letterSpacing: 1.2, color: isDark ? '#a5b4fc' : '#4338ca', textTransform: 'uppercase' }}>Visual · Wikipedia · 28.1M Tiles</span>
+                <span style={{ fontSize: 11, fontWeight: 900, letterSpacing: 1.2, color: isDark ? '#a5b4fc' : '#4338ca', textTransform: 'uppercase' }}>Visual · Wikipedia</span>
               </div>
               <h1 style={{ margin: '0 0 8px', fontSize: 'clamp(26px,4vw,40px)', fontWeight: 900, letterSpacing: '-0.04em', color: isDark ? '#e0e7ff' : '#1e1b4b' }}>
                 Wiki Med{' '}
@@ -1383,7 +1383,6 @@ export default function WikiMedVisionPanel({ onNext, onPrev, prevLabel, nextLabe
             {/* Stats */}
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
               {[
-                ['28.1M',  lang === 'vi' ? 'Tile ảnh'      : 'Screenshot tiles'],
               ].map(([val, lbl]) => (
                 <div key={lbl} style={{ borderRadius: 16, padding: '10px 14px', background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.15)', textAlign: 'center', minWidth: 80 }}>
                   <div style={{ fontWeight: 900, fontSize: 16, color: isDark ? '#a5b4fc' : '#4338ca' }}>{val}</div>
