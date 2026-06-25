@@ -25,6 +25,95 @@ const PIXELRAG_TILES = 'https://pixelrag.ai/api'   // tile image endpoint
 // ─── Groq config ─────────────────────────────────────────────────────────────
 const GROQ_MODEL = 'llama-3.3-70b-versatile'
 
+// ─── Groq Whisper STT hook ────────────────────────────────────────────────────
+// Records audio via MediaRecorder, sends to /api/groq-whisper, returns transcript.
+// lang: 'vi' | 'en' — passed to Whisper for better accuracy.
+function useVoiceInput(onTranscript, lang = 'en') {
+  const [recording, setRecording] = useState(false)
+  const [transcribing, setTranscribing] = useState(false)
+  const mediaRecorderRef = useRef(null)
+  const chunksRef = useRef([])
+
+  const start = useCallback(async () => {
+    if (recording || transcribing) return
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : MediaRecorder.isTypeSupported('audio/webm')
+          ? 'audio/webm'
+          : 'audio/mp4'
+      const recorder = new MediaRecorder(stream, { mimeType })
+      chunksRef.current = []
+      recorder.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data) }
+      recorder.onstop = async () => {
+        stream.getTracks().forEach(t => t.stop())
+        const blob = new Blob(chunksRef.current, { type: mimeType })
+        setTranscribing(true)
+        try {
+          const ext = mimeType.includes('mp4') ? 'mp4' : 'webm'
+          const formData = new FormData()
+          formData.append('file', blob, `voice.${ext}`)
+          formData.append('language', lang === 'vi' ? 'vi' : 'en')
+          const res = await fetch('/api/groq-whisper', { method: 'POST', body: formData })
+          const data = await res.json()
+          if (data?.text?.trim()) onTranscript(data.text.trim())
+        } catch (err) {
+          console.error('[Whisper STT] error:', err)
+        } finally {
+          setTranscribing(false)
+        }
+      }
+      mediaRecorderRef.current = recorder
+      recorder.start()
+      setRecording(true)
+    } catch (err) {
+      console.error('[Whisper STT] mic error:', err)
+    }
+  }, [recording, transcribing, lang, onTranscript])
+
+  const stop = useCallback(() => {
+    if (mediaRecorderRef.current?.state === 'recording') {
+      mediaRecorderRef.current.stop()
+    }
+    setRecording(false)
+  }, [])
+
+  const toggle = useCallback(() => {
+    if (recording) stop(); else start()
+  }, [recording, start, stop])
+
+  return { recording, transcribing, toggle }
+}
+
+// ─── Micro button component ───────────────────────────────────────────────────
+function MicButton({ onTranscript, lang, isDark }) {
+  const { recording, transcribing, toggle } = useVoiceInput(onTranscript, lang)
+  const isActive = recording || transcribing
+
+  return (
+    <button
+      onClick={toggle}
+      title={recording ? (lang === 'vi' ? 'Dừng ghi âm' : 'Stop recording') : (lang === 'vi' ? 'Nói để tìm kiếm' : 'Speak to search')}
+      style={{
+        padding: '14px 15px', borderRadius: 12, border: `1px solid ${isActive ? 'rgba(239,68,68,0.6)' : 'rgba(99,102,241,0.35)'}`,
+        background: recording
+          ? 'linear-gradient(135deg,#ef4444,#dc2626)'
+          : transcribing
+            ? 'rgba(239,68,68,0.15)'
+            : isDark ? 'rgba(99,102,241,0.1)' : 'rgba(99,102,241,0.08)',
+        color: recording ? '#fff' : transcribing ? '#ef4444' : isDark ? '#a5b4fc' : '#6366f1',
+        fontSize: 17, cursor: transcribing ? 'wait' : 'pointer',
+        transition: 'all 0.18s', lineHeight: 1,
+        boxShadow: recording ? '0 0 0 3px rgba(239,68,68,0.25)' : 'none',
+        animation: recording ? 'micPulse 1.2s ease-in-out infinite' : 'none',
+      }}
+    >
+      {transcribing ? '⏳' : recording ? '⏹️' : '🎙️'}
+    </button>
+  )
+}
+
 // ─── Language config ──────────────────────────────────────────────────────────
 // Wikipedia language prefix and query language based on UI language
 const WIKI_LANG_CONFIG = {
@@ -743,6 +832,8 @@ function SearchTab({ isDark, lc, lang }) {
           >🖼️</button>
           <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => handleImageSelect(e.target.files[0])} />
 
+          <MicButton onTranscript={text => { setQuery(q => q ? q + ' ' + text : text) }} lang={lang} isDark={isDark} />
+
           <button
             onClick={handleSearch}
             disabled={loading || (!query.trim() && !imageFile)}
@@ -1312,6 +1403,7 @@ function AgentTab({ isDark, lc, lang }) {
             onFocus={e => e.target.style.borderColor = '#6366f1'}
             onBlur={e => e.target.style.borderColor = 'rgba(99,102,241,0.3)'}
           />
+          <MicButton onTranscript={text => setInput(i => i ? i + ' ' + text : text)} lang={lang} isDark={isDark} />
           <button
             onClick={sendMessage}
             disabled={loading || !input.trim()}
@@ -1324,7 +1416,7 @@ function AgentTab({ isDark, lc, lang }) {
         </div>
       </div>
 
-      <style>{`@keyframes dotBounce { 0%,80%,100%{transform:scale(0.6);opacity:0.4} 40%{transform:scale(1);opacity:1} }`}</style>
+      <style>{`@keyframes dotBounce { 0%,80%,100%{transform:scale(0.6);opacity:0.4} 40%{transform:scale(1);opacity:1} } @keyframes micPulse { 0%,100%{box-shadow:0 0 0 3px rgba(239,68,68,0.25)} 50%{box-shadow:0 0 0 7px rgba(239,68,68,0.1)} }`}</style>
     </div>
   )
 }
