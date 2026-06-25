@@ -145,6 +145,30 @@ async function pixelSearch(query, imageBase64 = null, nDocs = 6, lang = 'en') {
     ...h,
   }))
 
+  // ── VI mode: resolve the real Vietnamese article (title + URL) for every
+  // hit right now, via Wikipedia's langlinks API, so the results the user
+  // sees already show Vietnamese titles and the eventual click just opens
+  // the link we already resolved — no extra round-trip on click.
+  if (lang === 'vi' && hits.length) {
+    const resolved = await Promise.all(
+      hits.map(h => resolveViWiki(h.url))
+    )
+    hits = hits.map((h, i) => ({
+      ...h,
+      displayTitle: resolved[i]?.title || h.title,
+      displayUrl:   resolved[i]?.url
+        || (h.url ? `https://en.wikipedia.org/wiki/${h.url}` : `https://en.wikipedia.org/?curid=${h.article_id}`),
+      isViResolved: Boolean(resolved[i]?.url),
+    }))
+  } else {
+    hits = hits.map(h => ({
+      ...h,
+      displayTitle: h.title,
+      displayUrl: h.url ? `https://en.wikipedia.org/wiki/${h.url}` : `https://en.wikipedia.org/?curid=${h.article_id}`,
+      isViResolved: false,
+    }))
+  }
+
   console.log('[PixelRAG] normalized hits:', hits.length, hits[0] ?? '(none)')
 
   return { hits, _raw: raw }
@@ -154,19 +178,21 @@ function tileUrl(articleId, tileIndex, chunkIndex) {
   return `${PIXELRAG_TILES}/tile/${articleId}/${tileIndex}/${chunkIndex}`
 }
 
-// ─── Resolve the REAL Vietnamese Wikipedia URL for an English article ───────
+// ─── Resolve the REAL Vietnamese Wikipedia title+URL for an English article ──
 // PixelRAG only indexes en.wikipedia.org, so hit.url is always an English slug
 // (e.g. "Mitosis"). Guessing vi.wikipedia.org/wiki/<the user's original query>
 // is wrong whenever the query isn't the exact article title (e.g. "phân bào
 // nguyên phân" → no such VI article exists, even though "Mitosis" does and its
 // real VI counterpart is "Nguyên_phân"). Instead, ask the English Wikipedia API
 // for the interlanguage link to Vietnamese — this is the same mechanism the
-// language switcher in the screenshot uses, and it's authoritative.
-const _viWikiUrlCache = new Map()
+// language switcher in the screenshot uses, and it's authoritative. Called once
+// per hit right after search, so the UI can preview the VI title immediately
+// and the click handler just opens the already-resolved URL.
+const _viWikiCache = new Map()
 
-async function resolveViWikiUrl(enSlug) {
+async function resolveViWiki(enSlug) {
   if (!enSlug) return null
-  if (_viWikiUrlCache.has(enSlug)) return _viWikiUrlCache.get(enSlug)
+  if (_viWikiCache.has(enSlug)) return _viWikiCache.get(enSlug)
   try {
     const api = `https://en.wikipedia.org/w/api.php?action=query&prop=langlinks&lllang=vi&titles=${encodeURIComponent(enSlug)}&format=json&origin=*`
     const res = await fetch(api)
@@ -175,13 +201,13 @@ async function resolveViWikiUrl(enSlug) {
     const pages = data?.query?.pages || {}
     const page = Object.values(pages)[0]
     const viTitle = page?.langlinks?.[0]?.['*']
-    const url = viTitle
-      ? `https://vi.wikipedia.org/wiki/${encodeURIComponent(viTitle.replace(/ /g, '_'))}`
+    const result = viTitle
+      ? { title: viTitle, url: `https://vi.wikipedia.org/wiki/${encodeURIComponent(viTitle.replace(/ /g, '_'))}` }
       : null
-    _viWikiUrlCache.set(enSlug, url)
-    return url
+    _viWikiCache.set(enSlug, result)
+    return result
   } catch {
-    _viWikiUrlCache.set(enSlug, null)
+    _viWikiCache.set(enSlug, null)
     return null
   }
 }
@@ -229,25 +255,16 @@ function TileCard({ hit, idx, tileUnavailable, openDirectly, openWiki, lang, ori
   const [loaded, setLoaded] = useState(false)
   const [err, setErr] = useState(false)
   const url = tileUrl(hit.article_id, hit.tile_index, hit.chunk_index)
-  // EN: use hit.url slug (e.g. "Human_brain") → en.wikipedia.org/wiki/Human_brain
-  const enWikiUrl = hit.url
-    ? `https://en.wikipedia.org/wiki/${hit.url}`
-    : `https://en.wikipedia.org/?curid=${hit.article_id}`
+  // displayUrl/displayTitle are already resolved during search (VI → real
+  // vi.wikipedia.org article via langlinks, EN → straight en.wikipedia.org
+  // slug). No resolving happens on click — it's already known.
+  const wikiUrl = hit.displayUrl
+    || (hit.url ? `https://en.wikipedia.org/wiki/${hit.url}` : `https://en.wikipedia.org/?curid=${hit.article_id}`)
+  const displayTitle = hit.displayTitle || hit.title
 
   React.useEffect(() => {
     console.log(`[TileCard #${idx + 1}] fetching:`, url, 'hit:', hit)
   }, [url])
-
-  // VI: resolve the REAL Vietnamese article via Wikipedia's langlinks API
-  // (never guess from the user's raw query — that only works by coincidence).
-  const handleOpen = async () => {
-    if (lang === 'vi' && hit.url) {
-      const viUrl = await resolveViWikiUrl(hit.url)
-      window.open(viUrl || enWikiUrl, '_blank')
-    } else {
-      window.open(enWikiUrl, '_blank')
-    }
-  }
 
   return (
     <div style={{
@@ -261,7 +278,7 @@ function TileCard({ hit, idx, tileUnavailable, openDirectly, openWiki, lang, ori
     }}
       onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 12px 36px rgba(99,102,241,0.3)' }}
       onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = '' }}
-      onClick={handleOpen}
+      onClick={() => window.open(wikiUrl, '_blank')}
     >
       <div style={{
         position: 'absolute', top: 10, left: 10, zIndex: 2,
@@ -315,9 +332,9 @@ function TileCard({ hit, idx, tileUnavailable, openDirectly, openWiki, lang, ori
           <span style={{ fontSize: 11, color: 'rgba(165,180,252,0.8)', fontWeight: 700 }}>
             Tile {hit.tile_index} · Chunk {hit.chunk_index}
           </span>
-          {hit.title && (
+          {displayTitle && (
             <span style={{ fontSize: 10, color: 'rgba(148,163,184,0.6)', fontWeight: 600, maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {hit.title}
+              {displayTitle}
             </span>
           )}
         </div>
@@ -655,16 +672,10 @@ function AgentTab({ isDark, lc, lang }) {
                   {msg.tiles.map((hit, ti) => (
                     <div
                       key={ti}
-                      onClick={async () => {
-                        const enUrl = hit.url
-                          ? `https://en.wikipedia.org/wiki/${hit.url}`
-                          : `https://en.wikipedia.org/?curid=${hit.article_id}`
-                        if (lang === 'vi' && hit.url) {
-                          const viUrl = await resolveViWikiUrl(hit.url)
-                          window.open(viUrl || enUrl, '_blank')
-                        } else {
-                          window.open(enUrl, '_blank')
-                        }
+                      onClick={() => {
+                        const wikiUrl = hit.displayUrl
+                          || (hit.url ? `https://en.wikipedia.org/wiki/${hit.url}` : `https://en.wikipedia.org/?curid=${hit.article_id}`)
+                        window.open(wikiUrl, '_blank')
                       }}
                       style={{
                         minWidth: 160, borderRadius: 12, overflow: 'hidden', cursor: 'pointer',
@@ -686,6 +697,11 @@ function AgentTab({ isDark, lc, lang }) {
                         {lc.tileUnavailable}
                       </div>
                       <div style={{ padding: '6px 10px', fontSize: 10, color: 'rgba(165,180,252,0.7)', fontWeight: 700 }}>
+                        {hit.displayTitle && (
+                          <div style={{ color: 'rgba(226,232,255,0.85)', fontWeight: 800, marginBottom: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {hit.displayTitle}
+                          </div>
+                        )}
                         ID {hit.article_id} · T{hit.tile_index}
                       </div>
                     </div>
