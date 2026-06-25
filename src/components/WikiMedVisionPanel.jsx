@@ -676,7 +676,7 @@ function SearchTab({ isDark, lc, lang }) {
   const [loading, setLoading] = useState(false)
   const [translating, setTranslating] = useState(false)
   const [error, setError] = useState(null)
-  const [nDocs, setNDocs] = useState(6)
+  const [nDocs] = useState(12)
   const fileRef = useRef(null)
 
   const handleImageSelect = async (file) => {
@@ -733,18 +733,6 @@ function SearchTab({ isDark, lc, lang }) {
               onBlur={e => e.target.style.borderColor = 'rgba(99,102,241,0.35)'}
             />
           </div>
-
-          <select
-            value={nDocs}
-            onChange={e => setNDocs(Number(e.target.value))}
-            style={{
-              padding: '14px 12px', borderRadius: 12, border: '1px solid rgba(99,102,241,0.3)',
-              background: 'rgba(99,102,241,0.08)', color: isDark ? '#c7d2fe' : '#4338ca',
-              fontSize: 13, fontWeight: 700, cursor: 'pointer', outline: 'none',
-            }}
-          >
-            {[3, 6, 9, 12].map(n => <option key={n} value={n}>{n} results</option>)}
-          </select>
 
           <button
             onClick={() => fileRef.current?.click()}
@@ -1382,7 +1370,7 @@ export default function WikiMedVisionPanel({ onNext, onPrev, prevLabel, nextLabe
             <div>
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, borderRadius: 999, padding: '5px 14px', marginBottom: 10, background: 'linear-gradient(135deg,rgba(99,102,241,0.15),rgba(139,92,246,0.1))', border: '1px solid rgba(99,102,241,0.25)' }}>
                 <span style={{ fontSize: 12 }}>🔮</span>
-                <span style={{ fontSize: 11, fontWeight: 900, letterSpacing: 1.2, color: isDark ? '#a5b4fc' : '#4338ca', textTransform: 'uppercase' }}>Visual RAG · 8.28M Wikipedia Articles</span>
+                <span style={{ fontSize: 11, fontWeight: 900, letterSpacing: 1.2, color: isDark ? '#a5b4fc' : '#4338ca', textTransform: 'uppercase' }}>Visual · 8.28M Wikipedia Articles</span>
               </div>
               <h1 style={{ margin: '0 0 8px', fontSize: 'clamp(26px,4vw,40px)', fontWeight: 900, letterSpacing: '-0.04em', color: isDark ? '#e0e7ff' : '#1e1b4b' }}>
                 Wiki Med{' '}
@@ -1390,14 +1378,14 @@ export default function WikiMedVisionPanel({ onNext, onPrev, prevLabel, nextLabe
               </h1>
               <p style={{ margin: 0, color: isDark ? '#94a3b8' : '#64748b', fontSize: 14, maxWidth: 560, lineHeight: 1.65 }}>
                 {lang === 'vi'
-                  ? 'Tìm kiếm Wikipedia bằng văn bản hoặc hình ảnh — PixelRAG truy xuất ảnh chụp màn hình tile trực quan. Hỏi Agent để tổng hợp câu trả lời với bằng chứng trực quan từ Wikipedia.'
-                  : 'Search Wikipedia by text or image — PixelRAG retrieves visual tile screenshots. Ask the Agent to synthesize answers with visual evidence from real Wikipedia pages.'}
+                  ? 'Tìm kiếm Wikipedia bằng văn bản hoặc hình ảnh — truy xuất ảnh chụp màn hình tile trực quan. Hỏi Agent để tổng hợp câu trả lời với bằng chứng trực quan từ Wikipedia.'
+                  : 'Search Wikipedia by text or image — retrieves visual tile screenshots. Ask the Agent to synthesize answers with visual evidence from real Wikipedia pages.'}
               </p>
             </div>
 
             {/* Stats */}
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-              {[['8.28M', lang === 'vi' ? 'Bài Wikipedia' : 'Wikipedia articles'], ['Visual', lang === 'vi' ? 'Tìm theo ảnh' : 'tile search'], ['No key', lang === 'vi' ? 'Không cần key' : 'required']].map(([val, lbl]) => (
+              {[['8.28M', lang === 'vi' ? 'Bài Wikipedia' : 'Wikipedia articles'], ['Visual', lang === 'vi' ? 'Tìm theo ảnh' : 'tile search']].map(([val, lbl]) => (
                 <div key={lbl} style={{ borderRadius: 16, padding: '10px 14px', background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.15)', textAlign: 'center', minWidth: 80 }}>
                   <div style={{ fontWeight: 900, fontSize: 16, color: isDark ? '#a5b4fc' : '#4338ca' }}>{val}</div>
                   <div style={{ fontSize: 11, fontWeight: 700, color: isDark ? '#64748b' : '#94a3b8', marginTop: 2 }}>{lbl}</div>
