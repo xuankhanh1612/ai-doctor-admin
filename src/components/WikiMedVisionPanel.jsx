@@ -5,10 +5,7 @@ import {
   todayKey,
   getMessagesForDay,
   saveMessagesForDay,
-  getActivityMap,
-  computeCurrentStreak,
 } from '../lib/wikiMedVisionChatStorage'
-import { getCurriculum, CURRICULUM_LENGTH } from '../data/wikiMedVisionCurriculum'
 
 // ─── Wikipedia preview modal context ─────────────────────────────────────────
 // Lets any tile (in SearchTab or AgentTab) open the same in-page iframe popup
@@ -266,20 +263,6 @@ const WIKI_LANG_CONFIG = {
     systemPrompt: `Bạn là Wiki Med Vision Agent, trợ lý kiến thức y tế AI tích hợp hệ thống truy xuất hình ảnh từ 8.28 triệu bài Wikipedia với 28.1 triệu tile ảnh (FAISS index 214GB, embedding 2048 chiều).
 
 Nhiệm vụ: trả lời câu hỏi y tế và khoa học rõ ràng, chính xác, thân thiện BẰNG TIẾNG VIỆT. Khi nhận kết quả tile Wikipedia, hãy tham chiếu chúng tự nhiên như bằng chứng trực quan. Hãy súc tích nhưng đầy đủ. Dùng markdown để định dạng. Luôn khuyến khích người dùng tham khảo chuyên gia y tế cho quyết định sức khỏe cá nhân.`,
-    // ── 31-day streak calendar ──
-    streakTitle: 'Lộ trình 31 ngày',
-    streakSubtitle: (n) => n > 0 ? `🔥 ${n} ngày liên tiếp — duy trì học hỏi mỗi ngày!` : 'Bắt đầu chuỗi ngày học hỏi của bạn hôm nay',
-    streakDayLabel: (n) => `Ngày ${n}`,
-    streakTodayBadge: 'Hôm nay',
-    streakDoneTooltip: (count) => `${count} lượt hỏi đã lưu`,
-    streakEmptyTooltip: 'Chưa có hoạt động',
-    streakFutureTooltip: 'Chưa tới ngày này',
-    streakAskThis: 'Hỏi Agent về chủ đề này',
-    streakViewHistory: 'Xem lại lịch sử chat ngày này',
-    streakCollapse: 'Thu gọn',
-    streakExpand: 'Mở lộ trình 31 ngày',
-    streakHistoryBanner: (date) => `📜 Đang xem lại lịch sử chat ngày ${date}`,
-    streakBackToToday: '← Về hôm nay',
   },
   en: {
     wikiBase: 'https://en.wikipedia.org',
@@ -302,20 +285,6 @@ Nhiệm vụ: trả lời câu hỏi y tế và khoa học rõ ràng, chính xá
     systemPrompt: `You are Wiki Med Vision Agent, an AI medical knowledge assistant integrated with a visual retrieval system over 8.28 million Wikipedia articles and 28.1 million screenshot tiles (214GB FAISS index, 2048-dim embeddings).
 
 Your job: answer medical and scientific questions clearly, accurately, and in a friendly tone. When you receive retrieved Wikipedia tile results, reference them naturally in your answer as visual evidence. Be concise but thorough. Use markdown for formatting. Always encourage the user to verify with a medical professional for personal health decisions.`,
-    // ── 31-day streak calendar ──
-    streakTitle: '31-Day Learning Path',
-    streakSubtitle: (n) => n > 0 ? `🔥 ${n}-day streak — keep the learning habit going!` : 'Start your learning streak today',
-    streakDayLabel: (n) => `Day ${n}`,
-    streakTodayBadge: 'Today',
-    streakDoneTooltip: (count) => `${count} questions logged`,
-    streakEmptyTooltip: 'No activity yet',
-    streakFutureTooltip: 'Not reached yet',
-    streakAskThis: 'Ask the Agent about this topic',
-    streakViewHistory: "View this day's chat history",
-    streakCollapse: 'Collapse',
-    streakExpand: 'Open 31-day learning path',
-    streakHistoryBanner: (date) => `📜 Viewing chat history from ${date}`,
-    streakBackToToday: '← Back to today',
   },
 }
 
@@ -1086,155 +1055,6 @@ function SearchTab({ isDark, lc, lang }) {
 }
 
 
-// ─── StreakCalendar — lộ trình 31 ngày duy trì học hỏi ──────────────────────
-// Hiển thị ở đầu AgentTab: vừa là streak tracker (ngày nào đã chat thì tô sáng),
-// vừa là lộ trình gợi ý 31 chủ đề y học để bấm và gửi thẳng vào Agent.
-function StreakCalendar({ isDark, lc, lang, activityMap, onAskTopic, onViewHistory, viewingDate, onBackToToday }) {
-  const [expanded, setExpanded] = useState(false)
-  const today = todayKey()
-  const curriculum = useMemo(() => getCurriculum(lang), [lang])
-  const streak = useMemo(() => computeCurrentStreak(activityMap, today), [activityMap, today])
-
-  // Ngày 1 của lộ trình = ngày đầu tiên user có hoạt động (hoặc hôm nay nếu chưa có gì),
-  // để "Ngày N" tăng dần tự nhiên theo lịch sử thật của user, không phải lịch dương cố định.
-  const startDate = useMemo(() => {
-    const dates = Object.keys(activityMap).filter(d => activityMap[d] > 0).sort()
-    return dates[0] || today
-  }, [activityMap, today])
-
-  const days = useMemo(() => {
-    const start = new Date(`${startDate}T00:00:00`)
-    return Array.from({ length: CURRICULUM_LENGTH }, (_, i) => {
-      const d = new Date(start)
-      d.setDate(d.getDate() + i)
-      const dateKey = todayKey(d)
-      return {
-        dayNumber: i + 1,
-        dateKey,
-        topic: curriculum[i],
-        count: activityMap[dateKey] || 0,
-        isToday: dateKey === today,
-        isFuture: dateKey > today,
-      }
-    })
-  }, [startDate, curriculum, today, activityMap])
-
-  const cardBg = isDark ? 'rgba(15,10,40,0.55)' : 'rgba(255,255,255,0.6)'
-  const cardBorder = isDark ? 'rgba(99,102,241,0.18)' : 'rgba(99,102,241,0.15)'
-
-  return (
-    <div style={{
-      margin: '14px 20px 0', borderRadius: 18, border: `1px solid ${cardBorder}`,
-      background: cardBg, backdropFilter: 'blur(10px)', overflow: 'hidden', flexShrink: 0,
-    }}>
-      {/* Header — luôn hiển thị, bấm để mở/đóng grid 31 ngày */}
-      <button
-        onClick={() => setExpanded(e => !e)}
-        style={{
-          width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          gap: 12, padding: '12px 16px', background: 'transparent', border: 'none', cursor: 'pointer',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left' }}>
-          <span style={{ fontSize: 20 }}>📅</span>
-          <div>
-            <div style={{ fontSize: 13, fontWeight: 900, color: isDark ? '#e0e7ff' : '#1e1b4b' }}>{lc.streakTitle}</div>
-            <div style={{ fontSize: 11.5, fontWeight: 700, color: streak > 0 ? '#f59e0b' : (isDark ? '#64748b' : '#94a3b8') }}>
-              {lc.streakSubtitle(streak)}
-            </div>
-          </div>
-        </div>
-        <span style={{ fontSize: 12, fontWeight: 800, color: isDark ? '#a5b4fc' : '#4338ca', whiteSpace: 'nowrap' }}>
-          {expanded ? `▲ ${lc.streakCollapse}` : `▼ ${lc.streakExpand}`}
-        </span>
-      </button>
-
-      {/* Banner khi đang xem lại lịch sử ngày khác (không phải hôm nay) */}
-      {viewingDate && viewingDate !== today && (
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
-          padding: '8px 16px', background: 'rgba(245,158,11,0.12)', borderTop: `1px solid ${cardBorder}`,
-        }}>
-          <span style={{ fontSize: 11.5, fontWeight: 700, color: '#f59e0b' }}>{lc.streakHistoryBanner(viewingDate)}</span>
-          <button onClick={onBackToToday} style={{
-            fontSize: 11, fontWeight: 800, color: isDark ? '#a5b4fc' : '#4338ca',
-            background: 'transparent', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
-          }}>{lc.streakBackToToday}</button>
-        </div>
-      )}
-
-      {expanded && (
-        <div style={{
-          display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 8,
-          padding: '4px 16px 16px', maxHeight: 280, overflowY: 'auto',
-        }}>
-          {days.map(day => {
-            const done = day.count > 0
-            const clickable = !day.isFuture
-            return (
-              <div
-                key={day.dateKey}
-                title={day.isFuture ? lc.streakFutureTooltip : (done ? lc.streakDoneTooltip(day.count) : lc.streakEmptyTooltip)}
-                style={{
-                  position: 'relative', borderRadius: 12, padding: '9px 10px',
-                  border: `1px solid ${day.isToday ? '#6366f1' : (done ? 'rgba(34,197,94,0.35)' : cardBorder)}`,
-                  background: day.isToday
-                    ? 'linear-gradient(135deg,rgba(99,102,241,0.22),rgba(139,92,246,0.16))'
-                    : done ? 'rgba(34,197,94,0.1)' : (isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)'),
-                  opacity: day.isFuture ? 0.45 : 1,
-                  display: 'flex', flexDirection: 'column', gap: 4,
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: 10.5, fontWeight: 900, color: isDark ? '#94a3b8' : '#64748b' }}>
-                    {lc.streakDayLabel(day.dayNumber)}
-                  </span>
-                  {day.isToday && (
-                    <span style={{ fontSize: 9, fontWeight: 900, padding: '1px 6px', borderRadius: 999, background: '#6366f1', color: '#fff' }}>
-                      {lc.streakTodayBadge}
-                    </span>
-                  )}
-                  {!day.isToday && done && <span style={{ fontSize: 12 }}>✅</span>}
-                </div>
-                <div style={{
-                  fontSize: 11, lineHeight: 1.35, fontWeight: 600,
-                  color: isDark ? '#cbd5e1' : '#334155',
-                  display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden',
-                }}>
-                  {day.topic}
-                </div>
-                {clickable && (
-                  <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
-                    <button
-                      onClick={() => onAskTopic(day.topic)}
-                      title={lc.streakAskThis}
-                      style={{
-                        flex: 1, fontSize: 9.5, fontWeight: 800, padding: '4px 0', borderRadius: 8,
-                        border: 'none', cursor: 'pointer', color: '#fff',
-                        background: 'linear-gradient(135deg,#6366f1,#8b5cf6)',
-                      }}
-                    >💬</button>
-                    {done && !day.isToday && (
-                      <button
-                        onClick={() => onViewHistory(day.dateKey)}
-                        title={lc.streakViewHistory}
-                        style={{
-                          flex: 1, fontSize: 9.5, fontWeight: 800, padding: '4px 0', borderRadius: 8,
-                          border: `1px solid ${cardBorder}`, cursor: 'pointer',
-                          color: isDark ? '#a5b4fc' : '#4338ca', background: 'transparent',
-                        }}
-                      >🕘</button>
-                    )}
-                  </div>
-                )}
-              </div>
-            )
-          })}
-        </div>
-      )}
-    </div>
-  )
-}
 
 
 function AgentTab({ isDark, lc, lang }) {
@@ -1253,12 +1073,9 @@ function AgentTab({ isDark, lc, lang }) {
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [searching, setSearching] = useState(false)
-  const [activityMap, setActivityMap] = useState({})
-  const [viewingDate, setViewingDate] = useState(null) // null = hôm nay (live); string = đang xem lịch sử ngày cũ (read-only)
   const [historyLoaded, setHistoryLoaded] = useState(false) // tránh ghi đè IndexedDB trước khi load xong lần đầu
   const logRef = useRef(null)
-  const suppressSaveRef = useRef(false) // chặn 1 lượt lưu effect ngay sau khi setMessages+setViewingDate cùng lúc
-  const isViewingPast = !!viewingDate && viewingDate !== today
+  const suppressSaveRef = useRef(false) // chặn 1 lượt lưu effect ngay sau khi setMessages cùng lúc
 
   // Reset messages when language config changes (language switch)
   useEffect(() => {
@@ -1269,57 +1086,28 @@ function AgentTab({ isDark, lc, lang }) {
     }])
   }, [lc])
 
-  // Khi user (đăng nhập) sẵn sàng: nạp lịch sử chat hôm nay từ IndexedDB + bản đồ hoạt động cho streak calendar.
+  // Khi user (đăng nhập) sẵn sàng: nạp lịch sử chat hôm nay từ IndexedDB.
   useEffect(() => {
     let cancelled = false
     setHistoryLoaded(false)
     ;(async () => {
-      const [todayMsgs, map] = await Promise.all([
-        getMessagesForDay(userEmail, today),
-        getActivityMap(userEmail),
-      ])
+      const todayMsgs = await getMessagesForDay(userEmail, today)
       if (cancelled) return
-      setActivityMap(map)
       if (todayMsgs.length > 0) setMessages(todayMsgs)
-      setViewingDate(null)
       setHistoryLoaded(true)
     })()
     return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userEmail])
 
-  // Tự động lưu mỗi khi messages đổi — nhưng chỉ khi đang ở chế độ "hôm nay" (live chat),
-  // không ghi đè khi người dùng đang xem lại lịch sử của một ngày cũ.
+  // Tự động lưu mỗi khi messages đổi — chỉ khi đã load xong lần đầu.
   useEffect(() => {
     if (suppressSaveRef.current) { suppressSaveRef.current = false; return }
-    if (!historyLoaded || isViewingPast) return
-    saveMessagesForDay(userEmail, messages, today).then(() => {
-      setActivityMap(prev => ({ ...prev, [today]: messages.filter(m => m.role === 'user').length }))
-    })
+    if (!historyLoaded) return
+    saveMessagesForDay(userEmail, messages, today)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [messages, historyLoaded, isViewingPast, userEmail])
+  }, [messages, historyLoaded, userEmail])
 
-  // Bấm vào một chủ đề trong lộ trình 31 ngày → đưa câu hỏi vào ô nhập, sẵn sàng gửi.
-  const askTopic = useCallback((topic) => {
-    if (isViewingPast) setViewingDate(null) // thoát chế độ xem lịch sử trước khi soạn câu hỏi mới
-    setInput(topic)
-  }, [isViewingPast])
-
-  // Xem lại lịch sử chat của một ngày cũ đã có hoạt động (read-only, không ghi đè ngày hôm nay).
-  const viewHistory = useCallback(async (dateKey) => {
-    const past = await getMessagesForDay(userEmail, dateKey)
-    suppressSaveRef.current = true // chặn effect lưu trữ ghi nhầm bản ngày cũ vào ngày hôm nay
-    setMessages(past.length > 0 ? past : [{ role: 'assistant', content: lc.agentGreeting, tiles: null }])
-    setViewingDate(dateKey)
-  }, [userEmail, lc])
-
-  // Quay lại chat hôm nay từ chế độ xem lịch sử.
-  const backToToday = useCallback(async () => {
-    const todayMsgs = await getMessagesForDay(userEmail, today)
-    suppressSaveRef.current = true // load lại đúng dữ liệu hôm nay, không cần effect ghi lại ngay lập tức
-    setMessages(todayMsgs.length > 0 ? todayMsgs : [{ role: 'assistant', content: lc.agentGreeting, tiles: null }])
-    setViewingDate(null)
-  }, [userEmail, today, lc])
 
   useEffect(() => {
     if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight
@@ -1328,14 +1116,7 @@ function AgentTab({ isDark, lc, lang }) {
   const sendMessage = async () => {
     const trimmed = input.trim()
     if (!trimmed || loading) return
-    let baseMessages = messages
-    if (isViewingPast) {
-      // Đang xem lịch sử ngày cũ → phải nạp lại đúng nội dung của HÔM NAY trước khi
-      // gắn tin nhắn mới vào, tránh ghi nhầm lịch sử ngày cũ đè lên dữ liệu hôm nay.
-      setViewingDate(null)
-      baseMessages = await getMessagesForDay(userEmail, today)
-      if (baseMessages.length === 0) baseMessages = [{ role: 'assistant', content: lc.agentGreeting, tiles: null }]
-    }
+    const baseMessages = messages
     setInput('')
     const userMsg = { role: 'user', content: trimmed, tiles: null }
     setMessages([...baseMessages, userMsg])
@@ -1393,17 +1174,6 @@ function AgentTab({ isDark, lc, lang }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '72vh', minHeight: 520 }}>
-      <StreakCalendar
-        isDark={isDark}
-        lc={lc}
-        lang={lang}
-        activityMap={activityMap}
-        onAskTopic={askTopic}
-        onViewHistory={viewHistory}
-        viewingDate={viewingDate}
-        onBackToToday={backToToday}
-      />
-
       {/* Chat log */}
       <div ref={logRef} style={{
         flex: 1, overflowY: 'auto', padding: '20px 24px',
