@@ -202,12 +202,12 @@ const WIKI_LANG_CONFIG = {
     searchPlaceholder: 'Tìm Wikipedia theo hình ảnh… vd: giải phẫu tim, nhân đôi ADN',
     quickQueries: ['giải phẫu tim', 'nhân đôi ADN', 'não người', 'phân bào nguyên phân', 'tuần hoàn máu', 'thiếu vitamin'],
     quickPrompts: ['Tim hoạt động như thế nào?', 'Giải thích nguyên phân', 'Nguyên nhân thiếu máu?', 'ADN và ARN', 'Giải thích nhóm máu'],
-    agentGreeting: 'Xin chào! Tôi là **Wiki Med Vision Agent** — kết hợp AI + hình ảnh trực quan.\n\nTôi có thể tìm kiếm hơn 8.28 triệu bài viết Wikipedia bằng hình ảnh và trả lời câu hỏi y tế với bằng chứng trực quan.\n\nHãy thử hỏi: *"Tim bơm máu như thế nào?"* hoặc *"ADN nhân đôi là gì?"*',
+    agentGreeting: 'Xin chào! Tôi là **Wiki Med Vision Agent** — kết hợp AI + hình ảnh trực quan.\n\nTôi có thể tìm kiếm hơn 8.28 triệu bài viết Wikipedia với 28.1 triệu tile ảnh và trả lời câu hỏi y tế với bằng chứng trực quan.\n\nHãy thử hỏi: *"Tim bơm máu như thế nào?"* hoặc *"ADN nhân đôi là gì?"*',
     agentInputPlaceholder: 'Hỏi Wiki Med Vision Agent… (Enter để gửi)',
     searchingText: '🔍 Đang tìm kiếm Wikipedia bằng hình ảnh…',
     translatingText: '🔍 Đang dùng tiếng Việt để tìm kiếm…',
     generatingText: '🧠 Đang tạo câu trả lời…',
-    resultsLabel: (n) => `✨ ${n} kết quả trực quan từ 8.28 triệu bài Wikipedia`,
+    resultsLabel: (n) => `✨ ${n} kết quả trực quan từ 8.28M bài Wikipedia · 28.1M tiles`,
     clickTip: 'Nhấn vào tile → mở Wikipedia',
     noResults: { title: 'Không tìm thấy kết quả.', sub: 'Hãy thử từ khóa khác hoặc thêm hình ảnh.' },
     imageActive: (name, hasText) => `🖼️ ${name} · đang tìm theo ảnh${hasText ? ' + văn bản' : ''}`,
@@ -215,7 +215,7 @@ const WIKI_LANG_CONFIG = {
     tileUnavailable: 'Tile không khả dụng',
     openDirectly: 'mở trực tiếp ↗',
     openWiki: '↗ Wikipedia',
-    systemPrompt: `Bạn là Wiki Med Vision Agent, trợ lý kiến thức y tế AI tích hợp hệ thống truy xuất hình ảnh từ 8.28 triệu bài Wikipedia.
+    systemPrompt: `Bạn là Wiki Med Vision Agent, trợ lý kiến thức y tế AI tích hợp hệ thống truy xuất hình ảnh từ 8.28 triệu bài Wikipedia với 28.1 triệu tile ảnh (FAISS index 214GB, embedding 2048 chiều).
 
 Nhiệm vụ: trả lời câu hỏi y tế và khoa học rõ ràng, chính xác, thân thiện BẰNG TIẾNG VIỆT. Khi nhận kết quả tile Wikipedia, hãy tham chiếu chúng tự nhiên như bằng chứng trực quan. Hãy súc tích nhưng đầy đủ. Dùng markdown để định dạng. Luôn khuyến khích người dùng tham khảo chuyên gia y tế cho quyết định sức khỏe cá nhân.`,
     // ── 31-day streak calendar ──
@@ -238,12 +238,12 @@ Nhiệm vụ: trả lời câu hỏi y tế và khoa học rõ ràng, chính xá
     searchPlaceholder: 'Search Wikipedia visually… e.g. cardiac anatomy, DNA replication',
     quickQueries: ['cardiac anatomy', 'DNA replication', 'human brain', 'cell mitosis', 'blood circulation', 'vitamin deficiency'],
     quickPrompts: ['How does the heart work?', 'Explain mitosis', 'What causes anemia?', 'DNA vs RNA', 'Blood types explained'],
-    agentGreeting: "Hello! I'm **Wiki Med Vision Agent** — powered by AI + visual search.\n\nI can search 8.28 million Wikipedia articles visually and answer your medical questions with retrieved image evidence.\n\nTry asking: *\"Explain how the heart pumps blood\"* or *\"What is DNA replication?\"*",
+    agentGreeting: "Hello! I'm **Wiki Med Vision Agent** — powered by AI + visual search.\n\nI can search 8.28 million Wikipedia articles across 28.1 million screenshot tiles and answer your medical questions with retrieved image evidence.\n\nTry asking: *\"Explain how the heart pumps blood\"* or *\"What is DNA replication?\"*",
     agentInputPlaceholder: 'Ask Wiki Med Vision Agent… (Enter to send)',
     searchingText: '🔍 Searching Wikipedia visually…',
     translatingText: '🔍 Searching Wikipedia visually…',
     generatingText: '🧠 Generating response…',
-    resultsLabel: (n) => `✨ ${n} visual hits from 8.28M Wikipedia articles`,
+    resultsLabel: (n) => `✨ ${n} visual hits from 8.28M Wikipedia articles · 28.1M tiles`,
     clickTip: 'Click any tile → open Wikipedia',
     noResults: { title: 'No visual results found.', sub: 'Try a different query or add an image.' },
     imageActive: (name, hasText) => `🖼️ ${name} · image query active${hasText ? ' + text query' : ''}`,
@@ -251,7 +251,7 @@ Nhiệm vụ: trả lời câu hỏi y tế và khoa học rõ ràng, chính xá
     tileUnavailable: 'Tile unavailable',
     openDirectly: 'open tile directly ↗',
     openWiki: '↗ Wikipedia',
-    systemPrompt: `You are Wiki Med Vision Agent, an AI medical knowledge assistant integrated with a visual retrieval system over 8.28 million Wikipedia articles.
+    systemPrompt: `You are Wiki Med Vision Agent, an AI medical knowledge assistant integrated with a visual retrieval system over 8.28 million Wikipedia articles and 28.1 million screenshot tiles (214GB FAISS index, 2048-dim embeddings).
 
 Your job: answer medical and scientific questions clearly, accurately, and in a friendly tone. When you receive retrieved Wikipedia tile results, reference them naturally in your answer as visual evidence. Be concise but thorough. Use markdown for formatting. Always encourage the user to verify with a medical professional for personal health decisions.`,
     // ── 31-day streak calendar ──
@@ -1549,7 +1549,7 @@ export default function WikiMedVisionPanel({ onNext, onPrev, prevLabel, nextLabe
             <div>
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, borderRadius: 999, padding: '5px 14px', marginBottom: 10, background: 'linear-gradient(135deg,rgba(99,102,241,0.15),rgba(139,92,246,0.1))', border: '1px solid rgba(99,102,241,0.25)' }}>
                 <span style={{ fontSize: 12 }}>🔮</span>
-                <span style={{ fontSize: 11, fontWeight: 900, letterSpacing: 1.2, color: isDark ? '#a5b4fc' : '#4338ca', textTransform: 'uppercase' }}>Visual · 8.28M Wikipedia Articles</span>
+                <span style={{ fontSize: 11, fontWeight: 900, letterSpacing: 1.2, color: isDark ? '#a5b4fc' : '#4338ca', textTransform: 'uppercase' }}>Visual · 8.28M Wikipedia · 28.1M Tiles</span>
               </div>
               <h1 style={{ margin: '0 0 8px', fontSize: 'clamp(26px,4vw,40px)', fontWeight: 900, letterSpacing: '-0.04em', color: isDark ? '#e0e7ff' : '#1e1b4b' }}>
                 Wiki Med{' '}
@@ -1564,7 +1564,12 @@ export default function WikiMedVisionPanel({ onNext, onPrev, prevLabel, nextLabe
 
             {/* Stats */}
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-              {[['8.28M', lang === 'vi' ? 'Bài Wikipedia' : 'Wikipedia articles'], ['Visual', lang === 'vi' ? 'Tìm theo ảnh' : 'tile search']].map(([val, lbl]) => (
+              {[
+                ['8.28M',  lang === 'vi' ? 'Bài Wikipedia' : 'Wikipedia articles'],
+                ['28.1M',  lang === 'vi' ? 'Tile ảnh'      : 'Screenshot tiles'],
+                ['2048',   lang === 'vi' ? 'Embedding dim' : 'Embedding dim'],
+                ['214 GB', lang === 'vi' ? 'FAISS index'   : 'FAISS index'],
+              ].map(([val, lbl]) => (
                 <div key={lbl} style={{ borderRadius: 16, padding: '10px 14px', background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.15)', textAlign: 'center', minWidth: 80 }}>
                   <div style={{ fontWeight: 900, fontSize: 16, color: isDark ? '#a5b4fc' : '#4338ca' }}>{val}</div>
                   <div style={{ fontSize: 11, fontWeight: 700, color: isDark ? '#64748b' : '#94a3b8', marginTop: 2 }}>{lbl}</div>
