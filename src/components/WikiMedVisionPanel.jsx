@@ -153,12 +153,20 @@ async function pixelSearch(query, imageBase64 = null, nDocs = 6, lang = 'en') {
     const resolved = await Promise.all(
       hits.map(h => resolveViWiki(h.url))
     )
+    // Fetch a real Vietnamese caption (lead sentence) for each resolved
+    // article — this describes the article, not the tile image itself,
+    // but gives Vietnamese readers context without relying on the English
+    // text baked into the screenshot.
+    const captions = await Promise.all(
+      resolved.map(r => r?.title ? resolveViSummary(r.title) : Promise.resolve(null))
+    )
     hits = hits.map((h, i) => ({
       ...h,
       displayTitle: resolved[i]?.title || h.title,
       displayUrl:   resolved[i]?.url
         || (h.url ? `https://en.wikipedia.org/wiki/${h.url}` : `https://en.wikipedia.org/?curid=${h.article_id}`),
       isViResolved: Boolean(resolved[i]?.url),
+      viCaption: captions[i] || null,
     }))
   } else {
     hits = hits.map(h => ({
@@ -166,6 +174,7 @@ async function pixelSearch(query, imageBase64 = null, nDocs = 6, lang = 'en') {
       displayTitle: h.title,
       displayUrl: h.url ? `https://en.wikipedia.org/wiki/${h.url}` : `https://en.wikipedia.org/?curid=${h.article_id}`,
       isViResolved: false,
+      viCaption: null,
     }))
   }
 
@@ -208,6 +217,37 @@ async function resolveViWiki(enSlug) {
     return result
   } catch {
     _viWikiCache.set(enSlug, null)
+    return null
+  }
+}
+
+// ─── Short VI caption for a tile, from the article's REAL Vietnamese summary ─
+// Tiles themselves are pre-rendered PNG screenshots of the English Wikipedia
+// page — there's no way to translate pixels. Instead of guessing what's in
+// the image, we pull the actual Vietnamese article's lead extract (via
+// Wikipedia's REST summary endpoint) and show 1 short sentence as a caption
+// under the tile. This is real article content, not an AI guess about the
+// image. Falls back to nothing if the VI article has no extract.
+const _viSummaryCache = new Map()
+
+async function resolveViSummary(viTitle) {
+  if (!viTitle) return null
+  if (_viSummaryCache.has(viTitle)) return _viSummaryCache.get(viTitle)
+  try {
+    const api = `https://vi.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(viTitle.replace(/ /g, '_'))}`
+    const res = await fetch(api)
+    if (!res.ok) throw new Error(`summary failed: ${res.status}`)
+    const data = await res.json()
+    const extract = data?.extract?.trim() || null
+    // Keep it short — first sentence only, capped length, for a caption.
+    const firstSentence = extract ? extract.split(/(?<=[.!?])\s/)[0] : null
+    const caption = firstSentence
+      ? (firstSentence.length > 160 ? firstSentence.slice(0, 157) + '…' : firstSentence)
+      : null
+    _viSummaryCache.set(viTitle, caption)
+    return caption
+  } catch {
+    _viSummaryCache.set(viTitle, null)
     return null
   }
 }
@@ -340,6 +380,21 @@ function TileCard({ hit, idx, tileUnavailable, openDirectly, openWiki, lang, ori
         </div>
         <span style={{ fontSize: 11, color: 'rgba(99,102,241,0.8)', fontWeight: 700 }}>{openWiki}</span>
       </div>
+
+      {/* VI caption — real lead sentence from the Vietnamese article (not a
+          translation of the screenshot, which stays in English since it's a
+          static image). Gives VI readers context without touching the tile. */}
+      {hit.viCaption && (
+        <div
+          style={{
+            padding: '0 14px 12px', fontSize: 12, lineHeight: 1.5,
+            color: 'rgba(203,213,225,0.85)', borderTop: '1px solid rgba(99,102,241,0.12)',
+            paddingTop: 10,
+          }}
+        >
+          {hit.viCaption}
+        </div>
+      )}
     </div>
   )
 }
@@ -678,7 +733,7 @@ function AgentTab({ isDark, lc, lang }) {
                         window.open(wikiUrl, '_blank')
                       }}
                       style={{
-                        minWidth: 160, borderRadius: 12, overflow: 'hidden', cursor: 'pointer',
+                        minWidth: 200, maxWidth: 200, borderRadius: 12, overflow: 'hidden', cursor: 'pointer',
                         border: '1px solid rgba(99,102,241,0.25)',
                         background: 'rgba(10,5,30,0.6)',
                         transition: 'transform 0.15s',
@@ -703,6 +758,14 @@ function AgentTab({ isDark, lc, lang }) {
                           </div>
                         )}
                         ID {hit.article_id} · T{hit.tile_index}
+                        {hit.viCaption && (
+                          <div style={{
+                            marginTop: 4, fontWeight: 500, color: 'rgba(203,213,225,0.8)',
+                            fontSize: 10, lineHeight: 1.4, whiteSpace: 'normal',
+                          }}>
+                            {hit.viCaption}
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}
