@@ -180,12 +180,12 @@ function useTTS(lang = 'en') {
     stopRef.current = false
 
     if (lang === 'vi') {
-      // ── Google Translate TTS cho tiếng Việt ──
+      // ── Google Translate TTS qua proxy (tránh CORS) ──
       const chunks = splitChunks(clean, 180)
       setSpeaking(true)
       for (const chunk of chunks) {
         if (stopRef.current) break
-        const url = `https://translate.google.com/translate_tts?ie=UTF-8&tl=vi&client=tw-ob&q=${encodeURIComponent(chunk)}`
+        const url = `/api/google-tts?tl=vi&q=${encodeURIComponent(chunk)}`
         const audio = new Audio(url)
         audioRef.current = audio
         await new Promise((res) => {
