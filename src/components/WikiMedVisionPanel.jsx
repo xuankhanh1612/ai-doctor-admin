@@ -114,9 +114,9 @@ function MicButton({ onTranscript, lang, isDark }) {
   )
 }
 
-// ─── TTS (Text-to-Speech) hook + button ──────────────────────────────────────
-// Dùng Web Speech API (speechSynthesis) — không cần server.
-// Tự chọn giọng VI hoặc EN tương ứng với lang hiện tại.
+// ─── TTS (Text-to-Speech) ────────────────────────────────────────────────────
+// Tiếng Việt: dùng Google Translate TTS (giọng VI chuẩn, không cần key)
+// Tiếng Anh : dùng Web Speech API (sẵn có trên mọi browser)
 
 function stripMarkdown(text) {
   return text
@@ -127,43 +127,94 @@ function stripMarkdown(text) {
     .replace(/<[^>]+>/g, '')
     .replace(/\n{2,}/g, '. ')
     .replace(/\n/g, ' ')
+    .replace(/\s+/g, ' ')
     .trim()
+}
+
+// Chia text thành các đoạn ≤ 200 ký tự, cắt tại ranh giới câu/từ
+function splitChunks(text, maxLen = 180) {
+  const sentences = text.match(/[^.!?]+[.!?]*/g) || [text]
+  const chunks = []
+  let cur = ''
+  for (const s of sentences) {
+    if ((cur + s).length > maxLen && cur) { chunks.push(cur.trim()); cur = s }
+    else cur += s
+  }
+  if (cur.trim()) chunks.push(cur.trim())
+  return chunks.filter(Boolean)
+}
+
+// Phát âm tiếng Việt qua Google Translate TTS (tuần tự từng chunk)
+async function speakVietnamese(text, onStart, onEnd) {
+  const chunks = splitChunks(text, 180)
+  onStart()
+  for (const chunk of chunks) {
+    const url = `https://translate.google.com/translate_tts?ie=UTF-8&tl=vi&client=tw-ob&q=${encodeURIComponent(chunk)}`
+    const audio = new Audio(url)
+    audio.volume = 1
+    await new Promise((res) => {
+      audio.onended = res
+      audio.onerror = res
+      audio.play().catch(res)
+    })
+  }
+  onEnd()
 }
 
 function useTTS(lang = 'en') {
   const [speaking, setSpeaking] = useState(false)
-  const utterRef = useRef(null)
+  const stopRef = useRef(false)
+  const audioRef = useRef(null)
 
-  const speak = useCallback((text) => {
-    if (!window.speechSynthesis) return
-    // Nếu đang đọc cùng text → dừng lại
-    if (speaking) {
-      window.speechSynthesis.cancel()
-      setSpeaking(false)
-      return
-    }
-    window.speechSynthesis.cancel()
+  const stop = useCallback(() => {
+    stopRef.current = true
+    setSpeaking(false)
+    if (audioRef.current) { audioRef.current.pause(); audioRef.current = null }
+    if (window.speechSynthesis) window.speechSynthesis.cancel()
+  }, [])
+
+  const speak = useCallback(async (text) => {
+    if (speaking) { stop(); return }
     const clean = stripMarkdown(text)
-    const utter = new SpeechSynthesisUtterance(clean)
-    utter.lang = lang === 'vi' ? 'vi-VN' : 'en-US'
-    utter.rate = 0.95
-    utter.pitch = 1
+    if (!clean) return
+    stopRef.current = false
 
-    // Chọn giọng phù hợp nếu có
-    const voices = window.speechSynthesis.getVoices()
-    const preferred = voices.find(v => v.lang.startsWith(lang === 'vi' ? 'vi' : 'en') && v.localService)
-      || voices.find(v => v.lang.startsWith(lang === 'vi' ? 'vi' : 'en'))
-    if (preferred) utter.voice = preferred
+    if (lang === 'vi') {
+      // ── Google Translate TTS cho tiếng Việt ──
+      const chunks = splitChunks(clean, 180)
+      setSpeaking(true)
+      for (const chunk of chunks) {
+        if (stopRef.current) break
+        const url = `https://translate.google.com/translate_tts?ie=UTF-8&tl=vi&client=tw-ob&q=${encodeURIComponent(chunk)}`
+        const audio = new Audio(url)
+        audioRef.current = audio
+        await new Promise((res) => {
+          audio.onended = res
+          audio.onerror = res
+          audio.play().catch(res)
+        })
+        audioRef.current = null
+      }
+      if (!stopRef.current) setSpeaking(false)
+    } else {
+      // ── Web Speech API cho tiếng Anh ──
+      if (!window.speechSynthesis) return
+      window.speechSynthesis.cancel()
+      const utter = new SpeechSynthesisUtterance(clean)
+      utter.lang = 'en-US'
+      utter.rate = 0.95
+      const voices = window.speechSynthesis.getVoices()
+      const preferred = voices.find(v => v.lang.startsWith('en') && v.localService)
+        || voices.find(v => v.lang.startsWith('en'))
+      if (preferred) utter.voice = preferred
+      utter.onstart = () => setSpeaking(true)
+      utter.onend   = () => setSpeaking(false)
+      utter.onerror = () => setSpeaking(false)
+      window.speechSynthesis.speak(utter)
+    }
+  }, [speaking, lang, stop])
 
-    utter.onstart  = () => setSpeaking(true)
-    utter.onend    = () => setSpeaking(false)
-    utter.onerror  = () => setSpeaking(false)
-    utterRef.current = utter
-    window.speechSynthesis.speak(utter)
-  }, [speaking, lang])
-
-  // Dừng khi unmount
-  useEffect(() => () => window.speechSynthesis?.cancel(), [])
+  useEffect(() => () => stop(), [stop])
 
   return { speaking, speak }
 }
@@ -174,9 +225,7 @@ function SpeakButton({ text, lang, size = 'normal' }) {
   return (
     <button
       onClick={() => speak(text)}
-      title={speaking
-        ? (lang === 'vi' ? 'Dừng đọc' : 'Stop speaking')
-        : (lang === 'vi' ? 'Đọc to kết quả' : 'Read aloud')}
+      title={speaking ? (lang === 'vi' ? 'Dừng đọc' : 'Stop') : (lang === 'vi' ? 'Đọc to' : 'Read aloud')}
       style={{
         padding: isSmall ? '4px 8px' : '6px 10px',
         borderRadius: 8,
@@ -190,7 +239,6 @@ function SpeakButton({ text, lang, size = 'normal' }) {
         animation: speaking ? 'micPulse 1.4s ease-in-out infinite' : 'none',
         flexShrink: 0,
       }}
-      title={speaking ? (lang === 'vi' ? 'Dừng đọc' : 'Stop') : (lang === 'vi' ? 'Đọc to' : 'Read aloud')}
     >
       {speaking ? '⏸' : '🔊'}
     </button>
