@@ -1082,7 +1082,7 @@ function AgentTab({ isDark, lc, lang }) {
 export default function WikiMedVisionPanel({ onNext, onPrev, prevLabel, nextLabel }) {
   const { theme, lang } = useApp()
   const isDark = theme === 'dark'
-  const [tab, setTab] = useState('search')
+  const [tab, setTab] = useState('agent')
   const [preview, setPreview] = useState(null) // { url, title } | null
 
   const openPreview = useCallback((url, title) => setPreview({ url, title }), [])
@@ -1149,8 +1149,8 @@ export default function WikiMedVisionPanel({ onNext, onPrev, prevLabel, nextLabe
           {/* Tabs */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0, borderBottom: `1px solid ${cardBorder}` }}>
             {[
-              { id: 'search', icon: '🔍', label: lang === 'vi' ? 'Tìm kiếm' : 'Search', sub: lang === 'vi' ? 'Truy xuất Wikipedia trực quan' : 'Visual Wikipedia retrieval' },
               { id: 'agent', icon: '🤖', label: 'Agent', sub: lang === 'vi' ? 'PixelRAG + AI tổng hợp' : 'PixelRAG + Claude synthesis' },
+              { id: 'search', icon: '🔍', label: lang === 'vi' ? 'Tìm kiếm' : 'Search', sub: lang === 'vi' ? 'Truy xuất Wikipedia trực quan' : 'Visual Wikipedia retrieval' },
             ].map(t => (
               <button
                 key={t.id}
