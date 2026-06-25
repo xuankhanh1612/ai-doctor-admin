@@ -33,10 +33,10 @@ const WIKI_LANG_CONFIG = {
     searchPlaceholder: 'Tìm Wikipedia theo hình ảnh… vd: giải phẫu tim, nhân đôi ADN',
     quickQueries: ['giải phẫu tim', 'nhân đôi ADN', 'não người', 'phân bào nguyên phân', 'tuần hoàn máu', 'thiếu vitamin'],
     quickPrompts: ['Tim hoạt động như thế nào?', 'Giải thích nguyên phân', 'Nguyên nhân thiếu máu?', 'ADN và ARN', 'Giải thích nhóm máu'],
-    agentGreeting: 'Xin chào! Tôi là **Wiki Med Vision Agent** — kết hợp PixelRAG + AI.\n\nTôi có thể tìm kiếm hơn 8.28 triệu bài viết Wikipedia bằng hình ảnh và trả lời câu hỏi y tế với bằng chứng trực quan.\n\nHãy thử hỏi: *"Tim bơm máu như thế nào?"* hoặc *"ADN nhân đôi là gì?"*',
+    agentGreeting: 'Xin chào! Tôi là **Wiki Med Vision Agent** — kết hợp AI + hình ảnh trực quan.\n\nTôi có thể tìm kiếm hơn 8.28 triệu bài viết Wikipedia bằng hình ảnh và trả lời câu hỏi y tế với bằng chứng trực quan.\n\nHãy thử hỏi: *"Tim bơm máu như thế nào?"* hoặc *"ADN nhân đôi là gì?"*',
     agentInputPlaceholder: 'Hỏi Wiki Med Vision Agent… (Enter để gửi)',
     searchingText: '🔍 Đang tìm kiếm Wikipedia bằng hình ảnh…',
-    translatingText: '🌐 Đang dịch sang tiếng Anh để tìm kiếm…',
+    translatingText: '🔍 Đang dùng tiếng Việt để tìm kiếm…',
     generatingText: '🧠 Đang tạo câu trả lời…',
     resultsLabel: (n) => `✨ ${n} kết quả trực quan từ 8.28 triệu bài Wikipedia`,
     clickTip: 'Nhấn vào tile → mở Wikipedia',
@@ -46,9 +46,9 @@ const WIKI_LANG_CONFIG = {
     tileUnavailable: 'Tile không khả dụng',
     openDirectly: 'mở trực tiếp ↗',
     openWiki: '↗ Wikipedia',
-    systemPrompt: `Bạn là Wiki Med Vision Agent, trợ lý kiến thức y tế AI tích hợp PixelRAG — hệ thống truy xuất hình ảnh từ 8.28 triệu bài Wikipedia.
+    systemPrompt: `Bạn là Wiki Med Vision Agent, trợ lý kiến thức y tế AI tích hợp hệ thống truy xuất hình ảnh từ 8.28 triệu bài Wikipedia.
 
-Nhiệm vụ: trả lời câu hỏi y tế và khoa học rõ ràng, chính xác, thân thiện BẰNG TIẾNG VIỆT. Khi nhận kết quả tile Wikipedia từ PixelRAG, hãy tham chiếu chúng tự nhiên như bằng chứng trực quan. Hãy súc tích nhưng đầy đủ. Dùng markdown để định dạng. Luôn khuyến khích người dùng tham khảo chuyên gia y tế cho quyết định sức khỏe cá nhân.`,
+Nhiệm vụ: trả lời câu hỏi y tế và khoa học rõ ràng, chính xác, thân thiện BẰNG TIẾNG VIỆT. Khi nhận kết quả tile Wikipedia, hãy tham chiếu chúng tự nhiên như bằng chứng trực quan. Hãy súc tích nhưng đầy đủ. Dùng markdown để định dạng. Luôn khuyến khích người dùng tham khảo chuyên gia y tế cho quyết định sức khỏe cá nhân.`,
     // ── 31-day streak calendar ──
     streakTitle: 'Lộ trình 31 ngày',
     streakSubtitle: (n) => n > 0 ? `🔥 ${n} ngày liên tiếp — duy trì học hỏi mỗi ngày!` : 'Bắt đầu chuỗi ngày học hỏi của bạn hôm nay',
@@ -69,7 +69,7 @@ Nhiệm vụ: trả lời câu hỏi y tế và khoa học rõ ràng, chính xá
     searchPlaceholder: 'Search Wikipedia visually… e.g. cardiac anatomy, DNA replication',
     quickQueries: ['cardiac anatomy', 'DNA replication', 'human brain', 'cell mitosis', 'blood circulation', 'vitamin deficiency'],
     quickPrompts: ['How does the heart work?', 'Explain mitosis', 'What causes anemia?', 'DNA vs RNA', 'Blood types explained'],
-    agentGreeting: "Hello! I'm **Wiki Med Vision Agent** — powered by PixelRAG + Claude.\n\nI can search 8.28 million Wikipedia articles visually and answer your medical questions with retrieved image evidence.\n\nTry asking: *\"Explain how the heart pumps blood\"* or *\"What is DNA replication?\"*",
+    agentGreeting: "Hello! I'm **Wiki Med Vision Agent** — powered by AI + visual search.\n\nI can search 8.28 million Wikipedia articles visually and answer your medical questions with retrieved image evidence.\n\nTry asking: *\"Explain how the heart pumps blood\"* or *\"What is DNA replication?\"*",
     agentInputPlaceholder: 'Ask Wiki Med Vision Agent… (Enter to send)',
     searchingText: '🔍 Searching Wikipedia visually…',
     translatingText: '🔍 Searching Wikipedia visually…',
@@ -82,7 +82,7 @@ Nhiệm vụ: trả lời câu hỏi y tế và khoa học rõ ràng, chính xá
     tileUnavailable: 'Tile unavailable',
     openDirectly: 'open tile directly ↗',
     openWiki: '↗ Wikipedia',
-    systemPrompt: `You are Wiki Med Vision Agent, an AI medical knowledge assistant integrated with PixelRAG — a visual retrieval system over 8.28 million Wikipedia articles.
+    systemPrompt: `You are Wiki Med Vision Agent, an AI medical knowledge assistant integrated with a visual retrieval system over 8.28 million Wikipedia articles.
 
 Your job: answer medical and scientific questions clearly, accurately, and in a friendly tone. When you receive retrieved Wikipedia tile results, reference them naturally in your answer as visual evidence. Be concise but thorough. Use markdown for formatting. Always encourage the user to verify with a medical professional for personal health decisions.`,
     // ── 31-day streak calendar ──
@@ -1129,11 +1129,11 @@ function AgentTab({ isDark, lc, lang }) {
       tiles = searchData?.hits || []
       setSearching(false)
       if (tiles.length > 0) {
-        contextText = `\n\n[PixelRAG retrieved ${tiles.length} Wikipedia visual hits: article IDs ${tiles.map(h => h.article_id).join(', ')}. Use these as visual evidence in your response.]`
+        contextText = `\n\n[Retrieved ${tiles.length} Wikipedia visual hits: article IDs ${tiles.map(h => h.article_id).join(', ')}. Use these as visual evidence in your response.]`
       }
     } catch {
       setSearching(false)
-      contextText = '\n\n[PixelRAG search unavailable for this query.]'
+      contextText = '\n\n[Visual search unavailable for this query.]'
     }
 
     try {
@@ -1209,7 +1209,7 @@ function AgentTab({ isDark, lc, lang }) {
             {msg.tiles?.length > 0 && (
               <div style={{ width: '100%' }}>
                 <div style={{ fontSize: 11, fontWeight: 800, color: 'rgba(139,92,246,0.7)', marginBottom: 8, paddingLeft: 4 }}>
-                  📸 Visual evidence from PixelRAG ({msg.tiles.length} Wikipedia tiles)
+                  📸 Visual evidence ({msg.tiles.length} Wikipedia tiles)
                 </div>
                 <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 4 }}>
                   {msg.tiles.map((hit, ti) => (
@@ -1405,7 +1405,7 @@ export default function WikiMedVisionPanel({ onNext, onPrev, prevLabel, nextLabe
           {/* Tabs */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0, borderBottom: `1px solid ${cardBorder}` }}>
             {[
-              { id: 'agent', icon: '🤖', label: 'Agent', sub: lang === 'vi' ? 'PixelRAG + AI tổng hợp' : 'PixelRAG + Claude synthesis' },
+              { id: 'agent', icon: '🤖', label: 'Agent', sub: lang === 'vi' ? 'AI tổng hợp trực quan' : 'AI + visual synthesis' },
               { id: 'search', icon: '🔍', label: lang === 'vi' ? 'Tìm kiếm' : 'Search', sub: lang === 'vi' ? 'Truy xuất Wikipedia trực quan' : 'Visual Wikipedia retrieval' },
             ].map(t => (
               <button
