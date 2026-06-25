@@ -97,13 +97,8 @@ function isNonEnglish(text) {
   return /[^\x00-\x7F]/.test(text)
 }
 
-async function pixelSearch(query, imageBase64 = null, nDocs = 6, lang = 'en') {
-  // PixelRAG only has English Wikipedia — translate non-English queries
-  let searchQuery = query
-  if (query?.trim() && lang !== 'en' && isNonEnglish(query)) {
-    searchQuery = await translateToEnglish(query.trim())
-  }
-
+// ─── Raw PixelRAG call + basic normalization (no VI resolution) ─────────────
+async function fetchPixelHits(searchQuery, imageBase64, n) {
   const queries = []
   if (searchQuery?.trim()) queries.push({ text: searchQuery.trim() })
   if (imageBase64) queries.push({ image: imageBase64 })
@@ -112,7 +107,7 @@ async function pixelSearch(query, imageBase64 = null, nDocs = 6, lang = 'en') {
   const res = await fetch(`${PIXELRAG_BASE}/search`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ queries, n_docs: nDocs }),
+    body: JSON.stringify({ queries, n_docs: n }),
   })
   if (!res.ok) throw new Error(`PixelRAG search failed: ${res.status}`)
   const raw = await res.json()
@@ -145,42 +140,81 @@ async function pixelSearch(query, imageBase64 = null, nDocs = 6, lang = 'en') {
     ...h,
   }))
 
-  // ── VI mode: resolve the real Vietnamese article (title + URL) for every
-  // hit right now, via Wikipedia's langlinks API, so the results the user
-  // sees already show Vietnamese titles and the eventual click just opens
-  // the link we already resolved — no extra round-trip on click.
-  if (lang === 'vi' && hits.length) {
-    const resolved = await Promise.all(
-      hits.map(h => resolveViWiki(h.url))
-    )
-    // Fetch a real Vietnamese caption (lead sentence) for each resolved
-    // article — this describes the article, not the tile image itself,
-    // but gives Vietnamese readers context without relying on the English
-    // text baked into the screenshot.
-    const captions = await Promise.all(
-      resolved.map(r => r?.title ? resolveViSummary(r.title) : Promise.resolve(null))
-    )
-    hits = hits.map((h, i) => ({
-      ...h,
-      displayTitle: resolved[i]?.title || h.title,
-      displayUrl:   resolved[i]?.url
-        || (h.url ? `https://en.wikipedia.org/wiki/${h.url}` : `https://en.wikipedia.org/?curid=${h.article_id}`),
-      isViResolved: Boolean(resolved[i]?.url),
-      viCaption: captions[i] || null,
-    }))
-  } else {
-    hits = hits.map(h => ({
+  return { hits, raw }
+}
+
+// Resolve VI title/url/caption for a batch of hits in parallel, attach
+// displayTitle/displayUrl/viCaption/isViResolved to each.
+async function attachViData(hits) {
+  const resolved = await Promise.all(hits.map(h => resolveViWiki(h.url)))
+  const captions = await Promise.all(
+    resolved.map(r => r?.title ? resolveViSummary(r.title) : Promise.resolve(null))
+  )
+  return hits.map((h, i) => ({
+    ...h,
+    displayTitle: resolved[i]?.title || h.title,
+    displayUrl:   resolved[i]?.url
+      || (h.url ? `https://en.wikipedia.org/wiki/${h.url}` : `https://en.wikipedia.org/?curid=${h.article_id}`),
+    isViResolved: Boolean(resolved[i]?.url),
+    viCaption: captions[i] || null,
+  }))
+}
+
+async function pixelSearch(query, imageBase64 = null, nDocs = 6, lang = 'en') {
+  // PixelRAG only has English Wikipedia — translate non-English queries
+  let searchQuery = query
+  if (query?.trim() && lang !== 'en' && isNonEnglish(query)) {
+    searchQuery = await translateToEnglish(query.trim())
+  }
+
+  if (lang !== 'vi') {
+    const { hits, raw } = await fetchPixelHits(searchQuery, imageBase64, nDocs)
+    const final = hits.map(h => ({
       ...h,
       displayTitle: h.title,
       displayUrl: h.url ? `https://en.wikipedia.org/wiki/${h.url}` : `https://en.wikipedia.org/?curid=${h.article_id}`,
       isViResolved: false,
       viCaption: null,
     }))
+    console.log('[PixelRAG] normalized hits:', final.length, final[0] ?? '(none)')
+    return { hits: final, _raw: raw }
   }
 
-  console.log('[PixelRAG] normalized hits:', hits.length, hits[0] ?? '(none)')
+  // ── VI mode: many EN articles (disambiguation pages, very narrow topics,
+  // etc.) have no Vietnamese counterpart. Rather than showing a mix of VI
+  // and EN tiles, over-fetch from PixelRAG, resolve VI for every candidate,
+  // drop any hit with no Vietnamese article, and keep asking for more
+  // (deduped by article_id) until we have `nDocs` VI-resolved hits or give
+  // up after a few rounds. Order is preserved by PixelRAG's own score.
+  const seenArticleIds = new Set()
+  const viHits = []
+  let raw = null
+  let fetchCount = nDocs * 2 // first round: ask for double, most queries resolve fine
+  const MAX_ROUNDS = 4
+  const HARD_CAP = nDocs * 8 // don't let one query blow the API budget
 
-  return { hits, _raw: raw }
+  for (let round = 0; round < MAX_ROUNDS && viHits.length < nDocs; round++) {
+    const n = Math.min(fetchCount, HARD_CAP)
+    const { hits, raw: roundRaw } = await fetchPixelHits(searchQuery, imageBase64, n)
+    if (round === 0) raw = roundRaw
+
+    const newHits = hits.filter(h => !seenArticleIds.has(h.article_id))
+    newHits.forEach(h => seenArticleIds.add(h.article_id))
+    if (!newHits.length) break // PixelRAG has nothing new to give
+
+    const withVi = await attachViData(newHits)
+    for (const h of withVi) {
+      if (h.isViResolved) viHits.push(h)
+      if (viHits.length >= nDocs) break
+    }
+
+    if (n >= HARD_CAP) break // already asked for the max we're willing to
+    fetchCount = n * 2
+  }
+
+  const final = viHits.slice(0, nDocs)
+  console.log('[PixelRAG] VI-resolved hits:', final.length, '/ requested', nDocs, final[0] ?? '(none)')
+  return { hits: final, _raw: raw }
 }
 
 function tileUrl(articleId, tileIndex, chunkIndex) {
