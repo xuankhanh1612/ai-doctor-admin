@@ -1,5 +1,13 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react'
+import React, { createContext, useContext, useState, useRef, useCallback, useEffect } from 'react'
 import { useApp } from '../context/AppContext'
+
+// ─── Wikipedia preview modal context ─────────────────────────────────────────
+// Lets any tile (in SearchTab or AgentTab) open the same in-page iframe popup
+// instead of window.open(_blank), without threading callbacks through props.
+const WikiPreviewContext = createContext(() => {})
+function useWikiPreview() {
+  return useContext(WikiPreviewContext)
+}
 
 // ─── PixelRAG API ────────────────────────────────────────────────────────────
 const PIXELRAG_BASE  = 'https://api.pixelrag.ai'  // search endpoint
@@ -325,6 +333,140 @@ function fileToBase64(file) {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
+// In-page popup that embeds a Wikipedia article via <iframe> instead of
+// opening a new browser tab. Wikipedia only sends X-Frame-Options/CSP
+// frame-ancestors restrictions on "sensitive" pages (edit forms, special
+// pages) — plain article views are framable — but we still detect a failed
+// load (blocked frame, network error, slow connection) and offer "open in
+// new tab" as a fallback so the user is never stuck looking at a blank box.
+function WikiPreviewModal({ url, title, onClose, isDark }) {
+  const [loadState, setLoadState] = useState('loading') // 'loading' | 'loaded' | 'failed'
+  const timeoutRef = useRef(null)
+
+  useEffect(() => {
+    setLoadState('loading')
+    timeoutRef.current = setTimeout(() => {
+      setLoadState(prev => (prev === 'loading' ? 'failed' : prev))
+    }, 6000)
+    return () => clearTimeout(timeoutRef.current)
+  }, [url])
+
+  useEffect(() => {
+    const onKey = e => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  if (!url) return null
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 9999,
+        background: 'rgba(5,3,20,0.72)', backdropFilter: 'blur(4px)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: 'clamp(12px, 3vw, 40px)',
+      }}
+    >
+      <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          width: '100%', height: '100%', maxWidth: 1100, maxHeight: 880,
+          borderRadius: 18, overflow: 'hidden', display: 'flex', flexDirection: 'column',
+          background: isDark ? '#0c0a1e' : '#fff',
+          border: '1px solid rgba(99,102,241,0.3)',
+          boxShadow: '0 30px 90px rgba(0,0,0,0.5)',
+        }}
+      >
+        {/* Header bar */}
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          gap: 12, padding: '12px 16px',
+          background: isDark ? 'rgba(99,102,241,0.12)' : 'rgba(99,102,241,0.08)',
+          borderBottom: '1px solid rgba(99,102,241,0.2)', flexShrink: 0,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+            <span style={{ fontSize: 16 }}>📖</span>
+            <span style={{
+              fontWeight: 800, fontSize: 14, color: isDark ? '#e0e7ff' : '#1e1b4b',
+              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+            }}>{title || 'Wikipedia'}</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+            <a
+              href={url} target="_blank" rel="noreferrer"
+              style={{
+                fontSize: 12, fontWeight: 700, color: '#6366f1', textDecoration: 'none',
+                padding: '6px 10px', borderRadius: 8, background: 'rgba(99,102,241,0.12)',
+                whiteSpace: 'nowrap',
+              }}
+            >↗ Tab mới</a>
+            <button
+              onClick={onClose}
+              style={{
+                width: 30, height: 30, borderRadius: 8, border: 'none', cursor: 'pointer',
+                background: 'rgba(239,68,68,0.15)', color: '#ef4444', fontWeight: 900, fontSize: 15,
+              }}
+            >✕</button>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div style={{ position: 'relative', flex: 1, background: isDark ? '#0c0a1e' : '#fff' }}>
+          {loadState !== 'failed' && (
+            <iframe
+              key={url}
+              src={url}
+              title={title || 'Wikipedia preview'}
+              referrerPolicy="no-referrer-when-downgrade"
+              onLoad={() => setLoadState('loaded')}
+              style={{
+                width: '100%', height: '100%', border: 'none',
+                display: loadState === 'loaded' ? 'block' : 'block',
+              }}
+            />
+          )}
+
+          {loadState === 'loading' && (
+            <div style={{
+              position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center', gap: 10,
+              background: isDark ? '#0c0a1e' : '#fff', pointerEvents: 'none',
+            }}>
+              <div style={{ width: 32, height: 32, border: '3px solid rgba(99,102,241,0.3)', borderTopColor: '#6366f1', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+              <span style={{ fontSize: 12, color: isDark ? '#94a3b8' : '#64748b' }}>Đang tải Wikipedia…</span>
+            </div>
+          )}
+
+          {loadState === 'failed' && (
+            <div style={{
+              position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center', gap: 12, padding: 24, textAlign: 'center',
+            }}>
+              <div style={{ fontSize: 32 }}>🔒</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: isDark ? '#e2e8f0' : '#1e1b4b' }}>
+                Không thể hiển thị trang trong popup
+              </div>
+              <div style={{ fontSize: 12, color: isDark ? '#94a3b8' : '#64748b', maxWidth: 360 }}>
+                Trang này có thể đã chặn việc nhúng iframe. Hãy mở trực tiếp trong tab mới.
+              </div>
+              <a
+                href={url} target="_blank" rel="noreferrer"
+                style={{
+                  marginTop: 6, fontSize: 13, fontWeight: 800, color: '#fff', textDecoration: 'none',
+                  padding: '10px 18px', borderRadius: 10, background: 'linear-gradient(135deg,#6366f1,#8b5cf6)',
+                }}
+              >↗ Mở trong tab mới</a>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function TileCard({ hit, idx, tileUnavailable, openDirectly, openWiki, lang, originalQuery }) {
   const [loaded, setLoaded] = useState(false)
   const [err, setErr] = useState(false)
@@ -335,6 +477,8 @@ function TileCard({ hit, idx, tileUnavailable, openDirectly, openWiki, lang, ori
   const wikiUrl = hit.displayUrl
     || (hit.url ? `https://en.wikipedia.org/wiki/${hit.url}` : `https://en.wikipedia.org/?curid=${hit.article_id}`)
   const displayTitle = hit.displayTitle || hit.title
+
+  const openPreview = useWikiPreview()
 
   React.useEffect(() => {
     console.log(`[TileCard #${idx + 1}] fetching:`, url, 'hit:', hit)
@@ -352,7 +496,7 @@ function TileCard({ hit, idx, tileUnavailable, openDirectly, openWiki, lang, ori
     }}
       onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 12px 36px rgba(99,102,241,0.3)' }}
       onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = '' }}
-      onClick={() => window.open(wikiUrl, '_blank')}
+      onClick={() => openPreview(wikiUrl, displayTitle)}
     >
       <div style={{
         position: 'absolute', top: 10, left: 10, zIndex: 2,
@@ -644,6 +788,7 @@ function SearchTab({ isDark, lc, lang }) {
 
 
 function AgentTab({ isDark, lc, lang }) {
+  const openPreview = useWikiPreview()
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
@@ -764,7 +909,7 @@ function AgentTab({ isDark, lc, lang }) {
                       onClick={() => {
                         const wikiUrl = hit.displayUrl
                           || (hit.url ? `https://en.wikipedia.org/wiki/${hit.url}` : `https://en.wikipedia.org/?curid=${hit.article_id}`)
-                        window.open(wikiUrl, '_blank')
+                        openPreview(wikiUrl, hit.displayTitle || hit.title)
                       }}
                       style={{
                         minWidth: 200, maxWidth: 200, borderRadius: 12, overflow: 'hidden', cursor: 'pointer',
@@ -885,6 +1030,10 @@ export default function WikiMedVisionPanel({ onNext, onPrev, prevLabel, nextLabe
   const { theme, lang } = useApp()
   const isDark = theme === 'dark'
   const [tab, setTab] = useState('search')
+  const [preview, setPreview] = useState(null) // { url, title } | null
+
+  const openPreview = useCallback((url, title) => setPreview({ url, title }), [])
+  const closePreview = useCallback(() => setPreview(null), [])
 
   // Get language-specific config — defaults to English for unknown langs
   const lc = getLangConfig(lang)
@@ -897,6 +1046,7 @@ export default function WikiMedVisionPanel({ onNext, onPrev, prevLabel, nextLabe
   const cardBorder = isDark ? 'rgba(99,102,241,0.22)' : 'rgba(99,102,241,0.18)'
 
   return (
+    <WikiPreviewContext.Provider value={openPreview}>
     <div style={{ minHeight: '100%', background: bg, padding: '22px clamp(14px, 3vw, 28px) 36px' }}>
       <div style={{ maxWidth: 1200, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
 
@@ -996,5 +1146,13 @@ export default function WikiMedVisionPanel({ onNext, onPrev, prevLabel, nextLabe
 
       </div>
     </div>
+
+    <WikiPreviewModal
+      url={preview?.url}
+      title={preview?.title}
+      onClose={closePreview}
+      isDark={isDark}
+    />
+    </WikiPreviewContext.Provider>
   )
 }
