@@ -154,17 +154,24 @@ async function fetchPixelHits(searchQuery, imageBase64, n) {
 // Resolve VI title/url/caption for a batch of hits in parallel, attach
 // displayTitle/displayUrl/viCaption/isViResolved to each.
 async function attachViData(hits) {
-  const resolved = await Promise.all(hits.map(h => resolveViWiki(h.url)))
-  const captions = await Promise.all(
-    resolved.map(r => r?.title ? resolveViSummary(r.title) : Promise.resolve(null))
+  // Step 1: langlinks gives us a candidate VI title for each EN slug
+  // (already filtered for obvious non-article namespace prefixes).
+  const candidates = await Promise.all(hits.map(h => resolveViWiki(h.url)))
+  // Step 2: validate each candidate against the REST summary endpoint —
+  // this catches bad Wikidata sitelinks that silently resolve to a Talk
+  // page, a redirect loop, or a disambiguation page even when the title
+  // itself looked like a normal article name. Its `content_urls` is also
+  // the canonical, MediaWiki-resolved URL, safer than hand-building one.
+  const articles = await Promise.all(
+    candidates.map(c => c?.title ? resolveViArticle(c.title) : Promise.resolve(null))
   )
   return hits.map((h, i) => ({
     ...h,
-    displayTitle: resolved[i]?.title || h.title,
-    displayUrl:   resolved[i]?.url
+    displayTitle: articles[i]?.title || h.title,
+    displayUrl:   articles[i]?.url
       || (h.url ? `https://en.wikipedia.org/wiki/${h.url}` : `https://en.wikipedia.org/?curid=${h.article_id}`),
-    isViResolved: Boolean(resolved[i]?.url),
-    viCaption: captions[i] || null,
+    isViResolved: Boolean(articles[i]?.url),
+    viCaption: articles[i]?.caption || null,
   }))
 }
 
@@ -241,6 +248,25 @@ function tileUrl(articleId, tileIndex, chunkIndex) {
 // and the click handler just opens the already-resolved URL.
 const _viWikiCache = new Map()
 
+// Namespace prefixes (Vietnamese + English forms) that indicate the
+// langlinks/Wikidata sitelink points at something other than a real
+// article — e.g. a Talk page, template, or category. A bad Wikidata
+// sitelink can point here even though the API call itself succeeds, so we
+// treat any of these as "no Vietnamese article" rather than open it.
+const NON_ARTICLE_NS = [
+  'Thảo luận', 'Talk', 'Bản mẫu', 'Template', 'Thể loại', 'Category',
+  'Wikipedia', 'Trợ giúp', 'Help', 'Tập tin', 'File', 'Image',
+  'MediaWiki', 'Cổng thông tin', 'Portal', 'Module', 'Đặc biệt', 'Special',
+  'Thành viên', 'User', 'Wikipedia talk', 'Thảo luận Thành viên', 'User talk',
+]
+
+function isRealArticleTitle(title) {
+  if (!title) return false
+  const prefix = title.split(':')[0]?.trim()
+  if (!prefix || prefix === title.trim()) return true // no ":" → plain article title
+  return !NON_ARTICLE_NS.some(ns => ns.toLowerCase() === prefix.toLowerCase())
+}
+
 async function resolveViWiki(enSlug) {
   if (!enSlug) return null
   if (_viWikiCache.has(enSlug)) return _viWikiCache.get(enSlug)
@@ -252,7 +278,7 @@ async function resolveViWiki(enSlug) {
     const pages = data?.query?.pages || {}
     const page = Object.values(pages)[0]
     const viTitle = page?.langlinks?.[0]?.['*']
-    const result = viTitle
+    const result = (viTitle && isRealArticleTitle(viTitle))
       ? { title: viTitle, url: `https://vi.wikipedia.org/wiki/${encodeURIComponent(viTitle.replace(/ /g, '_'))}` }
       : null
     _viWikiCache.set(enSlug, result)
@@ -263,16 +289,24 @@ async function resolveViWiki(enSlug) {
   }
 }
 
-// ─── Short VI caption for a tile, from the article's REAL Vietnamese summary ─
+// ─── Real VI article data (title + canonical URL + caption) ────────────────
 // Tiles themselves are pre-rendered PNG screenshots of the English Wikipedia
 // page — there's no way to translate pixels. Instead of guessing what's in
 // the image, we pull the actual Vietnamese article's lead extract (via
 // Wikipedia's REST summary endpoint) and show 1 short sentence as a caption
 // under the tile. This is real article content, not an AI guess about the
-// image. Falls back to nothing if the VI article has no extract.
+// image.
+//
+// We also use this same endpoint as the source of truth for the URL itself,
+// rather than hand-building "vi.wikipedia.org/wiki/" + title: a langlinks
+// result can technically point to a non-article page (Talk, a redirect that
+// resolves oddly, etc.) if the underlying Wikidata sitelink is wrong. The
+// REST summary endpoint resolves redirects server-side and reports `type`,
+// so we only accept "standard" articles and use its own `content_urls`
+// rather than constructing a URL by hand.
 const _viSummaryCache = new Map()
 
-async function resolveViSummary(viTitle) {
+async function resolveViArticle(viTitle) {
   if (!viTitle) return null
   if (_viSummaryCache.has(viTitle)) return _viSummaryCache.get(viTitle)
   try {
@@ -280,14 +314,33 @@ async function resolveViSummary(viTitle) {
     const res = await fetch(api)
     if (!res.ok) throw new Error(`summary failed: ${res.status}`)
     const data = await res.json()
+
+    // Reject anything that isn't a normal readable article — disambiguation
+    // pages, missing pages, or other types aren't a useful VI preview either.
+    if (data?.type && data.type !== 'standard') {
+      _viSummaryCache.set(viTitle, null)
+      return null
+    }
+
+    const canonicalUrl = data?.content_urls?.desktop?.page || null
+    if (!canonicalUrl) {
+      _viSummaryCache.set(viTitle, null)
+      return null
+    }
+
     const extract = data?.extract?.trim() || null
-    // Keep it short — first sentence only, capped length, for a caption.
     const firstSentence = extract ? extract.split(/(?<=[.!?])\s/)[0] : null
     const caption = firstSentence
       ? (firstSentence.length > 160 ? firstSentence.slice(0, 157) + '…' : firstSentence)
       : null
-    _viSummaryCache.set(viTitle, caption)
-    return caption
+
+    const result = {
+      title: data?.title || viTitle,
+      url: canonicalUrl,
+      caption,
+    }
+    _viSummaryCache.set(viTitle, result)
+    return result
   } catch {
     _viSummaryCache.set(viTitle, null)
     return null
