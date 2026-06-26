@@ -107,7 +107,7 @@ function getActiveQuests(records) {
 // PDF text-based  → pdf.js extract  → llama-3.3-70b text
 const INBODY_OCR_SYSTEM_PROMPT = `Bạn là chuyên gia phân tích kết quả InBody (máy đo thành phần cơ thể).
 Khi nhận ảnh/PDF kết quả InBody, hãy:
-1. Đọc thật kỹ và trích xuất CHÍNH XÁC các chỉ số có trên phiếu in: Cân nặng, Cơ bắp (SMM/Khối lượng cơ xương), Khối lượng mỡ trong cơ thể, Tỷ lệ mỡ cơ thể (%), BMI, Tỷ lệ trao đổi chất cơ bản (BMR), Điểm InBody, Lượng nước trong cơ thể (%), Mỡ nội tạng (Level), Protein, Khoáng chất — nếu ảnh không hiển thị chỉ số nào thì BỎ QUA chỉ số đó trong "metrics", KHÔNG tự đoán hay bịa số.
+1. Đọc thật kỹ và trích xuất CHÍNH XÁC các chỉ số có trên phiếu in: Ngày đo (định dạng YYYY-MM-DD), Cân nặng, Cơ bắp (SMM/Khối lượng cơ xương), Khối lượng mỡ trong cơ thể, Tỷ lệ mỡ cơ thể (%), BMI, Tỷ lệ trao đổi chất cơ bản (BMR), Điểm InBody, Lượng nước trong cơ thể (%), Mỡ nội tạng (Level), Protein, Khoáng chất — nếu ảnh không hiển thị chỉ số nào thì BỎ QUA chỉ số đó trong "metrics", KHÔNG tự đoán hay bịa số.
 2. Đưa ra nhận xét ngắn gọn (2-3 câu) về tình trạng sức khỏe dựa trên số liệu đọc được.
 3. Gợi ý cải thiện cụ thể (tập luyện, dinh dưỡng).
 4. Tính XP gamification dựa trên thay đổi so với lần đo trước (nếu có dữ liệu trước đó được cung cấp).
@@ -126,7 +126,8 @@ CHỈ trả lời bằng JSON hợp lệ (không kèm lời dẫn, không kèm m
     "Điểm InBody": "72",
     "Mỡ nội tạng": "9",
     "Protein": "10.2",
-    "Khoáng chất": "3.6"
+    "Khoáng chất": "3.6",
+    "Ngày đo": "2026-05-08"
   },
   "tags": [
     { "label": "Cơ bắp tốt ▲", "type": "ok" },
