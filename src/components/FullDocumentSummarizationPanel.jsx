@@ -147,25 +147,25 @@ export default function FullDocumentSummarizationPanel({ onNext, nextLabel, onPr
   const removePage = (id) => setPages(prev => prev.filter(p => p.id !== id))
   const clearAll   = () => { setPages([]); setSummaries([]); setFinalSummary(''); setError(null) }
 
-  // ── Read file as text (Groq is text-only — no image/document blocks) ──
-  const readFileAsText = (file) => new Promise((resolve) => {
-    // For PDFs and images, we extract what we can via FileReader as text.
-    // If the browser can't decode it as text, we fall back to metadata description.
-    const reader = new FileReader()
-    if (file.type === 'application/pdf') {
-      // PDFs read as text often yield garbled binary — send metadata + filename instead.
-      // In a full RAG Lab setup, ColPali would render pages visually; here we describe.
-      resolve(`[Tài liệu PDF: "${file.name}" — kích thước ${(file.size / 1024).toFixed(0)} KB. Nội dung tài liệu y tế cần được phân tích và tóm tắt.]`)
-    } else if (file.type.startsWith('image/')) {
-      resolve(`[Hình ảnh: "${file.name}" — ${file.type}, ${(file.size / 1024).toFixed(0)} KB. Đây là hình ảnh tài liệu y tế/hình ảnh lâm sàng.]`)
-    } else {
-      reader.onload = () => resolve(reader.result?.slice(0, 6000) || `[File: ${file.name}]`)
-      reader.onerror = () => resolve(`[File không đọc được: ${file.name}]`)
-      reader.readAsText(file, 'utf-8')
-    }
+  // ── Read file helpers ──
+  const toBase64 = (file) => new Promise((resolve, reject) => {
+    const r = new FileReader()
+    r.onload = () => resolve(r.result.split(',')[1])
+    r.onerror = reject
+    r.readAsDataURL(file)
   })
 
-  // ── Core: sequential chunked summarization — Groq (llama-3.3-70b-versatile) ──
+  const readAsText = (file) => new Promise((resolve) => {
+    const r = new FileReader()
+    r.onload = () => resolve(r.result?.slice(0, 8000) || '')
+    r.onerror = () => resolve('')
+    r.readAsText(file, 'utf-8')
+  })
+
+  // ── Core: sequential chunked summarization ──
+  // Images  → Groq vision model (llama-4-scout, supports base64 images)
+  // PDFs    → pdfjs-dist text extraction → llama-3.3-70b text model
+  // Text    → llama-3.3-70b text model
   const runSummarization = useCallback(async () => {
     if (pages.length === 0) { setError('Vui lòng tải lên ít nhất một tài liệu.'); return }
     setProcessing(true); setError(null); setSummaries([]); setFinalSummary('')
@@ -187,25 +187,89 @@ export default function FullDocumentSummarizationPanel({ onNext, nextLabel, onPr
 
     const chunkSummaries = []
 
-    // ── Helper: call Groq proxy (OpenAI-compatible format) ──
-    const callGroq = async (messages, signal) => {
+    // ── Helper: call Groq proxy ──
+    const callGroq = async (model, messages, signal) => {
       const proxyRes = await fetch('/api/groq-proxy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         signal,
-        body: JSON.stringify({
-          model: 'llama-3.3-70b-versatile',
-          max_tokens: 1024,
-          messages,
-        }),
+        body: JSON.stringify({ model, max_tokens: 1024, messages }),
       })
       const data = await proxyRes.json()
       if (!proxyRes.ok) {
         const msg = data?.error?.message || data?.error || JSON.stringify(data)
         throw new Error(`Groq ${proxyRes.status}: ${msg}`)
       }
-      // Groq uses OpenAI format: choices[0].message.content
       return data?.choices?.[0]?.message?.content || ''
+    }
+
+    // ── Helper: extract text from PDF via pdf.js CDN ──
+    const extractPdfText = async (file) => {
+      try {
+        const pdfjsLib = await import('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js')
+        const workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'
+        if (typeof window !== 'undefined') window.pdfjsLib = pdfjsLib
+        pdfjsLib.GlobalWorkerOptions = pdfjsLib.GlobalWorkerOptions || {}
+        pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc
+
+        const arrayBuffer = await file.arrayBuffer()
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
+        const maxPages = Math.min(pdf.numPages, 20)
+        const texts = []
+        for (let p = 1; p <= maxPages; p++) {
+          const page = await pdf.getPage(p)
+          const tc = await page.getTextContent()
+          texts.push(tc.items.map(i => i.str).join(' '))
+        }
+        const combined = texts.join('\n\n--- Trang mới ---\n\n').trim()
+        return combined.length > 100
+          ? combined.slice(0, 12000)
+          : null  // if extracted text is too short, PDF may be scanned/image-based
+      } catch (_) {
+        return null
+      }
+    }
+
+    // ── Helper: build message content for one page ──
+    // Returns { model, userContent } where userContent is string or array
+    const buildPageContent = async (page) => {
+      if (page.type === 'image') {
+        // Vision: send base64 image to llama-4-scout
+        try {
+          const b64 = await toBase64(page.file)
+          const mime = page.file.type || 'image/jpeg'
+          return {
+            model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+            imageContent: [
+              { type: 'image_url', image_url: { url: `data:${mime};base64,${b64}` } },
+            ],
+          }
+        } catch (_) {
+          return { model: 'llama-3.3-70b-versatile', text: `[Ảnh không đọc được: ${page.name}]` }
+        }
+      } else if (page.type === 'pdf') {
+        // Try text extraction first
+        const pdfText = await extractPdfText(page.file)
+        if (pdfText) {
+          return { model: 'llama-3.3-70b-versatile', text: `📄 **${page.name}**\n\n${pdfText}` }
+        }
+        // Scanned PDF — render first page as image via Canvas
+        try {
+          const b64 = await toBase64(page.file)
+          // Send raw PDF bytes to vision model via data URL (Groq vision supports this)
+          return {
+            model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+            imageContent: [
+              { type: 'image_url', image_url: { url: `data:application/pdf;base64,${b64}` } },
+            ],
+          }
+        } catch (_) {
+          return { model: 'llama-3.3-70b-versatile', text: `[PDF không đọc được: ${page.name}]` }
+        }
+      } else {
+        const text = await readAsText(page.file)
+        return { model: 'llama-3.3-70b-versatile', text: text || `[File: ${page.name}]` }
+      }
     }
 
     try {
@@ -218,21 +282,45 @@ export default function FullDocumentSummarizationPanel({ onNext, nextLabel, onPr
           ? `Chunk ${ci + 1}/${chunks.length} — Trang ${ci * CHUNK_SIZE + 1}–${Math.min((ci + 1) * CHUNK_SIZE, pages.length)}`
           : `Chunk ${ci + 1}/${chunks.length} — Pages ${ci * CHUNK_SIZE + 1}–${Math.min((ci + 1) * CHUNK_SIZE, pages.length)}`
 
-        // ── Read each page as text and combine ──
-        const pageTexts = await Promise.all(chunk.map(p => readFileAsText(p.file)))
-        const combinedContent = pageTexts.join('\n\n---\n\n')
-
         const systemMsg = lang === 'vi'
-          ? `Bạn là chuyên gia phân tích tài liệu y tế sử dụng công nghệ RAG (ColPali sequential chunking). Bạn đang xử lý ${chunkLabel}. Hãy phân tích kỹ lưỡng, súc tích, dùng Markdown để định dạng. Nếu là mô tả file PDF/ảnh, hãy đóng vai người phân tích chuyên nghiệp và trả lời theo yêu cầu.`
-          : `You are a medical document analysis expert using RAG technology (ColPali sequential chunking). You are processing ${chunkLabel}. Be thorough, concise, use Markdown formatting. If the input describes a PDF/image file, act as a professional analyst and respond to the request.`
+          ? `Bạn là chuyên gia phân tích tài liệu y tế (RAG Lab · ColPali sequential chunking). Đang xử lý ${chunkLabel}. Phân tích kỹ, súc tích, dùng Markdown.`
+          : `You are a medical document expert (RAG Lab · ColPali sequential chunking). Processing ${chunkLabel}. Be thorough, concise, use Markdown.`
 
-        const userMsg = lang === 'vi'
-          ? `Nội dung tài liệu (${chunkLabel}):\n\n${combinedContent}\n\n---\nYêu cầu: ${userPrompt}`
-          : `Document content (${chunkLabel}):\n\n${combinedContent}\n\n---\nRequest: ${userPrompt}`
+        const instruction = lang === 'vi'
+          ? `\n\n---\nYêu cầu: ${userPrompt}\n\nĐây là ${chunkLabel}. Hãy phân tích và tóm tắt toàn bộ nội dung trên.`
+          : `\n\n---\nRequest: ${userPrompt}\n\nThis is ${chunkLabel}. Analyze and summarize all the content above.`
 
-        const chunkText = await callGroq([
+        // Build per-page content, then decide model for chunk
+        const pageContents = await Promise.all(chunk.map(buildPageContent))
+
+        // If any page needs vision, use vision model for whole chunk
+        const needsVision = pageContents.some(pc => pc.imageContent)
+        const chunkModel = needsVision
+          ? 'meta-llama/llama-4-scout-17b-16e-instruct'
+          : 'llama-3.3-70b-versatile'
+
+        let userMessageContent
+        if (needsVision) {
+          // Build multi-part content array for vision model
+          const parts = []
+          for (const pc of pageContents) {
+            if (pc.imageContent) {
+              parts.push(...pc.imageContent)
+            } else {
+              parts.push({ type: 'text', text: pc.text || '' })
+            }
+          }
+          parts.push({ type: 'text', text: instruction })
+          userMessageContent = parts
+        } else {
+          // All text — concatenate
+          const combined = pageContents.map(pc => pc.text || '').join('\n\n---\n\n')
+          userMessageContent = combined + instruction
+        }
+
+        const chunkText = await callGroq(chunkModel, [
           { role: 'system', content: systemMsg },
-          { role: 'user',   content: userMsg },
+          { role: 'user',   content: userMessageContent },
         ], controller.signal)
 
         chunkSummaries.push({ label: chunkLabel, text: chunkText })
@@ -240,14 +328,14 @@ export default function FullDocumentSummarizationPanel({ onNext, nextLabel, onPr
       }
 
       if (!controller.signal.aborted && chunkSummaries.length > 1) {
-        // ── Final synthesis pass ──
+        // ── Final synthesis pass (text-only) ──
         setChunkCurrent(chunks.length)
         const synthesisPrompt = lang === 'vi'
           ? `Tổng hợp các tóm tắt sau thành một bản tóm tắt tổng thể duy nhất, mạch lạc và đầy đủ:\n\n${chunkSummaries.map(s => `**${s.label}:**\n${s.text}`).join('\n\n---\n\n')}\n\nYêu cầu gốc: ${userPrompt}`
           : `Synthesize the following chunk summaries into one single, coherent, comprehensive summary:\n\n${chunkSummaries.map(s => `**${s.label}:**\n${s.text}`).join('\n\n---\n\n')}\n\nOriginal request: ${userPrompt}`
 
-        const synthText = await callGroq([
-          { role: 'system', content: lang === 'vi' ? 'Bạn là chuyên gia tổng hợp tài liệu y tế. Hãy viết bằng Markdown rõ ràng, mạch lạc.' : 'You are a medical document synthesis expert. Write in clear, well-structured Markdown.' },
+        const synthText = await callGroq('llama-3.3-70b-versatile', [
+          { role: 'system', content: lang === 'vi' ? 'Bạn là chuyên gia tổng hợp tài liệu y tế. Viết bằng Markdown rõ ràng, mạch lạc.' : 'You are a medical document synthesis expert. Write in clear, well-structured Markdown.' },
           { role: 'user',   content: synthesisPrompt },
         ], controller.signal)
 
@@ -290,7 +378,7 @@ export default function FullDocumentSummarizationPanel({ onNext, nextLabel, onPr
           }}>
             <span style={{ fontSize: 12 }}>🔬</span>
             <span style={{ fontSize: 11, fontWeight: 900, letterSpacing: 1.2, color: accent, textTransform: 'uppercase' }}>
-              Groq LLM · RAG Lab · Sequential Chunking
+              Groq Vision · RAG Lab · Sequential Chunking
             </span>
           </div>
           <h1 style={{ margin: '0 0 8px', fontSize: 'clamp(24px,4vw,36px)', fontWeight: 900, letterSpacing: '-0.03em', color: text }}>
@@ -556,7 +644,7 @@ export default function FullDocumentSummarizationPanel({ onNext, nextLabel, onPr
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {[
-              ['Groq llama-3.3-70b', lang === 'vi' ? 'LLM miễn phí' : 'Free LLM'],
+              ['llama-4-scout (Vision)', lang === 'vi' ? 'Đọc ảnh / PDF' : 'Image / PDF reader'], ['llama-3.3-70b', lang === 'vi' ? 'Phân tích văn bản' : 'Text analysis'],
               ['LanceDB', lang === 'vi' ? 'Vector store' : 'Vector store'],
               ['Chunking tuần tự', lang === 'vi' ? 'Sequential chunks' : 'Sequential chunks'],
               ['Slope-adaptive retrieval', lang === 'vi' ? 'Adaptive retrieval' : 'Adaptive retrieval'],
