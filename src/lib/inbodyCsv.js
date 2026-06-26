@@ -137,14 +137,27 @@ export function buildImageConvertedInBodyRecord({ analysis, fallback, sourceName
     return n !== null ? n : null
   }
 
-  // Priority: ocrRow['ngày'] → metrics['Ngày đo'] (from Groq vision) → today
+  // Priority: ocrRow['ngày'] → metrics['Ngày đo'] (from Groq vision) → '' (unknown, do NOT use today)
+  // IMPORTANT: Never fall back to today's date (compactTimestamp) for image-converted records,
+  // because that would record the wrong measurement date. Leave it blank/unknown instead.
   const metricDate = metrics['Ngày đo'] || metrics['Ngày'] || metrics['Date'] || ''
   const metricDateDigits = String(metricDate).replace(/[-/ :T]/g, '').replace(/\D/g, '').slice(0, 14)
+
+  // Validate: metricDateDigits must be a plausible calendar date (not a future date artifact)
+  let validatedMetricDateDigits = ''
+  if (metricDateDigits.length >= 8) {
+    const y = parseInt(metricDateDigits.slice(0, 4), 10)
+    const m = parseInt(metricDateDigits.slice(4, 6), 10)
+    const d = parseInt(metricDateDigits.slice(6, 8), 10)
+    // Accept years 2000–2030, months 1–12, days 1–31
+    if (y >= 2000 && y <= 2030 && m >= 1 && m <= 12 && d >= 1 && d <= 31) {
+      validatedMetricDateDigits = metricDateDigits
+    }
+  }
+
   const rawDate = ocr['ngày']
     ? String(ocr['ngày']).replace(/\D/g, '').slice(0, 14)
-    : metricDateDigits.length >= 8
-      ? metricDateDigits
-      : compactTimestamp()
+    : validatedMetricDateDigits || ''   // blank = unknown date (never use today as fallback)
 
   return {
     ...base,

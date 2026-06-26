@@ -108,9 +108,10 @@ function getActiveQuests(records) {
 const INBODY_OCR_SYSTEM_PROMPT = `Bạn là chuyên gia phân tích kết quả InBody (máy đo thành phần cơ thể).
 Khi nhận ảnh/PDF kết quả InBody, hãy:
 1. Đọc thật kỹ và trích xuất CHÍNH XÁC các chỉ số có trên phiếu in: Ngày đo (định dạng YYYY-MM-DD), Cân nặng, Cơ bắp (SMM/Khối lượng cơ xương), Khối lượng mỡ trong cơ thể, Tỷ lệ mỡ cơ thể (%), BMI, Tỷ lệ trao đổi chất cơ bản (BMR), Điểm InBody, Lượng nước trong cơ thể (%), Mỡ nội tạng (Level), Protein, Khoáng chất — nếu ảnh không hiển thị chỉ số nào thì BỎ QUA chỉ số đó trong "metrics", KHÔNG tự đoán hay bịa số.
-2. Đưa ra nhận xét ngắn gọn (2-3 câu) về tình trạng sức khỏe dựa trên số liệu đọc được.
-3. Gợi ý cải thiện cụ thể (tập luyện, dinh dưỡng).
-4. Tính XP gamification dựa trên thay đổi so với lần đo trước (nếu có dữ liệu trước đó được cung cấp).
+2. ĐẶC BIỆT QUAN TRỌNG về ngày đo: Đọc trường "Ngày/Giờ kiểm tra" TRỰC TIẾP trên phiếu in. KHÔNG dùng ngày hôm nay hay tự bịa. Nếu thấy rõ ví dụ "08.05.2026" thì ghi "2026-05-08". Nếu KHÔNG thể đọc được ngày, hãy ĐỂ TRỐNG trường "Ngày đo" (đừng điền gì vào đó).
+3. Đưa ra nhận xét ngắn gọn (2-3 câu) về tình trạng sức khỏe dựa trên số liệu đọc được.
+4. Gợi ý cải thiện cụ thể (tập luyện, dinh dưỡng).
+5. Tính XP gamification dựa trên thay đổi so với lần đo trước (nếu có dữ liệu trước đó được cung cấp).
 
 CHỈ trả lời bằng JSON hợp lệ (không kèm lời dẫn, không kèm markdown \`\`\`), đúng cấu trúc:
 {
@@ -1495,13 +1496,18 @@ export default function InBodyDashboard({ userId, initialRecords, onViewMedicalR
 
     // If AI extracts metrics, add to records
     if (analysis?.metrics) {
+      // Use the date extracted from the image by AI; fall back to today ONLY as last resort
+      const aiDate = analysis.metrics["Ngày đo"] || analysis.metrics["Ngày"] || analysis.metrics["Date"] || "";
+      const parsedAiDate = aiDate ? String(aiDate).slice(0, 10) : "";
+      const dateRegex = /^(20\d{2})-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
+      const recordDate = dateRegex.test(parsedAiDate) ? parsedAiDate : new Date().toISOString().slice(0, 10);
       const newRecord = {
-        date: new Date().toISOString().slice(0, 10),
-        weight: parseFloat(analysis.metrics['Cân nặng']) || latest.weight,
-        muscle: parseFloat(analysis.metrics['Cơ bắp']) || latest.muscle,
-        fat: parseFloat(analysis.metrics['Mỡ (%)']) || latest.fat,
-        water: parseFloat(analysis.metrics['Nước (%)']) || latest.water,
-        bmi: parseFloat(analysis.metrics['BMI']) || latest.bmi,
+        date: recordDate,
+        weight: parseFloat(analysis.metrics["Cân nặng"]) || latest.weight,
+        muscle: parseFloat(analysis.metrics["Cơ bắp"]) || latest.muscle,
+        fat: parseFloat(analysis.metrics["Mỡ (%)"]) || latest.fat,
+        water: parseFloat(analysis.metrics["Nước (%)"]) || latest.water,
+        bmi: parseFloat(analysis.metrics["BMI"]) || latest.bmi,
       };
       setRecords((prev) => [...prev, newRecord]);
     }
