@@ -221,7 +221,7 @@ export default function FullDocumentSummarizationPanel({ onNext, nextLabel, onPr
             : `${userPrompt}\n\nThis is chunk ${ci + 1} of ${chunks.length} total chunks. Summarize the content in this chunk.`,
         })
 
-        const res = await fetch('https://api.anthropic.com/v1/messages', {
+        const res = await fetch('/api/anthropic-proxy', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           signal: controller.signal,
@@ -247,7 +247,7 @@ export default function FullDocumentSummarizationPanel({ onNext, nextLabel, onPr
           ? `Tổng hợp các tóm tắt chunk sau thành một bản tóm tắt tổng thể duy nhất, mạch lạc và đầy đủ:\n\n${chunkSummaries.map((s, i) => `**${s.label}:**\n${s.text}`).join('\n\n---\n\n')}\n\nYêu cầu gốc: ${userPrompt}`
           : `Synthesize the following chunk summaries into one single, coherent, comprehensive summary:\n\n${chunkSummaries.map((s, i) => `**${s.label}:**\n${s.text}`).join('\n\n---\n\n')}\n\nOriginal request: ${userPrompt}`
 
-        const synthRes = await fetch('https://api.anthropic.com/v1/messages', {
+        const synthRes = await fetch('/api/anthropic-proxy', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           signal: controller.signal,
