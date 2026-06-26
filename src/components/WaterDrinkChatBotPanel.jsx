@@ -161,16 +161,11 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
     window.addEventListener('message', onMessage)
 
     const onTaskProof = (e) => {
-      const { proofId, dataUrl, syncState } = e.detail || {}
+      const { proofId, dataUrl } = e.detail || {}
       if (!proofId || !dataUrl) return
       proofMapRef.current[proofId] = dataUrl
-      if (syncState) {
-        window.postMessage({
-          type: 'BE_MEO_STATE_SYNC',
-          total: syncState.total,
-          goal: syncState.goal,
-        }, '*')
-      }
+      // Widget Bé Mèo Nước đã tự cộng nước + tạo dòng chat qua SYNC_EVENT (syncBeMeoWater) rồi —
+      // ở đây chỉ cần gửi ảnh để widget gắn vào đúng dòng chat khớp theo proofId.
       window.postMessage({ type: 'BE_MEO_PROOF_SAVED', proofId, dataUrl }, '*')
     }
     window.addEventListener('BE_MEO_TASK_PROOF_SAVED', onTaskProof)
@@ -225,40 +220,15 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
       })
       const proofId = pendingProofIdRef.current || ('proof_cam_' + Date.now())
 
-      const syncResult = syncBeMeoWater(150, 'Bé Mèo Nước AI Healthcare Vision')
+      // syncBeMeoWater phát event mà widget Bé Mèo Nước (Shadow DOM) đang lắng nghe —
+      // widget sẽ tự cộng nước + tạo dòng chat bot gắn ĐÚNG proofId này + lưu vào IndexedDB
+      // theo user đang đăng nhập. Không còn cần đọc/ghi localStorage thủ công ở đây nữa.
+      const syncResult = syncBeMeoWater(150, 'Bé Mèo Nước AI Healthcare Vision', proofId)
       setSnapshot(getTaskSnapshot(user))
 
       if (record.dataUrl) {
-        try {
-          const msgs = JSON.parse(localStorage.getItem('be-meo-nuoc-chat-v1') || '[]')
-          if (Array.isArray(msgs) && msgs.length > 0) {
-            const last = msgs[msgs.length - 1]
-            msgs[msgs.length - 1] = {
-              ...last,
-              proofId,
-              time: last.time || new Date().toISOString(),
-            }
-            localStorage.setItem('be-meo-nuoc-chat-v1', JSON.stringify(msgs.slice(-80)))
-          }
-        } catch (_) {}
-
-        try {
-          const proofMap = JSON.parse(localStorage.getItem('be_meo_nuoc_proof_map') || '{}')
-          proofMap[proofId] = record.dataUrl
-          localStorage.setItem('be_meo_nuoc_proof_map',
-            JSON.stringify(Object.fromEntries(Object.entries(proofMap).slice(-30))))
-        } catch (_) {}
-
         proofMapRef.current[proofId] = record.dataUrl
-
-        if (syncResult?.state) {
-          window.postMessage({
-            type: 'BE_MEO_STATE_SYNC',
-            total: syncResult.state.total,
-            goal: syncResult.state.goal,
-          }, '*')
-        }
-
+        // Gửi ảnh để widget gắn vào đúng dòng chat (khớp theo proofId vừa truyền ở trên).
         sendProofToWidget(proofId, record.dataUrl)
         pendingProofIdRef.current = null
       }
