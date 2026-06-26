@@ -33,8 +33,12 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
 
   // === Inject widget Bé Mèo Nước vào Shadow DOM — gọi mountBeMeoWidget() trực tiếp,
   // nhận cleanup function trả về ngay lập tức (không cần window.__beMeoNuocPendingCleanup__).
+  // Đợi AuthContext khôi phục session xong (authLoading=false) trước khi mount, để widget
+  // luôn nhận đúng email user ngay từ đầu — tránh lưu nhầm dữ liệu vào nhóm 'guest'.
   const [widgetReady, setWidgetReady] = useState(false)
+  const userEmail = user?.email || null
   useEffect(() => {
+    if (authLoading) return // chờ session khôi phục xong, tránh mount với email=null rồi phải remount
     const host = hostRef.current
     if (!host) return
     let shadow = host.shadowRoot
@@ -46,14 +50,14 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
       meoNuocAiUrl,
       robotTuThe1Url,
       robotTuThe2Url,
-    })
+    }, userEmail)
 
     setWidgetReady(true)
     return () => {
       cleanup()
       setWidgetReady(false)
     }
-  }, []) // deps rỗng — image URLs là import tĩnh, không thay đổi
+  }, [authLoading, userEmail]) // remount nếu user đăng nhập/đăng xuất/đổi user trong session
 
   // Nạp proofMap từ IndexedDB khi auth sẵn sàng
   const [proofMapReady, setProofMapReady] = useState(false)
