@@ -1,10 +1,9 @@
-import React, { useMemo, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useApp } from '../context/AppContext'
-import {
-  buildFallbackReply,
-  generateTransformersReply,
-  getDeterministicFallbackReply,
-} from '../lib/huggingFaceTransformersChat.js'
+import { useAuth } from '../context/AuthContext.jsx'
+import { callGroqChat, useVoiceInput, useTTS } from '../lib/groqAiClient.js'
+import { getDeterministicFallbackReply } from '../lib/huggingFaceTransformersChat.js'
+import { getGlobalChatHistory, saveGlobalChatHistory } from '../lib/globalChatbotStorage.js'
 
 const quickPrompts = [
   'Cách tải hồ sơ y tế?',
@@ -12,22 +11,82 @@ const quickPrompts = [
   'AI Healthcare Vision dùng thế nào?',
 ]
 
+const SYSTEM_PROMPT_VI = `Bạn là chatbot AI chung 🤗 của website Consensus Doctor — một trợ lý thân thiện, đa năng.
+
+Vai trò của bạn:
+1. Chào hỏi người dùng và hướng dẫn cách sử dụng website: Upload Records (tải PDF/ảnh/DICOM), AI Healthcare Vision (xem/so sánh ảnh y tế), AI InBody Portal (chỉ số cơ thể), Family Medical Tree (gia phả bệnh lý), Print Portal (in tài liệu), Profile (hồ sơ cá nhân, giao diện, ngôn ngữ).
+2. Trả lời các câu hỏi y tế và sức khoẻ phổ thông một cách rõ ràng, chính xác, dễ hiểu — giống một trợ lý kiến thức y tế đáng tin cậy.
+3. Trò chuyện tự nhiên về các chủ đề khác nếu người dùng hỏi.
+
+Quy tắc:
+- Luôn trả lời bằng tiếng Việt có dấu, giọng văn thân thiện, ấm áp.
+- Súc tích nhưng đầy đủ; dùng markdown (đậm, danh sách) khi cần cho dễ đọc.
+- Không bao giờ chẩn đoán bệnh hoặc kê đơn thay bác sĩ — luôn khuyến khích người dùng tham khảo bác sĩ/chuyên gia y tế cho các quyết định sức khoẻ cá nhân, đặc biệt với triệu chứng nghiêm trọng.
+- Nếu câu hỏi có dấu hiệu cấp cứu (đau ngực, khó thở, ngất, co giật, chảy máu nhiều...), hãy khuyên người dùng đi cấp cứu ngay.
+- Không nhắc đến tên model, API, hệ thống nội bộ hoặc bất kỳ chi tiết kỹ thuật nào trong câu trả lời.`
+
+const SYSTEM_PROMPT_EN = `You are 🤗, the general AI chatbot of the Consensus Doctor website — a friendly, versatile assistant.
+
+Your role:
+1. Greet users and guide them on how to use the website: Upload Records (PDF/image/DICOM upload), AI Healthcare Vision (medical image viewing/comparison), AI InBody Portal (body composition), Family Medical Tree (family medical history), Print Portal (printing documents), Profile (personal info, theme, language).
+2. Answer general medical and health questions clearly, accurately, and helpfully — like a trustworthy medical knowledge assistant.
+3. Chat naturally about other topics if asked.
+
+Rules:
+- Be concise but thorough; use markdown (bold, lists) when helpful for readability.
+- Never diagnose conditions or prescribe treatment — always encourage users to consult a doctor or medical professional for personal health decisions, especially for serious symptoms.
+- If a question suggests an emergency (chest pain, difficulty breathing, fainting, seizures, heavy bleeding...), advise the user to seek emergency care immediately.
+- Never mention model names, APIs, internal systems, or any technical details in your reply.`
+
 export default function GlobalAIChatbot({ activePanelLabel }) {
-  const { theme } = useApp()
+  const { theme, lang } = useApp()
+  const { user } = useAuth()
+  const userEmail = user?.email || null
   const isDark = theme === 'dark'
+  const isVi = lang !== 'en'
+
   const [open, setOpen] = useState(false)
   const [input, setInput] = useState('')
-  const [status, setStatus] = useState('Sẵn sàng')
-  const [mode, setMode] = useState('fallback-ready')
+  const [status, setStatus] = useState(isVi ? 'Sẵn sàng' : 'Ready')
+  const [mode, setMode] = useState('idle')
   const [busy, setBusy] = useState(false)
+  const [historyLoaded, setHistoryLoaded] = useState(false)
   const [messages, setMessages] = useState(() => [{
     id: 'hello',
     role: 'assistant',
-    text: `Xin chào! Tôi là trợ lý AI chung của Consensus Doctor. Tôi có thể chào hỏi, trả lời câu hỏi phổ thông về trải nghiệm sử dụng website và hướng dẫn tải hồ sơ, phân tích ảnh, InBody, gia phả bệnh lý hoặc Print Portal.`,
+    text: isVi
+      ? 'Xin chào! Tôi là trợ lý AI chung của Consensus Doctor. Tôi có thể chào hỏi, trả lời câu hỏi y tế và phổ thông, hướng dẫn tải hồ sơ, phân tích ảnh, InBody, gia phả bệnh lý hoặc Print Portal. Bạn cũng có thể nói chuyện bằng giọng nói 🎙️ hoặc nghe tôi đọc to câu trả lời 🔊.'
+      : "Hi! I'm Consensus Doctor's general AI assistant. I can chat, answer health and general questions, and guide you through uploading records, image analysis, InBody, family medical tree, or Print Portal. You can also talk to me with voice 🎙️ or have replies read aloud 🔊.",
   }])
   const scrollRef = useRef(null)
 
+  const systemPrompt = isVi ? SYSTEM_PROMPT_VI : SYSTEM_PROMPT_EN
   const styles = useMemo(() => createStyles(isDark), [isDark])
+  const { speaking, speak } = useTTS(isVi ? 'vi' : 'en')
+
+  const handleTranscript = (text) => {
+    setInput(prev => (prev ? `${prev} ${text}` : text))
+  }
+  const { recording, transcribing, toggle: toggleMic } = useVoiceInput(handleTranscript, isVi ? 'vi' : 'en')
+
+  // Nạp lịch sử chat đã lưu của user khi mở chatbot lần đầu (hoặc khi đổi user)
+  useEffect(() => {
+    let cancelled = false
+    setHistoryLoaded(false)
+    ;(async () => {
+      const saved = await getGlobalChatHistory(userEmail)
+      if (cancelled) return
+      if (saved.length > 0) setMessages(saved)
+      setHistoryLoaded(true)
+    })()
+    return () => { cancelled = true }
+  }, [userEmail])
+
+  // Tự động lưu mỗi khi messages đổi (chỉ sau khi đã nạp lịch sử xong, tránh ghi đè)
+  useEffect(() => {
+    if (!historyLoaded) return
+    saveGlobalChatHistory(userEmail, messages)
+  }, [messages, historyLoaded, userEmail])
 
   const pushMessage = (message) => {
     setMessages(prev => [...prev, { id: `${Date.now()}-${Math.random()}`, ...message }])
@@ -47,30 +106,35 @@ export default function GlobalAIChatbot({ activePanelLabel }) {
     if (deterministicAnswer) {
       pushMessage({ role: 'assistant', text: deterministicAnswer })
       setMode('quick-guide')
-      setStatus('Hướng dẫn website · phản hồi nhanh')
+      setStatus(isVi ? 'Hướng dẫn website · phản hồi nhanh' : 'Website guide · quick reply')
       setBusy(false)
       return
     }
 
     try {
-      setStatus('Đang chuẩn bị phản hồi tiếng Việt an toàn...')
-      setMode('transformers-loading')
-      const answer = await generateTransformersReply({
-        question,
-        activePanelLabel,
-        history: messages,
-        onProgress: (progress) => {
-          if (progress?.status) setStatus('Đang chuẩn bị phản hồi tiếng Việt an toàn...')
-        },
-      })
-      pushMessage({ role: 'assistant', text: answer || buildFallbackReply(question, activePanelLabel) })
-      setMode('transformers')
-      setStatus('Sẵn sàng hỗ trợ · tiếng Việt có dấu')
+      setStatus(isVi ? 'Đang suy nghĩ...' : 'Thinking...')
+      setMode('thinking')
+
+      const history = messages
+        .filter(m => m.role === 'user' || m.role === 'assistant')
+        .slice(messages[0]?.id === 'hello' ? 1 : 0)
+        .map(m => ({ role: m.role, content: m.text }))
+      history.push({ role: 'user', content: question })
+
+      const answer = await callGroqChat(history, systemPrompt)
+      pushMessage({ role: 'assistant', text: answer || getDeterministicFallbackReply(question, activePanelLabel) || (isVi ? 'Xin lỗi, tôi chưa có câu trả lời phù hợp.' : "Sorry, I don't have a good answer for that yet.") })
+      setMode('groq')
+      setStatus(isVi ? 'Sẵn sàng hỗ trợ · AI thực' : 'Ready to help · real AI')
     } catch (error) {
-      console.error('Global chatbot Transformers.js error:', error)
-      pushMessage({ role: 'assistant', text: buildFallbackReply(question, activePanelLabel) })
-      setMode('fallback')
-      setStatus('Đang dùng phản hồi dự phòng an toàn')
+      console.error('Global chatbot Groq error:', error)
+      pushMessage({
+        role: 'assistant',
+        text: isVi
+          ? 'Xin lỗi, tôi đang gặp sự cố kết nối AI. Vui lòng thử lại sau ít phút.'
+          : 'Sorry, I ran into a connection issue. Please try again in a moment.',
+      })
+      setMode('error')
+      setStatus(isVi ? 'Lỗi kết nối AI' : 'AI connection error')
     } finally {
       setBusy(false)
     }
@@ -99,17 +163,36 @@ export default function GlobalAIChatbot({ activePanelLabel }) {
       </header>
 
       <div style={styles.metaRow}>
-        <span style={styles.badge}>{getModeLabel(mode)}</span>
-        <span style={styles.current}>Trợ lý website · phản hồi tiếng Việt an toàn</span>
-        <span style={styles.current}>Mục hiện tại: {activePanelLabel || 'Website'}</span>
+        <span style={styles.badge}>{getModeLabel(mode, isVi)}</span>
+        <span style={styles.current}>{isVi ? 'Trợ lý website · Groq AI + giọng nói' : 'Website assistant · Groq AI + voice'}</span>
+        <span style={styles.current}>{isVi ? 'Mục hiện tại: ' : 'Current section: '}{activePanelLabel || 'Website'}</span>
       </div>
 
       <div ref={scrollRef} style={styles.messages}>
         {messages.map(message => (
-          <div key={message.id} style={message.role === 'user' ? styles.userMsg : styles.botMsg}>
-            {message.text}
+          <div key={message.id} style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: message.role === 'user' ? 'flex-end' : 'flex-start' }}>
+            <div style={message.role === 'user' ? styles.userMsg : styles.botMsg}>
+              {message.text}
+            </div>
+            {message.role === 'assistant' && (
+              <button
+                type="button"
+                onClick={() => speak(message.text)}
+                title={isVi ? (speaking ? 'Dừng đọc' : 'Đọc to') : (speaking ? 'Stop' : 'Read aloud')}
+                style={styles.speakBtn}
+              >
+                {speaking ? '⏸' : '🔊'}
+              </button>
+            )}
           </div>
         ))}
+        {busy && mode === 'thinking' && (
+          <div style={styles.botMsg}>
+            <span style={styles.typingDots}>
+              <span /><span /><span />
+            </span>
+          </div>
+        )}
       </div>
 
       <div style={styles.quickRow}>
@@ -130,7 +213,7 @@ export default function GlobalAIChatbot({ activePanelLabel }) {
         <textarea
           value={input}
           onChange={event => setInput(event.target.value)}
-          placeholder="Hỏi chatbot chung về cách dùng website..."
+          placeholder={isVi ? 'Hỏi chatbot chung hoặc nói bằng giọng nói...' : 'Ask the chatbot or use your voice...'}
           rows={2}
           style={styles.input}
           onKeyDown={event => {
@@ -140,11 +223,31 @@ export default function GlobalAIChatbot({ activePanelLabel }) {
             }
           }}
         />
+        <button
+          type="button"
+          onClick={toggleMic}
+          disabled={busy && !recording}
+          title={recording ? (isVi ? 'Dừng ghi âm' : 'Stop recording') : (isVi ? 'Nói để hỏi' : 'Speak to ask')}
+          style={{
+            ...styles.micBtn,
+            ...(recording ? styles.micBtnActive : {}),
+            opacity: transcribing ? 0.7 : 1,
+            cursor: transcribing ? 'wait' : 'pointer',
+          }}
+        >
+          {transcribing ? '⏳' : recording ? '⏹️' : '🎙️'}
+        </button>
         <button type="submit" disabled={busy || !input.trim()} style={{ ...styles.sendBtn, opacity: busy || !input.trim() ? 0.55 : 1 }}>
-          {busy ? '...' : 'Gửi'}
+          {busy ? '...' : (isVi ? 'Gửi' : 'Send')}
         </button>
       </form>
-      <div style={styles.disclaimer}>Thông tin chỉ mang tính hỗ trợ, không thay thế tư vấn, chẩn đoán hoặc điều trị của bác sĩ.</div>
+      <div style={styles.disclaimer}>{isVi
+        ? 'Thông tin chỉ mang tính hỗ trợ, không thay thế tư vấn, chẩn đoán hoặc điều trị của bác sĩ.'
+        : 'Information is for support purposes only and does not replace a doctor\'s advice, diagnosis, or treatment.'}</div>
+      <style>{`
+        @keyframes globalChatbotDotBounce { 0%,80%,100%{transform:scale(0.6);opacity:0.4} 40%{transform:scale(1);opacity:1} }
+        @keyframes globalChatbotMicPulse { 0%,100%{box-shadow:0 0 0 3px rgba(239,68,68,0.25)} 50%{box-shadow:0 0 0 7px rgba(239,68,68,0.1)} }
+      `}</style>
     </section>
   )
 }
@@ -202,18 +305,33 @@ function createStyles(isDark) {
     messages: { flex: '1 1 auto', minHeight: 0, padding: 14, overflowY: 'auto', overscrollBehavior: 'contain', display: 'flex', flexDirection: 'column', gap: 10 },
     botMsg: { alignSelf: 'flex-start', maxWidth: '88%', padding: '11px 13px', borderRadius: '16px 16px 16px 5px', background: isDark ? 'rgba(30, 41, 59, 0.82)' : '#f1f5f9', color: text, fontSize: 13, lineHeight: 1.5, whiteSpace: 'pre-wrap' },
     userMsg: { alignSelf: 'flex-end', maxWidth: '84%', padding: '11px 13px', borderRadius: '16px 16px 5px 16px', background: 'linear-gradient(135deg, #0f4c81, #2563eb)', color: '#fff', fontSize: 13, lineHeight: 1.5, whiteSpace: 'pre-wrap' },
+    speakBtn: {
+      border: `1px solid ${border}`, borderRadius: 8, padding: '3px 7px', fontSize: 12, cursor: 'pointer',
+      background: isDark ? 'rgba(15,23,42,0.6)' : '#fff', color: muted, lineHeight: 1,
+    },
+    typingDots: { display: 'inline-flex', gap: 4 },
     quickRow: { flex: '0 0 auto', display: 'flex', gap: 6, padding: '0 14px 12px', overflowX: 'auto', scrollbarWidth: 'thin' },
     quickBtn: { flexShrink: 0, border: `1px solid ${border}`, borderRadius: 999, padding: '7px 10px', background: isDark ? 'rgba(15,23,42,0.74)' : '#fff', color: text, fontSize: 11, fontWeight: 800, cursor: 'pointer' },
     form: { flex: '0 0 auto', display: 'flex', alignItems: 'stretch', gap: 8, padding: 14, borderTop: `1px solid ${border}` },
     input: { flex: 1, resize: 'none', border: `1px solid ${border}`, borderRadius: 14, padding: '10px 12px', outline: 'none', font: 'inherit', fontSize: 13, color: text, background: isDark ? 'rgba(15, 23, 42, 0.82)' : '#fff' },
+    micBtn: {
+      border: `1px solid ${border}`, borderRadius: 14, padding: '0 14px', fontSize: 16,
+      background: isDark ? 'rgba(99,102,241,0.12)' : 'rgba(99,102,241,0.08)', color: isDark ? '#a5b4fc' : '#6366f1',
+      cursor: 'pointer', transition: 'all 0.18s', lineHeight: 1,
+    },
+    micBtnActive: {
+      background: 'linear-gradient(135deg,#ef4444,#dc2626)', color: '#fff', border: '1px solid rgba(239,68,68,0.6)',
+      animation: 'globalChatbotMicPulse 1.2s ease-in-out infinite',
+    },
     sendBtn: { border: 'none', borderRadius: 14, padding: '0 16px', color: '#fff', background: 'linear-gradient(135deg, #14b8a6, #0f4c81)', fontWeight: 900, cursor: 'pointer' },
     disclaimer: { flex: '0 0 auto', padding: '0 14px 14px', color: muted, fontSize: 10.5, lineHeight: 1.4 },
   }
 }
 
-function getModeLabel(mode) {
-  if (mode === 'transformers') return 'Tiếng Việt an toàn'
-  if (mode === 'quick-guide') return 'Website guide'
-  if (mode === 'fallback') return 'Safe fallback'
-  return 'Trợ lý website'
+function getModeLabel(mode, isVi) {
+  if (mode === 'groq') return isVi ? 'AI thực · Groq' : 'Real AI · Groq'
+  if (mode === 'quick-guide') return isVi ? 'Hướng dẫn web' : 'Website guide'
+  if (mode === 'thinking') return isVi ? 'Đang xử lý...' : 'Processing...'
+  if (mode === 'error') return isVi ? 'Lỗi kết nối' : 'Connection error'
+  return isVi ? 'Trợ lý website' : 'Website assistant'
 }
