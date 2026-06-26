@@ -137,7 +137,14 @@ export function buildImageConvertedInBodyRecord({ analysis, fallback, sourceName
     return n !== null ? n : null
   }
 
-  const rawDate = ocr['ngày'] ? String(ocr['ngày']).replace(/\D/g, '').slice(0, 14) : compactTimestamp()
+  // Priority: ocrRow['ngày'] → metrics['Ngày đo'] (from Groq vision) → today
+  const metricDate = metrics['Ngày đo'] || metrics['Ngày'] || metrics['Date'] || ''
+  const metricDateDigits = String(metricDate).replace(/[-/ :T]/g, '').replace(/\D/g, '').slice(0, 14)
+  const rawDate = ocr['ngày']
+    ? String(ocr['ngày']).replace(/\D/g, '').slice(0, 14)
+    : metricDateDigits.length >= 8
+      ? metricDateDigits
+      : compactTimestamp()
 
   return {
     ...base,
