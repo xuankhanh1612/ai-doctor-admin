@@ -918,8 +918,33 @@ function UploadTab({ onAnalysis, onViewMedicalRecord }) {
 
   const convertCurrentImageToCsv = async () => {
     if (!file || file.name.toLowerCase().endsWith('.csv')) return;
+
+    // If AI has not yet analyzed this image, run vision analysis first so we get
+    // the real "Ngày đo" from the InBody printout instead of falling back to today.
+    let analysisResult = result;
+    if (!analysisResult) {
+      setLoading(true);
+      try {
+        const base64 = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (e) => resolve(e.target.result.split(',')[1]);
+          reader.onerror = () => reject(new Error('Không đọc được file'));
+          reader.readAsDataURL(file);
+        });
+        analysisResult = await analyzeInBodyWithAI(base64, file.type, file);
+        setResult(analysisResult);
+        if (onAnalysis) onAnalysis(analysisResult);
+      } catch (err) {
+        setError(err.message || 'Lỗi phân tích ảnh. Vui lòng thử lại.');
+        setLoading(false);
+        return;
+      } finally {
+        setLoading(false);
+      }
+    }
+
     const fallback = parseInBodyCsv(standardInBodyCsv).at(-1);
-    const record = buildImageConvertedInBodyRecord({ analysis: result, fallback, sourceName: file.name });
+    const record = buildImageConvertedInBodyRecord({ analysis: analysisResult, fallback, sourceName: file.name });
     const csvText = recordsToInBodyCsv([record]);
     const safeName = file.name.replace(/\.[^.]+$/, '').replace(/[^a-z0-9._-]+/gi, '_') || 'InBody_Image';
     await saveCsvTextToUploadRecords(csvText, `${safeName}_converted.csv`, { notes: `Convert InBody Image thành .CSV từ ${file.name}` });

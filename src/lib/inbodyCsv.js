@@ -104,7 +104,10 @@ function csvValue(value) {
 
 export function inBodyRecordToCsvRow(record = {}) {
   return [
-    record.rawDate || compactTimestamp(), record.device || 'image-convert', record.weight, record.skeletalMuscle ?? record.muscle, record.muscleRaw ?? '-', record.bodyFatMass, record.bmi, record.fat, record.bmr, record.score,
+    // IMPORTANT: do NOT fall back to compactTimestamp() (today) when rawDate is empty.
+    // An empty rawDate means the date could not be read from the image; leaving it blank
+    // is far better than recording the wrong measurement date.
+    record.rawDate || '', record.device || 'image-convert', record.weight, record.skeletalMuscle ?? record.muscle, record.muscleRaw ?? '-', record.bodyFatMass, record.bmi, record.fat, record.bmr, record.score,
     record.rightArmMuscle, record.leftArmMuscle, record.trunkMuscle, record.rightLegMuscle, record.leftLegMuscle,
     record.rightArmFat, record.leftArmFat, record.trunkFat, record.rightLegFat, record.leftLegFat,
     record.rightArmEcwRatio, record.leftArmEcwRatio, record.trunkEcwRatio, record.rightLegEcwRatio, record.leftLegEcwRatio,
