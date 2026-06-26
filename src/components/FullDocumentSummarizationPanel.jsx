@@ -105,8 +105,10 @@ export default function FullDocumentSummarizationPanel({ onNext, nextLabel, onPr
   const [dragOver, setDragOver]         = useState(false)
   const [lang, setLang]                 = useState('vi')
   const [copied, setCopied]             = useState(false)
+  const [ingesting, setIngesting]       = useState(false) // converting HEIC → JPEG, etc.
   const fileInputRef = useRef(null)
   const abortRef     = useRef(null)
+  const heicLibRef    = useRef(null) // cache the dynamically-loaded heic2any module
 
   // ── Color tokens ──
   const bg      = isDark ? 'var(--bg2,#07090f)'             : '#f4f7fb'
@@ -117,22 +119,70 @@ export default function FullDocumentSummarizationPanel({ onNext, nextLabel, onPr
   const accent  = isDark ? '#a5b4fc'                        : '#4338ca'
   const accentBg = isDark ? 'rgba(99,102,241,0.12)'        : 'rgba(99,102,241,0.08)'
 
-// ── File ingestion ──
-  const ingestFiles = useCallback((files) => {
+// ── HEIC/HEIF detection ──
+  // iPhones (Camera/Photos) export JPGs as HEIC by default. The browser often
+  // reports file.type as '' (empty) for HEIC, and Groq's vision API rejects
+  // the format outright (400) — so we detect by extension too and convert.
+  const isHeicFile = (file) => {
+    const t = (file.type || '').toLowerCase()
+    const n = (file.name || '').toLowerCase()
+    return t === 'image/heic' || t === 'image/heif' || n.endsWith('.heic') || n.endsWith('.heif')
+  }
+
+  // ── Convert HEIC/HEIF → JPEG entirely client-side (no upload needed) ──
+  // Uses heic2any (loaded on demand from a CDN as an ES module via esm.sh,
+  // same lazy-loading pattern already used for pdf.js below).
+  const convertHeicToJpeg = async (file) => {
+    if (!heicLibRef.current) {
+      const mod = await import('https://esm.sh/heic2any@0.0.4')
+      heicLibRef.current = mod.default || mod
+    }
+    const heic2any = heicLibRef.current
+    const result = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.85 })
+    const outBlob = Array.isArray(result) ? result[0] : result
+    const newName = file.name.replace(/\.(heic|heif)$/i, '') + '.jpg'
+    return new File([outBlob], newName, { type: 'image/jpeg' })
+  }
+
+  // ── File ingestion ──
+  const ingestFiles = useCallback(async (files) => {
+    setError(null)
+    setIngesting(true)
     const newPages = []
+    const conversionErrors = []
+
     for (const file of files) {
-      if (file.type === 'application/pdf') {
+      const uid = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${file.name}`
+      const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
+
+      if (isPdf) {
         // Represent each PDF as a single "page" entry (backend would split)
-        newPages.push({ id: `${Date.now()}-${file.name}`, name: file.name, type: 'pdf', file, pageNum: 1, size: file.size })
+        newPages.push({ id: uid, name: file.name, type: 'pdf', file, pageNum: 1, size: file.size })
+      } else if (isHeicFile(file)) {
+        try {
+          const jpegFile = await convertHeicToJpeg(file)
+          newPages.push({ id: uid, name: jpegFile.name, type: 'image', file: jpegFile, size: jpegFile.size })
+        } catch (err) {
+          console.error('[HEIC convert] failed for', file.name, err)
+          conversionErrors.push(file.name)
+        }
       } else if (file.type.startsWith('image/')) {
-        newPages.push({ id: `${Date.now()}-${file.name}`, name: file.name, type: 'image', file, size: file.size })
+        newPages.push({ id: uid, name: file.name, type: 'image', file, size: file.size })
       }
     }
+
     setPages(prev => [...prev, ...newPages])
     setSummaries([])
     setFinalSummary('')
-    setError(null)
-  }, [])
+    if (conversionErrors.length > 0) {
+      setError(lang === 'vi'
+        ? `Không thể chuyển đổi file HEIC: ${conversionErrors.join(', ')}. Vui lòng thử lưu lại dưới dạng JPG/PNG rồi tải lên.`
+        : `Could not convert HEIC file(s): ${conversionErrors.join(', ')}. Please re-save as JPG/PNG and re-upload.`)
+    } else {
+      setError(null)
+    }
+    setIngesting(false)
+  }, [lang])
 
   const onDrop = useCallback((e) => {
     e.preventDefault(); setDragOver(false)
@@ -415,23 +465,26 @@ export default function FullDocumentSummarizationPanel({ onNext, nextLabel, onPr
             ...card,
             border: `2px dashed ${dragOver ? '#6366f1' : (isDark ? 'rgba(99,102,241,0.3)' : 'rgba(99,102,241,0.2)')}`,
             background: dragOver ? (isDark ? 'rgba(99,102,241,0.08)' : 'rgba(99,102,241,0.04)') : surface,
-            cursor: 'pointer', textAlign: 'center', transition: 'all 0.2s',
+            cursor: ingesting ? 'wait' : 'pointer', textAlign: 'center', transition: 'all 0.2s',
+            opacity: ingesting ? 0.7 : 1, pointerEvents: ingesting ? 'none' : 'auto',
           }}
-          onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+          onDragOver={(e) => { e.preventDefault(); if (!ingesting) setDragOver(true) }}
           onDragLeave={() => setDragOver(false)}
           onDrop={onDrop}
-          onClick={() => fileInputRef.current?.click()}
+          onClick={() => !ingesting && fileInputRef.current?.click()}
           role="button" tabIndex={0}
-          onKeyDown={(e) => e.key === 'Enter' && fileInputRef.current?.click()}
+          onKeyDown={(e) => e.key === 'Enter' && !ingesting && fileInputRef.current?.click()}
           aria-label="Upload documents"
         >
-          <input ref={fileInputRef} type="file" accept=".pdf,image/*" multiple onChange={onFileChange} style={{ display: 'none' }} />
-          <div style={{ fontSize: 36, marginBottom: 12 }}>📂</div>
+          <input ref={fileInputRef} type="file" accept=".pdf,.heic,.heif,image/*" multiple disabled={ingesting} onChange={onFileChange} style={{ display: 'none' }} />
+          <div style={{ fontSize: 36, marginBottom: 12 }}>{ingesting ? '🔄' : '📂'}</div>
           <div style={{ fontWeight: 800, fontSize: 15, color: text, marginBottom: 6 }}>
-            {lang === 'vi' ? 'Kéo thả PDF hoặc hình ảnh vào đây' : 'Drop PDFs or images here'}
+            {ingesting
+              ? (lang === 'vi' ? 'Đang chuyển đổi HEIC → JPEG…' : 'Converting HEIC → JPEG…')
+              : (lang === 'vi' ? 'Kéo thả PDF hoặc hình ảnh vào đây' : 'Drop PDFs or images here')}
           </div>
           <div style={{ fontSize: 12, color: text2 }}>
-            {lang === 'vi' ? 'Hỗ trợ: PDF, JPG, PNG, WEBP · Nhiều file cùng lúc' : 'Supports: PDF, JPG, PNG, WEBP · Multiple files at once'}
+            {lang === 'vi' ? 'Hỗ trợ: PDF, JPG, PNG, WEBP, HEIC (ảnh iPhone) · Nhiều file cùng lúc' : 'Supports: PDF, JPG, PNG, WEBP, HEIC (iPhone photos) · Multiple files at once'}
           </div>
           <div style={{ marginTop: 14, display: 'inline-block', padding: '8px 18px', borderRadius: 20, background: accentBg, color: accent, fontWeight: 800, fontSize: 12, border: `1px solid ${isDark ? 'rgba(99,102,241,0.3)' : 'rgba(99,102,241,0.2)'}` }}>
             {lang === 'vi' ? '+ Chọn file' : '+ Browse files'}
