@@ -1,3 +1,12 @@
+import {
+  dateKey,
+  daysInMonth,
+  getDay,
+  saveDay,
+  getAllWaterHistory,
+  getMessagesForDay,
+} from '../lib/beMeoChatStorage.js'
+
 /**
  * beMeoWidget.js
  * Toàn bộ widget "Bé Mèo Nước" dưới dạng ES module thuần.
@@ -7,6 +16,8 @@
  *
  * @param {ShadowRoot} shadow  Shadow root đã được tạo bởi React (host.attachShadow)
  * @param {object}     urls    Object chứa các URL ảnh đã được Vite resolve
+ * @param {string|null} userEmail  Email user đang đăng nhập — dùng làm khóa lưu trữ IndexedDB.
+ *                                  null/undefined = khách (nhóm chung vào 'guest').
  * @returns {Function}         cleanup() — gọi khi component unmount
  */
 export function mountBeMeoWidget(shadow, {
@@ -15,7 +26,7 @@ export function mountBeMeoWidget(shadow, {
   meoNuocAiUrl,
   robotTuThe1Url,
   robotTuThe2Url,
-}) {
+}, userEmail = null) {
   // ─── CSS ────────────────────────────────────────────────────────────────────
   const CSS = `
     :host {
@@ -118,6 +129,11 @@ export function mountBeMeoWidget(shadow, {
     .calendar-head strong { display:block; color:#0369a1; font-size:14px; }
     .calendar-head span { display:block; margin-top:3px; color:var(--muted); font-size:11px; font-weight:800; }
     .calendar-streak { border-radius:999px; padding:7px 10px; background:linear-gradient(135deg,var(--water),var(--aqua)); color:#fff; font-size:12px; font-weight:950; white-space:nowrap; }
+    .calendar-nav { display:flex; align-items:center; gap:6px; margin-bottom:10px; }
+    .calendar-nav select { border:1px solid var(--line); border-radius:12px; padding:7px 10px; font-size:12.5px; font-weight:850; color:#0369a1; background:rgba(255,255,255,.86); cursor:pointer; }
+    .calendar-nav button { padding:7px 11px; font-size:13px; background:rgba(14,165,233,.12); color:#0369a1; }
+    .calendar-nav .calendar-today-btn { background:rgba(14,165,233,.12); color:#0369a1; font-size:11px; padding:7px 10px; }
+    .calendar-loading { text-align:center; padding:14px; color:#64748b; font-size:12px; font-weight:800; }
     .calendar-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:6px; }
     .calendar-day { min-height:46px; border:1px solid rgba(14,165,233,.16); border-radius:14px; background:rgba(255,255,255,.74); color:#0f172a; padding:6px 4px; text-align:center; font-weight:950; cursor:pointer; transition:transform .12s ease,box-shadow .12s ease,outline .12s ease; }
     .calendar-day:hover:not(.future) { transform:translateY(-2px); box-shadow:0 6px 16px rgba(14,165,233,.22); }
@@ -225,10 +241,17 @@ export function mountBeMeoWidget(shadow, {
             <div class="hydration-calendar" aria-label="Calendar 31 ngày duy trì uống nước">
               <div class="calendar-head">
                 <div>
-                  <strong>📅 31 ngày duy trì uống nước</strong>
+                  <strong>📅 Lịch sử uống nước &amp; chat theo Tháng/Năm</strong>
                   <span id="calendarSummary">Theo dõi từng ngày trong tháng</span>
                 </div>
                 <div class="calendar-streak" id="calendarStreak">0/31</div>
+              </div>
+              <div class="calendar-nav">
+                <button type="button" id="calendarPrevMonth" title="Tháng trước">‹</button>
+                <select id="calendarMonthSelect" aria-label="Chọn tháng"></select>
+                <select id="calendarYearSelect" aria-label="Chọn năm"></select>
+                <button type="button" id="calendarNextMonth" title="Tháng sau">›</button>
+                <button type="button" class="calendar-today-btn" id="calendarTodayBtn">Hôm nay</button>
               </div>
               <div class="calendar-grid" id="hydrationCalendar"></div>
               <div id="dayFilterBar" class="day-filter-bar" style="display:none;">
@@ -375,19 +398,24 @@ export function mountBeMeoWidget(shadow, {
   // ─── JS logic (chạy trực tiếp, không qua inject <script>) ──────────────────
   const root = shadow; // Thay thế document.currentScript.getRootNode()
 
-  const STORAGE_KEY = 'be-meo-nuoc-water-state-v1';
-  const CHAT_KEY = 'be-meo-nuoc-chat-v1';
   const SYNC_EVENT = 'be-meo-nuoc:water-added';
-  const today = new Date().toISOString().slice(0, 10);
+  const today = dateKey(); // giờ LOCAL, đúng lịch dương của máy người dùng (không lệch UTC)
   const defaultState = { date: today, total: 0, goal: 2000, history: {} };
-  let state = loadState();
-  let messages = loadMessages();
+
+  // Tháng/Năm đang hiển thị trên lưới calendar (mặc định = tháng/năm hiện tại).
+  const todayDateObj = new Date(`${today}T00:00:00`);
+  let viewYear = todayDateObj.getFullYear();
+  let viewMonth = todayDateObj.getMonth(); // 0-indexed
+
+  let state = { ...defaultState }; // sẽ được nạp lại ngay từ IndexedDB ở dưới (loadInitialState async)
+  let messages = [{ role: 'bot', text: getDayGreeting(), time: new Date().toISOString() }];
+  let storageReady = false; // true sau khi đã nạp xong dữ liệu thật từ IndexedDB lần đầu (tránh ghi đè rác)
   let activeCard = 0;
   let cardFlipped = false;
   let activeQuestion = 0;
   let quizScore = 0;
   let answered = false;
-  let selectedDay = null;
+  let selectedDay = null; // 'YYYY-MM-DD' đang được chọn để xem lại (null = xem hôm nay/live)
 
   const flashcards = [
     { icon: '👁️', title: 'Vitamin A', back: 'Duy trì thị lực, tăng cường miễn dịch và bảo vệ da. Có trong cà rốt, gan, bí đỏ.' },
@@ -466,18 +494,42 @@ export function mountBeMeoWidget(shadow, {
   const hydrationCalendarEl = $('hydrationCalendar');
   const calendarSummaryEl = $('calendarSummary');
   const calendarStreakEl = $('calendarStreak');
+  const monthSelectEl = $('calendarMonthSelect');
+  const yearSelectEl = $('calendarYearSelect');
+  const prevMonthBtn = $('calendarPrevMonth');
+  const nextMonthBtn = $('calendarNextMonth');
+  const todayBtn = $('calendarTodayBtn');
 
-  function loadState() {
-    try {
-      const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
-      if (!parsed) return { ...defaultState };
-      const history = parsed.history && typeof parsed.history === 'object' ? parsed.history : {};
-      if (parsed.date !== today) return { ...defaultState, goal: parsed.goal || 2000, history, total: history[today]?.total || 0 };
-      return { ...defaultState, ...parsed, history };
-    } catch { return { ...defaultState }; }
+  // ─── Lưu trữ qua IndexedDB (100% lịch sử, theo user đăng nhập) ───────────────
+  // Toàn bộ history Tháng/Năm trong quá khứ được nạp 1 lần vào waterHistoryMap (nhẹ — chỉ
+  // {total,goal} mỗi ngày, không phải messages) để vẽ calendar mượt khi đổi tháng/năm.
+  let waterHistoryMap = {}; // { 'YYYY-MM-DD': { total, goal } } — TOÀN BỘ lịch sử của user
+
+  async function loadInitialState() {
+    const [todayRecord, history] = await Promise.all([
+      getDay(userEmail, today),
+      getAllWaterHistory(userEmail),
+    ]);
+    waterHistoryMap = history || {};
+    if (todayRecord) {
+      state = { date: today, total: todayRecord.water?.total || 0, goal: todayRecord.water?.goal || 2000, history: waterHistoryMap };
+      if (Array.isArray(todayRecord.messages) && todayRecord.messages.length > 0) messages = todayRecord.messages;
+    } else {
+      state = { ...defaultState, history: waterHistoryMap };
+    }
+    storageReady = true;
   }
 
-  function saveState() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+  // Lưu lại NGÀY HÔM NAY (water + messages) vào IndexedDB — gọi sau mỗi thay đổi khi đang ở chế độ live.
+  // Tự chặn khi đang xem lại lịch sử ngày cũ (selectedDay khác hôm nay) — tránh ghi nhầm
+  // nội dung chat của ngày cũ đè lên dữ liệu thật của hôm nay.
+  function persistToday() {
+    if (!storageReady) return; // tránh ghi đè bằng dữ liệu rác trước khi load xong lần đầu
+    if (selectedDay && selectedDay !== today) return;
+    waterHistoryMap[today] = { total: state.total, goal: state.goal };
+    saveDay(userEmail, today, { messages, water: { total: state.total, goal: state.goal } })
+      .catch((e) => console.error('[Bé Mèo Nước] persistToday error:', e));
+  }
 
   function getDayGreeting() {
     const hour = new Date().getHours();
@@ -491,22 +543,6 @@ export function mountBeMeoWidget(shadow, {
       ? ['Buổi chiều xin chào! 🌤️ Bé Mèo Nước đây~ Uống nước vào thay vì cà phê thử xem, tỉnh lắm đó! 💧🐱', 'Meo~ Chiều rồi nè bạn! Đừng quên uống nước nhé~ 💧✨']
       : ['Buổi tối chào bạn! 🌙 Bé Mèo Nước đây~ Uống thêm một chút nước ấm trước khi ngủ nhé! 🐱💧', 'Meo meo~ Tối rồi đó! ⭐ Nhớ uống nước trước khi ngủ nhé~ 💧😸'];
     return greetings[Math.floor(Math.random() * greetings.length)];
-  }
-
-  function loadMessages() {
-    try {
-      const parsed = JSON.parse(localStorage.getItem(CHAT_KEY) || '[]');
-      if (Array.isArray(parsed) && parsed.length) {
-        const todayMsgs = parsed.filter((m) => m.time && m.time.slice(0, 10) === today);
-        if (todayMsgs.length > 0) {
-          if (todayMsgs[0].role !== 'bot' || !/Chào|Meo|Hey|Buổi/i.test(todayMsgs[0].text || '')) {
-            todayMsgs.unshift({ role: 'bot', text: getDayGreeting(), time: new Date(today + 'T00:00:01').toISOString() });
-          }
-          return todayMsgs;
-        }
-      }
-    } catch { }
-    return [{ role: 'bot', text: getDayGreeting(), time: new Date().toISOString() }];
   }
 
   const PROOF_MAP_KEY = 'be_meo_nuoc_proof_map';
@@ -549,8 +585,6 @@ export function mountBeMeoWidget(shadow, {
       localStorage.setItem(PROOF_MAP_KEY + '_meta', JSON.stringify(meta));
     } catch { }
   }
-
-  function saveMessages() { localStorage.setItem(CHAT_KEY, JSON.stringify(messages.slice(-80))); }
 
   function switchTab(tab) {
     root.querySelectorAll('.tab-btn').forEach((b) => b.classList.toggle('active', b.dataset.tab === tab));
@@ -653,18 +687,20 @@ export function mountBeMeoWidget(shadow, {
     const pct = Math.min(100, Math.round((state.total / state.goal) * 100));
     state.date = today; state.history = state.history || {};
     state.history[today] = { total: state.total, goal: state.goal, percent: pct };
-    updateWaterStats(); renderCalendar(); saveState();
+    waterHistoryMap[today] = { total: state.total, goal: state.goal };
+    updateWaterStats(); renderCalendar(); persistToday();
   }
 
+  // Vẽ lưới calendar cho viewYear/viewMonth đang chọn — số ô = đúng số ngày thật của tháng đó
+  // (28/29/30/31, tự đúng năm nhuận), KHÔNG còn cố định 31 ô như trước.
   function renderCalendar() {
     if (!hydrationCalendarEl) return;
-    const cur = new Date(`${today}T00:00:00`);
-    const year = cur.getFullYear(), month = cur.getMonth(), todayDay = cur.getDate();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const monthKey = today.slice(0, 7);
+    const numDays = daysInMonth(viewYear, viewMonth);
+    const monthKey = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}`;
+    const isViewingCurrentMonth = monthKey === today.slice(0, 7);
     let completed = 0;
     hydrationCalendarEl.innerHTML = '';
-    for (let day = 1; day <= 31; day++) {
+    for (let day = 1; day <= numDays; day++) {
       const dayKey = `${monthKey}-${String(day).padStart(2, '0')}`;
       const entry = state.history?.[dayKey];
       const dayGoal = entry?.goal || state.goal, dayTotal = entry?.total || 0;
@@ -672,18 +708,21 @@ export function mountBeMeoWidget(shadow, {
       const isDone = dayTotal >= dayGoal;
       if (isDone) completed++;
       const isSelected = selectedDay === dayKey;
-      const isFuture = day > todayDay || day > daysInMonth;
+      const isToday = dayKey === today;
+      const isFuture = dayKey > today; // so sánh chuỗi YYYY-MM-DD — đúng thứ tự thời gian
       const cell = document.createElement('div');
-      cell.className = `calendar-day${day === todayDay ? ' active' : ''}${isDone ? ' done' : ''}${isFuture ? ' future' : ''}${isSelected ? ' selected' : ''}`;
-      cell.title = day <= daysInMonth ? `Ngày ${day}: ${dayTotal}/${dayGoal}ml (${dayPct}%)` : `Ngày ${day}: ngoài tháng`;
+      cell.className = `calendar-day${isToday ? ' active' : ''}${isDone ? ' done' : ''}${isFuture ? ' future' : ''}${isSelected ? ' selected' : ''}`;
+      cell.title = isFuture ? `Ngày ${day}: chưa tới` : `Ngày ${day}: ${dayTotal}/${dayGoal}ml (${dayPct}%)`;
       cell.innerHTML = `<span>${day}</span><small>${dayTotal}ml</small>`;
-      if (!isFuture) cell.addEventListener('click', () => selectDay(dayKey, day, dayTotal, dayGoal));
+      if (!isFuture) cell.addEventListener('click', () => selectDay(dayKey));
       hydrationCalendarEl.appendChild(cell);
     }
     calendarSummaryEl.textContent = selectedDay
       ? (() => { const e = state.history?.[selectedDay]; const t = e?.total || 0, g = e?.goal || state.goal; const [, , dd] = selectedDay.split('-'); return `Ngày ${parseInt(dd, 10)}: ${t}/${g}ml · ${Math.min(100, Math.round((t / g) * 100))}% mục tiêu`; })()
-      : `Hôm nay: ${state.total}/${state.goal}ml · ${Math.min(100, Math.round((state.total / state.goal) * 100))}% mục tiêu`;
-    calendarStreakEl.textContent = `${completed}/31`;
+      : isViewingCurrentMonth
+        ? `Hôm nay: ${state.total}/${state.goal}ml · ${Math.min(100, Math.round((state.total / state.goal) * 100))}% mục tiêu`
+        : `Tháng ${viewMonth + 1}/${viewYear} · ${numDays} ngày`;
+    calendarStreakEl.textContent = `${completed}/${numDays}`;
     const dayFilterBar = $('dayFilterBar'), dayFilterLabel = $('dayFilterLabel'), dayFilterWater = $('dayFilterWater');
     if (dayFilterBar) {
       if (selectedDay) {
@@ -695,12 +734,17 @@ export function mountBeMeoWidget(shadow, {
       } else { dayFilterBar.style.display = 'none'; }
     }
     updateWaterStats();
+    syncCalendarNavControls();
   }
 
-  function selectDay(dayKey) {
-    selectedDay = selectedDay === dayKey ? null : dayKey;
-    renderCalendar(); renderChat();
+  // Đồng bộ 2 dropdown Tháng/Năm + disable nút "Tháng sau" khi đã ở tháng hiện tại (không xem tương lai).
+  function syncCalendarNavControls() {
+    if (monthSelectEl) monthSelectEl.value = String(viewMonth);
+    if (yearSelectEl) yearSelectEl.value = String(viewYear);
+    const isCurrentMonth = viewYear === todayDateObj.getFullYear() && viewMonth === todayDateObj.getMonth();
+    if (nextMonthBtn) nextMonthBtn.disabled = isCurrentMonth;
   }
+
 
   function updateWaterStats() {
     let displayTotal, displayGoal;
@@ -718,13 +762,13 @@ export function mountBeMeoWidget(shadow, {
 
   function renderChat() {
     chatLog.innerHTML = '';
+    const isViewingPast = !!selectedDay && selectedDay !== today;
     let displayMessages = messages;
-    if (selectedDay) {
-      displayMessages = messages.filter((m) => m.time && m.time.slice(0, 10) === selectedDay);
+    if (isViewingPast) {
       const [sy, sm, sd] = selectedDay.split('-');
       const notice = document.createElement('div'); notice.className = 'chat-filter-notice';
       const e = state.history?.[selectedDay]; const t = e?.total || 0, g = e?.goal || state.goal;
-      notice.innerHTML = `📅 Đang xem chat ngày <b>${parseInt(sd, 10)}/${parseInt(sm, 10)}/${sy}</b> · 💧 <b>${t}/${g}ml</b> · ${displayMessages.length} tin nhắn`;
+      notice.innerHTML = `📅 Đang xem chat ngày <b>${parseInt(sd, 10)}/${parseInt(sm, 10)}/${sy}</b> · 💧 <b>${t}/${g}ml</b> · ${displayMessages.length} tin nhắn (100% lịch sử)`;
       chatLog.appendChild(notice);
       if (displayMessages.length === 0) {
         const empty = document.createElement('div');
@@ -763,8 +807,28 @@ export function mountBeMeoWidget(shadow, {
       chatLog.appendChild(wrap);
     });
     chatLog.scrollTop = chatLog.scrollHeight;
-    saveMessages();
+    if (!isViewingPast) persistToday(); // chỉ ghi xuống IndexedDB khi đang ở chat sống (hôm nay)
   }
+
+  // Bấm 1 ô ngày trong calendar (ngày quá khứ đã có dữ liệu) → nạp TOÀN BỘ chat ngày đó từ IndexedDB.
+  async function selectDay(dayKey) {
+    if (selectedDay === dayKey) { // bấm lại ngày đang chọn → quay về hôm nay (live)
+      selectedDay = null;
+      messages = (await getMessagesForDay(userEmail, today)) || messages;
+      if (messages.length === 0) messages = [{ role: 'bot', text: getDayGreeting(), time: new Date().toISOString() }];
+      renderCalendar(); renderChat();
+      return;
+    }
+    selectedDay = dayKey;
+    if (dayKey === today) {
+      messages = (await getMessagesForDay(userEmail, today));
+      if (messages.length === 0) messages = [{ role: 'bot', text: getDayGreeting(), time: new Date().toISOString() }];
+    } else {
+      messages = await getMessagesForDay(userEmail, dayKey); // 100% lịch sử ngày đó, không cắt bớt
+    }
+    renderCalendar(); renderChat();
+  }
+
 
   function onWindowMessage(event) {
     if (event.data?.type === 'BE_MEO_STATE_SYNC') {
@@ -774,7 +838,7 @@ export function mountBeMeoWidget(shadow, {
     }
     if (event.data?.type === 'BE_MEO_PROOF_SAVED' && event.data.proofId && event.data.dataUrl) {
       proofMap[event.data.proofId] = event.data.dataUrl; saveProofMap();
-      messages = loadMessages(); renderChat();
+      renderChat(); // proofMap đã có trong RAM — chỉ cần vẽ lại, không cần đọc lại messages từ storage
     }
     if (event.data?.type === 'BE_MEO_PROOF_BULK_RESTORE' && event.data.proofMapEntries) {
       let changed = false;
@@ -785,7 +849,7 @@ export function mountBeMeoWidget(shadow, {
           if (!validSet.has(pid)) { delete proofMap[pid]; changed = true; messages = messages.map((m) => m.proofId === pid ? { ...m, proofId: null } : m); }
         });
       }
-      if (changed) { saveProofMap(); saveMessages(); messages = loadMessages(); renderChat(); }
+      if (changed) { saveProofMap(); persistToday(); renderChat(); }
     }
     if (event.data?.type === 'BE_MEO_PROOF_DELETED' && event.data.proofId) {
       const pid = event.data.proofId; delete proofMap[pid];
@@ -794,12 +858,13 @@ export function mountBeMeoWidget(shadow, {
       try { const meta = JSON.parse(localStorage.getItem(PROOF_MAP_KEY + '_meta') || '{}'); delete meta[pid]; localStorage.setItem(PROOF_MAP_KEY + '_meta', JSON.stringify(meta)); } catch { }
       let msgChanged = false;
       messages = messages.map((m) => { if (m.proofId === pid) { msgChanged = true; return { ...m, proofId: null }; } return m; });
-      if (msgChanged) saveMessages();
+      if (msgChanged) persistToday();
       renderChat();
     }
     if (event.data?.type === 'BE_MEO_CAMERA_PROOF' && event.data.proofId) {
       const ml = event.data.ml || 150, total = state.total, goal = state.goal || 2000;
       messages.push({ role: 'bot', text: `📸 Bé Mèo đã ghi nhận ảnh uống nước (+${ml}ml) từ camera AI Healthcare Vision! Hôm nay bạn đang ở ${total}/${goal}ml (${Math.min(100, Math.round((total/goal)*100))}%).`, proofId: event.data.proofId, time: new Date().toISOString() });
+      persistToday();
       renderChat();
     }
   }
@@ -826,20 +891,31 @@ export function mountBeMeoWidget(shadow, {
     return 'Bé Mèo nghe nè 🐱💧 Bạn có thể nói "Tôi vừa uống 250ml", hỏi "hôm nay nên uống bao nhiêu?", hoặc nhờ Bé Mèo gợi ý cách nhớ uống nước.';
   }
 
-  function sendMessage(text) {
+  // Nếu đang xem lịch sử một ngày cũ, thoát ra và nạp lại ĐÚNG nội dung của hôm nay
+  // trước khi cho phép thêm tin nhắn/nước mới — tránh trộn lẫn dữ liệu giữa 2 ngày.
+  async function exitPastViewIfNeeded() {
+    if (!selectedDay || selectedDay === today) return;
+    selectedDay = null;
+    const todayMsgs = await getMessagesForDay(userEmail, today);
+    messages = todayMsgs.length > 0 ? todayMsgs : [{ role: 'bot', text: getDayGreeting(), time: new Date().toISOString() }];
+  }
+
+  async function sendMessage(text) {
     const trimmed = text.trim(); if (!trimmed) return;
+    await exitPastViewIfNeeded();
     messages.push({ role: 'user', text: trimmed, time: new Date().toISOString() });
     const reply = botReply(trimmed);
     messages.push(reply && typeof reply === 'object'
       ? { role: 'bot', text: reply.text, proofId: reply.proofId, time: new Date().toISOString() }
       : { role: 'bot', text: reply, time: new Date().toISOString() });
-    renderChat();
+    renderCalendar(); renderChat();
   }
 
-  function setGoal(goal) {
+  async function setGoal(goal) {
+    await exitPastViewIfNeeded();
     state.goal = goal; renderState();
     messages.push({ role: 'bot', text: `Bé Mèo đã đặt mục tiêu ${goal}ml/ngày cho bạn rồi nha.`, time: new Date().toISOString() });
-    renderChat();
+    renderCalendar(); renderChat();
   }
 
   function renderCard() {
@@ -889,16 +965,82 @@ export function mountBeMeoWidget(shadow, {
 
   // ─── Event listeners ────────────────────────────────────────────────────────
   root.querySelectorAll('.tab-btn').forEach((btn) => btn.addEventListener('click', () => switchTab(btn.dataset.tab)));
-  root.querySelectorAll('[data-add]').forEach((btn) => btn.addEventListener('click', () => { const r = addWater(Number(btn.dataset.add), 'Bé Mèo Nước quick button'); messages.push({ role: 'bot', text: r.text, proofId: r.proofId, time: new Date().toISOString() }); renderChat(); }));
+  root.querySelectorAll('[data-add]').forEach((btn) => btn.addEventListener('click', async () => {
+    await exitPastViewIfNeeded();
+    const r = addWater(Number(btn.dataset.add), 'Bé Mèo Nước quick button');
+    messages.push({ role: 'bot', text: r.text, proofId: r.proofId, time: new Date().toISOString() });
+    renderCalendar(); renderChat();
+  }));
   root.querySelectorAll('[data-prompt]').forEach((btn) => btn.addEventListener('click', () => sendMessage(btn.dataset.prompt)));
   $('setGoal1800').addEventListener('click', () => setGoal(1800));
   $('setGoal2000').addEventListener('click', () => setGoal(2000));
   $('setGoal2500').addEventListener('click', () => setGoal(2500));
-  $('resetDay').addEventListener('click', () => { state.total = 0; if (state.history) state.history[today] = { total: 0, goal: state.goal, percent: 0 }; renderState(); messages.push({ role: 'bot', text: 'Bé Mèo đã reset lượng nước hôm nay. Calendar 31 ngày cũng cập nhật về 0ml nha 💧', time: new Date().toISOString() }); renderChat(); });
-  $('clearChat').addEventListener('click', () => { messages = [{ role: 'bot', text: 'Chat đã được làm mới. Bé Mèo Nước vẫn ở đây để nhắc bạn uống nước nha 🐱💧', time: new Date().toISOString() }]; renderChat(); });
+  $('resetDay').addEventListener('click', () => {
+    state.total = 0;
+    waterHistoryMap[today] = { total: 0, goal: state.goal };
+    renderState();
+    messages.push({ role: 'bot', text: 'Bé Mèo đã reset lượng nước hôm nay. Calendar cũng cập nhật về 0ml nha 💧', time: new Date().toISOString() });
+    persistToday();
+    renderChat();
+  });
+  $('clearChat').addEventListener('click', () => {
+    messages = [{ role: 'bot', text: 'Chat đã được làm mới. Bé Mèo Nước vẫn ở đây để nhắc bạn uống nước nha 🐱💧', time: new Date().toISOString() }];
+    persistToday();
+    renderChat();
+  });
   $('chatForm').addEventListener('submit', (e) => { e.preventDefault(); sendMessage(chatInput.value); chatInput.value = ''; });
   $('dayFilterClear').addEventListener('click', () => { selectedDay = null; renderCalendar(); renderChat(); });
-  function onSyncEvent() { state = loadState(); messages = loadMessages(); renderState(); renderChat(); }
+
+  // ─── Calendar: chọn Tháng/Năm để xem lại lịch sử (lịch dương đúng 28/29/30/31 ngày) ──
+  function populateMonthYearSelects() {
+    if (!monthSelectEl || !yearSelectEl) return;
+    const monthNames = ['Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6', 'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'];
+    monthSelectEl.innerHTML = monthNames.map((name, i) => `<option value="${i}">${name}</option>`).join('');
+    // Năm: từ (năm hiện tại - 5) đến năm hiện tại — đủ cho lịch sử nhiều năm sử dụng, không cho chọn năm tương lai.
+    const curYear = todayDateObj.getFullYear();
+    const years = [];
+    for (let y = curYear; y >= curYear - 5; y--) years.push(y);
+    yearSelectEl.innerHTML = years.map((y) => `<option value="${y}">${y}</option>`).join('');
+    syncCalendarNavControls();
+  }
+
+  // Đổi viewYear/viewMonth rồi vẽ lại lưới — không cho phép đi tới tháng/năm trong tương lai.
+  function goToMonth(year, month) {
+    let y = year, m = month;
+    if (m < 0) { m = 11; y -= 1; }
+    if (m > 11) { m = 0; y += 1; }
+    // Chặn không cho xem tháng ở tương lai so với hôm nay.
+    if (y > todayDateObj.getFullYear() || (y === todayDateObj.getFullYear() && m > todayDateObj.getMonth())) {
+      y = todayDateObj.getFullYear(); m = todayDateObj.getMonth();
+    }
+    viewYear = y; viewMonth = m;
+    renderCalendar();
+  }
+
+  if (monthSelectEl) monthSelectEl.addEventListener('change', () => goToMonth(viewYear, Number(monthSelectEl.value)));
+  if (yearSelectEl) yearSelectEl.addEventListener('change', () => goToMonth(Number(yearSelectEl.value), viewMonth));
+  if (prevMonthBtn) prevMonthBtn.addEventListener('click', () => goToMonth(viewYear, viewMonth - 1));
+  if (nextMonthBtn) nextMonthBtn.addEventListener('click', () => goToMonth(viewYear, viewMonth + 1));
+  if (todayBtn) todayBtn.addEventListener('click', () => {
+    selectedDay = null;
+    goToMonth(todayDateObj.getFullYear(), todayDateObj.getMonth());
+    getMessagesForDay(userEmail, today).then((msgs) => {
+      messages = msgs.length > 0 ? msgs : [{ role: 'bot', text: getDayGreeting(), time: new Date().toISOString() }];
+      renderChat();
+    });
+  });
+
+  // Đồng bộ khi widget khác (ví dụ Health Journey Game) báo có nước mới được thêm —
+  // nạp lại bản ghi hôm nay từ IndexedDB (không còn localStorage) rồi vẽ lại UI.
+  async function onSyncEvent() {
+    const todayRecord = await getDay(userEmail, today);
+    if (todayRecord) {
+      state = { date: today, total: todayRecord.water?.total || 0, goal: todayRecord.water?.goal || 2000, history: waterHistoryMap };
+      waterHistoryMap[today] = { total: state.total, goal: state.goal };
+      if (Array.isArray(todayRecord.messages) && todayRecord.messages.length > 0 && !selectedDay) messages = todayRecord.messages;
+    }
+    renderState(); renderChat();
+  }
   window.addEventListener(SYNC_EVENT, onSyncEvent);
   $('flipCard').addEventListener('click', () => { cardFlipped = !cardFlipped; renderCard(); });
   $('prevCard').addEventListener('click', () => { activeCard = (activeCard - 1 + flashcards.length) % flashcards.length; cardFlipped = false; renderCard(); });
@@ -909,8 +1051,15 @@ export function mountBeMeoWidget(shadow, {
   $('restartQuizResult').addEventListener('click', restartQuiz);
 
   // ─── Initial render ─────────────────────────────────────────────────────────
+  populateMonthYearSelects();
   renderState(); renderChat(); renderCard(); renderQuestion(); drawInfographicCharts();
   window.addEventListener('resize', drawInfographicCharts);
+
+  // Nạp dữ liệu thật từ IndexedDB (water + chat của hôm nay, và toàn bộ lịch sử ml để vẽ calendar) —
+  // chạy async sau lần render đầu (placeholder) để UI hiện ngay, không phải đợi IndexedDB mở xong.
+  loadInitialState().then(() => {
+    renderState(); renderChat();
+  }).catch((e) => console.error('[Bé Mèo Nước] loadInitialState error:', e));
 
   // ─── Proof restore retry logic ───────────────────────────────────────────────
   let proofRestoreAttempts = 0;
