@@ -613,29 +613,46 @@ function parseInBodyCsv(csvText) {
 }
 
 function buildSimulatedClaudeAnalysis(records, fileName = STANDARD_INBODY_FILE) {
-  const first = records[0];
+  const first  = records[0];
   const latest = records[records.length - 1];
-  const prev = records[records.length - 2] || first;
-  const diff = (key) => latest?.[key] != null && first?.[key] != null ? latest[key] - first[key] : 0;
-  const trend = diff('fat') <= 0 ? 'ok' : 'warn';
+  const prev   = records[records.length - 2] || first;
+  const diff   = (key) => latest?.[key] != null && first?.[key] != null ? latest[key] - first[key] : 0;
+  const trend  = diff('fat') <= 0 ? 'ok' : 'warn';
+
+  // Build date range string from real data
+  const dates       = records.map(r => r.date || r.rawDate).filter(Boolean);
+  const uniqueDates = [...new Set(dates)].sort();
+  const dateRange   = uniqueDates.length > 1
+    ? `từ ${uniqueDates[0]} đến ${uniqueDates[uniqueDates.length - 1]}`
+    : uniqueDates[0] ? `ngày ${uniqueDates[0]}` : '';
+
+  const measureCount = records.length;
+  const dayCount     = uniqueDates.length;
+  const measureDesc  = dayCount > 1
+    ? `${measureCount} lần đo trên ${dayCount} ngày (${dateRange})`
+    : `${measureCount} lần đo ${dateRange}`;
+
+  const isConverted = fileName.includes('_converted') || fileName.includes('Convert');
+  const source      = isConverted ? 'Groq Vision (llama-4-scout)' : 'CSV LookinBody';
 
   return {
-    summary: `Giả lập Claude đã đọc file chuẩn ${fileName}: phát hiện ${records.length} lần đo trong cùng ngày, cân nặng quanh ${latest?.weight ?? '-'}kg, cơ xương ${latest?.muscle ?? '-'}kg, mỡ cơ thể ${latest?.fat ?? '-'}%, BMI ${latest?.bmi ?? '-'} và điểm InBody ${latest?.score ?? '-'}. Dashboard đã dựng đồ thị theo thời gian từ CSV LookinBody để theo dõi cân nặng, cơ, mỡ, nước, ECW và điểm InBody.`,
+    summary: `${source} phân tích ${fileName}: phát hiện ${measureDesc}. Cân nặng: ${latest?.weight ?? '-'}kg · Cơ xương: ${latest?.muscle ?? '-'}kg · Mỡ: ${latest?.fat ?? '-'}% · BMI: ${latest?.bmi ?? '-'} · Điểm InBody: ${latest?.score ?? '-'}. Dashboard đã dựng đồ thị theo thời gian để theo dõi cân nặng, cơ, mỡ, nước, ECW và điểm InBody.`,
     tags: [
-      { label: 'CSV chuẩn LookinBody', type: 'ok' },
+      { label: isConverted ? 'Groq Vision Convert' : 'CSV chuẩn LookinBody', type: 'ok' },
       { label: trend === 'ok' ? 'Mỡ ổn định/giảm' : 'Mỡ tăng nhẹ', type: trend },
       { label: 'Đồ thị thời gian đã tạo', type: 'info' },
     ],
     metrics: {
-      'Số lần đo': records.length,
+      'Số lần đo': measureCount,
+      'Ngày đo': dateRange || '-',
       'Cân nặng mới nhất': `${latest?.weight ?? '-'} kg`,
-      'Thay đổi cân nặng': `${diff('weight').toFixed(1)} kg`,
+      'Thay đổi cân nặng': records.length > 1 ? `${diff('weight') >= 0 ? '+' : ''}${diff('weight').toFixed(1)} kg` : '-',
       'Cơ xương mới nhất': `${latest?.muscle ?? '-'} kg`,
-      'Thay đổi cơ': `${diff('muscle').toFixed(1)} kg`,
+      'Thay đổi cơ': records.length > 1 ? `${diff('muscle') >= 0 ? '+' : ''}${diff('muscle').toFixed(1)} kg` : '-',
       'Mỡ cơ thể mới nhất': `${latest?.fat ?? '-'}%`,
       'ECW Ratio': latest?.ecwRatio ?? '-',
       'Điểm InBody': latest?.score ?? '-',
-      'So với lần trước': prev && latest ? `Cân ${latest.weight - prev.weight >= 0 ? '+' : ''}${(latest.weight - prev.weight).toFixed(1)}kg · Mỡ ${latest.fat - prev.fat >= 0 ? '+' : ''}${(latest.fat - prev.fat).toFixed(1)}%` : '-',
+      'So với lần trước': prev !== latest ? `Cân ${latest.weight - prev.weight >= 0 ? '+' : ''}${(latest.weight - prev.weight).toFixed(1)}kg · Mỡ ${latest.fat - prev.fat >= 0 ? '+' : ''}${(latest.fat - prev.fat).toFixed(1)}%` : '-',
     },
   };
 }
@@ -775,6 +792,7 @@ function UploadTab({ onAnalysis, onViewMedicalRecord }) {
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [simulatedRecords, setSimulatedRecords] = useState([]);
+  const [lastAnalyzedFileName, setLastAnalyzedFileName] = useState('');
   const [uploadRecordStatus, setUploadRecordStatus] = useState('');
   const [savedUploadRecord, setSavedUploadRecord] = useState(null);
   const inputRef = useRef();
@@ -817,6 +835,7 @@ function UploadTab({ onAnalysis, onViewMedicalRecord }) {
   };
 
   const runSimulatedCsvAnalysis = (csvText, fileName = STANDARD_INBODY_FILE) => {
+    setLastAnalyzedFileName(fileName);
     const parsedRecords = parseInBodyCsv(csvText);
     if (!parsedRecords.length) throw new Error('CSV không có dòng dữ liệu InBody hợp lệ.');
     const analysis = buildSimulatedClaudeAnalysis(parsedRecords, fileName);
@@ -982,7 +1001,13 @@ function UploadTab({ onAnalysis, onViewMedicalRecord }) {
       {result && (
         <div className="ai-result">
           <div className="ai-header">
-            <span className="ai-badge">{simulatedRecords.length ? 'Claude Simulation' : 'Claude Vision'}</span>
+            <span className="ai-badge">
+              {simulatedRecords.length
+                ? (lastAnalyzedFileName.includes('_converted') || lastAnalyzedFileName.includes('Convert')
+                    ? '🤖 Groq Vision'
+                    : '📊 CSV LookinBody')
+                : '🔬 Groq Vision'}
+            </span>
             <span className="ai-title">Phân tích InBody</span>
           </div>
           <p className="ai-text">{result.summary}</p>
