@@ -554,6 +554,9 @@ export default function HealthJourneyGameStandalone({ onViewMedicalRecord }) {
         const xpEarned = XP_TABLE[task.activityType] || 0
         const defaultFilename = isWebcamCapture ? `${selectedTaskKey}_ai_webcam.jpg` : `${selectedTaskKey}_ai_image.jpg`
         const file = dataUrlToFile(event.data.dataUrl, event.data.filename || defaultFilename)
+        const beMeoProofId = selectedTaskKey === 'water'
+          ? ('proof_mp_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7))
+          : null
         const record = await saveWaterProofImage(file, user, {
           source: `health-journey-game-task-detail-ai-healthcare-vision-${captureKind}`,
           notesPrefix: `Health Journey Game · Chi tiết Nhiệm Vụ · ${task.title}`,
@@ -562,6 +565,7 @@ export default function HealthJourneyGameStandalone({ onViewMedicalRecord }) {
           xpEarned,
           waterAmountMl: selectedTaskKey === 'water' ? 150 : 0,
           proofType: `ai_healthcare_vision_object_detection_${captureKind}_overlay`,
+          beMeoProofId,
         })
         completeHealthJourneyActivity({
           user,
@@ -571,7 +575,11 @@ export default function HealthJourneyGameStandalone({ onViewMedicalRecord }) {
           uploadRecord: record,
           metadata: { source: `health-journey-game-task-detail-ai-healthcare-vision-${captureKind}`, flow: `Chi tiết Nhiệm Vụ -> AI Healthcare Vision Control Object Detection ${captureKind} -> Upload proof` },
         })
-        if (selectedTaskKey === 'water') syncBeMeoWater(150, `Health Journey Game · AI Healthcare Vision ${captureKind} proof`)
+        if (selectedTaskKey === 'water') {
+          syncBeMeoWater(150, `Health Journey Game · AI Healthcare Vision ${captureKind} proof`, beMeoProofId)
+          // Gửi ảnh cho widget Bé Mèo Nước gắn vào đúng dòng chat (khớp theo beMeoProofId vừa truyền).
+          if (record.dataUrl) window.postMessage({ type: 'BE_MEO_PROOF_SAVED', proofId: beMeoProofId, dataUrl: record.dataUrl }, '*')
+        }
         setLastMissionRecord(record)
         event.source?.postMessage?.({ type: 'AI_CLINIC_MEDIAPIPE_CAPTURE_SAVED', captureKind, uploadPath: record.uploadPath }, event.origin)
       } catch (error) {
@@ -706,7 +714,8 @@ export default function HealthJourneyGameStandalone({ onViewMedicalRecord }) {
       drawAIWaterBottleOverlay(ctx, canvas.width, canvas.height)
       const dataUrl = canvas.toDataURL('image/jpeg', 0.92)
       const file = dataUrlToFile(dataUrl, 'health_journey_water_bottle.jpg')
-      const record = await saveWaterProofImage(file, user, { source: 'health-journey-game-task-detail', notesPrefix: 'Health Journey Game · Chi tiết Nhiệm Vụ · Uống nước' })
+      const beMeoProofId = 'proof_hjg_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7)
+      const record = await saveWaterProofImage(file, user, { source: 'health-journey-game-task-detail', notesPrefix: 'Health Journey Game · Chi tiết Nhiệm Vụ · Uống nước', beMeoProofId })
       completeHealthJourneyActivity({
         user,
         activityType: 'drink_water',
@@ -715,7 +724,9 @@ export default function HealthJourneyGameStandalone({ onViewMedicalRecord }) {
         uploadRecord: record,
         metadata: { source: 'health-journey-game-task-detail', flow: 'Chi tiết Nhiệm Vụ -> AI Webcam -> Upload -> Bé Mèo +150ml' },
       })
-      syncBeMeoWater(150, 'Health Journey Game · Chụp chai nước')
+      syncBeMeoWater(150, 'Health Journey Game · Chụp chai nước', beMeoProofId)
+      // Gửi ảnh cho widget Bé Mèo Nước gắn vào đúng dòng chat (khớp theo beMeoProofId vừa truyền).
+      if (record.dataUrl) window.postMessage({ type: 'BE_MEO_PROOF_SAVED', proofId: beMeoProofId, dataUrl: record.dataUrl }, '*')
       setLastMissionRecord(record)
       stopWaterCamera()
     } catch (error) {

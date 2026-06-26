@@ -168,40 +168,19 @@ export default function TaskDetailPopup({ taskId, onClose, onOpenJourney, snapsh
       })
       if (task.taskId === 'water') {
         // Dùng proofId đã tạo trong onSaveCapture (đã gán vào beMeoProofId của record)
-        // → đảm bảo proofId khớp hoàn toàn giữa record IndexedDB và localStorage chat
+        // → truyền thẳng vào syncBeMeoWater để widget Bé Mèo Nước (Shadow DOM) gắn ĐÚNG
+        // proofId này vào dòng chat nó tự tạo, khớp hoàn toàn với ảnh đã lưu trong Medical Records.
         const proofId = pendingProofIdRef.current
           || ('task_detail_' + Date.now())
         pendingProofIdRef.current = null
 
-        // Bước 1: syncBeMeoWater push tin nhắn mới vào localStorage (chưa có proofId/time)
-        const syncResult = syncBeMeoWater(150, 'Chi Tiết Task uống nước')
+        const syncResult = syncBeMeoWater(150, 'Chi Tiết Task uống nước', proofId)
 
         if (record?.dataUrl) {
-          // Bước 2: Patch proofId + time vào tin nhắn CUỐI vừa push
-          try {
-            const msgs = JSON.parse(localStorage.getItem('be-meo-nuoc-chat-v1') || '[]')
-            if (Array.isArray(msgs) && msgs.length > 0) {
-              const last = msgs[msgs.length - 1]
-              msgs[msgs.length - 1] = {
-                ...last,
-                proofId,
-                time: last.time || new Date().toISOString(),
-              }
-              localStorage.setItem('be-meo-nuoc-chat-v1', JSON.stringify(msgs.slice(-80)))
-            }
-          } catch (_) {}
-
-          // Bước 3: Pre-populate proofMap localStorage
-          try {
-            const proofMap = JSON.parse(localStorage.getItem('be_meo_nuoc_proof_map') || '{}')
-            proofMap[proofId] = record.dataUrl
-            localStorage.setItem('be_meo_nuoc_proof_map',
-              JSON.stringify(Object.fromEntries(Object.entries(proofMap).slice(-30))))
-          } catch (_) {}
-
-          // Bước 4: Gửi BE_MEO_TASK_PROOF_SAVED → WaterDrinkChatBotPanel forward STATE_SYNC + PROOF_SAVED vào iframe
+          // Gửi BE_MEO_TASK_PROOF_SAVED → WaterDrinkChatBotPanel forward PROOF_SAVED vào widget
+          // (widget tự cộng nước + tạo chat qua SYNC_EVENT ở trên rồi, nên không cần gửi syncState nữa).
           window.dispatchEvent(new CustomEvent('BE_MEO_TASK_PROOF_SAVED', {
-            detail: { proofId, dataUrl: record.dataUrl, ml: 150, syncState: syncResult?.state },
+            detail: { proofId, dataUrl: record.dataUrl, ml: 150 },
           }))
         }
       }

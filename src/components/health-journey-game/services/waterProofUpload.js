@@ -78,7 +78,7 @@ export function drawAIWaterBottleOverlay(ctx, width, height) {
   ctx.restore()
 }
 
-export function syncBeMeoWater(amount = WATER_AMOUNT_ML, source = 'health-journey-game') {
+export function syncBeMeoWater(amount = WATER_AMOUNT_ML, source = 'health-journey-game', proofId = null) {
   if (typeof window === 'undefined') return null
   const today = new Date().toISOString().slice(0, 10)
   const defaultState = { date: today, total: 0, goal: 2000, history: {} }
@@ -99,20 +99,18 @@ export function syncBeMeoWater(amount = WATER_AMOUNT_ML, source = 'health-journe
   const percent = Math.min(100, Math.round((state.total / (state.goal || 2000)) * 100))
   state.date = today
   state.history = { ...(state.history || {}), [today]: { total: state.total, goal: state.goal || 2000, percent } }
+  // Lưu ý: state ở đây chỉ là giá trị "tham khảo nhanh" để trả về cho nơi gọi hiển thị ngay
+  // (ví dụ setSnapshot). Nguồn sự thật thật sự của mực nước là IndexedDB do widget Bé Mèo Nước
+  // tự quản lý — widget nhận event bên dưới và tự cộng amount vào đúng state của nó rồi lưu.
   localStorage.setItem(BE_MEO_WATER_STATE_KEY, JSON.stringify(state))
 
   const botText = `Bé Mèo đã ghi +${amount}ml từ ${source}. Hôm nay bạn đang ở ${state.total}/${state.goal}ml (${percent}%).`
-  try {
-    const messages = JSON.parse(localStorage.getItem(BE_MEO_CHAT_KEY) || '[]')
-    const nextMessages = Array.isArray(messages) ? messages : []
-    nextMessages.push({ role: 'bot', text: botText, time: new Date().toISOString() })
-    localStorage.setItem(BE_MEO_CHAT_KEY, JSON.stringify(nextMessages.slice(-80)))
-  } catch {
-    localStorage.setItem(BE_MEO_CHAT_KEY, JSON.stringify([{ role: 'bot', text: botText, time: new Date().toISOString() }]))
-  }
 
-  window.dispatchEvent(new CustomEvent(BE_MEO_SYNC_EVENT, { detail: { amount, source, state, botText } }))
-  return { state, botText }
+  // Báo cho widget Bé Mèo Nước (đang lắng nghe BE_MEO_SYNC_EVENT) cộng nước + ghi chat
+  // vào IndexedDB của đúng user đang đăng nhập. proofId (nếu có) giúp widget gắn đúng
+  // ảnh chứng minh vào dòng chat nó vừa tạo, khớp với ảnh đã lưu trong Medical Records.
+  window.dispatchEvent(new CustomEvent(BE_MEO_SYNC_EVENT, { detail: { amount, source, state, botText, proofId } }))
+  return { state, botText, proofId }
 }
 
 export async function saveWaterProofImage(file, user, {
