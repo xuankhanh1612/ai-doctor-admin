@@ -107,8 +107,8 @@ function getActiveQuests(records) {
 // PDF text-based  → pdf.js extract  → llama-3.3-70b text
 const INBODY_OCR_SYSTEM_PROMPT = `Bạn là chuyên gia phân tích kết quả InBody (máy đo thành phần cơ thể).
 Khi nhận ảnh/PDF kết quả InBody, hãy:
-1. Đọc thật kỹ và trích xuất CHÍNH XÁC các chỉ số có trên phiếu in: Ngày đo (định dạng YYYY-MM-DD), Cân nặng, Cơ bắp (SMM/Khối lượng cơ xương), Khối lượng mỡ trong cơ thể, Tỷ lệ mỡ cơ thể (%), BMI, Tỷ lệ trao đổi chất cơ bản (BMR), Điểm InBody, Lượng nước trong cơ thể (%), Mỡ nội tạng (Level), Protein, Khoáng chất — nếu ảnh không hiển thị chỉ số nào thì BỎ QUA chỉ số đó trong "metrics", KHÔNG tự đoán hay bịa số.
-2. ĐẶC BIỆT QUAN TRỌNG về ngày đo: Đọc trường "Ngày/Giờ kiểm tra" TRỰC TIẾP trên phiếu in. KHÔNG dùng ngày hôm nay hay tự bịa. Nếu thấy rõ ví dụ "08.05.2026" thì ghi "2026-05-08". Nếu KHÔNG thể đọc được ngày, hãy ĐỂ TRỐNG trường "Ngày đo" (đừng điền gì vào đó).
+1. Đọc thật kỹ và trích xuất CHÍNH XÁC các chỉ số có trên phiếu in: Ngày đo (định dạng YYYY-MM-DD HH:mm), Cân nặng, Cơ bắp (SMM/Khối lượng cơ xương), Khối lượng mỡ trong cơ thể, Tỷ lệ mỡ cơ thể (%), BMI, Tỷ lệ trao đổi chất cơ bản (BMR), Điểm InBody, Lượng nước trong cơ thể (%), Mỡ nội tạng (Level), Protein, Khoáng chất — nếu ảnh không hiển thị chỉ số nào thì BỎ QUA chỉ số đó trong "metrics", KHÔNG tự đoán hay bịa số.
+2. ĐẶC BIỆT QUAN TRỌNG về ngày và giờ đo: Đọc trường "Ngày/Giờ kiểm tra" TRỰC TIẾP trên phiếu in. KHÔNG dùng ngày hôm nay hay tự bịa. Đọc CẢ GIỜ VÀ PHÚT nếu có — ví dụ phiếu ghi "08.05.2026 10:58" thì ghi "2026-05-08 10:58". Nếu chỉ thấy ngày không có giờ, ghi "2026-05-08 00:00". Nếu KHÔNG thể đọc được ngày, hãy ĐỂ TRỐNG trường "Ngày đo" (đừng điền gì vào đó). Lưu cả giờ:phút vì người dùng có thể đo nhiều lần trong cùng một ngày.
 3. Đưa ra nhận xét ngắn gọn (2-3 câu) về tình trạng sức khỏe dựa trên số liệu đọc được.
 4. Gợi ý cải thiện cụ thể (tập luyện, dinh dưỡng).
 5. Tính XP gamification dựa trên thay đổi so với lần đo trước (nếu có dữ liệu trước đó được cung cấp).
@@ -128,7 +128,7 @@ CHỈ trả lời bằng JSON hợp lệ (không kèm lời dẫn, không kèm m
     "Mỡ nội tạng": "9",
     "Protein": "10.2",
     "Khoáng chất": "3.6",
-    "Ngày đo": "2026-05-08"
+    "Ngày đo": "2026-05-08 10:58"
   },
   "tags": [
     { "label": "Cơ bắp tốt ▲", "type": "ok" },
@@ -713,7 +713,8 @@ function InBodyTrendPreview({ records }) {
   if (!records?.length) return null;
   const chartData = records.map((record) => ({
     ...record,
-    dateLabel: record.date.includes(' ') ? record.date.slice(11) : record.date.slice(5),
+    // Show "MM-DD HH:mm" when datetime is available (multiple measures per day), else "MM-DD"
+    dateLabel: record.date.includes(' ') ? record.date.slice(5) : record.date.slice(5),
   }));
   const latest = records[records.length - 1];
 
