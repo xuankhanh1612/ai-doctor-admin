@@ -143,7 +143,10 @@ export function buildImageConvertedInBodyRecord({ analysis, fallback, sourceName
   // Priority: ocrRow['ngày'] → metrics['Ngày đo'] (from Groq vision) → '' (unknown, do NOT use today)
   // IMPORTANT: Never fall back to today's date (compactTimestamp) for image-converted records,
   // because that would record the wrong measurement date. Leave it blank/unknown instead.
-  const metricDate = metrics['Ngày đo'] || metrics['Ngày'] || metrics['Date'] || ''
+  // Note: Groq may use various key names — cover all known variants.
+  const metricDate = metrics['Ngày đo'] || metrics['Ngày'] || metrics['Date'] ||
+    metrics['Ngày/Giờ kiểm tra'] || metrics['Ngày kiểm tra'] || metrics['Thời gian đo'] ||
+    metrics['datetime'] || metrics['date'] || ''
   const metricDateDigits = String(metricDate).replace(/[-/ :T]/g, '').replace(/\D/g, '').slice(0, 14)
 
   // Validate: metricDateDigits must be a plausible calendar date (not a future date artifact)
