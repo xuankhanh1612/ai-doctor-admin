@@ -1031,23 +1031,21 @@ export function mountBeMeoWidget(shadow, {
   });
 
   // Đồng bộ khi nơi khác (Health Journey Game, Task Detail, AI Vision Webcam...) báo có
-  // nước mới được thêm qua syncBeMeoWater() — event.detail mang theo amount/source/botText
-  // thật của lần thêm đó. Widget tự cộng nước + tạo dòng chat bot + lưu vào IndexedDB của
-  // đúng user đang đăng nhập (không còn phụ thuộc localStorage cũ).
+  // nước mới được thêm qua syncBeMeoWater() — hàm đó đã TỰ GHI trực tiếp vào IndexedDB rồi
+  // (hoạt động đúng dù widget này có đang mount hay không). Ở đây chỉ cần ĐỌC LẠI từ
+  // IndexedDB và vẽ lại UI ngay — không tự cộng amount vào RAM để tránh cộng nước 2 lần.
   async function onSyncEvent(event) {
     const detail = event?.detail || {};
-    const amount = Number(detail.amount) || 0;
-    await exitPastViewIfNeeded(); // nếu đang xem lịch sử ngày cũ, quay về hôm nay trước khi cộng nước mới
-    if (amount > 0) {
-      state.total = Math.max(0, (state.total || 0) + amount);
-      const pct = Math.min(100, Math.round((state.total / (state.goal || 2000)) * 100));
-      const text = detail.botText || (state.total >= state.goal
-        ? `Giỏi quá meo! Bạn đã đạt ${state.total}/${state.goal}ml hôm nay rồi đó 🏆💧`
-        : `Bé Mèo đã ghi +${amount}ml${detail.source ? ' từ ' + detail.source : ''}. Hôm nay bạn đang ở ${state.total}/${state.goal}ml (${pct}%).`);
-      // Dùng ĐÚNG proofId được truyền từ nơi gọi syncBeMeoWater() (khớp với ảnh đã lưu vào
-      // Medical Records) — chỉ tự sinh một proofId mới khi nơi gọi không có ảnh kèm theo.
-      const proofId = detail.proofId || null;
-      messages.push({ role: 'bot', text, proofId, time: new Date().toISOString() });
+    await exitPastViewIfNeeded(); // nếu đang xem lịch sử ngày cũ, quay về hôm nay trước khi đồng bộ
+    // Chỉ áp dụng nếu sự kiện này thuộc về đúng user đang đăng nhập trong widget này —
+    // tránh trường hợp 2 user khác nhau dùng chung máy/tab gây lẫn dữ liệu.
+    if (detail.email && userEmail && detail.email.toLowerCase() !== userEmail.toLowerCase()) { return; }
+    const todayRecord = await getDay(userEmail, today);
+    if (todayRecord) {
+      state.total = todayRecord.water?.total ?? state.total;
+      state.goal = todayRecord.water?.goal ?? state.goal;
+      waterHistoryMap[today] = { total: state.total, goal: state.goal };
+      if (Array.isArray(todayRecord.messages)) messages = todayRecord.messages;
     }
     renderState(); renderChat();
   }
