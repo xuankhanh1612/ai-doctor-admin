@@ -205,7 +205,7 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
     })
   }
 
-  const handleCaptureSaved = (record) => {
+  const handleCaptureSaved = async (record) => {
     try {
       completeHealthJourneyActivity({
         user,
@@ -220,10 +220,10 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
       })
       const proofId = pendingProofIdRef.current || ('proof_cam_' + Date.now())
 
-      // syncBeMeoWater phát event mà widget Bé Mèo Nước (Shadow DOM) đang lắng nghe —
-      // widget sẽ tự cộng nước + tạo dòng chat bot gắn ĐÚNG proofId này + lưu vào IndexedDB
-      // theo user đang đăng nhập. Không còn cần đọc/ghi localStorage thủ công ở đây nữa.
-      const syncResult = syncBeMeoWater(150, 'Bé Mèo Nước AI Healthcare Vision', proofId)
+      // syncBeMeoWater ghi trực tiếp vào IndexedDB (đúng theo user.email) — hoạt động
+      // đúng dù widget Bé Mèo Nước có đang mount hay không, rồi phát event để widget
+      // (nếu đang mount) cập nhật UI ngay với đúng proofId này.
+      const syncResult = await syncBeMeoWater(150, 'Bé Mèo Nước AI Healthcare Vision', proofId, user?.email)
       setSnapshot(getTaskSnapshot(user))
 
       if (record.dataUrl) {
