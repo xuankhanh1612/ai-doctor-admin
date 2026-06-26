@@ -38,7 +38,8 @@ export default function Sidebar({ active, onNavigate, openSignal = 0 }) {
   const STEPS = [
     { id: 'healthJourneyGame', label: 'Health Journey Game', step: '00' },
     { id: 'waterDrinkChatBot', label: t('waterDrinkChatBot'), step: '01' },
-    { id: 'wikiMedVision',   label: t('wikiMedVision'),    step: '01c' },
+    { id: 'wikiMedVision',          label: t('wikiMedVision'),           step: '01c' },
+    { id: 'fullDocSummarization',   label: 'Full-Document Summarization', step: '01d' },
     { id: 'organConnection',   label: 'Ăn gì hôm nay',       step: '01b' },
     { id: 'healthJourney', label: t('healthJourney'), step: '02' },
     { id: 'lunchJourney', label: t('lunchJourney'), step: '03' },
