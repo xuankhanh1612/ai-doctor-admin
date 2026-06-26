@@ -1,5 +1,6 @@
 import { detectFileType, fileToBase64, fileToDataUrl, saveRecord } from '../../../lib/medicalStorage.js'
 import { notifyUpload } from '../../../hooks/useMedicalData.js'
+import { dateKey as beMeoDateKey, getDay as getBeMeoDay, saveDay as saveBeMeoDay } from '../../../lib/beMeoChatStorage.js'
 
 export const WATER_AMOUNT_ML = 150
 export const BE_MEO_WATER_STATE_KEY = 'be-meo-nuoc-water-state-v1'
@@ -78,38 +79,41 @@ export function drawAIWaterBottleOverlay(ctx, width, height) {
   ctx.restore()
 }
 
-export function syncBeMeoWater(amount = WATER_AMOUNT_ML, source = 'health-journey-game', proofId = null) {
+// Cộng nước + tạo dòng chat bot, lưu TRỰC TIẾP vào IndexedDB của đúng user (qua
+// beMeoChatStorage.js) — hoạt động đúng dù tab/widget "Bé Mèo Nước" đang mount hay không,
+// vì IndexedDB không phụ thuộc Shadow DOM còn sống. Sau khi ghi xong, vẫn dispatch event để
+// widget (nếu đang mount sẵn) cập nhật UI ngay lập tức, không cần đợi reload/chuyển tab.
+//
+// `email`: bắt buộc truyền nếu muốn lưu đúng theo user đăng nhập — nếu bỏ trống, dữ liệu
+// sẽ rơi vào nhóm 'guest' (xem ownerKeyOf trong beMeoChatStorage.js).
+export async function syncBeMeoWater(amount = WATER_AMOUNT_ML, source = 'health-journey-game', proofId = null, email = null) {
   if (typeof window === 'undefined') return null
-  const today = new Date().toISOString().slice(0, 10)
-  const defaultState = { date: today, total: 0, goal: 2000, history: {} }
-  let state = defaultState
+  const today = beMeoDateKey()
+
+  let record
   try {
-    const parsed = JSON.parse(localStorage.getItem(BE_MEO_WATER_STATE_KEY) || 'null')
-    if (parsed && typeof parsed === 'object') {
-      const history = parsed.history && typeof parsed.history === 'object' ? parsed.history : {}
-      state = parsed.date === today
-        ? { ...defaultState, ...parsed, history }
-        : { ...defaultState, goal: parsed.goal || 2000, history, total: history[today]?.total || 0 }
-    }
+    record = await getBeMeoDay(email, today)
   } catch {
-    state = defaultState
+    record = null
+  }
+  const goal = record?.water?.goal || 2000
+  const total = Math.max(0, Number(record?.water?.total || 0) + amount)
+  const percent = Math.min(100, Math.round((total / goal) * 100))
+  const botText = `Bé Mèo đã ghi +${amount}ml từ ${source}. Hôm nay bạn đang ở ${total}/${goal}ml (${percent}%).`
+  const messages = Array.isArray(record?.messages) ? record.messages : []
+  const nextMessages = [...messages, { role: 'bot', text: botText, proofId, time: new Date().toISOString() }]
+
+  try {
+    await saveBeMeoDay(email, today, { messages: nextMessages, water: { total, goal } })
+  } catch (e) {
+    console.error('[syncBeMeoWater] lỗi lưu IndexedDB:', e)
   }
 
-  state.total = Math.max(0, Number(state.total || 0) + amount)
-  const percent = Math.min(100, Math.round((state.total / (state.goal || 2000)) * 100))
-  state.date = today
-  state.history = { ...(state.history || {}), [today]: { total: state.total, goal: state.goal || 2000, percent } }
-  // Lưu ý: state ở đây chỉ là giá trị "tham khảo nhanh" để trả về cho nơi gọi hiển thị ngay
-  // (ví dụ setSnapshot). Nguồn sự thật thật sự của mực nước là IndexedDB do widget Bé Mèo Nước
-  // tự quản lý — widget nhận event bên dưới và tự cộng amount vào đúng state của nó rồi lưu.
-  localStorage.setItem(BE_MEO_WATER_STATE_KEY, JSON.stringify(state))
+  const state = { date: today, total, goal, history: { [today]: { total, goal, percent } } }
 
-  const botText = `Bé Mèo đã ghi +${amount}ml từ ${source}. Hôm nay bạn đang ở ${state.total}/${state.goal}ml (${percent}%).`
-
-  // Báo cho widget Bé Mèo Nước (đang lắng nghe BE_MEO_SYNC_EVENT) cộng nước + ghi chat
-  // vào IndexedDB của đúng user đang đăng nhập. proofId (nếu có) giúp widget gắn đúng
-  // ảnh chứng minh vào dòng chat nó vừa tạo, khớp với ảnh đã lưu trong Medical Records.
-  window.dispatchEvent(new CustomEvent(BE_MEO_SYNC_EVENT, { detail: { amount, source, state, botText, proofId } }))
+  // Báo cho widget Bé Mèo Nước (nếu đang mount trong tab này) cập nhật UI ngay —
+  // widget sẽ tự đọc lại từ IndexedDB (vừa ghi ở trên) để tránh cộng nước 2 lần.
+  window.dispatchEvent(new CustomEvent(BE_MEO_SYNC_EVENT, { detail: { amount, source, state, botText, proofId, email } }))
   return { state, botText, proofId }
 }
 

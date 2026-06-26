@@ -174,7 +174,7 @@ export default function TaskDetailPopup({ taskId, onClose, onOpenJourney, snapsh
           || ('task_detail_' + Date.now())
         pendingProofIdRef.current = null
 
-        const syncResult = syncBeMeoWater(150, 'Chi Tiết Task uống nước', proofId)
+        const syncResult = await syncBeMeoWater(150, 'Chi Tiết Task uống nước', proofId, user?.email)
 
         if (record?.dataUrl) {
           // Gửi BE_MEO_TASK_PROOF_SAVED → WaterDrinkChatBotPanel forward PROOF_SAVED vào widget
