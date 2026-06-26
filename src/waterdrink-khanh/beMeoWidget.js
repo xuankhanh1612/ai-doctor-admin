@@ -1030,14 +1030,24 @@ export function mountBeMeoWidget(shadow, {
     });
   });
 
-  // Đồng bộ khi widget khác (ví dụ Health Journey Game) báo có nước mới được thêm —
-  // nạp lại bản ghi hôm nay từ IndexedDB (không còn localStorage) rồi vẽ lại UI.
-  async function onSyncEvent() {
-    const todayRecord = await getDay(userEmail, today);
-    if (todayRecord) {
-      state = { date: today, total: todayRecord.water?.total || 0, goal: todayRecord.water?.goal || 2000, history: waterHistoryMap };
-      waterHistoryMap[today] = { total: state.total, goal: state.goal };
-      if (Array.isArray(todayRecord.messages) && todayRecord.messages.length > 0 && !selectedDay) messages = todayRecord.messages;
+  // Đồng bộ khi nơi khác (Health Journey Game, Task Detail, AI Vision Webcam...) báo có
+  // nước mới được thêm qua syncBeMeoWater() — event.detail mang theo amount/source/botText
+  // thật của lần thêm đó. Widget tự cộng nước + tạo dòng chat bot + lưu vào IndexedDB của
+  // đúng user đang đăng nhập (không còn phụ thuộc localStorage cũ).
+  async function onSyncEvent(event) {
+    const detail = event?.detail || {};
+    const amount = Number(detail.amount) || 0;
+    await exitPastViewIfNeeded(); // nếu đang xem lịch sử ngày cũ, quay về hôm nay trước khi cộng nước mới
+    if (amount > 0) {
+      state.total = Math.max(0, (state.total || 0) + amount);
+      const pct = Math.min(100, Math.round((state.total / (state.goal || 2000)) * 100));
+      const text = detail.botText || (state.total >= state.goal
+        ? `Giỏi quá meo! Bạn đã đạt ${state.total}/${state.goal}ml hôm nay rồi đó 🏆💧`
+        : `Bé Mèo đã ghi +${amount}ml${detail.source ? ' từ ' + detail.source : ''}. Hôm nay bạn đang ở ${state.total}/${state.goal}ml (${pct}%).`);
+      // Dùng ĐÚNG proofId được truyền từ nơi gọi syncBeMeoWater() (khớp với ảnh đã lưu vào
+      // Medical Records) — chỉ tự sinh một proofId mới khi nơi gọi không có ảnh kèm theo.
+      const proofId = detail.proofId || null;
+      messages.push({ role: 'bot', text, proofId, time: new Date().toISOString() });
     }
     renderState(); renderChat();
   }
