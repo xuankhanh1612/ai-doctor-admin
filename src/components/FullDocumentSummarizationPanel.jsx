@@ -177,88 +177,102 @@ export default function FullDocumentSummarizationPanel({ onNext, nextLabel, onPr
 
     const chunkSummaries = []
 
+    // ── Helper: call proxy and surface real Anthropic error messages ──
+    const callProxy = async (payload, signal) => {
+      const proxyRes = await fetch('/api/anthropic-proxy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal,
+        body: JSON.stringify(payload),
+      })
+      const proxyData = await proxyRes.json()
+      if (!proxyRes.ok) {
+        const msg = proxyData?.error?.message || proxyData?.error || JSON.stringify(proxyData)
+        throw new Error(`Anthropic ${proxyRes.status}: ${msg}`)
+      }
+      return proxyData
+    }
+
+    // ── Helper: validate image mime (Anthropic accepts only these 4) ──
+    const safeMime = (mime) => {
+      const allowed = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+      return allowed.includes(mime) ? mime : 'image/jpeg'
+    }
+
     try {
       for (let ci = 0; ci < chunks.length; ci++) {
         if (controller.signal.aborted) break
         setChunkCurrent(ci + 1)
 
         const chunk = chunks[ci]
-
-        // Build content array for this chunk
-        const contentParts = []
-
-        // For each page in chunk, attach as image if image file, else describe PDF page
-        for (const page of chunk) {
-          if (page.type === 'image') {
-            try {
-              const b64 = await toBase64(page.file)
-              const mimeType = page.file.type || 'image/jpeg'
-              contentParts.push({
-                type: 'image',
-                source: { type: 'base64', media_type: mimeType, data: b64 },
-              })
-            } catch (_) {
-              contentParts.push({ type: 'text', text: `[Ảnh: ${page.name}]` })
-            }
-          } else {
-            // PDF: describe by name; in production ColPali would render pages
-            contentParts.push({ type: 'text', text: `[Tài liệu PDF: ${page.name}]` })
-          }
-        }
-
         const chunkLabel = lang === 'vi'
           ? `Chunk ${ci + 1}/${chunks.length} — Trang ${ci * CHUNK_SIZE + 1}–${Math.min((ci + 1) * CHUNK_SIZE, pages.length)}`
           : `Chunk ${ci + 1}/${chunks.length} — Pages ${ci * CHUNK_SIZE + 1}–${Math.min((ci + 1) * CHUNK_SIZE, pages.length)}`
 
-        const systemMsg = lang === 'vi'
-          ? `Bạn là chuyên gia phân tích tài liệu y tế sử dụng công nghệ RAG trực quan (ColPali visual embeddings). Bạn đang xử lý ${chunkLabel}. Hãy phân tích kỹ lưỡng, súc tích, và dùng Markdown để định dạng.`
-          : `You are a medical document analysis expert using visual RAG technology (ColPali visual embeddings). You are processing ${chunkLabel}. Be thorough, concise, and use Markdown formatting.`
+        // ── Build content parts for this chunk ──
+        const contentParts = []
 
+        for (const page of chunk) {
+          if (page.type === 'image') {
+            try {
+              const b64 = await toBase64(page.file)
+              contentParts.push({
+                type: 'image',
+                source: { type: 'base64', media_type: safeMime(page.file.type), data: b64 },
+              })
+            } catch (_) {
+              contentParts.push({ type: 'text', text: `[Ảnh không đọc được: ${page.name}]` })
+            }
+          } else if (page.type === 'pdf') {
+            try {
+              const b64 = await toBase64(page.file)
+              contentParts.push({
+                type: 'document',
+                source: { type: 'base64', media_type: 'application/pdf', data: b64 },
+              })
+            } catch (_) {
+              contentParts.push({ type: 'text', text: `[PDF không đọc được: ${page.name}]` })
+            }
+          }
+        }
+
+        // Always end with the text instruction
         contentParts.push({
           type: 'text',
           text: lang === 'vi'
-            ? `${userPrompt}\n\nĐây là chunk ${ci + 1} trong tổng số ${chunks.length} chunks. Hãy tóm tắt nội dung trong chunk này.`
-            : `${userPrompt}\n\nThis is chunk ${ci + 1} of ${chunks.length} total chunks. Summarize the content in this chunk.`,
+            ? `${userPrompt}\n\nĐây là ${chunkLabel}. Hãy phân tích và tóm tắt nội dung trên.`
+            : `${userPrompt}\n\nThis is ${chunkLabel}. Analyze and summarize the content above.`,
         })
 
-        const res = await fetch('/api/anthropic-proxy', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          signal: controller.signal,
-          body: JSON.stringify({
-            model: 'claude-sonnet-4-6',
-            max_tokens: 1000,
-            system: systemMsg,
-            messages: [{ role: 'user', content: contentParts }],
-          }),
-        })
+        const systemMsg = lang === 'vi'
+          ? `Bạn là chuyên gia phân tích tài liệu y tế. Bạn đang xử lý ${chunkLabel}. Hãy phân tích kỹ lưỡng, súc tích, và dùng Markdown để định dạng.`
+          : `You are a medical document analysis expert. You are processing ${chunkLabel}. Be thorough, concise, and use Markdown formatting.`
 
-        if (!res.ok) throw new Error(`API error ${res.status}`)
-        const data = await res.json()
+        const data = await callProxy({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 1024,
+          system: systemMsg,
+          messages: [{ role: 'user', content: contentParts }],
+        }, controller.signal)
+
         const chunkText = data.content?.map(c => c.text || '').join('') || ''
         chunkSummaries.push({ label: chunkLabel, text: chunkText })
         setSummaries(prev => [...prev, { label: chunkLabel, text: chunkText }])
       }
 
       if (!controller.signal.aborted && chunkSummaries.length > 1) {
-        // Final synthesis pass
+        // ── Final synthesis pass (text-only, no media) ──
         setChunkCurrent(chunks.length)
         const synthesisPrompt = lang === 'vi'
-          ? `Tổng hợp các tóm tắt chunk sau thành một bản tóm tắt tổng thể duy nhất, mạch lạc và đầy đủ:\n\n${chunkSummaries.map((s, i) => `**${s.label}:**\n${s.text}`).join('\n\n---\n\n')}\n\nYêu cầu gốc: ${userPrompt}`
-          : `Synthesize the following chunk summaries into one single, coherent, comprehensive summary:\n\n${chunkSummaries.map((s, i) => `**${s.label}:**\n${s.text}`).join('\n\n---\n\n')}\n\nOriginal request: ${userPrompt}`
+          ? `Tổng hợp các tóm tắt sau thành một bản tóm tắt tổng thể duy nhất, mạch lạc và đầy đủ:\n\n${chunkSummaries.map(s => `**${s.label}:**\n${s.text}`).join('\n\n---\n\n')}\n\nYêu cầu gốc: ${userPrompt}`
+          : `Synthesize the following chunk summaries into one single, coherent, comprehensive summary:\n\n${chunkSummaries.map(s => `**${s.label}:**\n${s.text}`).join('\n\n---\n\n')}\n\nOriginal request: ${userPrompt}`
 
-        const synthRes = await fetch('/api/anthropic-proxy', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          signal: controller.signal,
-          body: JSON.stringify({
-            model: 'claude-sonnet-4-6',
-            max_tokens: 1000,
-            messages: [{ role: 'user', content: synthesisPrompt }],
-          }),
-        })
-        if (!synthRes.ok) throw new Error(`Synthesis API error ${synthRes.status}`)
-        const synthData = await synthRes.json()
+        const synthData = await callProxy({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 1024,
+          messages: [{ role: 'user', content: synthesisPrompt }],
+        }, controller.signal)
+
         const synthText = synthData.content?.map(c => c.text || '').join('') || ''
         setFinalSummary(synthText)
       } else if (chunkSummaries.length === 1) {
