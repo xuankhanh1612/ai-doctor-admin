@@ -84,15 +84,16 @@ export function drawAIWaterBottleOverlay(ctx, width, height) {
 // vì IndexedDB không phụ thuộc Shadow DOM còn sống. Sau khi ghi xong, vẫn dispatch event để
 // widget (nếu đang mount sẵn) cập nhật UI ngay lập tức, không cần đợi reload/chuyển tab.
 //
-// `email`: bắt buộc truyền nếu muốn lưu đúng theo user đăng nhập — nếu bỏ trống, dữ liệu
-// sẽ rơi vào nhóm 'guest' (xem ownerKeyOf trong beMeoChatStorage.js).
-export async function syncBeMeoWater(amount = WATER_AMOUNT_ML, source = 'health-journey-game', proofId = null, email = null) {
+// `ownerKey` (= user.uuid, giống nhau cho mọi loại user — guest hay đã đăng nhập):
+// bắt buộc truyền nếu muốn lưu đúng theo user — nếu bỏ trống, dữ liệu sẽ rơi vào nhóm
+// 'guest' (xem ownerKeyOf trong beMeoChatStorage.js).
+export async function syncBeMeoWater(amount = WATER_AMOUNT_ML, source = 'health-journey-game', proofId = null, ownerKey = null) {
   if (typeof window === 'undefined') return null
   const today = beMeoDateKey()
 
   let record
   try {
-    record = await getBeMeoDay(email, today)
+    record = await getBeMeoDay(ownerKey, today)
   } catch {
     record = null
   }
@@ -104,7 +105,7 @@ export async function syncBeMeoWater(amount = WATER_AMOUNT_ML, source = 'health-
   const nextMessages = [...messages, { role: 'bot', text: botText, proofId, time: new Date().toISOString() }]
 
   try {
-    await saveBeMeoDay(email, today, { messages: nextMessages, water: { total, goal } })
+    await saveBeMeoDay(ownerKey, today, { messages: nextMessages, water: { total, goal } })
   } catch (e) {
     console.error('[syncBeMeoWater] lỗi lưu IndexedDB:', e)
   }
@@ -113,7 +114,7 @@ export async function syncBeMeoWater(amount = WATER_AMOUNT_ML, source = 'health-
 
   // Báo cho widget Bé Mèo Nước (nếu đang mount trong tab này) cập nhật UI ngay —
   // widget sẽ tự đọc lại từ IndexedDB (vừa ghi ở trên) để tránh cộng nước 2 lần.
-  window.dispatchEvent(new CustomEvent(BE_MEO_SYNC_EVENT, { detail: { amount, source, state, botText, proofId, email } }))
+  window.dispatchEvent(new CustomEvent(BE_MEO_SYNC_EVENT, { detail: { amount, source, state, botText, proofId, ownerKey } }))
   return { state, botText, proofId }
 }
 
