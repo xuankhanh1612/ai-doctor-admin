@@ -226,7 +226,21 @@ export async function analyzeInBodyWithAI(base64Image, mediaType, file = null, p
 }
 
 // ── Master function: Image → CSV string ───────────────────────────────────────
-// Encapsulates all 3 steps. Returns { csvText, analysisResult, record }.
+// Encapsulates all steps. Returns { csvText, analysisResult, record }.
+//
+// Luồng (học theo FullDocumentSummarizationPanel — 2 bước song song):
+//
+//   Step 1 (song song với Step 2):
+//     Groq Vision ép JSON → trích xuất toàn bộ metrics InBody.
+//     Nếu caller đã có cachedAnalysis (đã bấm "🧠 Phân tích AI" trước đó) thì bỏ qua.
+//
+//   Step 2 (luôn chạy song song với Step 1, KHÔNG phải fallback):
+//     Groq Vision hỏi plain text "Ngày/Giờ kiểm tra là bao nhiêu?" → tự parse
+//     → đây là nguồn ngày TIN CẬY NHẤT vì không bị lệch key JSON.
+//     Ngay cả khi Step 1 đã trả ngày trong JSON, Step 2 vẫn chạy để override —
+//     vì plain-text Vision ít sai key hơn JSON Vision.
+//
+//   Step 3: Merge kết quả → buildImageConvertedInBodyRecord → recordsToInBodyCsv
 //
 // Params:
 //   base64Image    — base64 string (no data: prefix)
@@ -246,40 +260,31 @@ export async function convertInBodyImageToCsv({
   previousRecord = null,
   cachedAnalysis = null,
 } = {}) {
-  // Step 1: Full metrics JSON analysis (skip if caller already has result)
-  let analysisResult = cachedAnalysis
-  if (!analysisResult) {
-    analysisResult = await analyzeInBodyWithAI(base64Image, mediaType, file, previousRecord)
-  }
+  // Step 1 + Step 2: chạy song song để tiết kiệm thời gian.
+  // Step 2 luôn chạy (không conditional) — plain-text Vision đọc ngày chính xác hơn JSON.
+  // Nếu cachedAnalysis đã có sẵn, Step 1 không tốn thêm API call.
+  const [analysisResult, dateFromPlainText] = await Promise.all([
+    cachedAnalysis
+      ? Promise.resolve(cachedAnalysis)
+      : analyzeInBodyWithAI(base64Image, mediaType, file, previousRecord),
+    extractDateFromInBodyImage(base64Image, mediaType),
+  ])
 
-  // Step 2: If date is missing, run dedicated free-text date extraction
-  // (same approach as FullDocumentSummarizationPanel — ask Groq in plain text,
-  //  parse the human-readable date string ourselves, more reliable than JSON)
-  const existingDateRaw =
-    analysisResult?.metrics?.['Ngày đo'] ||
-    analysisResult?.metrics?.['Ngày'] ||
-    analysisResult?.metrics?.['Date'] ||
-    analysisResult?.metrics?.['Ngày/Giờ kiểm tra'] || ''
-  const existingDateDigits = String(existingDateRaw).replace(/[-/ :T]/g, '').replace(/\D/g, '')
-  const needsDateExtraction = existingDateDigits.length < 8
-
-  let enrichedAnalysis = analysisResult
-  if (needsDateExtraction) {
-    const overrideRawDate = await extractDateFromInBodyImage(base64Image, mediaType)
-    if (overrideRawDate) {
-      enrichedAnalysis = {
+  // Step 3: Merge — plain-text date (Step 2) là nguồn ưu tiên cao nhất.
+  // Nếu Step 2 không đọc được ngày (trả ''), giữ nguyên kết quả từ Step 1 JSON.
+  const enrichedAnalysis = dateFromPlainText
+    ? {
         ...analysisResult,
         metrics: {
           ...(analysisResult?.metrics || {}),
-          // Inject compact digits directly — buildImageConvertedInBodyRecord
-          // strips non-digits anyway, so this is the cleanest input format.
-          'Ngày đo': overrideRawDate,
+          // Ghi đè "Ngày đo" bằng compact digits từ plain-text Vision.
+          // buildImageConvertedInBodyRecord sẽ strip non-digits nên format này là chuẩn nhất.
+          'Ngày đo': dateFromPlainText,
         },
       }
-    }
-  }
+    : analysisResult
 
-  // Step 3: Build structured record → CSV
+  // Step 4: Build structured record → CSV
   const record  = buildImageConvertedInBodyRecord({ analysis: enrichedAnalysis, fallback: fallbackRecord, sourceName })
   const csvText = recordsToInBodyCsv([record])
 
