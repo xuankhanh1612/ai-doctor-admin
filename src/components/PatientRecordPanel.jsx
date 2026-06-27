@@ -649,7 +649,8 @@ export default function PatientRecordPanel({ onNext, nextLabel, onPrev, prevLabe
   // Keep uploader hook subscribed and merge uploads into the real primary patient, not the Sample demo record.
   const { patient: uploadedPatient } = useMedicalData({ lang })
 
-  const ownerId = storageOwnerId || user?.email || 'guest'
+  // `uuid` là field nhận diện thống nhất cho mọi loại user (guest hay đã đăng nhập).
+  const ownerId = storageOwnerId || user?.uuid || 'guest'
   const samplePatient = useMemo(() => buildSamplePatientRecord(), [])
   const mainPatient = useMemo(() => {
     const savedRecord = loadSavedPatientRecord(ownerId)

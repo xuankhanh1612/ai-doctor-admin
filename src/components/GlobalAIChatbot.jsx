@@ -41,7 +41,9 @@ Rules:
 export default function GlobalAIChatbot({ activePanelLabel }) {
   const { theme, lang } = useApp()
   const { user } = useAuth()
-  const userEmail = user?.email || null
+  // Storage key for chat history — `uuid` is the same identifier field for every
+  // user type (guest or signed-in), so each guest's history stays separate too.
+  const userKey = user?.uuid || null
   const isDark = theme === 'dark'
   const isVi = lang !== 'en'
 
@@ -74,19 +76,19 @@ export default function GlobalAIChatbot({ activePanelLabel }) {
     let cancelled = false
     setHistoryLoaded(false)
     ;(async () => {
-      const saved = await getGlobalChatHistory(userEmail)
+      const saved = await getGlobalChatHistory(userKey)
       if (cancelled) return
       if (saved.length > 0) setMessages(saved)
       setHistoryLoaded(true)
     })()
     return () => { cancelled = true }
-  }, [userEmail])
+  }, [userKey])
 
   // Tự động lưu mỗi khi messages đổi (chỉ sau khi đã nạp lịch sử xong, tránh ghi đè)
   useEffect(() => {
     if (!historyLoaded) return
-    saveGlobalChatHistory(userEmail, messages)
-  }, [messages, historyLoaded, userEmail])
+    saveGlobalChatHistory(userKey, messages)
+  }, [messages, historyLoaded, userKey])
 
   const pushMessage = (message) => {
     setMessages(prev => [...prev, { id: `${Date.now()}-${Math.random()}`, ...message }])

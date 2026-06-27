@@ -60,7 +60,7 @@ export default function App() {
     setCompareImage(null)
     setUploadedImages([])
     setImagingScrollTarget(null)
-  }, [user?.email])
+  }, [user?.uuid])
 
   const panelLabels = {
     healthJourneyGame: 'Health Journey Game',
@@ -209,7 +209,9 @@ export default function App() {
 
   const isDark = theme === 'dark'
   const mainBg = isDark ? 'var(--bg2)' : '#f4f7fb'
-  const familyStorageOwnerId = user?.email || 'guest'
+  // `uuid` là field nhận diện thống nhất cho mọi loại user (guest hay đã đăng nhập) —
+  // dùng làm khóa lưu trữ Family Tree / Patient Record thay cho email.
+  const familyStorageOwnerId = user?.uuid || 'guest'
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>

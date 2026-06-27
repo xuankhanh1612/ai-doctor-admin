@@ -1,5 +1,6 @@
 // src/lib/globalChatbotStorage.js
-// GlobalAIChatbot — lưu trữ lịch sử chat vào IndexedDB theo user đăng nhập.
+// GlobalAIChatbot — lưu trữ lịch sử chat vào IndexedDB, khoá theo uuid của user
+// (field nhận diện thống nhất cho mọi loại user — guest hay đã đăng nhập).
 // Cùng pattern raw IndexedDB như src/lib/wikiMedVisionChatStorage.js, nhưng
 // đơn giản hơn: 1 record = 1 user (không tách theo ngày, không streak).
 
@@ -52,17 +53,18 @@ async function idbDelete(ownerKey) {
   })
 }
 
-// Khách chưa đăng nhập vẫn dùng được — nhóm chung vào 'guest' thay vì mất dữ liệu.
-function ownerKeyOf(email) {
-  return email ? String(email).toLowerCase() : 'guest'
+// uuid là field nhận diện thống nhất cho mọi loại user (guest hay đã đăng nhập).
+// Khách chưa có session vẫn dùng được — nhóm chung vào 'guest' thay vì mất dữ liệu.
+function ownerKeyOf(uuid) {
+  return uuid ? String(uuid).toLowerCase() : 'guest'
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
-// Lấy toàn bộ lịch sử chat đã lưu của user.
-export async function getGlobalChatHistory(email) {
+// Lấy toàn bộ lịch sử chat đã lưu của user (theo uuid).
+export async function getGlobalChatHistory(uuid) {
   try {
-    const rec = await idbGet(ownerKeyOf(email))
+    const rec = await idbGet(ownerKeyOf(uuid))
     return rec?.messages || []
   } catch {
     return []
@@ -70,8 +72,8 @@ export async function getGlobalChatHistory(email) {
 }
 
 // Ghi đè toàn bộ lịch sử chat của user (gọi sau mỗi lần messages đổi).
-export async function saveGlobalChatHistory(email, messages) {
-  const ownerKey = ownerKeyOf(email)
+export async function saveGlobalChatHistory(uuid, messages) {
+  const ownerKey = ownerKeyOf(uuid)
   try {
     const existing = await idbGet(ownerKey)
     await idbPut({
@@ -86,9 +88,9 @@ export async function saveGlobalChatHistory(email, messages) {
 }
 
 // Xoá toàn bộ lịch sử chat của user (dùng cho nút "xoá lịch sử" nếu cần).
-export async function clearGlobalChatHistory(email) {
+export async function clearGlobalChatHistory(uuid) {
   try {
-    await idbDelete(ownerKeyOf(email))
+    await idbDelete(ownerKeyOf(uuid))
   } catch (e) {
     console.error('[globalChatbotStorage] clear error:', e)
   }

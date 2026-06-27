@@ -1059,7 +1059,8 @@ function SearchTab({ isDark, lc, lang }) {
 
 function AgentTab({ isDark, lc, lang }) {
   const { user } = useAuth()
-  const userEmail = user?.email || null
+  // uuid is the unified identifier field for every user type (guest or signed-in)
+  const userKey = user?.uuid || null
   const today = todayKey()
 
   const openPreview = useWikiPreview()
@@ -1091,22 +1092,22 @@ function AgentTab({ isDark, lc, lang }) {
     let cancelled = false
     setHistoryLoaded(false)
     ;(async () => {
-      const todayMsgs = await getMessagesForDay(userEmail, today)
+      const todayMsgs = await getMessagesForDay(userKey, today)
       if (cancelled) return
       if (todayMsgs.length > 0) setMessages(todayMsgs)
       setHistoryLoaded(true)
     })()
     return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userEmail])
+  }, [userKey])
 
   // Tự động lưu mỗi khi messages đổi — chỉ khi đã load xong lần đầu.
   useEffect(() => {
     if (suppressSaveRef.current) { suppressSaveRef.current = false; return }
     if (!historyLoaded) return
-    saveMessagesForDay(userEmail, messages, today)
+    saveMessagesForDay(userKey, messages, today)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [messages, historyLoaded, userEmail])
+  }, [messages, historyLoaded, userKey])
 
 
   useEffect(() => {

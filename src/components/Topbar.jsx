@@ -210,7 +210,7 @@ export default function Topbar({ activePanel, onNavigateProfile, onNavigateAdmin
                       {user.name}
                     </div>
                     <div style={{ fontSize: 10, color: text3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: user.isAnonymous ? 'monospace' : 'inherit' }}>
-                      {user.isAnonymous ? (user.anonUUID || 'Anonymous') : user.email}
+                      {user.isAnonymous ? (user.uuid || 'Anonymous') : user.email}
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 4 }}>
                       {/* Provider badge */}

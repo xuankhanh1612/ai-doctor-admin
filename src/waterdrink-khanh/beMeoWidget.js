@@ -16,8 +16,9 @@ import {
  *
  * @param {ShadowRoot} shadow  Shadow root đã được tạo bởi React (host.attachShadow)
  * @param {object}     urls    Object chứa các URL ảnh đã được Vite resolve
- * @param {string|null} userEmail  Email user đang đăng nhập — dùng làm khóa lưu trữ IndexedDB.
- *                                  null/undefined = khách (nhóm chung vào 'guest').
+ * @param {string|null} userKey  uuid của user hiện tại — field nhận diện thống nhất cho mọi
+ *                                loại user (guest hay đã đăng nhập), dùng làm khóa lưu trữ IndexedDB.
+ *                                null/undefined = khách chưa có session (nhóm chung vào 'guest').
  * @returns {Function}         cleanup() — gọi khi component unmount
  */
 export function mountBeMeoWidget(shadow, {
@@ -26,7 +27,7 @@ export function mountBeMeoWidget(shadow, {
   meoNuocAiUrl,
   robotTuThe1Url,
   robotTuThe2Url,
-}, userEmail = null) {
+}, userKey = null) {
   // ─── CSS ────────────────────────────────────────────────────────────────────
   const CSS = `
     :host {
@@ -507,8 +508,8 @@ export function mountBeMeoWidget(shadow, {
 
   async function loadInitialState() {
     const [todayRecord, history] = await Promise.all([
-      getDay(userEmail, today),
-      getAllWaterHistory(userEmail),
+      getDay(userKey, today),
+      getAllWaterHistory(userKey),
     ]);
     waterHistoryMap = history || {};
     if (todayRecord) {
@@ -527,7 +528,7 @@ export function mountBeMeoWidget(shadow, {
     if (!storageReady) return; // tránh ghi đè bằng dữ liệu rác trước khi load xong lần đầu
     if (selectedDay && selectedDay !== today) return;
     waterHistoryMap[today] = { total: state.total, goal: state.goal };
-    saveDay(userEmail, today, { messages, water: { total: state.total, goal: state.goal } })
+    saveDay(userKey, today, { messages, water: { total: state.total, goal: state.goal } })
       .catch((e) => console.error('[Bé Mèo Nước] persistToday error:', e));
   }
 
@@ -814,17 +815,17 @@ export function mountBeMeoWidget(shadow, {
   async function selectDay(dayKey) {
     if (selectedDay === dayKey) { // bấm lại ngày đang chọn → quay về hôm nay (live)
       selectedDay = null;
-      messages = (await getMessagesForDay(userEmail, today)) || messages;
+      messages = (await getMessagesForDay(userKey, today)) || messages;
       if (messages.length === 0) messages = [{ role: 'bot', text: getDayGreeting(), time: new Date().toISOString() }];
       renderCalendar(); renderChat();
       return;
     }
     selectedDay = dayKey;
     if (dayKey === today) {
-      messages = (await getMessagesForDay(userEmail, today));
+      messages = (await getMessagesForDay(userKey, today));
       if (messages.length === 0) messages = [{ role: 'bot', text: getDayGreeting(), time: new Date().toISOString() }];
     } else {
-      messages = await getMessagesForDay(userEmail, dayKey); // 100% lịch sử ngày đó, không cắt bớt
+      messages = await getMessagesForDay(userKey, dayKey); // 100% lịch sử ngày đó, không cắt bớt
     }
     renderCalendar(); renderChat();
   }
@@ -896,7 +897,7 @@ export function mountBeMeoWidget(shadow, {
   async function exitPastViewIfNeeded() {
     if (!selectedDay || selectedDay === today) return;
     selectedDay = null;
-    const todayMsgs = await getMessagesForDay(userEmail, today);
+    const todayMsgs = await getMessagesForDay(userKey, today);
     messages = todayMsgs.length > 0 ? todayMsgs : [{ role: 'bot', text: getDayGreeting(), time: new Date().toISOString() }];
   }
 
@@ -1024,7 +1025,7 @@ export function mountBeMeoWidget(shadow, {
   if (todayBtn) todayBtn.addEventListener('click', () => {
     selectedDay = null;
     goToMonth(todayDateObj.getFullYear(), todayDateObj.getMonth());
-    getMessagesForDay(userEmail, today).then((msgs) => {
+    getMessagesForDay(userKey, today).then((msgs) => {
       messages = msgs.length > 0 ? msgs : [{ role: 'bot', text: getDayGreeting(), time: new Date().toISOString() }];
       renderChat();
     });
@@ -1039,8 +1040,8 @@ export function mountBeMeoWidget(shadow, {
     await exitPastViewIfNeeded(); // nếu đang xem lịch sử ngày cũ, quay về hôm nay trước khi đồng bộ
     // Chỉ áp dụng nếu sự kiện này thuộc về đúng user đang đăng nhập trong widget này —
     // tránh trường hợp 2 user khác nhau dùng chung máy/tab gây lẫn dữ liệu.
-    if (detail.email && userEmail && detail.email.toLowerCase() !== userEmail.toLowerCase()) { return; }
-    const todayRecord = await getDay(userEmail, today);
+    if (detail.ownerKey && userKey && detail.ownerKey.toLowerCase() !== userKey.toLowerCase()) { return; }
+    const todayRecord = await getDay(userKey, today);
     if (todayRecord) {
       state.total = todayRecord.water?.total ?? state.total;
       state.goal = todayRecord.water?.goal ?? state.goal;

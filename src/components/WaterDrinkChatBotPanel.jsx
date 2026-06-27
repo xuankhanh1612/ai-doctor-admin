@@ -34,11 +34,13 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
   // === Inject widget Bé Mèo Nước vào Shadow DOM — gọi mountBeMeoWidget() trực tiếp,
   // nhận cleanup function trả về ngay lập tức (không cần window.__beMeoNuocPendingCleanup__).
   // Đợi AuthContext khôi phục session xong (authLoading=false) trước khi mount, để widget
-  // luôn nhận đúng email user ngay từ đầu — tránh lưu nhầm dữ liệu vào nhóm 'guest'.
+  // luôn nhận đúng uuid user ngay từ đầu — tránh lưu nhầm dữ liệu vào nhóm 'guest'.
   const [widgetReady, setWidgetReady] = useState(false)
-  const userEmail = user?.email || null
+  // `uuid` là field nhận diện thống nhất cho mọi loại user (guest hay đã đăng nhập),
+  // dùng để khoá lưu trữ IndexedDB thay cho email.
+  const userKey = user?.uuid || null
   useEffect(() => {
-    if (authLoading) return // chờ session khôi phục xong, tránh mount với email=null rồi phải remount
+    if (authLoading) return // chờ session khôi phục xong, tránh mount với uuid=null rồi phải remount
     const host = hostRef.current
     if (!host) return
     let shadow = host.shadowRoot
@@ -50,14 +52,14 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
       meoNuocAiUrl,
       robotTuThe1Url,
       robotTuThe2Url,
-    }, userEmail)
+    }, userKey)
 
     setWidgetReady(true)
     return () => {
       cleanup()
       setWidgetReady(false)
     }
-  }, [authLoading, userEmail]) // remount nếu user đăng nhập/đăng xuất/đổi user trong session
+  }, [authLoading, userKey]) // remount nếu user đăng nhập/đăng xuất/đổi user trong session
 
   // Nạp proofMap từ IndexedDB khi auth sẵn sàng
   const [proofMapReady, setProofMapReady] = useState(false)
@@ -220,10 +222,10 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
       })
       const proofId = pendingProofIdRef.current || ('proof_cam_' + Date.now())
 
-      // syncBeMeoWater ghi trực tiếp vào IndexedDB (đúng theo user.email) — hoạt động
+      // syncBeMeoWater ghi trực tiếp vào IndexedDB (đúng theo user.uuid) — hoạt động
       // đúng dù widget Bé Mèo Nước có đang mount hay không, rồi phát event để widget
       // (nếu đang mount) cập nhật UI ngay với đúng proofId này.
-      const syncResult = await syncBeMeoWater(150, 'Bé Mèo Nước AI Healthcare Vision', proofId, user?.email)
+      const syncResult = await syncBeMeoWater(150, 'Bé Mèo Nước AI Healthcare Vision', proofId, user?.uuid)
       setSnapshot(getTaskSnapshot(user))
 
       if (record.dataUrl) {

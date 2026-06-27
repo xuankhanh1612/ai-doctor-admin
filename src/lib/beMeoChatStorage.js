@@ -1,6 +1,7 @@
 // src/lib/beMeoChatStorage.js
 // Bé Mèo Nước — lưu trữ TOÀN BỘ (100%) chat + lượng nước uống hàng ngày vào IndexedDB,
-// theo user đăng nhập (email) + theo ngày (YYYY-MM-DD). Thay thế localStorage cũ
+// theo uuid của user (field nhận diện thống nhất cho mọi loại user) + theo ngày (YYYY-MM-DD).
+// Thay thế localStorage cũ
 // (be-meo-nuoc-water-state-v1 / be-meo-nuoc-chat-v1) để không còn giới hạn 80 tin nhắn
 // và không còn bị trộn dữ liệu giữa các user dùng chung máy.
 // Theo cùng pattern raw IndexedDB như src/lib/medicalStorage.js và wikiMedVisionChatStorage.js.
@@ -59,8 +60,8 @@ async function idbGetAllByOwner(ownerKey) {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 // Khách chưa đăng nhập vẫn dùng được widget — nhóm chung vào 'guest' thay vì mất dữ liệu.
-function ownerKeyOf(email) {
-  return email ? String(email).toLowerCase() : 'guest'
+function ownerKeyOf(uuid) {
+  return uuid ? String(uuid).toLowerCase() : 'guest'
 }
 
 // YYYY-MM-DD theo giờ local của máy (không dùng UTC để tránh lệch ngày qua nửa đêm).
@@ -83,17 +84,17 @@ export function daysInMonth(year, monthIndex0) {
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 // Lấy dữ liệu 1 ngày của user: { messages, water: { total, goal } } — null nếu chưa có gì.
-export async function getDay(email, date) {
+export async function getDay(uuid, date) {
   try {
-    return await idbGet(recordId(ownerKeyOf(email), date))
+    return await idbGet(recordId(ownerKeyOf(uuid), date))
   } catch {
     return null
   }
 }
 
 // Ghi đè toàn bộ dữ liệu 1 ngày (messages đầy đủ — KHÔNG cắt bớt — + lượng nước).
-export async function saveDay(email, date, { messages, water }) {
-  const ownerKey = ownerKeyOf(email)
+export async function saveDay(uuid, date, { messages, water }) {
+  const ownerKey = ownerKeyOf(uuid)
   const id = recordId(ownerKey, date)
   try {
     const existing = await idbGet(id)
@@ -113,8 +114,8 @@ export async function saveDay(email, date, { messages, water }) {
 
 // Lấy bản đồ { 'YYYY-MM-DD': { total, goal } } cho TOÀN BỘ lịch sử của user
 // — dùng để vẽ calendar của bất kỳ tháng/năm nào mà không cần load lại mỗi lần đổi tháng.
-export async function getAllWaterHistory(email) {
-  const ownerKey = ownerKeyOf(email)
+export async function getAllWaterHistory(uuid) {
+  const ownerKey = ownerKeyOf(uuid)
   try {
     const records = await idbGetAllByOwner(ownerKey)
     const map = {}
@@ -128,7 +129,7 @@ export async function getAllWaterHistory(email) {
 }
 
 // Lấy toàn bộ message đã lưu của user cho một ngày cụ thể — không giới hạn số lượng.
-export async function getMessagesForDay(email, date) {
-  const day = await getDay(email, date)
+export async function getMessagesForDay(uuid, date) {
+  const day = await getDay(uuid, date)
   return day?.messages || []
 }

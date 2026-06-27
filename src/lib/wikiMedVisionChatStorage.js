@@ -1,5 +1,5 @@
 // src/lib/wikiMedVisionChatStorage.js
-// Wiki Med Vision Agent — lưu trữ lịch sử chat vào IndexedDB theo user đăng nhập + theo ngày.
+// Wiki Med Vision Agent — lưu trữ lịch sử chat vào IndexedDB, khoá theo uuid của user + theo ngày.
 // Theo cùng pattern raw IndexedDB như src/lib/medicalStorage.js (không thêm dependency mới).
 
 // ─── IndexedDB ────────────────────────────────────────────────────────────────
@@ -67,9 +67,9 @@ async function idbDelete(id) {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-// Khách chưa đăng nhập vẫn dùng được app — nhóm chung vào 'guest' thay vì mất dữ liệu.
-function ownerKeyOf(email) {
-  return email ? String(email).toLowerCase() : 'guest'
+// uuid là field nhận diện thống nhất cho mọi loại user. Khách chưa có session vẫn dùng được — nhóm chung vào 'guest' thay vì mất dữ liệu.
+function ownerKeyOf(uuid) {
+  return uuid ? String(uuid).toLowerCase() : 'guest'
 }
 
 // YYYY-MM-DD theo giờ local của máy người dùng (không dùng UTC để tránh lệch ngày).
@@ -87,9 +87,9 @@ function recordId(ownerKey, date) {
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 // Lấy toàn bộ message đã lưu của user, cho một ngày cụ thể (mặc định hôm nay).
-export async function getMessagesForDay(email, date = todayKey()) {
+export async function getMessagesForDay(uuid, date = todayKey()) {
   try {
-    const rec = await idbGet(recordId(ownerKeyOf(email), date))
+    const rec = await idbGet(recordId(ownerKeyOf(uuid), date))
     return rec?.messages || []
   } catch {
     return []
@@ -97,8 +97,8 @@ export async function getMessagesForDay(email, date = todayKey()) {
 }
 
 // Ghi đè toàn bộ message của ngày hôm nay cho user này (gọi sau mỗi lần messages đổi).
-export async function saveMessagesForDay(email, messages, date = todayKey()) {
-  const ownerKey = ownerKeyOf(email)
+export async function saveMessagesForDay(uuid, messages, date = todayKey()) {
+  const ownerKey = ownerKeyOf(uuid)
   const id = recordId(ownerKey, date)
   try {
     const existing = await idbGet(id)
@@ -117,8 +117,8 @@ export async function saveMessagesForDay(email, messages, date = todayKey()) {
 }
 
 // Xoá lịch sử của một ngày (dùng cho nút "xoá ngày này" nếu cần).
-export async function clearMessagesForDay(email, date = todayKey()) {
-  const ownerKey = ownerKeyOf(email)
+export async function clearMessagesForDay(uuid, date = todayKey()) {
+  const ownerKey = ownerKeyOf(uuid)
   try {
     await idbDelete(recordId(ownerKey, date))
     bumpStreakCache(ownerKey, date, 0)
@@ -128,8 +128,8 @@ export async function clearMessagesForDay(email, date = todayKey()) {
 }
 
 // Trả về { 'YYYY-MM-DD': messageCount, ... } cho toàn bộ lịch sử của user — dùng để vẽ lịch streak.
-export async function getActivityMap(email) {
-  const ownerKey = ownerKeyOf(email)
+export async function getActivityMap(uuid) {
+  const ownerKey = ownerKeyOf(uuid)
   try {
     const records = await idbGetAllByOwner(ownerKey)
     const map = {}
@@ -157,9 +157,9 @@ function bumpStreakCache(ownerKey, date, userMsgCount) {
   } catch { /* best-effort cache; im lặng nếu lỗi */ }
 }
 
-export function getStreakCache(email) {
+export function getStreakCache(uuid) {
   try {
-    const raw = localStorage.getItem(streakCacheKey(ownerKeyOf(email)))
+    const raw = localStorage.getItem(streakCacheKey(ownerKeyOf(uuid)))
     return raw ? JSON.parse(raw) : {}
   } catch {
     return {}

@@ -519,7 +519,7 @@ function AnonymousProfilePanel({ user, isDark, vi, lang, t, loginWithGoogle, log
   }
 
   const copyUUID = () => {
-    navigator.clipboard?.writeText(user.anonUUID).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1800) }).catch(() => {})
+    navigator.clipboard?.writeText(user.uuid).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1800) }).catch(() => {})
   }
 
   const handleUpgrade = async (provider) => {
@@ -622,7 +622,7 @@ function AnonymousProfilePanel({ user, isDark, vi, lang, t, loginWithGoogle, log
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <code style={{ fontSize: 11, fontFamily: 'monospace', fontWeight: 700, color: isDark ? '#5ef5a0' : '#1a6640', wordBreak: 'break-all', flex: 1, lineHeight: 1.5 }}>
-                  {user.anonUUID}
+                  {user.uuid}
                 </code>
                 <button onClick={copyUUID} style={{ padding: '6px 8px', borderRadius: 8, border: '1px solid rgba(45,138,94,0.4)', background: 'none', cursor: 'pointer', color: copied ? '#00e676' : '#2d8a5e', fontSize: 13, flexShrink: 0 }}>
                   {copied ? '✓' : '📋'}
@@ -786,7 +786,7 @@ function AnonymousProfilePanel({ user, isDark, vi, lang, t, loginWithGoogle, log
                   <div style={{ textAlign: 'center' }}>
                     <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'linear-gradient(135deg,#2d8a5e,#00b8cc)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 4px', fontSize: 20 }}>🌿</div>
                     <div style={{ fontSize: 10, color: text3, maxWidth: 80 }}>{vi ? 'Hồ sơ Guest' : 'Guest Profile'}</div>
-                    <div style={{ fontSize: 9, fontFamily: 'monospace', color: text3, marginTop: 2 }}>{user.anonUUID?.substring(0, 20)}…</div>
+                    <div style={{ fontSize: 9, fontFamily: 'monospace', color: text3, marginTop: 2 }}>{user.uuid?.substring(0, 20)}…</div>
                   </div>
                   <div style={{ fontSize: 20, color: text3 }}>→</div>
                   <div style={{ textAlign: 'center' }}>

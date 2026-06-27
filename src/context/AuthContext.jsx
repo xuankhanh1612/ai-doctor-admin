@@ -10,12 +10,12 @@ const saveUsers = (u) => localStorage.setItem('cdoc_users', JSON.stringify(u))
 const getSavedSession = () => { try { return JSON.parse(localStorage.getItem('cdoc_session') || 'null') } catch { return null } }
 const saveSession = (s) => s ? localStorage.setItem('cdoc_session', JSON.stringify(s)) : localStorage.removeItem('cdoc_session')
 
-const syncPrimaryPatientNameInFamilyTree = (email, name, avatar = '') => {
+const syncPrimaryPatientNameInFamilyTree = (ownerId, name, avatar = '') => {
   const patientName = String(name || '').trim()
   const patientAvatar = String(avatar || '').trim()
-  if (!email || (!patientName && !patientAvatar)) return
+  if (!ownerId || (!patientName && !patientAvatar)) return
   try {
-    const ownerKey = getFamilyOwnerKey(email)
+    const ownerKey = getFamilyOwnerKey(ownerId)
     const byUser = JSON.parse(localStorage.getItem(FAMILY_USER_STORAGE_KEY) || '{}')
     const userPatients = byUser[ownerKey]
     const members = userPatients?.['LXK-2024']
@@ -208,12 +208,22 @@ export function AuthProvider({ children }) {
       // 2. Restore anonymous session from IndexedDB
       try {
         const anon = await getAnonSession()
-        if (anon?.anonUUID) {
+        // `uuid` is the unified identifier field (same name used for every
+        // user type). Older guest sessions stored it as `anonUUID` — accept
+        // either so an existing guest's journey is never lost on this device.
+        const existingUUID = anon?.uuid || anon?.anonUUID
+        if (existingUUID) {
           const backfilled = {
             given_name: '', family_name: '', specialty: '', phone: '',
             avatarCustomized: false, profileComplete: false,
             level: 1, journeyProgress: 0, achievements: 0,
             ...anon,
+            uuid: existingUUID,
+          }
+          delete backfilled.anonUUID
+          if (!anon.uuid) {
+            // One-time migration: persist under the new field name going forward
+            updateAnonSession({ uuid: existingUUID }).catch(() => {})
           }
           setUser({ ...backfilled, isAnonymous: true, isAdmin: false })
         }
@@ -283,12 +293,19 @@ export function AuthProvider({ children }) {
     // Reuse existing anon session if present (same device)
     try {
       const existing = await getAnonSession()
-      if (existing?.anonUUID) {
+      const existingUUID = existing?.uuid || existing?.anonUUID
+      if (existingUUID) {
         const backfilled = {
           given_name: '', family_name: '', specialty: '', phone: '',
           avatarCustomized: false, profileComplete: false,
           level: 1, journeyProgress: 0, achievements: 0,
           ...existing,
+          uuid: existingUUID,
+        }
+        delete backfilled.anonUUID
+        if (!existing.uuid) {
+          // One-time migration: persist under the new field name going forward
+          updateAnonSession({ uuid: existingUUID }).catch(() => {})
         }
         const anonUser = { ...backfilled, isAnonymous: true, isAdmin: false }
         setUser(anonUser)
@@ -299,7 +316,7 @@ export function AuthProvider({ children }) {
     }
     const uuid = generateAnonUUID()
     const anonUser = {
-      anonUUID: uuid,
+      uuid,
       name: 'Guest Explorer',
       given_name: 'Guest',
       family_name: 'Explorer',
@@ -408,7 +425,7 @@ export function AuthProvider({ children }) {
     }
     users[user.email] = updated
     saveUsers(users)
-    syncPrimaryPatientNameInFamilyTree(user.email, updated.name, updated.avatar)
+    syncPrimaryPatientNameInFamilyTree(user.uuid, updated.name, updated.avatar)
     const enriched = { ...updated, isAdmin: user.isAdmin }
     setUser(enriched)
     return enriched
@@ -496,7 +513,7 @@ export function AuthProvider({ children }) {
 
     // 2. Remove this account's Family Medical Tree data
     try {
-      const ownerKey = getFamilyOwnerKey(email)
+      const ownerKey = getFamilyOwnerKey(user.uuid)
       const byUser = JSON.parse(localStorage.getItem(FAMILY_USER_STORAGE_KEY) || '{}')
       if (byUser[ownerKey]) {
         delete byUser[ownerKey]
