@@ -14,7 +14,7 @@ const MUTED = '#86868B'
 const HEALTHY = '#68D391'
 const ATTENTION = '#FF8A7A'
 const GENERAL_DOCTOR_PLAYLIST_URL = 'https://www.youtube.com/playlist?list=PLhPgpmsoyA4GrZ5mGrOPyf1wb1Ke1Zw8p'
-const detectorBackgroundUrl = fileName => new URL(`../pages/${fileName}.png`, import.meta.url).href
+const detectorBackgroundUrl = fileName => new URL(`../mediapipe-khanh/public/${fileName}.png`, import.meta.url).href
 const BODY_DETECTOR_BACKGROUND = detectorBackgroundUrl('thumbs_up')
 const FACE_DETECTOR_BACKGROUND = detectorBackgroundUrl('hand_model')
 
