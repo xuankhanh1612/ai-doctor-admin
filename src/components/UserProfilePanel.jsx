@@ -141,7 +141,7 @@ export default function UserProfilePanel() {
 
   // If anonymous user, show anonymous profile view
   if (user?.isAnonymous) {
-    return <AnonymousProfilePanel user={user} isDark={isDark} vi={vi} loginWithGoogle={loginWithGoogle} loginWithApple={loginWithApple} updateProfile={updateProfile} />
+    return <AnonymousProfilePanel user={user} isDark={isDark} vi={vi} lang={lang} t={t} loginWithGoogle={loginWithGoogle} loginWithApple={loginWithApple} updateProfile={updateProfile} />
   }
 
   // ─── Real user profile ───────────────────────────────────────────────────
@@ -382,12 +382,31 @@ export default function UserProfilePanel() {
 }
 
 // ─── Anonymous Profile Panel ────────────────────────────────────────────────────
-function AnonymousProfilePanel({ user, isDark, vi, loginWithGoogle, loginWithApple, updateProfile }) {
+function AnonymousProfilePanel({ user, isDark, vi, lang, t, loginWithGoogle, loginWithApple, updateProfile }) {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   const [upgradeProvider, setUpgradeProvider] = useState(null)
   const [upgradeStep, setUpgradeStep] = useState('confirm') // 'confirm' | 'success'
   const [upgrading, setUpgrading] = useState(false)
   const [copied, setCopied] = useState(false)
+
+  // ── Editable profile fields (same shape as a real account, so the guest can
+  // fill them in gradually before/without ever upgrading) ──────────────────
+  const [name, setName] = useState(user?.name || '')
+  const [specialty, setSpecialty] = useState(user?.specialty || '')
+  const [phone, setPhone] = useState(user?.phone || '')
+  const [avatarPreview, setAvatarPreview] = useState(user?.avatar || initialsAvatar(user?.name))
+  const [avatarCustomized, setAvatarCustomized] = useState(!!user?.avatarCustomized || isDataImage(user?.avatar))
+  const [cameraActive, setCameraActive] = useState(false)
+  const [cameraFacingMode, setCameraFacingMode] = useState('user')
+  const [cameraOverlayOn, setCameraOverlayOn] = useState(true)
+  const [cameraNow, setCameraNow] = useState(new Date())
+  const [cameraError, setCameraError] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+
+  const fileInputRef = useRef(null)
+  const videoRef = useRef(null)
+  const streamRef = useRef(null)
 
   const border = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'
   const surface = isDark ? 'rgba(255,255,255,0.04)' : '#fff'
@@ -395,6 +414,63 @@ function AnonymousProfilePanel({ user, isDark, vi, loginWithGoogle, loginWithApp
   const text = isDark ? '#e8f0f8' : '#1a2035'
   const text2 = isDark ? 'rgba(232,240,248,0.62)' : '#555'
   const text3 = isDark ? 'rgba(232,240,248,0.38)' : '#888'
+
+  useEffect(() => () => stopCamera(), [])
+  useEffect(() => { if (!cameraActive) return; setCameraNow(new Date()); const t = setInterval(() => setCameraNow(new Date()), 1000); return () => clearInterval(t) }, [cameraActive])
+
+  const stopCamera = () => { streamRef.current?.getTracks?.().forEach(t => t.stop()); streamRef.current = null; setCameraActive(false) }
+  const useGeneratedAvatar = () => { setAvatarPreview(initialsAvatar(name || user?.name)); setAvatarCustomized(true); setCameraError('') }
+
+  const handleFile = (file) => {
+    if (!file?.type?.startsWith('image/')) { setCameraError(vi ? 'Vui lòng chọn file hình ảnh.' : 'Please choose an image file.'); return }
+    const reader = new FileReader()
+    reader.onload = () => { setAvatarPreview(reader.result); setAvatarCustomized(true); setCameraError(''); stopCamera() }
+    reader.readAsDataURL(file)
+  }
+
+  const startCamera = async () => {
+    setCameraError('')
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: cameraFacingMode }, audio: false })
+      streamRef.current = stream
+      if (videoRef.current) videoRef.current.srcObject = stream
+      setCameraActive(true)
+    } catch (e) { setCameraError(vi ? `Không thể truy cập camera: ${e.message}` : `Cannot access camera: ${e.message}`) }
+  }
+
+  const switchCamera = async () => {
+    stopCamera()
+    const next = cameraFacingMode === 'user' ? 'environment' : 'user'
+    setCameraFacingMode(next)
+    setTimeout(async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: next }, audio: false })
+        streamRef.current = stream
+        if (videoRef.current) videoRef.current.srcObject = stream
+        setCameraActive(true)
+      } catch (e) { setCameraError(vi ? `Không thể đổi camera: ${e.message}` : `Cannot switch camera: ${e.message}`) }
+    }, 200)
+  }
+
+  const captureCamera = () => {
+    const video = videoRef.current
+    if (!video) return
+    const canvas = document.createElement('canvas')
+    canvas.width = video.videoWidth || 640; canvas.height = video.videoHeight || 480
+    const ctx = canvas.getContext('2d')
+    if (cameraFacingMode === 'user') { ctx.translate(canvas.width, 0); ctx.scale(-1, 1) }
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+    if (cameraFacingMode === 'user') ctx.setTransform(1, 0, 0, 1, 0, 0)
+    if (cameraOverlayOn) drawProfileCameraOverlay(ctx, canvas.width, canvas.height, 'AI Profile Scan', profileCameraTimestamp(lang, cameraNow))
+    setAvatarPreview(canvas.toDataURL('image/jpeg', 0.9)); setAvatarCustomized(true); setCameraError(''); stopCamera()
+  }
+
+  const handleSave = async () => {
+    setSaving(true); setSaved(false)
+    await new Promise(r => setTimeout(r, 250))
+    updateProfile({ name: name.trim() || user?.name, specialty: specialty.trim(), phone: phone.trim(), avatar: avatarPreview || initialsAvatar(name || user?.name), avatarCustomized })
+    setSaving(false); setSaved(true); setTimeout(() => setSaved(false), 1800)
+  }
 
   const copyUUID = () => {
     navigator.clipboard?.writeText(user.anonUUID).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1800) }).catch(() => {})
@@ -418,6 +494,95 @@ function AnonymousProfilePanel({ user, isDark, vi, loginWithGoogle, loginWithApp
 
   return (
     <div className="animate-fade" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20, color: text }}>
+      {/* Editable display info — same fields a real account has, filled in gradually */}
+      <div style={{ borderRadius: 24, overflow: 'hidden', border: `1px solid ${border}`, background: surface, boxShadow: isDark ? '0 24px 70px rgba(0,0,0,0.35)' : '0 24px 70px rgba(35,45,80,0.08)' }}>
+        <div style={{ padding: '24px 28px', background: 'linear-gradient(135deg,#2d8a5e,#00b8cc)' }}>
+          <div style={{ fontSize: 11, letterSpacing: '.16em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.78)', fontFamily: 'var(--font-mono)' }}>{vi ? 'Hồ sơ cá nhân (Khách)' : 'Personal info (Guest)'}</div>
+          <h2 style={{ margin: '6px 0 4px', fontSize: 24, fontWeight: 900, color: '#fff' }}>{t ? t('profile') : (vi ? 'Hồ sơ' : 'Profile')}</h2>
+          <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.82)' }}>{vi ? 'Bạn có thể cập nhật thông tin này dần — không cần đăng nhập ngay.' : 'You can fill this in gradually — no need to sign in right away.'}</div>
+        </div>
+
+        <div style={{ padding: 24, display: 'grid', gridTemplateColumns: 'minmax(260px, 360px) 1fr', gap: 22 }}>
+          {/* Avatar column */}
+          <div style={{ border: `1px solid ${border}`, borderRadius: 20, padding: 20, background: surface2 }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ position: 'relative', width: 154, height: 154, margin: '0 auto 14px' }}>
+                <img src={avatarPreview || initialsAvatar(name)} alt={vi ? 'Ảnh đại diện' : 'Avatar'} style={{ width: 154, height: 154, borderRadius: '50%', objectFit: 'cover', border: '4px solid rgba(45,138,94,0.5)', boxShadow: '0 16px 45px rgba(45,138,94,0.35)' }} />
+                <div style={{ position: 'absolute', right: 8, bottom: 8, width: 38, height: 38, borderRadius: '50%', background: '#fff', border: `3px solid ${surface2}`, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 24px rgba(0,0,0,0.25)', fontSize: 16 }}>
+                  🌿
+                </div>
+              </div>
+              <div style={{ fontSize: 18, fontWeight: 900, marginBottom: 4 }}>{name || user?.name}</div>
+              <div style={{ fontSize: 12, color: text3, marginBottom: 16 }}>{vi ? 'Khách (chưa đăng nhập)' : 'Guest (not signed in)'}</div>
+            </div>
+            <div style={{ display: 'grid', gap: 8 }}>
+              <ProfileActionButton active={avatarCustomized && isDataImage(avatarPreview)} onClick={() => fileInputRef.current?.click()} accent="#9c6fff">
+                🖼️ {vi ? 'Upload ảnh từ máy' : 'Upload from device'}
+              </ProfileActionButton>
+              <ProfileActionButton active={cameraActive} onClick={cameraActive ? stopCamera : startCamera} accent="#00b8cc">
+                📷 {cameraActive ? (vi ? 'Tắt camera' : 'Stop camera') : (vi ? 'Chụp bằng camera' : 'Take camera photo')}
+              </ProfileActionButton>
+              <ProfileActionButton active={avatarCustomized && !isDataImage(avatarPreview)} onClick={useGeneratedAvatar} accent="#2d8a5e">
+                ✨ {vi ? 'Tạo avatar chữ cái' : 'Generate initials avatar'}
+              </ProfileActionButton>
+            </div>
+            <input ref={fileInputRef} type="file" accept="image/*" onChange={e => handleFile(e.target.files?.[0])} style={{ display: 'none' }} />
+            {cameraActive && (
+              <div style={{ marginTop: 14, border: `1px solid ${border}`, borderRadius: 16, padding: 10, background: isDark ? '#070b18' : '#fff' }}>
+                <div style={{ position: 'relative', borderRadius: 12, overflow: 'hidden', background: '#000' }}>
+                  <video ref={videoRef} autoPlay playsInline muted style={{ display: 'block', width: '100%', background: '#000', transform: cameraFacingMode === 'user' ? 'scaleX(-1)' : 'none' }} />
+                  {cameraOverlayOn && <ProfileCameraOverlayBadge label="AI Profile Scan" timestamp={profileCameraTimestamp(lang, cameraNow)} />}
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 10 }}>
+                  <button type="button" onClick={switchCamera} style={{ padding: '10px 12px', borderRadius: 12, border: `1px solid ${border}`, cursor: 'pointer', color: text, fontWeight: 800, background: surface2, fontFamily: 'inherit' }}>🔄 {vi ? 'Đổi camera' : 'Switch camera'}</button>
+                  <button type="button" onClick={() => setCameraOverlayOn(v => !v)} style={{ padding: '10px 12px', borderRadius: 12, border: '1px solid rgba(0,229,255,0.32)', cursor: 'pointer', color: cameraOverlayOn ? '#00b8cc' : text2, fontWeight: 800, background: cameraOverlayOn ? 'rgba(0,229,255,0.10)' : surface2, fontFamily: 'inherit' }}>▣ {vi ? 'Lớp phủ' : 'Overlay'}</button>
+                </div>
+                <button type="button" onClick={captureCamera} style={{ marginTop: 10, width: '100%', padding: '10px 12px', borderRadius: 12, border: 'none', cursor: 'pointer', color: '#fff', fontWeight: 800, background: 'linear-gradient(135deg,#2d8a5e,#00b8cc)', fontFamily: 'inherit' }}>
+                  📸 {vi ? 'Chụp và dùng ảnh này' : 'Capture and use photo'}
+                </button>
+              </div>
+            )}
+            {cameraError && <div style={{ marginTop: 12, padding: '10px 12px', borderRadius: 12, border: '1px solid rgba(255,82,82,0.28)', background: 'rgba(255,82,82,0.08)', color: '#ff5252', fontSize: 12, lineHeight: 1.5 }}>{cameraError}</div>}
+          </div>
+
+          {/* Info column */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ border: `1px solid ${border}`, borderRadius: 20, padding: 22, background: surface2 }}>
+              <div style={{ fontSize: 11, color: '#2d8a5e', letterSpacing: '.14em', textTransform: 'uppercase', fontFamily: 'var(--font-mono)', fontWeight: 800, marginBottom: 18 }}>{vi ? 'Thông tin hiển thị' : 'Display information'}</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 14 }}>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, color: text3, fontWeight: 700 }}>
+                  {t ? t('name') : (vi ? 'Tên' : 'Name')}
+                  <input value={name} onChange={e => setName(e.target.value)} style={inputStyle(border, surface, text)} placeholder={vi ? 'Nguyễn Văn A' : 'John Doe'} />
+                </label>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, color: text3, fontWeight: 700 }}>
+                  {vi ? 'Vai trò / chuyên khoa' : 'Role / specialty'}
+                  <input value={specialty} onChange={e => setSpecialty(e.target.value)} style={inputStyle(border, surface, text)} placeholder={vi ? 'Bệnh nhân, Bác sĩ ung thư...' : 'Patient, Oncologist...'} />
+                </label>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, color: text3, fontWeight: 700 }}>
+                  {vi ? 'Số điện thoại' : 'Phone'}
+                  <input value={phone} onChange={e => setPhone(e.target.value)} type="tel" style={inputStyle(border, surface, text)} placeholder="+84 xxx xxx xxx" />
+                </label>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, color: text3, fontWeight: 700 }}>
+                  {vi ? 'Nhà cung cấp đăng nhập' : 'Sign-in provider'}
+                  <input value={vi ? 'Khách — chưa liên kết tài khoản' : 'Guest — no linked account'} disabled style={{ ...inputStyle(border, surface, text), opacity: 0.72, cursor: 'not-allowed' }} />
+                </label>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12, marginTop: 22, flexWrap: 'wrap' }}>
+                {saved && <span style={{ color: '#00e676', fontSize: 12, fontWeight: 800 }}>{vi ? 'Đã lưu hồ sơ' : 'Profile saved'}</span>}
+                <button type="button" onClick={handleSave} disabled={saving || !name.trim()} style={{ padding: '12px 22px', borderRadius: 12, border: 'none', cursor: saving || !name.trim() ? 'not-allowed' : 'pointer', background: 'linear-gradient(135deg,#2d8a5e,#00b8cc)', color: '#fff', fontSize: 14, fontWeight: 900, opacity: saving || !name.trim() ? 0.58 : 1, fontFamily: 'inherit', boxShadow: '0 12px 30px rgba(45,138,94,0.22)' }}>
+                  {saving ? '...' : (t ? t('saveProfile') : (vi ? 'Lưu hồ sơ' : 'Save profile'))}
+                </button>
+              </div>
+            </div>
+            <div style={{ border: `1px solid ${border}`, borderRadius: 14, padding: 14, background: surface2, fontSize: 12, color: text3, lineHeight: 1.7 }}>
+              💾 {vi
+                ? 'Thông tin này được lưu trên thiết bị này (IndexedDB), gắn với mã UUID ẩn danh của bạn. Khi nâng cấp lên tài khoản thật, thông tin sẽ được giữ lại.'
+                : 'This info is saved on this device (IndexedDB), tied to your anonymous UUID. It will carry over when you upgrade to a real account.'}
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Anonymous Profile Card */}
       <div style={{ borderRadius: 24, overflow: 'hidden', border: `1px solid ${border}`, background: surface, boxShadow: isDark ? '0 24px 70px rgba(0,0,0,0.35)' : '0 24px 70px rgba(35,45,80,0.08)' }}>
         {/* Green header */}
@@ -426,7 +591,7 @@ function AnonymousProfilePanel({ user, isDark, vi, loginWithGoogle, loginWithApp
             <div style={{ fontSize: 11, letterSpacing: '.16em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.7)', fontFamily: 'monospace' }}>
               {vi ? 'Hồ sơ ẩn danh' : 'Anonymous Profile'}
             </div>
-            <h2 style={{ margin: '6px 0 4px', fontSize: 26, fontWeight: 900, color: '#fff' }}>{user.name}</h2>
+            <h2 style={{ margin: '6px 0 4px', fontSize: 26, fontWeight: 900, color: '#fff' }}>{name || user.name}</h2>
             <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)' }}>
               {vi ? 'Tiến trình được lưu trên thiết bị này.' : 'Your progress is saved on this device.'}
             </div>
@@ -450,12 +615,12 @@ function AnonymousProfilePanel({ user, isDark, vi, loginWithGoogle, loginWithApp
         </div>
 
         <div style={{ padding: 24, display: 'grid', gridTemplateColumns: 'minmax(240px, 320px) 1fr', gap: 22 }}>
-          {/* Left: avatar + UUID */}
+          {/* Left: identity + UUID */}
           <div>
             {/* Avatar */}
             <div style={{ textAlign: 'center', marginBottom: 20 }}>
-              <img src={user.avatar} alt="Guest avatar" style={{ width: 100, height: 100, borderRadius: '50%', border: '4px solid rgba(45,138,94,0.5)', objectFit: 'cover' }} />
-              <div style={{ fontSize: 16, fontWeight: 900, marginTop: 10, color: text }}>{user.name}</div>
+              <img src={avatarPreview || initialsAvatar(name || user.name)} alt="Guest avatar" style={{ width: 100, height: 100, borderRadius: '50%', border: '4px solid rgba(45,138,94,0.5)', objectFit: 'cover' }} />
+              <div style={{ fontSize: 16, fontWeight: 900, marginTop: 10, color: text }}>{name || user.name}</div>
               <div style={{ fontSize: 11, color: text3 }}>{vi ? 'Hồ sơ ẩn danh' : 'Anonymous Profile'}</div>
             </div>
 

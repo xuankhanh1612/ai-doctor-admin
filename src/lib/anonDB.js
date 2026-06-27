@@ -98,6 +98,14 @@ export async function saveAnonSession(data) {
   return tx('session', 'readwrite', s => s.put({ ...data, id: 'anon' }))
 }
 
+// Patch only the given fields onto the existing guest session (e.g. profile edits)
+export async function updateAnonSession(updates) {
+  const existing = await getAnonSession()
+  const merged = { ...(existing || {}), ...updates, id: 'anon' }
+  await tx('session', 'readwrite', s => s.put(merged))
+  return merged
+}
+
 export async function deleteAnonSession() {
   return tx('session', 'readwrite', s => s.delete('anon'))
 }

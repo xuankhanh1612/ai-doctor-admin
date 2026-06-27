@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import { FAMILY_MEMBERS_CHANGED_EVENT, FAMILY_USER_STORAGE_KEY, LXK_PATIENT_PROFILE, getFamilyOwnerKey } from '../components/family/familyData.js'
-import { getAnonSession, saveAnonSession, clearAllGuestData } from '../lib/anonDB.js'
+import { getAnonSession, saveAnonSession, updateAnonSession, clearAllGuestData } from '../lib/anonDB.js'
 
 const AuthContext = createContext(null)
 const ADMIN_EMAIL = 'khanhlegood1@gmail.com'
@@ -198,7 +198,13 @@ export function AuthProvider({ children }) {
       try {
         const anon = await getAnonSession()
         if (anon?.anonUUID) {
-          setUser({ ...anon, isAnonymous: true, isAdmin: false })
+          const backfilled = {
+            given_name: '', family_name: '', specialty: '', phone: '',
+            avatarCustomized: false, profileComplete: false,
+            level: 1, journeyProgress: 0, achievements: 0,
+            ...anon,
+          }
+          setUser({ ...backfilled, isAnonymous: true, isAdmin: false })
         }
       } catch (e) {
         console.warn('anonDB restore failed, falling back to localStorage', e)
@@ -265,7 +271,13 @@ export function AuthProvider({ children }) {
     try {
       const existing = await getAnonSession()
       if (existing?.anonUUID) {
-        const anonUser = { ...existing, isAnonymous: true, isAdmin: false }
+        const backfilled = {
+          given_name: '', family_name: '', specialty: '', phone: '',
+          avatarCustomized: false, profileComplete: false,
+          level: 1, journeyProgress: 0, achievements: 0,
+          ...existing,
+        }
+        const anonUser = { ...backfilled, isAnonymous: true, isAdmin: false }
         setUser(anonUser)
         return anonUser
       }
@@ -276,11 +288,20 @@ export function AuthProvider({ children }) {
     const anonUser = {
       anonUUID: uuid,
       name: 'Guest Explorer',
+      given_name: 'Guest',
+      family_name: 'Explorer',
       email: null,
       provider: 'anonymous',
       isAnonymous: true,
       isAdmin: false,
       avatar: null,
+      avatarCustomized: false,
+      specialty: '',
+      phone: '',
+      profileComplete: false,
+      level: 1,
+      journeyProgress: 0,
+      achievements: 0,
       createdAt: new Date().toISOString(),
     }
     try {
@@ -345,6 +366,13 @@ export function AuthProvider({ children }) {
 
   // Called from ProfileSetupModal or Settings when user updates their info
   const updateProfile = (updates) => {
+    // Guest (anonymous) users have no email/localStorage record — persist to IndexedDB instead
+    if (user?.isAnonymous) {
+      const merged = { ...user, ...updates, profileComplete: true, isAnonymous: true, isAdmin: false }
+      setUser(merged)
+      updateAnonSession({ ...updates, profileComplete: true }).catch(e => console.warn('anonDB profile update failed', e))
+      return merged
+    }
     const users = getUsers()
     const existingUser = users[user.email] || {}
     const hasCustomAvatar = updates.avatar && updates.avatar !== existingUser.googleAvatar
