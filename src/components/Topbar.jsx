@@ -54,6 +54,16 @@ export default function Topbar({ activePanel, onNavigateProfile, onNavigateAdmin
           <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#00e676', boxShadow: '0 0 8px #00e676' }} />
           <span style={{ fontSize: 11, color: '#00e676', fontFamily: 'monospace' }}>4 {t('agentsActive')}</span>
         </div>
+        {/* Guest badge */}
+        {user?.isAnonymous && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 8,
+            background: 'rgba(45,138,94,0.15)', border: '1px solid rgba(45,138,94,0.35)', color: '#5ef5a0',
+            fontSize: 11, fontWeight: 700,
+          }}>
+            🌿 {lang === 'vi' ? 'Đang duyệt với tư cách Guest' : 'Browsing as Guest'}
+          </div>
+        )}
 
         {/* Lang toggle */}
         <button onClick={() => setLang(l => l === 'vi' ? 'en' : 'vi')} style={{
@@ -199,18 +209,18 @@ export default function Topbar({ activePanel, onNavigateProfile, onNavigateAdmin
                     <div style={{ fontSize: 13, fontWeight: 700, color: textColor, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {user.name}
                     </div>
-                    <div style={{ fontSize: 10, color: text3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {user.email}
+                    <div style={{ fontSize: 10, color: text3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: user.isAnonymous ? 'monospace' : 'inherit' }}>
+                      {user.isAnonymous ? (user.anonUUID || 'Anonymous') : user.email}
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 4 }}>
                       {/* Provider badge */}
                       <span style={{
                         fontSize: 9, padding: '1px 6px', borderRadius: 4, fontWeight: 600,
-                        background: `${providerColor[user.provider] || '#555'}18`,
-                        color: providerColor[user.provider] || '#555',
-                        border: `1px solid ${providerColor[user.provider] || '#555'}33`,
+                        background: user.isAnonymous ? 'rgba(45,138,94,0.15)' : `${providerColor[user.provider] || '#555'}18`,
+                        color: user.isAnonymous ? '#2d8a5e' : (providerColor[user.provider] || '#555'),
+                        border: `1px solid ${user.isAnonymous ? 'rgba(45,138,94,0.35)' : (providerColor[user.provider] || '#555') + '33'}`,
                       }}>
-                        {providerLabel[user.provider] || 'Email'}
+                        {user.isAnonymous ? '🌿 Guest' : (providerLabel[user.provider] || 'Email')}
                       </span>
                       {user.isAdmin && (
                         <span style={{

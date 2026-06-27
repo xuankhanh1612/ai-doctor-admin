@@ -126,10 +126,17 @@ function ProfileActionButton({ active, children, onClick, disabled, accent = '#0
 }
 
 export default function UserProfilePanel() {
-  const { user, updateProfile } = useAuth()
+  const { user, updateProfile, loginWithGoogle, loginWithApple, linkProvider, unlinkProvider, logout } = useAuth()
   const { theme, lang, t } = useApp()
   const isDark = theme === 'dark'
   const vi = lang === 'vi'
+
+  // If anonymous user, show anonymous profile view
+  if (user?.isAnonymous) {
+    return <AnonymousProfilePanel user={user} isDark={isDark} vi={vi} loginWithGoogle={loginWithGoogle} loginWithApple={loginWithApple} updateProfile={updateProfile} />
+  }
+
+  // ─── Real user profile ───────────────────────────────────────────────────
   const provider = PROVIDER_META[user?.provider] ? user.provider : 'email'
   const providerMeta = PROVIDER_META[provider]
   const providerAvatar = user?.googleAvatar || null
@@ -146,6 +153,7 @@ export default function UserProfilePanel() {
   const [cameraError, setCameraError] = useState('')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [linkingProvider, setLinkingProvider] = useState(null)
 
   const fileInputRef = useRef(null)
   const videoRef = useRef(null)
@@ -159,166 +167,103 @@ export default function UserProfilePanel() {
   const text3 = isDark ? 'rgba(232,240,248,0.38)' : '#888'
 
   useEffect(() => () => stopCamera(), [])
+  useEffect(() => { if (!cameraActive) return; setCameraNow(new Date()); const t = setInterval(() => setCameraNow(new Date()), 1000); return () => clearInterval(t) }, [cameraActive])
 
-  useEffect(() => {
-    if (!cameraActive) return undefined
-    setCameraNow(new Date())
-    const timer = window.setInterval(() => setCameraNow(new Date()), 1000)
-    return () => window.clearInterval(timer)
-  }, [cameraActive])
-
-  const stopCamera = () => {
-    streamRef.current?.getTracks?.().forEach(track => track.stop())
-    streamRef.current = null
-    setCameraActive(false)
-  }
-
-  const useAccountAvatar = () => {
-    if (!providerAvatar) return
-    setAvatarPreview(providerAvatar)
-    setAvatarCustomized(false)
-    setCameraError('')
-  }
-
-  const useGeneratedAvatar = () => {
-    setAvatarPreview(initialsAvatar(name || user?.name))
-    setAvatarCustomized(true)
-    setCameraError('')
-  }
+  const stopCamera = () => { streamRef.current?.getTracks?.().forEach(t => t.stop()); streamRef.current = null; setCameraActive(false) }
+  const useAccountAvatar = () => { if (!providerAvatar) return; setAvatarPreview(providerAvatar); setAvatarCustomized(false); setCameraError('') }
+  const useGeneratedAvatar = () => { setAvatarPreview(initialsAvatar(name || user?.name)); setAvatarCustomized(true); setCameraError('') }
 
   const handleFile = (file) => {
-    if (!file?.type?.startsWith('image/')) {
-      setCameraError(vi ? 'Vui lòng chọn file hình ảnh.' : 'Please choose an image file.')
-      return
-    }
+    if (!file?.type?.startsWith('image/')) { setCameraError(vi ? 'Vui lòng chọn file hình ảnh.' : 'Please choose an image file.'); return }
     const reader = new FileReader()
-    reader.onload = () => {
-      setAvatarPreview(reader.result)
-      setAvatarCustomized(true)
-      setCameraError('')
-      stopCamera()
-    }
-    reader.onerror = () => setCameraError(vi ? 'Không đọc được ảnh này.' : 'Could not read this image.')
+    reader.onload = () => { setAvatarPreview(reader.result); setAvatarCustomized(true); setCameraError(''); stopCamera() }
     reader.readAsDataURL(file)
   }
 
-  const startCamera = async (nextFacingMode = cameraFacingMode) => {
+  const startCamera = async () => {
     setCameraError('')
-    if (!navigator.mediaDevices?.getUserMedia) {
-      setCameraError(vi ? 'Trình duyệt không hỗ trợ camera.' : 'Camera is not supported in this browser.')
-      return
-    }
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: nextFacingMode } }, audio: false })
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: cameraFacingMode }, audio: false })
       streamRef.current = stream
-      setCameraFacingMode(nextFacingMode)
+      if (videoRef.current) videoRef.current.srcObject = stream
       setCameraActive(true)
-      window.setTimeout(() => {
-        if (videoRef.current) videoRef.current.srcObject = stream
-      }, 0)
-    } catch (e) {
-      setCameraError(vi ? 'Không thể mở camera. Kiểm tra quyền truy cập camera.' : 'Unable to open camera. Please check camera permission.')
-    }
+    } catch (e) { setCameraError(vi ? `Không thể truy cập camera: ${e.message}` : `Cannot access camera: ${e.message}`) }
   }
 
-  const switchCamera = () => {
-    const nextFacingMode = cameraFacingMode === 'user' ? 'environment' : 'user'
-    startCamera(nextFacingMode)
+  const switchCamera = async () => {
+    stopCamera()
+    const next = cameraFacingMode === 'user' ? 'environment' : 'user'
+    setCameraFacingMode(next)
+    setTimeout(async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: next }, audio: false })
+        streamRef.current = stream
+        if (videoRef.current) videoRef.current.srcObject = stream
+        setCameraActive(true)
+      } catch (e) { setCameraError(vi ? `Không thể đổi camera: ${e.message}` : `Cannot switch camera: ${e.message}`) }
+    }, 200)
   }
 
   const captureCamera = () => {
     const video = videoRef.current
     if (!video) return
     const canvas = document.createElement('canvas')
-    canvas.width = video.videoWidth || 640
-    canvas.height = video.videoHeight || 480
+    canvas.width = video.videoWidth || 640; canvas.height = video.videoHeight || 480
     const ctx = canvas.getContext('2d')
-    if (cameraFacingMode === 'user') {
-      ctx.translate(canvas.width, 0)
-      ctx.scale(-1, 1)
-    }
+    if (cameraFacingMode === 'user') { ctx.translate(canvas.width, 0); ctx.scale(-1, 1) }
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
     if (cameraFacingMode === 'user') ctx.setTransform(1, 0, 0, 1, 0, 0)
-    if (cameraOverlayOn) {
-      drawProfileCameraOverlay(ctx, canvas.width, canvas.height, 'AI Profile Scan', profileCameraTimestamp(lang, cameraNow))
-    }
-    setAvatarPreview(canvas.toDataURL('image/jpeg', 0.9))
-    setAvatarCustomized(true)
-    setCameraError('')
-    stopCamera()
+    if (cameraOverlayOn) drawProfileCameraOverlay(ctx, canvas.width, canvas.height, 'AI Profile Scan', profileCameraTimestamp(lang, cameraNow))
+    setAvatarPreview(canvas.toDataURL('image/jpeg', 0.9)); setAvatarCustomized(true); setCameraError(''); stopCamera()
   }
 
   const handleSave = async () => {
-    setSaving(true)
-    setSaved(false)
-    await new Promise(resolve => setTimeout(resolve, 250))
-    updateProfile({
-      name: name.trim() || user?.name,
-      specialty: specialty.trim(),
-      phone: phone.trim(),
-      avatar: avatarPreview || initialsAvatar(name || user?.name),
-      avatarCustomized,
-    })
-    setSaving(false)
-    setSaved(true)
-    window.setTimeout(() => setSaved(false), 1800)
+    setSaving(true); setSaved(false)
+    await new Promise(r => setTimeout(r, 250))
+    updateProfile({ name: name.trim() || user?.name, specialty: specialty.trim(), phone: phone.trim(), avatar: avatarPreview || initialsAvatar(name || user?.name), avatarCustomized })
+    setSaving(false); setSaved(true); setTimeout(() => setSaved(false), 1800)
   }
+
+  const linkedProviders = user?.linkedProviders || [user?.provider]
 
   return (
     <div className="animate-fade" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20, color: text }}>
-      <div style={{
-        borderRadius: 24, overflow: 'hidden', border: `1px solid ${border}`,
-        background: surface, boxShadow: isDark ? '0 24px 70px rgba(0,0,0,0.35)' : '0 24px 70px rgba(35,45,80,0.08)',
-      }}>
-        <div style={{
-          padding: '24px 28px', background: providerMeta.gradient,
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap',
-        }}>
+      <div style={{ borderRadius: 24, overflow: 'hidden', border: `1px solid ${border}`, background: surface, boxShadow: isDark ? '0 24px 70px rgba(0,0,0,0.35)' : '0 24px 70px rgba(35,45,80,0.08)' }}>
+        {/* Header */}
+        <div style={{ padding: '24px 28px', background: providerMeta.gradient, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
           <div>
-            <div style={{ fontSize: 11, letterSpacing: '.16em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.78)', fontFamily: 'var(--font-mono)' }}>
-              {vi ? 'Tài khoản cá nhân' : 'User account'}
-            </div>
+            <div style={{ fontSize: 11, letterSpacing: '.16em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.78)', fontFamily: 'var(--font-mono)' }}>{vi ? 'Tài khoản cá nhân' : 'User account'}</div>
             <h2 style={{ margin: '6px 0 4px', fontSize: 28, fontWeight: 900, color: '#fff' }}>{t('profile')}</h2>
-            <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.82)' }}>
-              {vi ? `Đồng bộ hồ sơ từ ${providerMeta.label}, tùy chỉnh avatar và thông tin hiển thị.` : `Sync from ${providerMeta.label}, customize your avatar and display information.`}
-            </div>
+            <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.82)' }}>{vi ? `Đồng bộ hồ sơ từ ${providerMeta.label}, tùy chỉnh avatar và thông tin hiển thị.` : `Sync from ${providerMeta.label}, customize your avatar and display information.`}</div>
+            {user?.upgradedFromUUID && (
+              <div style={{ marginTop: 8, fontSize: 11, color: 'rgba(255,255,255,0.6)', fontFamily: 'monospace' }}>
+                {vi ? 'Nâng cấp từ:' : 'Upgraded from:'} {user.upgradedFromUUID}
+              </div>
+            )}
           </div>
-          <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 999,
-            background: 'rgba(255,255,255,0.16)', border: '1px solid rgba(255,255,255,0.3)', color: '#fff', fontWeight: 800,
-          }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 999, background: 'rgba(255,255,255,0.16)', border: '1px solid rgba(255,255,255,0.3)', color: '#fff', fontWeight: 800 }}>
             <ProviderBadge provider={provider} />
             <span>{providerMeta.label}</span>
           </div>
         </div>
 
         <div style={{ padding: 24, display: 'grid', gridTemplateColumns: 'minmax(260px, 360px) 1fr', gap: 22 }}>
+          {/* Avatar column */}
           <div style={{ border: `1px solid ${border}`, borderRadius: 20, padding: 20, background: surface2 }}>
             <div style={{ textAlign: 'center' }}>
               <div style={{ position: 'relative', width: 154, height: 154, margin: '0 auto 14px' }}>
-                <img
-                  src={avatarPreview || initialsAvatar(name)}
-                  alt={vi ? 'Ảnh đại diện người dùng' : 'User avatar'}
-                  style={{ width: 154, height: 154, borderRadius: '50%', objectFit: 'cover', border: `4px solid ${providerMeta.border}`, boxShadow: `0 16px 45px ${providerMeta.border}` }}
-                />
-                <div style={{
-                  position: 'absolute', right: 8, bottom: 8, width: 38, height: 38, borderRadius: '50%',
-                  background: provider === 'apple' ? '#111' : '#fff', border: `3px solid ${surface2}`,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
-                }}>
+                <img src={avatarPreview || initialsAvatar(name)} alt={vi ? 'Ảnh đại diện' : 'Avatar'} style={{ width: 154, height: 154, borderRadius: '50%', objectFit: 'cover', border: `4px solid ${providerMeta.border}`, boxShadow: `0 16px 45px ${providerMeta.border}` }} />
+                <div style={{ position: 'absolute', right: 8, bottom: 8, width: 38, height: 38, borderRadius: '50%', background: provider === 'apple' ? '#111' : '#fff', border: `3px solid ${surface2}`, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 24px rgba(0,0,0,0.25)' }}>
                   <ProviderBadge provider={provider} />
                 </div>
               </div>
               <div style={{ fontSize: 18, fontWeight: 900, marginBottom: 4 }}>{name || user?.name}</div>
               <div style={{ fontSize: 12, color: text3, marginBottom: 16 }}>{user?.email}</div>
             </div>
-
             <div style={{ display: 'grid', gap: 8 }}>
               <ProfileActionButton active={!avatarCustomized && !!providerAvatar} disabled={!providerAvatar} onClick={useAccountAvatar} accent={provider === 'google' ? '#4285F4' : '#111'}>
                 <ProviderBadge provider={provider} />
-                {providerAvatar
-                  ? (vi ? `Dùng ảnh ${providerMeta.label}` : `Use ${providerMeta.label} photo`)
-                  : (vi ? `Chưa có ảnh ${providerMeta.label}` : `No ${providerMeta.label} photo`)}
+                {providerAvatar ? (vi ? `Dùng ảnh ${providerMeta.label}` : `Use ${providerMeta.label} photo`) : (vi ? `Chưa có ảnh ${providerMeta.label}` : `No ${providerMeta.label} photo`)}
               </ProfileActionButton>
               <ProfileActionButton active={avatarCustomized && isDataImage(avatarPreview)} onClick={() => fileInputRef.current?.click()} accent="#9c6fff">
                 🖼️ {vi ? 'Upload ảnh từ máy' : 'Upload from device'}
@@ -331,7 +276,6 @@ export default function UserProfilePanel() {
               </ProfileActionButton>
             </div>
             <input ref={fileInputRef} type="file" accept="image/*" onChange={e => handleFile(e.target.files?.[0])} style={{ display: 'none' }} />
-
             {cameraActive && (
               <div style={{ marginTop: 14, border: `1px solid ${border}`, borderRadius: 16, padding: 10, background: isDark ? '#070b18' : '#fff' }}>
                 <div style={{ position: 'relative', borderRadius: 12, overflow: 'hidden', background: '#000' }}>
@@ -342,93 +286,312 @@ export default function UserProfilePanel() {
                   <button type="button" onClick={switchCamera} style={{ padding: '10px 12px', borderRadius: 12, border: `1px solid ${border}`, cursor: 'pointer', color: text, fontWeight: 800, background: surface2, fontFamily: 'inherit' }}>🔄 {vi ? 'Đổi camera' : 'Switch camera'}</button>
                   <button type="button" onClick={() => setCameraOverlayOn(v => !v)} style={{ padding: '10px 12px', borderRadius: 12, border: '1px solid rgba(0,229,255,0.32)', cursor: 'pointer', color: cameraOverlayOn ? '#00b8cc' : text2, fontWeight: 800, background: cameraOverlayOn ? 'rgba(0,229,255,0.10)' : surface2, fontFamily: 'inherit' }}>▣ {vi ? 'Lớp phủ' : 'Overlay'}</button>
                 </div>
-                <button
-                  type="button"
-                  onClick={captureCamera}
-                  style={{ marginTop: 10, width: '100%', padding: '10px 12px', borderRadius: 12, border: 'none', cursor: 'pointer', color: '#fff', fontWeight: 800, background: 'linear-gradient(135deg,#00b8cc,#6b3fd4)', fontFamily: 'inherit' }}
-                >
+                <button type="button" onClick={captureCamera} style={{ marginTop: 10, width: '100%', padding: '10px 12px', borderRadius: 12, border: 'none', cursor: 'pointer', color: '#fff', fontWeight: 800, background: 'linear-gradient(135deg,#00b8cc,#6b3fd4)', fontFamily: 'inherit' }}>
                   📸 {vi ? 'Chụp và dùng ảnh này' : 'Capture and use photo'}
                 </button>
               </div>
             )}
-            {cameraError && (
-              <div style={{ marginTop: 12, padding: '10px 12px', borderRadius: 12, border: '1px solid rgba(255,82,82,0.28)', background: 'rgba(255,82,82,0.08)', color: '#ff5252', fontSize: 12, lineHeight: 1.5 }}>
-                {cameraError}
-              </div>
-            )}
+            {cameraError && <div style={{ marginTop: 12, padding: '10px 12px', borderRadius: 12, border: '1px solid rgba(255,82,82,0.28)', background: 'rgba(255,82,82,0.08)', color: '#ff5252', fontSize: 12, lineHeight: 1.5 }}>{cameraError}</div>}
           </div>
 
-          <div style={{ border: `1px solid ${border}`, borderRadius: 20, padding: 22, background: surface2 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 18 }}>
-              <div>
-                <div style={{ fontSize: 11, color: providerMeta.color, letterSpacing: '.14em', textTransform: 'uppercase', fontFamily: 'var(--font-mono)', fontWeight: 800 }}>
-                  {vi ? 'Thông tin hiển thị' : 'Display information'}
+          {/* Info column */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ border: `1px solid ${border}`, borderRadius: 20, padding: 22, background: surface2 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 18 }}>
+                <div>
+                  <div style={{ fontSize: 11, color: providerMeta.color, letterSpacing: '.14em', textTransform: 'uppercase', fontFamily: 'var(--font-mono)', fontWeight: 800 }}>{vi ? 'Thông tin hiển thị' : 'Display information'}</div>
+                  <div style={{ fontSize: 12, color: text3, marginTop: 5 }}>{vi ? 'Tên ở đây sẽ đồng bộ vào Patient chính trong Family Medical Tree.' : 'This name syncs to the primary Patient in Family Medical Tree.'}</div>
                 </div>
-                <div style={{ fontSize: 12, color: text3, marginTop: 5 }}>
-                  {vi ? 'Tên ở đây sẽ đồng bộ vào Patient chính trong Family Medical Tree.' : 'This name syncs to the primary Patient in Family Medical Tree.'}
+                <div style={{ padding: '7px 10px', borderRadius: 999, background: providerMeta.soft, border: `1px solid ${providerMeta.border}`, color: provider === 'apple' && !isDark ? '#111' : providerMeta.color, fontSize: 11, fontWeight: 800 }}>
+                  {user?.email_verified ? (vi ? '✓ Email đã xác thực' : '✓ Verified email') : (vi ? 'Email nội bộ' : 'Local email')}
                 </div>
               </div>
-              <div style={{ padding: '7px 10px', borderRadius: 999, background: providerMeta.soft, border: `1px solid ${providerMeta.border}`, color: provider === 'apple' && !isDark ? '#111' : providerMeta.color, fontSize: 11, fontWeight: 800 }}>
-                {user?.email_verified ? (vi ? '✓ Email đã xác thực' : '✓ Verified email') : (vi ? 'Email nội bộ' : 'Local email')}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 14 }}>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, color: text3, fontWeight: 700 }}>
+                  {t('name')}
+                  <input value={name} onChange={e => setName(e.target.value)} style={inputStyle(border, surface, text)} placeholder={vi ? 'Nguyễn Văn A' : 'John Doe'} />
+                </label>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, color: text3, fontWeight: 700 }}>
+                  {vi ? 'Vai trò / chuyên khoa' : 'Role / specialty'}
+                  <input value={specialty} onChange={e => setSpecialty(e.target.value)} style={inputStyle(border, surface, text)} placeholder={vi ? 'Bệnh nhân, Bác sĩ ung thư...' : 'Patient, Oncologist...'} />
+                </label>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, color: text3, fontWeight: 700 }}>
+                  {vi ? 'Số điện thoại' : 'Phone'}
+                  <input value={phone} onChange={e => setPhone(e.target.value)} type="tel" style={inputStyle(border, surface, text)} placeholder="+84 xxx xxx xxx" />
+                </label>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, color: text3, fontWeight: 700 }}>
+                  {vi ? 'Nhà cung cấp đăng nhập' : 'Sign-in provider'}
+                  <input value={`${providerMeta.label} · ${user?.email || ''}`} disabled style={{ ...inputStyle(border, surface, text), opacity: 0.72, cursor: 'not-allowed' }} />
+                </label>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12, marginTop: 22, flexWrap: 'wrap' }}>
+                {saved && <span style={{ color: '#00e676', fontSize: 12, fontWeight: 800 }}>{vi ? 'Đã lưu hồ sơ' : 'Profile saved'}</span>}
+                <button type="button" onClick={handleSave} disabled={saving || !name.trim()} style={{ padding: '12px 22px', borderRadius: 12, border: 'none', cursor: saving || !name.trim() ? 'not-allowed' : 'pointer', background: 'linear-gradient(135deg,#00b8cc,#6b3fd4)', color: '#fff', fontSize: 14, fontWeight: 900, opacity: saving || !name.trim() ? 0.58 : 1, fontFamily: 'inherit', boxShadow: '0 12px 30px rgba(0,184,204,0.22)' }}>
+                  {saving ? '...' : t('saveProfile')}
+                </button>
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 14 }}>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, color: text3, fontWeight: 700 }}>
-                {t('name')}
-                <input value={name} onChange={e => setName(e.target.value)} style={inputStyle(border, surface, text)} placeholder={vi ? 'Nguyễn Văn A' : 'John Doe'} />
-              </label>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, color: text3, fontWeight: 700 }}>
-                {vi ? 'Vai trò / chuyên khoa' : 'Role / specialty'}
-                <input value={specialty} onChange={e => setSpecialty(e.target.value)} style={inputStyle(border, surface, text)} placeholder={vi ? 'Bệnh nhân, Bác sĩ ung thư...' : 'Patient, Oncologist...'} />
-              </label>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, color: text3, fontWeight: 700 }}>
-                {vi ? 'Số điện thoại' : 'Phone'}
-                <input value={phone} onChange={e => setPhone(e.target.value)} type="tel" style={inputStyle(border, surface, text)} placeholder="+84 xxx xxx xxx" />
-              </label>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, color: text3, fontWeight: 700 }}>
-                {vi ? 'Nhà cung cấp đăng nhập' : 'Sign-in provider'}
-                <input value={`${providerMeta.label} · ${user?.email || ''}`} disabled style={{ ...inputStyle(border, surface, text), opacity: 0.72, cursor: 'not-allowed' }} />
-              </label>
+            {/* Linked Accounts section */}
+            <div style={{ border: `1px solid ${border}`, borderRadius: 20, padding: 22, background: surface2 }}>
+              <div style={{ fontSize: 13, fontWeight: 800, color: text, marginBottom: 14 }}>{vi ? 'Tài khoản liên kết' : 'Linked Accounts'}</div>
+              <div style={{ fontSize: 12, color: text3, marginBottom: 14 }}>{vi ? 'Bạn có thể liên kết nhiều tài khoản. Tài khoản chính sẽ được dùng để đăng nhập.' : 'You can link multiple accounts, but one main account will be used to login.'}</div>
+              {['google', 'apple'].map(p => {
+                const isLinked = linkedProviders.includes(p)
+                const meta = PROVIDER_META[p]
+                return (
+                  <div key={p} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0', borderBottom: `1px solid ${border}` }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div style={{ width: 32, height: 32, borderRadius: 8, background: meta.soft, border: `1px solid ${meta.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <ProviderBadge provider={p} />
+                      </div>
+                      <span style={{ fontSize: 14, fontWeight: 700, color: text }}>{meta.label}</span>
+                    </div>
+                    {isLinked ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ color: '#00e676', fontSize: 12, fontWeight: 700 }}>{vi ? 'Đã kết nối ✓' : 'Connected ✓'}</span>
+                        {linkedProviders.length > 1 && (
+                          <button onClick={() => unlinkProvider(p)} style={{ background: 'none', border: '1px solid rgba(255,82,82,0.35)', color: '#ff5252', borderRadius: 8, padding: '4px 10px', cursor: 'pointer', fontSize: 11, fontWeight: 700, fontFamily: 'inherit' }}>
+                            {vi ? 'Ngắt' : 'Unlink'}
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <button onClick={() => { setLinkingProvider(p); (p === 'google' ? linkProvider('google') : linkProvider('apple')).finally(() => setLinkingProvider(null)) }} disabled={linkingProvider === p} style={{ background: 'linear-gradient(135deg,#00b8cc,#6b3fd4)', border: 'none', color: '#fff', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', fontSize: 12, fontWeight: 700, fontFamily: 'inherit', opacity: linkingProvider === p ? 0.6 : 1 }}>
+                        {linkingProvider === p ? '...' : (vi ? 'Kết nối' : 'Connect')}
+                      </button>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+      <style>{`@media (max-width: 900px) { .animate-fade > div > div:nth-child(2) { grid-template-columns: 1fr !important; } }`}</style>
+    </div>
+  )
+}
+
+// ─── Anonymous Profile Panel ────────────────────────────────────────────────────
+function AnonymousProfilePanel({ user, isDark, vi, loginWithGoogle, loginWithApple, updateProfile }) {
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false)
+  const [upgradeProvider, setUpgradeProvider] = useState(null)
+  const [upgradeStep, setUpgradeStep] = useState('confirm') // 'confirm' | 'success'
+  const [upgrading, setUpgrading] = useState(false)
+  const [copied, setCopied] = useState(false)
+
+  const border = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'
+  const surface = isDark ? 'rgba(255,255,255,0.04)' : '#fff'
+  const surface2 = isDark ? 'rgba(255,255,255,0.07)' : '#f8fafc'
+  const text = isDark ? '#e8f0f8' : '#1a2035'
+  const text2 = isDark ? 'rgba(232,240,248,0.62)' : '#555'
+  const text3 = isDark ? 'rgba(232,240,248,0.38)' : '#888'
+
+  const copyUUID = () => {
+    navigator.clipboard?.writeText(user.anonUUID).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1800) }).catch(() => {})
+  }
+
+  const handleUpgrade = async (provider) => {
+    setUpgrading(true)
+    try {
+      if (provider === 'google') await loginWithGoogle()
+      else await loginWithApple()
+      setUpgradeStep('success')
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setUpgrading(false)
+    }
+  }
+
+  const createdDate = user.createdAt ? new Date(user.createdAt).toLocaleDateString(vi ? 'vi-VN' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '—'
+  const createdTime = user.createdAt ? new Date(user.createdAt).toLocaleTimeString(vi ? 'vi-VN' : 'en-US', { hour: '2-digit', minute: '2-digit' }) : ''
+
+  return (
+    <div className="animate-fade" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20, color: text }}>
+      {/* Anonymous Profile Card */}
+      <div style={{ borderRadius: 24, overflow: 'hidden', border: `1px solid ${border}`, background: surface, boxShadow: isDark ? '0 24px 70px rgba(0,0,0,0.35)' : '0 24px 70px rgba(35,45,80,0.08)' }}>
+        {/* Green header */}
+        <div style={{ padding: '24px 28px', background: 'linear-gradient(135deg,#1a6640,#2d8a5e,#00b8cc)', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+          <div>
+            <div style={{ fontSize: 11, letterSpacing: '.16em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.7)', fontFamily: 'monospace' }}>
+              {vi ? 'Hồ sơ ẩn danh' : 'Anonymous Profile'}
+            </div>
+            <h2 style={{ margin: '6px 0 4px', fontSize: 26, fontWeight: 900, color: '#fff' }}>{user.name}</h2>
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)' }}>
+              {vi ? 'Tiến trình được lưu trên thiết bị này.' : 'Your progress is saved on this device.'}
+            </div>
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ display: 'flex', gap: 16 }}>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 22, fontWeight: 900, color: '#fff' }}>Lv.{user.level}</div>
+                <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.65)' }}>{vi ? 'Cấp độ' : 'Level'}</div>
+              </div>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 22, fontWeight: 900, color: '#fff' }}>{user.journeyProgress}%</div>
+                <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.65)' }}>{vi ? 'Tiến trình' : 'Journey'}</div>
+              </div>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 22, fontWeight: 900, color: '#fff' }}>{user.achievements}</div>
+                <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.65)' }}>{vi ? 'Huy hiệu' : 'Badges'}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ padding: 24, display: 'grid', gridTemplateColumns: 'minmax(240px, 320px) 1fr', gap: 22 }}>
+          {/* Left: avatar + UUID */}
+          <div>
+            {/* Avatar */}
+            <div style={{ textAlign: 'center', marginBottom: 20 }}>
+              <img src={user.avatar} alt="Guest avatar" style={{ width: 100, height: 100, borderRadius: '50%', border: '4px solid rgba(45,138,94,0.5)', objectFit: 'cover' }} />
+              <div style={{ fontSize: 16, fontWeight: 900, marginTop: 10, color: text }}>{user.name}</div>
+              <div style={{ fontSize: 11, color: text3 }}>{vi ? 'Hồ sơ ẩn danh' : 'Anonymous Profile'}</div>
             </div>
 
-            <div style={{ marginTop: 18, padding: '13px 14px', borderRadius: 14, background: isDark ? 'rgba(0,184,204,0.08)' : 'rgba(0,184,204,0.06)', border: '1px solid rgba(0,184,204,0.22)', color: text2, fontSize: 12, lineHeight: 1.65 }}>
+            {/* UUID box */}
+            <div style={{ border: `1px solid rgba(45,138,94,0.35)`, borderRadius: 16, padding: 16, background: isDark ? 'rgba(45,138,94,0.08)' : 'rgba(45,138,94,0.05)', marginBottom: 16 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#2d8a5e', marginBottom: 8, letterSpacing: '.1em', textTransform: 'uppercase' }}>
+                {vi ? 'Mã ẩn danh (UUID)' : 'Anonymous ID (UUID)'}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <code style={{ fontSize: 11, fontFamily: 'monospace', fontWeight: 700, color: isDark ? '#5ef5a0' : '#1a6640', wordBreak: 'break-all', flex: 1, lineHeight: 1.5 }}>
+                  {user.anonUUID}
+                </code>
+                <button onClick={copyUUID} style={{ padding: '6px 8px', borderRadius: 8, border: '1px solid rgba(45,138,94,0.4)', background: 'none', cursor: 'pointer', color: copied ? '#00e676' : '#2d8a5e', fontSize: 13, flexShrink: 0 }}>
+                  {copied ? '✓' : '📋'}
+                </button>
+              </div>
+              <div style={{ fontSize: 10, color: text3, marginTop: 8 }}>
+                {vi ? `Tạo lúc: ${createdDate} • ${createdTime}` : `Created: ${createdDate} • ${createdTime}`}
+              </div>
+            </div>
+
+            {/* Level progress bar */}
+            <div style={{ border: `1px solid ${border}`, borderRadius: 14, padding: 14, background: surface2 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: text2 }}>🌱 {vi ? 'Cấp độ' : 'Level'} {user.level}</span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: '#2d8a5e' }}>{user.journeyProgress}%</span>
+              </div>
+              <div style={{ height: 8, borderRadius: 4, background: isDark ? 'rgba(255,255,255,0.08)' : '#e8f5e9', overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${user.journeyProgress}%`, borderRadius: 4, background: 'linear-gradient(90deg,#2d8a5e,#00b8cc)', transition: 'width 0.5s ease' }} />
+              </div>
+              <div style={{ marginTop: 10, fontSize: 11, color: text3 }}>⭐ {vi ? `${user.achievements} huy hiệu đạt được` : `${user.achievements} achievements earned`}</div>
+            </div>
+          </div>
+
+          {/* Right: upgrade section */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {/* Upgrade CTA */}
+            <div style={{ border: '2px solid rgba(45,138,94,0.4)', borderRadius: 20, padding: 22, background: isDark ? 'rgba(45,138,94,0.08)' : 'rgba(45,138,94,0.04)' }}>
+              <div style={{ fontSize: 16, fontWeight: 900, color: text, marginBottom: 6 }}>
+                {vi ? '🔗 Nâng cấp lên Tài khoản Thật' : '🔗 Upgrade to Real Account'}
+              </div>
+              <div style={{ fontSize: 13, color: text2, marginBottom: 16, lineHeight: 1.6 }}>
+                {vi ? 'Kết nối tài khoản thật để giữ tiến trình an toàn trên mọi thiết bị.' : 'Connect a real account to keep your progress safe across devices.'}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <button onClick={() => { setUpgradeProvider('google'); setUpgradeStep('confirm'); setShowUpgradeModal(true) }} style={{ width: '100%', padding: '13px 16px', borderRadius: 14, cursor: 'pointer', border: '1px solid rgba(66,133,244,0.3)', background: isDark ? 'rgba(66,133,244,0.1)' : '#fff', color: isDark ? '#e8f0f8' : '#1a2035', fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 10, fontFamily: 'inherit' }}>
+                  <GoogleIcon /> {vi ? 'Kết nối Google' : 'Connect Google'}
+                </button>
+                <button onClick={() => { setUpgradeProvider('apple'); setUpgradeStep('confirm'); setShowUpgradeModal(true) }} style={{ width: '100%', padding: '13px 16px', borderRadius: 14, cursor: 'pointer', border: `1px solid ${border}`, background: isDark ? 'rgba(255,255,255,0.04)' : '#fff', color: isDark ? '#e8f0f8' : '#1a2035', fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 10, fontFamily: 'inherit' }}>
+                  <AppleIcon isDark={isDark} /> {vi ? 'Kết nối Apple' : 'Connect Apple'}
+                </button>
+              </div>
+            </div>
+
+            {/* Benefits of upgrading */}
+            <div style={{ border: `1px solid ${border}`, borderRadius: 16, padding: 18, background: surface2 }}>
+              <div style={{ fontSize: 12, fontWeight: 800, color: text, marginBottom: 12 }}>{vi ? '✨ Lợi ích khi nâng cấp' : '✨ Benefits of upgrading'}</div>
+              {[
+                vi ? '✅ Tiến trình không bị mất' : '✅ Progress will NOT be lost',
+                vi ? '✅ Tất cả dữ liệu được bảo toàn an toàn' : '✅ All your data will be safely preserved',
+                vi ? '✅ Tiếp tục trên mọi thiết bị' : '✅ You can continue on any device',
+              ].map((b, i) => (
+                <div key={i} style={{ fontSize: 13, color: text2, marginBottom: 8, lineHeight: 1.5 }}>{b}</div>
+              ))}
+            </div>
+
+            {/* UUID info */}
+            <div style={{ border: `1px solid ${border}`, borderRadius: 14, padding: 14, background: surface2, fontSize: 12, color: text3, lineHeight: 1.7 }}>
               ℹ️ {vi
-                ? 'Bạn có thể lấy lại ảnh đại diện từ Google/Apple bất cứ lúc nào, hoặc dùng ảnh upload/camera để tùy chỉnh riêng. Khi lưu, Sidebar và Patient chính sẽ cập nhật theo.'
-                : 'You can restore the Google/Apple account avatar anytime, or customize with device upload/camera. Saving updates the Sidebar and primary Patient.'}
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12, marginTop: 22, flexWrap: 'wrap' }}>
-              {saved && <span style={{ color: '#00e676', fontSize: 12, fontWeight: 800 }}>{vi ? 'Đã lưu hồ sơ' : 'Profile saved'}</span>}
-              <button
-                type="button"
-                onClick={handleSave}
-                disabled={saving || !name.trim()}
-                style={{
-                  padding: '12px 22px', borderRadius: 12, border: 'none', cursor: saving || !name.trim() ? 'not-allowed' : 'pointer',
-                  background: 'linear-gradient(135deg,#00b8cc,#6b3fd4)', color: '#fff', fontSize: 14, fontWeight: 900,
-                  opacity: saving || !name.trim() ? 0.58 : 1, fontFamily: 'inherit', boxShadow: '0 12px 30px rgba(0,184,204,0.22)',
-                }}
-              >
-                {saving ? '...' : t('saveProfile')}
-              </button>
+                ? 'UUID của bạn được tạo từ ngày giờ + số ngẫu nhiên + mã thiết bị. Khi nâng cấp, dữ liệu vẫn giữ nguyên — chỉ liên kết với tài khoản thật của bạn.'
+                : 'Your UUID is generated from timestamp + random number + device salt. When you upgrade, the data stays the same — we only connect it to your real account.'}
             </div>
           </div>
         </div>
       </div>
 
-      <style>{`
-        @media (max-width: 900px) {
-          .animate-fade > div > div:nth-child(2) { grid-template-columns: 1fr !important; }
-        }
-      `}</style>
+      {/* Upgrade Modal */}
+      {showUpgradeModal && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 9000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(6px)' }}>
+          <div style={{ width: '100%', maxWidth: 400, margin: 24, background: isDark ? '#0c1220' : '#fff', borderRadius: 24, padding: 32, boxShadow: '0 32px 80px rgba(0,0,0,0.5)', border: `1px solid ${border}`, position: 'relative' }}>
+            {upgradeStep === 'confirm' ? (
+              <>
+                <button onClick={() => setShowUpgradeModal(false)} style={{ position: 'absolute', top: 16, right: 16, background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: text3 }}>✕</button>
+                {/* Shield icon */}
+                <div style={{ textAlign: 'center', marginBottom: 20 }}>
+                  <div style={{ fontSize: 52, marginBottom: 8 }}>🛡️</div>
+                  <div style={{ fontSize: 18, fontWeight: 900, color: text }}>{vi ? 'Nâng cấp Hồ sơ Guest' : 'Upgrade Guest Profile'}</div>
+                  <div style={{ fontSize: 13, color: text2, marginTop: 6 }}>{vi ? 'Bạn sắp kết nối hồ sơ guest với:' : 'You are about to connect your guest profile to:'}</div>
+                </div>
+                {/* Provider target */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderRadius: 14, border: `1px solid ${border}`, background: surface2, marginBottom: 20 }}>
+                  {upgradeProvider === 'google' ? <GoogleIcon /> : <AppleIcon isDark={isDark} />}
+                  <span style={{ fontSize: 14, fontWeight: 700, color: text }}>
+                    {upgradeProvider === 'google' ? 'khanhle@gmail.com' : 'user@icloud.com'}
+                  </span>
+                </div>
+                {/* Benefits */}
+                <div style={{ marginBottom: 20 }}>
+                  {[
+                    vi ? '✅ Tiến trình KHÔNG bị mất' : '✅ Your progress will NOT be lost',
+                    vi ? '✅ Tất cả dữ liệu được bảo toàn an toàn' : '✅ All your data will be safely preserved',
+                    vi ? '✅ Tiếp tục trên mọi thiết bị' : '✅ You can continue on any device',
+                  ].map((b, i) => <div key={i} style={{ fontSize: 13, color: text2, marginBottom: 6 }}>{b}</div>)}
+                </div>
+                {/* Flow viz */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, padding: 14, borderRadius: 14, border: `1px solid ${border}`, background: isDark ? 'rgba(0,0,0,0.2)' : '#f8fafc', marginBottom: 20 }}>
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'linear-gradient(135deg,#2d8a5e,#00b8cc)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 4px', fontSize: 20 }}>🌿</div>
+                    <div style={{ fontSize: 10, color: text3, maxWidth: 80 }}>{vi ? 'Hồ sơ Guest' : 'Guest Profile'}</div>
+                    <div style={{ fontSize: 9, fontFamily: 'monospace', color: text3, marginTop: 2 }}>{user.anonUUID?.substring(0, 20)}…</div>
+                  </div>
+                  <div style={{ fontSize: 20, color: text3 }}>→</div>
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ width: 44, height: 44, borderRadius: '50%', background: upgradeProvider === 'google' ? '#4285F4' : '#111', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 4px' }}>
+                      {upgradeProvider === 'google' ? <GoogleIcon /> : <AppleIcon isDark />}
+                    </div>
+                    <div style={{ fontSize: 10, color: text3 }}>{upgradeProvider === 'google' ? 'Google Account' : 'Apple Account'}</div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button onClick={() => setShowUpgradeModal(false)} style={{ flex: 1, padding: '12px', borderRadius: 12, border: `1px solid ${border}`, background: 'none', color: text2, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                    {vi ? 'Huỷ' : 'Cancel'}
+                  </button>
+                  <button onClick={() => handleUpgrade(upgradeProvider)} disabled={upgrading} style={{ flex: 2, padding: '12px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg,#2d8a5e,#00b8cc)', color: '#fff', fontWeight: 900, cursor: 'pointer', fontFamily: 'inherit', opacity: upgrading ? 0.7 : 1 }}>
+                    {upgrading ? '...' : (vi ? 'Xác nhận' : 'Confirm')}
+                  </button>
+                </div>
+              </>
+            ) : (
+              /* Success */
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 64, marginBottom: 12 }}>🎉</div>
+                <div style={{ fontSize: 20, fontWeight: 900, color: '#00e676', marginBottom: 8 }}>{vi ? 'Tài khoản đã kết nối!' : 'Account Connected!'}</div>
+                <div style={{ fontSize: 13, color: text2 }}>{vi ? 'Hồ sơ guest của bạn đã được kết nối thành công.' : 'Your guest profile has been successfully connected.'}</div>
+                <button onClick={() => setShowUpgradeModal(false)} style={{ marginTop: 24, width: '100%', padding: '14px', borderRadius: 14, border: 'none', background: 'linear-gradient(135deg,#2d8a5e,#00b8cc)', color: '#fff', fontWeight: 900, cursor: 'pointer', fontFamily: 'inherit', fontSize: 15 }}>
+                  {vi ? 'Tiếp tục chơi' : 'Continue to Game'}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
 
-function inputStyle(border, background, color) {
-  return {
-    width: '100%', padding: '12px 13px', borderRadius: 12, border: `1px solid ${border}`,
-    background, color, outline: 'none', boxSizing: 'border-box', fontSize: 14, fontFamily: 'inherit',
-  }
-}
+
