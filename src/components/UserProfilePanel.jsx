@@ -595,3 +595,7 @@ function AnonymousProfilePanel({ user, isDark, vi, loginWithGoogle, loginWithApp
 }
 
 
+
+function inputStyle(border, background, color) {
+  return { width: "100%", padding: "12px 13px", borderRadius: 12, border: `1px solid ${border}`, background, color, outline: "none", boxSizing: "border-box", fontSize: 14, fontFamily: "inherit" }
+}
