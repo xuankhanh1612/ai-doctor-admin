@@ -60,7 +60,9 @@ async function idbDelete(id) {
 function norm(partial, options = {}) {
   const filename = partial.filename || partial.name || 'unknown'
   const fileType = partial.fileType || partial.type || 'photo'
-  const ownerEmail = partial.ownerEmail || options.ownerEmail || null
+  // ownerUuid là khoá định danh chính (mỗi user/guest có 1 UUID cố định trên
+  // thiết bị, không phụ thuộc việc họ có email hay không).
+  const ownerUuid = partial.ownerUuid || options.ownerUuid || null
   return {
     ...partial,
     filename,  name: filename,
@@ -68,11 +70,12 @@ function norm(partial, options = {}) {
     mimeType:  partial.mimeType   || 'image/jpeg',
     size:      partial.size       || 0,
     uploadedAt:partial.uploadedAt || new Date().toISOString(),
-    ownerEmail,
+    ownerUuid,
+    ownerEmail: partial.ownerEmail || options.ownerEmail || '', // chỉ để hiển thị (admin), KHÔNG dùng để định danh
     ownerName: partial.ownerName || options.ownerName || '',
     ownerAvatar: partial.ownerAvatar || options.ownerAvatar || '',
     ownerProvider: partial.ownerProvider || options.ownerProvider || '',
-    isDemo:    partial.isDemo ?? (!ownerEmail && options.markAsDemo === true),
+    isDemo:    partial.isDemo ?? (!ownerUuid && options.markAsDemo === true),
     sourceModule: partial.sourceModule || options.sourceModule || '',
     uploadFolder: partial.uploadFolder || options.uploadFolder || '',
     uploadPath: partial.uploadPath || options.uploadPath || '',
@@ -82,35 +85,35 @@ function norm(partial, options = {}) {
 }
 
 // ─── localStorage metadata (không lưu base64 vào LS) ─────────────────────────
-function metaKey(ownerEmail) {
-  return ownerEmail ? `${LS_META}:${ownerEmail}` : LS_META
+function metaKey(ownerUuid) {
+  return ownerUuid ? `${LS_META}:${ownerUuid}` : LS_META
 }
 
-export function getMetaKey(ownerEmail) {
-  return metaKey(ownerEmail)
+export function getMetaKey(ownerUuid) {
+  return metaKey(ownerUuid)
 }
 
-function lsMeta(ownerEmail) {
+function lsMeta(ownerUuid) {
   try {
-    const raw = localStorage.getItem(metaKey(ownerEmail))
+    const raw = localStorage.getItem(metaKey(ownerUuid))
     return raw ? JSON.parse(raw) : { patientId: `p_${Date.now()}`, fileIds: [], updatedAt: '' }
   } catch {
     return { patientId: `p_${Date.now()}`, fileIds: [], updatedAt: '' }
   }
 }
 
-function lsSetMeta(patientId, fileIds, ownerEmail) {
-  localStorage.setItem(metaKey(ownerEmail), JSON.stringify({ patientId, fileIds, ownerEmail: ownerEmail || null, updatedAt: new Date().toISOString() }))
+function lsSetMeta(patientId, fileIds, ownerUuid) {
+  localStorage.setItem(metaKey(ownerUuid), JSON.stringify({ patientId, fileIds, ownerUuid: ownerUuid || null, updatedAt: new Date().toISOString() }))
 }
 
 // ─── Async API (chính) ────────────────────────────────────────────────────────
 
-function canSeeRecord(record, { ownerEmail, includeUnowned = false, includeAll = false } = {}) {
+function canSeeRecord(record, { ownerUuid, includeUnowned = false, includeAll = false } = {}) {
   if (includeAll) return true
-  if (ownerEmail && record.ownerEmail === ownerEmail) return true
+  if (ownerUuid && record.ownerUuid === ownerUuid) return true
   // Legacy/unowned records are treated as demo data. They are visible only when
   // explicitly requested (admin demo view), never to ordinary users.
-  if (includeUnowned && !record.ownerEmail) return true
+  if (includeUnowned && !record.ownerUuid) return true
   return false
 }
 
@@ -124,9 +127,9 @@ export async function getAllRecords(options = {}) {
 export async function saveRecord(file, options = {}) {
   const normalized = norm(file, options)
   await idbPut(normalized)
-  const meta = lsMeta(normalized.ownerEmail)
+  const meta = lsMeta(normalized.ownerUuid)
   const ids  = [normalized.id, ...meta.fileIds.filter(i => i !== normalized.id)]
-  lsSetMeta(meta.patientId, ids, normalized.ownerEmail)
+  lsSetMeta(meta.patientId, ids, normalized.ownerUuid)
 }
 
 export async function getRecord(id, options = {}) {
@@ -143,8 +146,8 @@ export async function deleteRecord(id, options = {}) {
   const f = await getRecord(id, options)
   if (!f) return
   await idbDelete(id)
-  const meta = lsMeta(f.ownerEmail)
-  lsSetMeta(meta.patientId, meta.fileIds.filter(i => i !== id), f.ownerEmail)
+  const meta = lsMeta(f.ownerUuid)
+  lsSetMeta(meta.patientId, meta.fileIds.filter(i => i !== id), f.ownerUuid)
 }
 
 // ─── Utilities ─────────────────────────────────────────────────────────────────

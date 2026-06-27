@@ -11,8 +11,8 @@ const LS_META   = 'ai-clinic-patient-meta'
 const LS_NOTIFY = 'ai-clinic-upload-notify'   // ping key để trigger cross-tab sync
 
 // ── Đọc metadata bệnh nhân từ localStorage (từ medicalStorage.js) ──────────
-function readMeta(ownerEmail) {
-  try { return JSON.parse(localStorage.getItem(getMetaKey(ownerEmail)) || '{}') } catch { return {} }
+function readMeta(ownerUuid) {
+  try { return JSON.parse(localStorage.getItem(getMetaKey(ownerUuid)) || '{}') } catch { return {} }
 }
 
 // ── Tạo bệnh nhân từ hồ sơ upload ──────────────────────────────────────────
@@ -37,7 +37,7 @@ function translateMedicalData(lang, key, vars = {}) {
   return Object.entries(vars).reduce((text, [name, value]) => text.replace(`{${name}}`, value), template)
 }
 
-export function recordsToPatient(records, base = {}, ownerEmail = null, lang = 'vi') {
+export function recordsToPatient(records, base = {}, ownerUuid = null, lang = 'vi') {
   if (!records.length) return null
 
   // Gộp tất cả AI analysis thành diseases / imaging / timeline
@@ -67,10 +67,10 @@ export function recordsToPatient(records, base = {}, ownerEmail = null, lang = '
         date,
         modality:      fileTypeToModality(r.fileType),
         ai_confidence: ai?.summary ? Math.round((ai.confidence || 0.85) * 100) : 0,
-        findings:      ai?.summary?.slice(0, 300) || (lang === 'vi' ? `Ảnh do ${r.ownerName || r.ownerEmail || 'user'} upload, đang chờ AI phân tích.` : `Image uploaded by ${r.ownerName || r.ownerEmail || 'user'}, pending AI analysis.`),
+        findings:      ai?.summary?.slice(0, 300) || (lang === 'vi' ? `Ảnh do ${r.ownerName || 'user'} upload, đang chờ AI phân tích.` : `Image uploaded by ${r.ownerName || 'user'}, pending AI analysis.`),
         impression:    ai?.recommendation || ai?.findings?.[0] || (lang === 'vi' ? 'Đồng bộ từ Medical Upload Records.' : 'Synced from Medical Upload Records.'),
         dataUrl:       r.dataUrl,
-        uploadedBy:    r.ownerEmail,
+        uploadedBy:    r.ownerUuid,
         uploadedByName:r.ownerName,
         uploadedAt:    r.uploadedAt,
         raw:           r,
@@ -89,7 +89,7 @@ export function recordsToPatient(records, base = {}, ownerEmail = null, lang = '
         trend:    'stable',
         critical: false,
         documentUrl: r.dataUrl,
-        uploadedBy: r.ownerEmail,
+        uploadedBy: r.ownerUuid,
         uploadedByName: r.ownerName,
         uploadedAt: r.uploadedAt,
         raw: r,
@@ -138,7 +138,7 @@ export function recordsToPatient(records, base = {}, ownerEmail = null, lang = '
     type:  'consult',
   })
 
-  const meta = readMeta(ownerEmail)
+  const meta = readMeta(ownerUuid)
   return {
     id:               meta.patientId || `P-${Date.now()}`,
     name:             base.name      || translateMedicalData(lang, 'uploadPatientName'),
@@ -174,12 +174,12 @@ export function recordsToActivity(records, lang = 'vi') {
     return {
       id:     r.id,
       time:   elapsed,
-      user:   r.ownerName || r.ownerEmail || 'upload',
-      ownerEmail: r.ownerEmail || null,
+      user:   r.ownerName || 'upload',
+      ownerUuid: r.ownerUuid || null,
       ownerName: r.ownerName || '',
       action: lang === 'vi'
-        ? `${r.ownerName || r.ownerEmail || 'User'} tải lên ${r.fileType?.toUpperCase() || 'FILE'}: ${r.filename || r.name}${hasAI ? ' · ✓ AI phân tích' : ''}`
-        : `${r.ownerName || r.ownerEmail || 'User'} uploaded ${r.fileType?.toUpperCase() || 'FILE'}: ${r.filename || r.name}${hasAI ? ' · ✓ AI analyzed' : ''}`,
+        ? `${r.ownerName || 'User'} tải lên ${r.fileType?.toUpperCase() || 'FILE'}: ${r.filename || r.name}${hasAI ? ' · ✓ AI phân tích' : ''}`
+        : `${r.ownerName || 'User'} uploaded ${r.fileType?.toUpperCase() || 'FILE'}: ${r.filename || r.name}${hasAI ? ' · ✓ AI analyzed' : ''}`,
       type:   'upload',
       fileType: r.fileType,
       hasAI,
@@ -210,9 +210,9 @@ function elapsedTime(iso, lang = 'vi') {
 // ─────────────────────────────────────────────────────────────────────────────
 // Main hook
 // ─────────────────────────────────────────────────────────────────────────────
-export function useMedicalData({ lang = 'vi', autoRefresh = true, ownerEmail: ownerEmailOverride = null, includeUnowned: includeUnownedOverride = null, includeAll = false } = {}) {
+export function useMedicalData({ lang = 'vi', autoRefresh = true, ownerUuid: ownerUuidOverride = null, includeUnowned: includeUnownedOverride = null, includeAll = false } = {}) {
   const { user } = useAuth()
-  const ownerEmail = ownerEmailOverride ?? user?.email ?? null
+  const ownerUuid = ownerUuidOverride ?? user?.uuid ?? null
   const includeUnowned = includeUnownedOverride ?? !!user?.isAdmin
   const [records, setRecords]         = useState([])
   const [loading, setLoading]         = useState(true)
@@ -221,7 +221,7 @@ export function useMedicalData({ lang = 'vi', autoRefresh = true, ownerEmail: ow
 
   const load = useCallback(async () => {
     try {
-      const recs = await getAllRecords({ ownerEmail, includeUnowned, includeAll })
+      const recs = await getAllRecords({ ownerUuid, includeUnowned, includeAll })
       setRecords(recs)
       setLastUpdated(new Date())
     } catch (e) {
@@ -229,7 +229,7 @@ export function useMedicalData({ lang = 'vi', autoRefresh = true, ownerEmail: ow
     } finally {
       setLoading(false)
     }
-  }, [ownerEmail, includeUnowned, includeAll])
+  }, [ownerUuid, includeUnowned, includeAll])
 
   useEffect(() => {
     load()
@@ -238,7 +238,7 @@ export function useMedicalData({ lang = 'vi', autoRefresh = true, ownerEmail: ow
 
     // Listen for cross-tab upload notifications
     const onStorage = (e) => {
-      if (e.key === LS_NOTIFY || e.key === LS_META || e.key === getMetaKey(ownerEmail)) load()
+      if (e.key === LS_NOTIFY || e.key === LS_META || e.key === getMetaKey(ownerUuid)) load()
     }
     const onUploadNotify = () => load()
     window.addEventListener('storage', onStorage)
@@ -252,10 +252,10 @@ export function useMedicalData({ lang = 'vi', autoRefresh = true, ownerEmail: ow
       window.removeEventListener('cdoc_medical_records_changed', onUploadNotify)
       clearInterval(pollRef.current)
     }
-  }, [load, autoRefresh, includeAll, ownerEmail])
+  }, [load, autoRefresh, includeAll, ownerUuid])
 
   // Derived data
-  const patientOwner   = records[0]?.ownerEmail || (records[0] ? null : ownerEmail)
+  const patientOwner   = records[0]?.ownerUuid || (records[0] ? null : ownerUuid)
   const patient        = recordsToPatient(records, {}, patientOwner, lang)
   const activities     = recordsToActivity(records, lang)
   const totalFiles     = records.length
@@ -264,11 +264,11 @@ export function useMedicalData({ lang = 'vi', autoRefresh = true, ownerEmail: ow
   const totalSizeMB    = (records.reduce((s, r) => s + (r.size || 0), 0) / 1048576).toFixed(1)
 
   const remove = useCallback(async (id) => {
-    await deleteRecord(id, { ownerEmail, includeUnowned, includeAll })
+    await deleteRecord(id, { ownerUuid, includeUnowned, includeAll })
     await load()
     // Notify other tabs
     localStorage.setItem(LS_NOTIFY, Date.now().toString())
-  }, [load, ownerEmail, includeUnowned, includeAll])
+  }, [load, ownerUuid, includeUnowned, includeAll])
 
   const refresh = load
 

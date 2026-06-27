@@ -256,7 +256,8 @@ export default function TelemedicinePanel({ onNext, nextLabel, onPrev, prevLabel
       dataUrl: finalDataUrl,
       base64Data: dataUrlBase64(finalDataUrl),
       notes: `${label} · ${livestreamTimestamp()}`,
-      ownerEmail:    user?.email    || null,
+      ownerUuid:     user?.uuid     || null,
+      ownerEmail:    user?.email    || '',
       ownerName:     user?.name     || '',
       ownerAvatar:   user?.avatar   || '',
       ownerProvider: user?.provider || '',
@@ -265,6 +266,7 @@ export default function TelemedicinePanel({ onNext, nextLabel, onPrev, prevLabel
       uploadPath:    `upload/telemedicine-livestream/${filename}`,
     }
     await saveRecord(record, {
+      ownerUuid:     user?.uuid,
       ownerEmail:    user?.email,
       ownerName:     user?.name,
       ownerAvatar:   user?.avatar,

@@ -204,7 +204,7 @@ export default function TaskDetailPopup({ taskId, onClose, onOpenJourney, snapsh
     setLoadingProof(true)
     setSaveMsg('')
     try {
-      const record = proof.uploadRecordId ? await getRecord(proof.uploadRecordId, { ownerEmail: user?.email }) : null
+      const record = proof.uploadRecordId ? await getRecord(proof.uploadRecordId, { ownerUuid: user?.uuid }) : null
       const dataUrl = record?.dataUrl
       if (!dataUrl) {
         setSaveMsg('❌ Không tìm thấy ảnh proof để xem lại.')

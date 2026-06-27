@@ -55,7 +55,8 @@ async function saveVisionControlImage(file, { user, lang, label }) {
     dataUrl,
     base64Data,
     notes: lang === 'vi' ? `${label} · lưu tại ${uploadPath}` : `${label} · saved at ${uploadPath}`,
-    ownerEmail: user?.email || null,
+    ownerUuid: user?.uuid || null,
+    ownerEmail: user?.email || '',
     ownerName: user?.name || '',
     ownerAvatar: user?.avatar || '',
     ownerProvider: user?.provider || '',
@@ -65,6 +66,7 @@ async function saveVisionControlImage(file, { user, lang, label }) {
   }
 
   await saveRecord(record, {
+    ownerUuid: user?.uuid,
     ownerEmail: user?.email,
     ownerName: user?.name,
     ownerAvatar: user?.avatar,

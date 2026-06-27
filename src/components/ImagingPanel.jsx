@@ -46,10 +46,10 @@ export default function ImagingPanel({ onNext, nextLabel, onPrev, prevLabel, com
 
   useEffect(() => {
     async function syncGallery() {
-      const records = await getAllRecords({ ownerEmail: user?.email, includeUnowned: !!user?.isAdmin })
+      const records = await getAllRecords({ ownerUuid: user?.uuid, includeUnowned: !!user?.isAdmin })
 
       const visibleUploadedImages = (uploadedImages || []).filter(item =>
-        item?.ownerEmail === user?.email || (!!user?.isAdmin && !item?.ownerEmail)
+        item?.ownerUuid === user?.uuid || (!!user?.isAdmin && !item?.ownerUuid)
       )
       const merged = [...records, ...visibleUploadedImages]
 

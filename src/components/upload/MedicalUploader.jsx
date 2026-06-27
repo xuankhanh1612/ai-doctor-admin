@@ -399,7 +399,7 @@ function CsvRecordInsights({ record }) {
 export default function MedicalUploader({ patientId, onSelectImage }) {
   const { lang } = useApp()
   const { user } = useAuth()
-  const recordScope = { ownerEmail: user?.email, includeUnowned: !!user?.isAdmin }
+  const recordScope = { ownerUuid: user?.uuid, includeUnowned: !!user?.isAdmin }
 
   const [view, setView]                   = useState('upload')  // 'upload' | 'library' | 'detail'
   const [records, setRecords]             = useState([])
@@ -504,13 +504,14 @@ export default function MedicalUploader({ patientId, onSelectImage }) {
           base64Data,
           notes:      isCsv ? `InBody CSV · ${parseInBodyCsv(textContent).length} dòng dữ liệu` : '',
           textContent,
-          ownerEmail:  user?.email || null,
+          ownerUuid:   user?.uuid || null,
+          ownerEmail:  user?.email || '',
           ownerName:   user?.name || '',
           ownerAvatar: user?.avatar || '',
           ownerProvider: user?.provider || '',
         }
 
-        await saveRecord(record, { ownerEmail: user?.email })
+        await saveRecord(record, { ownerUuid: user?.uuid })
         notifyUpload()
         await loadRecords()
 
@@ -639,7 +640,7 @@ export default function MedicalUploader({ patientId, onSelectImage }) {
   async function saveNotes() {
     if (!selected) return
     const updated = { ...selected, notes }
-    await saveRecord(updated, { ownerEmail: user?.email })
+    await saveRecord(updated, { ownerUuid: user?.uuid })
     notifyUpload()
     setSelected(updated)
     await loadRecords()
@@ -661,14 +662,15 @@ export default function MedicalUploader({ patientId, onSelectImage }) {
       base64Data,
       textContent: csvText,
       notes: `InBody CSV · ${parseInBodyCsv(csvText).length} dòng dữ liệu`,
-      ownerEmail: user?.email || null,
+      ownerUuid: user?.uuid || null,
+      ownerEmail: user?.email || '',
       ownerName: user?.name || '',
       ownerAvatar: user?.avatar || '',
       ownerProvider: user?.provider || '',
       sourceModule: 'inbody-image-convert',
       ...extra,
     }
-    await saveRecord(record, { ownerEmail: user?.email })
+    await saveRecord(record, { ownerUuid: user?.uuid })
     notifyUpload()
     await loadRecords()
     setSelected(record)

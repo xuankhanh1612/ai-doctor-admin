@@ -144,7 +144,8 @@ export async function saveWaterProofImage(file, user, {
     dataUrl,
     base64Data,
     notes: `${notesPrefix} · Activity: ${activityType} · +${xpEarned} XP · AI Healthcare Vision Object Detection Webcam overlay saved · ${uploadPath}`,
-    ownerEmail: user?.email || null,
+    ownerUuid: user?.uuid || null,
+    ownerEmail: user?.email || '',
     ownerName: user?.name || '',
     ownerAvatar: user?.avatar || '',
     ownerProvider: user?.provider || '',
@@ -161,6 +162,7 @@ export async function saveWaterProofImage(file, user, {
     },
   }
   await saveRecord(record, {
+    ownerUuid: user?.uuid,
     ownerEmail: user?.email,
     ownerName: user?.name,
     ownerAvatar: user?.avatar,

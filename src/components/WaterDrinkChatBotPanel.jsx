@@ -71,7 +71,7 @@ export default function WaterDrinkChatBotPanel({ onNext, onPrev, prevLabel, next
     let cancelled = false
     setProofMapReady(false)
     proofMapReadyRef.current = false
-    getAllRecords({ ownerEmail: user?.email })
+    getAllRecords({ ownerUuid: user?.uuid })
       .then((records) => {
         if (cancelled) return
         records.forEach((record) => {
