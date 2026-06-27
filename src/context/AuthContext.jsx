@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import { FAMILY_MEMBERS_CHANGED_EVENT, FAMILY_USER_STORAGE_KEY, LXK_PATIENT_PROFILE, getFamilyOwnerKey } from '../components/family/familyData.js'
+import { getAnonSession, saveAnonSession, clearAllGuestData } from '../lib/anonDB.js'
 
 const AuthContext = createContext(null)
 const ADMIN_EMAIL = 'khanhlegood1@gmail.com'
@@ -148,9 +149,7 @@ function generateAnonUUID() {
   return `HEALTH-${timestamp}-${random}-${salt}`
 }
 
-const ANON_KEY = 'cdoc_anon_session'
-const getAnonSession = () => { try { return JSON.parse(localStorage.getItem(ANON_KEY) || 'null') } catch { return null } }
-const saveAnonSession = (s) => s ? localStorage.setItem(ANON_KEY, JSON.stringify(s)) : localStorage.removeItem(ANON_KEY)
+
 
 
   const users = getUsers()
@@ -185,23 +184,30 @@ export function AuthProvider({ children }) {
   const [needsProfileSetup, setNeedsProfileSetup] = useState(false)
 
   useEffect(() => {
-    seedAdmin()
-    // Restore named session first, then anonymous fallback
-    const session = getSavedSession()
-    if (session) {
-      const users = getUsers()
-      if (users[session.email]) {
-        setUser({ ...users[session.email], isAdmin: session.email === ADMIN_EMAIL })
-        setLoading(false)
-        return
+    const init = async () => {
+      seedAdmin()
+      // 1. Restore named session first
+      const session = getSavedSession()
+      if (session) {
+        const users = getUsers()
+        if (users[session.email]) {
+          setUser({ ...users[session.email], isAdmin: session.email === ADMIN_EMAIL })
+          setLoading(false)
+          return
+        }
       }
+      // 2. Restore anonymous session from IndexedDB
+      try {
+        const anon = await getAnonSession()
+        if (anon?.anonUUID) {
+          setUser({ ...anon, isAnonymous: true, isAdmin: false })
+        }
+      } catch (e) {
+        console.warn('anonDB restore failed, falling back to localStorage', e)
+      }
+      setLoading(false)
     }
-    // Restore anonymous session
-    const anon = getAnonSession()
-    if (anon?.anonUUID) {
-      setUser({ ...anon, isAnonymous: true, isAdmin: false })
-    }
-    setLoading(false)
+    init()
   }, [])
 
   // Enrich and save a new or returning user, then set as current session
@@ -255,14 +261,18 @@ export function AuthProvider({ children }) {
     }
   }
 
-  // ── Anonymous login: no account needed, progress stored locally by UUID ────
-  const loginAnonymous = () => {
+  // ── Anonymous login: no account needed, progress stored in IndexedDB ────────
+  const loginAnonymous = async () => {
     // Reuse existing anon session if present (same device)
-    const existing = getAnonSession()
-    if (existing?.anonUUID) {
-      const anonUser = { ...existing, isAnonymous: true, isAdmin: false }
-      setUser(anonUser)
-      return anonUser
+    try {
+      const existing = await getAnonSession()
+      if (existing?.anonUUID) {
+        const anonUser = { ...existing, isAnonymous: true, isAdmin: false }
+        setUser(anonUser)
+        return anonUser
+      }
+    } catch (e) {
+      console.warn('anonDB read failed', e)
     }
     const uuid = generateAnonUUID()
     const anonUser = {
@@ -275,7 +285,11 @@ export function AuthProvider({ children }) {
       avatar: null,
       createdAt: new Date().toISOString(),
     }
-    saveAnonSession(anonUser)
+    try {
+      await saveAnonSession(anonUser)
+    } catch (e) {
+      console.warn('anonDB write failed, session will not persist', e)
+    }
     setUser(anonUser)
     return anonUser
   }
@@ -327,7 +341,8 @@ export function AuthProvider({ children }) {
     setUser(null)
     setNeedsProfileSetup(false)
     saveSession(null)
-    saveAnonSession(null)
+    // Clear IndexedDB guest data asynchronously (fire-and-forget on logout)
+    clearAllGuestData().catch(e => console.warn('anonDB clear failed', e))
   }
 
   // Called from ProfileSetupModal or Settings when user updates their info
