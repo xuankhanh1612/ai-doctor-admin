@@ -15,6 +15,7 @@ import {
 } from '../../lib/medicalStorage.js'
 import { notifyUpload } from '../../hooks/useMedicalData.js'
 import { buildImageConvertedInBodyRecord, parseInBodyCsv, recordsToInBodyCsv, summarizeInBodyRecords } from '../../lib/inbodyCsv.js'
+import { isHeicFile, ensureBrowserSafeImage } from '../../lib/heicConvert.js'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const TYPE_COLORS = {
@@ -222,7 +223,7 @@ function isCsvFile(file) {
 }
 
 function isSupportedUploadFile(file) {
-  return file.type.startsWith('image/') || file.type === 'application/pdf' || isCsvFile(file)
+  return file.type.startsWith('image/') || file.type === 'application/pdf' || isCsvFile(file) || isHeicFile(file)
 }
 
 function recordText(record) {
@@ -469,15 +470,20 @@ export default function MedicalUploader({ patientId, onSelectImage }) {
       setUploadProgress(10)
 
       try {
+        // HEIC/HEIF (default iPhone photo format) can't be displayed by most
+        // browsers nor accepted by vision APIs — convert to JPEG up front so
+        // every downstream step (preview, storage, AI analysis) just works.
+        const safeFile = await ensureBrowserSafeImage(file)
+
         const progressInterval = setInterval(() => {
           setUploadProgress(p => Math.min(p + 15, 85))
         }, 150)
 
-        const isCsv = isCsvFile(file)
+        const isCsv = isCsvFile(safeFile)
         const [dataUrl, base64Data, textContent] = await Promise.all([
-          fileToDataUrl(file),
-          fileToBase64(file),
-          isCsv ? readFileText(file) : Promise.resolve(''),
+          fileToDataUrl(safeFile),
+          fileToBase64(safeFile),
+          isCsv ? readFileText(safeFile) : Promise.resolve(''),
         ])
 
         clearInterval(progressInterval)
@@ -485,12 +491,12 @@ export default function MedicalUploader({ patientId, onSelectImage }) {
 
         const record = {
           id:         `med_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-          filename:   file.name,
-          name:       file.name,
-          fileType:   detectFileType(file.type, file.name),
-          type:       detectFileType(file.type, file.name),
-          mimeType:   file.type || (isCsv ? 'text/csv' : 'image/jpeg'),
-          size:       file.size,
+          filename:   safeFile.name,
+          name:       safeFile.name,
+          fileType:   detectFileType(safeFile.type, safeFile.name),
+          type:       detectFileType(safeFile.type, safeFile.name),
+          mimeType:   safeFile.type || (isCsv ? 'text/csv' : 'image/jpeg'),
+          size:       safeFile.size,
           uploadedAt: new Date().toISOString(),
           dataUrl,
           base64Data,
