@@ -76,7 +76,7 @@ export function parseInBodyCsv(csvText = '') {
     trunkMuscle: parseNumber(row['Khối lượng cơ ở thân mình(kg)']),
     rightLegMuscle: parseNumber(row['Khối lượng cơ ở chân phải(kg)']),
     leftLegMuscle: parseNumber(row['Khối lượng cơ ở chân trái(kg)']),
-  })).filter(record => record.rawDate && record.weight !== null).sort((a, b) => a.rawDate.localeCompare(b.rawDate))
+  })).filter(record => record.weight !== null && (record.rawDate || record.date)).sort((a, b) => (a.rawDate || a.date).localeCompare(b.rawDate || b.date))
 }
 
 export function summarizeInBodyRecords(records = []) {
