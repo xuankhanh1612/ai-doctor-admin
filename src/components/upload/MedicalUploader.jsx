@@ -15,6 +15,7 @@ import {
 } from '../../lib/medicalStorage.js'
 import { notifyUpload } from '../../hooks/useMedicalData.js'
 import { buildImageConvertedInBodyRecord, parseInBodyCsv, recordsToInBodyCsv, summarizeInBodyRecords } from '../../lib/inbodyCsv.js'
+import { convertInBodyImageToCsv, fileToBase64Promise } from '../../lib/inbodyImageConvert.js'
 import { isHeicFile, ensureBrowserSafeImage } from '../../lib/heicConvert.js'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -408,6 +409,7 @@ export default function MedicalUploader({ patientId, onSelectImage }) {
   const [uploadProgress, setUploadProgress] = useState(0)
   const [analyzing, setAnalyzing]         = useState(false)
   const [analysisStream, setAnalysisStream] = useState('')
+  const [converting, setConverting]       = useState(false)
   const [error, setError]                 = useState('')
   const [apiKey, setApiKey]               = useState('')
   const [showApiInput, setShowApiInput]   = useState(false)
@@ -677,15 +679,45 @@ export default function MedicalUploader({ patientId, onSelectImage }) {
 
   async function convertSelectedInBodyImageToCsv() {
     if (!selected || selected.fileType === 'csv') return
-    const existingCsv = records.find(record => record.fileType === 'csv' && record.textContent)
-    const fallback = existingCsv ? parseInBodyCsv(recordText(existingCsv)).at(-1) : null
-    const converted = buildImageConvertedInBodyRecord({ analysis: selected.aiAnalysis, fallback, sourceName: selected.filename })
-    const csvText = recordsToInBodyCsv([converted])
-    const safeName = selected.filename.replace(/\.[^.]+$/, '').replace(/[^a-z0-9._-]+/gi, '_') || 'InBody_Image'
-    await saveCsvRecordFromText(csvText, `${safeName}_converted.csv`, {
-      notes: `Converted from InBody image: ${selected.filename}`,
-      convertedFromRecordId: selected.id,
-    })
+
+    // Use base64Data already stored in the record — no need to re-read the file.
+    // If for some reason it's missing, fall back to reading from dataUrl.
+    const base64 = selected.base64Data ||
+      (selected.dataUrl ? selected.dataUrl.split(',')[1] : null)
+
+    if (!base64) {
+      console.error('[InBody Convert] No base64 data available for record', selected.filename)
+      return
+    }
+
+    setConverting(true)
+    try {
+      const existingCsv   = records.find(r => r.fileType === 'csv' && r.textContent)
+      const fallbackRecord = existingCsv ? parseInBodyCsv(recordText(existingCsv)).at(-1) : null
+
+      // Delegate all 3 steps (metrics JSON + date extraction fallback + CSV build)
+      // to the shared lib — same logic as AI inbody Portal tab.
+      const { csvText } = await convertInBodyImageToCsv({
+        base64Image:    base64,
+        mediaType:      selected.mimeType || 'image/jpeg',
+        file:           null,          // no File object available from stored record
+        fallbackRecord,
+        sourceName:     selected.filename,
+        // selected.aiAnalysis comes from Claude (free-text), not the metrics JSON
+        // that convertInBodyImageToCsv expects — always run a fresh Groq Vision pass.
+        cachedAnalysis: null,
+      })
+
+      const safeName = selected.filename.replace(/\.[^.]+$/, '').replace(/[^a-z0-9._-]+/gi, '_') || 'InBody_Image'
+      await saveCsvRecordFromText(csvText, `${safeName}_converted.csv`, {
+        notes: `Converted from InBody image: ${selected.filename}`,
+        convertedFromRecordId: selected.id,
+      })
+    } catch (err) {
+      console.error('[InBody Convert]', err)
+    } finally {
+      setConverting(false)
+    }
   }
 
   // ─── AI Analysis (gọi thẳng Anthropic API, stream) ─────────────────────
@@ -1056,11 +1088,11 @@ Trả lời bằng tiếng Việt, ngắn gọn và rõ ràng. Nhắc nhở đâ
               </div>
 
               {selected.fileType !== 'csv' && selected.fileType !== 'pdf' && (
-                <button onClick={convertSelectedInBodyImageToCsv} style={{
-                  marginTop: 12, width: '100%', padding: '11px 14px', borderRadius: 10, cursor: 'pointer',
+                <button onClick={convertSelectedInBodyImageToCsv} disabled={converting} style={{
+                  marginTop: 12, width: '100%', padding: '11px 14px', borderRadius: 10, cursor: converting ? 'not-allowed' : 'pointer',
                   background: 'linear-gradient(135deg,rgba(179,255,95,0.22),rgba(0,229,255,0.12))', border: '1px solid rgba(179,255,95,0.35)',
-                  color: '#b3ff5f', fontSize: 12, fontWeight: 800,
-                }}>📈 Convert InBody Image thành .CSV</button>
+                  color: '#b3ff5f', fontSize: 12, fontWeight: 800, opacity: converting ? 0.6 : 1,
+                }}>{converting ? '⏳ Đang convert...' : '📈 Convert InBody Image thành .CSV'}</button>
               )}
 
               {/* Notes */}
