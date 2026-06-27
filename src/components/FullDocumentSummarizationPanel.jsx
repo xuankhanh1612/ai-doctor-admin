@@ -5,6 +5,7 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react'
 import { useApp } from '../context/AppContext'
 import NavButtons from './NavButtons.jsx'
+import { isHeicFile, convertHeicToJpeg } from '../lib/heicConvert.js'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const CHUNK_SIZE = 4 // pages per chunk (mirrors rag-lab sequential chunking)
@@ -108,7 +109,6 @@ export default function FullDocumentSummarizationPanel({ onNext, nextLabel, onPr
   const [ingesting, setIngesting]       = useState(false) // converting HEIC → JPEG, etc.
   const fileInputRef = useRef(null)
   const abortRef     = useRef(null)
-  const heicLibRef    = useRef(null) // cache the dynamically-loaded heic2any module
 
   // ── Color tokens ──
   const bg      = isDark ? 'var(--bg2,#07090f)'             : '#f4f7fb'
@@ -119,32 +119,9 @@ export default function FullDocumentSummarizationPanel({ onNext, nextLabel, onPr
   const accent  = isDark ? '#a5b4fc'                        : '#4338ca'
   const accentBg = isDark ? 'rgba(99,102,241,0.12)'        : 'rgba(99,102,241,0.08)'
 
-// ── HEIC/HEIF detection ──
-  // iPhones (Camera/Photos) export JPGs as HEIC by default. The browser often
-  // reports file.type as '' (empty) for HEIC, and Groq's vision API rejects
-  // the format outright (400) — so we detect by extension too and convert.
-  const isHeicFile = (file) => {
-    const t = (file.type || '').toLowerCase()
-    const n = (file.name || '').toLowerCase()
-    return t === 'image/heic' || t === 'image/heif' || n.endsWith('.heic') || n.endsWith('.heif')
-  }
-
-  // ── Convert HEIC/HEIF → JPEG entirely client-side (no upload needed) ──
-  // Uses heic2any (loaded on demand from a CDN as an ES module via esm.sh,
-  // same lazy-loading pattern already used for pdf.js below).
-  const convertHeicToJpeg = async (file) => {
-    if (!heicLibRef.current) {
-      const mod = await import('https://esm.sh/heic2any@0.0.4')
-      heicLibRef.current = mod.default || mod
-    }
-    const heic2any = heicLibRef.current
-    const result = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.85 })
-    const outBlob = Array.isArray(result) ? result[0] : result
-    const newName = file.name.replace(/\.(heic|heif)$/i, '') + '.jpg'
-    return new File([outBlob], newName, { type: 'image/jpeg' })
-  }
-
-  // ── File ingestion ──
+// ── File ingestion ──
+  // HEIC/HEIF detection + conversion now lives in src/lib/heicConvert.js
+  // (shared across this panel, Upload Records, and AI InBody Portal).
   const ingestFiles = useCallback(async (files) => {
     setError(null)
     setIngesting(true)
