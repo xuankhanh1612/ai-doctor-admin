@@ -162,6 +162,7 @@ export default function UserProfilePanel() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [linkingProvider, setLinkingProvider] = useState(null)
+  const [linkError, setLinkError] = useState('')
 
   const fileInputRef = useRef(null)
   const videoRef = useRef(null)
@@ -344,6 +345,7 @@ export default function UserProfilePanel() {
             <div style={{ border: `1px solid ${border}`, borderRadius: 20, padding: 22, background: surface2 }}>
               <div style={{ fontSize: 13, fontWeight: 800, color: text, marginBottom: 14 }}>{vi ? 'Tài khoản liên kết' : 'Linked Accounts'}</div>
               <div style={{ fontSize: 12, color: text3, marginBottom: 14 }}>{vi ? 'Bạn có thể liên kết nhiều tài khoản. Tài khoản chính sẽ được dùng để đăng nhập.' : 'You can link multiple accounts, but one main account will be used to login.'}</div>
+              {linkError && <div style={{ marginBottom: 14, padding: '10px 12px', borderRadius: 10, border: '1px solid rgba(255,82,82,0.28)', background: 'rgba(255,82,82,0.08)', color: '#ff5252', fontSize: 12, lineHeight: 1.5 }}>{linkError}</div>}
               {['google', 'apple'].map(p => {
                 const isLinked = linkedProviders.includes(p)
                 const meta = PROVIDER_META[p]
@@ -365,7 +367,10 @@ export default function UserProfilePanel() {
                         )}
                       </div>
                     ) : (
-                      <button onClick={() => { setLinkingProvider(p); (p === 'google' ? linkProvider('google') : linkProvider('apple')).finally(() => setLinkingProvider(null)) }} disabled={linkingProvider === p} style={{ background: 'linear-gradient(135deg,#00b8cc,#6b3fd4)', border: 'none', color: '#fff', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', fontSize: 12, fontWeight: 700, fontFamily: 'inherit', opacity: linkingProvider === p ? 0.6 : 1 }}>
+                      <button onClick={() => {
+                        setLinkingProvider(p); setLinkError('')
+                        linkProvider(p).catch(e => setLinkError(e?.message || (vi ? 'Liên kết thất bại.' : 'Linking failed.'))).finally(() => setLinkingProvider(null))
+                      }} disabled={linkingProvider === p} style={{ background: 'linear-gradient(135deg,#00b8cc,#6b3fd4)', border: 'none', color: '#fff', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', fontSize: 12, fontWeight: 700, fontFamily: 'inherit', opacity: linkingProvider === p ? 0.6 : 1 }}>
                         {linkingProvider === p ? '...' : (vi ? 'Kết nối' : 'Connect')}
                       </button>
                     )}

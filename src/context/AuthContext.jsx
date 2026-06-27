@@ -404,6 +404,55 @@ export function AuthProvider({ children }) {
     }
   }
 
+  // ── Link/unlink an additional sign-in provider to the CURRENT account ───────
+  // (different from loginWithGoogle/loginWithApple, which sign IN as that
+  // provider's account — this attaches the provider to the account already
+  // logged in, without switching sessions.)
+  const linkProvider = async (providerName) => {
+    if (!user || user.isAnonymous) throw new Error('No active account to link to')
+    const profile = providerName === 'google' ? await googleOAuthPopup() : simulateAppleOAuth()
+
+    const users = getUsers()
+    // Guard: don't let someone link an account that's already a separate, distinct user
+    if (profile.email && profile.email !== user.email && users[profile.email]) {
+      throw new Error(
+        providerName === 'google'
+          ? 'Tài khoản Google này đã được dùng cho một hồ sơ khác.'
+          : 'Tài khoản Apple này đã được dùng cho một hồ sơ khác.'
+      )
+    }
+
+    const existingUser = users[user.email] || user
+    const linkedProviders = Array.from(new Set([...(existingUser.linkedProviders || [existingUser.provider]), providerName]))
+    const linkedAccounts = { ...(existingUser.linkedAccounts || {}), [providerName]: { email: profile.email, picture: profile.picture, name: profile.name } }
+
+    const updated = { ...existingUser, linkedProviders, linkedAccounts }
+    users[user.email] = updated
+    saveUsers(users)
+    const enriched = { ...updated, isAdmin: user.isAdmin }
+    setUser(enriched)
+    return enriched
+  }
+
+  const unlinkProvider = (providerName) => {
+    if (!user || user.isAnonymous) return user
+    const users = getUsers()
+    const existingUser = users[user.email] || user
+    const currentLinked = existingUser.linkedProviders || [existingUser.provider]
+    if (currentLinked.length <= 1) return user // always keep at least one provider linked
+
+    const linkedProviders = currentLinked.filter(p => p !== providerName)
+    const linkedAccounts = { ...(existingUser.linkedAccounts || {}) }
+    delete linkedAccounts[providerName]
+
+    const updated = { ...existingUser, linkedProviders, linkedAccounts }
+    users[user.email] = updated
+    saveUsers(users)
+    const enriched = { ...updated, isAdmin: user.isAdmin }
+    setUser(enriched)
+    return enriched
+  }
+
   const getAllUsers = () => Object.values(getUsers()).map(u => ({ ...u, isAdmin: u.email === ADMIN_EMAIL }))
   const getPatients = () => { try { return JSON.parse(localStorage.getItem('cdoc_patients') || '[]') } catch { return [] } }
   const savePatient = (patient) => {
@@ -430,7 +479,7 @@ export function AuthProvider({ children }) {
       user, loading,
       needsProfileSetup, dismissProfileSetup,
       loginWithGoogle, loginWithApple, loginWithEmail, loginAnonymous,
-      logout, updateProfile,
+      logout, updateProfile, linkProvider, unlinkProvider,
       getAllUsers, getPatients, savePatient, getMedicalRecords, saveMedicalRecord,
     }}>
       {children}
