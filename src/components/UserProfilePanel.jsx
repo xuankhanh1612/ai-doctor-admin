@@ -98,6 +98,14 @@ function GoogleIcon() {
   )
 }
 
+function AppleIcon({ isDark }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill={isDark ? '#fff' : '#000'} aria-hidden="true">
+      <path d="M12.52 9.12a3.8 3.8 0 011.82-3.2 3.9 3.9 0 00-3.08-1.66c-1.3-.14-2.56.77-3.22.77-.67 0-1.69-.75-2.78-.73A4.1 4.1 0 001.8 6.56c-1.5 2.6-.38 6.43 1.06 8.53.72 1.03 1.56 2.18 2.66 2.14 1.08-.04 1.49-.69 2.79-.69 1.3 0 1.67.69 2.8.67 1.15-.02 1.88-1.03 2.58-2.07a8.56 8.56 0 001.17-2.4 3.68 3.68 0 01-2.34-3.62zM10.48 3.12A3.75 3.75 0 0011.42.5a3.8 3.8 0 00-2.46 1.27 3.56 3.56 0 00-.88 2.57 3.14 3.14 0 002.4-1.22z"/>
+    </svg>
+  )
+}
+
 function ProviderBadge({ provider }) {
   if (provider === 'google') return <GoogleIcon />
   if (provider === 'apple') return <span style={{ fontSize: 17, lineHeight: 1 }}></span>
