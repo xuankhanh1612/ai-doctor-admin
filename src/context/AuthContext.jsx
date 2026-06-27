@@ -149,9 +149,7 @@ function generateAnonUUID() {
   return `HEALTH-${timestamp}-${random}-${salt}`
 }
 
-
-
-
+function seedAdmin() {
   const users = getUsers()
   if (!users[ADMIN_EMAIL]) {
     const adminName = 'Lê Xuân Khánh'
