@@ -126,7 +126,33 @@ function simulateAppleOAuth() {
   }
 }
 
-function seedAdmin() {
+// ─── Anonymous UUID Generator ─────────────────────────────────────────────────
+// Format: HEALTH-YYYYMMDDhhmmss-XXXXXXXX-SALT
+// SALT = short hash derived from browser fingerprint (userAgent + screen + timezone)
+function generateAnonUUID() {
+  const now = new Date()
+  const pad = (n, l = 2) => String(n).padStart(l, '0')
+  const timestamp =
+    String(now.getFullYear()) +
+    pad(now.getMonth() + 1) +
+    pad(now.getDate()) +
+    pad(now.getHours()) +
+    pad(now.getMinutes()) +
+    pad(now.getSeconds())
+  const random = Math.floor(10000000 + Math.random() * 90000000) // 8 digits
+  // Device salt: simple non-cryptographic fingerprint
+  const raw = `${navigator.userAgent}|${screen.width}x${screen.height}|${Intl.DateTimeFormat().resolvedOptions().timeZone}`
+  let hash = 0
+  for (let i = 0; i < raw.length; i++) { hash = ((hash << 5) - hash + raw.charCodeAt(i)) | 0 }
+  const salt = Math.abs(hash).toString(36).toUpperCase().padStart(6, '0').slice(0, 6)
+  return `HEALTH-${timestamp}-${random}-${salt}`
+}
+
+const ANON_KEY = 'cdoc_anon_session'
+const getAnonSession = () => { try { return JSON.parse(localStorage.getItem(ANON_KEY) || 'null') } catch { return null } }
+const saveAnonSession = (s) => s ? localStorage.setItem(ANON_KEY, JSON.stringify(s)) : localStorage.removeItem(ANON_KEY)
+
+
   const users = getUsers()
   if (!users[ADMIN_EMAIL]) {
     const adminName = 'Lê Xuân Khánh'
@@ -160,12 +186,20 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     seedAdmin()
+    // Restore named session first, then anonymous fallback
     const session = getSavedSession()
     if (session) {
       const users = getUsers()
       if (users[session.email]) {
         setUser({ ...users[session.email], isAdmin: session.email === ADMIN_EMAIL })
+        setLoading(false)
+        return
       }
+    }
+    // Restore anonymous session
+    const anon = getAnonSession()
+    if (anon?.anonUUID) {
+      setUser({ ...anon, isAnonymous: true, isAdmin: false })
     }
     setLoading(false)
   }, [])
@@ -221,6 +255,31 @@ export function AuthProvider({ children }) {
     }
   }
 
+  // ── Anonymous login: no account needed, progress stored locally by UUID ────
+  const loginAnonymous = () => {
+    // Reuse existing anon session if present (same device)
+    const existing = getAnonSession()
+    if (existing?.anonUUID) {
+      const anonUser = { ...existing, isAnonymous: true, isAdmin: false }
+      setUser(anonUser)
+      return anonUser
+    }
+    const uuid = generateAnonUUID()
+    const anonUser = {
+      anonUUID: uuid,
+      name: 'Guest Explorer',
+      email: null,
+      provider: 'anonymous',
+      isAnonymous: true,
+      isAdmin: false,
+      avatar: null,
+      createdAt: new Date().toISOString(),
+    }
+    saveAnonSession(anonUser)
+    setUser(anonUser)
+    return anonUser
+  }
+
   const loginWithGoogle = async (adminHint = null) => {
     // adminHint kept for backward-compat but real OAuth always opens popup
     const profile = await googleOAuthPopup()
@@ -268,6 +327,7 @@ export function AuthProvider({ children }) {
     setUser(null)
     setNeedsProfileSetup(false)
     saveSession(null)
+    saveAnonSession(null)
   }
 
   // Called from ProfileSetupModal or Settings when user updates their info
@@ -328,7 +388,7 @@ export function AuthProvider({ children }) {
     <AuthContext.Provider value={{
       user, loading,
       needsProfileSetup, dismissProfileSetup,
-      loginWithGoogle, loginWithApple, loginWithEmail,
+      loginWithGoogle, loginWithApple, loginWithEmail, loginAnonymous,
       logout, updateProfile,
       getAllUsers, getPatients, savePatient, getMedicalRecords, saveMedicalRecord,
     }}>
