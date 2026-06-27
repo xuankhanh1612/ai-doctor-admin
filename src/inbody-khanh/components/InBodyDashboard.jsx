@@ -195,6 +195,70 @@ function parseGroqInBodyJson(text) {
   }
 }
 
+// ── Extract ONLY the date/time from InBody image using free-text Groq Vision ──
+// This mirrors the FullDocumentSummarizationPanel approach: ask for plain text,
+// then parse the date ourselves — no JSON required, more robust than embedded JSON.
+const INBODY_DATE_EXTRACT_PROMPT = `Bạn đang nhìn vào ảnh phiếu kết quả InBody.
+Hãy tìm và đọc CHÍNH XÁC trường "Ngày/Giờ kiểm tra" (hoặc "Date/Time") trên phiếu.
+Chỉ trả lời ngày và giờ đó theo định dạng: DD.MM.YYYY HH:mm
+Ví dụ: 08.05.2026 10:58
+Nếu không thấy ngày, trả lời: UNKNOWN
+Không giải thích thêm gì khác.`;
+
+async function extractDateFromInBodyImage(base64Image, mediaType) {
+  try {
+    const safeMime = ['image/jpeg','image/png','image/gif','image/webp'].includes(mediaType)
+      ? mediaType : 'image/jpeg';
+    const res = await fetch('/api/groq-proxy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+        max_tokens: 64,
+        messages: [
+          { role: 'system', content: INBODY_DATE_EXTRACT_PROMPT },
+          {
+            role: 'user',
+            content: [
+              { type: 'image_url', image_url: { url: `data:${safeMime};base64,${base64Image}` } },
+              { type: 'text', text: 'Đọc trường "Ngày/Giờ kiểm tra" trên phiếu InBody này.' },
+            ],
+          },
+        ],
+      }),
+    });
+    if (!res.ok) return '';
+    const data = await res.json();
+    const text = (data?.choices?.[0]?.message?.content || '').trim();
+    if (!text || text === 'UNKNOWN') return '';
+    // Parse "DD.MM.YYYY HH:mm" or "DD/MM/YYYY HH:mm" or "YYYY-MM-DD HH:mm"
+    // → compact digits "YYYYMMDDHHmm"
+    const m =
+      text.match(/(\d{1,2})[./](\d{1,2})[./](\d{4})\s+(\d{1,2}):(\d{2})/) ||
+      text.match(/(\d{4})-(\d{2})-(\d{2})\s+(\d{1,2}):(\d{2})/);
+    if (!m) return '';
+    let year, month, day, hour, minute;
+    if (m[3]?.length === 4) {
+      // DD.MM.YYYY HH:mm
+      [, day, month, year, hour, minute] = m;
+    } else {
+      // YYYY-MM-DD HH:mm
+      [, year, month, day, hour, minute] = m;
+    }
+    const yy = String(year).padStart(4, '0');
+    const mm = String(month).padStart(2, '0');
+    const dd = String(day).padStart(2, '0');
+    const hh = String(hour).padStart(2, '0');
+    const mi = String(minute).padStart(2, '0');
+    // Validate
+    const y = parseInt(yy, 10), mo = parseInt(mm, 10), d = parseInt(dd, 10);
+    if (y < 2000 || y > 2035 || mo < 1 || mo > 12 || d < 1 || d > 31) return '';
+    return `${yy}${mm}${dd}${hh}${mi}`;
+  } catch {
+    return '';
+  }
+}
+
 async function analyzeInBodyWithAI(base64Image, mediaType, file = null, previousRecord = null) {
   const instructionText = previousRecord
     ? `Đây là kết quả InBody mới nhất. Kết quả lần trước: ${JSON.stringify(previousRecord)}. Hãy phân tích và so sánh.`
@@ -612,7 +676,7 @@ function parseInBodyCsv(csvText) {
     trunkMuscle: parseNumber(row['Khối lượng cơ ở thân mình(kg)']),
     rightLegMuscle: parseNumber(row['Khối lượng cơ ở chân phải(kg)']),
     leftLegMuscle: parseNumber(row['Khối lượng cơ ở chân trái(kg)']),
-  })).filter(record => record.rawDate && record.weight !== null).sort((a, b) => a.rawDate.localeCompare(b.rawDate));
+  })).filter(record => record.weight !== null && (record.rawDate || record.date)).sort((a, b) => (a.rawDate || a.date).localeCompare(b.rawDate || b.date));
 }
 
 function buildSimulatedClaudeAnalysis(records, fileName = STANDARD_INBODY_FILE) {
@@ -930,18 +994,25 @@ function UploadTab({ onAnalysis, onViewMedicalRecord }) {
   const convertCurrentImageToCsv = async () => {
     if (!file || file.name.toLowerCase().endsWith('.csv')) return;
 
-    // If AI has not yet analyzed this image, run vision analysis first so we get
-    // the real "Ngày đo" from the InBody printout instead of falling back to today.
+    setLoading(true);
+    let base64 = '';
+    try {
+      base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target.result.split(',')[1]);
+        reader.onerror = () => reject(new Error('Không đọc được file'));
+        reader.readAsDataURL(file);
+      });
+    } catch (err) {
+      setError(err.message || 'Lỗi đọc file.');
+      setLoading(false);
+      return;
+    }
+
+    // Step 1: Run main AI analysis (metrics JSON) — use cached result if available
     let analysisResult = result;
     if (!analysisResult) {
-      setLoading(true);
       try {
-        const base64 = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = (e) => resolve(e.target.result.split(',')[1]);
-          reader.onerror = () => reject(new Error('Không đọc được file'));
-          reader.readAsDataURL(file);
-        });
         analysisResult = await analyzeInBodyWithAI(base64, file.type, file);
         setResult(analysisResult);
         if (onAnalysis) onAnalysis(analysisResult);
@@ -949,13 +1020,42 @@ function UploadTab({ onAnalysis, onViewMedicalRecord }) {
         setError(err.message || 'Lỗi phân tích ảnh. Vui lòng thử lại.');
         setLoading(false);
         return;
-      } finally {
-        setLoading(false);
       }
     }
 
+    // Step 2: If date is missing from metrics, run a dedicated date-extraction pass
+    // using a free-text Groq Vision prompt (same approach as FullDocumentSummarizationPanel).
+    // This is more reliable than relying on JSON-embedded date from the main analysis.
+    const existingDateRaw = analysisResult?.metrics?.['Ngày đo'] ||
+      analysisResult?.metrics?.['Ngày'] || analysisResult?.metrics?.['Date'] ||
+      analysisResult?.metrics?.['Ngày/Giờ kiểm tra'] || '';
+    const existingDateDigits = String(existingDateRaw).replace(/[-/ :T]/g, '').replace(/\D/g, '');
+    const needsDateExtraction = existingDateDigits.length < 8;
+
+    let overrideRawDate = '';
+    if (needsDateExtraction) {
+      try {
+        overrideRawDate = await extractDateFromInBodyImage(base64, file.type);
+      } catch {
+        overrideRawDate = '';
+      }
+    }
+
+    // Step 3: Build record — inject overrideRawDate into metrics if needed
+    const enrichedAnalysis = overrideRawDate
+      ? {
+          ...analysisResult,
+          metrics: {
+            ...(analysisResult?.metrics || {}),
+            'Ngày đo': overrideRawDate, // compact digits → buildImageConvertedInBodyRecord will format
+          },
+        }
+      : analysisResult;
+
+    setLoading(false);
+
     const fallback = parseInBodyCsv(standardInBodyCsv).at(-1);
-    const record = buildImageConvertedInBodyRecord({ analysis: analysisResult, fallback, sourceName: file.name });
+    const record = buildImageConvertedInBodyRecord({ analysis: enrichedAnalysis, fallback, sourceName: file.name });
     const csvText = recordsToInBodyCsv([record]);
     const safeName = file.name.replace(/\.[^.]+$/, '').replace(/[^a-z0-9._-]+/gi, '_') || 'InBody_Image';
     await saveCsvTextToUploadRecords(csvText, `${safeName}_converted.csv`, { notes: `Convert InBody Image thành .CSV từ ${file.name}` });
