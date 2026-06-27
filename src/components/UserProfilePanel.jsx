@@ -134,14 +134,14 @@ function ProfileActionButton({ active, children, onClick, disabled, accent = '#0
 }
 
 export default function UserProfilePanel() {
-  const { user, updateProfile, loginWithGoogle, loginWithApple, linkProvider, unlinkProvider, logout } = useAuth()
+  const { user, updateProfile, loginWithGoogle, loginWithApple, linkProvider, unlinkProvider, logout, deleteAccount } = useAuth()
   const { theme, lang, t } = useApp()
   const isDark = theme === 'dark'
   const vi = lang === 'vi'
 
   // If anonymous user, show anonymous profile view
   if (user?.isAnonymous) {
-    return <AnonymousProfilePanel user={user} isDark={isDark} vi={vi} lang={lang} t={t} loginWithGoogle={loginWithGoogle} loginWithApple={loginWithApple} updateProfile={updateProfile} />
+    return <AnonymousProfilePanel user={user} isDark={isDark} vi={vi} lang={lang} t={t} loginWithGoogle={loginWithGoogle} loginWithApple={loginWithApple} updateProfile={updateProfile} deleteAccount={deleteAccount} />
   }
 
   // ─── Real user profile ───────────────────────────────────────────────────
@@ -163,6 +163,9 @@ export default function UserProfilePanel() {
   const [saved, setSaved] = useState(false)
   const [linkingProvider, setLinkingProvider] = useState(null)
   const [linkError, setLinkError] = useState('')
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [deleteConfirmText, setDeleteConfirmText] = useState('')
+  const [deleting, setDeleting] = useState(false)
 
   const fileInputRef = useRef(null)
   const videoRef = useRef(null)
@@ -378,21 +381,59 @@ export default function UserProfilePanel() {
                 )
               })}
             </div>
+
+            {/* Danger Zone — permanently delete account (everyone except Admin) */}
+            {!user?.isAdmin && (
+              <div style={{ border: '1px solid rgba(255,82,82,0.3)', borderRadius: 20, padding: 22, background: isDark ? 'rgba(255,82,82,0.05)' : 'rgba(255,82,82,0.03)' }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: '#ff5252', marginBottom: 8 }}>{vi ? '⚠️ Khu vực nguy hiểm' : '⚠️ Danger Zone'}</div>
+                <div style={{ fontSize: 12, color: text3, marginBottom: 14, lineHeight: 1.6 }}>
+                  {vi ? 'Xoá tài khoản sẽ xoá vĩnh viễn hồ sơ, dữ liệu gia phả và hồ sơ bệnh án liên quan. Hành động này không thể hoàn tác.' : 'Deleting your account permanently removes your profile, family tree data, and related medical records. This action cannot be undone.'}
+                </div>
+                <button type="button" onClick={() => { setDeleteConfirmText(''); setShowDeleteModal(true) }} style={{ padding: '10px 18px', borderRadius: 12, border: '1px solid rgba(255,82,82,0.4)', background: 'rgba(255,82,82,0.1)', color: '#ff5252', fontSize: 13, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  🗑️ {vi ? 'Xoá tài khoản vĩnh viễn' : 'Delete account permanently'}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
+
+      {/* Delete account confirmation modal */}
+      {showDeleteModal && (
+        <DeleteAccountModal
+          isDark={isDark} vi={vi} border={border} text={text} text2={text2} text3={text3} surface2={surface2}
+          confirmWord={vi ? 'XOÁ' : 'DELETE'}
+          confirmText={deleteConfirmText} setConfirmText={setDeleteConfirmText}
+          deleting={deleting}
+          onCancel={() => setShowDeleteModal(false)}
+          onConfirm={() => {
+            setDeleting(true)
+            try {
+              deleteAccount()
+              setShowDeleteModal(false)
+            } catch (e) {
+              console.error(e)
+            } finally {
+              setDeleting(false)
+            }
+          }}
+        />
+      )}
       <style>{`@media (max-width: 900px) { .animate-fade > div > div:nth-child(2) { grid-template-columns: 1fr !important; } }`}</style>
     </div>
   )
 }
 
 // ─── Anonymous Profile Panel ────────────────────────────────────────────────────
-function AnonymousProfilePanel({ user, isDark, vi, lang, t, loginWithGoogle, loginWithApple, updateProfile }) {
+function AnonymousProfilePanel({ user, isDark, vi, lang, t, loginWithGoogle, loginWithApple, updateProfile, deleteAccount }) {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   const [upgradeProvider, setUpgradeProvider] = useState(null)
   const [upgradeStep, setUpgradeStep] = useState('confirm') // 'confirm' | 'success'
   const [upgrading, setUpgrading] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [deleteConfirmText, setDeleteConfirmText] = useState('')
+  const [deleting, setDeleting] = useState(false)
 
   // ── Editable profile fields (same shape as a real account, so the guest can
   // fill them in gradually before/without ever upgrading) ──────────────────
@@ -673,9 +714,42 @@ function AnonymousProfilePanel({ user, isDark, vi, lang, t, loginWithGoogle, log
                   : 'Your info and UUID are saved on this device (IndexedDB). When you upgrade to a real account, everything carries over — we only connect it to your account.'}
               </div>
             </div>
+
+            {/* Danger Zone — permanently delete guest data (everyone except Admin) */}
+            <div style={{ border: '1px solid rgba(255,82,82,0.3)', borderRadius: 20, padding: 22, background: isDark ? 'rgba(255,82,82,0.05)' : 'rgba(255,82,82,0.03)' }}>
+              <div style={{ fontSize: 13, fontWeight: 800, color: '#ff5252', marginBottom: 8 }}>{vi ? '⚠️ Khu vực nguy hiểm' : '⚠️ Danger Zone'}</div>
+              <div style={{ fontSize: 12, color: text3, marginBottom: 14, lineHeight: 1.6 }}>
+                {vi ? 'Xoá sẽ xoá vĩnh viễn hồ sơ khách và toàn bộ tiến trình đã lưu trên thiết bị này. Hành động này không thể hoàn tác.' : 'Deleting permanently removes your guest profile and all progress saved on this device. This action cannot be undone.'}
+              </div>
+              <button type="button" onClick={() => { setDeleteConfirmText(''); setShowDeleteModal(true) }} style={{ padding: '10px 18px', borderRadius: 12, border: '1px solid rgba(255,82,82,0.4)', background: 'rgba(255,82,82,0.1)', color: '#ff5252', fontSize: 13, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>
+                🗑️ {vi ? 'Xoá tài khoản vĩnh viễn' : 'Delete account permanently'}
+              </button>
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Delete account confirmation modal */}
+      {showDeleteModal && (
+        <DeleteAccountModal
+          isDark={isDark} vi={vi} border={border} text={text} text2={text2} text3={text3} surface2={surface2}
+          confirmWord={vi ? 'XOÁ' : 'DELETE'}
+          confirmText={deleteConfirmText} setConfirmText={setDeleteConfirmText}
+          deleting={deleting}
+          onCancel={() => setShowDeleteModal(false)}
+          onConfirm={() => {
+            setDeleting(true)
+            try {
+              deleteAccount()
+              setShowDeleteModal(false)
+            } catch (e) {
+              console.error(e)
+            } finally {
+              setDeleting(false)
+            }
+          }}
+        />
+      )}
 
       {/* Upgrade Modal */}
       {showUpgradeModal && (
@@ -753,4 +827,43 @@ function AnonymousProfilePanel({ user, isDark, vi, lang, t, loginWithGoogle, log
 
 function inputStyle(border, background, color) {
   return { width: "100%", padding: "12px 13px", borderRadius: 12, border: `1px solid ${border}`, background, color, outline: "none", boxSizing: "border-box", fontSize: 14, fontFamily: "inherit" }
+}
+
+// ─── Shared "permanently delete account" confirmation modal ───────────────────
+// Requires the person to type a confirm word before the button activates, so the
+// destructive action can't be triggered by an accidental click.
+function DeleteAccountModal({ isDark, vi, border, text, text2, text3, surface2, confirmWord, confirmText, setConfirmText, deleting, onCancel, onConfirm }) {
+  const canConfirm = confirmText.trim().toUpperCase() === confirmWord && !deleting
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 9100, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(6px)' }}>
+      <div style={{ width: '100%', maxWidth: 420, margin: 24, background: isDark ? '#0c1220' : '#fff', borderRadius: 24, padding: 32, boxShadow: '0 32px 80px rgba(0,0,0,0.5)', border: '1px solid rgba(255,82,82,0.3)', position: 'relative' }}>
+        <button onClick={onCancel} style={{ position: 'absolute', top: 16, right: 16, background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: text3 }}>✕</button>
+        <div style={{ textAlign: 'center', marginBottom: 20 }}>
+          <div style={{ fontSize: 48, marginBottom: 8 }}>🗑️</div>
+          <div style={{ fontSize: 18, fontWeight: 900, color: text }}>{vi ? 'Xoá tài khoản vĩnh viễn?' : 'Permanently delete account?'}</div>
+          <div style={{ fontSize: 13, color: text2, marginTop: 6, lineHeight: 1.6 }}>
+            {vi ? 'Toàn bộ hồ sơ, gia phả bệnh lý và hồ sơ bệnh án liên quan sẽ bị xoá vĩnh viễn. Không thể hoàn tác.' : 'Your profile, family tree, and related medical records will be permanently deleted. This cannot be undone.'}
+          </div>
+        </div>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, color: text3, fontWeight: 700, marginBottom: 20 }}>
+          {vi ? `Nhập "${confirmWord}" để xác nhận` : `Type "${confirmWord}" to confirm`}
+          <input
+            value={confirmText}
+            onChange={e => setConfirmText(e.target.value)}
+            style={inputStyle(border, surface2, text)}
+            placeholder={confirmWord}
+            autoFocus
+          />
+        </label>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button onClick={onCancel} style={{ flex: 1, padding: '12px', borderRadius: 12, border: `1px solid ${border}`, background: 'none', color: text2, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+            {vi ? 'Huỷ' : 'Cancel'}
+          </button>
+          <button onClick={onConfirm} disabled={!canConfirm} style={{ flex: 2, padding: '12px', borderRadius: 12, border: 'none', background: '#ff5252', color: '#fff', fontWeight: 900, cursor: canConfirm ? 'pointer' : 'not-allowed', fontFamily: 'inherit', opacity: canConfirm ? 1 : 0.5 }}>
+            {deleting ? '...' : (vi ? 'Xoá vĩnh viễn' : 'Delete permanently')}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
 }

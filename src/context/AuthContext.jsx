@@ -156,6 +156,7 @@ function seedAdmin() {
     const adminAvatar = `https://ui-avatars.com/api/?name=Le+Xuan+Khanh&background=00b8cc&color=fff&size=128&bold=true&rounded=true`
     users[ADMIN_EMAIL] = {
       email: ADMIN_EMAIL,
+      uuid: generateAnonUUID(),
       name: adminName,
       given_name: 'Khánh',
       family_name: 'Lê',
@@ -171,6 +172,10 @@ function seedAdmin() {
       patients: [],
       records: [],
     }
+    saveUsers(users)
+  } else if (!users[ADMIN_EMAIL].uuid) {
+    // Backfill uuid for an admin record seeded before uuid existed
+    users[ADMIN_EMAIL].uuid = generateAnonUUID()
     saveUsers(users)
   }
 }
@@ -189,7 +194,13 @@ export function AuthProvider({ children }) {
       if (session) {
         const users = getUsers()
         if (users[session.email]) {
-          setUser({ ...users[session.email], isAdmin: session.email === ADMIN_EMAIL })
+          let restored = users[session.email]
+          if (!restored.uuid) {
+            restored = { ...restored, uuid: generateAnonUUID() }
+            users[session.email] = restored
+            saveUsers(users)
+          }
+          setUser({ ...restored, isAdmin: session.email === ADMIN_EMAIL })
           setLoading(false)
           return
         }
@@ -231,6 +242,7 @@ export function AuthProvider({ children }) {
       // First-time login: seed from Google/Apple profile
       const newUser = {
         email: oauthProfile.email,
+        uuid: generateAnonUUID(),
         name: oauthProfile.name,                  // from Google
         given_name: oauthProfile.given_name,
         family_name: oauthProfile.family_name,
@@ -255,6 +267,7 @@ export function AuthProvider({ children }) {
       // Returning user: refresh Google avatar in case it changed, but keep custom name if set
       const refreshed = {
         ...existing,
+        uuid: existing.uuid || generateAnonUUID(), // backfill for accounts created before uuid existed
         googleAvatar: oauthProfile.picture,   // always sync latest Google photo
         // Only update avatar if user hasn't customised it
         avatar: existing.avatarCustomized ? existing.avatar : oauthProfile.picture,
@@ -331,6 +344,7 @@ export function AuthProvider({ children }) {
       if (users[email]) throw new Error('Email đã tồn tại. Vui lòng đăng nhập.')
       const u = {
         email, name,
+        uuid: generateAnonUUID(),
         given_name: name.split(' ').pop(),
         family_name: name.split(' ').slice(0, -1).join(' '),
         password,
@@ -349,19 +363,29 @@ export function AuthProvider({ children }) {
       return _finalize(u)
     } else {
       // Login
-      const u = users[email]
+      let u = users[email]
       if (!u) throw new Error('Tài khoản không tồn tại')
       if (u.password !== password) throw new Error('Sai mật khẩu')
+      if (!u.uuid) {
+        u = { ...u, uuid: generateAnonUUID() } // backfill for accounts created before uuid existed
+        users[email] = u
+        saveUsers(users)
+      }
       return _finalize(u)
     }
   }
 
   const logout = () => {
+    const wasAnonymous = !!user?.isAnonymous
     setUser(null)
     setNeedsProfileSetup(false)
     saveSession(null)
-    // Clear IndexedDB guest data asynchronously (fire-and-forget on logout)
-    clearAllGuestData().catch(e => console.warn('anonDB clear failed', e))
+    // Logout never deletes a named account's data (cdoc_users) — it only ends the
+    // session. Guest (anonymous) progress in IndexedDB is cleared on logout because
+    // there is no account to return to; named users keep everything for next login.
+    if (wasAnonymous) {
+      clearAllGuestData().catch(e => console.warn('anonDB clear failed', e))
+    }
   }
 
   // Called from ProfileSetupModal or Settings when user updates their info
@@ -453,6 +477,49 @@ export function AuthProvider({ children }) {
     return enriched
   }
 
+  // ── Permanently delete the current account (everyone except Admin) ──────────
+  // Removes the user record, related family-tree data, and any medical records
+  // uploaded under this email, then logs out. Cannot be undone.
+  const deleteAccount = () => {
+    if (!user) return
+    if (user.email === ADMIN_EMAIL) throw new Error('Không thể xoá tài khoản Quản trị viên.')
+
+    if (user.isAnonymous) {
+      // Guest account: wipe local IndexedDB progress entirely
+      setUser(null)
+      saveSession(null)
+      return clearAllGuestData().catch(e => console.warn('anonDB clear failed', e))
+    }
+
+    const email = user.email
+    // 1. Remove the account record itself
+    const users = getUsers()
+    delete users[email]
+    saveUsers(users)
+
+    // 2. Remove this account's Family Medical Tree data
+    try {
+      const ownerKey = getFamilyOwnerKey(email)
+      const byUser = JSON.parse(localStorage.getItem(FAMILY_USER_STORAGE_KEY) || '{}')
+      if (byUser[ownerKey]) {
+        delete byUser[ownerKey]
+        localStorage.setItem(FAMILY_USER_STORAGE_KEY, JSON.stringify(byUser))
+      }
+    } catch (e) { console.warn('Family tree cleanup failed', e) }
+
+    // 3. Remove medical records uploaded by this account
+    try {
+      const records = JSON.parse(localStorage.getItem('cdoc_records') || '[]')
+      const remaining = records.filter(r => r.uploadedBy !== email)
+      localStorage.setItem('cdoc_records', JSON.stringify(remaining))
+    } catch (e) { console.warn('Records cleanup failed', e) }
+
+    // 4. End the session
+    setUser(null)
+    setNeedsProfileSetup(false)
+    saveSession(null)
+  }
+
   const getAllUsers = () => Object.values(getUsers()).map(u => ({ ...u, isAdmin: u.email === ADMIN_EMAIL }))
   const getPatients = () => { try { return JSON.parse(localStorage.getItem('cdoc_patients') || '[]') } catch { return [] } }
   const savePatient = (patient) => {
@@ -479,7 +546,7 @@ export function AuthProvider({ children }) {
       user, loading,
       needsProfileSetup, dismissProfileSetup,
       loginWithGoogle, loginWithApple, loginWithEmail, loginAnonymous,
-      logout, updateProfile, linkProvider, unlinkProvider,
+      logout, updateProfile, linkProvider, unlinkProvider, deleteAccount,
       getAllUsers, getPatients, savePatient, getMedicalRecords, saveMedicalRecord,
     }}>
       {children}
