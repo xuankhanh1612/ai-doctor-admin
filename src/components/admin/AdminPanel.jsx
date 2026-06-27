@@ -196,7 +196,7 @@ export default function AdminPanel() {
 
   // Patient synthesized from upload records
   const patientFromUpload = records.length > 0 ? {
-    id:     readMetaId(records[0]?.ownerEmail || (records[0] ? null : user?.email)),
+    id:     readMetaId(records[0]?.ownerUuid || (records[0] ? null : user?.uuid)),
     name:   t('uploadPatientName'),
     files:  totalFiles,
     aiDone: aiAnalyzed,
@@ -521,6 +521,6 @@ export default function AdminPanel() {
 }
 
 // helper
-function readMetaId(ownerEmail) {
-  try { return JSON.parse(localStorage.getItem(getMetaKey(ownerEmail)) || '{}').patientId || 'P-unknown' } catch { return 'P-unknown' }
+function readMetaId(ownerUuid) {
+  try { return JSON.parse(localStorage.getItem(getMetaKey(ownerUuid)) || '{}').patientId || 'P-unknown' } catch { return 'P-unknown' }
 }

@@ -421,8 +421,8 @@ function isSummaryAllInBodyRecord(record) {
   );
 }
 
-async function loadLatestSummaryAllInBodyRecords(ownerEmail) {
-  const allRecords = await getAllRecords({ ownerEmail, includeUnowned: false });
+async function loadLatestSummaryAllInBodyRecords(ownerUuid) {
+  const allRecords = await getAllRecords({ ownerUuid, includeUnowned: false });
   const summaryRecord = allRecords
     .filter(isSummaryAllInBodyRecord)
     .sort((a, b) => String(b.uploadedAt || '').localeCompare(String(a.uploadedAt || '')))[0];
@@ -677,14 +677,15 @@ function UploadTab({ onAnalysis, onViewMedicalRecord }) {
       base64Data,
       textContent,
       notes: isCsv ? `AI inbody Portal · ${parseInBodyCsv(textContent).length} dòng dữ liệu` : 'AI inbody Portal image upload',
-      ownerEmail: user?.email || null,
+      ownerUuid: user?.uuid || null,
+      ownerEmail: user?.email || '',
       ownerName: user?.name || '',
       ownerAvatar: user?.avatar || '',
       ownerProvider: user?.provider || '',
       sourceModule: 'ai-inbody-portal',
       ...extra,
     };
-    await saveRecord(record, { ownerEmail: user?.email, ownerName: user?.name, ownerAvatar: user?.avatar, ownerProvider: user?.provider });
+    await saveRecord(record, { ownerUuid: user?.uuid, ownerEmail: user?.email, ownerName: user?.name, ownerAvatar: user?.avatar, ownerProvider: user?.provider });
     notifyUpload();
     setSavedUploadRecord(record);
     setUploadRecordStatus(`Đã lưu vào Upload Records: ${record.filename}`);
@@ -822,8 +823,8 @@ function UploadTab({ onAnalysis, onViewMedicalRecord }) {
   };
 
   const summarizeAllInBodyRecords = async () => {
-    const ownerEmail = user?.email;
-    const allRecords = await getAllRecords({ ownerEmail, includeUnowned: false });
+    const ownerUuid = user?.uuid;
+    const allRecords = await getAllRecords({ ownerUuid, includeUnowned: false });
     const parsed = [];
     allRecords.forEach((record) => {
       if (record.fileType !== 'csv') return;
@@ -1370,7 +1371,7 @@ export default function InBodyDashboard({ userId, initialRecords, onViewMedicalR
 
   useEffect(() => {
     let cancelled = false;
-    loadLatestSummaryAllInBodyRecords(user?.email)
+    loadLatestSummaryAllInBodyRecords(user?.uuid)
       .then((summary) => {
         if (cancelled || !summary) return;
         setRecords(summary.parsedRecords);
