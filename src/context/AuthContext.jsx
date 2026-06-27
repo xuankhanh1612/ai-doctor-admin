@@ -376,16 +376,13 @@ export function AuthProvider({ children }) {
   }
 
   const logout = () => {
-    const wasAnonymous = !!user?.isAnonymous
     setUser(null)
     setNeedsProfileSetup(false)
     saveSession(null)
-    // Logout never deletes a named account's data (cdoc_users) — it only ends the
-    // session. Guest (anonymous) progress in IndexedDB is cleared on logout because
-    // there is no account to return to; named users keep everything for next login.
-    if (wasAnonymous) {
-      clearAllGuestData().catch(e => console.warn('anonDB clear failed', e))
-    }
+    // Logout only ends the current session — it never deletes anyone's data.
+    // Guest (anonymous) progress stays in IndexedDB so the same UUID and journey
+    // are restored next time loginAnonymous() runs on this device. Permanent
+    // removal only happens via deleteAccount().
   }
 
   // Called from ProfileSetupModal or Settings when user updates their info
