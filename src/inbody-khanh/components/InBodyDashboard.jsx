@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import { getAllRecords, saveRecord, detectFileType, fileToBase64, fileToDataUrl } from '../../lib/medicalStorage.js';
 import { notifyUpload } from '../../hooks/useMedicalData.js';
 import { buildImageConvertedInBodyRecord, recordsToInBodyCsv } from '../../lib/inbodyCsv.js';
+import { ensureBrowserSafeImage } from '../../lib/heicConvert.js';
 import standardInBodyCsv from '../DataInBody/InBody-20260508 3.csv?raw';
 import aiClinicInBodyRef from '../DataInBody/AIClinicInBody.PNG';
 import inBodyChartRef from '../DataInBody/IMG_2635.PNG';
@@ -109,7 +110,6 @@ const INBODY_OCR_SYSTEM_PROMPT = `Bạn là chuyên gia phân tích kết quả 
 Khi nhận ảnh/PDF kết quả InBody, hãy:
 1. Đọc thật kỹ và trích xuất CHÍNH XÁC các chỉ số có trên phiếu in: Ngày đo (định dạng YYYY-MM-DD HH:mm), Cân nặng, Cơ bắp (SMM/Khối lượng cơ xương), Khối lượng mỡ trong cơ thể, Tỷ lệ mỡ cơ thể (%), BMI, Tỷ lệ trao đổi chất cơ bản (BMR), Điểm InBody, Lượng nước trong cơ thể (%), Mỡ nội tạng (Level), Protein, Khoáng chất — nếu ảnh không hiển thị chỉ số nào thì BỎ QUA chỉ số đó trong "metrics", KHÔNG tự đoán hay bịa số.
 2. ĐẶC BIỆT QUAN TRỌNG về ngày và giờ đo: Đọc trường "Ngày/Giờ kiểm tra" TRỰC TIẾP trên phiếu in. KHÔNG dùng ngày hôm nay hay tự bịa. Đọc CẢ GIỜ VÀ PHÚT nếu có — ví dụ phiếu ghi "08.05.2026 10:58" thì ghi "2026-05-08 10:58". Nếu chỉ thấy ngày không có giờ, ghi "2026-05-08 00:00". Nếu KHÔNG thể đọc được ngày, hãy ĐỂ TRỐNG trường "Ngày đo" (đừng điền gì vào đó). Lưu cả giờ:phút vì người dùng có thể đo nhiều lần trong cùng một ngày.
-   QUAN TRỌNG: Trường ngày tháng BẮT BUỘC phải có key là "Ngày đo" (không dùng key khác như "Ngày", "Date", "date", "datetime"). Đây là key duy nhất hệ thống đọc để lưu ngày đo vào CSV.
 3. Đưa ra nhận xét ngắn gọn (2-3 câu) về tình trạng sức khỏe dựa trên số liệu đọc được.
 4. Gợi ý cải thiện cụ thể (tập luyện, dinh dưỡng).
 5. Tính XP gamification dựa trên thay đổi so với lần đo trước (nếu có dữ liệu trước đó được cung cấp).
@@ -848,16 +848,25 @@ function UploadTab({ onAnalysis, onViewMedicalRecord }) {
     if (onAnalysis) onAnalysis(analysis, parsedRecords);
   };
 
-  const handleFile = (e) => {
+  const handleFile = async (e) => {
     const f = e.target.files[0];
     if (f) {
-      setFile(f);
       setResult(null);
       setError(null);
       setSimulatedRecords([]);
       setUploadRecordStatus('');
       setSavedUploadRecord(null);
-      saveUploadRecord(f).catch((error) => setUploadRecordStatus(`Không lưu được Upload Records: ${error.message || error}`));
+      try {
+        // HEIC/HEIF (default iPhone photo format) can't be previewed by most
+        // browsers nor accepted by Groq's vision API — convert to JPEG right
+        // away so the file used everywhere downstream (preview, AI analysis,
+        // Upload Records) is already a safe format.
+        const safeFile = await ensureBrowserSafeImage(f);
+        setFile(safeFile);
+        saveUploadRecord(safeFile).catch((error) => setUploadRecordStatus(`Không lưu được Upload Records: ${error.message || error}`));
+      } catch (error) {
+        setError(`Không đọc được file HEIC: ${error.message || error}`);
+      }
     }
   };
 
@@ -947,18 +956,6 @@ function UploadTab({ onAnalysis, onViewMedicalRecord }) {
 
     const fallback = parseInBodyCsv(standardInBodyCsv).at(-1);
     const record = buildImageConvertedInBodyRecord({ analysis: analysisResult, fallback, sourceName: file.name });
-
-    // Nếu Groq không đọc được ngày từ ảnh (rawDate rỗng), dùng ngày từ fallback CSV
-    // để tránh lỗi "CSV không có dòng dữ liệu InBody hợp lệ" (parseInBodyCsv filter record.rawDate truthy).
-    // Thứ tự ưu tiên: Groq Vision date → fallback CSV date → timestamp hiện tại (last resort)
-    if (!record.rawDate) {
-      const pad = (n) => String(n).padStart(2, '0');
-      const now = new Date();
-      const todayDigits = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}`;
-      record.rawDate = fallback?.rawDate || todayDigits;
-      record.date = record.rawDate;
-    }
-
     const csvText = recordsToInBodyCsv([record]);
     const safeName = file.name.replace(/\.[^.]+$/, '').replace(/[^a-z0-9._-]+/gi, '_') || 'InBody_Image';
     await saveCsvTextToUploadRecords(csvText, `${safeName}_converted.csv`, { notes: `Convert InBody Image thành .CSV từ ${file.name}` });
