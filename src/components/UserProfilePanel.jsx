@@ -549,7 +549,9 @@ function AnonymousProfilePanel({ user, isDark, vi, loginWithGoogle, loginWithApp
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderRadius: 14, border: `1px solid ${border}`, background: surface2, marginBottom: 20 }}>
                   {upgradeProvider === 'google' ? <GoogleIcon /> : <AppleIcon isDark={isDark} />}
                   <span style={{ fontSize: 14, fontWeight: 700, color: text }}>
-                    {upgradeProvider === 'google' ? 'khanhle@gmail.com' : 'user@icloud.com'}
+                    {upgradeProvider === 'google'
+                      ? (vi ? 'Chọn tài khoản Google của bạn' : 'Choose your Google Account')
+                      : (vi ? 'Tài khoản Apple của bạn' : 'Your Apple Account')}
                   </span>
                 </div>
                 {/* Benefits */}

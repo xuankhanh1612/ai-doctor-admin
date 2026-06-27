@@ -4,49 +4,11 @@ import { FAMILY_MEMBERS_CHANGED_EVENT, FAMILY_USER_STORAGE_KEY, LXK_PATIENT_PROF
 const AuthContext = createContext(null)
 const ADMIN_EMAIL = 'khanhlegood1@gmail.com'
 
-// ─── Storage helpers ───────────────────────────────────────────────────────────
 const getUsers = () => { try { return JSON.parse(localStorage.getItem('cdoc_users') || '{}') } catch { return {} } }
 const saveUsers = (u) => localStorage.setItem('cdoc_users', JSON.stringify(u))
 const getSavedSession = () => { try { return JSON.parse(localStorage.getItem('cdoc_session') || 'null') } catch { return null } }
 const saveSession = (s) => s ? localStorage.setItem('cdoc_session', JSON.stringify(s)) : localStorage.removeItem('cdoc_session')
 
-// ─── Anonymous UUID: HEALTH-YYYYMMDDhhmmss-XXXXXXXX-SALT ──────────────────────
-function generateDeviceSalt() {
-  try {
-    const stored = localStorage.getItem('cdoc_device_salt')
-    if (stored) return stored
-    const salt = Math.random().toString(36).substring(2, 6).toUpperCase()
-    localStorage.setItem('cdoc_device_salt', salt)
-    return salt
-  } catch { return 'D0' + Math.random().toString(36).substring(2, 4).toUpperCase() }
-}
-
-export function generateAnonymousUUID() {
-  const now = new Date()
-  const pad = (n, d = 2) => String(n).padStart(d, '0')
-  const timestamp =
-    now.getFullYear() +
-    pad(now.getMonth() + 1) +
-    pad(now.getDate()) +
-    pad(now.getHours()) +
-    pad(now.getMinutes()) +
-    pad(now.getSeconds())
-  const random8 = Math.floor(10000000 + Math.random() * 89999999)
-  const salt = generateDeviceSalt()
-  return `HEALTH-${timestamp}-${random8}-${salt}`
-}
-
-function getOrCreateAnonUUID() {
-  try {
-    const stored = localStorage.getItem('cdoc_anon_uuid')
-    if (stored) return stored
-    const uuid = generateAnonymousUUID()
-    localStorage.setItem('cdoc_anon_uuid', uuid)
-    return uuid
-  } catch { return generateAnonymousUUID() }
-}
-
-// ─── Family sync helper ────────────────────────────────────────────────────────
 const syncPrimaryPatientNameInFamilyTree = (email, name, avatar = '') => {
   const patientName = String(name || '').trim()
   const patientAvatar = String(avatar || '').trim()
@@ -66,84 +28,149 @@ const syncPrimaryPatientNameInFamilyTree = (email, name, avatar = '') => {
       if (member.name === nextName && member.avatar_url === nextAvatar && member.medicalRecord?.name === nextName && member.medicalRecord?.avatar_url === nextAvatar) return member
       changed = true
       return {
-        ...member, name: nextName,
+        ...member,
+        name: nextName,
         ...(nextAvatar ? { avatar_url: nextAvatar } : {}),
         medicalRecord: member.medicalRecord ? {
-          ...member.medicalRecord, name: nextName,
+          ...member.medicalRecord,
+          name: nextName,
           avatar_initials: nextName.split(' ').slice(-2).map(w => w[0]).join('').toUpperCase(),
           ...(nextAvatar ? { avatar_url: nextAvatar } : {}),
         } : member.medicalRecord,
       }
     })
     if (!changed) return
+
     byUser[ownerKey] = { ...userPatients, 'LXK-2024': nextMembers }
     localStorage.setItem(FAMILY_USER_STORAGE_KEY, JSON.stringify(byUser))
-    window.dispatchEvent(new CustomEvent(FAMILY_MEMBERS_CHANGED_EVENT, { detail: { patientId: 'LXK-2024', ownerId: ownerKey } }))
+    window.dispatchEvent(new CustomEvent(FAMILY_MEMBERS_CHANGED_EVENT, {
+      detail: { patientId: 'LXK-2024', ownerId: ownerKey },
+    }))
   } catch (e) { console.error('Profile-to-family sync error:', e) }
 }
 
-// ─── OAuth simulations ─────────────────────────────────────────────────────────
-function simulateGoogleOAuth(hint = null) {
-  if (hint === ADMIN_EMAIL) {
-    return { email: ADMIN_EMAIL, name: 'Lê Xuân Khánh', given_name: 'Khánh', family_name: 'Lê', picture: `https://ui-avatars.com/api/?name=Le+Xuan+Khanh&background=00b8cc&color=fff&size=128&bold=true&rounded=true`, provider: 'google', email_verified: true, locale: 'vi' }
-  }
-  return { email: 'nguyen.demo@gmail.com', name: 'Nguyễn Văn Demo', given_name: 'Demo', family_name: 'Nguyễn', picture: `https://ui-avatars.com/api/?name=Nguyen+Demo&background=4285F4&color=fff&size=128&bold=true&rounded=true`, provider: 'google', email_verified: true, locale: 'vi' }
+// Simulate Google OAuth — in production replace with real Google Sign-In SDK
+// Returns a profile object mimicking what Google's ID token gives you
+// ─── Google Identity Services (real OAuth popup) ──────────────────────────────
+// Replace VITE_GOOGLE_CLIENT_ID in your .env with your actual OAuth 2.0 Client ID
+// from https://console.cloud.google.com → APIs & Services → Credentials
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || ''
+
+function googleOAuthPopup() {
+  return new Promise((resolve, reject) => {
+    if (!GOOGLE_CLIENT_ID) {
+      reject(new Error('VITE_GOOGLE_CLIENT_ID chưa được cấu hình trong file .env'))
+      return
+    }
+
+    // Wait for GSI library to load
+    const tryInit = (retries = 20) => {
+      if (typeof window.google === 'undefined' || !window.google?.accounts?.oauth2) {
+        if (retries <= 0) { reject(new Error('Google Identity Services chưa tải xong')); return }
+        setTimeout(() => tryInit(retries - 1), 200)
+        return
+      }
+
+      const client = window.google.accounts.oauth2.initTokenClient({
+        client_id: GOOGLE_CLIENT_ID,
+        scope: 'openid email profile',
+        callback: async (tokenResponse) => {
+          if (tokenResponse.error) {
+            reject(new Error(tokenResponse.error_description || tokenResponse.error))
+            return
+          }
+          try {
+            // Fetch real user profile from Google People API
+            const res = await fetch(
+              `https://www.googleapis.com/oauth2/v3/userinfo`,
+              { headers: { Authorization: `Bearer ${tokenResponse.access_token}` } }
+            )
+            if (!res.ok) throw new Error('Không lấy được thông tin tài khoản Google')
+            const info = await res.json()
+            resolve({
+              email: info.email,
+              name: info.name,
+              given_name: info.given_name || '',
+              family_name: info.family_name || '',
+              picture: info.picture || '',
+              provider: 'google',
+              email_verified: info.email_verified ?? true,
+              locale: info.locale || 'vi',
+            })
+          } catch (err) {
+            reject(err)
+          }
+        },
+        error_callback: (err) => {
+          // User closed popup or denied permission — treat as cancellation
+          reject(new Error(err?.message || 'Đăng nhập Google bị huỷ'))
+        },
+      })
+      client.requestAccessToken({ prompt: 'select_account' })
+    }
+
+    tryInit()
+  })
 }
+
 function simulateAppleOAuth() {
-  return { email: 'user@icloud.com', name: 'Apple User', given_name: 'Apple', family_name: 'User', picture: `https://ui-avatars.com/api/?name=Apple+User&background=1c1c1e&color=fff&size=128&bold=true&rounded=true`, provider: 'apple', email_verified: true, locale: 'vi' }
+  return {
+    email: 'user@icloud.com',
+    name: 'Apple User',
+    given_name: 'Apple',
+    family_name: 'User',
+    picture: `https://ui-avatars.com/api/?name=Apple+User&background=1c1c1e&color=fff&size=128&bold=true&rounded=true`,
+    provider: 'apple',
+    email_verified: true,
+    locale: 'vi',
+  }
 }
 
 function seedAdmin() {
   const users = getUsers()
   if (!users[ADMIN_EMAIL]) {
-    const googleProfile = simulateGoogleOAuth(ADMIN_EMAIL)
-    users[ADMIN_EMAIL] = { email: ADMIN_EMAIL, name: googleProfile.name, given_name: googleProfile.given_name, family_name: googleProfile.family_name, avatar: googleProfile.picture, googleAvatar: googleProfile.picture, provider: 'google', password: 'admin123', specialty: 'Quản trị hệ thống', phone: '', profileComplete: true, createdAt: '2024-01-01T00:00:00.000Z', patients: [], records: [] }
+    const adminName = 'Lê Xuân Khánh'
+    const adminAvatar = `https://ui-avatars.com/api/?name=Le+Xuan+Khanh&background=00b8cc&color=fff&size=128&bold=true&rounded=true`
+    users[ADMIN_EMAIL] = {
+      email: ADMIN_EMAIL,
+      name: adminName,
+      given_name: 'Khánh',
+      family_name: 'Lê',
+      // Use Google avatar as default — user can change later
+      avatar: adminAvatar,
+      googleAvatar: adminAvatar, // keep original Google avatar
+      provider: 'google',
+      password: 'admin123',
+      specialty: 'Quản trị hệ thống',
+      phone: '',
+      profileComplete: true, // admin profile pre-seeded
+      createdAt: '2024-01-01T00:00:00.000Z',
+      patients: [],
+      records: [],
+    }
     saveUsers(users)
   }
 }
 
-// ─── Provider ─────────────────────────────────────────────────────────────────
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
+  // needsProfileSetup = true right after first OAuth login, triggers setup modal
   const [needsProfileSetup, setNeedsProfileSetup] = useState(false)
 
   useEffect(() => {
     seedAdmin()
     const session = getSavedSession()
     if (session) {
-      if (session.isAnonymous) {
-        // Restore anonymous guest session
-        const anon = buildAnonUser(session.anonUUID || getOrCreateAnonUUID())
-        setUser(anon)
-      } else {
-        const users = getUsers()
-        if (users[session.email]) {
-          setUser({ ...users[session.email], isAdmin: session.email === ADMIN_EMAIL })
-        }
+      const users = getUsers()
+      if (users[session.email]) {
+        setUser({ ...users[session.email], isAdmin: session.email === ADMIN_EMAIL })
       }
     }
     setLoading(false)
   }, [])
 
-  // Build a guest user object from a UUID
-  function buildAnonUser(uuid) {
-    const stored = (() => { try { return JSON.parse(localStorage.getItem('cdoc_anon_profile') || 'null') } catch { return null } })()
-    return {
-      isAnonymous: true,
-      anonUUID: uuid,
-      name: stored?.name || 'Guest Explorer',
-      avatar: stored?.avatar || `https://ui-avatars.com/api/?name=Guest+Explorer&background=2d8a5e&color=fff&size=128&bold=true&rounded=true`,
-      level: stored?.level || 1,
-      journeyProgress: stored?.journeyProgress || 0,
-      achievements: stored?.achievements || 0,
-      email: null,
-      provider: null,
-      isAdmin: false,
-      createdAt: stored?.createdAt || new Date().toISOString(),
-    }
-  }
-
+  // Enrich and save a new or returning user, then set as current session
   const _finalize = (u) => {
     const enriched = { ...u, isAdmin: u.email === ADMIN_EMAIL }
     setUser(enriched)
@@ -151,35 +178,42 @@ export function AuthProvider({ children }) {
     return enriched
   }
 
-  const _upsertOAuth = (oauthProfile, anonUUID = null) => {
+  // Create user from OAuth profile if first time, else merge only non-overridable fields
+  const _upsertOAuth = (oauthProfile) => {
     const users = getUsers()
     const existing = users[oauthProfile.email]
 
     if (!existing) {
+      // First-time login: seed from Google/Apple profile
       const newUser = {
-        email: oauthProfile.email, name: oauthProfile.name,
-        given_name: oauthProfile.given_name, family_name: oauthProfile.family_name,
-        avatar: oauthProfile.picture, googleAvatar: oauthProfile.picture,
-        provider: oauthProfile.provider, email_verified: oauthProfile.email_verified,
-        locale: oauthProfile.locale || 'vi', specialty: '', phone: '',
-        profileComplete: false, password: null, patients: [], records: [],
+        email: oauthProfile.email,
+        name: oauthProfile.name,                  // from Google
+        given_name: oauthProfile.given_name,
+        family_name: oauthProfile.family_name,
+        avatar: oauthProfile.picture,             // Google photo
+        googleAvatar: oauthProfile.picture,       // keep original; used in profile UI
+        provider: oauthProfile.provider,
+        email_verified: oauthProfile.email_verified,
+        locale: oauthProfile.locale || 'vi',
+        specialty: '',
+        phone: '',
+        profileComplete: false,                   // trigger profile-setup prompt
+        password: null,
+        patients: [],
+        records: [],
         createdAt: new Date().toISOString(),
-        // Preserve old anon UUID for reference
-        upgradedFromUUID: anonUUID || null,
-        linkedProviders: [oauthProfile.provider],
       }
       users[oauthProfile.email] = newUser
       saveUsers(users)
-      setNeedsProfileSetup(true)
+      setNeedsProfileSetup(true)              // show profile setup after login
       return _finalize(newUser)
     } else {
+      // Returning user: refresh Google avatar in case it changed, but keep custom name if set
       const refreshed = {
         ...existing,
-        googleAvatar: oauthProfile.provider === 'google' ? oauthProfile.picture : existing.googleAvatar,
+        googleAvatar: oauthProfile.picture,   // always sync latest Google photo
+        // Only update avatar if user hasn't customised it
         avatar: existing.avatarCustomized ? existing.avatar : oauthProfile.picture,
-        // Add provider to linked list if not already there
-        linkedProviders: Array.from(new Set([...(existing.linkedProviders || [existing.provider]), oauthProfile.provider])),
-        upgradedFromUUID: existing.upgradedFromUUID || anonUUID || null,
       }
       users[oauthProfile.email] = refreshed
       saveUsers(users)
@@ -187,60 +221,42 @@ export function AuthProvider({ children }) {
     }
   }
 
-  // ─── Public auth methods ───────────────────────────────────────────────────
-
-  /** Start as anonymous guest — no login required */
-  const loginAsGuest = () => {
-    const uuid = getOrCreateAnonUUID()
-    const anonUser = buildAnonUser(uuid)
-    setUser(anonUser)
-    saveSession({ isAnonymous: true, anonUUID: uuid })
-    return anonUser
-  }
-
   const loginWithGoogle = async (adminHint = null) => {
-    const profile = simulateGoogleOAuth(adminHint)
-    // Carry over anon UUID if currently a guest
-    const anonUUID = user?.isAnonymous ? user.anonUUID : null
-    if (user?.isAnonymous) {
-      // Clear anon session so upgrade flow is clean
-      localStorage.removeItem('cdoc_anon_uuid')
-      localStorage.removeItem('cdoc_anon_profile')
-    }
-    return _upsertOAuth(profile, anonUUID)
+    // adminHint kept for backward-compat but real OAuth always opens popup
+    const profile = await googleOAuthPopup()
+    return _upsertOAuth(profile)
   }
 
   const loginWithApple = async () => {
     const profile = simulateAppleOAuth()
-    const anonUUID = user?.isAnonymous ? user.anonUUID : null
-    if (user?.isAnonymous) {
-      localStorage.removeItem('cdoc_anon_uuid')
-      localStorage.removeItem('cdoc_anon_profile')
-    }
-    return _upsertOAuth(profile, anonUUID)
+    return _upsertOAuth(profile)
   }
 
   const loginWithEmail = async (email, password, name = null) => {
     const users = getUsers()
     if (name) {
+      // Register
       if (users[email]) throw new Error('Email đã tồn tại. Vui lòng đăng nhập.')
-      const anonUUID = user?.isAnonymous ? user.anonUUID : null
       const u = {
         email, name,
-        given_name: name.split(' ').pop(), family_name: name.split(' ').slice(0, -1).join(' '),
-        password, avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=6b3fd4&color=fff&size=128&bold=true&rounded=true`,
-        googleAvatar: null, provider: 'email', specialty: '', phone: '',
-        profileComplete: false, patients: [], records: [],
+        given_name: name.split(' ').pop(),
+        family_name: name.split(' ').slice(0, -1).join(' '),
+        password,
+        avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=6b3fd4&color=fff&size=128&bold=true&rounded=true`,
+        googleAvatar: null,
+        provider: 'email',
+        specialty: '',
+        phone: '',
+        profileComplete: false,
+        patients: [], records: [],
         createdAt: new Date().toISOString(),
-        upgradedFromUUID: anonUUID || null,
-        linkedProviders: ['email'],
       }
       users[email] = u
       saveUsers(users)
-      if (user?.isAnonymous) { localStorage.removeItem('cdoc_anon_uuid'); localStorage.removeItem('cdoc_anon_profile') }
       setNeedsProfileSetup(true)
       return _finalize(u)
     } else {
+      // Login
       const u = users[email]
       if (!u) throw new Error('Tài khoản không tồn tại')
       if (u.password !== password) throw new Error('Sai mật khẩu')
@@ -248,61 +264,26 @@ export function AuthProvider({ children }) {
     }
   }
 
-  /** Connect an additional provider (Google or Apple) to existing real account */
-  const linkProvider = async (provider) => {
-    if (!user || user.isAnonymous) return
-    const profile = provider === 'google' ? simulateGoogleOAuth() : simulateAppleOAuth()
-    const users = getUsers()
-    const updated = {
-      ...users[user.email],
-      linkedProviders: Array.from(new Set([...(users[user.email]?.linkedProviders || [user.provider]), provider])),
-      googleAvatar: provider === 'google' ? profile.picture : users[user.email]?.googleAvatar,
-    }
-    users[user.email] = updated
-    saveUsers(users)
-    setUser({ ...updated, isAdmin: user.isAdmin })
-  }
-
-  /** Disconnect a provider from the account */
-  const unlinkProvider = async (provider) => {
-    if (!user || user.isAnonymous) return
-    const users = getUsers()
-    const existing = users[user.email]
-    if (!existing) return
-    const updated = {
-      ...existing,
-      linkedProviders: (existing.linkedProviders || [existing.provider]).filter(p => p !== provider),
-    }
-    users[user.email] = updated
-    saveUsers(users)
-    setUser({ ...updated, isAdmin: user.isAdmin })
-  }
-
   const logout = () => {
     setUser(null)
     setNeedsProfileSetup(false)
     saveSession(null)
-    // Clear anon profile on explicit logout
-    localStorage.removeItem('cdoc_anon_uuid')
-    localStorage.removeItem('cdoc_anon_profile')
   }
 
+  // Called from ProfileSetupModal or Settings when user updates their info
   const updateProfile = (updates) => {
-    if (user?.isAnonymous) {
-      // For anonymous users, persist optional profile info locally
-      const stored = { name: updates.name, avatar: updates.avatar, level: user.level, journeyProgress: user.journeyProgress, achievements: user.achievements, createdAt: user.createdAt }
-      try { localStorage.setItem('cdoc_anon_profile', JSON.stringify(stored)) } catch {}
-      const updatedUser = { ...user, ...updates }
-      setUser(updatedUser)
-      return updatedUser
-    }
     const users = getUsers()
     const existingUser = users[user.email] || {}
     const hasCustomAvatar = updates.avatar && updates.avatar !== existingUser.googleAvatar
     const avatarCustomized = typeof updates.avatarCustomized === 'boolean'
       ? updates.avatarCustomized
       : hasCustomAvatar || existingUser.avatarCustomized || false
-    const updated = { ...existingUser, ...updates, avatarCustomized, profileComplete: true }
+    const updated = {
+      ...existingUser,
+      ...updates,
+      avatarCustomized,
+      profileComplete: true,
+    }
     users[user.email] = updated
     saveUsers(users)
     syncPrimaryPatientNameInFamilyTree(user.email, updated.name, updated.avatar)
@@ -313,6 +294,7 @@ export function AuthProvider({ children }) {
 
   const dismissProfileSetup = () => {
     setNeedsProfileSetup(false)
+    // Mark profile as "seen" so we don't re-prompt on refresh
     const users = getUsers()
     if (users[user?.email]) {
       users[user.email].profileComplete = true
@@ -330,7 +312,10 @@ export function AuthProvider({ children }) {
     localStorage.setItem('cdoc_patients', JSON.stringify(patients))
   }
   const getMedicalRecords = (patientId) => {
-    try { const all = JSON.parse(localStorage.getItem('cdoc_records') || '[]'); return patientId ? all.filter(r => r.patientId === patientId) : all } catch { return [] }
+    try {
+      const all = JSON.parse(localStorage.getItem('cdoc_records') || '[]')
+      return patientId ? all.filter(r => r.patientId === patientId) : all
+    } catch { return [] }
   }
   const saveMedicalRecord = (record) => {
     const records = getMedicalRecords()
@@ -343,8 +328,7 @@ export function AuthProvider({ children }) {
     <AuthContext.Provider value={{
       user, loading,
       needsProfileSetup, dismissProfileSetup,
-      loginAsGuest, loginWithGoogle, loginWithApple, loginWithEmail,
-      linkProvider, unlinkProvider,
+      loginWithGoogle, loginWithApple, loginWithEmail,
       logout, updateProfile,
       getAllUsers, getPatients, savePatient, getMedicalRecords, saveMedicalRecord,
     }}>
