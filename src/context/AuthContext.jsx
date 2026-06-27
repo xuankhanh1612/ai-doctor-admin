@@ -492,8 +492,7 @@ export function AuthProvider({ children }) {
   }
 
   // ── Permanently delete the current account (everyone except Admin) ──────────
-  // Removes the user record, related family-tree data, and any medical records
-  // uploaded under this email, then logs out. Cannot be undone.
+  // Removes the user record and related family-tree data, then logs out. Cannot be undone.
   const deleteAccount = () => {
     if (!user) return
     if (user.email === ADMIN_EMAIL) throw new Error('Không thể xoá tài khoản Quản trị viên.')
@@ -521,39 +520,13 @@ export function AuthProvider({ children }) {
       }
     } catch (e) { console.warn('Family tree cleanup failed', e) }
 
-    // 3. Remove medical records uploaded by this account
-    try {
-      const records = JSON.parse(localStorage.getItem('cdoc_records') || '[]')
-      const remaining = records.filter(r => r.uploadedBy !== email)
-      localStorage.setItem('cdoc_records', JSON.stringify(remaining))
-    } catch (e) { console.warn('Records cleanup failed', e) }
-
-    // 4. End the session
+    // 3. End the session
     setUser(null)
     setNeedsProfileSetup(false)
     saveSession(null)
   }
 
   const getAllUsers = () => Object.values(getUsers()).map(u => ({ ...u, isAdmin: u.email === ADMIN_EMAIL }))
-  const getPatients = () => { try { return JSON.parse(localStorage.getItem('cdoc_patients') || '[]') } catch { return [] } }
-  const savePatient = (patient) => {
-    const patients = getPatients()
-    const idx = patients.findIndex(p => p.id === patient.id)
-    if (idx >= 0) patients[idx] = patient; else patients.push(patient)
-    localStorage.setItem('cdoc_patients', JSON.stringify(patients))
-  }
-  const getMedicalRecords = (patientId) => {
-    try {
-      const all = JSON.parse(localStorage.getItem('cdoc_records') || '[]')
-      return patientId ? all.filter(r => r.patientId === patientId) : all
-    } catch { return [] }
-  }
-  const saveMedicalRecord = (record) => {
-    const records = getMedicalRecords()
-    records.push({ ...record, id: `R-${Date.now()}`, createdAt: new Date().toISOString(), uploadedBy: user?.email })
-    localStorage.setItem('cdoc_records', JSON.stringify(records))
-    return records[records.length - 1]
-  }
 
   return (
     <AuthContext.Provider value={{
@@ -561,7 +534,7 @@ export function AuthProvider({ children }) {
       needsProfileSetup, dismissProfileSetup,
       loginWithGoogle, loginWithApple, loginWithEmail, loginAnonymous,
       logout, updateProfile, linkProvider, unlinkProvider, deleteAccount,
-      getAllUsers, getPatients, savePatient, getMedicalRecords, saveMedicalRecord,
+      getAllUsers,
     }}>
       {children}
     </AuthContext.Provider>
