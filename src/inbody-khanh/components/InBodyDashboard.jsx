@@ -4,6 +4,15 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import { getAllRecords, saveRecord, detectFileType, fileToBase64, fileToDataUrl } from '../../lib/medicalStorage.js';
 import { notifyUpload } from '../../hooks/useMedicalData.js';
 import { buildImageConvertedInBodyRecord, recordsToInBodyCsv } from '../../lib/inbodyCsv.js';
+import {
+  analyzeInBodyWithAI,
+  convertInBodyImageToCsv,
+  fileToBase64Promise,
+  parseGroqInBodyJson,
+  extractPdfTextForInBody,
+  pdfPageToImageForInBody,
+  INBODY_OCR_SYSTEM_PROMPT,
+} from '../../lib/inbodyImageConvert.js';
 import { ensureBrowserSafeImage } from '../../lib/heicConvert.js';
 import standardInBodyCsv from '../DataInBody/InBody-20260508 3.csv?raw';
 import aiClinicInBodyRef from '../DataInBody/AIClinicInBody.PNG';
@@ -103,224 +112,9 @@ function getActiveQuests(records) {
   ];
 }
 
-// ─── AI Analysis via Groq Vision (llama-4-scout) ───────────────────────────
-// Images/PDF scan → base64 data URL → llama-4-scout vision
-// PDF text-based  → pdf.js extract  → llama-3.3-70b text
-const INBODY_OCR_SYSTEM_PROMPT = `Bạn là chuyên gia phân tích kết quả InBody (máy đo thành phần cơ thể).
-Khi nhận ảnh/PDF kết quả InBody, hãy:
-1. Đọc thật kỹ và trích xuất CHÍNH XÁC các chỉ số có trên phiếu in: Ngày đo (định dạng YYYY-MM-DD HH:mm), Cân nặng, Cơ bắp (SMM/Khối lượng cơ xương), Khối lượng mỡ trong cơ thể, Tỷ lệ mỡ cơ thể (%), BMI, Tỷ lệ trao đổi chất cơ bản (BMR), Điểm InBody, Lượng nước trong cơ thể (%), Mỡ nội tạng (Level), Protein, Khoáng chất — nếu ảnh không hiển thị chỉ số nào thì BỎ QUA chỉ số đó trong "metrics", KHÔNG tự đoán hay bịa số.
-2. ĐẶC BIỆT QUAN TRỌNG về ngày và giờ đo: Đọc trường "Ngày/Giờ kiểm tra" TRỰC TIẾP trên phiếu in. KHÔNG dùng ngày hôm nay hay tự bịa. Đọc CẢ GIỜ VÀ PHÚT nếu có — ví dụ phiếu ghi "08.05.2026 10:58" thì ghi "2026-05-08 10:58". Nếu chỉ thấy ngày không có giờ, ghi "2026-05-08 00:00". Nếu KHÔNG thể đọc được ngày, hãy ĐỂ TRỐNG trường "Ngày đo" (đừng điền gì vào đó). Lưu cả giờ:phút vì người dùng có thể đo nhiều lần trong cùng một ngày.
-3. Đưa ra nhận xét ngắn gọn (2-3 câu) về tình trạng sức khỏe dựa trên số liệu đọc được.
-4. Gợi ý cải thiện cụ thể (tập luyện, dinh dưỡng).
-5. Tính XP gamification dựa trên thay đổi so với lần đo trước (nếu có dữ liệu trước đó được cung cấp).
-
-CHỈ trả lời bằng JSON hợp lệ (không kèm lời dẫn, không kèm markdown \`\`\`), đúng cấu trúc:
-{
-  "summary": "Nhận xét tổng quan 2-3 câu",
-  "metrics": {
-    "Cân nặng": "68.4",
-    "Cơ bắp": "29.8",
-    "Khối lượng mỡ": "21.0",
-    "Mỡ (%)": "22.1",
-    "Nước (%)": "54.3",
-    "BMI": "23.1",
-    "BMR": "1500",
-    "Điểm InBody": "72",
-    "Mỡ nội tạng": "9",
-    "Protein": "10.2",
-    "Khoáng chất": "3.6",
-    "Ngày đo": "2026-05-08 10:58"
-  },
-  "tags": [
-    { "label": "Cơ bắp tốt ▲", "type": "ok" },
-    { "label": "Mỡ cần cải thiện", "type": "warn" },
-    { "label": "BMI bình thường", "type": "info" }
-  ],
-  "recommendations": ["Tập resistance training 3x/tuần", "Giảm carb buổi tối"],
-  "xp_earned": 80,
-  "inbody_score": 72
-}`;
-
-// ── Extract text from PDF via pdf.js CDN ──
-async function extractPdfTextForInBody(file) {
-  try {
-    const pdfjs = await import('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.mjs');
-    pdfjs.GlobalWorkerOptions.workerSrc =
-      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs';
-    const ab  = await file.arrayBuffer();
-    const pdf = await pdfjs.getDocument({ data: ab }).promise;
-    const texts = [];
-    for (let p = 1; p <= Math.min(pdf.numPages, 10); p++) {
-      const page = await pdf.getPage(p);
-      const tc   = await page.getTextContent();
-      texts.push(tc.items.map(i => i.str).join(' '));
-    }
-    const out = texts.join('\n\n').trim();
-    return out.length > 80 ? out.slice(0, 10000) : null;
-  } catch (_) { return null; }
-}
-
-// ── Render PDF page to canvas → base64 JPEG ──
-async function pdfPageToImageForInBody(file, pageNum = 1) {
-  try {
-    const pdfjs = await import('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.mjs');
-    pdfjs.GlobalWorkerOptions.workerSrc =
-      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs';
-    const ab     = await file.arrayBuffer();
-    const pdf    = await pdfjs.getDocument({ data: ab }).promise;
-    const page   = await pdf.getPage(Math.min(pageNum, pdf.numPages));
-    const vp     = page.getViewport({ scale: 1.5 });
-    const canvas = document.createElement('canvas');
-    canvas.width  = vp.width;
-    canvas.height = vp.height;
-    await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
-    return canvas.toDataURL('image/jpeg', 0.85).split(',')[1];
-  } catch (_) { return null; }
-}
-
-// ── Parse Groq JSON response (strip markdown fences if any) ──
-function parseGroqInBodyJson(text) {
-  try {
-    const cleaned = text.replace(/```json\n?|```\n?/g, '').trim();
-    const parsed  = JSON.parse(cleaned);
-    return { ...parsed, metrics: parsed.metrics || {} };
-  } catch {
-    return {
-      summary: text || 'Groq đã đọc ảnh nhưng không trả về JSON hợp lệ. Vui lòng nhập tay các chỉ số.',
-      metrics: {},
-      tags: [{ label: 'Cần nhập tay', type: 'warn' }],
-      recommendations: [],
-      xp_earned: 0,
-    };
-  }
-}
-
-// ── Extract ONLY the date/time from InBody image using free-text Groq Vision ──
-// This mirrors the FullDocumentSummarizationPanel approach: ask for plain text,
-// then parse the date ourselves — no JSON required, more robust than embedded JSON.
-const INBODY_DATE_EXTRACT_PROMPT = `Bạn đang nhìn vào ảnh phiếu kết quả InBody.
-Hãy tìm và đọc CHÍNH XÁC trường "Ngày/Giờ kiểm tra" (hoặc "Date/Time") trên phiếu.
-Chỉ trả lời ngày và giờ đó theo định dạng: DD.MM.YYYY HH:mm
-Ví dụ: 08.05.2026 10:58
-Nếu không thấy ngày, trả lời: UNKNOWN
-Không giải thích thêm gì khác.`;
-
-async function extractDateFromInBodyImage(base64Image, mediaType) {
-  try {
-    const safeMime = ['image/jpeg','image/png','image/gif','image/webp'].includes(mediaType)
-      ? mediaType : 'image/jpeg';
-    const res = await fetch('/api/groq-proxy', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'meta-llama/llama-4-scout-17b-16e-instruct',
-        max_tokens: 64,
-        messages: [
-          { role: 'system', content: INBODY_DATE_EXTRACT_PROMPT },
-          {
-            role: 'user',
-            content: [
-              { type: 'image_url', image_url: { url: `data:${safeMime};base64,${base64Image}` } },
-              { type: 'text', text: 'Đọc trường "Ngày/Giờ kiểm tra" trên phiếu InBody này.' },
-            ],
-          },
-        ],
-      }),
-    });
-    if (!res.ok) return '';
-    const data = await res.json();
-    const text = (data?.choices?.[0]?.message?.content || '').trim();
-    if (!text || text === 'UNKNOWN') return '';
-    // Parse "DD.MM.YYYY HH:mm" or "DD/MM/YYYY HH:mm" or "YYYY-MM-DD HH:mm"
-    // → compact digits "YYYYMMDDHHmm"
-    const m =
-      text.match(/(\d{1,2})[./](\d{1,2})[./](\d{4})\s+(\d{1,2}):(\d{2})/) ||
-      text.match(/(\d{4})-(\d{2})-(\d{2})\s+(\d{1,2}):(\d{2})/);
-    if (!m) return '';
-    let year, month, day, hour, minute;
-    if (m[3]?.length === 4) {
-      // DD.MM.YYYY HH:mm
-      [, day, month, year, hour, minute] = m;
-    } else {
-      // YYYY-MM-DD HH:mm
-      [, year, month, day, hour, minute] = m;
-    }
-    const yy = String(year).padStart(4, '0');
-    const mm = String(month).padStart(2, '0');
-    const dd = String(day).padStart(2, '0');
-    const hh = String(hour).padStart(2, '0');
-    const mi = String(minute).padStart(2, '0');
-    // Validate
-    const y = parseInt(yy, 10), mo = parseInt(mm, 10), d = parseInt(dd, 10);
-    if (y < 2000 || y > 2035 || mo < 1 || mo > 12 || d < 1 || d > 31) return '';
-    return `${yy}${mm}${dd}${hh}${mi}`;
-  } catch {
-    return '';
-  }
-}
-
-async function analyzeInBodyWithAI(base64Image, mediaType, file = null, previousRecord = null) {
-  const instructionText = previousRecord
-    ? `Đây là kết quả InBody mới nhất. Kết quả lần trước: ${JSON.stringify(previousRecord)}. Hãy phân tích và so sánh.`
-    : 'Đây là ảnh phiếu kết quả InBody. Hãy đọc và trích xuất chính xác các chỉ số có trên ảnh.';
-
-  // ── PDF: try text extract first, fall back to vision render ──
-  if (file && file.type === 'application/pdf') {
-    const pdfText = await extractPdfTextForInBody(file);
-    if (pdfText) {
-      // Text-based PDF → llama-3.3-70b
-      const res = await fetch('/api/groq-proxy', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'llama-3.3-70b-versatile',
-          max_tokens: 1024,
-          messages: [
-            { role: 'system', content: INBODY_OCR_SYSTEM_PROMPT },
-            { role: 'user',   content: `${instructionText}\n\nNội dung PDF:\n${pdfText}` },
-          ],
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(`Groq ${res.status}: ${data?.error?.message || JSON.stringify(data)}`);
-      return parseGroqInBodyJson(data?.choices?.[0]?.message?.content || '');
-    }
-    // Scanned PDF → render to image → vision
-    const imgB64 = await pdfPageToImageForInBody(file, 1);
-    if (imgB64) {
-      base64Image = imgB64;
-      mediaType   = 'image/jpeg';
-    }
-    // fall through to vision path below
-  }
-
-  // ── Image (JPG/PNG/etc) or scanned PDF → llama-4-scout vision ──
-  const safeMime = ['image/jpeg','image/png','image/gif','image/webp'].includes(mediaType)
-    ? mediaType : 'image/jpeg';
-
-  const res = await fetch('/api/groq-proxy', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: 'meta-llama/llama-4-scout-17b-16e-instruct',
-      max_tokens: 1024,
-      messages: [
-        { role: 'system', content: INBODY_OCR_SYSTEM_PROMPT },
-        {
-          role: 'user',
-          content: [
-            { type: 'image_url', image_url: { url: `data:${safeMime};base64,${base64Image}` } },
-            { type: 'text',      text: instructionText },
-          ],
-        },
-      ],
-    }),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(`Groq Vision ${res.status}: ${data?.error?.message || JSON.stringify(data)}`);
-  return parseGroqInBodyJson(data?.choices?.[0]?.message?.content || '');
-}
-
+// ─── AI Analysis — imported from shared lib ───────────────────────────────────
+// analyzeInBodyWithAI, convertInBodyImageToCsv, extractDateFromInBodyImage,
+// parseGroqInBodyJson, INBODY_OCR_SYSTEM_PROMPT are all in ../../lib/inbodyImageConvert.js
 
 const STANDARD_INBODY_FILE = 'InBody-20260508 3.csv';
 const INBODY_REFERENCE_IMAGES = [
@@ -995,71 +789,36 @@ function UploadTab({ onAnalysis, onViewMedicalRecord }) {
     if (!file || file.name.toLowerCase().endsWith('.csv')) return;
 
     setLoading(true);
-    let base64 = '';
     try {
-      base64 = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = (e) => resolve(e.target.result.split(',')[1]);
-        reader.onerror = () => reject(new Error('Không đọc được file'));
-        reader.readAsDataURL(file);
+      const base64 = await fileToBase64Promise(file);
+      const fallback = parseInBodyCsv(standardInBodyCsv).at(-1);
+
+      // Delegate all 3 steps to shared lib (same logic as MedicalUploader)
+      const { csvText, analysisResult: enrichedAnalysis } = await convertInBodyImageToCsv({
+        base64Image:    base64,
+        mediaType:      file.type,
+        file,
+        fallbackRecord: fallback,
+        sourceName:     file.name,
+        cachedAnalysis: result,   // reuse if "🧠 Phân tích AI" was already run
       });
+
+      // Surface the analysis result so the UI panel updates
+      if (!result && enrichedAnalysis) {
+        setResult(enrichedAnalysis);
+        if (onAnalysis) onAnalysis(enrichedAnalysis);
+      }
+
+      const safeName = file.name.replace(/\.[^.]+$/, '').replace(/[^a-z0-9._-]+/gi, '_') || 'InBody_Image';
+      await saveCsvTextToUploadRecords(csvText, `${safeName}_converted.csv`, {
+        notes: `Convert InBody Image thành .CSV từ ${file.name}`,
+      });
+      runSimulatedCsvAnalysis(csvText, `${safeName}_converted.csv`);
     } catch (err) {
-      setError(err.message || 'Lỗi đọc file.');
+      setError(err.message || 'Lỗi convert ảnh thành CSV. Vui lòng thử lại.');
+    } finally {
       setLoading(false);
-      return;
     }
-
-    // Step 1: Run main AI analysis (metrics JSON) — use cached result if available
-    let analysisResult = result;
-    if (!analysisResult) {
-      try {
-        analysisResult = await analyzeInBodyWithAI(base64, file.type, file);
-        setResult(analysisResult);
-        if (onAnalysis) onAnalysis(analysisResult);
-      } catch (err) {
-        setError(err.message || 'Lỗi phân tích ảnh. Vui lòng thử lại.');
-        setLoading(false);
-        return;
-      }
-    }
-
-    // Step 2: If date is missing from metrics, run a dedicated date-extraction pass
-    // using a free-text Groq Vision prompt (same approach as FullDocumentSummarizationPanel).
-    // This is more reliable than relying on JSON-embedded date from the main analysis.
-    const existingDateRaw = analysisResult?.metrics?.['Ngày đo'] ||
-      analysisResult?.metrics?.['Ngày'] || analysisResult?.metrics?.['Date'] ||
-      analysisResult?.metrics?.['Ngày/Giờ kiểm tra'] || '';
-    const existingDateDigits = String(existingDateRaw).replace(/[-/ :T]/g, '').replace(/\D/g, '');
-    const needsDateExtraction = existingDateDigits.length < 8;
-
-    let overrideRawDate = '';
-    if (needsDateExtraction) {
-      try {
-        overrideRawDate = await extractDateFromInBodyImage(base64, file.type);
-      } catch {
-        overrideRawDate = '';
-      }
-    }
-
-    // Step 3: Build record — inject overrideRawDate into metrics if needed
-    const enrichedAnalysis = overrideRawDate
-      ? {
-          ...analysisResult,
-          metrics: {
-            ...(analysisResult?.metrics || {}),
-            'Ngày đo': overrideRawDate, // compact digits → buildImageConvertedInBodyRecord will format
-          },
-        }
-      : analysisResult;
-
-    setLoading(false);
-
-    const fallback = parseInBodyCsv(standardInBodyCsv).at(-1);
-    const record = buildImageConvertedInBodyRecord({ analysis: enrichedAnalysis, fallback, sourceName: file.name });
-    const csvText = recordsToInBodyCsv([record]);
-    const safeName = file.name.replace(/\.[^.]+$/, '').replace(/[^a-z0-9._-]+/gi, '_') || 'InBody_Image';
-    await saveCsvTextToUploadRecords(csvText, `${safeName}_converted.csv`, { notes: `Convert InBody Image thành .CSV từ ${file.name}` });
-    runSimulatedCsvAnalysis(csvText, `${safeName}_converted.csv`);
   };
 
   const summarizeAllInBodyRecords = async () => {
