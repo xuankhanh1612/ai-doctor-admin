@@ -163,6 +163,7 @@ export default function UserProfilePanel() {
   const [saved, setSaved] = useState(false)
   const [linkingProvider, setLinkingProvider] = useState(null)
   const [linkError, setLinkError] = useState('')
+  const [copiedUUID, setCopiedUUID] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
   const [deleting, setDeleting] = useState(false)
@@ -238,6 +239,10 @@ export default function UserProfilePanel() {
 
   const linkedProviders = user?.linkedProviders || [user?.provider]
 
+  const copyUUIDReal = () => {
+    navigator.clipboard?.writeText(user?.uuid).then(() => { setCopiedUUID(true); setTimeout(() => setCopiedUUID(false), 1800) }).catch(() => {})
+  }
+
   return (
     <div className="animate-fade" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20, color: text }}>
       <div style={{ borderRadius: 24, overflow: 'hidden', border: `1px solid ${border}`, background: surface, boxShadow: isDark ? '0 24px 70px rgba(0,0,0,0.35)' : '0 24px 70px rgba(35,45,80,0.08)' }}>
@@ -304,6 +309,39 @@ export default function UserProfilePanel() {
               </div>
             )}
             {cameraError && <div style={{ marginTop: 12, padding: '10px 12px', borderRadius: 12, border: '1px solid rgba(255,82,82,0.28)', background: 'rgba(255,82,82,0.08)', color: '#ff5252', fontSize: 12, lineHeight: 1.5 }}>{cameraError}</div>}
+
+            {/* UUID box */}
+            {user?.uuid && (
+              <div style={{ border: `1px solid ${providerMeta.border}`, borderRadius: 16, padding: 16, background: isDark ? `${providerMeta.soft}` : `${providerMeta.soft}` }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: providerMeta.color, marginBottom: 8, letterSpacing: '.1em', textTransform: 'uppercase' }}>
+                  {vi ? 'Mã tài khoản (UUID)' : 'Account ID (UUID)'}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <code style={{ fontSize: 11, fontFamily: 'monospace', fontWeight: 700, color: isDark ? '#c0d8ff' : providerMeta.color, wordBreak: 'break-all', flex: 1, lineHeight: 1.5 }}>
+                    {user.uuid}
+                  </code>
+                  <button onClick={copyUUIDReal} style={{ padding: '6px 8px', borderRadius: 8, border: `1px solid ${providerMeta.border}`, background: 'none', cursor: 'pointer', color: copiedUUID ? '#00e676' : providerMeta.color, fontSize: 13, flexShrink: 0 }}>
+                    {copiedUUID ? '✓' : '📋'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Level progress bar */}
+            {(user?.level != null) && (
+              <div style={{ border: `1px solid ${border}`, borderRadius: 14, padding: 14, background: surface2 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: text2 }}>🌱 {vi ? 'Cấp độ' : 'Level'} {user.level}</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: providerMeta.color }}>{user.journeyProgress ?? 0}%</span>
+                </div>
+                <div style={{ height: 8, borderRadius: 4, background: isDark ? 'rgba(255,255,255,0.08)' : '#e8f0fb', overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${user.journeyProgress ?? 0}%`, borderRadius: 4, background: providerMeta.gradient, transition: 'width 0.5s ease' }} />
+                </div>
+                {user?.achievements != null && (
+                  <div style={{ marginTop: 10, fontSize: 11, color: text3 }}>⭐ {vi ? `${user.achievements} huy hiệu đạt được` : `${user.achievements} achievements earned`}</div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Info column */}
