@@ -154,8 +154,17 @@ function repairObjectiveCompletedFlags(db) {
 let memDb = null
 let savedThisSession = false
 let hydratePromise = null
+// BUG FIX (race condition): các component gọi loadHealthJourneyDb()/getTaskSnapshot()
+// ĐỒNG BỘ ngay lúc mount, trước khi hydrate() đọc xong dữ liệu thật từ IndexedDB
+// (việc đọc là bất đồng bộ). Trong khoảng thời gian đó, memDb tạm thời là
+// defaultDb() (dữ liệu mẫu), và các hàm self-heal/save có thể gọi persist()
+// ghi NGAY dữ liệu mặc định này xuống IndexedDB, đè mất tiến độ thật (vd nhiệm
+// vụ uống nước trong ngày) mỗi khi reload trang. `hydrated` dùng để CHẶN mọi
+// lệnh ghi xuống IndexedDB cho tới khi đã đọc xong dữ liệu thật một lần.
+let hydrated = false
 
 function persist(db) {
+  if (!hydrated) return // tránh ghi đè dữ liệu thật bằng dữ liệu mặc định tạm khi chưa hydrate xong
   setSetting(HEALTH_JOURNEY_DB_KEY, db).catch((e) => console.warn('[healthJourneyStorage] IndexedDB write failed', e))
 }
 
@@ -171,6 +180,12 @@ function hydrate() {
     } catch (e) {
       console.warn('[healthJourneyStorage] IndexedDB read failed', e)
     }
+    hydrated = true
+    // Nếu trong lúc đang hydrate đã có thao tác lưu thật xảy ra (savedThisSession
+    // đã bị set true bởi saveHealthJourneyDb trước khi đọc xong), persist() ở
+    // trên đã bị chặn nên chưa ghi gì cả — flush lại ngay bây giờ để không mất
+    // thao tác đó.
+    if (savedThisSession) persist(memDb)
     // Dọn key localStorage cũ (không còn dùng, dữ liệu cũ không cần giữ)
     try { localStorage.removeItem(LEGACY_LOCALSTORAGE_KEY) } catch (_) { /* ignore */ }
   })()
