@@ -90,7 +90,17 @@ export const XP_TABLE = {
   reflection_journal: 20,
 }
 
-const todayISODate = () => new Date().toISOString().slice(0, 10)
+// BUG FIX: dùng local date (không phải UTC) để nhất quán với beMeoChatStorage.dateKey().
+// Với timezone UTC+7 (Vietnam), trước 7:00 sáng local thì UTC đang ở ngày hôm trước →
+// todayISODate() và dateKey() trả về 2 ngày khác nhau → task ngày hôm nay không tìm thấy
+// → fallback về .at(-1) (ngày sample cũ) → hiển thị water=0.
+const todayISODate = () => {
+  const d = new Date()
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
 
 const makeUserId = (user) => {
   const raw = user?.uuid || sampleUserData.user.userId || 'guest'
@@ -173,17 +183,52 @@ function hydrate() {
   hydratePromise = (async () => {
     try {
       const stored = await getSetting(HEALTH_JOURNEY_DB_KEY)
-      if (stored && !savedThisSession) {
+      if (stored) {
+        // BUG FIX (root cause — Google user water reset on reload):
+        //
+        // Vấn đề: Google user restore từ localStorage (đồng bộ, ~0ms) nên component
+        // mount và gọi getHealthJourneyUser(user) TRƯỚC khi hydrate() đọc xong
+        // IndexedDB. Lúc đó memDb = defaultDb() → google user KHÔNG tồn tại trong
+        // defaultDb → ensureUser() tạo user mới rỗng (seed từ sampleData, water=0)
+        // → existed = false → saveHealthJourneyDb() được gọi → savedThisSession = TRUE.
+        //
+        // Code cũ kiểm tra `if (stored && !savedThisSession)` → bỏ qua stored khi
+        // savedThisSession = true → memDb vẫn là bản rỗng → persist() sau đó ghi bản
+        // rỗng này lên IndexedDB → XÓA MẤT data thật của user (water=1, proof, v.v).
+        //
+        // FIX: LUÔN load stored khi có, bất kể savedThisSession. Sau đó MERGE memDb
+        // hiện tại (có thể chứa user mới vừa được ensureUser tạo ra) vào stored — ưu
+        // tiên stored cho MỌI user ĐÃ CÓ sẵn (để không mất data thật), chỉ thêm user
+        // thật sự mới (chưa có trong stored) từ memDb vào.
+        const currentMemDb = memDb // bản đang có trong RAM (có thể đã bị seed sai)
         memDb = stored
 
-        // BUG FIX (Google user data loss on reload): chạy self-heal NGAY trên data
-        // thật vừa nạp từ IndexedDB, trước khi fire HEALTH_JOURNEY_EVENT. Nếu không
-        // làm vậy, loadHealthJourneyDb() sẽ chạy self-heal lần 2 SAU KHI hydrated=true
-        // và persist() kết quả đó xuống — không sao. Nhưng nếu lần chạy đầu tiên
-        // (trước hydrate) đã persist bản defaultDb() xuống vì lý do nào đó, bản thật
-        // sẽ bị mất. Bằng cách heal+persist ngay ở đây, ta đảm bảo IndexedDB luôn
-        // phản ánh data thật ngay sau hydrate.
-        hydrated = true // đặt trước để persist() bên dưới không bị chặn
+        // Merge: với mỗi user trong currentMemDb, nếu stored CHƯA có user đó (user
+        // thật sự mới lần đầu dùng app trên thiết bị này), thêm vào stored. Nếu stored
+        // ĐÃ có user đó (returning user), bỏ qua hoàn toàn — stored là nguồn sự thật.
+        if (currentMemDb?.users) {
+          Object.entries(currentMemDb.users).forEach(([uid, userData]) => {
+            if (!memDb.users) memDb.users = {}
+            if (!memDb.users[uid]) {
+              // User thật sự mới (chưa từng lưu gì) — thêm vào. Nhưng phải đảm bảo
+              // dailyTracking.days được reset sạch (không mang theo sample days cũ).
+              const freshUser = clone(userData)
+              if (uid !== sampleUserData.user.userId) {
+                // Không phải sample user → xoá toàn bộ sample days, chỉ giữ cấu trúc
+                freshUser.dailyTracking = {
+                  ...freshUser.dailyTracking,
+                  days: [],
+                }
+              }
+              memDb.users[uid] = freshUser
+            }
+          })
+        }
+
+        // Đặt hydrated = true TRƯỚC khi self-heal để persist() không bị chặn
+        hydrated = true
+        savedThisSession = false // reset: data thật đã được load, cho phép hydrate event cập nhật UI
+
         const healedImages = migrateLargeImages(memDb)
         const healedObjectives = ensureAllChapterObjectives(memDb)
         const healedFlags = repairObjectiveCompletedFlags(memDb)
@@ -191,6 +236,7 @@ function hydrate() {
 
         window.dispatchEvent(new CustomEvent(HEALTH_JOURNEY_EVENT, { detail: memDb }))
       } else {
+        // Không có stored data (user mới hoàn toàn, chưa từng lưu gì) — giữ memDb hiện tại
         hydrated = true
       }
     } catch (e) {
@@ -198,9 +244,8 @@ function hydrate() {
       hydrated = true
     }
     // Nếu trong lúc đang hydrate đã có thao tác lưu thật xảy ra (savedThisSession
-    // đã bị set true bởi saveHealthJourneyDb trước khi đọc xong), persist() ở
-    // trên đã bị chặn nên chưa ghi gì cả — flush lại ngay bây giờ để không mất
-    // thao tác đó.
+    // đã bị set true bởi saveHealthJourneyDb trước khi đọc xong), và chưa bị reset
+    // ở trên (tức là không có stored data), persist lại memDb để không mất thao tác đó.
     if (savedThisSession) persist(memDb)
     // Dọn key localStorage cũ (không còn dùng, dữ liệu cũ không cần giữ)
     try { localStorage.removeItem(LEGACY_LOCALSTORAGE_KEY) } catch (_) { /* ignore */ }
@@ -231,6 +276,11 @@ const ensureUser = (db, user) => {
   }
   seed.profile.userId = userId
   seed.dailyTracking.userId = userId
+  // BUG FIX: phải reset days = [] cho user mới. Nếu không, user mới sẽ thừa kế
+  // 31 ngày sample data từ le_xuan_khanh, ngày cuối cùng (2026-06-12) có water=0.
+  // getTaskSnapshot fallback về .at(-1) khi không tìm thấy ngày hôm nay → trả về
+  // ngày sample với water=0 → UI hiển thị "0/1 lần" dù user đã uống nước thật.
+  seed.dailyTracking.days = []
   seed.activityLog = []
   seed.proofImages = []
   seed.rewards.claimed = []
@@ -286,7 +336,12 @@ export function getHealthJourneyUser(user) {
   const userId = makeUserId(user)
   const existed = Boolean(db.users?.[userId])
   const journeyUser = ensureUser(db, user)
-  if (!existed) saveHealthJourneyDb(db)
+  // BUG FIX (root cause): chỉ lưu khi user THẬT SỰ mới VÀ đã hydrate xong.
+  // Nếu chưa hydrate, memDb = defaultDb() nên google user không có trong đó,
+  // existed = false, saveHealthJourneyDb() bị gọi → đặt savedThisSession = true
+  // → hydrate() sau đó bỏ qua stored data thật vì savedThisSession = true
+  // → persist bản rỗng lên IndexedDB → mất tiến độ thật của user.
+  if (!existed && hydrated) saveHealthJourneyDb(db)
   return journeyUser
 }
 
