@@ -1037,91 +1037,91 @@ Trả lời bằng tiếng Việt, ngắn gọn và rõ ràng. Nhắc nhở đâ
             cursor: 'pointer', fontSize: 12, marginBottom: 20,
           }}>← {uploadText(lang, 'backToLibrary')}</button>
 
-          <div style={{ display: 'grid', gridTemplateColumns: selected.fileType === 'csv' ? 'minmax(0,1.35fr) minmax(320px,0.65fr)' : '1fr 1fr', gap: 20 }}>
-            {/* Left: Preview */}
-            <div>
-              <div style={{
-                background: '#000', borderRadius: 14, overflow: 'hidden',
-                border: '1px solid rgba(255,255,255,0.08)', marginBottom: 14,
-                minHeight: 280, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
-                {selected.fileType === 'csv' ? (
-                  <div style={{ width: '100%', padding: 14, boxSizing: 'border-box' }}>
-                    <InBodyCsvDashboard record={selected} />
-                  </div>
-                ) : selected.mimeType?.startsWith('video/') ? (
-                  <video src={selected.dataUrl} controls style={{ maxWidth: '100%', maxHeight: 320, borderRadius: 8 }} />
-                ) : selected.mimeType === 'application/pdf' ? (
-                  <div style={{ textAlign: 'center', padding: 32 }}>
-                    <div style={{ fontSize: 48, marginBottom: 12 }}>📄</div>
-                    <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', marginBottom: 16 }}>{selected.filename}</div>
-                    <button
-                      onClick={() => onSelectImage?.(selected.dataUrl, records, { selectedRecord: selected })}
-                      style={{
-                        padding: '10px 22px', background: 'linear-gradient(135deg,#00b8cc,#6b3fd4)',
-                        border: 'none', borderRadius: 10, color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                      }}
-                    >🔬 {uploadText(lang, 'useForCompare')}</button>
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: '12px 0' }}>
-                    <img
-                      src={selected.dataUrl} alt={selected.filename}
-                      style={{ maxWidth: '100%', maxHeight: 320, objectFit: 'contain', borderRadius: 8, cursor: 'pointer' }}
-                      onClick={() => onSelectImage?.(selected.dataUrl, records, { selectedRecord: selected })}
-                    />
-                    <button
-                      onClick={() => onSelectImage?.(selected.dataUrl, records, { selectedRecord: selected })}
-                      style={{
-                        padding: '10px 22px', background: 'linear-gradient(135deg,#00b8cc,#6b3fd4)',
-                        border: 'none', borderRadius: 10, color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                      }}
-                    >🔬 {uploadText(lang, 'useForCompare')}</button>
-                  </div>
-                )}
-              </div>
+          {/* ── Single-column layout: full-width preview + meta + notes + AI ── */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-              {/* Meta */}
-              <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, padding: 14 }}>
-                <MetaRow k={uploadText(lang, 'type')}      v={fileTypeLabel(selected.fileType)} vColor={TYPE_COLORS[selected.fileType]} />
-                <MetaRow k="File"                                   v={selected.filename} />
-                <MetaRow k={uploadText(lang, 'size')} v={formatBytes(selected.size)} />
-                <MetaRow k={uploadText(lang, 'uploaded')} v={new Date(selected.uploadedAt).toLocaleString('vi-VN')} />
-              </div>
-
-              {selected.fileType !== 'csv' && selected.fileType !== 'pdf' && (
-                <button onClick={convertSelectedInBodyImageToCsv} disabled={converting} style={{
-                  marginTop: 12, width: '100%', padding: '11px 14px', borderRadius: 10, cursor: converting ? 'not-allowed' : 'pointer',
-                  background: 'linear-gradient(135deg,rgba(179,255,95,0.22),rgba(0,229,255,0.12))', border: '1px solid rgba(179,255,95,0.35)',
-                  color: '#b3ff5f', fontSize: 12, fontWeight: 800, opacity: converting ? 0.6 : 1,
-                }}>{converting ? '⏳ Đang convert...' : '📈 Convert InBody Image thành .CSV'}</button>
-              )}
-
-              {/* Notes */}
-              <div style={{ marginTop: 12 }}>
-                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', marginBottom: 6, fontFamily: 'monospace', letterSpacing: '0.08em' }}>
-                  {uploadText(lang, 'notes')}
+            {/* Preview — full width, double height */}
+            <div style={{
+              background: '#000', borderRadius: 14, overflow: 'hidden',
+              border: '1px solid rgba(255,255,255,0.08)',
+              minHeight: 480, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              {selected.fileType === 'csv' ? (
+                <div style={{ width: '100%', padding: 14, boxSizing: 'border-box' }}>
+                  <InBodyCsvDashboard record={selected} />
                 </div>
-                <textarea
-                  value={notes} onChange={e => setNotes(e.target.value)}
-                  placeholder={uploadText(lang, 'notesPlaceholder')}
-                  rows={3}
-                  style={{
-                    width: '100%', background: 'rgba(255,255,255,0.04)',
-                    border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10,
-                    padding: '10px 14px', color: '#e8f0f8', fontSize: 12,
-                    resize: 'vertical', outline: 'none', fontFamily: "'DM Sans',sans-serif", boxSizing: 'border-box',
-                  }}
-                />
-                <button onClick={saveNotes} style={{
-                  marginTop: 8, padding: '8px 18px', borderRadius: 8, cursor: 'pointer',
-                  background: 'rgba(0,229,255,0.1)', border: '1px solid rgba(0,229,255,0.25)',
-                  color: '#00e5ff', fontSize: 12,
-                }}>{uploadText(lang, 'saveNotes')}</button>
-              </div>
+              ) : selected.mimeType?.startsWith('video/') ? (
+                <video src={selected.dataUrl} controls style={{ maxWidth: '100%', maxHeight: 640, borderRadius: 8 }} />
+              ) : selected.mimeType === 'application/pdf' ? (
+                <div style={{ textAlign: 'center', padding: 32 }}>
+                  <div style={{ fontSize: 48, marginBottom: 12 }}>📄</div>
+                  <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', marginBottom: 16 }}>{selected.filename}</div>
+                  <button
+                    onClick={() => onSelectImage?.(selected.dataUrl, records, { selectedRecord: selected })}
+                    style={{
+                      padding: '10px 22px', background: 'linear-gradient(135deg,#00b8cc,#6b3fd4)',
+                      border: 'none', borderRadius: 10, color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                    }}
+                  >🔬 {uploadText(lang, 'useForCompare')}</button>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: '12px 0', width: '100%' }}>
+                  <img
+                    src={selected.dataUrl} alt={selected.filename}
+                    style={{ maxWidth: '100%', maxHeight: 640, objectFit: 'contain', borderRadius: 8, cursor: 'pointer' }}
+                    onClick={() => onSelectImage?.(selected.dataUrl, records, { selectedRecord: selected })}
+                  />
+                  <button
+                    onClick={() => onSelectImage?.(selected.dataUrl, records, { selectedRecord: selected })}
+                    style={{
+                      padding: '10px 22px', background: 'linear-gradient(135deg,#00b8cc,#6b3fd4)',
+                      border: 'none', borderRadius: 10, color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                    }}
+                  >🔬 {uploadText(lang, 'useForCompare')}</button>
+                </div>
+              )}
             </div>
 
-            {/* Right: AI Analysis */}
+            {/* Meta */}
+            <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, padding: 14 }}>
+              <MetaRow k={uploadText(lang, 'type')}      v={fileTypeLabel(selected.fileType)} vColor={TYPE_COLORS[selected.fileType]} />
+              <MetaRow k="File"                                   v={selected.filename} />
+              <MetaRow k={uploadText(lang, 'size')} v={formatBytes(selected.size)} />
+              <MetaRow k={uploadText(lang, 'uploaded')} v={new Date(selected.uploadedAt).toLocaleString('vi-VN')} />
+            </div>
+
+            {selected.fileType !== 'csv' && selected.fileType !== 'pdf' && (
+              <button onClick={convertSelectedInBodyImageToCsv} disabled={converting} style={{
+                width: '100%', padding: '11px 14px', borderRadius: 10, cursor: converting ? 'not-allowed' : 'pointer',
+                background: 'linear-gradient(135deg,rgba(179,255,95,0.22),rgba(0,229,255,0.12))', border: '1px solid rgba(179,255,95,0.35)',
+                color: '#b3ff5f', fontSize: 12, fontWeight: 800, opacity: converting ? 0.6 : 1,
+              }}>{converting ? '⏳ Đang convert...' : '📈 Convert InBody Image thành .CSV'}</button>
+            )}
+
+            {/* Notes */}
+            <div>
+              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', marginBottom: 6, fontFamily: 'monospace', letterSpacing: '0.08em' }}>
+                {uploadText(lang, 'notes')}
+              </div>
+              <textarea
+                value={notes} onChange={e => setNotes(e.target.value)}
+                placeholder={uploadText(lang, 'notesPlaceholder')}
+                rows={3}
+                style={{
+                  width: '100%', background: 'rgba(255,255,255,0.04)',
+                  border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10,
+                  padding: '10px 14px', color: '#e8f0f8', fontSize: 12,
+                  resize: 'vertical', outline: 'none', fontFamily: "'DM Sans',sans-serif", boxSizing: 'border-box',
+                }}
+              />
+              <button onClick={saveNotes} style={{
+                marginTop: 8, padding: '8px 18px', borderRadius: 8, cursor: 'pointer',
+                background: 'rgba(0,229,255,0.1)', border: '1px solid rgba(0,229,255,0.25)',
+                color: '#00e5ff', fontSize: 12,
+              }}>{uploadText(lang, 'saveNotes')}</button>
+            </div>
+
+            {/* AI Analysis — below notes/save */}
             <div>
               <div style={{ fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', fontFamily: 'monospace', marginBottom: 12 }}>
                 {uploadText(lang, 'aiAnalysis')}
@@ -1132,7 +1132,7 @@ Trả lời bằng tiếng Việt, ngắn gọn và rõ ràng. Nhắc nhở đâ
               ) : !selected.aiAnalysis && !analyzing && !analysisStream && (
                 <div style={{
                   background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.1)',
-                  borderRadius: 14, padding: '40px 24px', textAlign: 'center', marginBottom: 14,
+                  borderRadius: 14, padding: '32px 24px', textAlign: 'center',
                 }}>
                   <div style={{ fontSize: 32, marginBottom: 12 }}>🤖</div>
                   <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', marginBottom: 16 }}>
@@ -1158,7 +1158,7 @@ Trả lời bằng tiếng Việt, ngắn gọn và rõ ràng. Nhắc nhở đâ
               {(analyzing || analysisStream) && (
                 <div style={{
                   background: 'rgba(0,229,255,0.04)', border: '1px solid rgba(0,229,255,0.15)',
-                  borderRadius: 14, padding: 18, marginBottom: 14,
+                  borderRadius: 14, padding: 18,
                 }}>
                   {analyzing && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
