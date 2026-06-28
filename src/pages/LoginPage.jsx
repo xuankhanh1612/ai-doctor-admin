@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useApp } from '../context/AppContext'
+import anonymousProfileImg from './AnonymousProfileUUID-Avatar-1080x720.png'
 
 export default function LoginPage({ onSuccess }) {
   const { loginWithGoogle, loginWithApple, loginWithEmail, loginAnonymous } = useAuth()
@@ -11,6 +12,7 @@ export default function LoginPage({ onSuccess }) {
   const [name, setName] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [showHelp, setShowHelp] = useState(false)
 
   const isDark = theme === 'dark'
 
@@ -123,9 +125,132 @@ export default function LoginPage({ onSuccess }) {
         >
           🌿 {lang === 'vi' ? 'Bắt đầu ngay' : 'Start Now'}
         </button>
-        <div style={{ textAlign: 'center', fontSize: 11, color: isDark ? 'rgba(232,240,248,0.4)' : '#999', marginBottom: 18 }}>
-          {lang === 'vi' ? 'Không cần tài khoản · Tiến trình lưu trên thiết bị này' : 'No account required · Progress saved on this device'}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 18 }}>
+          <span style={{ fontSize: 11, color: isDark ? 'rgba(232,240,248,0.4)' : '#999' }}>
+            {lang === 'vi' ? 'Không cần tài khoản · Tiến trình lưu trên thiết bị này' : 'No account required · Progress saved on this device'}
+          </span>
+          <button
+            onClick={() => setShowHelp(true)}
+            title={lang === 'vi' ? 'Trợ giúp về hồ sơ ẩn danh' : 'Help: Anonymous Profile'}
+            style={{
+              flexShrink: 0,
+              width: 26, height: 26, borderRadius: '50%',
+              border: `1px solid ${isDark ? 'rgba(0,229,255,0.45)' : 'rgba(0,184,204,0.5)'}`,
+              background: isDark ? 'rgba(0,229,255,0.10)' : 'rgba(0,184,204,0.08)',
+              color: isDark ? '#00e5ff' : '#00b8cc',
+              fontSize: 13, fontWeight: 900, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              lineHeight: 1, padding: 0,
+              transition: 'all 0.18s',
+            }}
+          >
+            ?
+          </button>
         </div>
+
+        {/* ── Help Popup Modal ── */}
+        {showHelp && (
+          <div
+            onClick={() => setShowHelp(false)}
+            style={{
+              position: 'fixed', inset: 0, zIndex: 9999,
+              background: 'rgba(0,0,0,0.72)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: 20, backdropFilter: 'blur(6px)',
+            }}
+          >
+            <div
+              onClick={e => e.stopPropagation()}
+              style={{
+                width: '100%', maxWidth: 640,
+                background: isDark ? '#0b1120' : '#fff',
+                borderRadius: 20,
+                border: `1px solid ${isDark ? 'rgba(0,229,255,0.2)' : 'rgba(0,184,204,0.2)'}`,
+                boxShadow: '0 32px 100px rgba(0,0,0,0.6)',
+                overflow: 'hidden',
+                maxHeight: '90vh',
+                display: 'flex', flexDirection: 'column',
+              }}
+            >
+              {/* Modal header */}
+              <div style={{
+                padding: '18px 22px',
+                background: 'linear-gradient(135deg, #1a6640, #2d8a5e, #00b8cc)',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              }}>
+                <div>
+                  <div style={{ fontSize: 16, fontWeight: 900, color: '#fff' }}>
+                    🌿 {lang === 'vi' ? 'Hồ sơ ẩn danh (UUID) là gì?' : 'What is an Anonymous Profile (UUID)?'}
+                  </div>
+                  <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', marginTop: 3 }}>
+                    {lang === 'vi' ? 'Bắt đầu ngay — không cần đăng ký tài khoản' : 'Start instantly — no account registration needed'}
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowHelp(false)}
+                  style={{
+                    background: 'rgba(255,255,255,0.18)', border: 'none', borderRadius: 8,
+                    width: 32, height: 32, cursor: 'pointer', color: '#fff',
+                    fontSize: 18, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}
+                >×</button>
+              </div>
+
+              {/* Scrollable body */}
+              <div style={{ overflowY: 'auto', flex: 1 }}>
+                {/* Banner image */}
+                <img
+                  src={anonymousProfileImg}
+                  alt="Anonymous Profile UUID"
+                  style={{ display: 'block', width: '100%', height: 'auto' }}
+                />
+
+                {/* Video section */}
+                <div style={{ padding: '20px 22px 24px' }}>
+                  <div style={{
+                    fontSize: 13, fontWeight: 800,
+                    color: isDark ? '#00e5ff' : '#2d8a5e',
+                    marginBottom: 12, letterSpacing: '.05em', textTransform: 'uppercase',
+                  }}>
+                    🎬 {lang === 'vi' ? 'Video hướng dẫn' : 'Tutorial Video'}
+                  </div>
+                  <div style={{
+                    borderRadius: 14, overflow: 'hidden',
+                    border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
+                    background: '#000', aspectRatio: '16/9',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <video
+                      controls
+                      style={{ width: '100%', height: '100%', display: 'block' }}
+                      poster={anonymousProfileImg}
+                    >
+                      <source src="/src/pages/AnonymousProfileUUID.mp4" type="video/mp4" />
+                      <source src="/src/pages/AnonymousProfileUUID.webm" type="video/webm" />
+                      <p style={{ color: '#aaa', fontSize: 13, padding: 20, textAlign: 'center' }}>
+                        {lang === 'vi'
+                          ? 'Trình duyệt không hỗ trợ video. Vui lòng cập nhật trình duyệt.'
+                          : 'Your browser does not support video playback.'}
+                      </p>
+                    </video>
+                  </div>
+
+                  {/* Short description */}
+                  <div style={{
+                    marginTop: 16, padding: '14px 16px', borderRadius: 12,
+                    background: isDark ? 'rgba(45,138,94,0.1)' : 'rgba(45,138,94,0.06)',
+                    border: `1px solid ${isDark ? 'rgba(45,138,94,0.3)' : 'rgba(45,138,94,0.2)'}`,
+                    fontSize: 13, color: isDark ? 'rgba(232,240,248,0.8)' : '#334', lineHeight: 1.7,
+                  }}>
+                    {lang === 'vi'
+                      ? '🔑 Mỗi thiết bị được cấp một UUID duy nhất. Hồ sơ, cấp độ và tiến trình của bạn được lưu ngay trên thiết bị — không cần email hay mật khẩu. Bạn có thể nâng cấp lên tài khoản thật bất cứ lúc nào để đồng bộ đa thiết bị.'
+                      : '🔑 Each device receives a unique UUID. Your profile, level, and progress are saved directly on this device — no email or password needed. You can upgrade to a real account at any time to sync across devices.'}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div style={s.divider}><div style={s.line}/>{lang === 'vi' ? 'HOẶC' : 'OR'}<div style={s.line}/></div>
 
