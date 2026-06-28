@@ -24,9 +24,6 @@ export const EMOTIONAL_QUICK_PROMPTS = {
   ],
 }
 
-export const GP_CHAT_STORAGE_KEY = 'cdoc_gp_chat_history'
-export const LEGACY_PSYCH_CHAT_STORAGE_KEY = 'cdoc_psych_chat_history'
-
 export const createChatMessage = (role, text) => ({
   id: `gp_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
   role,
@@ -40,29 +37,6 @@ export const createInitialAgentMessage = (lang) => createChatMessage(
     ? 'Hello, I am your virtual General Practitioner AI. Tell me your symptoms, how you are feeling, when it started, severity, current medicines, allergies, and what makes things better or worse.'
     : 'Xin chào, tôi là AI Bác sĩ đa khoa ảo. Bạn có thể mô tả triệu chứng hoặc tâm sự cảm xúc hiện tại, bắt đầu từ khi nào, mức độ nặng, thuốc đang dùng, dị ứng và điều gì làm bạn dễ chịu hơn hoặc khó chịu hơn.'
 )
-
-export function loadStoredChatMessages(lang) {
-  if (typeof window === 'undefined') return [createInitialAgentMessage(lang)]
-
-  try {
-    const raw = localStorage.getItem(GP_CHAT_STORAGE_KEY) || localStorage.getItem(LEGACY_PSYCH_CHAT_STORAGE_KEY)
-    if (!raw) return [createInitialAgentMessage(lang)]
-
-    const parsed = JSON.parse(raw)
-    if (!Array.isArray(parsed) || parsed.length === 0) return [createInitialAgentMessage(lang)]
-
-    return parsed
-      .filter(message => message?.role && message?.text)
-      .map((message, index) => ({
-        id: message.id || `gp_saved_${index}_${Date.now()}`,
-        role: message.role,
-        text: message.text,
-        createdAt: message.createdAt || new Date().toISOString(),
-      }))
-  } catch {
-    return [createInitialAgentMessage(lang)]
-  }
-}
 
 export function buildGeneralPractitionerReply(prompt, lang) {
   const text = prompt.toLowerCase()

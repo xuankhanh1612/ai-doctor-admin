@@ -1,15 +1,15 @@
 import React, { useEffect, useState } from 'react'
 import { PATIENT } from '../data/mockData.js'
 import { useApp } from '../context/AppContext'
+import { useAuth } from '../context/AuthContext.jsx'
 import NavButtons from './NavButtons.jsx'
 import {
-  GP_CHAT_STORAGE_KEY,
   QUICK_PROMPTS,
   buildGeneralPractitionerReply,
   createChatMessage,
   createInitialAgentMessage,
-  loadStoredChatMessages,
 } from '../lib/generalPractitionerChat.js'
+import { getGpChatHistory, saveGpChatHistory } from '../lib/generalPractitionerChatStorage.js'
 
 const Tag = ({ children, color = 'cyan' }) => {
   const colors = {
@@ -50,19 +50,34 @@ const Card = ({ title, children }) => (
 
 export default function CheckinPanel({ onNext, nextLabel, onPrev, prevLabel }) {
   const { t, lang } = useApp()
+  const { user } = useAuth()
+  // uuid là field nhận diện thống nhất cho mọi loại user (guest hay đã đăng nhập) —
+  // dùng làm khoá lưu trữ IndexedDB để mỗi user có lịch sử chat riêng.
+  const userKey = user?.uuid || null
   const [symptomPrompt, setSymptomPrompt] = useState('')
-  const [chatMessages, setChatMessages] = useState(() => loadStoredChatMessages(lang))
+  const [chatMessages, setChatMessages] = useState(() => [createInitialAgentMessage(lang)])
+  const [historyLoaded, setHistoryLoaded] = useState(false)
   const [selectedMessageIds, setSelectedMessageIds] = useState([])
 
+  // Nạp lịch sử chat đã lưu của user khi mount (hoặc khi đổi user)
   useEffect(() => {
-    if (typeof window === 'undefined') return
+    let cancelled = false
+    setHistoryLoaded(false)
+    ;(async () => {
+      const saved = await getGpChatHistory(userKey)
+      if (cancelled) return
+      if (saved.length > 0) setChatMessages(saved)
+      else setChatMessages([createInitialAgentMessage(lang)])
+      setHistoryLoaded(true)
+    })()
+    return () => { cancelled = true }
+  }, [userKey])
 
-    try {
-      localStorage.setItem(GP_CHAT_STORAGE_KEY, JSON.stringify(chatMessages))
-    } catch {
-      // Ignore storage failures so the clinical check-in UI remains usable.
-    }
-  }, [chatMessages])
+  // Tự động lưu mỗi khi messages đổi (chỉ sau khi đã nạp lịch sử xong, tránh ghi đè)
+  useEffect(() => {
+    if (!historyLoaded) return
+    saveGpChatHistory(userKey, chatMessages)
+  }, [chatMessages, historyLoaded, userKey])
 
   const submitSymptomPrompt = () => {
     const prompt = symptomPrompt.trim()

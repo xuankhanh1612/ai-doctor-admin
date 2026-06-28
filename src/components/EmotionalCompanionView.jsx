@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react'
 import { useApp } from '../context/AppContext.jsx'
+import { useAuth } from '../context/AuthContext.jsx'
 import {
   EMOTIONAL_QUICK_PROMPTS,
-  GP_CHAT_STORAGE_KEY,
   buildGeneralPractitionerReply,
   createChatMessage,
   createInitialAgentMessage,
-  loadStoredChatMessages,
 } from '../lib/generalPractitionerChat.js'
+import { getGpChatHistory, saveGpChatHistory } from '../lib/generalPractitionerChatStorage.js'
 
 const BLUE = '#0058bc'
 const PRIMARY = '#0070eb'
@@ -60,18 +60,30 @@ function formatMessageTime(iso, lang) {
 
 export default function EmotionalCompanionView({ onOpenStressRelief, onOpenInBody }) {
   const { lang } = useApp()
+  const { user } = useAuth()
+  // Cùng khoá uuid + cùng store với CheckinPanel — 2 nơi này dùng chung 1 lịch sử chat AI.
+  const userKey = user?.uuid || null
   const [chatPrompt, setChatPrompt] = useState('')
-  const [chatMessages, setChatMessages] = useState(() => loadStoredChatMessages(lang))
+  const [chatMessages, setChatMessages] = useState(() => [createInitialAgentMessage(lang)])
+  const [historyLoaded, setHistoryLoaded] = useState(false)
 
   useEffect(() => {
-    if (typeof window === 'undefined') return
+    let cancelled = false
+    setHistoryLoaded(false)
+    ;(async () => {
+      const saved = await getGpChatHistory(userKey)
+      if (cancelled) return
+      if (saved.length > 0) setChatMessages(saved)
+      else setChatMessages([createInitialAgentMessage(lang)])
+      setHistoryLoaded(true)
+    })()
+    return () => { cancelled = true }
+  }, [userKey])
 
-    try {
-      localStorage.setItem(GP_CHAT_STORAGE_KEY, JSON.stringify(chatMessages))
-    } catch {
-      // Keep the companion usable even when storage is unavailable.
-    }
-  }, [chatMessages])
+  useEffect(() => {
+    if (!historyLoaded) return
+    saveGpChatHistory(userKey, chatMessages)
+  }, [chatMessages, historyLoaded, userKey])
 
   const submitChatPrompt = () => {
     const prompt = chatPrompt.trim()
