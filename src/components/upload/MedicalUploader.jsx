@@ -427,9 +427,19 @@ export default function MedicalUploader({ patientId, onSelectImage }) {
   const streamRef = useRef(null)
 
   const stopCamera = useCallback(() => {
-    streamRef.current?.getTracks?.().forEach(track => track.stop())
+    const stream = streamRef.current
+    if (stream) {
+      stream.getTracks().forEach(track => {
+        track.stop()
+        stream.removeTrack(track)
+      })
+    }
     streamRef.current = null
-    if (videoRef.current) videoRef.current.srcObject = null
+    if (videoRef.current) {
+      videoRef.current.pause()
+      videoRef.current.srcObject = null
+      videoRef.current.load()
+    }
     setCameraOpen(false)
     setCameraStarting(false)
   }, [])
@@ -555,6 +565,13 @@ export default function MedicalUploader({ patientId, onSelectImage }) {
 
   const openCamera = useCallback(async (nextFacingMode = cameraFacingMode) => {
     setCameraError('')
+    // Stop any existing stream before opening a new one
+    const existingStream = streamRef.current
+    if (existingStream) {
+      existingStream.getTracks().forEach(track => track.stop())
+      streamRef.current = null
+      if (videoRef.current) { videoRef.current.srcObject = null }
+    }
     if (!navigator.mediaDevices?.getUserMedia) {
       setCameraError(lang === 'vi' ? 'Trình duyệt không hỗ trợ mở camera thật. Đang mở camera hệ thống của thiết bị.' : 'This browser does not support live camera capture. Opening the device camera picker instead.')
       cameraInputRef.current?.click()
