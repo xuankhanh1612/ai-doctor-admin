@@ -573,30 +573,42 @@ export default function MedicalUploader({ patientId, onSelectImage }) {
       if (videoRef.current) { videoRef.current.srcObject = null }
     }
     if (!navigator.mediaDevices?.getUserMedia) {
-      setCameraError(lang === 'vi' ? 'Trình duyệt không hỗ trợ mở camera thật. Đang mở camera hệ thống của thiết bị.' : 'This browser does not support live camera capture. Opening the device camera picker instead.')
-      cameraInputRef.current?.click()
+      setCameraError(lang === 'vi'
+        ? 'Trình duyệt không hỗ trợ camera trực tiếp. Vui lòng dùng HTTPS hoặc thử trình duyệt khác.'
+        : 'Live camera requires HTTPS. Please try a different browser or connection.')
       return
     }
     setCameraStarting(true)
+    let stream = null
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
+      // Try with ideal high-res constraints first
+      stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: { ideal: nextFacingMode }, width: { ideal: 1600 }, height: { ideal: 1200 } },
         audio: false,
       })
-      streamRef.current = stream
-      setCameraFacingMode(nextFacingMode)
-      setCameraOpen(true)
-      window.setTimeout(() => {
-        if (videoRef.current) videoRef.current.srcObject = stream
-      }, 0)
-    } catch (e) {
-      setCameraError(lang === 'vi' ? 'Không thể mở camera live. Bạn có thể chọn/chụp ảnh bằng camera hệ thống.' : 'Cannot open live camera. You can choose or capture an image with the device camera picker.')
-      stopCamera()
-      cameraInputRef.current?.click()
-    } finally {
-      setCameraStarting(false)
+    } catch {
+      // Fallback: minimal constraints (works on more devices/browsers)
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+      } catch (e2) {
+        const msg = e2?.name === 'NotAllowedError'
+          ? (lang === 'vi' ? 'Quyền camera bị từ chối. Vui lòng cho phép camera trong cài đặt trình duyệt rồi thử lại.' : 'Camera permission denied. Please allow camera access in your browser settings and try again.')
+          : e2?.name === 'NotFoundError'
+          ? (lang === 'vi' ? 'Không tìm thấy camera. Hãy kiểm tra thiết bị có camera không.' : 'No camera found on this device.')
+          : (lang === 'vi' ? `Không thể mở camera: ${e2?.message || e2?.name || 'Unknown error'}` : `Cannot open camera: ${e2?.message || e2?.name || 'Unknown error'}`)
+        setCameraError(msg)
+        setCameraStarting(false)
+        return
+      }
     }
-  }, [cameraFacingMode, lang, stopCamera])
+    streamRef.current = stream
+    setCameraFacingMode(nextFacingMode)
+    setCameraOpen(true)
+    setCameraStarting(false)
+    window.setTimeout(() => {
+      if (videoRef.current) videoRef.current.srcObject = stream
+    }, 0)
+  }, [cameraFacingMode, lang])
 
   const switchCamera = useCallback(() => {
     const nextFacingMode = cameraFacingMode === 'user' ? 'environment' : 'user'
