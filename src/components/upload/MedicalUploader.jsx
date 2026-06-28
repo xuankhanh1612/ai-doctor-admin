@@ -854,33 +854,6 @@ Trả lời bằng tiếng Việt, ngắn gọn và rõ ràng. Nhắc nhở đâ
         </div>
       </div>
 
-      {/* API Key input */}
-      {showApiInput && (
-        <div className="uploader-fade" style={{
-          background: 'rgba(255,171,64,0.08)', border: '1px solid rgba(255,171,64,0.25)',
-          borderRadius: 12, padding: '14px 18px', marginBottom: 20,
-          display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
-        }}>
-          <span style={{ fontSize: 12, color: '#ffb74d', flex: 1 }}>
-            {uploadText(lang, 'apiKeyPrompt')}
-          </span>
-          <input
-            type="password" placeholder="sk-ant-..."
-            value={apiKey}
-            onChange={e => { setApiKey(e.target.value); localStorage.setItem('ai-clinic-api-key', e.target.value) }}
-            style={{
-              background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,171,64,0.3)',
-              borderRadius: 8, padding: '8px 14px', color: '#fff', fontSize: 12,
-              fontFamily: 'monospace', width: 260, outline: 'none',
-            }}
-          />
-          <button onClick={() => setShowApiInput(false)} style={{
-            background: 'rgba(255,171,64,0.15)', border: '1px solid rgba(255,171,64,0.3)',
-            borderRadius: 8, padding: '8px 16px', color: '#ffb74d', cursor: 'pointer', fontSize: 12,
-          }}>{uploadText(lang, 'save')}</button>
-        </div>
-      )}
-
       {error && (
         <div style={{ background: 'rgba(255,82,82,0.1)', border: '1px solid rgba(255,82,82,0.25)', borderRadius: 10, padding: '10px 16px', marginBottom: 16, fontSize: 12, color: '#ff5252' }}>
           ⚠️ {error}
@@ -1143,7 +1116,33 @@ Trả lời bằng tiếng Việt, ngắn gọn và rõ ràng. Nhắc nhở đâ
                     background: 'linear-gradient(135deg,#00b8cc,#6b3fd4)',
                     color: '#fff', fontSize: 14, fontWeight: 600, border: 'none',
                   }}>▶ {uploadText(lang, 'analyzeWithClaude')}</button>
-                  {!apiKey && (
+                  {/* API Key input — shown below Analyze button */}
+                  {showApiInput && (
+                    <div className="uploader-fade" style={{
+                      background: 'rgba(255,171,64,0.08)', border: '1px solid rgba(255,171,64,0.25)',
+                      borderRadius: 12, padding: '14px 18px', marginTop: 14,
+                      display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
+                    }}>
+                      <span style={{ fontSize: 12, color: '#ffb74d', flex: 1 }}>
+                        {uploadText(lang, 'apiKeyPrompt')}
+                      </span>
+                      <input
+                        type="password" placeholder="sk-ant-..."
+                        value={apiKey}
+                        onChange={e => { setApiKey(e.target.value); localStorage.setItem('ai-clinic-api-key', e.target.value) }}
+                        style={{
+                          background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,171,64,0.3)',
+                          borderRadius: 8, padding: '8px 14px', color: '#fff', fontSize: 12,
+                          fontFamily: 'monospace', width: 260, outline: 'none',
+                        }}
+                      />
+                      <button onClick={() => setShowApiInput(false)} style={{
+                        background: 'rgba(255,171,64,0.15)', border: '1px solid rgba(255,171,64,0.3)',
+                        borderRadius: 8, padding: '8px 16px', color: '#ffb74d', cursor: 'pointer', fontSize: 12,
+                      }}>{uploadText(lang, 'save')}</button>
+                    </div>
+                  )}
+                  {!apiKey && !showApiInput && (
                     <div style={{ fontSize: 11, color: 'rgba(255,171,64,0.7)', marginTop: 10 }}>
                       {uploadText(lang, 'requiresKey')}
                       <button onClick={() => setShowApiInput(true)} style={{
