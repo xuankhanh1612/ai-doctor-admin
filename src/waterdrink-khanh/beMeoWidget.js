@@ -546,7 +546,9 @@ export function mountBeMeoWidget(shadow, {
     return greetings[Math.floor(Math.random() * greetings.length)];
   }
 
-  const PROOF_MAP_KEY = 'be_meo_nuoc_proof_map';
+  // Khoá theo userKey (uuid) — mỗi user/guest có cache proof riêng, không bị lẫn
+  // proof của người khác dùng chung máy/trình duyệt.
+  const PROOF_MAP_KEY = 'be_meo_nuoc_proof_map_' + (userKey || 'guest');
 
   function loadProofMap() {
     const result = {};
@@ -557,16 +559,6 @@ export function mountBeMeoWidget(shadow, {
         if (dataUrl) result[pid] = dataUrl;
         else if (meta[pid]?.hasProof) result[pid] = '__PENDING__';
       });
-    } catch { }
-    try {
-      const old = JSON.parse(localStorage.getItem(PROOF_MAP_KEY) || '{}');
-      Object.entries(old).forEach(([pid, dataUrl]) => {
-        if (dataUrl && dataUrl !== '__PENDING__' && !result[pid]) {
-          result[pid] = dataUrl;
-          try { sessionStorage.setItem(PROOF_MAP_KEY + '_' + pid, dataUrl); } catch { }
-        }
-      });
-      if (Object.keys(old).length > 0) localStorage.removeItem(PROOF_MAP_KEY);
     } catch { }
     return result;
   }
