@@ -413,6 +413,7 @@ export default function MedicalUploader({ patientId, onSelectImage }) {
   const [error, setError]                 = useState('')
   const [apiKey, setApiKey]               = useState('')
   const [showApiInput, setShowApiInput]   = useState(false)
+  const [pdfObjectUrl, setPdfObjectUrl]   = useState(null)
   const [notes, setNotes]                 = useState('')
   const [cameraOpen, setCameraOpen]       = useState(false)
   const [cameraStarting, setCameraStarting] = useState(false)
@@ -447,6 +448,27 @@ export default function MedicalUploader({ patientId, onSelectImage }) {
     const saved = localStorage.getItem('ai-clinic-api-key')
     if (saved) setApiKey(saved)
   }, [user?.email, user?.isAdmin])
+
+  // Convert PDF dataUrl to blob URL for iframe rendering
+  useEffect(() => {
+    if (!selected?.dataUrl || selected?.mimeType !== 'application/pdf') {
+      setPdfObjectUrl(null)
+      return
+    }
+    try {
+      const base64 = selected.dataUrl.split(',')[1]
+      if (!base64) return
+      const binary = atob(base64)
+      const bytes = new Uint8Array(binary.length)
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+      const blob = new Blob([bytes], { type: 'application/pdf' })
+      const url = URL.createObjectURL(blob)
+      setPdfObjectUrl(url)
+      return () => URL.revokeObjectURL(url)
+    } catch {
+      setPdfObjectUrl(null)
+    }
+  }, [selected?.id, selected?.dataUrl])
 
   async function loadRecords() {
     const recs = await getAllRecords(recordScope)
@@ -1026,13 +1048,20 @@ Trả lời bằng tiếng Việt, ngắn gọn và rõ ràng. Nhắc nhở đâ
               ) : selected.mimeType?.startsWith('video/') ? (
                 <video src={selected.dataUrl} controls style={{ maxWidth: '100%', maxHeight: 640, borderRadius: 8 }} />
               ) : selected.mimeType === 'application/pdf' ? (
-                <div style={{ textAlign: 'center', padding: 32 }}>
-                  <div style={{ fontSize: 48, marginBottom: 12 }}>📄</div>
-                  <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', marginBottom: 16 }}>{selected.filename}</div>
+                <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0 }}>
+                  {pdfObjectUrl ? (
+                    <iframe
+                      src={pdfObjectUrl}
+                      title={selected.filename}
+                      style={{ width: '100%', height: 520, border: 'none', display: 'block' }}
+                    />
+                  ) : (
+                    <div style={{ color: 'rgba(0,229,255,0.7)', fontSize: 11, fontFamily: 'monospace', padding: 24 }}>Đang tải PDF...</div>
+                  )}
                   <button
                     onClick={() => onSelectImage?.(selected.dataUrl, records, { selectedRecord: selected })}
                     style={{
-                      padding: '10px 22px', background: 'linear-gradient(135deg,#00b8cc,#6b3fd4)',
+                      margin: '12px 0', padding: '10px 22px', background: 'linear-gradient(135deg,#00b8cc,#6b3fd4)',
                       border: 'none', borderRadius: 10, color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer',
                     }}
                   >🔬 {uploadText(lang, 'useForCompare')}</button>
