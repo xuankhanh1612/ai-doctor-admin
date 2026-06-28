@@ -175,12 +175,28 @@ function hydrate() {
       const stored = await getSetting(HEALTH_JOURNEY_DB_KEY)
       if (stored && !savedThisSession) {
         memDb = stored
+
+        // BUG FIX (Google user data loss on reload): chạy self-heal NGAY trên data
+        // thật vừa nạp từ IndexedDB, trước khi fire HEALTH_JOURNEY_EVENT. Nếu không
+        // làm vậy, loadHealthJourneyDb() sẽ chạy self-heal lần 2 SAU KHI hydrated=true
+        // và persist() kết quả đó xuống — không sao. Nhưng nếu lần chạy đầu tiên
+        // (trước hydrate) đã persist bản defaultDb() xuống vì lý do nào đó, bản thật
+        // sẽ bị mất. Bằng cách heal+persist ngay ở đây, ta đảm bảo IndexedDB luôn
+        // phản ánh data thật ngay sau hydrate.
+        hydrated = true // đặt trước để persist() bên dưới không bị chặn
+        const healedImages = migrateLargeImages(memDb)
+        const healedObjectives = ensureAllChapterObjectives(memDb)
+        const healedFlags = repairObjectiveCompletedFlags(memDb)
+        if (healedImages || healedObjectives || healedFlags) persist(memDb)
+
         window.dispatchEvent(new CustomEvent(HEALTH_JOURNEY_EVENT, { detail: memDb }))
+      } else {
+        hydrated = true
       }
     } catch (e) {
       console.warn('[healthJourneyStorage] IndexedDB read failed', e)
+      hydrated = true
     }
-    hydrated = true
     // Nếu trong lúc đang hydrate đã có thao tác lưu thật xảy ra (savedThisSession
     // đã bị set true bởi saveHealthJourneyDb trước khi đọc xong), persist() ở
     // trên đã bị chặn nên chưa ghi gì cả — flush lại ngay bây giờ để không mất
@@ -232,13 +248,25 @@ export function loadHealthJourneyDb() {
   if (typeof window === 'undefined') return defaultDb()
   if (!memDb) memDb = defaultDb()
 
-  const changedImages = migrateLargeImages(memDb)
-  const changedMissingObjectives = ensureAllChapterObjectives(memDb)
-  const changedObjectives = repairObjectiveCompletedFlags(memDb)
-  if (!memDb.users?.[sampleUserData.user.userId]) {
-    memDb.users = { ...(memDb.users || {}), [sampleUserData.user.userId]: clone(sampleUserData) }
+  // BUG FIX: chỉ chạy self-heal + persist khi đã hydrate xong. Nếu chưa hydrate,
+  // memDb vẫn là defaultDb() tạm — không được persist bản này xuống IndexedDB vì
+  // sẽ đè mất tiến độ thật của Google user. persist() đã có guard `hydrated` nhưng
+  // gọi nó ở đây khi chưa hydrated là thừa và gây nhầm lẫn khi đọc code.
+  if (hydrated) {
+    const changedImages = migrateLargeImages(memDb)
+    const changedMissingObjectives = ensureAllChapterObjectives(memDb)
+    const changedObjectives = repairObjectiveCompletedFlags(memDb)
+    if (!memDb.users?.[sampleUserData.user.userId]) {
+      memDb.users = { ...(memDb.users || {}), [sampleUserData.user.userId]: clone(sampleUserData) }
+    }
+    if (changedImages || changedMissingObjectives || changedObjectives) persist(memDb)
+  } else {
+    // Trước khi hydrate: vẫn đảm bảo sampleUser luôn tồn tại trong defaultDb tạm
+    // để UI không crash, nhưng KHÔNG persist.
+    if (!memDb.users?.[sampleUserData.user.userId]) {
+      memDb.users = { ...(memDb.users || {}), [sampleUserData.user.userId]: clone(sampleUserData) }
+    }
   }
-  if (changedImages || changedMissingObjectives || changedObjectives) persist(memDb)
 
   return memDb
 }
