@@ -1,8 +1,13 @@
 import journeysJson from '../data/journeys.json'
 import sampleUserData from '../data/le_xuan_khanh_sample_tracking.json'
+import { getSetting, setSetting } from '../../../lib/anonDB.js'
 
 export const HEALTH_JOURNEY_EVENT = 'health-journey:updated'
-export const HEALTH_JOURNEY_DB_KEY = 'health_journey_local_db_v1'
+// Khoá lưu trong IndexedDB (store "settings" của anonDB.js). Đổi tên key (_v2) vì
+// backend lưu trữ đổi từ localStorage → IndexedDB, không liên quan tới key cũ.
+const HEALTH_JOURNEY_DB_KEY = 'health_journey_db_v2'
+// Key localStorage CŨ — chỉ dùng để dọn dẹp (xoá) một lần, không đọc/migrate dữ liệu cũ.
+const LEGACY_LOCALSTORAGE_KEY = 'health_journey_local_db_v1'
 
 export const ACTIVITY_TASK_MAP = {
   import_inbody: 'inbody',
@@ -88,35 +93,19 @@ export const XP_TABLE = {
 const todayISODate = () => new Date().toISOString().slice(0, 10)
 
 const makeUserId = (user) => {
-  const raw = user?.email || user?.name || sampleUserData.user.userId || 'guest'
+  const raw = user?.uuid || sampleUserData.user.userId || 'guest'
   return raw.toString().trim().toLowerCase().replace(/[^a-z0-9._-]+/g, '-') || 'guest'
 }
 
 const clone = (value) => JSON.parse(JSON.stringify(value))
 
-const INDEXED_DB_ONLY = '__INDEXED_DB_ONLY__'
-
-function compressForLocalStorage(dataUrl) {
-  if (!dataUrl) return ''
-  if (typeof dataUrl !== 'string') return ''
-  return dataUrl.length < 50000 ? dataUrl : INDEXED_DB_ONLY
-}
-
+// IndexedDB không có giới hạn ~5MB như localStorage, nên ảnh proof được lưu
+// trực tiếp, không cần "compress"/cắt bỏ ảnh lớn hay tách sang chỗ khác nữa.
 function migrateLargeImages(db) {
+  // Giữ lại để chỉ trim activityLog/proofImages quá dài (vệ sinh bộ nhớ),
+  // KHÔNG còn xoá/thay ảnh vì IndexedDB đủ chỗ chứa.
   let changed = false
   Object.values(db.users || {}).forEach((user) => {
-    user.activityLog?.forEach((activity) => {
-      if (typeof activity.proofImage === 'string' && activity.proofImage.length > 50000) {
-        activity.proofImage = INDEXED_DB_ONLY
-        changed = true
-      }
-    })
-    user.proofImages?.forEach((proof) => {
-      if (typeof proof.image === 'string' && proof.image.length > 50000) {
-        proof.image = INDEXED_DB_ONLY
-        changed = true
-      }
-    })
     if (Array.isArray(user.activityLog) && user.activityLog.length > 500) {
       user.activityLog = user.activityLog.slice(0, 500)
       changed = true
@@ -152,6 +141,42 @@ function repairObjectiveCompletedFlags(db) {
 }
 
 
+
+// ─── In-memory cache + IndexedDB persistence ─────────────────────────────────
+// Mọi component trong game gọi loadHealthJourneyDb()/saveHealthJourneyDb() một
+// cách ĐỒNG BỘ (trong render, onClick...), nhưng IndexedDB chỉ có API bất đồng
+// bộ. Giải pháp: giữ 1 bản cache trong RAM (`memDb`) làm "nguồn sự thật" trong
+// lúc trang đang chạy — đọc/ghi cache này luôn đồng bộ, còn việc đồng bộ xuống
+// IndexedDB chạy nền (fire-and-forget). Khi trang vừa mở, cache được "hydrate"
+// (nạp) từ IndexedDB ngay — nếu chưa có ai lưu gì mới trong phiên này thì dữ
+// liệu vừa nạp sẽ thay cho bản mặc định tạm, và bắn HEALTH_JOURNEY_EVENT để UI
+// tự refresh lại theo dữ liệu thật.
+let memDb = null
+let savedThisSession = false
+let hydratePromise = null
+
+function persist(db) {
+  setSetting(HEALTH_JOURNEY_DB_KEY, db).catch((e) => console.warn('[healthJourneyStorage] IndexedDB write failed', e))
+}
+
+function hydrate() {
+  if (hydratePromise) return hydratePromise
+  hydratePromise = (async () => {
+    try {
+      const stored = await getSetting(HEALTH_JOURNEY_DB_KEY)
+      if (stored && !savedThisSession) {
+        memDb = stored
+        window.dispatchEvent(new CustomEvent(HEALTH_JOURNEY_EVENT, { detail: memDb }))
+      }
+    } catch (e) {
+      console.warn('[healthJourneyStorage] IndexedDB read failed', e)
+    }
+    // Dọn key localStorage cũ (không còn dùng, dữ liệu cũ không cần giữ)
+    try { localStorage.removeItem(LEGACY_LOCALSTORAGE_KEY) } catch (_) { /* ignore */ }
+  })()
+  return hydratePromise
+}
+if (typeof window !== 'undefined') hydrate()
 
 const defaultDb = () => ({
   version: 1,
@@ -190,60 +215,25 @@ const ensureUser = (db, user) => {
 
 export function loadHealthJourneyDb() {
   if (typeof window === 'undefined') return defaultDb()
-  try {
-    const raw = localStorage.getItem(HEALTH_JOURNEY_DB_KEY)
-    if (!raw) {
-      const db = defaultDb()
-      try { localStorage.setItem(HEALTH_JOURNEY_DB_KEY, JSON.stringify(db)) } catch (_) { /* quota: skip seed */ }
-      return db
-    }
-    const db = JSON.parse(raw)
-    const changedImages = migrateLargeImages(db)
-    const changedMissingObjectives = ensureAllChapterObjectives(db)
-    const changedObjectives = repairObjectiveCompletedFlags(db)
-    const changed = changedImages || changedMissingObjectives || changedObjectives
-    if (changed) {
-      try { localStorage.setItem(HEALTH_JOURNEY_DB_KEY, JSON.stringify(db)) } catch (_) { /* quota: skip */ }
-    }
-    if (!db.users?.[sampleUserData.user.userId]) {
-      db.users = { ...(db.users || {}), [sampleUserData.user.userId]: clone(sampleUserData) }
-      saveHealthJourneyDb(db)
-    }
-    return db
-  } catch {
-    const db = defaultDb()
-    try { localStorage.setItem(HEALTH_JOURNEY_DB_KEY, JSON.stringify(db)) } catch (_) { /* quota: skip */ }
-    return db
+  if (!memDb) memDb = defaultDb()
+
+  const changedImages = migrateLargeImages(memDb)
+  const changedMissingObjectives = ensureAllChapterObjectives(memDb)
+  const changedObjectives = repairObjectiveCompletedFlags(memDb)
+  if (!memDb.users?.[sampleUserData.user.userId]) {
+    memDb.users = { ...(memDb.users || {}), [sampleUserData.user.userId]: clone(sampleUserData) }
   }
+  if (changedImages || changedMissingObjectives || changedObjectives) persist(memDb)
+
+  return memDb
 }
 
 export function saveHealthJourneyDb(db) {
   if (typeof window === 'undefined') return db
   const nextDb = { ...db, updatedAt: new Date().toISOString() }
-  const tryWrite = (payload) => {
-    try {
-      localStorage.setItem(HEALTH_JOURNEY_DB_KEY, JSON.stringify(payload))
-      return true
-    } catch (err) {
-      if (err?.name === 'QuotaExceededError') return false
-      throw err
-    }
-  }
-  if (!tryWrite(nextDb)) {
-    // First attempt: migrate large images and trim logs
-    migrateLargeImages(nextDb)
-    if (!tryWrite(nextDb)) {
-      // Second attempt: strip ALL proof images completely as last resort
-      Object.values(nextDb.users || {}).forEach((user) => {
-        user.activityLog?.forEach((a) => { a.proofImage = '' })
-        user.proofImages?.forEach((p) => { p.image = '' })
-        // Also trim logs aggressively
-        if (Array.isArray(user.activityLog)) user.activityLog = user.activityLog.slice(0, 100)
-        if (Array.isArray(user.proofImages)) user.proofImages = user.proofImages.slice(0, 50)
-      })
-      tryWrite(nextDb) // best-effort, ignore if still fails
-    }
-  }
+  memDb = nextDb
+  savedThisSession = true
+  persist(nextDb)
   window.dispatchEvent(new CustomEvent(HEALTH_JOURNEY_EVENT, { detail: nextDb }))
   return nextDb
 }
@@ -335,7 +325,7 @@ export function completeHealthJourneyActivity({ user, activityType, value = 1, p
     userId: journeyUser.user.userId,
     activityId,
     activityType,
-    image: compressForLocalStorage(proofImage),
+    image: proofImage || '',
     verified: true,
     confidence: 0.95,
     capturedAt: timestamp,
@@ -352,7 +342,7 @@ export function completeHealthJourneyActivity({ user, activityType, value = 1, p
     timestamp,
     value,
     xpEarned,
-    proofImage: compressForLocalStorage(proofImage),
+    proofImage: proofImage || '',
     proofId: proof?.id || null,
     uploadRecordId: uploadRecord?.id || null,
     uploadPath: uploadRecord?.uploadPath || '',
