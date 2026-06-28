@@ -1,16 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Document, Page, pdfjs } from 'react-pdf'
 import { getAllRecords } from '../lib/medicalStorage.js'
 import { useApp } from '../context/AppContext'
 import { useAuth } from '../context/AuthContext'
 import { PATIENT } from '../data/mockData.js'
 import NavButtons from './NavButtons.jsx'
 
-// Use the locally-installed pdfjs-dist worker (no CDN dependency).
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.mjs',
-  import.meta.url,
-).toString()
 
 const Tag = ({ children, color = 'cyan' }) => {
   const colors = {
@@ -359,31 +353,28 @@ function UploadedPdfPlayer({ files }) {
 }
 
 function PdfDocumentPlayer({ file }) {
-  const [numPages, setNumPages] = useState(null)
-  const [pageNumber, setPageNumber] = useState(1)
-  const [isPlaying, setIsPlaying] = useState(false)
-  const safeNumPages = numPages || 1
+  // Convert base64 dataUrl to object URL so iframe can render reliably.
+  // react-pdf / pdfjs worker often fails with base64 strings.
+  const [objectUrl, setObjectUrl] = useState(null)
+  const [loadError, setLoadError] = useState(false)
 
   useEffect(() => {
-    if (!isPlaying || !numPages) return undefined
-
-    const timer = setInterval(() => {
-      setPageNumber(current => current >= numPages ? 1 : current + 1)
-    }, 1800)
-
-    return () => clearInterval(timer)
-  }, [isPlaying, numPages])
-
-  useEffect(() => {
-    setPageNumber(1)
-    setIsPlaying(false)
-    setNumPages(null)
+    setLoadError(false)
+    if (!file?.dataUrl) return
+    try {
+      const base64 = file.dataUrl.split(',')[1]
+      if (!base64) { setLoadError(true); return }
+      const binary = atob(base64)
+      const bytes = new Uint8Array(binary.length)
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+      const blob = new Blob([bytes], { type: 'application/pdf' })
+      const url = URL.createObjectURL(blob)
+      setObjectUrl(url)
+      return () => URL.revokeObjectURL(url)
+    } catch {
+      setLoadError(true)
+    }
   }, [file?.id, file?.dataUrl])
-
-  const goToPage = nextPage => {
-    setIsPlaying(false)
-    setPageNumber(Math.min(Math.max(nextPage, 1), safeNumPages))
-  }
 
   return (
     <div style={{
@@ -393,85 +384,48 @@ function PdfDocumentPlayer({ file }) {
       background: 'rgba(3, 7, 18, 0.65)',
       boxShadow: '0 18px 50px rgba(0,0,0,0.25)',
     }}>
+      {/* Header */}
       <div style={{ padding: 12, borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
         <div style={{ minWidth: 0 }}>
-          <div style={{ color: '#fff', fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{file.filename || file.name || 'PDF document'}</div>
-          <div style={{ color: 'var(--text3)', fontSize: 10, fontFamily: 'var(--font-mono)', marginTop: 3 }}>
-            Page {pageNumber}/{numPages || '...'}
+          <div style={{ color: '#fff', fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {file.filename || file.name || 'PDF document'}
           </div>
+          <div style={{ color: 'var(--text3)', fontSize: 10, fontFamily: 'var(--font-mono)', marginTop: 3 }}>PDF · browser viewer</div>
         </div>
-        <button
-          type="button"
-          onClick={() => setIsPlaying(value => !value)}
-          disabled={!numPages}
-          style={{
-            border: '1px solid rgba(0,229,255,0.35)',
-            background: isPlaying ? 'rgba(255,82,82,0.16)' : 'rgba(0,229,255,0.12)',
-            color: isPlaying ? 'var(--red)' : 'var(--cyan)',
-            borderRadius: 999,
-            padding: '7px 12px',
-            cursor: numPages ? 'pointer' : 'not-allowed',
-            fontSize: 11,
-            fontWeight: 700,
-          }}
-        >
-          {isPlaying ? 'Pause' : '▶ Play'}
-        </button>
+        {objectUrl && (
+          <a
+            href={objectUrl}
+            download={file.filename || 'document.pdf'}
+            style={{
+              border: '1px solid rgba(0,229,255,0.35)',
+              background: 'rgba(0,229,255,0.10)',
+              color: 'var(--cyan)',
+              borderRadius: 999,
+              padding: '7px 14px',
+              fontSize: 11,
+              fontWeight: 700,
+              textDecoration: 'none',
+              whiteSpace: 'nowrap',
+            }}
+          >⬇ Tải về</a>
+        )}
       </div>
 
-      <div style={{ background: '#05070c', minHeight: 360, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 12, overflow: 'auto' }}>
-        <Document
-          file={file.dataUrl}
-          loading={<PdfStatus message="Loading PDF..." />}
-          error={<PdfStatus message="Không thể hiển thị PDF này." tone="red" />}
-          onLoadSuccess={({ numPages: loadedPages }) => {
-            setNumPages(loadedPages)
-            setPageNumber(1)
-          }}
-        >
-          <Page
-            pageNumber={pageNumber}
-            width={320}
-            renderTextLayer={false}
-            renderAnnotationLayer={false}
-            loading={<PdfStatus message="Loading page..." />}
+      {/* PDF iframe viewer */}
+      <div style={{ background: '#05070c', height: 520, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        {loadError ? (
+          <div style={{ color: 'var(--red)', fontSize: 12, fontFamily: 'var(--font-mono)', textAlign: 'center', padding: 24 }}>
+            ⚠️ Không thể hiển thị PDF này.<br />
+            <span style={{ color: 'var(--text3)', fontSize: 10 }}>File có thể bị hỏng hoặc trình duyệt không hỗ trợ.</span>
+          </div>
+        ) : !objectUrl ? (
+          <div style={{ color: 'var(--cyan)', fontSize: 11, fontFamily: 'var(--font-mono)' }}>Đang tải PDF...</div>
+        ) : (
+          <iframe
+            src={objectUrl}
+            title={file.filename || 'PDF'}
+            style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
           />
-        </Document>
-      </div>
-
-      <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-          <ControlButton onClick={() => goToPage(pageNumber - 1)} disabled={pageNumber <= 1}>← Previous</ControlButton>
-          <ControlButton onClick={() => goToPage(pageNumber + 1)} disabled={!numPages || pageNumber >= safeNumPages}>Next →</ControlButton>
-        </div>
-
-        {numPages > 1 && (
-          <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 2 }}>
-            {Array.from({ length: numPages }, (_, index) => {
-              const page = index + 1
-              const active = page === pageNumber
-              return (
-                <button
-                  key={page}
-                  type="button"
-                  onClick={() => goToPage(page)}
-                  style={{
-                    minWidth: 30,
-                    height: 30,
-                    borderRadius: 8,
-                    border: active ? '1px solid var(--cyan)' : '1px solid var(--border)',
-                    background: active ? 'rgba(0,229,255,0.14)' : 'var(--bg3)',
-                    color: active ? 'var(--cyan)' : 'var(--text3)',
-                    cursor: 'pointer',
-                    fontSize: 10,
-                    fontFamily: 'var(--font-mono)',
-                  }}
-                >
-                  {page}
-                </button>
-              )
-            })}
-          </div>
         )}
       </div>
     </div>
