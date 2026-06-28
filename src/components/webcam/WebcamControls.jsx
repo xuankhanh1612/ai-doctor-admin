@@ -1,5 +1,5 @@
 import React from 'react'
-import { RefreshCw, ImagePlus, Camera, Video, Square, Save } from 'lucide-react'
+import { RefreshCw, ImagePlus, Camera, Video, Square, X } from 'lucide-react'
 
 function ToolButton({ icon, label, onClick, disabled, primary, recording }) {
   return (
@@ -32,7 +32,7 @@ export default function WebcamControls({
   onUpload,
   onCapture,
   onRecord,
-  onSave,
+  onClose,
 }) {
   const t = (vi, en) => (lang === 'vi' ? vi : en)
   const formatTime = (s) => {
@@ -70,10 +70,9 @@ export default function WebcamControls({
           recording={isRecording}
         />
         <ToolButton
-          icon={<Save size={18} />}
-          label={t('Lưu ảnh', 'Save')}
-          onClick={onSave}
-          disabled={saving}
+          icon={<X size={20} />}
+          label={t('Đóng', 'Close')}
+          onClick={onClose}
         />
       </div>
     </>

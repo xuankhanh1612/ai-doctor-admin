@@ -704,7 +704,7 @@ export default function AIVisionWebcam({ onViewMedicalRecord, onCaptureSaved, on
               onUpload={triggerUpload}
               onCapture={handleCapture}
               onRecord={toggleRecord}
-              onSave={handleSaveToUpload}
+              onClose={closeCamera}
             />
           )}
 
@@ -719,7 +719,7 @@ export default function AIVisionWebcam({ onViewMedicalRecord, onCaptureSaved, on
               onUpload={triggerUpload}
               onCapture={handleCapture}
               onRecord={() => openCamera()}
-              onSave={handleSaveToUpload}
+              onClose={clearUploadedImage}
             />
           )}
 
