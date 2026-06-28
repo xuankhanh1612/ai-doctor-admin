@@ -327,15 +327,15 @@ export default function UserProfilePanel() {
               </div>
             )}
 
-            {/* Level progress bar */}
-            {(user?.level != null) && (
+            {/* Level progress bar — only show when level data exists */}
+            {(user?.level !== undefined && user?.level !== null && user?.journeyProgress !== undefined && user?.journeyProgress !== null) && (
               <div style={{ border: `1px solid ${border}`, borderRadius: 14, padding: 14, background: surface2 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                   <span style={{ fontSize: 12, fontWeight: 700, color: text2 }}>🌱 {vi ? 'Cấp độ' : 'Level'} {user.level}</span>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: providerMeta.color }}>{user.journeyProgress ?? 0}%</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: providerMeta.color }}>{user.journeyProgress}%</span>
                 </div>
                 <div style={{ height: 8, borderRadius: 4, background: isDark ? 'rgba(255,255,255,0.08)' : '#e8f0fb', overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${user.journeyProgress ?? 0}%`, borderRadius: 4, background: providerMeta.gradient, transition: 'width 0.5s ease' }} />
+                  <div style={{ height: '100%', width: `${user.journeyProgress}%`, borderRadius: 4, background: providerMeta.gradient, transition: 'width 0.5s ease' }} />
                 </div>
                 {user?.achievements != null && (
                   <div style={{ marginTop: 10, fontSize: 11, color: text3 }}>⭐ {vi ? `${user.achievements} huy hiệu đạt được` : `${user.achievements} achievements earned`}</div>
@@ -458,6 +458,14 @@ export default function UserProfilePanel() {
         />
       )}
       <style>{`@media (max-width: 900px) { .animate-fade > div > div:nth-child(2) { grid-template-columns: 1fr !important; } }`}</style>
+      {/* Profile banner image */}
+      <div style={{ borderRadius: 20, overflow: 'hidden', border: `1px solid ${border}` }}>
+        <img
+          src="/src/pages/AnonymousProfileUUID-Avatar-1080x720.png"
+          alt="Anonymous Profile UUID Avatar"
+          style={{ display: 'block', width: '100%', height: 'auto' }}
+        />
+      </div>
     </div>
   )
 }
@@ -857,6 +865,14 @@ function AnonymousProfilePanel({ user, isDark, vi, lang, t, loginWithGoogle, log
           </div>
         </div>
       )}
+      {/* Profile banner image */}
+      <div style={{ borderRadius: 20, overflow: 'hidden', border: `1px solid ${border}` }}>
+        <img
+          src="/src/pages/AnonymousProfileUUID-Avatar-1080x720.png"
+          alt="Anonymous Profile UUID Avatar"
+          style={{ display: 'block', width: '100%', height: 'auto' }}
+        />
+      </div>
     </div>
   )
 }
