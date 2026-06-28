@@ -493,11 +493,24 @@ const styles = String.raw`
 
 export default function HealthJourneyGameStandalone({ onViewMedicalRecord }) {
   const containerRef = useRef(null)
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const videoRef = useRef(null)
   const canvasRef = useRef(null)
   const streamRef = useRef(null)
   const [snapshot, setSnapshot] = useState(() => getTaskSnapshot(user))
+
+  // BUG FIX: `user` được AuthContext nạp BẤT ĐỒNG BỘ (đọc anon session từ
+  // IndexedDB). Lúc component này mount ngay sau khi reload trang, `user`
+  // thường vẫn là `null` → getTaskSnapshot(null) phía trên tính nhầm theo
+  // user mặc định/sample, KHÔNG phải user thật. Trước đây snapshot chỉ được
+  // tính lại khi có HEALTH_JOURNEY_EVENT, không tính lại khi `user` đổi từ
+  // null → user thật, nên popup hiển thị nhiệm vụ uống nước trong ngày bị
+  // "mất" dù đã lưu thật. Tính lại snapshot ngay khi auth load xong / userId đổi.
+  useEffect(() => {
+    if (authLoading) return
+    setSnapshot(getTaskSnapshot(user))
+    checkAndUnlockChapters(user, journeysData.journeys || [])
+  }, [authLoading, user?.uuid])
   const [selectedTaskKey, setSelectedTaskKey] = useState('deep_work')
   const [cameraOn, setCameraOn] = useState(false)
   const [cameraError, setCameraError] = useState('')
