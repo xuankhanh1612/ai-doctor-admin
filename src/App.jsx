@@ -30,6 +30,7 @@ import AIInbodyPortalPanel from './components/AIInbodyPortalPanel.jsx'
 import WaterDrinkChatBotPanel from './components/WaterDrinkChatBotPanel.jsx'
 import WikiMedVisionPanel from './components/WikiMedVisionPanel.jsx'
 import FullDocumentSummarizationPanel from './components/FullDocumentSummarizationPanel.jsx'
+import DocumentOCRPanel from './components/DocumentOCRPanel.jsx'
 import StressReliefPanel from './components/StressReliefPanel.jsx'
 import PrintCenter from './print/PrintCenter.jsx'
 import UserProfilePanel from './components/UserProfilePanel.jsx'
@@ -38,7 +39,7 @@ import LoginPage from './pages/LoginPage.jsx'
 import { addNotification } from './lib/notifications.js'
 
 // Swarm panel replaces simulation; keep consensus as classic fallback
-const PANELS = ['healthJourneyGame', 'waterDrinkChatBot', 'wikiMedVision', 'fullDocSummarization', 'organConnection', 'healthJourney', 'lunchJourney', 'dinnerJourney', 'upload', 'imaging', 'checkin', 'family', 'record', 'familyRelationship', 'matrix3dBody', 'omnidirectional3dBody', 'twin', 'telemedicine', 'statAnalysis', 'swarm', 'consensus', 'protein3d', 'aiHealthcareVision', 'aiHealthcareVisionControl', 'stressRelief', 'aiInbodyPortal', 'printPortal']
+const PANELS = ['healthJourneyGame', 'waterDrinkChatBot', 'wikiMedVision', 'fullDocSummarization', 'documentOCR', 'organConnection', 'healthJourney', 'lunchJourney', 'dinnerJourney', 'upload', 'imaging', 'checkin', 'family', 'record', 'familyRelationship', 'matrix3dBody', 'omnidirectional3dBody', 'twin', 'telemedicine', 'statAnalysis', 'swarm', 'consensus', 'protein3d', 'aiHealthcareVision', 'aiHealthcareVisionControl', 'stressRelief', 'aiInbodyPortal', 'printPortal']
 
 export default function App() {
   const { user, loading } = useAuth()
@@ -88,6 +89,7 @@ export default function App() {
     waterDrinkChatBot: t('waterDrinkChatBot'),
     wikiMedVision: t('wikiMedVision'),
     fullDocSummarization: 'Full-Document Summarization',
+    documentOCR: 'Document OCR',
     organConnection: 'Ăn gì hôm nay',
     printPortal: 'Print Portal',
     profile: t('profile'),
@@ -252,6 +254,7 @@ export default function App() {
             {active === 'waterDrinkChatBot' && <WaterDrinkChatBotPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} onViewMedicalRecord={() => setActive('upload')} />}
             {active === 'wikiMedVision' && <WikiMedVisionPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'fullDocSummarization' && <FullDocumentSummarizationPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} />}
+            {active === 'documentOCR' && <DocumentOCRPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'organConnection' && <OrganConnectionPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'printPortal' && <PrintCenter onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'profile'   && <UserProfilePanel />}
