@@ -59,13 +59,13 @@ export default function Sidebar({ active, onNavigate, openSignal = 0 }) {
     { id: 'consensus', label: t('consensus'),       step: '17' },
     { id: 'protein3d', label: t('protein3d'),       step: '18' },
     { id: 'aiHealthcareVision', label: t('aiHealthcareVision'), step: '19' },
-    { id: 'aiHealthcareVisionControl', label: t('aiHealthcareVisionControl'), step: '20' },
     { id: 'stressRelief', label: t('stressRelief'), step: '21' },
     { id: 'aiInbodyPortal', label: t('aiInbodyPortal'), step: '22' },
     { id: 'printPortal', label: 'Print Portal', step: '23' },
   ]
 
   const ADMIN_STEPS = user?.isAdmin ? [
+    { id: 'aiHealthcareVisionControl', label: t('aiHealthcareVisionControl'), step: '20' },
     { id: 'admin', label: t('adminPanel'), step: '★' },
   ] : []
 
