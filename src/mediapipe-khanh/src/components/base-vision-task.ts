@@ -318,12 +318,6 @@ export abstract class BaseVisionTask extends BaseTask {
           <span class="wcam-tb-label">Record Video</span>
         </button>
 
-        <!-- Save Image -->
-        <button id="wcam-tb-save" class="wcam-tb-btn" type="button" title="Lưu hình vào Medical Records">
-          <span class="material-icons">save_alt</span>
-          <span class="wcam-tb-label">Save Image</span>
-        </button>
-
         <!-- Settings -->
         <button id="wcam-tb-settings" class="wcam-tb-btn wcam-tb-settings-btn" type="button" title="Cài đặt">
           <span class="material-icons">settings</span>
