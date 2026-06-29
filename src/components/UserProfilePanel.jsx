@@ -465,6 +465,17 @@ export default function UserProfilePanel() {
           style={{ display: 'block', width: '100%', height: 'auto' }}
         />
       </div>
+
+      {/* YouTube video */}
+      <div style={{ borderRadius: 20, overflow: 'hidden', border: `1px solid ${border}`, aspectRatio: '9/16' }}>
+        <iframe
+          src="https://www.youtube.com/embed/dw_8mIuH9DY?rel=0&modestbranding=1"
+          title="Anonymous Profile UUID"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+          style={{ width: '100%', height: '100%', display: 'block', border: 'none' }}
+        />
+      </div>
     </div>
   )
 }
@@ -870,6 +881,17 @@ function AnonymousProfilePanel({ user, isDark, vi, lang, t, loginWithGoogle, log
           src={profileBannerImg}
           alt="Anonymous Profile UUID Avatar"
           style={{ display: 'block', width: '100%', height: 'auto' }}
+        />
+      </div>
+
+      {/* YouTube video */}
+      <div style={{ borderRadius: 20, overflow: 'hidden', border: `1px solid ${border}`, aspectRatio: '9/16' }}>
+        <iframe
+          src="https://www.youtube.com/embed/dw_8mIuH9DY?rel=0&modestbranding=1"
+          title="Anonymous Profile UUID"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+          style={{ width: '100%', height: '100%', display: 'block', border: 'none' }}
         />
       </div>
     </div>
