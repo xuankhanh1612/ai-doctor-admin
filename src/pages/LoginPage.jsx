@@ -217,22 +217,15 @@ export default function LoginPage({ onSuccess }) {
                   <div style={{
                     borderRadius: 14, overflow: 'hidden',
                     border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
-                    background: '#000', aspectRatio: '16/9',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: '#000', aspectRatio: '9/16', maxHeight: 500,
                   }}>
-                    <video
-                      controls
-                      style={{ width: '100%', height: '100%', display: 'block' }}
-                      poster={anonymousProfileImg}
-                    >
-                      <source src="/src/pages/AnonymousProfileUUID.mp4" type="video/mp4" />
-                      <source src="/src/pages/AnonymousProfileUUID.webm" type="video/webm" />
-                      <p style={{ color: '#aaa', fontSize: 13, padding: 20, textAlign: 'center' }}>
-                        {lang === 'vi'
-                          ? 'Trình duyệt không hỗ trợ video. Vui lòng cập nhật trình duyệt.'
-                          : 'Your browser does not support video playback.'}
-                      </p>
-                    </video>
+                    <iframe
+                      src="https://www.youtube.com/embed/dw_8mIuH9DY?autoplay=0&rel=0&modestbranding=1"
+                      title="Anonymous Profile UUID"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      style={{ width: '100%', height: '100%', display: 'block', border: 'none' }}
+                    />
                   </div>
 
                   {/* Short description */}
