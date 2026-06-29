@@ -944,9 +944,6 @@ export default function WebcamControls({
             >
               {isRecording ? <StopCircle size={18} /> : <Video size={18} />}
             </button>
-            <button type="button" title={t('Lưu ảnh', 'Save image')} onClick={handleSave}>
-              <Download size={18} />
-            </button>
             <button type="button" className="webcam-controls__close-btn" title={t('Đóng camera', 'Close camera')} onClick={closeCamera}>
               <X size={18} />
             </button>
