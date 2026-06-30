@@ -864,8 +864,57 @@ export default function MedicalUploader({ patientId, onSelectImage }) {
     }
   }
 
-  // ─── AI Analysis (gọi thẳng Anthropic API, stream) ─────────────────────
+  // ─── AI Analysis (CSV → Groq text; ảnh/PDF/video → Anthropic Claude, stream) ──
   async function analyzeWithAI(record) {
+    const isCsv = record.fileType === 'csv' || record.mimeType === 'text/csv'
+
+    // CSV: dữ liệu đã là text (InBody) → dùng Groq (miễn phí, không cần API key)
+    // để AI đọc và nhận xét trực tiếp trên dữ liệu, không cần Vision.
+    if (isCsv) {
+      setAnalyzing(true)
+      setAnalysisStream('')
+      try {
+        const csvText = recordText(record)
+        const systemMsg = lang === 'vi'
+          ? 'Bạn là bác sĩ AI chuyên phân tích chỉ số thành phần cơ thể InBody. Đọc kỹ dữ liệu CSV và đưa ra nhận xét.'
+          : 'You are an AI physician specializing in InBody body-composition data. Read the CSV data carefully and give an assessment.'
+        const userPrompt = lang === 'vi'
+          ? `Đây là dữ liệu InBody dạng CSV (mỗi dòng là 1 lần đo):\n\n${csvText}\n\n---\nHãy phân tích và cung cấp:\n1. Nhận xét tổng quát về xu hướng các chỉ số qua các lần đo\n2. Điểm cần lưu ý (chỉ số bất thường, tăng/giảm đáng kể)\n3. Mức độ ưu tiên: Bình thường / Cần theo dõi / Cần khám sớm / Cần khám ngay\n4. Gợi ý cải thiện (tập luyện, dinh dưỡng)\n\nTrả lời bằng tiếng Việt, ngắn gọn, rõ ràng. Nhắc đây là hỗ trợ AI, không thay thế bác sĩ.`
+          : `Here is InBody data in CSV form (each row is one measurement):\n\n${csvText}\n\n---\nPlease provide:\n1. General assessment of trends across measurements\n2. Notable points (abnormal metrics, significant increases/decreases)\n3. Priority level: Normal / Monitor / See a doctor soon / Urgent care\n4. Improvement suggestions (training, nutrition)\n\nAnswer in English, concisely and clearly. Remind the user this is AI support and does not replace a physician.`
+
+        const res = await fetch('/api/groq-proxy', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: 'llama-3.3-70b-versatile',
+            max_tokens: 1024,
+            messages: [
+              { role: 'system', content: systemMsg },
+              { role: 'user', content: userPrompt },
+            ],
+          }),
+        })
+        const data = await res.json()
+        if (!res.ok) throw new Error(`Groq ${res.status}: ${data?.error?.message || JSON.stringify(data)}`)
+        const fullText = data?.choices?.[0]?.message?.content || ''
+        setAnalysisStream(fullText)
+
+        const analysis = {
+          summary: fullText, findings: [], recommendation: '',
+          confidence: 0.8, analyzedAt: new Date().toISOString(), engine: 'groq',
+        }
+        await updateAnalysis(record.id, analysis, recordScope)
+        notifyUpload()
+        setSelected(prev => prev ? { ...prev, aiAnalysis: analysis } : prev)
+        await loadRecords()
+      } catch (err) {
+        setAnalysisStream(`❌ ${uploadText(lang, 'errorPrefix')}: ${err instanceof Error ? err.message : uploadText(lang, 'unknownError')}`)
+      } finally {
+        setAnalyzing(false)
+      }
+      return
+    }
+
     if (!apiKey) { setShowApiInput(true); return }
 
     setAnalyzing(true)
@@ -963,20 +1012,35 @@ Trả lời bằng tiếng Việt, ngắn gọn và rõ ràng. Nhắc nhở đâ
     }
   }
 
-  // ─── OCR — Trích xuất toàn bộ (Groq Vision · llama-4-scout) ─────────────
+  // ─── OCR — Trích xuất toàn bộ (CSV: đọc trực tiếp · ảnh/PDF/video: Groq Vision) ──
   async function runOCR(record) {
     if (!record) return
     const isPdf = record.mimeType === 'application/pdf'
     const isVideo = record.mimeType?.startsWith('video/')
-    const b64 = record.base64Data || (record.dataUrl ? record.dataUrl.split(',')[1] : null)
-    if (!b64) {
-      setOcrError(lang === 'vi' ? 'Không lấy được dữ liệu file để OCR.' : 'Could not read file data for OCR.')
-      return
-    }
+    const isCsv = record.fileType === 'csv' || record.mimeType === 'text/csv'
 
     setOcrRunning(true)
     setOcrError('')
     setOcrText('')
+
+    // CSV: dữ liệu vốn đã là text — không cần gọi Vision, đọc trực tiếp.
+    if (isCsv) {
+      const text = recordText(record)
+      if (!text) {
+        setOcrError(lang === 'vi' ? 'Không lấy được dữ liệu CSV.' : 'Could not read CSV data.')
+      } else {
+        setOcrText(text)
+      }
+      setOcrRunning(false)
+      return
+    }
+
+    const b64 = record.base64Data || (record.dataUrl ? record.dataUrl.split(',')[1] : null)
+    if (!b64) {
+      setOcrError(lang === 'vi' ? 'Không lấy được dữ liệu file để OCR.' : 'Could not read file data for OCR.')
+      setOcrRunning(false)
+      return
+    }
 
     const ocrPrompt = lang === 'vi'
       ? 'Trích xuất TOÀN BỘ văn bản có trong tài liệu này, giữ đúng thứ tự, định dạng và cấu trúc gốc (bảng, đoạn, danh sách). Không tóm tắt, không bỏ sót, không thêm bình luận.'
@@ -1068,8 +1132,9 @@ Trả lời bằng tiếng Việt, ngắn gọn và rõ ràng. Nhắc nhở đâ
   async function runSummarize(record) {
     if (!record) return
     const isPdf = record.mimeType === 'application/pdf'
+    const isCsv = record.fileType === 'csv' || record.mimeType === 'text/csv'
     const b64 = record.base64Data || (record.dataUrl ? record.dataUrl.split(',')[1] : null)
-    if (!b64) {
+    if (!isCsv && !b64) {
       setSummaryError(lang === 'vi' ? 'Không lấy được dữ liệu file để tóm tắt.' : 'Could not read file data to summarize.')
       return
     }
@@ -1122,7 +1187,14 @@ Trả lời bằng tiếng Việt, ngắn gọn và rõ ràng. Nhắc nhở đâ
     try {
       let resultText = ''
 
-      if (isPdf) {
+      if (isCsv) {
+        // CSV: dữ liệu vốn đã là text → dùng Groq text model trực tiếp, không cần Vision.
+        const csvText = recordText(record)
+        resultText = await callGroqText([
+          { role: 'system', content: systemMsg },
+          { role: 'user', content: csvText + instruction },
+        ])
+      } else if (isPdf) {
         // Try text-layer extraction first
         const pdfjs = await import('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.mjs')
         pdfjs.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs'
@@ -1433,8 +1505,8 @@ Trả lời bằng tiếng Việt, ngắn gọn và rõ ràng. Nhắc nhở đâ
               )}
               </div>
 
-              {/* OCR side panel — only for non-CSV files */}
-              {selected.fileType !== 'csv' && (
+              {/* OCR side panel — hiện cho mọi loại file, kể cả CSV (đọc text trực tiếp) */}
+              {true && (
                 <div style={{ flex: '1 1 320px', minWidth: 280, display: 'flex', flexDirection: 'column', gap: 10 }}>
 
                   {/* Tab switcher */}
@@ -1718,9 +1790,25 @@ Trả lời bằng tiếng Việt, ngắn gọn và rõ ràng. Nhắc nhở đâ
                 {uploadText(lang, 'aiAnalysis')}
               </div>
 
-              {selected.fileType === 'csv' ? (
-                <CsvRecordInsights record={selected} />
-              ) : !selected.aiAnalysis && !analyzing && !analysisStream && (
+              {selected.fileType === 'csv' && <CsvRecordInsights record={selected} />}
+
+              {!selected.aiAnalysis && !analyzing && !analysisStream && (
+                selected.fileType === 'csv' ? (
+                  <div style={{
+                    background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.1)',
+                    borderRadius: 14, padding: '32px 24px', textAlign: 'center', marginTop: 12,
+                  }}>
+                    <div style={{ fontSize: 32, marginBottom: 12 }}>🧠</div>
+                    <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', marginBottom: 16 }}>
+                      {lang === 'vi' ? 'Để AI (Groq) đọc và nhận xét dữ liệu InBody CSV này' : 'Let AI (Groq) read and assess this InBody CSV data'}
+                    </div>
+                    <button onClick={() => analyzeWithAI(selected)} style={{
+                      padding: '12px 28px', borderRadius: 10, cursor: 'pointer',
+                      background: 'linear-gradient(135deg,#b3ff5f,#00e5ff)',
+                      color: '#04060f', fontSize: 14, fontWeight: 700, border: 'none',
+                    }}>▶ {lang === 'vi' ? 'Phân tích AI (Groq)' : 'Analyze with AI (Groq)'}</button>
+                  </div>
+                ) : (
                 <div style={{
                   background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.1)',
                   borderRadius: 14, padding: '32px 24px', textAlign: 'center',
@@ -1770,6 +1858,7 @@ Trả lời bằng tiếng Việt, ngắn gọn và rõ ràng. Nhắc nhở đâ
                     </div>
                   )}
                 </div>
+                )
               )}
 
               {(analyzing || analysisStream) && (
