@@ -1224,12 +1224,12 @@ export default function HealthJourneyPanel({ onNext, onPrev, prevLabel, nextLabe
           </p>
         </div>
       </div>
-      <CompactGlobalAIChatBar activePanelLabel={lang === 'vi' ? 'Buổi Sáng' : 'Morning'} />
       {activeTab === 'emotion' && <EmotionalCompanionView onOpenStressRelief={onOpenStressRelief} onOpenInBody={onOpenInBody} />}
       {activeTab === 'meal' && <MealScanView onViewMedicalRecord={onViewMedicalRecord} />}
       {activeTab === 'medication' && <MedicationAssistantView onViewMedicalRecord={onViewMedicalRecord} />}
       {activeTab === 'faceDetector' && <MediaPipeDetectorView type="face" onViewMedicalRecord={onViewMedicalRecord} />}
       {activeTab === 'bodyDetector' && <MediaPipeDetectorView type="body" onViewMedicalRecord={onViewMedicalRecord} />}
+      <CompactGlobalAIChatBar activePanelLabel={lang === 'vi' ? 'Buổi Sáng' : 'Morning'} />
       <HealthJourneyTabs activeTab={activeTab} setActiveTab={setActiveTab} lang={lang} />
       {(onNext || onPrev) && (
         <NavButtons
