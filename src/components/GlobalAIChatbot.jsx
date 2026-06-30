@@ -54,8 +54,11 @@ export default function GlobalAIChatbot({ activePanelLabel }) {
   const [mode, setMode] = useState('idle')
   const [busy, setBusy] = useState(false)
   const [historyLoaded, setHistoryLoaded] = useState(false)
-  const [attachedImage, setAttachedImage] = useState(null) // { dataUrl, base64, mimeType, name }
+  const [attachedFiles, setAttachedFiles] = useState([]) // [{ id, kind: 'image'|'doc', dataUrl, base64, mimeType, name, textContent }]
   const fileInputRef = useRef(null)
+  const docInputRef = useRef(null)
+  const cameraInputRef = useRef(null)
+  const MAX_FILES = 10
   const [messages, setMessages] = useState(() => [{
     id: 'hello',
     role: 'assistant',
@@ -100,71 +103,137 @@ export default function GlobalAIChatbot({ activePanelLabel }) {
     }, 30)
   }
 
-  const handleImageSelect = (event) => {
-    const file = event.target.files?.[0]
-    event.target.value = ''
-    if (!file) return
-    if (!file.type.startsWith('image/')) return
+  const readFileAsDataUrl = (file) => new Promise((resolve, reject) => {
     const reader = new FileReader()
-    reader.onload = () => {
-      const dataUrl = String(reader.result || '')
-      const base64 = dataUrl.split(',')[1] || ''
-      setAttachedImage({ dataUrl, base64, mimeType: file.type || 'image/jpeg', name: file.name })
-    }
+    reader.onload = () => resolve(String(reader.result || ''))
+    reader.onerror = reject
     reader.readAsDataURL(file)
+  })
+
+  const readFileAsText = (file) => new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result || ''))
+    reader.onerror = reject
+    reader.readAsText(file, 'utf-8')
+  })
+
+  const isTextLikeFile = (file) =>
+    file.type === 'text/plain' || file.type === 'text/csv' || file.type === 'application/vnd.ms-excel' ||
+    /\.(txt|csv|md)$/i.test(file.name || '')
+
+  const handleFilesSelect = async (event) => {
+    const files = Array.from(event.target.files || [])
+    event.target.value = ''
+    if (!files.length) return
+
+    const room = MAX_FILES - attachedFiles.length
+    if (room <= 0) {
+      window.alert(isVi ? `Bạn chỉ có thể đính kèm tối đa ${MAX_FILES} file cùng lúc.` : `You can attach up to ${MAX_FILES} files at once.`)
+      return
+    }
+    const toProcess = files.slice(0, room)
+    if (files.length > room) {
+      window.alert(isVi ? `Chỉ ${room} file đầu tiên được thêm vào (tối đa ${MAX_FILES} file).` : `Only the first ${room} files were added (max ${MAX_FILES}).`)
+    }
+
+    const newEntries = []
+    for (const file of toProcess) {
+      const id = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+      try {
+        if (file.type.startsWith('image/')) {
+          const dataUrl = await readFileAsDataUrl(file)
+          const base64 = dataUrl.split(',')[1] || ''
+          newEntries.push({ id, kind: 'image', dataUrl, base64, mimeType: file.type || 'image/jpeg', name: file.name })
+        } else if (file.type === 'application/pdf') {
+          const dataUrl = await readFileAsDataUrl(file)
+          const base64 = dataUrl.split(',')[1] || ''
+          newEntries.push({ id, kind: 'pdf', dataUrl, base64, mimeType: 'application/pdf', name: file.name })
+        } else if (isTextLikeFile(file)) {
+          const textContent = await readFileAsText(file)
+          newEntries.push({ id, kind: 'text', name: file.name, mimeType: file.type || 'text/plain', textContent })
+        } else {
+          // Unsupported type — skip silently but warn
+          console.warn('Unsupported file type for chat attachment:', file.type, file.name)
+        }
+      } catch (err) {
+        console.error('Failed to read file', file.name, err)
+      }
+    }
+    if (newEntries.length) setAttachedFiles(prev => [...prev, ...newEntries])
   }
+
+  const removeAttachedFile = (id) => setAttachedFiles(prev => prev.filter(f => f.id !== id))
 
   const submitQuestion = async (rawQuestion = input) => {
     const question = rawQuestion.trim()
-    const image = attachedImage
-    if (!question && !image) return
+    const files = attachedFiles
+    if (!question && files.length === 0) return
     if (busy) return
     setInput('')
-    setAttachedImage(null)
+    setAttachedFiles([])
     setBusy(true)
-    pushMessage({ role: 'user', text: question || (isVi ? '[Đã gửi 1 hình ảnh]' : '[Sent 1 image]'), imageDataUrl: image?.dataUrl || null })
+    pushMessage({
+      role: 'user',
+      text: question || (isVi ? `[Đã gửi ${files.length} file]` : `[Sent ${files.length} file(s)]`),
+      imageDataUrls: files.filter(f => f.kind === 'image' || f.kind === 'pdf').map(f => ({ dataUrl: f.dataUrl, kind: f.kind, name: f.name })),
+      fileNames: files.filter(f => f.kind === 'text').map(f => f.name),
+    })
 
-    if (image) {
-      // ── Vision path: user attached an image → analyze with Groq vision model ──
+    if (files.length > 0) {
+      // ── Multi-file path: images/PDFs → Groq vision; text/CSV → embedded as text ──
       try {
-        setStatus(isVi ? 'Đang phân tích hình ảnh...' : 'Analyzing image...')
+        setStatus(isVi ? 'Đang phân tích file...' : 'Analyzing files...')
         setMode('thinking')
 
-        const visionPrompt = question || (isVi
-          ? 'Hãy phân tích sâu hình ảnh này (đặc biệt nếu là ảnh y tế: X-quang, CT, MRI, kết quả xét nghiệm, hồ sơ...). Mô tả những gì quan sát được, lưu ý các điểm bất thường nếu có, và đưa ra nhận xét hữu ích.'
-          : 'Please analyze this image in depth (especially if it is a medical image: X-ray, CT, MRI, lab result, document...). Describe what you observe, note any abnormalities, and give a helpful assessment.')
+        const visionFiles = files.filter(f => f.kind === 'image' || f.kind === 'pdf')
+        const textFiles = files.filter(f => f.kind === 'text')
 
-        const res = await fetch('/api/groq-proxy', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            model: 'meta-llama/llama-4-scout-17b-16e-instruct',
-            max_tokens: 1024,
-            messages: [
-              { role: 'system', content: systemPrompt },
-              {
-                role: 'user',
-                content: [
-                  { type: 'image_url', image_url: { url: `data:${image.mimeType};base64,${image.base64}` } },
-                  { type: 'text', text: visionPrompt },
-                ],
-              },
-            ],
-          }),
-        })
-        const data = await res.json().catch(() => ({}))
-        if (!res.ok) throw new Error(data?.error?.message || `Groq Vision ${res.status}`)
-        const answer = data?.choices?.[0]?.message?.content || ''
-        pushMessage({ role: 'assistant', text: answer || (isVi ? 'Xin lỗi, tôi chưa phân tích được hình ảnh này.' : 'Sorry, I could not analyze this image.') })
+        const textBlock = textFiles.length
+          ? textFiles.map(f => `--- ${f.name} ---\n${f.textContent}`).join('\n\n')
+          : ''
+
+        const defaultPrompt = isVi
+          ? 'Hãy phân tích sâu (các) tài liệu/hình ảnh này (đặc biệt nếu là tài liệu y tế: X-quang, CT, MRI, kết quả xét nghiệm, hồ sơ...). Mô tả những gì quan sát được, lưu ý các điểm bất thường nếu có, và đưa ra nhận xét hữu ích.'
+          : 'Please analyze these documents/images in depth (especially if medical: X-ray, CT, MRI, lab result, document...). Describe what you observe, note any abnormalities, and give a helpful assessment.'
+
+        const instruction = (question || defaultPrompt) + (textBlock ? `\n\n---\n${textBlock}` : '')
+
+        let answer = ''
+        if (visionFiles.length > 0) {
+          const contentParts = [
+            ...visionFiles.map(f => ({ type: 'image_url', image_url: { url: `data:${f.mimeType};base64,${f.base64}` } })),
+            { type: 'text', text: instruction },
+          ]
+          const res = await fetch('/api/groq-proxy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+              max_tokens: 1024,
+              messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: contentParts },
+              ],
+            }),
+          })
+          const data = await res.json().catch(() => ({}))
+          if (!res.ok) throw new Error(data?.error?.message || `Groq Vision ${res.status}`)
+          answer = data?.choices?.[0]?.message?.content || ''
+        } else {
+          // Only text/CSV files → use text model
+          answer = await callGroqChat([{ role: 'user', content: instruction }], systemPrompt)
+        }
+
+        pushMessage({ role: 'assistant', text: answer || (isVi ? 'Xin lỗi, tôi chưa phân tích được các file này.' : 'Sorry, I could not analyze these files.') })
         setMode('groq')
         setStatus(isVi ? 'Sẵn sàng hỗ trợ · AI thực' : 'Ready to help · real AI')
       } catch (error) {
-        console.error('Global chatbot vision error:', error)
+        console.error('Global chatbot file analysis error:', error)
         pushMessage({
           role: 'assistant',
           text: isVi
-            ? 'Xin lỗi, tôi đang gặp sự cố khi phân tích hình ảnh. Vui lòng thử lại sau ít phút.'
-            : 'Sorry, I ran into an issue analyzing the image. Please try again in a moment.',
+            ? 'Xin lỗi, tôi đang gặp sự cố khi phân tích file. Vui lòng thử lại sau ít phút.'
+            : 'Sorry, I ran into an issue analyzing the files. Please try again in a moment.',
         })
         setMode('error')
         setStatus(isVi ? 'Lỗi kết nối AI' : 'AI connection error')
@@ -253,12 +322,26 @@ export default function GlobalAIChatbot({ activePanelLabel }) {
         {messages.map(message => (
           <div key={message.id} style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: message.role === 'user' ? 'flex-end' : 'flex-start' }}>
             <div style={message.role === 'user' ? styles.userMsg : styles.botMsg}>
-              {message.imageDataUrl && (
-                <img
-                  src={message.imageDataUrl}
-                  alt="attached"
-                  style={{ display: 'block', maxWidth: '100%', maxHeight: 180, borderRadius: 10, marginBottom: message.text ? 8 : 0, objectFit: 'cover' }}
-                />
+              {message.imageDataUrls && message.imageDataUrls.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: message.text ? 8 : 0 }}>
+                  {message.imageDataUrls.map((img, i) => (
+                    img.kind === 'pdf' ? (
+                      <div key={i} style={{ width: 64, height: 64, borderRadius: 10, background: 'rgba(255,255,255,0.12)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>
+                        📄
+                        <span style={{ fontSize: 8, marginTop: 2, maxWidth: 56, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{img.name}</span>
+                      </div>
+                    ) : (
+                      <img key={i} src={img.dataUrl} alt={img.name || 'attached'} style={{ width: 64, height: 64, borderRadius: 10, objectFit: 'cover', display: 'block' }} />
+                    )
+                  ))}
+                </div>
+              )}
+              {message.fileNames && message.fileNames.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: message.text ? 8 : 0 }}>
+                  {message.fileNames.map((name, i) => (
+                    <span key={i} style={{ fontSize: 10, padding: '3px 8px', borderRadius: 8, background: 'rgba(255,255,255,0.14)' }}>📃 {name}</span>
+                  ))}
+                </div>
               )}
               {message.text}
             </div>
@@ -283,6 +366,39 @@ export default function GlobalAIChatbot({ activePanelLabel }) {
         )}
       </div>
 
+      {attachedFiles.length > 0 && (
+        <div style={{ flex: '0 0 auto', display: 'flex', gap: 8, padding: '10px 14px 0', overflowX: 'auto', scrollbarWidth: 'thin' }}>
+          {attachedFiles.map(f => (
+            <div key={f.id} style={{ position: 'relative', flexShrink: 0 }}>
+              {f.kind === 'image' ? (
+                <img src={f.dataUrl} alt={f.name} title={f.name} style={{ width: 56, height: 56, borderRadius: 12, objectFit: 'cover', display: 'block' }} />
+              ) : f.kind === 'pdf' ? (
+                <div title={f.name} style={{ width: 56, height: 56, borderRadius: 12, background: styles.quickBtn.background, border: `1px solid ${styles.disclaimer.color}22`, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>
+                  📄
+                  <span style={{ fontSize: 8, marginTop: 2, maxWidth: 48, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: styles.disclaimer.color }}>{f.name}</span>
+                </div>
+              ) : (
+                <div title={f.name} style={{ width: 56, height: 56, borderRadius: 12, background: styles.quickBtn.background, border: `1px solid ${styles.disclaimer.color}22`, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>
+                  📃
+                  <span style={{ fontSize: 8, marginTop: 2, maxWidth: 48, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: styles.disclaimer.color }}>{f.name}</span>
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={() => removeAttachedFile(f.id)}
+                title={isVi ? 'Bỏ file' : 'Remove file'}
+                style={{
+                  position: 'absolute', top: -6, right: -6, border: 'none',
+                  background: '#fff', color: '#1a2035', borderRadius: '50%',
+                  width: 18, height: 18, cursor: 'pointer', fontSize: 11, lineHeight: '18px',
+                  padding: 0, textAlign: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.4)', fontWeight: 800,
+                }}
+              >×</button>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div style={styles.quickRow}>
         {quickPrompts.map(prompt => (
           <button key={prompt} type="button" disabled={busy} onClick={() => submitQuestion(prompt)} style={styles.quickBtn}>
@@ -298,34 +414,45 @@ export default function GlobalAIChatbot({ activePanelLabel }) {
           submitQuestion()
         }}
       >
+        {/* Hidden file inputs: general documents (pdf/text/csv/image) and camera capture */}
+        <input
+          ref={docInputRef}
+          type="file"
+          accept="image/*,application/pdf,text/plain,text/csv,.csv,.txt,.md"
+          multiple
+          onChange={handleFilesSelect}
+          style={{ display: 'none' }}
+        />
         <input
           ref={fileInputRef}
           type="file"
           accept="image/*"
-          onChange={handleImageSelect}
+          multiple
+          onChange={handleFilesSelect}
           style={{ display: 'none' }}
         />
-        {attachedImage && (
-          <div style={{ position: 'relative', flexShrink: 0, alignSelf: 'center' }}>
-            <img
-              src={attachedImage.dataUrl}
-              alt="preview"
-              title={attachedImage.name}
-              style={{ width: 44, height: 44, borderRadius: 10, objectFit: 'cover', border: styles.input.border, display: 'block' }}
-            />
-            <button
-              type="button"
-              onClick={() => setAttachedImage(null)}
-              title={isVi ? 'Bỏ ảnh' : 'Remove image'}
-              style={{
-                position: 'absolute', top: -6, right: -6, border: 'none',
-                background: '#ef4444', color: '#fff', borderRadius: '50%',
-                width: 18, height: 18, cursor: 'pointer', fontSize: 11, lineHeight: '18px',
-                padding: 0, textAlign: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.4)',
-              }}
-            >×</button>
-          </div>
-        )}
+        <input
+          ref={cameraInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          onChange={handleFilesSelect}
+          style={{ display: 'none' }}
+        />
+        <button
+          type="button"
+          onClick={() => docInputRef.current?.click()}
+          disabled={busy || attachedFiles.length >= MAX_FILES}
+          title={isVi ? `Tải file (PDF, văn bản, CSV, hình ảnh) — tối đa ${MAX_FILES} file` : `Upload files (PDF, text, CSV, images) — up to ${MAX_FILES}`}
+          style={{
+            ...styles.micBtn,
+            opacity: (busy || attachedFiles.length >= MAX_FILES) ? 0.5 : 1,
+            cursor: (busy || attachedFiles.length >= MAX_FILES) ? 'not-allowed' : 'pointer',
+            fontWeight: 900, fontSize: 18,
+          }}
+        >
+          +
+        </button>
         <textarea
           value={input}
           onChange={event => setInput(event.target.value)}
@@ -356,18 +483,18 @@ export default function GlobalAIChatbot({ activePanelLabel }) {
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          disabled={busy}
-          title={isVi ? 'Tải hình ảnh để AI phân tích sâu' : 'Upload an image for deep AI analysis'}
+          disabled={busy || attachedFiles.length >= MAX_FILES}
+          title={isVi ? `Tải hình ảnh để AI phân tích sâu (tối đa ${MAX_FILES})` : `Upload images for deep AI analysis (up to ${MAX_FILES})`}
           style={{
             ...styles.micBtn,
-            ...(attachedImage ? styles.imageBtnActive : {}),
-            opacity: busy ? 0.6 : 1,
-            cursor: busy ? 'not-allowed' : 'pointer',
+            ...(attachedFiles.length > 0 ? styles.imageBtnActive : {}),
+            opacity: (busy || attachedFiles.length >= MAX_FILES) ? 0.5 : 1,
+            cursor: (busy || attachedFiles.length >= MAX_FILES) ? 'not-allowed' : 'pointer',
           }}
         >
           🖼️
         </button>
-        <button type="submit" disabled={busy || (!input.trim() && !attachedImage)} style={{ ...styles.sendBtn, opacity: busy || (!input.trim() && !attachedImage) ? 0.55 : 1 }}>
+        <button type="submit" disabled={busy || (!input.trim() && attachedFiles.length === 0)} style={{ ...styles.sendBtn, opacity: busy || (!input.trim() && attachedFiles.length === 0) ? 0.55 : 1 }}>
           {busy ? '...' : (isVi ? 'Gửi' : 'Send')}
         </button>
       </form>
