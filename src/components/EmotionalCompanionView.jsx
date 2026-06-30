@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useApp } from '../context/AppContext.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import {
@@ -8,6 +8,7 @@ import {
   createInitialAgentMessage,
 } from '../lib/generalPractitionerChat.js'
 import { getGpChatHistory, saveGpChatHistory } from '../lib/generalPractitionerChatStorage.js'
+import { useTTS, useVoiceInput } from '../lib/groqAiClient.js'
 
 const BLUE = '#0058bc'
 const PRIMARY = '#0070eb'
@@ -66,6 +67,14 @@ export default function EmotionalCompanionView({ onOpenStressRelief, onOpenInBod
   const [chatPrompt, setChatPrompt] = useState('')
   const [chatMessages, setChatMessages] = useState(() => [createInitialAgentMessage(lang)])
   const [historyLoaded, setHistoryLoaded] = useState(false)
+  const inputRef = useRef(null)
+  const isVi = lang !== 'en'
+  const { speaking, speak, stop } = useTTS(isVi ? 'vi' : 'en')
+  const handleVoiceTranscript = useCallback((text) => {
+    setChatPrompt(prev => (prev ? `${prev} ${text}` : text))
+    window.setTimeout(() => inputRef.current?.focus(), 0)
+  }, [])
+  const { recording, transcribing, toggle: toggleMic } = useVoiceInput(handleVoiceTranscript, isVi ? 'vi' : 'en')
 
   useEffect(() => {
     let cancelled = false
@@ -85,19 +94,22 @@ export default function EmotionalCompanionView({ onOpenStressRelief, onOpenInBod
     saveGpChatHistory(userKey, chatMessages)
   }, [chatMessages, historyLoaded, userKey])
 
-  const submitChatPrompt = () => {
+  const submitChatPrompt = useCallback(() => {
     const prompt = chatPrompt.trim()
     if (!prompt) return
 
+    const agentReply = createChatMessage('agent', buildGeneralPractitionerReply(prompt, lang))
     setChatMessages(prev => [
       ...prev,
       createChatMessage('user', prompt),
-      createChatMessage('agent', buildGeneralPractitionerReply(prompt, lang)),
+      agentReply,
     ])
     setChatPrompt('')
-  }
+    speak(agentReply.text)
+  }, [chatPrompt, lang, speak])
 
   const resetChat = () => {
+    stop()
     setChatMessages([createInitialAgentMessage(lang)])
     setChatPrompt('')
   }
@@ -177,8 +189,9 @@ export default function EmotionalCompanionView({ onOpenStressRelief, onOpenInBod
 
       <div style={{ position: 'absolute', left: 0, right: 0, bottom: 84, zIndex: 16, maxWidth: 820, margin: '0 auto', padding: '0 20px' }}>
         <div style={{ ...glass, display: 'flex', alignItems: 'center', gap: 8, padding: 8, borderRadius: 999 }}>
-          <button type="button" onClick={() => setChatPrompt('')} style={roundButton('#f3f3f5', MUTED)}>＋</button>
+          <button type="button" onClick={() => setChatPrompt('')} style={roundButton('#f3f3f5', MUTED)} title={lang === 'en' ? 'Clear message' : 'Xoá nội dung'}>＋</button>
           <input
+            ref={inputRef}
             value={chatPrompt}
             onChange={e => setChatPrompt(e.target.value)}
             onKeyDown={e => {
@@ -187,7 +200,8 @@ export default function EmotionalCompanionView({ onOpenStressRelief, onOpenInBod
             placeholder={lang === 'en' ? 'Talk with the General Practitioner AI...' : 'Tâm sự với AI Bác sĩ đa khoa...'}
             style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', fontSize: 15, color: INK, padding: '0 10px' }}
           />
-          <button type="button" onClick={submitChatPrompt} disabled={!chatPrompt.trim()} style={{ ...roundButton(BLUE, '#fff'), opacity: chatPrompt.trim() ? 1 : 0.45, cursor: chatPrompt.trim() ? 'pointer' : 'not-allowed' }}>↑</button>
+          <button type="button" onClick={toggleMic} style={{ ...roundButton(recording ? '#ef4444' : '#edf4ff', recording ? '#fff' : BLUE), boxShadow: recording ? '0 0 0 6px rgba(239,68,68,0.12)' : 'none', cursor: transcribing ? 'wait' : 'pointer' }} title={recording ? (lang === 'en' ? 'Stop recording' : 'Dừng ghi âm') : (lang === 'en' ? 'Speak to the GP AI' : 'Nói với AI Bác sĩ đa khoa')}>{transcribing ? '⏳' : recording ? '■' : '🎙️'}</button>
+          <button type="button" onClick={() => (speaking ? stop() : submitChatPrompt())} disabled={!speaking && !chatPrompt.trim()} style={{ ...roundButton(BLUE, '#fff'), opacity: speaking || chatPrompt.trim() ? 1 : 0.45, cursor: speaking || chatPrompt.trim() ? 'pointer' : 'not-allowed' }} title={speaking ? (lang === 'en' ? 'Stop voice' : 'Dừng đọc') : (lang === 'en' ? 'Send and play voice' : 'Gửi và phát giọng nói')}>{speaking ? 'Ⅱ' : '↑'}</button>
         </div>
       </div>
     </div>

@@ -3,6 +3,13 @@ import { useApp } from '../context/AppContext'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useGlobalAIChatbotEngine, quickPrompts, MAX_FILES, getModeLabel } from '../lib/useGlobalAIChatbotEngine.js'
 
+// Backward-compatible no-op export: an earlier iteration imported this from
+// journey pages. Keep the symbol available so stale deploy/build caches do not
+// fail, but render nothing because voice now lives in EmotionalCompanionView.
+export function CompactGlobalAIChatBar() {
+  return null
+}
+
 export default function GlobalAIChatbot({ activePanelLabel }) {
   const { theme, lang } = useApp()
   const { user } = useAuth()
