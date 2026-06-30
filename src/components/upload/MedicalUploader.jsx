@@ -22,7 +22,7 @@ import { isHeicFile, ensureBrowserSafeImage } from '../../lib/heicConvert.js'
 const TYPE_COLORS = {
   xray: '#00e5ff', ct: '#9c6fff', mri: '#f48fb1', pdf: '#ffb74d', photo: '#00e676', video: '#83f7ff', csv: '#b3ff5f',
 }
-const ACCEPT  = 'image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif,application/pdf,text/csv,.csv,.heic,.heif'
+const ACCEPT  = 'image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif,application/pdf,text/csv,.csv,.heic,.heif,video/mp4,video/webm,video/quicktime,video/*'
 const MAX_MB  = 20
 
 
@@ -240,7 +240,61 @@ function isCsvFile(file) {
 }
 
 function isSupportedUploadFile(file) {
-  return file.type.startsWith('image/') || file.type === 'application/pdf' || isCsvFile(file) || isHeicFile(file)
+  return file.type.startsWith('image/') || file.type === 'application/pdf' || isCsvFile(file) || isHeicFile(file) || file.type.startsWith('video/')
+}
+
+// ─── Video → frame ảnh (dùng cho OCR / AI phân tích / Convert CSV) ────────────
+// Groq Vision và Claude Vision đều KHÔNG nhận video trực tiếp — phải trích 1
+// khung hình (frame) làm ảnh JPEG đại diện rồi mới đưa vào các API phân tích.
+function extractVideoFrameBase64(dataUrl, seekRatio = 0.3) {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement('video')
+    video.preload = 'auto'
+    video.muted = true
+    video.playsInline = true
+    video.crossOrigin = 'anonymous'
+    video.src = dataUrl
+
+    const cleanup = () => {
+      video.onloadedmetadata = null
+      video.onseeked = null
+      video.onerror = null
+    }
+
+    video.onloadedmetadata = () => {
+      const duration = Number.isFinite(video.duration) && video.duration > 0 ? video.duration : 1
+      const target = Math.min(Math.max(duration * seekRatio, 0.05), Math.max(duration - 0.05, 0.05))
+      try { video.currentTime = target } catch { video.currentTime = 0 }
+    }
+    video.onseeked = () => {
+      try {
+        const canvas = document.createElement('canvas')
+        canvas.width = video.videoWidth || 1280
+        canvas.height = video.videoHeight || 720
+        const ctx = canvas.getContext('2d')
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+        const frameDataUrl = canvas.toDataURL('image/jpeg', 0.9)
+        cleanup()
+        resolve({ base64: frameDataUrl.split(',')[1], mimeType: 'image/jpeg', dataUrl: frameDataUrl })
+      } catch (err) {
+        cleanup()
+        reject(err)
+      }
+    }
+    video.onerror = () => { cleanup(); reject(new Error('Không đọc được video để trích khung hình')) }
+  })
+}
+
+// Trả về { base64, mimeType } để đưa vào các API Vision (Groq/Claude).
+// Nếu record là video → tự trích 1 frame làm ảnh đại diện; ngược lại dùng
+// nguyên base64Data/mimeType đã lưu sẵn của record (ảnh/PDF như cũ).
+async function getAnalysisImageSource(record) {
+  if (record?.mimeType?.startsWith('video/')) {
+    const frame = await extractVideoFrameBase64(record.dataUrl)
+    return { base64: frame.base64, mimeType: frame.mimeType }
+  }
+  const base64 = record?.base64Data || (record?.dataUrl ? record.dataUrl.split(',')[1] : null)
+  return { base64, mimeType: record?.mimeType || 'image/jpeg' }
 }
 
 function recordText(record) {
@@ -771,18 +825,17 @@ export default function MedicalUploader({ patientId, onSelectImage }) {
   async function convertSelectedInBodyImageToCsv() {
     if (!selected || selected.fileType === 'csv') return
 
-    // Use base64Data already stored in the record — no need to re-read the file.
-    // If for some reason it's missing, fall back to reading from dataUrl.
-    const base64 = selected.base64Data ||
-      (selected.dataUrl ? selected.dataUrl.split(',')[1] : null)
-
-    if (!base64) {
-      console.error('[InBody Convert] No base64 data available for record', selected.filename)
-      return
-    }
-
     setConverting(true)
     try {
+      // Video: Groq Vision không nhận video trực tiếp → trích 1 frame ảnh JPEG
+      // đại diện trước, rồi đưa frame đó vào luồng phân tích như ảnh thường.
+      const { base64, mimeType } = await getAnalysisImageSource(selected)
+
+      if (!base64) {
+        console.error('[InBody Convert] No base64 data available for record', selected.filename)
+        return
+      }
+
       const existingCsv   = records.find(r => r.fileType === 'csv' && r.textContent)
       const fallbackRecord = existingCsv ? parseInBodyCsv(recordText(existingCsv)).at(-1) : null
 
@@ -790,7 +843,7 @@ export default function MedicalUploader({ patientId, onSelectImage }) {
       // to the shared lib — same logic as AI inbody Portal tab.
       const { csvText } = await convertInBodyImageToCsv({
         base64Image:    base64,
-        mediaType:      selected.mimeType || 'image/jpeg',
+        mediaType:      mimeType,
         file:           null,          // no File object available from stored record
         fallbackRecord,
         sourceName:     selected.filename,
@@ -841,6 +894,13 @@ Trả lời bằng tiếng Việt, ngắn gọn và rõ ràng. Nhắc nhở đâ
 
     try {
       const isPdf = record.mimeType === 'application/pdf'
+      const isVideo = record.mimeType?.startsWith('video/')
+      // Claude Vision không nhận video trực tiếp → trích 1 frame ảnh JPEG đại
+      // diện rồi gửi frame đó như ảnh thường (giống Groq Vision ở các luồng khác).
+      const { base64: visionBase64, mimeType: visionMimeType } = isVideo
+        ? await getAnalysisImageSource(record)
+        : { base64: record.base64Data, mimeType: record.mimeType }
+
       const body = {
         model: 'claude-sonnet-4-20250514',
         max_tokens: 1024,
@@ -849,7 +909,7 @@ Trả lời bằng tiếng Việt, ngắn gọn và rõ ràng. Nhắc nhở đâ
           role: 'user',
           content: isPdf
             ? [{ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: record.base64Data } }, { type: 'text', text: prompt }]
-            : [{ type: 'image',    source: { type: 'base64', media_type: record.mimeType,   data: record.base64Data } }, { type: 'text', text: prompt }],
+            : [{ type: 'image',    source: { type: 'base64', media_type: visionMimeType,   data: visionBase64 } }, { type: 'text', text: isVideo ? `${prompt}\n\n(Lưu ý: đây là 1 khung hình được trích từ video gốc.)` : prompt }],
         }],
       }
 
@@ -907,6 +967,7 @@ Trả lời bằng tiếng Việt, ngắn gọn và rõ ràng. Nhắc nhở đâ
   async function runOCR(record) {
     if (!record) return
     const isPdf = record.mimeType === 'application/pdf'
+    const isVideo = record.mimeType?.startsWith('video/')
     const b64 = record.base64Data || (record.dataUrl ? record.dataUrl.split(',')[1] : null)
     if (!b64) {
       setOcrError(lang === 'vi' ? 'Không lấy được dữ liệu file để OCR.' : 'Could not read file data for OCR.')
@@ -924,6 +985,14 @@ Trả lời bằng tiếng Việt, ngắn gọn và rõ ràng. Nhắc nhở đâ
     try {
       let imageB64 = b64
       let mimeForVision = record.mimeType || 'image/jpeg'
+
+      // Video: Groq Vision không nhận video trực tiếp → trích 1 frame ảnh JPEG
+      // đại diện rồi OCR trên frame đó (như ảnh thường).
+      if (isVideo) {
+        const frame = await extractVideoFrameBase64(record.dataUrl)
+        imageB64 = frame.base64
+        mimeForVision = frame.mimeType
+      }
 
       // Scanned PDFs need to be rasterized to an image first for vision OCR
       if (isPdf) {
@@ -1094,11 +1163,14 @@ Trả lời bằng tiếng Việt, ngắn gọn và rõ ràng. Nhắc nhở đâ
           resultText = await callGroqVision(contentParts)
         }
       } else {
-        // Image record → vision model
-        const mime = record.mimeType || 'image/jpeg'
+        // Image record (hoặc video → đã trích 1 frame ảnh đại diện) → vision model
+        const isVideo = record.mimeType?.startsWith('video/')
+        const { base64: imgB64, mimeType: mime } = isVideo
+          ? await extractVideoFrameBase64(record.dataUrl).then(f => ({ base64: f.base64, mimeType: f.mimeType }))
+          : { base64: b64, mimeType: record.mimeType || 'image/jpeg' }
         const contentParts = [
-          { type: 'image_url', image_url: { url: `data:${mime};base64,${b64}` } },
-          { type: 'text', text: instruction },
+          { type: 'image_url', image_url: { url: `data:${mime};base64,${imgB64}` } },
+          { type: 'text', text: isVideo ? `${instruction}\n\n(Lưu ý: đây là 1 khung hình được trích từ video gốc.)` : instruction },
         ]
         resultText = await callGroqVision(contentParts)
       }
