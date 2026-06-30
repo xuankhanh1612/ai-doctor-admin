@@ -53,6 +53,8 @@ export default function GlobalAIChatbot({ activePanelLabel }) {
   const [mode, setMode] = useState('idle')
   const [busy, setBusy] = useState(false)
   const [historyLoaded, setHistoryLoaded] = useState(false)
+  const [attachedImage, setAttachedImage] = useState(null) // { dataUrl, base64, mimeType, name }
+  const fileInputRef = useRef(null)
   const [messages, setMessages] = useState(() => [{
     id: 'hello',
     role: 'assistant',
@@ -97,12 +99,79 @@ export default function GlobalAIChatbot({ activePanelLabel }) {
     }, 30)
   }
 
+  const handleImageSelect = (event) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+    if (!file.type.startsWith('image/')) return
+    const reader = new FileReader()
+    reader.onload = () => {
+      const dataUrl = String(reader.result || '')
+      const base64 = dataUrl.split(',')[1] || ''
+      setAttachedImage({ dataUrl, base64, mimeType: file.type || 'image/jpeg', name: file.name })
+    }
+    reader.readAsDataURL(file)
+  }
+
   const submitQuestion = async (rawQuestion = input) => {
     const question = rawQuestion.trim()
-    if (!question || busy) return
+    const image = attachedImage
+    if (!question && !image) return
+    if (busy) return
     setInput('')
+    setAttachedImage(null)
     setBusy(true)
-    pushMessage({ role: 'user', text: question })
+    pushMessage({ role: 'user', text: question || (isVi ? '[Đã gửi 1 hình ảnh]' : '[Sent 1 image]'), imageDataUrl: image?.dataUrl || null })
+
+    if (image) {
+      // ── Vision path: user attached an image → analyze with Groq vision model ──
+      try {
+        setStatus(isVi ? 'Đang phân tích hình ảnh...' : 'Analyzing image...')
+        setMode('thinking')
+
+        const visionPrompt = question || (isVi
+          ? 'Hãy phân tích sâu hình ảnh này (đặc biệt nếu là ảnh y tế: X-quang, CT, MRI, kết quả xét nghiệm, hồ sơ...). Mô tả những gì quan sát được, lưu ý các điểm bất thường nếu có, và đưa ra nhận xét hữu ích.'
+          : 'Please analyze this image in depth (especially if it is a medical image: X-ray, CT, MRI, lab result, document...). Describe what you observe, note any abnormalities, and give a helpful assessment.')
+
+        const res = await fetch('/api/groq-proxy', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+            max_tokens: 1024,
+            messages: [
+              { role: 'system', content: systemPrompt },
+              {
+                role: 'user',
+                content: [
+                  { type: 'image_url', image_url: { url: `data:${image.mimeType};base64,${image.base64}` } },
+                  { type: 'text', text: visionPrompt },
+                ],
+              },
+            ],
+          }),
+        })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok) throw new Error(data?.error?.message || `Groq Vision ${res.status}`)
+        const answer = data?.choices?.[0]?.message?.content || ''
+        pushMessage({ role: 'assistant', text: answer || (isVi ? 'Xin lỗi, tôi chưa phân tích được hình ảnh này.' : 'Sorry, I could not analyze this image.') })
+        setMode('groq')
+        setStatus(isVi ? 'Sẵn sàng hỗ trợ · AI thực' : 'Ready to help · real AI')
+      } catch (error) {
+        console.error('Global chatbot vision error:', error)
+        pushMessage({
+          role: 'assistant',
+          text: isVi
+            ? 'Xin lỗi, tôi đang gặp sự cố khi phân tích hình ảnh. Vui lòng thử lại sau ít phút.'
+            : 'Sorry, I ran into an issue analyzing the image. Please try again in a moment.',
+        })
+        setMode('error')
+        setStatus(isVi ? 'Lỗi kết nối AI' : 'AI connection error')
+      } finally {
+        setBusy(false)
+      }
+      return
+    }
 
     const deterministicAnswer = getDeterministicFallbackReply(question, activePanelLabel)
     if (deterministicAnswer) {
@@ -174,6 +243,13 @@ export default function GlobalAIChatbot({ activePanelLabel }) {
         {messages.map(message => (
           <div key={message.id} style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: message.role === 'user' ? 'flex-end' : 'flex-start' }}>
             <div style={message.role === 'user' ? styles.userMsg : styles.botMsg}>
+              {message.imageDataUrl && (
+                <img
+                  src={message.imageDataUrl}
+                  alt="attached"
+                  style={{ display: 'block', maxWidth: '100%', maxHeight: 180, borderRadius: 10, marginBottom: message.text ? 8 : 0, objectFit: 'cover' }}
+                />
+              )}
               {message.text}
             </div>
             {message.role === 'assistant' && (
@@ -197,6 +273,21 @@ export default function GlobalAIChatbot({ activePanelLabel }) {
         )}
       </div>
 
+      {attachedImage && (
+        <div style={{ flex: '0 0 auto', display: 'flex', alignItems: 'center', gap: 8, padding: '0 14px 10px' }}>
+          <img src={attachedImage.dataUrl} alt="preview" style={{ width: 48, height: 48, borderRadius: 10, objectFit: 'cover', border: styles.input.border }} />
+          <span style={{ fontSize: 11, color: styles.disclaimer.color, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {attachedImage.name}
+          </span>
+          <button
+            type="button"
+            onClick={() => setAttachedImage(null)}
+            title={isVi ? 'Bỏ ảnh' : 'Remove image'}
+            style={{ border: 'none', background: 'rgba(239,68,68,0.12)', color: '#ef4444', borderRadius: 8, width: 24, height: 24, cursor: 'pointer', fontSize: 14, lineHeight: 1 }}
+          >×</button>
+        </div>
+      )}
+
       <div style={styles.quickRow}>
         {quickPrompts.map(prompt => (
           <button key={prompt} type="button" disabled={busy} onClick={() => submitQuestion(prompt)} style={styles.quickBtn}>
@@ -212,6 +303,13 @@ export default function GlobalAIChatbot({ activePanelLabel }) {
           submitQuestion()
         }}
       >
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleImageSelect}
+          style={{ display: 'none' }}
+        />
         <textarea
           value={input}
           onChange={event => setInput(event.target.value)}
@@ -239,7 +337,21 @@ export default function GlobalAIChatbot({ activePanelLabel }) {
         >
           {transcribing ? '⏳' : recording ? '⏹️' : '🎙️'}
         </button>
-        <button type="submit" disabled={busy || !input.trim()} style={{ ...styles.sendBtn, opacity: busy || !input.trim() ? 0.55 : 1 }}>
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={busy}
+          title={isVi ? 'Tải hình ảnh để AI phân tích sâu' : 'Upload an image for deep AI analysis'}
+          style={{
+            ...styles.micBtn,
+            ...(attachedImage ? styles.imageBtnActive : {}),
+            opacity: busy ? 0.6 : 1,
+            cursor: busy ? 'not-allowed' : 'pointer',
+          }}
+        >
+          🖼️
+        </button>
+        <button type="submit" disabled={busy || (!input.trim() && !attachedImage)} style={{ ...styles.sendBtn, opacity: busy || (!input.trim() && !attachedImage) ? 0.55 : 1 }}>
           {busy ? '...' : (isVi ? 'Gửi' : 'Send')}
         </button>
       </form>
@@ -324,6 +436,9 @@ function createStyles(isDark) {
     micBtnActive: {
       background: 'linear-gradient(135deg,#ef4444,#dc2626)', color: '#fff', border: '1px solid rgba(239,68,68,0.6)',
       animation: 'globalChatbotMicPulse 1.2s ease-in-out infinite',
+    },
+    imageBtnActive: {
+      background: 'linear-gradient(135deg,#14b8a6,#0f766e)', color: '#fff', border: '1px solid rgba(20,184,166,0.6)',
     },
     sendBtn: { border: 'none', borderRadius: 14, padding: '0 16px', color: '#fff', background: 'linear-gradient(135deg, #14b8a6, #0f4c81)', fontWeight: 900, cursor: 'pointer' },
     disclaimer: { flex: '0 0 auto', padding: '0 14px 14px', color: muted, fontSize: 10.5, lineHeight: 1.4 },
