@@ -200,25 +200,49 @@ export default function GlobalAIChatbot({ activePanelLabel }) {
 
         let answer = ''
         if (visionFiles.length > 0) {
-          const contentParts = [
-            ...visionFiles.map(f => ({ type: 'image_url', image_url: { url: `data:${f.mimeType};base64,${f.base64}` } })),
-            { type: 'text', text: instruction },
-          ]
-          const res = await fetch('/api/groq-proxy', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              model: 'meta-llama/llama-4-scout-17b-16e-instruct',
-              max_tokens: 1024,
-              messages: [
-                { role: 'system', content: systemPrompt },
-                { role: 'user', content: contentParts },
-              ],
-            }),
-          })
-          const data = await res.json().catch(() => ({}))
-          if (!res.ok) throw new Error(data?.error?.message || `Groq Vision ${res.status}`)
-          answer = data?.choices?.[0]?.message?.content || ''
+          // Groq's vision model only accepts up to 5 images per request, so we
+          // split the attached files into batches and merge the responses.
+          const GROQ_MAX_IMAGES_PER_REQUEST = 5
+          const batches = []
+          for (let i = 0; i < visionFiles.length; i += GROQ_MAX_IMAGES_PER_REQUEST) {
+            batches.push(visionFiles.slice(i, i + GROQ_MAX_IMAGES_PER_REQUEST))
+          }
+
+          const batchAnswers = []
+          for (let b = 0; b < batches.length; b++) {
+            const batch = batches[b]
+            const batchInstruction = batches.length > 1
+              ? `${instruction}\n\n${isVi
+                  ? `(Đây là nhóm ảnh ${b + 1}/${batches.length}. Chỉ phân tích các ảnh trong nhóm này.)`
+                  : `(This is image batch ${b + 1}/${batches.length}. Only analyze the images in this batch.)`}`
+              : instruction
+
+            const contentParts = [
+              ...batch.map(f => ({ type: 'image_url', image_url: { url: `data:${f.mimeType};base64,${f.base64}` } })),
+              { type: 'text', text: batchInstruction },
+            ]
+            const res = await fetch('/api/groq-proxy', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+                max_tokens: 1024,
+                messages: [
+                  { role: 'system', content: systemPrompt },
+                  { role: 'user', content: contentParts },
+                ],
+              }),
+            })
+            const data = await res.json().catch(() => ({}))
+            if (!res.ok) throw new Error(data?.error?.message || `Groq Vision ${res.status}`)
+            batchAnswers.push(data?.choices?.[0]?.message?.content || '')
+          }
+
+          answer = batches.length > 1
+            ? batchAnswers
+                .map((a, i) => `${isVi ? `Nhóm ảnh ${i + 1}/${batches.length}: ` : `Image batch ${i + 1}/${batches.length}: `}\n${a}`)
+                .join('\n\n---\n\n')
+            : batchAnswers[0]
         } else {
           // Only text/CSV files → use text model
           answer = await callGroqChat([{ role: 'user', content: instruction }], systemPrompt)
