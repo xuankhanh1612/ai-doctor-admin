@@ -6,10 +6,16 @@
 // kho lưu trữ (globalChatbotStorage.js) — nên 2 nơi luôn đồng bộ song song: gửi tin ở
 // trang nào cũng được lưu vào đúng 1 nơi và nơi còn lại sẽ thấy ngay khi mở lại.
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { callGroqChat, useVoiceInput, useTTS } from './groqAiClient.js'
 import { getDeterministicFallbackReply } from './huggingFaceTransformersChat.js'
-import { getGlobalChatHistory, saveGlobalChatHistory } from './globalChatbotStorage.js'
+import { getGlobalChatHistory, saveGlobalChatHistory, ownerKeyOf } from './globalChatbotStorage.js'
+
+// Sự kiện đồng bộ TRỰC TIẾP (không cần remount) giữa mọi nơi đang dùng hook này cùng lúc —
+// ví dụ: popup chatbot góc màn hình (GlobalAIChatbot.jsx) và trang Lịch sử Chat với AI
+// (ChatHistoryPanel.jsx) có thể cùng mở 1 lúc. Gửi tin ở 1 trong 2 nơi sẽ phát sự kiện này,
+// nơi còn lại lắng nghe và cập nhật `messages` ngay lập tức — không cần đóng/mở lại popup.
+const SYNC_EVENT = 'global-ai-chatbot-sync'
 
 export const MAX_FILES = 10
 
@@ -75,6 +81,12 @@ export function useGlobalAIChatbotEngine({ userKey, activePanelLabel, isVi, onMe
   }
   const { recording, transcribing, toggle: toggleMic } = useVoiceInput(handleTranscript, isVi ? 'vi' : 'en')
 
+  // ID riêng cho mỗi instance hook (mỗi nơi dùng hook này) để tự phân biệt sự kiện do
+  // chính mình phát ra (bỏ qua) với sự kiện do nơi khác phát ra (cần cập nhật theo).
+  const instanceIdRef = useRef(`${Date.now()}-${Math.random().toString(36).slice(2, 8)}`)
+  const skipNextBroadcastRef = useRef(false)
+  const ownerKey = ownerKeyOf(userKey)
+
   // Nạp lịch sử chat đã lưu của user (cùng kho IndexedDB cho mọi nơi dùng hook này).
   useEffect(() => {
     let cancelled = false
@@ -88,11 +100,33 @@ export function useGlobalAIChatbotEngine({ userKey, activePanelLabel, isVi, onMe
     return () => { cancelled = true }
   }, [userKey])
 
+  // Lắng nghe tin nhắn mới từ nơi khác (cùng userKey) đang mở song song — cập nhật `messages`
+  // ngay lập tức, không cần đóng/mở lại popup hay rời trang.
+  useEffect(() => {
+    const onSync = (event) => {
+      const detail = event.detail || {}
+      if (detail.ownerKey !== ownerKey) return
+      if (detail.instanceId === instanceIdRef.current) return
+      skipNextBroadcastRef.current = true
+      setMessages(detail.messages || [])
+    }
+    window.addEventListener(SYNC_EVENT, onSync)
+    return () => window.removeEventListener(SYNC_EVENT, onSync)
+  }, [ownerKey])
+
   // Tự động lưu mỗi khi messages đổi (chỉ sau khi đã nạp lịch sử xong, tránh ghi đè).
   useEffect(() => {
     if (!historyLoaded) return
     saveGlobalChatHistory(userKey, messages)
     onMessagesChange?.(messages)
+    if (skipNextBroadcastRef.current) {
+      // Vừa nhận update từ nơi khác — không cần phát lại sự kiện (tránh lặp vô ích).
+      skipNextBroadcastRef.current = false
+      return
+    }
+    window.dispatchEvent(new CustomEvent(SYNC_EVENT, {
+      detail: { ownerKey, messages, instanceId: instanceIdRef.current },
+    }))
   }, [messages, historyLoaded, userKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const pushMessage = (message) => {
