@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import NavButtons from './NavButtons.jsx'
 import GPEmotionalCompanionView from './EmotionalCompanionView.jsx'
+import { CompactGlobalAIChatBar } from './GlobalAIChatbot.jsx'
 import { useApp } from '../context/AppContext.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { detectFileType, fileToBase64, fileToDataUrl, saveRecord } from '../lib/medicalStorage.js'
@@ -1168,6 +1169,7 @@ export default function DinnerJourneyPanel({ onNext, nextLabel, onPrev, prevLabe
           </p>
         </div>
       </div>
+      <CompactGlobalAIChatBar activePanelLabel={lang === 'vi' ? 'Buổi tối' : 'Evening'} />
       {activeTab === 'emotion' && <EmotionalCompanionView onOpenStressRelief={onOpenStressRelief} onOpenInBody={onOpenInBody} />}
       {activeTab === 'meal' && <MealScanView onViewMedicalRecord={onViewMedicalRecord} />}
       {activeTab === 'medication' && <MedicationAssistantView onViewMedicalRecord={onViewMedicalRecord} />}
