@@ -814,6 +814,11 @@ export default function HealthJourneyGameStandalone({ onViewMedicalRecord }) {
     setTaskPopupKey(taskKey)          // new React popup — nguồn sự thật duy nhất
   }
 
+  const openTaskDetailLink = (taskKey, event) => {
+    event?.preventDefault?.()
+    openTaskDetail(taskKey)
+  }
+
   const openChapterMissionDetail = (chapterKey) => {
     const chapter = CHAPTER_DETAIL_CONTENT[chapterKey] || CHAPTER_DETAIL_CONTENT.focus
     closeModal('modal-chapter-detail')
@@ -1598,7 +1603,13 @@ export default function HealthJourneyGameStandalone({ onViewMedicalRecord }) {
             </a>
           </div>
           <div className="card">
-            <div className="task-item">
+            <a
+              href="#task-water"
+              className="task-item"
+              onClick={(event) => openTaskDetailLink('water', event)}
+              title="Mở nhiệm vụ Uống nước"
+              style={{ color: 'inherit', textDecoration: 'none', cursor: 'pointer' }}
+            >
               <div className="task-icon icon-bg-blue">
                 💧
               </div>
@@ -1613,7 +1624,7 @@ export default function HealthJourneyGameStandalone({ onViewMedicalRecord }) {
               <div className="badge badge-green">
                 +100 XP
               </div>
-            </div>
+            </a>
             <div className="task-item">
               <div className="task-icon icon-bg-purple">
                 😴
@@ -1630,7 +1641,13 @@ export default function HealthJourneyGameStandalone({ onViewMedicalRecord }) {
                 +120 XP
               </div>
             </div>
-            <div className="task-item">
+            <a
+              href="#task-breathing"
+              className="task-item"
+              onClick={(event) => openTaskDetailLink('breathing', event)}
+              title="Mở nhiệm vụ thở sâu / thiền"
+              style={{ color: 'inherit', textDecoration: 'none', cursor: 'pointer' }}
+            >
               <div className="task-icon icon-bg-cyan">
                 🧘
               </div>
@@ -1645,7 +1662,7 @@ export default function HealthJourneyGameStandalone({ onViewMedicalRecord }) {
               <div className="badge badge-green">
                 +80 XP
               </div>
-            </div>
+            </a>
           </div>
           <div style={{ padding: "0 12px 8px", display: "flex", gap: "8px" }}>
             <button className="btn-primary" onClick={openAiSuggestModal}>
