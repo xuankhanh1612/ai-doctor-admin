@@ -1615,14 +1615,14 @@ export default function HealthJourneyGameStandalone({ onViewMedicalRecord }) {
               </div>
               <div className="task-info">
                 <div className="task-name">
-                  Uống đủ nước
+                  Uống đủ nước {isTaskDone('water') && <span aria-label="Đã hoàn thành" title="Đã hoàn thành">✅</span>}
                 </div>
                 <div className="task-desc">
                   Tăng năng lượng và tập trung
                 </div>
               </div>
               <div className="badge badge-green">
-                +100 XP
+                {isTaskDone('water') ? '✓ Done' : '+100 XP'}
               </div>
             </a>
             <a
@@ -1637,14 +1637,14 @@ export default function HealthJourneyGameStandalone({ onViewMedicalRecord }) {
               </div>
               <div className="task-info">
                 <div className="task-name">
-                  Đọc sách 20 phút / 20 trang
+                  Đọc sách 20 phút / 20 trang {isTaskDone('read_book') && <span aria-label="Đã hoàn thành" title="Đã hoàn thành">✅</span>}
                 </div>
                 <div className="task-desc">
                   Tăng kiến thức, thư giãn tâm trí
                 </div>
               </div>
               <div className="badge badge-green">
-                +30 XP
+                {isTaskDone('read_book') ? '✓ Done' : '+30 XP'}
               </div>
             </a>
             <a
@@ -1659,14 +1659,14 @@ export default function HealthJourneyGameStandalone({ onViewMedicalRecord }) {
               </div>
               <div className="task-info">
                 <div className="task-name">
-                  Thiền 10 phút
+                  Thiền 10 phút {isTaskDone('breathing') && <span aria-label="Đã hoàn thành" title="Đã hoàn thành">✅</span>}
                 </div>
                 <div className="task-desc">
                   Giảm stress, tăng clarity
                 </div>
               </div>
               <div className="badge badge-green">
-                +80 XP
+                {isTaskDone('breathing') ? '✓ Done' : '+80 XP'}
               </div>
             </a>
           </div>
