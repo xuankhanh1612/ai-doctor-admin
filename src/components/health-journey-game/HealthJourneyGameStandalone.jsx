@@ -8,6 +8,7 @@ import TaskDetailPopup from './TaskDetailPopup.jsx'
 import JourneyDetailPopup from './JourneyDetailPopup.jsx'
 import HelpButton from './help/HelpButton.jsx'
 import HelpOverlay from './help/HelpOverlay.jsx'
+import { callGroqChat, useVoiceInput } from '../../lib/groqAiClient.js'
 
 const MEDIAPIPE_OBJECT_DETECTION_WEBCAM_URL = '/src/mediapipe-khanh/index.html?mode=webcam#/vision/object_detector'
 
@@ -527,6 +528,16 @@ export default function HealthJourneyGameStandalone({ onViewMedicalRecord }) {
   // User bấm nút "✕" trong HelpOverlay (đã có sẵn, gọi onClose) để đóng khi không cần nữa.
   const [helpOpen, setHelpOpen] = useState(true)
 
+  // ── AI Coach chat (real Groq LLM, không còn là tin nhắn tĩnh) ──
+  const [coachMessages, setCoachMessages] = useState([
+    { role: 'assistant', content: 'Bạn đang làm rất tốt! Hãy duy trì những thói quen này để đạt mục tiêu. 💪' },
+  ])
+  const [coachInput, setCoachInput] = useState('')
+  const [coachLoading, setCoachLoading] = useState(false)
+  const coachScrollRef = useRef(null)
+  const { recording: coachRecording, transcribing: coachTranscribing, toggle: toggleCoachVoice } =
+    useVoiceInput((text) => setCoachInput((prev) => (prev ? `${prev} ${text}` : text)), 'vi')
+
   useEffect(() => {
     const refreshSnapshot = () => {
       setSnapshot(getTaskSnapshot(user))
@@ -628,6 +639,53 @@ export default function HealthJourneyGameStandalone({ onViewMedicalRecord }) {
   const allJourneys = journeysData.journeys || []
 
   const getRoot = () => containerRef.current
+
+  // ── AI Coach: build ngữ cảnh từ snapshot/journeyProfile để LLM trả lời sát với người dùng ──
+  const buildCoachSystemPrompt = () => {
+    const tasksToday = (snapshot.day?.tasks || [])
+      .map((t) => `- ${t.taskId}: ${t.current || 0}/${t.target || 0}${t.completed ? ' (đã hoàn thành)' : ''}`)
+      .join('\n') || 'Chưa có dữ liệu nhiệm vụ hôm nay.'
+    const level = journeyProfile.level ?? '?'
+    const xp = journeyProfile.xp ?? 0
+    const streak = journeyProfile.streak ?? snapshot.journeyUser?.streak ?? 0
+    return [
+      'Bạn là "AI Coach" trong game sức khỏe Health Journey — một huấn luyện viên sức khỏe AI thân thiện, tích cực, nói tiếng Việt.',
+      'Nhiệm vụ: động viên, đưa lời khuyên ngắn gọn, thực tế về thói quen (uống nước, ngủ, vận động, thiền, công việc) dựa trên dữ liệu nhiệm vụ của người dùng.',
+      `Cấp độ hiện tại: ${level}, XP: ${xp}, Streak: ${streak} ngày.`,
+      `Nhiệm vụ hôm nay:\n${tasksToday}`,
+      'Trả lời ngắn gọn (2-5 câu), giọng điệu ấm áp, dùng emoji vừa phải, tránh chẩn đoán y khoa nghiêm trọng — nếu có dấu hiệu bất thường về sức khỏe, khuyên người dùng gặp bác sĩ.',
+    ].join('\n')
+  }
+
+  const sendCoachMessage = async () => {
+    const text = coachInput.trim()
+    if (!text || coachLoading) return
+    const nextMessages = [...coachMessages, { role: 'user', content: text }]
+    setCoachMessages(nextMessages)
+    setCoachInput('')
+    setCoachLoading(true)
+    try {
+      const reply = await callGroqChat(nextMessages, buildCoachSystemPrompt())
+      setCoachMessages((prev) => [...prev, { role: 'assistant', content: reply || 'Mình chưa có phản hồi, bạn thử hỏi lại nhé!' }])
+    } catch (error) {
+      setCoachMessages((prev) => [...prev, { role: 'assistant', content: `⚠️ Lỗi kết nối AI Coach: ${error?.message || 'vui lòng thử lại sau.'}` }])
+    } finally {
+      setCoachLoading(false)
+    }
+  }
+
+  const handleCoachInputKeyDown = (event) => {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault()
+      sendCoachMessage()
+    }
+  }
+
+  useEffect(() => {
+    if (activeScreen === 'screen-ai-coach' && coachScrollRef.current) {
+      coachScrollRef.current.scrollTop = coachScrollRef.current.scrollHeight
+    }
+  }, [coachMessages, coachLoading, activeScreen])
 
   const goTo = (screenId) => {
     setHelpOpen(false)           // ẩn helper popup khi điều hướng
@@ -1489,23 +1547,66 @@ export default function HealthJourneyGameStandalone({ onViewMedicalRecord }) {
               PHÂN TÍCH
             </button>
           </div>
-          {/* Chat box */}
+          {/* Chat box — chat thật với AI Coach (Groq LLM) */}
           <div className="card">
             <div className="card-title">
               Nhắn tin với AI Coach
             </div>
-            <div style={{ background: "rgba(255,255,255,.04)", borderRadius: "8px", padding: "10px", marginBottom: "8px" }}>
-              <div style={{ fontSize: "11px", color: "var(--text-dim)", marginBottom: "4px" }}>
-                AI Coach
-              </div>
-              <div style={{ fontSize: "12px", lineHeight: "1.5" }}>
-                Bạn đang làm rất tốt! Hãy duy trì những thói quen này để đạt mục tiêu. 💪
-              </div>
+            <div ref={coachScrollRef} style={{ maxHeight: '260px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '8px', paddingRight: '2px' }}>
+              {coachMessages.map((msg, idx) => (
+                <div
+                  key={idx}
+                  style={{
+                    alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
+                    maxWidth: '85%',
+                    background: msg.role === 'user' ? 'linear-gradient(135deg,var(--purple),var(--blue))' : 'rgba(255,255,255,.04)',
+                    borderRadius: '8px',
+                    padding: '10px',
+                  }}
+                >
+                  <div style={{ fontSize: '11px', color: msg.role === 'user' ? 'rgba(255,255,255,.85)' : 'var(--text-dim)', marginBottom: '4px' }}>
+                    {msg.role === 'user' ? 'Bạn' : 'AI Coach'}
+                  </div>
+                  <div style={{ fontSize: '12px', lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>
+                    {msg.content}
+                  </div>
+                </div>
+              ))}
+              {coachLoading && (
+                <div style={{ alignSelf: 'flex-start', maxWidth: '85%', background: 'rgba(255,255,255,.04)', borderRadius: '8px', padding: '10px' }}>
+                  <div style={{ fontSize: '11px', color: 'var(--text-dim)', marginBottom: '4px' }}>
+                    AI Coach
+                  </div>
+                  <div style={{ fontSize: '12px', color: 'var(--text-dim)' }}>
+                    Đang soạn trả lời…
+                  </div>
+                </div>
+              )}
             </div>
             <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-              <input type="text" placeholder="Nh\u1eafn tin v\u1edbi AI Coach..." style={{ flex: "1", background: "rgba(255,255,255,.05)", border: "1px solid var(--border)", borderRadius: "8px", padding: "8px 10px", color: "var(--text)", fontSize: "12px", outline: "none" }} />
-              <button style={{ width: "36px", height: "36px", borderRadius: "8px", background: "linear-gradient(135deg,var(--purple),var(--blue))", border: "none", fontSize: "16px", cursor: "pointer" }}>
-                🎤
+              <input
+                type="text"
+                placeholder={coachTranscribing ? 'Đang nhận diện giọng nói…' : 'Nhắn tin với AI Coach...'}
+                value={coachInput}
+                onChange={(event) => setCoachInput(event.target.value)}
+                onKeyDown={handleCoachInputKeyDown}
+                disabled={coachLoading}
+                style={{ flex: "1", background: "rgba(255,255,255,.05)", border: "1px solid var(--border)", borderRadius: "8px", padding: "8px 10px", color: "var(--text)", fontSize: "12px", outline: "none" }}
+              />
+              <button
+                onClick={toggleCoachVoice}
+                title={coachRecording ? 'Dừng ghi âm' : 'Nói với AI Coach'}
+                style={{ width: "36px", height: "36px", borderRadius: "8px", background: coachRecording ? 'linear-gradient(135deg,#ef4444,#f97316)' : "linear-gradient(135deg,var(--purple),var(--blue))", border: "none", fontSize: "16px", cursor: "pointer" }}
+              >
+                {coachRecording ? '⏹' : '🎤'}
+              </button>
+              <button
+                onClick={sendCoachMessage}
+                disabled={coachLoading || !coachInput.trim()}
+                title="Gửi"
+                style={{ width: "36px", height: "36px", borderRadius: "8px", background: "linear-gradient(135deg,var(--blue),var(--purple))", border: "none", fontSize: "16px", cursor: coachLoading ? 'not-allowed' : "pointer", opacity: coachLoading || !coachInput.trim() ? 0.6 : 1 }}
+              >
+                ➤
               </button>
             </div>
           </div>
