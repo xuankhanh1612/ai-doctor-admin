@@ -210,6 +210,22 @@ function MetaRow({ k, v, vColor }) {
 }
 
 
+// ─── Markdown renderer (minimal, mirrors FullDocumentSummarizationPanel) ────
+function renderMarkdown(text) {
+  if (!text) return ''
+  return text
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/`(.+?)`/g, '<code style="background:rgba(16,185,129,0.12);padding:2px 6px;border-radius:4px;font-size:0.9em">$1</code>')
+    .replace(/^### (.+)$/gm, '<h3 style="margin:18px 0 8px;font-size:15px;font-weight:800;color:inherit">$1</h3>')
+    .replace(/^## (.+)$/gm, '<h2 style="margin:22px 0 10px;font-size:17px;font-weight:900;color:inherit">$1</h2>')
+    .replace(/^# (.+)$/gm, '<h1 style="margin:24px 0 12px;font-size:20px;font-weight:900;color:inherit">$1</h1>')
+    .replace(/^[-•] (.+)$/gm, '<li style="margin:4px 0 4px 18px;list-style:disc">$1</li>')
+    .replace(/^(\d+)\. (.+)$/gm, '<li style="margin:4px 0 4px 18px;list-style:decimal">$2</li>')
+    .replace(/\n\n/g, '</p><p style="margin:0 0 12px">')
+    .replace(/\n/g, '<br/>')
+}
+
 function readFileText(file) {
   return new Promise((res, rej) => {
     const r = new FileReader()
@@ -419,6 +435,10 @@ export default function MedicalUploader({ patientId, onSelectImage }) {
   const [ocrText, setOcrText]             = useState('')
   const [ocrError, setOcrError]           = useState('')
   const [ocrCopied, setOcrCopied]         = useState(false)
+  const [summarizing, setSummarizing]     = useState(false)
+  const [summaryText, setSummaryText]     = useState('')
+  const [summaryError, setSummaryError]   = useState('')
+  const [summaryCopied, setSummaryCopied] = useState(false)
   const [cameraOpen, setCameraOpen]       = useState(false)
   const [cameraStarting, setCameraStarting] = useState(false)
   const [cameraError, setCameraError]     = useState('')
@@ -495,6 +515,9 @@ export default function MedicalUploader({ patientId, onSelectImage }) {
     setOcrText('')
     setOcrError('')
     setOcrCopied(false)
+    setSummaryText('')
+    setSummaryError('')
+    setSummaryCopied(false)
     setView('detail')
   }
 
@@ -970,6 +993,122 @@ Trả lời bằng tiếng Việt, ngắn gọn và rõ ràng. Nhắc nhở đâ
     }
   }
 
+  // ─── Summarize — Tóm tắt toàn bộ (mirrors FullDocumentSummarizationPanel) ──
+  async function runSummarize(record) {
+    if (!record) return
+    const isPdf = record.mimeType === 'application/pdf'
+    const b64 = record.base64Data || (record.dataUrl ? record.dataUrl.split(',')[1] : null)
+    if (!b64) {
+      setSummaryError(lang === 'vi' ? 'Không lấy được dữ liệu file để tóm tắt.' : 'Could not read file data to summarize.')
+      return
+    }
+
+    setSummarizing(true)
+    setSummaryError('')
+    setSummaryText('')
+
+    const userPrompt = lang === 'vi'
+      ? 'Tóm tắt toàn bộ tài liệu này một cách đầy đủ, bao gồm tất cả các phần quan trọng.'
+      : 'Summarize the entire document thoroughly, covering all key sections.'
+
+    const systemMsg = lang === 'vi'
+      ? 'Bạn là chuyên gia phân tích tài liệu y tế. Phân tích kỹ, súc tích, dùng Markdown.'
+      : 'You are a medical document expert. Be thorough, concise, use Markdown.'
+
+    const instruction = lang === 'vi'
+      ? `\n\n---\nYêu cầu: ${userPrompt}\n\nPhân tích và tóm tắt toàn bộ nội dung.`
+      : `\n\n---\nRequest: ${userPrompt}\n\nAnalyze and summarize all content.`
+
+    const callGroqText = async (messages) => {
+      const res = await fetch('/api/groq-proxy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: 'llama-3.3-70b-versatile', max_tokens: 1024, messages }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(`Groq ${res.status}: ${data?.error?.message || JSON.stringify(data)}`)
+      return data?.choices?.[0]?.message?.content || ''
+    }
+
+    const callGroqVision = async (contentParts) => {
+      const res = await fetch('/api/groq-proxy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+          max_tokens: 1024,
+          messages: [
+            { role: 'system', content: systemMsg },
+            { role: 'user', content: contentParts },
+          ],
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(`Groq Vision ${res.status}: ${data?.error?.message || JSON.stringify(data)}`)
+      return data?.choices?.[0]?.message?.content || ''
+    }
+
+    try {
+      let resultText = ''
+
+      if (isPdf) {
+        // Try text-layer extraction first
+        const pdfjs = await import('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.mjs')
+        pdfjs.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs'
+        const binary = atob(b64)
+        const bytes = new Uint8Array(binary.length)
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+        const pdf = await pdfjs.getDocument({ data: bytes }).promise
+
+        const textParts = []
+        for (let p = 1; p <= Math.min(pdf.numPages, 50); p++) {
+          const pg = await pdf.getPage(p)
+          const tc = await pg.getTextContent()
+          const t = tc.items.map(i => i.str).join(' ').trim()
+          if (t) textParts.push(t)
+        }
+
+        if (textParts.length > 0) {
+          // Text-based PDF → text model
+          const combined = textParts.join('\n\n---\n\n')
+          resultText = await callGroqText([
+            { role: 'system', content: systemMsg },
+            { role: 'user', content: combined + instruction },
+          ])
+        } else {
+          // Scanned PDF → render pages to images → vision model
+          const visionParts = []
+          for (let p = 1; p <= Math.min(pdf.numPages, 10); p++) {
+            const page = await pdf.getPage(p)
+            const vp = page.getViewport({ scale: 1.5 })
+            const canvas = document.createElement('canvas')
+            canvas.width = vp.width
+            canvas.height = vp.height
+            await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise
+            const pageB64 = canvas.toDataURL('image/jpeg', 0.85).split(',')[1]
+            visionParts.push({ type: 'image_url', image_url: { url: `data:image/jpeg;base64,${pageB64}` } })
+          }
+          const contentParts = [...visionParts, { type: 'text', text: instruction }]
+          resultText = await callGroqVision(contentParts)
+        }
+      } else {
+        // Image record → vision model
+        const mime = record.mimeType || 'image/jpeg'
+        const contentParts = [
+          { type: 'image_url', image_url: { url: `data:${mime};base64,${b64}` } },
+          { type: 'text', text: instruction },
+        ]
+        resultText = await callGroqVision(contentParts)
+      }
+
+      setSummaryText(resultText)
+    } catch (err) {
+      setSummaryError(err instanceof Error ? err.message : (lang === 'vi' ? 'Lỗi tóm tắt không xác định' : 'Unknown summarization error'))
+    } finally {
+      setSummarizing(false)
+    }
+  }
+
   // ─── Render ─────────────────────────────────────────────────────────────
   return (
     <div style={{ minHeight: '100%', background: '#04060f', fontFamily: "'DM Sans', sans-serif", color: '#e8f0f8', padding: 24 }}>
@@ -1234,6 +1373,16 @@ Trả lời bằng tiếng Việt, ngắn gọn và rõ ràng. Nhắc nhở đâ
                         boxShadow: '0 0 20px rgba(16,185,129,0.35)',
                       }}
                     >{ocrRunning ? '⏳ Đang OCR…' : '🔍 Bắt đầu OCR'}</button>
+                    <button
+                      onClick={() => runSummarize(selected)}
+                      disabled={summarizing}
+                      style={{
+                        flex: '1 1 auto', padding: '14px 20px', borderRadius: 14, cursor: summarizing ? 'not-allowed' : 'pointer',
+                        background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', border: 'none',
+                        color: '#fff', fontSize: 14, fontWeight: 800, opacity: summarizing ? 0.6 : 1,
+                        boxShadow: '0 0 20px rgba(99,102,241,0.35)',
+                      }}
+                    >{summarizing ? '⏳ Đang tóm tắt…' : '🚀 Bắt đầu tóm tắt'}</button>
                     {ocrText && !ocrRunning && (
                       <>
                         <button
@@ -1310,6 +1459,62 @@ Trả lời bằng tiếng Việt, ngắn gọn và rõ ràng. Nhắc nhở đâ
                       }}>
                         {ocrText}
                       </pre>
+                    </div>
+                  )}
+
+                  {summaryError && (
+                    <div style={{ background: 'rgba(255,82,82,0.1)', border: '1px solid rgba(255,82,82,0.25)', borderRadius: 10, padding: '10px 14px', fontSize: 12, color: '#ff5252' }}>
+                      ⚠️ {summaryError}
+                    </div>
+                  )}
+
+                  {summarizing && !summaryText && (
+                    <div style={{
+                      background: 'rgba(99,102,241,0.04)', border: '1px solid rgba(99,102,241,0.15)',
+                      borderRadius: 16, padding: 18, display: 'flex', alignItems: 'center', gap: 8,
+                    }}>
+                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#8b5cf6', animation: 'pulse-dot 1s infinite' }} />
+                      <span style={{ fontSize: 12, color: '#a5b4fc', fontFamily: 'monospace' }}>
+                        {lang === 'vi' ? 'Đang tóm tắt tài liệu…' : 'Summarizing document…'}
+                      </span>
+                    </div>
+                  )}
+
+                  {summaryText && (
+                    <div style={{
+                      background: 'rgba(99,102,241,0.05)', border: '1px solid rgba(99,102,241,0.3)',
+                      borderRadius: 16, padding: 20,
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 16 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div style={{
+                            width: 36, height: 36, borderRadius: 10,
+                            background: 'linear-gradient(135deg,#6366f1,#8b5cf6)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0,
+                          }}>✨</div>
+                          <div>
+                            <div style={{ fontWeight: 900, fontSize: 15, color: '#e0e7ff' }}>
+                              {lang === 'vi' ? 'Tóm tắt toàn bộ' : 'Full Summary'}
+                            </div>
+                            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginTop: 2 }}>
+                              {summaryText.length.toLocaleString()} {lang === 'vi' ? 'ký tự' : 'characters'}
+                            </div>
+                          </div>
+                        </div>
+                        {!summarizing && (
+                          <button
+                            onClick={() => { navigator.clipboard?.writeText(summaryText); setSummaryCopied(true); setTimeout(() => setSummaryCopied(false), 2000) }}
+                            style={{
+                              padding: '8px 14px', borderRadius: 10, border: '1px solid rgba(99,102,241,0.3)',
+                              background: 'transparent', color: '#a5b4fc', fontWeight: 800, fontSize: 12, cursor: 'pointer', flexShrink: 0,
+                            }}
+                          >{summaryCopied ? '✅' : '📋'}</button>
+                        )}
+                      </div>
+                      <div
+                        style={{ fontSize: 14, color: '#e0e7ff', lineHeight: 1.75, maxHeight: 480, overflowY: 'auto' }}
+                        dangerouslySetInnerHTML={{ __html: `<p style="margin:0 0 12px">${renderMarkdown(summaryText)}</p>` }}
+                      />
                     </div>
                   )}
                 </div>
