@@ -1234,6 +1234,7 @@ export default function HealthJourneyPanel({ onNext, onPrev, prevLabel, nextLabe
       {activeTab === 'medication' && <MedicationAssistantView onViewMedicalRecord={onViewMedicalRecord} />}
       {activeTab === 'faceDetector' && <MediaPipeDetectorView type="face" onViewMedicalRecord={onViewMedicalRecord} />}
       {activeTab === 'bodyDetector' && <MediaPipeDetectorView type="body" onViewMedicalRecord={onViewMedicalRecord} />}
+      <CompactGlobalAIChatBar activePanelLabel={lang === 'vi' ? 'Buổi Sáng' : 'Morning'} />
       <HealthJourneyTabs activeTab={activeTab} setActiveTab={setActiveTab} lang={lang} />
       {(onNext || onPrev) && (
         <NavButtons
