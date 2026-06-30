@@ -293,11 +293,23 @@ export default function ChatHistoryPanel({ onNext, onPrev, prevLabel, nextLabel,
                     )}
                     {message.text}
                   </div>
-                  {message.createdAt && (
-                    <span style={{ fontSize: 9.5, fontWeight: 700, color: muted }}>
-                      {formatTime(message.createdAt)}
-                    </span>
-                  )}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexDirection: message.role === 'user' ? 'row-reverse' : 'row' }}>
+                    {message.createdAt && (
+                      <span style={{ fontSize: 9.5, fontWeight: 700, color: muted }}>
+                        {formatTime(message.createdAt)}
+                      </span>
+                    )}
+                    {message.role === 'assistant' && (
+                      <button
+                        type="button"
+                        onClick={() => speak(message.text)}
+                        title={isVi ? (speaking ? 'Dừng đọc' : 'Đọc to') : (speaking ? 'Stop' : 'Read aloud')}
+                        style={historySpeakBtn(isDark, border)}
+                      >
+                        {speaking ? '⏸' : '🔊'}
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -513,6 +525,13 @@ function historyMsg(isDark, isUser) {
   return isUser
     ? { alignSelf: 'flex-end', maxWidth: '84%', padding: '11px 13px', borderRadius: '16px 16px 5px 16px', background: 'linear-gradient(135deg, #0f4c81, #2563eb)', color: '#fff', fontSize: 13, lineHeight: 1.5, whiteSpace: 'pre-wrap' }
     : { alignSelf: 'flex-start', maxWidth: '88%', padding: '11px 13px', borderRadius: '16px 16px 16px 5px', background: isDark ? 'rgba(30, 41, 59, 0.82)' : '#f1f5f9', color: text, fontSize: 13, lineHeight: 1.5, whiteSpace: 'pre-wrap' }
+}
+
+function historySpeakBtn(isDark, border) {
+  return {
+    border: `1px solid ${border}`, borderRadius: 8, padding: '3px 7px', fontSize: 12, cursor: 'pointer',
+    background: isDark ? 'rgba(15,23,42,0.6)' : '#fff', color: isDark ? 'rgba(226, 232, 240, 0.64)' : '#64748b', lineHeight: 1,
+  }
 }
 
 // ─── Composer (toolbar +, textarea, mic, ảnh, Gửi) — cùng kiểu dáng với GlobalAIChatbot.jsx ──
