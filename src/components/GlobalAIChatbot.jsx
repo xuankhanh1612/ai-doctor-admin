@@ -109,9 +109,6 @@ export default function GlobalAIChatbot({ activePanelLabel }) {
       const dataUrl = String(reader.result || '')
       const base64 = dataUrl.split(',')[1] || ''
       setAttachedImage({ dataUrl, base64, mimeType: file.type || 'image/jpeg', name: file.name })
-      window.setTimeout(() => {
-        scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
-      }, 30)
     }
     reader.readAsDataURL(file)
   }
@@ -274,20 +271,6 @@ export default function GlobalAIChatbot({ activePanelLabel }) {
             </span>
           </div>
         )}
-        {attachedImage && (
-          <div style={{ alignSelf: 'flex-end', display: 'flex', alignItems: 'center', gap: 8, maxWidth: '84%' }}>
-            <img src={attachedImage.dataUrl} alt="preview" style={{ width: 48, height: 48, borderRadius: 10, objectFit: 'cover', border: styles.input.border, flexShrink: 0 }} />
-            <span style={{ fontSize: 11, color: styles.disclaimer.color, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {attachedImage.name}
-            </span>
-            <button
-              type="button"
-              onClick={() => setAttachedImage(null)}
-              title={isVi ? 'Bỏ ảnh' : 'Remove image'}
-              style={{ border: 'none', background: 'rgba(239,68,68,0.12)', color: '#ef4444', borderRadius: 8, width: 24, height: 24, cursor: 'pointer', fontSize: 14, lineHeight: 1, flexShrink: 0 }}
-            >×</button>
-          </div>
-        )}
       </div>
 
       <div style={styles.quickRow}>
@@ -312,6 +295,27 @@ export default function GlobalAIChatbot({ activePanelLabel }) {
           onChange={handleImageSelect}
           style={{ display: 'none' }}
         />
+        {attachedImage && (
+          <div style={{ position: 'relative', flexShrink: 0, alignSelf: 'center' }}>
+            <img
+              src={attachedImage.dataUrl}
+              alt="preview"
+              title={attachedImage.name}
+              style={{ width: 44, height: 44, borderRadius: 10, objectFit: 'cover', border: styles.input.border, display: 'block' }}
+            />
+            <button
+              type="button"
+              onClick={() => setAttachedImage(null)}
+              title={isVi ? 'Bỏ ảnh' : 'Remove image'}
+              style={{
+                position: 'absolute', top: -6, right: -6, border: 'none',
+                background: '#ef4444', color: '#fff', borderRadius: '50%',
+                width: 18, height: 18, cursor: 'pointer', fontSize: 11, lineHeight: '18px',
+                padding: 0, textAlign: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.4)',
+              }}
+            >×</button>
+          </div>
+        )}
         <textarea
           value={input}
           onChange={event => setInput(event.target.value)}
