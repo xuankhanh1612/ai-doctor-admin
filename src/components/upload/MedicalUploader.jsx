@@ -415,6 +415,9 @@ export default function MedicalUploader({ patientId, onSelectImage }) {
   const [showApiInput, setShowApiInput]   = useState(false)
   const [pdfObjectUrl, setPdfObjectUrl]   = useState(null)
   const [notes, setNotes]                 = useState('')
+  const [ocrRunning, setOcrRunning]       = useState(false)
+  const [ocrText, setOcrText]             = useState('')
+  const [ocrError, setOcrError]           = useState('')
   const [cameraOpen, setCameraOpen]       = useState(false)
   const [cameraStarting, setCameraStarting] = useState(false)
   const [cameraError, setCameraError]     = useState('')
@@ -483,6 +486,14 @@ export default function MedicalUploader({ patientId, onSelectImage }) {
   async function loadRecords() {
     const recs = await getAllRecords(recordScope)
     setRecords(recs)
+  }
+
+  function openDetail(record) {
+    setSelected(record)
+    setNotes(record.notes || '')
+    setOcrText('')
+    setOcrError('')
+    setView('detail')
   }
 
   // ─── File processing ────────────────────────────────────────────────────
@@ -865,6 +876,98 @@ Trả lời bằng tiếng Việt, ngắn gọn và rõ ràng. Nhắc nhở đâ
     }
   }
 
+  // ─── OCR — Trích xuất toàn bộ (Groq Vision · llama-4-scout) ─────────────
+  async function runOCR(record) {
+    if (!record) return
+    const isPdf = record.mimeType === 'application/pdf'
+    const b64 = record.base64Data || (record.dataUrl ? record.dataUrl.split(',')[1] : null)
+    if (!b64) {
+      setOcrError(lang === 'vi' ? 'Không lấy được dữ liệu file để OCR.' : 'Could not read file data for OCR.')
+      return
+    }
+
+    setOcrRunning(true)
+    setOcrError('')
+    setOcrText('')
+
+    const ocrPrompt = lang === 'vi'
+      ? 'Trích xuất TOÀN BỘ văn bản có trong tài liệu này, giữ đúng thứ tự, định dạng và cấu trúc gốc (bảng, đoạn, danh sách). Không tóm tắt, không bỏ sót, không thêm bình luận.'
+      : 'Extract the ENTIRE text content from this document, preserving the original order, formatting, and structure (tables, paragraphs, lists). Do not summarize, omit anything, or add commentary.'
+
+    try {
+      let imageB64 = b64
+      let mimeForVision = record.mimeType || 'image/jpeg'
+
+      // Scanned PDFs need to be rasterized to an image first for vision OCR
+      if (isPdf) {
+        const pdfjs = await import('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.mjs')
+        pdfjs.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs'
+        const binary = atob(b64)
+        const bytes = new Uint8Array(binary.length)
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+        const pdf = await pdfjs.getDocument({ data: bytes }).promise
+        const pageTexts = []
+        for (let p = 1; p <= Math.min(pdf.numPages, 30); p++) {
+          const page = await pdf.getPage(p)
+          const vp = page.getViewport({ scale: 2.0 })
+          const canvas = document.createElement('canvas')
+          canvas.width = vp.width
+          canvas.height = vp.height
+          await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise
+          const pageB64 = canvas.toDataURL('image/jpeg', 0.92).split(',')[1]
+
+          const res = await fetch('/api/groq-proxy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+              max_tokens: 2048,
+              messages: [
+                { role: 'system', content: lang === 'vi'
+                  ? 'Bạn là hệ thống OCR chuyên nghiệp. Hãy trích xuất văn bản chính xác, không thêm bớt, không giải thích.'
+                  : 'You are a professional OCR system. Extract text accurately without adding or omitting anything. No explanations.' },
+                { role: 'user', content: [
+                  { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${pageB64}` } },
+                  { type: 'text', text: ocrPrompt },
+                ] },
+              ],
+            }),
+          })
+          const data = await res.json()
+          if (!res.ok) throw new Error(`Groq Vision ${res.status}: ${data?.error?.message || JSON.stringify(data)}`)
+          const pageText = data?.choices?.[0]?.message?.content || ''
+          pageTexts.push(`── Trang ${p} ──\n${pageText}`)
+        }
+        setOcrText(pageTexts.join('\n\n'))
+      } else {
+        const res = await fetch('/api/groq-proxy', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+            max_tokens: 2048,
+            messages: [
+              { role: 'system', content: lang === 'vi'
+                ? 'Bạn là hệ thống OCR chuyên nghiệp. Hãy trích xuất văn bản chính xác, không thêm bớt, không giải thích.'
+                : 'You are a professional OCR system. Extract text accurately without adding or omitting anything. No explanations.' },
+              { role: 'user', content: [
+                { type: 'image_url', image_url: { url: `data:${mimeForVision};base64,${imageB64}` } },
+                { type: 'text', text: ocrPrompt },
+              ] },
+            ],
+          }),
+        })
+        const data = await res.json()
+        if (!res.ok) throw new Error(`Groq Vision ${res.status}: ${data?.error?.message || JSON.stringify(data)}`)
+        setOcrText(data?.choices?.[0]?.message?.content || '')
+      }
+    } catch (err) {
+      setOcrError(err instanceof Error ? err.message : (lang === 'vi' ? 'Lỗi OCR không xác định' : 'Unknown OCR error'))
+    } finally {
+      setOcrRunning(false)
+    }
+  }
+
   // ─── Render ─────────────────────────────────────────────────────────────
   return (
     <div style={{ minHeight: '100%', background: '#04060f', fontFamily: "'DM Sans', sans-serif", color: '#e8f0f8', padding: 24 }}>
@@ -1010,7 +1113,7 @@ Trả lời bằng tiếng Việt, ngắn gọn và rõ ràng. Nhắc nhở đâ
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(140px,1fr))', gap: 10 }}>
                 {records.slice(0, 6).map(r => (
                   <RecordThumb key={r.id} record={r}
-                    onClick={() => { setSelected(r); setNotes(r.notes || ''); setView('detail') }}
+                    onClick={() => openDetail(r)}
                     onDelete={() => handleDelete(r.id)}
                     lang={lang}
                   />
@@ -1042,7 +1145,7 @@ Trả lời bằng tiếng Việt, ngắn gọn và rõ ràng. Nhắc nhở đâ
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(200px,1fr))', gap: 14 }}>
               {records.map(r => (
                 <RecordCard key={r.id} record={r}
-                  onClick={() => { setSelected(r); setNotes(r.notes || ''); setView('detail') }}
+                  onClick={() => openDetail(r)}
                   onDelete={() => handleDelete(r.id)}
                   lang={lang}
                 />
@@ -1065,11 +1168,13 @@ Trả lời bằng tiếng Việt, ngắn gọn và rõ ràng. Nhắc nhở đâ
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
             {/* Preview — full width, double height */}
-            <div style={{
-              background: '#000', borderRadius: 14, overflow: 'hidden',
-              border: '1px solid rgba(255,255,255,0.08)',
-              minHeight: 480, display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
+            <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+              <div style={{
+                flex: '1 1 480px', minWidth: 0,
+                background: '#000', borderRadius: 14, overflow: 'hidden',
+                border: '1px solid rgba(255,255,255,0.08)',
+                minHeight: 480, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
               {selected.fileType === 'csv' ? (
                 <div style={{ width: '100%', padding: 14, boxSizing: 'border-box' }}>
                   <InBodyCsvDashboard record={selected} />
@@ -1109,6 +1214,59 @@ Trả lời bằng tiếng Việt, ngắn gọn và rõ ràng. Nhắc nhở đâ
                       border: 'none', borderRadius: 10, color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer',
                     }}
                   >🔬 {uploadText(lang, 'useForCompare')}</button>
+                </div>
+              )}
+              </div>
+
+              {/* OCR side panel — only for non-CSV files */}
+              {selected.fileType !== 'csv' && (
+                <div style={{ flex: '1 1 320px', minWidth: 280, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <button
+                    onClick={() => runOCR(selected)}
+                    disabled={ocrRunning}
+                    style={{
+                      padding: '12px 20px', borderRadius: 10, cursor: ocrRunning ? 'not-allowed' : 'pointer',
+                      background: 'linear-gradient(135deg,#ff8a3d,#ff5e8a)', border: 'none',
+                      color: '#fff', fontSize: 14, fontWeight: 700, opacity: ocrRunning ? 0.6 : 1,
+                    }}
+                  >{ocrRunning ? '⏳ Đang OCR…' : '🔍 Bắt đầu OCR'}</button>
+                  <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', fontFamily: 'monospace' }}>
+                    Trích xuất toàn bộ · Groq Vision llama-4-scout
+                  </div>
+
+                  {ocrError && (
+                    <div style={{ background: 'rgba(255,82,82,0.1)', border: '1px solid rgba(255,82,82,0.25)', borderRadius: 10, padding: '10px 14px', fontSize: 12, color: '#ff5252' }}>
+                      ⚠️ {ocrError}
+                    </div>
+                  )}
+
+                  {(ocrRunning || ocrText) && (
+                    <div style={{
+                      background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
+                      borderRadius: 12, padding: 14, minHeight: 200, maxHeight: 560, overflowY: 'auto',
+                    }}>
+                      {ocrRunning && !ocrText && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                          <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#ff8a3d', animation: 'pulse-dot 1s infinite' }} />
+                          <span style={{ fontSize: 11, color: '#ff8a3d', fontFamily: 'monospace' }}>Đang trích xuất văn bản…</span>
+                        </div>
+                      )}
+                      <div style={{ fontSize: 12.5, lineHeight: 1.7, color: 'rgba(255,255,255,0.85)', whiteSpace: 'pre-wrap' }}>
+                        {ocrText}
+                      </div>
+                    </div>
+                  )}
+
+                  {ocrText && !ocrRunning && (
+                    <button
+                      onClick={() => navigator.clipboard?.writeText(ocrText)}
+                      style={{
+                        padding: '8px 16px', borderRadius: 8, cursor: 'pointer',
+                        background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)',
+                        color: 'rgba(255,255,255,0.6)', fontSize: 12, alignSelf: 'flex-start',
+                      }}
+                    >📋 Copy văn bản</button>
+                  )}
                 </div>
               )}
             </div>
