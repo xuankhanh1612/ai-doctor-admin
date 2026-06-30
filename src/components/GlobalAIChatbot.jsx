@@ -35,6 +35,7 @@ export default function GlobalAIChatbot({ activePanelLabel }) {
     status,
     mode,
     busy,
+    historyLoaded,
     attachedFiles,
     handleFilesSelect, removeAttachedFile,
     submitQuestion,
