@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useGlobalAIChatbotEngine, quickPrompts, MAX_FILES, getModeLabel } from '../lib/useGlobalAIChatbotEngine.js'
 
+
 export default function GlobalAIChatbot({ activePanelLabel }) {
   const { theme, lang } = useApp()
   const { user } = useAuth()
@@ -28,6 +29,7 @@ export default function GlobalAIChatbot({ activePanelLabel }) {
     status,
     mode,
     busy,
+    historyLoaded,
     attachedFiles,
     handleFilesSelect, removeAttachedFile,
     submitQuestion,
