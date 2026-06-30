@@ -2,6 +2,98 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useApp } from '../context/AppContext'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useGlobalAIChatbotEngine, quickPrompts, MAX_FILES, getModeLabel } from '../lib/useGlobalAIChatbotEngine.js'
+import { useTTS } from '../lib/groqAiClient.js'
+
+export function CompactGlobalAIChatBar({ activePanelLabel }) {
+  const { theme, lang } = useApp()
+  const { user } = useAuth()
+  const isDark = theme === 'dark'
+  const isVi = lang !== 'en'
+  const userKey = user?.uuid || null
+  const docInputRef = useRef(null)
+  const imageInputRef = useRef(null)
+  const audioElementRef = useRef(null)
+  const shouldReadNextReplyRef = useRef(false)
+  const lastSpokenAssistantIdRef = useRef(null)
+
+  const {
+    messages,
+    input, setInput,
+    busy,
+    historyLoaded,
+    attachedFiles,
+    handleFilesSelect,
+    submitQuestion,
+    recording, transcribing, toggleMic,
+  } = useGlobalAIChatbotEngine({ userKey, activePanelLabel, isVi })
+  const { speaking, speak, stop } = useTTS(isVi ? 'vi' : 'en', audioElementRef)
+
+  useEffect(() => {
+    if (busy || !historyLoaded || !shouldReadNextReplyRef.current) return
+    const lastAssistant = [...messages].reverse().find(message => message.role === 'assistant' && message.id !== 'hello')
+    if (!lastAssistant || lastAssistant.id === lastSpokenAssistantIdRef.current) return
+    lastSpokenAssistantIdRef.current = lastAssistant.id
+    shouldReadNextReplyRef.current = false
+    speak(lastAssistant.text)
+  }, [busy, historyLoaded, messages, speak])
+
+  const submitFromBar = () => {
+    if (!input.trim() && attachedFiles.length === 0) return
+    shouldReadNextReplyRef.current = true
+    submitQuestion()
+  }
+
+  const shell = isDark ? '#070d20' : '#eef6ff'
+  const control = isDark ? '#171d3a' : '#ffffff'
+  const border = isDark ? '#323a66' : '#b9c9e8'
+  const text = isDark ? '#e6ecff' : '#102033'
+  const muted = isDark ? '#9aa3b7' : '#64748b'
+
+  return (
+    <form
+      aria-label={isVi ? 'Bộ chat AI chung' : 'Shared AI chat bar'}
+      onSubmit={(event) => {
+        event.preventDefault()
+        submitFromBar()
+      }}
+      style={{
+        width: 'min(100%, 760px)',
+        display: 'grid',
+        gridTemplateColumns: '80px minmax(0, 1fr) 92px 92px 112px',
+        gap: 14,
+        alignItems: 'stretch',
+        padding: 14,
+        borderRadius: 26,
+        background: shell,
+        boxShadow: isDark ? '0 24px 70px rgba(0,0,0,0.34)' : '0 18px 54px rgba(15,76,129,0.14)',
+        border: `1px solid ${isDark ? 'rgba(148,163,184,0.10)' : 'rgba(15,76,129,0.10)'}`,
+      }}
+    >
+      <audio ref={audioElementRef} preload="none" style={{ display: 'none' }} />
+      <input ref={docInputRef} type="file" accept="image/*,application/pdf,text/plain,text/csv,.csv,.txt,.md" multiple onChange={handleFilesSelect} style={{ display: 'none' }} />
+      <input ref={imageInputRef} type="file" accept="image/*" multiple onChange={handleFilesSelect} style={{ display: 'none' }} />
+      <button type="button" onClick={() => docInputRef.current?.click()} disabled={busy} title={isVi ? 'Đính kèm file' : 'Attach files'} style={{ border: `2px solid ${border}`, borderRadius: 26, background: control, color: isDark ? '#dbe5ff' : '#1e3a8a', fontSize: 34, fontWeight: 900, cursor: busy ? 'not-allowed' : 'pointer' }}>+</button>
+      <textarea
+        value={input}
+        onChange={event => setInput(event.target.value)}
+        placeholder={isVi ? 'Hỏi chatbot chung\nhoặc nói bằng giọng nói' : 'Ask the shared chatbot\nor use your voice'}
+        rows={2}
+        onKeyDown={event => {
+          if (event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault()
+            submitFromBar()
+          }
+        }}
+        style={{ resize: 'none', minHeight: 92, border: `2px solid ${border}`, borderRadius: 24, padding: '22px 24px', outline: 'none', font: 'inherit', fontSize: 24, lineHeight: 1.45, color: text, background: control }}
+      />
+      <button type="button" onClick={toggleMic} disabled={busy && !recording} title={recording ? (isVi ? 'Dừng ghi âm' : 'Stop recording') : (isVi ? 'Nói để hỏi' : 'Speak to ask')} style={{ border: `2px solid ${recording ? '#ef4444' : border}`, borderRadius: 26, background: recording ? 'linear-gradient(135deg,#ef4444,#dc2626)' : control, color: recording ? '#fff' : text, fontSize: 30, cursor: transcribing ? 'wait' : 'pointer' }}>{transcribing ? '⏳' : recording ? '⏹️' : '🎙️'}</button>
+      <button type="button" onClick={() => imageInputRef.current?.click()} disabled={busy} title={isVi ? 'Tải hình ảnh cho AI phân tích' : 'Upload image for AI analysis'} style={{ border: `2px solid ${attachedFiles.length ? '#14b8a6' : border}`, borderRadius: 26, background: control, color: text, fontSize: 30, cursor: busy ? 'not-allowed' : 'pointer' }}>🖼️</button>
+      <button type="submit" disabled={busy || (!input.trim() && attachedFiles.length === 0)} style={{ border: 'none', borderRadius: 26, color: '#d8e7ea', background: 'linear-gradient(135deg,#187c86,#0f6674)', fontWeight: 900, fontSize: 24, cursor: busy ? 'wait' : 'pointer', opacity: busy || (!input.trim() && attachedFiles.length === 0) ? 0.65 : 1 }}>{busy ? '...' : speaking ? (isVi ? 'Đọc' : 'Play') : (isVi ? 'Gửi' : 'Send')}</button>
+      {speaking && <button type="button" onClick={stop} style={{ gridColumn: '1 / -1', justifySelf: 'start', border: 'none', borderRadius: 999, padding: '6px 10px', background: 'rgba(239,68,68,0.14)', color: '#ef4444', fontWeight: 900, cursor: 'pointer' }}>{isVi ? 'Dừng giọng đọc' : 'Stop voice'}</button>}
+      {attachedFiles.length > 0 && <div style={{ gridColumn: '1 / -1', color: muted, fontSize: 12, fontWeight: 800 }}>{isVi ? `Đã đính kèm ${attachedFiles.length} file` : `${attachedFiles.length} file(s) attached`}</div>}
+    </form>
+  )
+}
 
 export default function GlobalAIChatbot({ activePanelLabel }) {
   const { theme, lang } = useApp()

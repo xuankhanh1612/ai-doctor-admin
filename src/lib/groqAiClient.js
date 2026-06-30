@@ -132,7 +132,7 @@ function splitChunks(text, maxLen = 180) {
   return chunks.filter(Boolean)
 }
 
-export function useTTS(lang = 'vi') {
+export function useTTS(lang = 'vi', externalAudioRef = null) {
   const [speaking, setSpeaking] = useState(false)
   const stopRef = useRef(false)
   const audioRef = useRef(null)
@@ -140,9 +140,16 @@ export function useTTS(lang = 'vi') {
   const stop = useCallback(() => {
     stopRef.current = true
     setSpeaking(false)
-    if (audioRef.current) { audioRef.current.pause(); audioRef.current = null }
+    if (audioRef.current) {
+      audioRef.current.pause()
+      if (externalAudioRef?.current && audioRef.current === externalAudioRef.current) {
+        audioRef.current.removeAttribute('src')
+        audioRef.current.load?.()
+      }
+      audioRef.current = null
+    }
     if (window.speechSynthesis) window.speechSynthesis.cancel()
-  }, [])
+  }, [externalAudioRef])
 
   const speak = useCallback(async (text) => {
     if (speaking) { stop(); return }
@@ -157,7 +164,8 @@ export function useTTS(lang = 'vi') {
       for (const chunk of chunks) {
         if (stopRef.current) break
         const url = `/api/google-tts?tl=vi&q=${encodeURIComponent(chunk)}`
-        const audio = new Audio(url)
+        const audio = externalAudioRef?.current || new Audio()
+        audio.src = url
         audioRef.current = audio
         await new Promise((res) => {
           audio.onended = res
@@ -183,7 +191,7 @@ export function useTTS(lang = 'vi') {
       utter.onerror = () => setSpeaking(false)
       window.speechSynthesis.speak(utter)
     }
-  }, [speaking, lang, stop])
+  }, [speaking, lang, stop, externalAudioRef])
 
   useEffect(() => () => stop(), [stop])
 
