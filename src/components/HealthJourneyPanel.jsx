@@ -911,8 +911,8 @@ function HealthJourneyTabs({ activeTab, setActiveTab, lang }) {
 }
 
 
-function EmotionalCompanionView({ onOpenStressRelief, onOpenInBody }) {
-  return <GPEmotionalCompanionView onOpenStressRelief={onOpenStressRelief} onOpenInBody={onOpenInBody} />
+function EmotionalCompanionView({ onOpenStressRelief, onOpenInBody, chatComposer }) {
+  return <GPEmotionalCompanionView onOpenStressRelief={onOpenStressRelief} onOpenInBody={onOpenInBody} chatComposer={chatComposer} />
 }
 
 function CompanionTile({ icon, color, title, subtitle }) {
@@ -1224,7 +1224,13 @@ export default function HealthJourneyPanel({ onNext, onPrev, prevLabel, nextLabe
           </p>
         </div>
       </div>
-      {activeTab === 'emotion' && <EmotionalCompanionView onOpenStressRelief={onOpenStressRelief} onOpenInBody={onOpenInBody} />}
+      {activeTab === 'emotion' && (
+        <EmotionalCompanionView
+          onOpenStressRelief={onOpenStressRelief}
+          onOpenInBody={onOpenInBody}
+          chatComposer={<CompactGlobalAIChatBar activePanelLabel={lang === 'vi' ? 'Buổi Sáng' : 'Morning'} />}
+        />
+      )}
       {activeTab === 'meal' && <MealScanView onViewMedicalRecord={onViewMedicalRecord} />}
       {activeTab === 'medication' && <MedicationAssistantView onViewMedicalRecord={onViewMedicalRecord} />}
       {activeTab === 'faceDetector' && <MediaPipeDetectorView type="face" onViewMedicalRecord={onViewMedicalRecord} />}
