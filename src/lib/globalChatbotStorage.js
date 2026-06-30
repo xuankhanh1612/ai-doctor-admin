@@ -55,7 +55,7 @@ async function idbDelete(ownerKey) {
 
 // uuid là field nhận diện thống nhất cho mọi loại user (guest hay đã đăng nhập).
 // Khách chưa có session vẫn dùng được — nhóm chung vào 'guest' thay vì mất dữ liệu.
-function ownerKeyOf(uuid) {
+export function ownerKeyOf(uuid) {
   return uuid ? String(uuid).toLowerCase() : 'guest'
 }
 
