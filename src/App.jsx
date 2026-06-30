@@ -35,11 +35,12 @@ import StressReliefPanel from './components/StressReliefPanel.jsx'
 import PrintCenter from './print/PrintCenter.jsx'
 import UserProfilePanel from './components/UserProfilePanel.jsx'
 import OrganConnectionPanel from './components/OrganConnectionPanel.jsx'
+import ChatHistoryPanel from './components/ChatHistoryPanel.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 import { addNotification } from './lib/notifications.js'
 
 // Swarm panel replaces simulation; keep consensus as classic fallback
-const PANELS = ['healthJourneyGame', 'waterDrinkChatBot', 'wikiMedVision', 'fullDocSummarization', 'documentOCR', 'organConnection', 'healthJourney', 'lunchJourney', 'dinnerJourney', 'upload', 'imaging', 'checkin', 'family', 'record', 'familyRelationship', 'matrix3dBody', 'omnidirectional3dBody', 'twin', 'telemedicine', 'statAnalysis', 'swarm', 'consensus', 'protein3d', 'aiHealthcareVision', 'aiHealthcareVisionControl', 'stressRelief', 'aiInbodyPortal', 'printPortal']
+const PANELS = ['healthJourneyGame', 'waterDrinkChatBot', 'wikiMedVision', 'fullDocSummarization', 'documentOCR', 'organConnection', 'healthJourney', 'lunchJourney', 'dinnerJourney', 'upload', 'imaging', 'checkin', 'family', 'record', 'familyRelationship', 'matrix3dBody', 'omnidirectional3dBody', 'twin', 'telemedicine', 'statAnalysis', 'swarm', 'consensus', 'protein3d', 'aiHealthcareVision', 'aiHealthcareVisionControl', 'stressRelief', 'aiInbodyPortal', 'printPortal', 'chatHistory']
 
 export default function App() {
   const { user, loading } = useAuth()
@@ -92,6 +93,7 @@ export default function App() {
     documentOCR: 'Document OCR',
     organConnection: 'Ăn gì hôm nay',
     printPortal: 'Print Portal',
+    chatHistory: 'Lịch sử Chat với AI',
     profile: t('profile'),
   }
 
@@ -257,6 +259,7 @@ export default function App() {
             {active === 'documentOCR' && <DocumentOCRPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'organConnection' && <OrganConnectionPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'printPortal' && <PrintCenter onPrev={goPrev} prevLabel={prevLabel} />}
+            {active === 'chatHistory' && <ChatHistoryPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'profile'   && <UserProfilePanel />}
             {active === 'admin'     && user?.isAdmin && <AdminPanel />}
             {active === 'admin'     && !user?.isAdmin && (
