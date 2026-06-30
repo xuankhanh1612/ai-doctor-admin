@@ -16,6 +16,7 @@ import {
 import { notifyUpload } from '../../hooks/useMedicalData.js'
 import { buildImageConvertedInBodyRecord, parseInBodyCsv, recordsToInBodyCsv, summarizeInBodyRecords } from '../../lib/inbodyCsv.js'
 import { convertInBodyImageToCsv, fileToBase64Promise } from '../../lib/inbodyImageConvert.js'
+import { useTTS } from '../../lib/groqAiClient.js'
 import { isHeicFile, ensureBrowserSafeImage } from '../../lib/heicConvert.js'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -493,8 +494,20 @@ export default function MedicalUploader({ patientId, onSelectImage }) {
   const [summaryText, setSummaryText]     = useState('')
   const [summaryError, setSummaryError]   = useState('')
   const [summaryCopied, setSummaryCopied] = useState(false)
-  const [speakingOcr, setSpeakingOcr]     = useState(false)
-  const [speakingSummary, setSpeakingSummary] = useState(false)
+  // Đọc to — dùng CHUNG hook useTTS với trang "Lịch sử Chat với AI"
+  // (tiếng Việt → Google Translate TTS qua proxy, tiếng Anh → Web Speech API).
+  // Web Speech API thuần không đọc đúng tiếng Việt trên hầu hết máy vì thiếu
+  // giọng vi-VN cài sẵn, nên dùng đúng cơ chế đã chạy ổn ở trang Lịch sử Chat.
+  const tts = useTTS(lang)
+  const [speakingWhich, setSpeakingWhich] = useState(null) // 'ocr' | 'summary' | null
+  useEffect(() => { if (!tts.speaking) setSpeakingWhich(null) }, [tts.speaking])
+  const speakingOcr = tts.speaking && speakingWhich === 'ocr'
+  const speakingSummary = tts.speaking && speakingWhich === 'summary'
+  function speakOrStop(text, which) {
+    if (tts.speaking && speakingWhich === which) { tts.stop(); setSpeakingWhich(null); return }
+    setSpeakingWhich(which)
+    tts.speak(text)
+  }
   const [aiTab, setAiTab]                 = useState('ocr') // 'ocr' | 'summary'
   const [cameraOpen, setCameraOpen]       = useState(false)
   const [cameraStarting, setCameraStarting] = useState(false)
@@ -542,9 +555,8 @@ export default function MedicalUploader({ patientId, onSelectImage }) {
 
   // Dừng đọc to khi chuyển sang hồ sơ khác (tránh đọc nhầm nội dung cũ)
   useEffect(() => {
-    if ('speechSynthesis' in window) window.speechSynthesis.cancel()
-    setSpeakingOcr(false)
-    setSpeakingSummary(false)
+    tts.stop()
+    setSpeakingWhich(null)
   }, [selected?.id])
 
   // Convert PDF dataUrl to blob URL for iframe rendering
@@ -1018,64 +1030,6 @@ Trả lời bằng tiếng Việt, ngắn gọn và rõ ràng. Nhắc nhở đâ
       setAnalysisStream(`❌ ${uploadText(lang, 'errorPrefix')}: ${err instanceof Error ? err.message : uploadText(lang, 'unknownError')}`)
     } finally {
       setAnalyzing(false)
-    }
-  }
-
-  // ─── Đọc to (Text-to-Speech) — dùng Web Speech API có sẵn trong browser ──
-  // Chỉ set utter.lang KHÔNG đủ: nếu máy không có giọng vi-VN, trình duyệt sẽ
-  // tự rơi về giọng mặc định (thường là tiếng Anh) dù lang đã đặt đúng. Phải
-  // tự tìm voice phù hợp trong danh sách getVoices() rồi gán explicit vào utter.voice.
-  function pickVoice(targetLang) {
-    const voices = window.speechSynthesis.getVoices() || []
-    if (!voices.length) return null
-    // Ưu tiên khớp đúng (vi-VN / en-US), sau đó khớp tiền tố ngôn ngữ (vi / en)
-    return (
-      voices.find(v => v.lang?.toLowerCase() === targetLang.toLowerCase()) ||
-      voices.find(v => v.lang?.toLowerCase().startsWith(targetLang.slice(0, 2).toLowerCase())) ||
-      null
-    )
-  }
-
-  function speakWithVoice(text, targetLang, onEnd) {
-    const utter = new SpeechSynthesisUtterance(text)
-    utter.lang = targetLang
-    const voice = pickVoice(targetLang)
-    if (voice) utter.voice = voice
-    utter.onend = onEnd
-    utter.onerror = onEnd
-    window.speechSynthesis.speak(utter)
-  }
-
-  function speakOrStop(text, which) {
-    if (!('speechSynthesis' in window) || !text) return
-    const isSpeaking = which === 'ocr' ? speakingOcr : speakingSummary
-    if (isSpeaking) {
-      window.speechSynthesis.cancel()
-      setSpeakingOcr(false)
-      setSpeakingSummary(false)
-      return
-    }
-    window.speechSynthesis.cancel()
-    const targetLang = lang === 'vi' ? 'vi-VN' : 'en-US'
-    const onEnd = () => { setSpeakingOcr(false); setSpeakingSummary(false) }
-    if (which === 'ocr') { setSpeakingOcr(true); setSpeakingSummary(false) }
-    else { setSpeakingSummary(true); setSpeakingOcr(false) }
-
-    // Danh sách voices có thể chưa nạp xong lúc trang vừa load — nếu rỗng,
-    // đợi event 'voiceschanged' (Chrome) rồi mới đọc, để chọn đúng giọng vi-VN.
-    if (window.speechSynthesis.getVoices().length === 0) {
-      const handler = () => {
-        window.speechSynthesis.removeEventListener('voiceschanged', handler)
-        speakWithVoice(text, targetLang, onEnd)
-      }
-      window.speechSynthesis.addEventListener('voiceschanged', handler)
-      // Fallback: nếu sự kiện không bắn (một số browser/mobile), vẫn thử đọc sau 300ms
-      window.setTimeout(() => {
-        window.speechSynthesis.removeEventListener('voiceschanged', handler)
-        speakWithVoice(text, targetLang, onEnd)
-      }, 300)
-    } else {
-      speakWithVoice(text, targetLang, onEnd)
     }
   }
 
