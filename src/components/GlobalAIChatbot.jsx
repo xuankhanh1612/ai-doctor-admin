@@ -97,7 +97,7 @@ export default function GlobalAIChatbot({ activePanelLabel }) {
   }, [messages, historyLoaded, userKey])
 
   const pushMessage = (message) => {
-    setMessages(prev => [...prev, { id: `${Date.now()}-${Math.random()}`, ...message }])
+    setMessages(prev => [...prev, { id: `${Date.now()}-${Math.random()}`, createdAt: new Date().toISOString(), ...message }])
     window.setTimeout(() => {
       scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
     }, 30)
