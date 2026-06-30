@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useMemo } from 'react'
 import { useAuth } from '../../context/AuthContext.jsx'
+import { useApp } from '../../context/AppContext.jsx'
 import { completeHealthJourneyActivity, HEALTH_JOURNEY_EVENT, getTaskSnapshot, XP_TABLE, ACTIVITY_TASK_MAP, checkAndUnlockChapters } from './services/healthJourneyStorage.js'
 import { dataUrlToFile, drawAIWaterBottleOverlay, saveWaterProofImage, syncBeMeoWater } from './services/waterProofUpload.js'
 import dailyTasksData from './data/daily_tasks.json'
@@ -11,6 +12,31 @@ import HelpOverlay from './help/HelpOverlay.jsx'
 import { callGroqChat, useVoiceInput } from '../../lib/groqAiClient.js'
 
 const MEDIAPIPE_OBJECT_DETECTION_WEBCAM_URL = '/src/mediapipe-khanh/index.html?mode=webcam#/vision/object_detector'
+
+const stripCoachMarkdown = (text = '') => String(text)
+  .replace(/```[\s\S]*?```/g, ' ')
+  .replace(/`([^`]+)`/g, '$1')
+  .replace(/[*_#>\[\]()]/g, ' ')
+  .replace(/https?:\/\/\S+/g, ' ')
+  .replace(/\s+/g, ' ')
+  .trim()
+
+const splitTtsChunks = (text, maxLen = 180) => {
+  const sentences = text.match(/[^.!?。！？]+[.!?。！？]*/g) || [text]
+  const chunks = []
+  let current = ''
+  for (const sentence of sentences) {
+    if ((current + sentence).length > maxLen && current) {
+      chunks.push(current.trim())
+      current = sentence
+    } else {
+      current += sentence
+    }
+  }
+  if (current.trim()) chunks.push(current.trim())
+  return chunks.filter(Boolean)
+}
+
 
 // ─── Helpers to build dynamic content maps from JSON data ───
 const UNIT_LABEL_MAP = {
@@ -494,10 +520,14 @@ const styles = String.raw`
 
 export default function HealthJourneyGameStandalone({ onViewMedicalRecord }) {
   const containerRef = useRef(null)
+  const { lang } = useApp()
   const { user, loading: authLoading } = useAuth()
   const videoRef = useRef(null)
   const canvasRef = useRef(null)
   const streamRef = useRef(null)
+  const coachAudioRef = useRef(null)
+  const coachTtsStopRef = useRef(false)
+  const [coachSpeakingIndex, setCoachSpeakingIndex] = useState(null)
   const [snapshot, setSnapshot] = useState(() => getTaskSnapshot(user))
 
   // BUG FIX: `user` được AuthContext nạp BẤT ĐỒNG BỘ (đọc anon session từ
@@ -551,6 +581,8 @@ export default function HealthJourneyGameStandalone({ onViewMedicalRecord }) {
   useEffect(() => () => {
     streamRef.current?.getTracks?.().forEach((track) => track.stop())
   }, [])
+
+  useEffect(() => () => stopCoachTts(), [])
 
 
   useEffect(() => {
@@ -681,6 +713,66 @@ export default function HealthJourneyGameStandalone({ onViewMedicalRecord }) {
     }
   }
 
+  const stopCoachTts = () => {
+    coachTtsStopRef.current = true
+    setCoachSpeakingIndex(null)
+    if (coachAudioRef.current) {
+      coachAudioRef.current.pause()
+      coachAudioRef.current.removeAttribute('src')
+      coachAudioRef.current.load?.()
+    }
+    if (window.speechSynthesis) window.speechSynthesis.cancel()
+  }
+
+  const playCoachTts = async (text, messageIndex) => {
+    if (coachSpeakingIndex === messageIndex) {
+      stopCoachTts()
+      return
+    }
+
+    const clean = stripCoachMarkdown(text)
+    if (!clean) return
+
+    stopCoachTts()
+    coachTtsStopRef.current = false
+    setCoachSpeakingIndex(messageIndex)
+
+    if (lang === 'vi') {
+      const audio = coachAudioRef.current
+      if (!audio) {
+        setCoachSpeakingIndex(null)
+        return
+      }
+      const chunks = splitTtsChunks(clean, 180)
+      for (const chunk of chunks) {
+        if (coachTtsStopRef.current) break
+        audio.src = `/api/google-tts?tl=vi&q=${encodeURIComponent(chunk)}`
+        await new Promise((resolve) => {
+          audio.onended = resolve
+          audio.onerror = resolve
+          audio.play().catch(resolve)
+        })
+      }
+      if (!coachTtsStopRef.current) setCoachSpeakingIndex(null)
+      return
+    }
+
+    if (!window.speechSynthesis) {
+      setCoachSpeakingIndex(null)
+      return
+    }
+    const utterance = new SpeechSynthesisUtterance(clean)
+    utterance.lang = 'en-US'
+    utterance.rate = 0.95
+    const voices = window.speechSynthesis.getVoices()
+    const preferredVoice = voices.find((voice) => voice.lang.startsWith('en') && voice.localService)
+      || voices.find((voice) => voice.lang.startsWith('en'))
+    if (preferredVoice) utterance.voice = preferredVoice
+    utterance.onend = () => setCoachSpeakingIndex(null)
+    utterance.onerror = () => setCoachSpeakingIndex(null)
+    window.speechSynthesis.speak(utterance)
+  }
+
   useEffect(() => {
     if (activeScreen === 'screen-ai-coach' && coachScrollRef.current) {
       coachScrollRef.current.scrollTop = coachScrollRef.current.scrollHeight
@@ -706,6 +798,11 @@ export default function HealthJourneyGameStandalone({ onViewMedicalRecord }) {
     modal.scrollTop = 0
   }
 
+  const openAiSuggestModal = (event) => {
+    event?.preventDefault?.()
+    openModal('modal-ai-suggest')
+  }
+
   const openTaskDetail = (taskKey) => {
     setSelectedTaskKey(taskKey)
     setCameraError('')
@@ -715,6 +812,11 @@ export default function HealthJourneyGameStandalone({ onViewMedicalRecord }) {
     // TaskDetailPopup.jsx) cùng nhận 1 event capture → completeHealthJourneyActivity
     // bị gọi 2 lần cho 1 lần chụp ảnh → đếm sai / không đồng bộ số lần uống nước.
     setTaskPopupKey(taskKey)          // new React popup — nguồn sự thật duy nhất
+  }
+
+  const openTaskDetailLink = (taskKey, event) => {
+    event?.preventDefault?.()
+    openTaskDetail(taskKey)
   }
 
   const openChapterMissionDetail = (chapterKey) => {
@@ -1482,68 +1584,97 @@ export default function HealthJourneyGameStandalone({ onViewMedicalRecord }) {
           </div>
           {/* Suggestions */}
           <div className="section-head">
-            <span className="section-head-title">
+            <a
+              href="#modal-ai-suggest"
+              className="section-head-title"
+              onClick={openAiSuggestModal}
+              style={{ color: 'var(--text-dim)', textDecoration: 'none', cursor: 'pointer' }}
+              title="Mở chi tiết Gợi ý hôm nay"
+            >
               Gợi ý hôm nay
-            </span>
-            <span onClick={(event) => { openModal('modal-ai-suggest'); }} style={{ fontSize: "11px", color: "var(--blue-glow)", cursor: "pointer" }}>
+            </a>
+            <a
+              href="#modal-ai-suggest"
+              onClick={openAiSuggestModal}
+              style={{ fontSize: "11px", color: "var(--blue-glow)", cursor: "pointer", textDecoration: "none" }}
+              title="Mở chi tiết Gợi ý hôm nay"
+            >
               Chi tiết ›
-            </span>
+            </a>
           </div>
           <div className="card">
-            <div className="task-item">
+            <a
+              href="#task-water"
+              className="task-item"
+              onClick={(event) => openTaskDetailLink('water', event)}
+              title="Mở nhiệm vụ Uống nước"
+              style={{ color: 'inherit', textDecoration: 'none', cursor: 'pointer' }}
+            >
               <div className="task-icon icon-bg-blue">
                 💧
               </div>
               <div className="task-info">
                 <div className="task-name">
-                  Uống đủ nước
+                  Uống đủ nước {isTaskDone('water') && <span aria-label="Đã hoàn thành" title="Đã hoàn thành">✅</span>}
                 </div>
                 <div className="task-desc">
                   Tăng năng lượng và tập trung
                 </div>
               </div>
               <div className="badge badge-green">
-                +100 XP
+                {isTaskDone('water') ? '✓ Done' : '+100 XP'}
               </div>
-            </div>
-            <div className="task-item">
+            </a>
+            <a
+              href="#task-read-book"
+              className="task-item"
+              onClick={(event) => openTaskDetailLink('read_book', event)}
+              title="Mở nhiệm vụ đọc sách"
+              style={{ color: 'inherit', textDecoration: 'none', cursor: 'pointer' }}
+            >
               <div className="task-icon icon-bg-purple">
-                😴
+                📚
               </div>
               <div className="task-info">
                 <div className="task-name">
-                  Ngủ 7-8 tiếng
+                  Đọc sách 20 phút / 20 trang {isTaskDone('read_book') && <span aria-label="Đã hoàn thành" title="Đã hoàn thành">✅</span>}
                 </div>
                 <div className="task-desc">
-                  Cải thiện phục hồi
+                  Tăng kiến thức, thư giãn tâm trí
                 </div>
               </div>
               <div className="badge badge-green">
-                +120 XP
+                {isTaskDone('read_book') ? '✓ Done' : '+30 XP'}
               </div>
-            </div>
-            <div className="task-item">
+            </a>
+            <a
+              href="#task-breathing"
+              className="task-item"
+              onClick={(event) => openTaskDetailLink('breathing', event)}
+              title="Mở nhiệm vụ thở sâu / thiền"
+              style={{ color: 'inherit', textDecoration: 'none', cursor: 'pointer' }}
+            >
               <div className="task-icon icon-bg-cyan">
                 🧘
               </div>
               <div className="task-info">
                 <div className="task-name">
-                  Thiền 10 phút
+                  Thiền 10 phút {isTaskDone('breathing') && <span aria-label="Đã hoàn thành" title="Đã hoàn thành">✅</span>}
                 </div>
                 <div className="task-desc">
                   Giảm stress, tăng clarity
                 </div>
               </div>
               <div className="badge badge-green">
-                +80 XP
+                {isTaskDone('breathing') ? '✓ Done' : '+80 XP'}
               </div>
-            </div>
+            </a>
           </div>
           <div style={{ padding: "0 12px 8px", display: "flex", gap: "8px" }}>
-            <button className="btn-primary" onClick={(event) => { openModal('modal-ai-suggest'); }}>
+            <button className="btn-primary" onClick={openAiSuggestModal}>
               GỢI Ý AI
             </button>
-            <button className="btn-outline" onClick={(event) => { openModal('modal-ai-suggest'); }}>
+            <button className="btn-outline" onClick={openAiSuggestModal}>
               PHÂN TÍCH
             </button>
           </div>
@@ -1570,6 +1701,16 @@ export default function HealthJourneyGameStandalone({ onViewMedicalRecord }) {
                   <div style={{ fontSize: '12px', lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>
                     {msg.content}
                   </div>
+                  {msg.role === 'assistant' && (
+                    <button
+                      type="button"
+                      onClick={() => playCoachTts(msg.content, idx)}
+                      title={lang === 'vi' ? 'Phát giọng Việt qua Google Translate TTS' : 'Play en-US voice with Web Speech API'}
+                      style={{ marginTop: '8px', border: '1px solid var(--border)', borderRadius: '999px', background: 'rgba(255,255,255,.06)', color: 'var(--text)', fontSize: '11px', padding: '4px 8px', cursor: 'pointer' }}
+                    >
+                      {coachSpeakingIndex === idx ? '⏹ Dừng' : '🔊 Nghe'}
+                    </button>
+                  )}
                 </div>
               ))}
               {coachLoading && (
@@ -1583,6 +1724,7 @@ export default function HealthJourneyGameStandalone({ onViewMedicalRecord }) {
                 </div>
               )}
             </div>
+            <audio ref={coachAudioRef} preload="none" style={{ display: 'none' }} />
             <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
               <input
                 type="text"
