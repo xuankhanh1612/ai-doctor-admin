@@ -109,6 +109,9 @@ export default function GlobalAIChatbot({ activePanelLabel }) {
       const dataUrl = String(reader.result || '')
       const base64 = dataUrl.split(',')[1] || ''
       setAttachedImage({ dataUrl, base64, mimeType: file.type || 'image/jpeg', name: file.name })
+      window.setTimeout(() => {
+        scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
+      }, 30)
     }
     reader.readAsDataURL(file)
   }
@@ -271,22 +274,21 @@ export default function GlobalAIChatbot({ activePanelLabel }) {
             </span>
           </div>
         )}
+        {attachedImage && (
+          <div style={{ alignSelf: 'flex-end', display: 'flex', alignItems: 'center', gap: 8, maxWidth: '84%' }}>
+            <img src={attachedImage.dataUrl} alt="preview" style={{ width: 48, height: 48, borderRadius: 10, objectFit: 'cover', border: styles.input.border, flexShrink: 0 }} />
+            <span style={{ fontSize: 11, color: styles.disclaimer.color, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {attachedImage.name}
+            </span>
+            <button
+              type="button"
+              onClick={() => setAttachedImage(null)}
+              title={isVi ? 'Bỏ ảnh' : 'Remove image'}
+              style={{ border: 'none', background: 'rgba(239,68,68,0.12)', color: '#ef4444', borderRadius: 8, width: 24, height: 24, cursor: 'pointer', fontSize: 14, lineHeight: 1, flexShrink: 0 }}
+            >×</button>
+          </div>
+        )}
       </div>
-
-      {attachedImage && (
-        <div style={{ flex: '0 0 auto', display: 'flex', alignItems: 'center', gap: 8, padding: '0 14px 10px' }}>
-          <img src={attachedImage.dataUrl} alt="preview" style={{ width: 48, height: 48, borderRadius: 10, objectFit: 'cover', border: styles.input.border }} />
-          <span style={{ fontSize: 11, color: styles.disclaimer.color, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {attachedImage.name}
-          </span>
-          <button
-            type="button"
-            onClick={() => setAttachedImage(null)}
-            title={isVi ? 'Bỏ ảnh' : 'Remove image'}
-            style={{ border: 'none', background: 'rgba(239,68,68,0.12)', color: '#ef4444', borderRadius: 8, width: 24, height: 24, cursor: 'pointer', fontSize: 14, lineHeight: 1 }}
-          >×</button>
-        </div>
-      )}
 
       <div style={styles.quickRow}>
         {quickPrompts.map(prompt => (
