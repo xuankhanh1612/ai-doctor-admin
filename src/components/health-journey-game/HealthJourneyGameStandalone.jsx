@@ -798,6 +798,11 @@ export default function HealthJourneyGameStandalone({ onViewMedicalRecord }) {
     modal.scrollTop = 0
   }
 
+  const openAiSuggestModal = (event) => {
+    event?.preventDefault?.()
+    openModal('modal-ai-suggest')
+  }
+
   const openTaskDetail = (taskKey) => {
     setSelectedTaskKey(taskKey)
     setCameraError('')
@@ -1574,12 +1579,23 @@ export default function HealthJourneyGameStandalone({ onViewMedicalRecord }) {
           </div>
           {/* Suggestions */}
           <div className="section-head">
-            <span className="section-head-title">
+            <a
+              href="#modal-ai-suggest"
+              className="section-head-title"
+              onClick={openAiSuggestModal}
+              style={{ color: 'var(--text-dim)', textDecoration: 'none', cursor: 'pointer' }}
+              title="Mở chi tiết Gợi ý hôm nay"
+            >
               Gợi ý hôm nay
-            </span>
-            <span onClick={(event) => { openModal('modal-ai-suggest'); }} style={{ fontSize: "11px", color: "var(--blue-glow)", cursor: "pointer" }}>
+            </a>
+            <a
+              href="#modal-ai-suggest"
+              onClick={openAiSuggestModal}
+              style={{ fontSize: "11px", color: "var(--blue-glow)", cursor: "pointer", textDecoration: "none" }}
+              title="Mở chi tiết Gợi ý hôm nay"
+            >
               Chi tiết ›
-            </span>
+            </a>
           </div>
           <div className="card">
             <div className="task-item">
@@ -1632,10 +1648,10 @@ export default function HealthJourneyGameStandalone({ onViewMedicalRecord }) {
             </div>
           </div>
           <div style={{ padding: "0 12px 8px", display: "flex", gap: "8px" }}>
-            <button className="btn-primary" onClick={(event) => { openModal('modal-ai-suggest'); }}>
+            <button className="btn-primary" onClick={openAiSuggestModal}>
               GỢI Ý AI
             </button>
-            <button className="btn-outline" onClick={(event) => { openModal('modal-ai-suggest'); }}>
+            <button className="btn-outline" onClick={openAiSuggestModal}>
               PHÂN TÍCH
             </button>
           </div>
