@@ -1022,6 +1022,30 @@ Trả lời bằng tiếng Việt, ngắn gọn và rõ ràng. Nhắc nhở đâ
   }
 
   // ─── Đọc to (Text-to-Speech) — dùng Web Speech API có sẵn trong browser ──
+  // Chỉ set utter.lang KHÔNG đủ: nếu máy không có giọng vi-VN, trình duyệt sẽ
+  // tự rơi về giọng mặc định (thường là tiếng Anh) dù lang đã đặt đúng. Phải
+  // tự tìm voice phù hợp trong danh sách getVoices() rồi gán explicit vào utter.voice.
+  function pickVoice(targetLang) {
+    const voices = window.speechSynthesis.getVoices() || []
+    if (!voices.length) return null
+    // Ưu tiên khớp đúng (vi-VN / en-US), sau đó khớp tiền tố ngôn ngữ (vi / en)
+    return (
+      voices.find(v => v.lang?.toLowerCase() === targetLang.toLowerCase()) ||
+      voices.find(v => v.lang?.toLowerCase().startsWith(targetLang.slice(0, 2).toLowerCase())) ||
+      null
+    )
+  }
+
+  function speakWithVoice(text, targetLang, onEnd) {
+    const utter = new SpeechSynthesisUtterance(text)
+    utter.lang = targetLang
+    const voice = pickVoice(targetLang)
+    if (voice) utter.voice = voice
+    utter.onend = onEnd
+    utter.onerror = onEnd
+    window.speechSynthesis.speak(utter)
+  }
+
   function speakOrStop(text, which) {
     if (!('speechSynthesis' in window) || !text) return
     const isSpeaking = which === 'ocr' ? speakingOcr : speakingSummary
@@ -1032,13 +1056,27 @@ Trả lời bằng tiếng Việt, ngắn gọn và rõ ràng. Nhắc nhở đâ
       return
     }
     window.speechSynthesis.cancel()
-    const utter = new SpeechSynthesisUtterance(text)
-    utter.lang = lang === 'vi' ? 'vi-VN' : 'en-US'
-    utter.onend = () => { setSpeakingOcr(false); setSpeakingSummary(false) }
-    utter.onerror = () => { setSpeakingOcr(false); setSpeakingSummary(false) }
+    const targetLang = lang === 'vi' ? 'vi-VN' : 'en-US'
+    const onEnd = () => { setSpeakingOcr(false); setSpeakingSummary(false) }
     if (which === 'ocr') { setSpeakingOcr(true); setSpeakingSummary(false) }
     else { setSpeakingSummary(true); setSpeakingOcr(false) }
-    window.speechSynthesis.speak(utter)
+
+    // Danh sách voices có thể chưa nạp xong lúc trang vừa load — nếu rỗng,
+    // đợi event 'voiceschanged' (Chrome) rồi mới đọc, để chọn đúng giọng vi-VN.
+    if (window.speechSynthesis.getVoices().length === 0) {
+      const handler = () => {
+        window.speechSynthesis.removeEventListener('voiceschanged', handler)
+        speakWithVoice(text, targetLang, onEnd)
+      }
+      window.speechSynthesis.addEventListener('voiceschanged', handler)
+      // Fallback: nếu sự kiện không bắn (một số browser/mobile), vẫn thử đọc sau 300ms
+      window.setTimeout(() => {
+        window.speechSynthesis.removeEventListener('voiceschanged', handler)
+        speakWithVoice(text, targetLang, onEnd)
+      }, 300)
+    } else {
+      speakWithVoice(text, targetLang, onEnd)
+    }
   }
 
   // ─── OCR — Trích xuất toàn bộ (CSV: đọc trực tiếp · ảnh/PDF/video: Groq Vision) ──
