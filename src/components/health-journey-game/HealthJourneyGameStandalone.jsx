@@ -1625,22 +1625,28 @@ export default function HealthJourneyGameStandalone({ onViewMedicalRecord }) {
                 +100 XP
               </div>
             </a>
-            <div className="task-item">
+            <a
+              href="#task-read-book"
+              className="task-item"
+              onClick={(event) => openTaskDetailLink('read_book', event)}
+              title="Mở nhiệm vụ đọc sách"
+              style={{ color: 'inherit', textDecoration: 'none', cursor: 'pointer' }}
+            >
               <div className="task-icon icon-bg-purple">
-                😴
+                📚
               </div>
               <div className="task-info">
                 <div className="task-name">
-                  Ngủ 7-8 tiếng
+                  Đọc sách 20 phút / 20 trang
                 </div>
                 <div className="task-desc">
-                  Cải thiện phục hồi
+                  Tăng kiến thức, thư giãn tâm trí
                 </div>
               </div>
               <div className="badge badge-green">
-                +120 XP
+                +30 XP
               </div>
-            </div>
+            </a>
             <a
               href="#task-breathing"
               className="task-item"
