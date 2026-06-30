@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { useGlobalAIChatbotEngine, quickPrompts, MAX_FILES, getModeLabel } from '../lib/useGlobalAIChatbotEngine.js'
 import { useTTS } from '../lib/groqAiClient.js'
 
+// Single named export used by the journey panels; do not add a second no-op export below.
 export function CompactGlobalAIChatBar({ activePanelLabel }) {
   const { theme, lang } = useApp()
   const { user } = useAuth()
@@ -93,13 +94,6 @@ export function CompactGlobalAIChatBar({ activePanelLabel }) {
       {attachedFiles.length > 0 && <div style={{ gridColumn: '1 / -1', color: muted, fontSize: 12, fontWeight: 800 }}>{isVi ? `Đã đính kèm ${attachedFiles.length} file` : `${attachedFiles.length} file(s) attached`}</div>}
     </form>
   )
-}
-
-// Backward-compatible no-op export: an earlier iteration imported this from
-// journey pages. Keep the symbol available so stale deploy/build caches do not
-// fail, but render nothing because voice now lives in EmotionalCompanionView.
-export function CompactGlobalAIChatBar() {
-  return null
 }
 
 export default function GlobalAIChatbot({ activePanelLabel }) {
