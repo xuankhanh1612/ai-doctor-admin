@@ -33,6 +33,8 @@ export default function ChatHistoryPanel({ onNext, onPrev, prevLabel, nextLabel,
   const [viewYear, setViewYear] = useState(today.getFullYear())
   const [viewMonth, setViewMonth] = useState(today.getMonth()) // 0-based
   const [selectedDate, setSelectedDate] = useState(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState(null) // null = chưa tìm kiếm, [] = không có kết quả
   const scrollRef = useRef(null)
   const docInputRef = useRef(null)
   const fileInputRef = useRef(null)
@@ -96,6 +98,70 @@ export default function ChatHistoryPanel({ onNext, onPrev, prevLabel, nextLabel,
     if (viewMonth === 11) { setViewMonth(0); setViewYear(y => y + 1) } else { setViewMonth(m => m + 1) }
   }
   const goToday = () => { setViewYear(today.getFullYear()); setViewMonth(today.getMonth()); setSelectedDate(todayKey) }
+
+  // ── Tìm kiếm: nếu text box khớp định dạng ngày (dd/mm/yyyy, dd-mm-yyyy hoặc
+  // yyyy-mm-dd) thì nhảy thẳng tới ngày đó trên calendar; ngược lại tìm kiếm
+  // toàn bộ nội dung tin nhắn (mọi ngày) chứa từ khoá, rồi liệt kê kết quả để
+  // bấm vào nhảy tới đúng ngày + cuộn tới tin nhắn đó.
+  const parseSearchAsDateKey = (raw) => {
+    const s = raw.trim()
+    let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/) // yyyy-mm-dd
+    if (m) {
+      const [, y, mo, d] = m
+      return `${y}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+    }
+    m = s.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/) // dd/mm/yyyy hoặc dd-mm-yyyy
+    if (m) {
+      const [, d, mo, y] = m
+      return `${y}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+    }
+    return null
+  }
+
+  const handleSearch = () => {
+    const q = searchQuery.trim()
+    if (!q) { setSearchResults(null); return }
+
+    const dateKeyFound = parseSearchAsDateKey(q)
+    if (dateKeyFound) {
+      const [y, mo] = dateKeyFound.split('-').map(Number)
+      setViewYear(y)
+      setViewMonth(mo - 1)
+      setSelectedDate(dateKeyFound)
+      setSearchResults(null)
+      return
+    }
+
+    // Tìm kiếm toàn bộ theo text box: quét tất cả ngày có chat, lọc tin nhắn
+    // chứa từ khoá (không phân biệt hoa/thường), sắp xếp theo ngày gần nhất trước.
+    const needle = q.toLowerCase()
+    const results = []
+    Object.keys(byDate)
+      .filter(k => k !== 'unknown')
+      .sort((a, b) => b.localeCompare(a))
+      .forEach(k => {
+        (byDate[k] || []).forEach(msg => {
+          const text = String(msg?.content || msg?.text || '').toLowerCase()
+          if (text.includes(needle)) {
+            results.push({ dateKey: k, message: msg })
+          }
+        })
+      })
+    setSearchResults(results)
+  }
+
+  const handleSearchKeyDown = (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); handleSearch() }
+  }
+
+  const jumpToSearchResult = (k) => {
+    const [y, mo] = k.split('-').map(Number)
+    setViewYear(y)
+    setViewMonth(mo - 1)
+    setSelectedDate(k)
+    setSearchResults(null)
+    setSearchQuery('')
+  }
 
   // Ô lưới calendar: padding đầu tháng (thứ 2 đầu tuần) + đúng số ngày thật của tháng.
   const firstDayOfMonth = new Date(viewYear, viewMonth, 1)
@@ -173,6 +239,69 @@ export default function ChatHistoryPanel({ onNext, onPrev, prevLabel, nextLabel,
               {monthMessageCount} {isVi ? 'tin nhắn' : 'msgs'}
             </div>
           </div>
+
+          {/* ===== SEARCH BOX (tìm theo ngày hoặc toàn bộ theo từ khoá) ===== */}
+          <div style={{ display: 'flex', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              onKeyDown={handleSearchKeyDown}
+              placeholder={isVi ? 'Tìm theo ngày (dd/mm/yyyy) hoặc từ khoá...' : 'Search by date (dd/mm/yyyy) or keyword...'}
+              style={{ ...calSelect(isDark, border), flex: '1 1 200px', cursor: 'text' }}
+            />
+            <button type="button" onClick={handleSearch} style={calNavBtn(isDark, border)}>
+              🔍 {isVi ? 'Tìm kiếm' : 'Search'}
+            </button>
+            {searchResults !== null && (
+              <button
+                type="button"
+                onClick={() => { setSearchResults(null); setSearchQuery('') }}
+                style={{ ...calNavBtn(isDark, border), fontSize: 11, padding: '7px 10px' }}
+              >
+                {isVi ? 'Xoá tìm kiếm' : 'Clear'}
+              </button>
+            )}
+          </div>
+
+          {searchResults !== null && (
+            <div style={{
+              marginBottom: 12, maxHeight: 220, overflowY: 'auto',
+              border: `1px solid ${border}`, borderRadius: 14, padding: 8,
+              background: isDark ? 'rgba(15,23,42,0.5)' : 'rgba(240,249,255,0.6)',
+            }}>
+              {searchResults.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: 10, color: muted, fontSize: 12, fontWeight: 800 }}>
+                  {isVi ? 'Không tìm thấy kết quả phù hợp.' : 'No matching results.'}
+                </div>
+              ) : (
+                <>
+                  <div style={{ fontSize: 11, fontWeight: 900, color: muted, marginBottom: 6 }}>
+                    {searchResults.length} {isVi ? 'kết quả' : 'results'}
+                  </div>
+                  {searchResults.map((r, idx) => (
+                    <button
+                      key={`${r.dateKey}-${idx}`}
+                      type="button"
+                      onClick={() => jumpToSearchResult(r.dateKey)}
+                      style={{
+                        display: 'block', width: '100%', textAlign: 'left', marginBottom: 6,
+                        border: `1px solid ${border}`, borderRadius: 10, padding: '7px 9px',
+                        background: isDark ? 'rgba(30,41,59,0.7)' : '#fff', cursor: 'pointer',
+                      }}
+                    >
+                      <span style={{ display: 'block', fontSize: 10.5, fontWeight: 900, color: isDark ? '#7dd3fc' : '#0284c7' }}>
+                        {formatDayHeading(r.dateKey, isVi)}
+                      </span>
+                      <span style={{ display: 'block', fontSize: 12, color: isDarkText, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {String(r.message?.content || r.message?.text || '')}
+                      </span>
+                    </button>
+                  ))}
+                </>
+              )}
+            </div>
+          )}
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
             <button type="button" onClick={goPrevMonth} style={calNavBtn(isDark, border)}>‹</button>
