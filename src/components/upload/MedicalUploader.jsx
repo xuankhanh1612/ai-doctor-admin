@@ -418,6 +418,7 @@ export default function MedicalUploader({ patientId, onSelectImage }) {
   const [ocrRunning, setOcrRunning]       = useState(false)
   const [ocrText, setOcrText]             = useState('')
   const [ocrError, setOcrError]           = useState('')
+  const [ocrCopied, setOcrCopied]         = useState(false)
   const [cameraOpen, setCameraOpen]       = useState(false)
   const [cameraStarting, setCameraStarting] = useState(false)
   const [cameraError, setCameraError]     = useState('')
@@ -493,6 +494,7 @@ export default function MedicalUploader({ patientId, onSelectImage }) {
     setNotes(record.notes || '')
     setOcrText('')
     setOcrError('')
+    setOcrCopied(false)
     setView('detail')
   }
 
@@ -1221,17 +1223,44 @@ Trả lời bằng tiếng Việt, ngắn gọn và rõ ràng. Nhắc nhở đâ
               {/* OCR side panel — only for non-CSV files */}
               {selected.fileType !== 'csv' && (
                 <div style={{ flex: '1 1 320px', minWidth: 280, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  <button
-                    onClick={() => runOCR(selected)}
-                    disabled={ocrRunning}
-                    style={{
-                      padding: '12px 20px', borderRadius: 10, cursor: ocrRunning ? 'not-allowed' : 'pointer',
-                      background: 'linear-gradient(135deg,#ff8a3d,#ff5e8a)', border: 'none',
-                      color: '#fff', fontSize: 14, fontWeight: 700, opacity: ocrRunning ? 0.6 : 1,
-                    }}
-                  >{ocrRunning ? '⏳ Đang OCR…' : '🔍 Bắt đầu OCR'}</button>
+                  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                    <button
+                      onClick={() => runOCR(selected)}
+                      disabled={ocrRunning}
+                      style={{
+                        flex: '1 1 auto', padding: '14px 20px', borderRadius: 14, cursor: ocrRunning ? 'not-allowed' : 'pointer',
+                        background: 'linear-gradient(135deg,#10b981,#059669)', border: 'none',
+                        color: '#fff', fontSize: 14, fontWeight: 800, opacity: ocrRunning ? 0.6 : 1,
+                        boxShadow: '0 0 20px rgba(16,185,129,0.35)',
+                      }}
+                    >{ocrRunning ? '⏳ Đang OCR…' : '🔍 Bắt đầu OCR'}</button>
+                    {ocrText && !ocrRunning && (
+                      <>
+                        <button
+                          onClick={() => { navigator.clipboard?.writeText(ocrText); setOcrCopied(true); setTimeout(() => setOcrCopied(false), 2000) }}
+                          style={{
+                            padding: '14px 18px', borderRadius: 14, border: '1px solid rgba(16,185,129,0.3)',
+                            background: 'transparent', color: '#10b981', fontWeight: 800, fontSize: 13, cursor: 'pointer',
+                          }}
+                        >{ocrCopied ? '✅ Đã sao chép' : '📋 Sao chép'}</button>
+                        <button
+                          onClick={() => {
+                            const blob = new Blob([ocrText], { type: 'text/plain;charset=utf-8' })
+                            const url = URL.createObjectURL(blob)
+                            const a = document.createElement('a')
+                            a.href = url; a.download = `${(selected.filename || 'ocr-result').replace(/\.[^.]+$/, '')}.txt`; a.click()
+                            URL.revokeObjectURL(url)
+                          }}
+                          style={{
+                            padding: '14px 18px', borderRadius: 14, border: '1px solid rgba(16,185,129,0.3)',
+                            background: 'transparent', color: '#10b981', fontWeight: 800, fontSize: 13, cursor: 'pointer',
+                          }}
+                        >💾 {lang === 'vi' ? 'Tải .txt' : 'Download .txt'}</button>
+                      </>
+                    )}
+                  </div>
                   <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', fontFamily: 'monospace' }}>
-                    Trích xuất toàn bộ · Groq Vision llama-4-scout
+                    Trích xuất toàn bộ · Groq Vision · llama-4-scout
                   </div>
 
                   {ocrError && (
@@ -1240,32 +1269,48 @@ Trả lời bằng tiếng Việt, ngắn gọn và rõ ràng. Nhắc nhở đâ
                     </div>
                   )}
 
-                  {(ocrRunning || ocrText) && (
+                  {ocrRunning && !ocrText && (
                     <div style={{
-                      background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
-                      borderRadius: 12, padding: 14, minHeight: 200, maxHeight: 560, overflowY: 'auto',
+                      background: 'rgba(16,185,129,0.04)', border: '1px solid rgba(16,185,129,0.15)',
+                      borderRadius: 16, padding: 18, display: 'flex', alignItems: 'center', gap: 8,
                     }}>
-                      {ocrRunning && !ocrText && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                          <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#ff8a3d', animation: 'pulse-dot 1s infinite' }} />
-                          <span style={{ fontSize: 11, color: '#ff8a3d', fontFamily: 'monospace' }}>Đang trích xuất văn bản…</span>
-                        </div>
-                      )}
-                      <div style={{ fontSize: 12.5, lineHeight: 1.7, color: 'rgba(255,255,255,0.85)', whiteSpace: 'pre-wrap' }}>
-                        {ocrText}
-                      </div>
+                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#10b981', animation: 'pulse-dot 1s infinite' }} />
+                      <span style={{ fontSize: 12, color: '#10b981', fontFamily: 'monospace' }}>
+                        {lang === 'vi' ? 'Đang trích xuất văn bản…' : 'Extracting text…'}
+                      </span>
                     </div>
                   )}
 
-                  {ocrText && !ocrRunning && (
-                    <button
-                      onClick={() => navigator.clipboard?.writeText(ocrText)}
-                      style={{
-                        padding: '8px 16px', borderRadius: 8, cursor: 'pointer',
-                        background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)',
-                        color: 'rgba(255,255,255,0.6)', fontSize: 12, alignSelf: 'flex-start',
-                      }}
-                    >📋 Copy văn bản</button>
+                  {ocrText && (
+                    <div style={{
+                      background: 'rgba(16,185,129,0.05)', border: '1px solid rgba(16,185,129,0.3)',
+                      borderRadius: 16, padding: 20,
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+                        <div style={{
+                          width: 36, height: 36, borderRadius: 10,
+                          background: 'linear-gradient(135deg,#10b981,#059669)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0,
+                        }}>✅</div>
+                        <div>
+                          <div style={{ fontWeight: 900, fontSize: 15, color: '#d1fae5' }}>
+                            {lang === 'vi' ? 'Kết quả OCR' : 'OCR Result'}
+                          </div>
+                          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginTop: 2 }}>
+                            {ocrText.length.toLocaleString()} {lang === 'vi' ? 'ký tự' : 'characters'}
+                          </div>
+                        </div>
+                      </div>
+                      <pre style={{
+                        fontSize: 13, color: '#d1fae5', lineHeight: 1.75,
+                        whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0,
+                        fontFamily: "'Courier New', Courier, monospace",
+                        background: 'rgba(16,185,129,0.04)',
+                        borderRadius: 10, padding: 14, maxHeight: 480, overflowY: 'auto',
+                      }}>
+                        {ocrText}
+                      </pre>
+                    </div>
                   )}
                 </div>
               )}
