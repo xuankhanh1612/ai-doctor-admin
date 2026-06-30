@@ -8,46 +8,70 @@
 // GlobalAIChatbot dùng để tự động lưu mỗi tin nhắn) — không tạo store riêng, nên
 // lịch sử hiển thị ở đây luôn khớp 100% với chatbot góc màn hình.
 
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import NavButtons from './NavButtons.jsx'
 import { useApp } from '../context/AppContext'
 import { useAuth } from '../context/AuthContext.jsx'
-import { getGlobalChatHistory, dateKey, daysInMonth, groupMessagesByDate } from '../lib/globalChatbotStorage.js'
+import { dateKey, daysInMonth, groupMessagesByDate } from '../lib/globalChatbotStorage.js'
+import { useGlobalAIChatbotEngine, quickPrompts, MAX_FILES, getModeLabel } from '../lib/useGlobalAIChatbotEngine.js'
 
 const WEEKDAY_LABELS_VI = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']
 const WEEKDAY_LABELS_EN = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 const MONTH_LABELS_VI = ['Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6', 'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12']
 const MONTH_LABELS_EN = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
-export default function ChatHistoryPanel({ onNext, onPrev, prevLabel, nextLabel }) {
+export default function ChatHistoryPanel({ onNext, onPrev, prevLabel, nextLabel, activePanelLabel }) {
   const { theme, lang } = useApp()
-  const { user, loading: authLoading } = useAuth()
+  const { user } = useAuth()
   const isDark = theme === 'dark'
   const isVi = lang !== 'en'
   const userKey = user?.uuid || null
 
   const today = useMemo(() => new Date(), [])
-  const [loading, setLoading] = useState(true)
+  const todayKey = dateKey(today)
   const [byDate, setByDate] = useState({}) // { 'YYYY-MM-DD': [messages...] }
   const [viewYear, setViewYear] = useState(today.getFullYear())
   const [viewMonth, setViewMonth] = useState(today.getMonth()) // 0-based
   const [selectedDate, setSelectedDate] = useState(null)
+  const scrollRef = useRef(null)
+  const docInputRef = useRef(null)
+  const fileInputRef = useRef(null)
 
-  // Nạp toàn bộ lịch sử chat đã lưu của user khi vào trang (hoặc khi đổi user).
+  // ── Bộ khung chat (gửi tin/đính kèm file/giọng nói) dùng CHUNG 1 hook với
+  // GlobalAIChatbot.jsx (widget góc màn hình) — cùng đọc/ghi vào src/lib/globalChatbotStorage.js,
+  // nên gửi tin ở đây hay ở widget đều đồng bộ song song, không trùng/lệch dữ liệu.
+  // Mỗi khi `messages` đổi (đã nạp xong lịch sử, kể cả tin mới gửi), nhóm lại theo ngày
+  // để vẽ calendar + tự động hiện hội thoại "hôm nay" lên khi vừa gửi tin xong.
+  const {
+    messages,
+    input, setInput,
+    status,
+    mode,
+    busy,
+    attachedFiles,
+    handleFilesSelect, removeAttachedFile,
+    submitQuestion,
+    speaking, speak,
+    recording, transcribing, toggleMic,
+    historyLoaded,
+  } = useGlobalAIChatbotEngine({
+    userKey,
+    activePanelLabel: activePanelLabel || 'Lịch sử Chat với AI',
+    isVi,
+    onMessagesChange: (msgs) => {
+      setByDate(groupMessagesByDate(msgs))
+      setSelectedDate(dateKey())
+    },
+  })
+
+  const loading = !historyLoaded
+
   useEffect(() => {
-    if (authLoading) return
-    let cancelled = false
-    setLoading(true)
-    ;(async () => {
-      const all = await getGlobalChatHistory(userKey)
-      if (cancelled) return
-      setByDate(groupMessagesByDate(all))
-      setLoading(false)
-    })()
-    return () => { cancelled = true }
-  }, [userKey, authLoading])
+    window.setTimeout(() => {
+      scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
+    }, 30)
+  }, [messages, busy, selectedDate])
 
-  const todayKey = dateKey(today)
   const datesWithChat = Object.keys(byDate).filter(k => k !== 'unknown')
   const totalDaysWithChat = datesWithChat.length
   const totalMessages = useMemo(
@@ -242,7 +266,7 @@ export default function ChatHistoryPanel({ onNext, onPrev, prevLabel, nextLabel 
           )}
 
           {selectedMessages.length > 0 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxHeight: 620, overflowY: 'auto', padding: '2px 2px 4px' }}>
+            <div ref={scrollRef} style={{ display: 'flex', flexDirection: 'column', gap: 12, maxHeight: 480, overflowY: 'auto', padding: '2px 2px 4px' }}>
               {selectedMessages.map(message => (
                 <div key={message.id} style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: message.role === 'user' ? 'flex-end' : 'flex-start' }}>
                   <div style={message.role === 'user' ? historyMsg(isDark, true) : historyMsg(isDark, false)}>
@@ -278,10 +302,142 @@ export default function ChatHistoryPanel({ onNext, onPrev, prevLabel, nextLabel 
               ))}
             </div>
           )}
+          {busy && mode === 'thinking' && (
+            <div style={historyMsg(isDark, false)}>
+              <span style={{ display: 'inline-flex', gap: 4 }}>
+                <span style={typingDotStyle} /><span style={typingDotStyle} /><span style={typingDotStyle} />
+              </span>
+            </div>
+          )}
+
+          {/* ===== COMPOSER — cùng bộ nút/tính năng với widget GlobalAIChatbot, đồng bộ song song ===== */}
+          <div style={{ marginTop: 16, paddingTop: 14, borderTop: `1px solid ${border}` }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+              <span style={composerBadge(isDark)}>{getModeLabel(mode, isVi)}</span>
+              <span style={{ fontSize: 11, color: muted }}>{status}</span>
+            </div>
+
+            {attachedFiles.length > 0 && (
+              <div style={{ display: 'flex', gap: 8, marginBottom: 10, overflowX: 'auto', scrollbarWidth: 'thin' }}>
+                {attachedFiles.map(f => (
+                  <div key={f.id} style={{ position: 'relative', flexShrink: 0 }}>
+                    {f.kind === 'image' ? (
+                      <img src={f.dataUrl} alt={f.name} title={f.name} style={{ width: 52, height: 52, borderRadius: 12, objectFit: 'cover', display: 'block' }} />
+                    ) : (
+                      <div title={f.name} style={{ width: 52, height: 52, borderRadius: 12, background: isDark ? 'rgba(15,23,42,0.74)' : '#fff', border: `1px solid ${border}`, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>
+                        {f.kind === 'pdf' ? '📄' : '📃'}
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => removeAttachedFile(f.id)}
+                      title={isVi ? 'Bỏ file' : 'Remove file'}
+                      style={{ position: 'absolute', top: -6, right: -6, border: 'none', background: '#fff', color: '#1a2035', borderRadius: '50%', width: 18, height: 18, cursor: 'pointer', fontSize: 11, lineHeight: '18px', padding: 0, textAlign: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.4)', fontWeight: 800 }}
+                    >×</button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: 6, marginBottom: 10, overflowX: 'auto', scrollbarWidth: 'thin' }}>
+              {quickPrompts.map(prompt => (
+                <button key={prompt} type="button" disabled={busy} onClick={() => submitQuestion(prompt)} style={composerQuickBtn(isDark, border, isDarkText)}>
+                  {prompt}
+                </button>
+              ))}
+            </div>
+
+            <form
+              style={{ display: 'flex', alignItems: 'stretch', gap: 8 }}
+              onSubmit={(event) => { event.preventDefault(); submitQuestion() }}
+            >
+              <input
+                ref={docInputRef}
+                type="file"
+                accept="image/*,application/pdf,text/plain,text/csv,.csv,.txt,.md"
+                multiple
+                onChange={handleFilesSelect}
+                style={{ display: 'none' }}
+              />
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleFilesSelect}
+                style={{ display: 'none' }}
+              />
+              <button
+                type="button"
+                onClick={() => docInputRef.current?.click()}
+                disabled={busy || attachedFiles.length >= MAX_FILES}
+                title={isVi ? `Tải file (PDF, văn bản, CSV, hình ảnh) — tối đa ${MAX_FILES} file` : `Upload files (PDF, text, CSV, images) — up to ${MAX_FILES}`}
+                style={{ ...composerIconBtn(isDark, border), fontWeight: 900, fontSize: 18, opacity: (busy || attachedFiles.length >= MAX_FILES) ? 0.5 : 1, cursor: (busy || attachedFiles.length >= MAX_FILES) ? 'not-allowed' : 'pointer' }}
+              >
+                +
+              </button>
+              <textarea
+                value={input}
+                onChange={event => setInput(event.target.value)}
+                placeholder={isVi ? 'Hỏi chatbot chung hoặc nói bằng giọng nói...' : 'Ask the chatbot or use your voice...'}
+                rows={2}
+                style={composerInput(isDark, border, isDarkText)}
+                onKeyDown={event => {
+                  if (event.key === 'Enter' && !event.shiftKey) {
+                    event.preventDefault()
+                    submitQuestion()
+                  }
+                }}
+              />
+              <button
+                type="button"
+                onClick={toggleMic}
+                disabled={busy && !recording}
+                title={recording ? (isVi ? 'Dừng ghi âm' : 'Stop recording') : (isVi ? 'Nói để hỏi' : 'Speak to ask')}
+                style={{
+                  ...composerIconBtn(isDark, border),
+                  ...(recording ? { background: 'linear-gradient(135deg,#ef4444,#dc2626)', color: '#fff', border: '1px solid rgba(239,68,68,0.6)' } : {}),
+                  opacity: transcribing ? 0.7 : 1,
+                  cursor: transcribing ? 'wait' : 'pointer',
+                }}
+              >
+                {transcribing ? '⏳' : recording ? '⏹️' : '🎙️'}
+              </button>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={busy || attachedFiles.length >= MAX_FILES}
+                title={isVi ? `Tải hình ảnh để AI phân tích sâu (tối đa ${MAX_FILES})` : `Upload images for deep AI analysis (up to ${MAX_FILES})`}
+                style={{
+                  ...composerIconBtn(isDark, border),
+                  ...(attachedFiles.length > 0 ? { background: 'linear-gradient(135deg,#14b8a6,#0f766e)', color: '#fff', border: '1px solid rgba(20,184,166,0.6)' } : {}),
+                  opacity: (busy || attachedFiles.length >= MAX_FILES) ? 0.5 : 1,
+                  cursor: (busy || attachedFiles.length >= MAX_FILES) ? 'not-allowed' : 'pointer',
+                }}
+              >
+                🖼️
+              </button>
+              <button
+                type="submit"
+                disabled={busy || (!input.trim() && attachedFiles.length === 0)}
+                style={{ ...composerSendBtn, opacity: busy || (!input.trim() && attachedFiles.length === 0) ? 0.55 : 1 }}
+              >
+                {busy ? '...' : (isVi ? 'Gửi' : 'Send')}
+              </button>
+            </form>
+            <div style={{ marginTop: 8, fontSize: 10.5, color: muted, lineHeight: 1.4 }}>
+              {isVi
+                ? 'Tin nhắn gửi tại đây sẽ được lưu vào đúng ngày hôm nay và đồng bộ song song với chatbot AI chung ở góc màn hình.'
+                : 'Messages sent here are saved under today and stay in sync with the general AI chatbot widget in the corner.'}
+            </div>
+          </div>
         </section>
 
         {/* ===== NAV BUTTONS BOTTOM ===== */}
         <NavButtons onNext={onNext} nextLabel={nextLabel} onPrev={onPrev} prevLabel={prevLabel} />
+        <style>{`
+          @keyframes globalChatbotDotBounce { 0%,80%,100%{transform:scale(0.6);opacity:0.4} 40%{transform:scale(1);opacity:1} }
+        `}</style>
       </div>
     </div>
   )
@@ -357,4 +513,46 @@ function historyMsg(isDark, isUser) {
   return isUser
     ? { alignSelf: 'flex-end', maxWidth: '84%', padding: '11px 13px', borderRadius: '16px 16px 5px 16px', background: 'linear-gradient(135deg, #0f4c81, #2563eb)', color: '#fff', fontSize: 13, lineHeight: 1.5, whiteSpace: 'pre-wrap' }
     : { alignSelf: 'flex-start', maxWidth: '88%', padding: '11px 13px', borderRadius: '16px 16px 16px 5px', background: isDark ? 'rgba(30, 41, 59, 0.82)' : '#f1f5f9', color: text, fontSize: 13, lineHeight: 1.5, whiteSpace: 'pre-wrap' }
+}
+
+// ─── Composer (toolbar +, textarea, mic, ảnh, Gửi) — cùng kiểu dáng với GlobalAIChatbot.jsx ──
+
+const typingDotStyle = {
+  width: 6, height: 6, borderRadius: '50%', background: 'currentColor', display: 'inline-block',
+  animation: 'globalChatbotDotBounce 1.1s ease-in-out infinite',
+}
+
+function composerBadge(isDark) {
+  return {
+    color: '#0f766e', background: isDark ? 'rgba(45, 212, 191, 0.16)' : '#ccfbf1',
+    borderRadius: 999, padding: '4px 8px', fontWeight: 900, fontSize: 11,
+  }
+}
+
+function composerQuickBtn(isDark, border, text) {
+  return {
+    flexShrink: 0, border: `1px solid ${border}`, borderRadius: 999, padding: '7px 10px',
+    background: isDark ? 'rgba(15,23,42,0.74)' : '#fff', color: text, fontSize: 11, fontWeight: 800, cursor: 'pointer',
+  }
+}
+
+function composerIconBtn(isDark, border) {
+  return {
+    border: `1px solid ${border}`, borderRadius: 14, padding: '0 14px', fontSize: 16,
+    background: isDark ? 'rgba(99,102,241,0.12)' : 'rgba(99,102,241,0.08)', color: isDark ? '#a5b4fc' : '#6366f1',
+    cursor: 'pointer', transition: 'all 0.18s', lineHeight: 1,
+  }
+}
+
+function composerInput(isDark, border, text) {
+  return {
+    flex: 1, resize: 'none', border: `1px solid ${border}`, borderRadius: 14, padding: '10px 12px',
+    outline: 'none', font: 'inherit', fontSize: 13, color: text,
+    background: isDark ? 'rgba(15, 23, 42, 0.82)' : '#fff',
+  }
+}
+
+const composerSendBtn = {
+  border: 'none', borderRadius: 14, padding: '0 16px', color: '#fff',
+  background: 'linear-gradient(135deg, #14b8a6, #0f4c81)', fontWeight: 900, cursor: 'pointer',
 }
