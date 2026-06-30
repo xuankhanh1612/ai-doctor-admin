@@ -493,6 +493,8 @@ export default function MedicalUploader({ patientId, onSelectImage }) {
   const [summaryText, setSummaryText]     = useState('')
   const [summaryError, setSummaryError]   = useState('')
   const [summaryCopied, setSummaryCopied] = useState(false)
+  const [speakingOcr, setSpeakingOcr]     = useState(false)
+  const [speakingSummary, setSpeakingSummary] = useState(false)
   const [aiTab, setAiTab]                 = useState('ocr') // 'ocr' | 'summary'
   const [cameraOpen, setCameraOpen]       = useState(false)
   const [cameraStarting, setCameraStarting] = useState(false)
@@ -537,6 +539,13 @@ export default function MedicalUploader({ patientId, onSelectImage }) {
     const saved = localStorage.getItem('ai-clinic-api-key')
     if (saved) setApiKey(saved)
   }, [user?.email, user?.isAdmin])
+
+  // Dừng đọc to khi chuyển sang hồ sơ khác (tránh đọc nhầm nội dung cũ)
+  useEffect(() => {
+    if ('speechSynthesis' in window) window.speechSynthesis.cancel()
+    setSpeakingOcr(false)
+    setSpeakingSummary(false)
+  }, [selected?.id])
 
   // Convert PDF dataUrl to blob URL for iframe rendering
   useEffect(() => {
@@ -1010,6 +1019,26 @@ Trả lời bằng tiếng Việt, ngắn gọn và rõ ràng. Nhắc nhở đâ
     } finally {
       setAnalyzing(false)
     }
+  }
+
+  // ─── Đọc to (Text-to-Speech) — dùng Web Speech API có sẵn trong browser ──
+  function speakOrStop(text, which) {
+    if (!('speechSynthesis' in window) || !text) return
+    const isSpeaking = which === 'ocr' ? speakingOcr : speakingSummary
+    if (isSpeaking) {
+      window.speechSynthesis.cancel()
+      setSpeakingOcr(false)
+      setSpeakingSummary(false)
+      return
+    }
+    window.speechSynthesis.cancel()
+    const utter = new SpeechSynthesisUtterance(text)
+    utter.lang = lang === 'vi' ? 'vi-VN' : 'en-US'
+    utter.onend = () => { setSpeakingOcr(false); setSpeakingSummary(false) }
+    utter.onerror = () => { setSpeakingOcr(false); setSpeakingSummary(false) }
+    if (which === 'ocr') { setSpeakingOcr(true); setSpeakingSummary(false) }
+    else { setSpeakingSummary(true); setSpeakingOcr(false) }
+    window.speechSynthesis.speak(utter)
   }
 
   // ─── OCR — Trích xuất toàn bộ (CSV: đọc trực tiếp · ảnh/PDF/video: Groq Vision) ──
@@ -1550,6 +1579,13 @@ Trả lời bằng tiếng Việt, ngắn gọn và rõ ràng. Nhắc nhở đâ
                         {ocrText && !ocrRunning && (
                           <>
                             <button
+                              onClick={() => speakOrStop(ocrText, 'ocr')}
+                              style={{
+                                padding: '14px 18px', borderRadius: 14, border: '1px solid rgba(16,185,129,0.3)',
+                                background: speakingOcr ? 'rgba(16,185,129,0.16)' : 'transparent', color: '#10b981', fontWeight: 800, fontSize: 13, cursor: 'pointer',
+                              }}
+                            >{speakingOcr ? '⏹️ Dừng đọc' : '🔊 Đọc to'}</button>
+                            <button
                               onClick={() => { navigator.clipboard?.writeText(ocrText); setOcrCopied(true); setTimeout(() => setOcrCopied(false), 2000) }}
                               style={{
                                 padding: '14px 18px', borderRadius: 14, border: '1px solid rgba(16,185,129,0.3)',
@@ -1656,6 +1692,13 @@ Trả lời bằng tiếng Việt, ngắn gọn và rõ ràng. Nhắc nhở đâ
                         >{summarizing ? '⏳ Đang tóm tắt…' : '🚀 Bắt đầu tóm tắt'}</button>
                         {summaryText && !summarizing && (
                           <>
+                            <button
+                              onClick={() => speakOrStop(summaryText, 'summary')}
+                              style={{
+                                padding: '14px 18px', borderRadius: 14, border: '1px solid rgba(99,102,241,0.3)',
+                                background: speakingSummary ? 'rgba(99,102,241,0.18)' : 'transparent', color: '#a5b4fc', fontWeight: 800, fontSize: 13, cursor: 'pointer',
+                              }}
+                            >{speakingSummary ? '⏹️ Dừng đọc' : '🔊 Đọc to'}</button>
                             <button
                               onClick={() => { navigator.clipboard?.writeText(summaryText); setSummaryCopied(true); setTimeout(() => setSummaryCopied(false), 2000) }}
                               style={{
