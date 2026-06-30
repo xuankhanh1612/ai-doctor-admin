@@ -439,6 +439,7 @@ export default function MedicalUploader({ patientId, onSelectImage }) {
   const [summaryText, setSummaryText]     = useState('')
   const [summaryError, setSummaryError]   = useState('')
   const [summaryCopied, setSummaryCopied] = useState(false)
+  const [aiTab, setAiTab]                 = useState('ocr') // 'ocr' | 'summary'
   const [cameraOpen, setCameraOpen]       = useState(false)
   const [cameraStarting, setCameraStarting] = useState(false)
   const [cameraError, setCameraError]     = useState('')
@@ -518,6 +519,7 @@ export default function MedicalUploader({ patientId, onSelectImage }) {
     setSummaryText('')
     setSummaryError('')
     setSummaryCopied(false)
+    setAiTab('ocr')
     setView('detail')
   }
 
@@ -1362,159 +1364,222 @@ Trả lời bằng tiếng Việt, ngắn gọn và rõ ràng. Nhắc nhở đâ
               {/* OCR side panel — only for non-CSV files */}
               {selected.fileType !== 'csv' && (
                 <div style={{ flex: '1 1 320px', minWidth: 280, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+
+                  {/* Tab switcher */}
+                  <div style={{ display: 'flex', gap: 0, borderRadius: 14, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)' }}>
                     <button
-                      onClick={() => runOCR(selected)}
-                      disabled={ocrRunning}
+                      onClick={() => setAiTab('ocr')}
                       style={{
-                        flex: '1 1 auto', padding: '14px 20px', borderRadius: 14, cursor: ocrRunning ? 'not-allowed' : 'pointer',
-                        background: 'linear-gradient(135deg,#10b981,#059669)', border: 'none',
-                        color: '#fff', fontSize: 14, fontWeight: 800, opacity: ocrRunning ? 0.6 : 1,
-                        boxShadow: '0 0 20px rgba(16,185,129,0.35)',
+                        flex: 1, padding: '12px 14px', border: 'none', cursor: 'pointer',
+                        background: aiTab === 'ocr' ? 'rgba(16,185,129,0.16)' : 'rgba(255,255,255,0.03)',
+                        color: aiTab === 'ocr' ? '#10b981' : 'rgba(255,255,255,0.5)',
+                        fontSize: 13, fontWeight: aiTab === 'ocr' ? 800 : 600,
+                        borderBottom: `2px solid ${aiTab === 'ocr' ? '#10b981' : 'transparent'}`,
                       }}
-                    >{ocrRunning ? '⏳ Đang OCR…' : '🔍 Bắt đầu OCR'}</button>
+                    >🔍 {lang === 'vi' ? 'Nhận dạng chữ viết OCR' : 'OCR Text Recognition'}</button>
                     <button
-                      onClick={() => runSummarize(selected)}
-                      disabled={summarizing}
+                      onClick={() => setAiTab('summary')}
                       style={{
-                        flex: '1 1 auto', padding: '14px 20px', borderRadius: 14, cursor: summarizing ? 'not-allowed' : 'pointer',
-                        background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', border: 'none',
-                        color: '#fff', fontSize: 14, fontWeight: 800, opacity: summarizing ? 0.6 : 1,
-                        boxShadow: '0 0 20px rgba(99,102,241,0.35)',
+                        flex: 1, padding: '12px 14px', border: 'none', cursor: 'pointer',
+                        background: aiTab === 'summary' ? 'rgba(99,102,241,0.16)' : 'rgba(255,255,255,0.03)',
+                        color: aiTab === 'summary' ? '#a5b4fc' : 'rgba(255,255,255,0.5)',
+                        fontSize: 13, fontWeight: aiTab === 'summary' ? 800 : 600,
+                        borderBottom: `2px solid ${aiTab === 'summary' ? '#8b5cf6' : 'transparent'}`,
                       }}
-                    >{summarizing ? '⏳ Đang tóm tắt…' : '🚀 Bắt đầu tóm tắt'}</button>
-                    {ocrText && !ocrRunning && (
-                      <>
-                        <button
-                          onClick={() => { navigator.clipboard?.writeText(ocrText); setOcrCopied(true); setTimeout(() => setOcrCopied(false), 2000) }}
-                          style={{
-                            padding: '14px 18px', borderRadius: 14, border: '1px solid rgba(16,185,129,0.3)',
-                            background: 'transparent', color: '#10b981', fontWeight: 800, fontSize: 13, cursor: 'pointer',
-                          }}
-                        >{ocrCopied ? '✅ Đã sao chép' : '📋 Sao chép'}</button>
-                        <button
-                          onClick={() => {
-                            const blob = new Blob([ocrText], { type: 'text/plain;charset=utf-8' })
-                            const url = URL.createObjectURL(blob)
-                            const a = document.createElement('a')
-                            a.href = url; a.download = `${(selected.filename || 'ocr-result').replace(/\.[^.]+$/, '')}.txt`; a.click()
-                            URL.revokeObjectURL(url)
-                          }}
-                          style={{
-                            padding: '14px 18px', borderRadius: 14, border: '1px solid rgba(16,185,129,0.3)',
-                            background: 'transparent', color: '#10b981', fontWeight: 800, fontSize: 13, cursor: 'pointer',
-                          }}
-                        >💾 {lang === 'vi' ? 'Tải .txt' : 'Download .txt'}</button>
-                      </>
-                    )}
-                  </div>
-                  <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', fontFamily: 'monospace' }}>
-                    Trích xuất toàn bộ · Groq Vision · llama-4-scout
+                    >🚀 {lang === 'vi' ? 'AI phân tích' : 'AI Analysis'}</button>
                   </div>
 
-                  {ocrError && (
-                    <div style={{ background: 'rgba(255,82,82,0.1)', border: '1px solid rgba(255,82,82,0.25)', borderRadius: 10, padding: '10px 14px', fontSize: 12, color: '#ff5252' }}>
-                      ⚠️ {ocrError}
-                    </div>
-                  )}
-
-                  {ocrRunning && !ocrText && (
-                    <div style={{
-                      background: 'rgba(16,185,129,0.04)', border: '1px solid rgba(16,185,129,0.15)',
-                      borderRadius: 16, padding: 18, display: 'flex', alignItems: 'center', gap: 8,
-                    }}>
-                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#10b981', animation: 'pulse-dot 1s infinite' }} />
-                      <span style={{ fontSize: 12, color: '#10b981', fontFamily: 'monospace' }}>
-                        {lang === 'vi' ? 'Đang trích xuất văn bản…' : 'Extracting text…'}
-                      </span>
-                    </div>
-                  )}
-
-                  {ocrText && (
-                    <div style={{
-                      background: 'rgba(16,185,129,0.05)', border: '1px solid rgba(16,185,129,0.3)',
-                      borderRadius: 16, padding: 20,
-                    }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-                        <div style={{
-                          width: 36, height: 36, borderRadius: 10,
-                          background: 'linear-gradient(135deg,#10b981,#059669)',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0,
-                        }}>✅</div>
-                        <div>
-                          <div style={{ fontWeight: 900, fontSize: 15, color: '#d1fae5' }}>
-                            {lang === 'vi' ? 'Kết quả OCR' : 'OCR Result'}
-                          </div>
-                          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginTop: 2 }}>
-                            {ocrText.length.toLocaleString()} {lang === 'vi' ? 'ký tự' : 'characters'}
-                          </div>
-                        </div>
+                  {/* ── Tab: Nhận dạng chữ viết OCR ── */}
+                  {aiTab === 'ocr' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                        <button
+                          onClick={() => runOCR(selected)}
+                          disabled={ocrRunning}
+                          style={{
+                            flex: '1 1 auto', padding: '14px 20px', borderRadius: 14, cursor: ocrRunning ? 'not-allowed' : 'pointer',
+                            background: 'linear-gradient(135deg,#10b981,#059669)', border: 'none',
+                            color: '#fff', fontSize: 14, fontWeight: 800, opacity: ocrRunning ? 0.6 : 1,
+                            boxShadow: '0 0 20px rgba(16,185,129,0.35)',
+                          }}
+                        >{ocrRunning ? '⏳ Đang OCR…' : '🔍 Bắt đầu OCR'}</button>
+                        {ocrText && !ocrRunning && (
+                          <>
+                            <button
+                              onClick={() => { navigator.clipboard?.writeText(ocrText); setOcrCopied(true); setTimeout(() => setOcrCopied(false), 2000) }}
+                              style={{
+                                padding: '14px 18px', borderRadius: 14, border: '1px solid rgba(16,185,129,0.3)',
+                                background: 'transparent', color: '#10b981', fontWeight: 800, fontSize: 13, cursor: 'pointer',
+                              }}
+                            >{ocrCopied ? '✅ Đã sao chép' : '📋 Sao chép'}</button>
+                            <button
+                              onClick={() => {
+                                const blob = new Blob([ocrText], { type: 'text/plain;charset=utf-8' })
+                                const url = URL.createObjectURL(blob)
+                                const a = document.createElement('a')
+                                a.href = url; a.download = `${(selected.filename || 'ocr-result').replace(/\.[^.]+$/, '')}.txt`; a.click()
+                                URL.revokeObjectURL(url)
+                              }}
+                              style={{
+                                padding: '14px 18px', borderRadius: 14, border: '1px solid rgba(16,185,129,0.3)',
+                                background: 'transparent', color: '#10b981', fontWeight: 800, fontSize: 13, cursor: 'pointer',
+                              }}
+                            >💾 {lang === 'vi' ? 'Tải .txt' : 'Download .txt'}</button>
+                          </>
+                        )}
                       </div>
-                      <pre style={{
-                        fontSize: 13, color: '#d1fae5', lineHeight: 1.75,
-                        whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0,
-                        fontFamily: "'Courier New', Courier, monospace",
-                        background: 'rgba(16,185,129,0.04)',
-                        borderRadius: 10, padding: 14, maxHeight: 480, overflowY: 'auto',
-                      }}>
-                        {ocrText}
-                      </pre>
-                    </div>
-                  )}
+                      <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', fontFamily: 'monospace' }}>
+                        Trích xuất toàn bộ · Groq Vision · llama-4-scout
+                      </div>
 
-                  {summaryError && (
-                    <div style={{ background: 'rgba(255,82,82,0.1)', border: '1px solid rgba(255,82,82,0.25)', borderRadius: 10, padding: '10px 14px', fontSize: 12, color: '#ff5252' }}>
-                      ⚠️ {summaryError}
-                    </div>
-                  )}
+                      {ocrError && (
+                        <div style={{ background: 'rgba(255,82,82,0.1)', border: '1px solid rgba(255,82,82,0.25)', borderRadius: 10, padding: '10px 14px', fontSize: 12, color: '#ff5252' }}>
+                          ⚠️ {ocrError}
+                        </div>
+                      )}
 
-                  {summarizing && !summaryText && (
-                    <div style={{
-                      background: 'rgba(99,102,241,0.04)', border: '1px solid rgba(99,102,241,0.15)',
-                      borderRadius: 16, padding: 18, display: 'flex', alignItems: 'center', gap: 8,
-                    }}>
-                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#8b5cf6', animation: 'pulse-dot 1s infinite' }} />
-                      <span style={{ fontSize: 12, color: '#a5b4fc', fontFamily: 'monospace' }}>
-                        {lang === 'vi' ? 'Đang tóm tắt tài liệu…' : 'Summarizing document…'}
-                      </span>
-                    </div>
-                  )}
+                      {ocrRunning && !ocrText && (
+                        <div style={{
+                          background: 'rgba(16,185,129,0.04)', border: '1px solid rgba(16,185,129,0.15)',
+                          borderRadius: 16, padding: 18, display: 'flex', alignItems: 'center', gap: 8,
+                        }}>
+                          <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#10b981', animation: 'pulse-dot 1s infinite' }} />
+                          <span style={{ fontSize: 12, color: '#10b981', fontFamily: 'monospace' }}>
+                            {lang === 'vi' ? 'Đang trích xuất văn bản…' : 'Extracting text…'}
+                          </span>
+                        </div>
+                      )}
 
-                  {summaryText && (
-                    <div style={{
-                      background: 'rgba(99,102,241,0.05)', border: '1px solid rgba(99,102,241,0.3)',
-                      borderRadius: 16, padding: 20,
-                    }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 16 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <div style={{
-                            width: 36, height: 36, borderRadius: 10,
-                            background: 'linear-gradient(135deg,#6366f1,#8b5cf6)',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0,
-                          }}>✨</div>
-                          <div>
-                            <div style={{ fontWeight: 900, fontSize: 15, color: '#e0e7ff' }}>
-                              {lang === 'vi' ? 'Tóm tắt toàn bộ' : 'Full Summary'}
-                            </div>
-                            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginTop: 2 }}>
-                              {summaryText.length.toLocaleString()} {lang === 'vi' ? 'ký tự' : 'characters'}
+                      {ocrText && (
+                        <div style={{
+                          background: 'rgba(16,185,129,0.05)', border: '1px solid rgba(16,185,129,0.3)',
+                          borderRadius: 16, padding: 20,
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+                            <div style={{
+                              width: 36, height: 36, borderRadius: 10,
+                              background: 'linear-gradient(135deg,#10b981,#059669)',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0,
+                            }}>✅</div>
+                            <div>
+                              <div style={{ fontWeight: 900, fontSize: 15, color: '#d1fae5' }}>
+                                {lang === 'vi' ? 'Kết quả OCR' : 'OCR Result'}
+                              </div>
+                              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginTop: 2 }}>
+                                {ocrText.length.toLocaleString()} {lang === 'vi' ? 'ký tự' : 'characters'}
+                              </div>
                             </div>
                           </div>
+                          <pre style={{
+                            fontSize: 13, color: '#d1fae5', lineHeight: 1.75,
+                            whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0,
+                            fontFamily: "'Courier New', Courier, monospace",
+                            background: 'rgba(16,185,129,0.04)',
+                            borderRadius: 10, padding: 14, maxHeight: 480, overflowY: 'auto',
+                          }}>
+                            {ocrText}
+                          </pre>
                         </div>
-                        {!summarizing && (
+                      )}
+
+                      {!ocrText && !ocrRunning && !ocrError && (
+                        <div style={{
+                          background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.1)',
+                          borderRadius: 16, padding: '28px 18px', textAlign: 'center',
+                        }}>
+                          <div style={{ fontSize: 28, marginBottom: 10 }}>🔍</div>
+                          <div style={{ fontSize: 12.5, color: 'rgba(255,255,255,0.4)' }}>
+                            {lang === 'vi' ? 'Nhấn "Bắt đầu OCR" để trích xuất văn bản' : 'Click "Start OCR" to extract text'}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* ── Tab: AI phân tích (Tóm tắt) ── */}
+                  {aiTab === 'summary' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                        <button
+                          onClick={() => runSummarize(selected)}
+                          disabled={summarizing}
+                          style={{
+                            flex: '1 1 auto', padding: '14px 20px', borderRadius: 14, cursor: summarizing ? 'not-allowed' : 'pointer',
+                            background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', border: 'none',
+                            color: '#fff', fontSize: 14, fontWeight: 800, opacity: summarizing ? 0.6 : 1,
+                            boxShadow: '0 0 20px rgba(99,102,241,0.35)',
+                          }}
+                        >{summarizing ? '⏳ Đang tóm tắt…' : '🚀 Bắt đầu tóm tắt'}</button>
+                        {summaryText && !summarizing && (
                           <button
                             onClick={() => { navigator.clipboard?.writeText(summaryText); setSummaryCopied(true); setTimeout(() => setSummaryCopied(false), 2000) }}
                             style={{
-                              padding: '8px 14px', borderRadius: 10, border: '1px solid rgba(99,102,241,0.3)',
-                              background: 'transparent', color: '#a5b4fc', fontWeight: 800, fontSize: 12, cursor: 'pointer', flexShrink: 0,
+                              padding: '14px 18px', borderRadius: 14, border: '1px solid rgba(99,102,241,0.3)',
+                              background: 'transparent', color: '#a5b4fc', fontWeight: 800, fontSize: 13, cursor: 'pointer',
                             }}
-                          >{summaryCopied ? '✅' : '📋'}</button>
+                          >{summaryCopied ? '✅ Đã sao chép' : '📋 Sao chép'}</button>
                         )}
                       </div>
-                      <div
-                        style={{ fontSize: 14, color: '#e0e7ff', lineHeight: 1.75, maxHeight: 480, overflowY: 'auto' }}
-                        dangerouslySetInnerHTML={{ __html: `<p style="margin:0 0 12px">${renderMarkdown(summaryText)}</p>` }}
-                      />
+                      <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', fontFamily: 'monospace' }}>
+                        Tóm tắt toàn bộ · Groq · llama-3.3-70b / llama-4-scout
+                      </div>
+
+                      {summaryError && (
+                        <div style={{ background: 'rgba(255,82,82,0.1)', border: '1px solid rgba(255,82,82,0.25)', borderRadius: 10, padding: '10px 14px', fontSize: 12, color: '#ff5252' }}>
+                          ⚠️ {summaryError}
+                        </div>
+                      )}
+
+                      {summarizing && !summaryText && (
+                        <div style={{
+                          background: 'rgba(99,102,241,0.04)', border: '1px solid rgba(99,102,241,0.15)',
+                          borderRadius: 16, padding: 18, display: 'flex', alignItems: 'center', gap: 8,
+                        }}>
+                          <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#8b5cf6', animation: 'pulse-dot 1s infinite' }} />
+                          <span style={{ fontSize: 12, color: '#a5b4fc', fontFamily: 'monospace' }}>
+                            {lang === 'vi' ? 'Đang tóm tắt tài liệu…' : 'Summarizing document…'}
+                          </span>
+                        </div>
+                      )}
+
+                      {summaryText && (
+                        <div style={{
+                          background: 'rgba(99,102,241,0.05)', border: '1px solid rgba(99,102,241,0.3)',
+                          borderRadius: 16, padding: 20,
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+                            <div style={{
+                              width: 36, height: 36, borderRadius: 10,
+                              background: 'linear-gradient(135deg,#6366f1,#8b5cf6)',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0,
+                            }}>✨</div>
+                            <div>
+                              <div style={{ fontWeight: 900, fontSize: 15, color: '#e0e7ff' }}>
+                                {lang === 'vi' ? 'Tóm tắt toàn bộ' : 'Full Summary'}
+                              </div>
+                              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginTop: 2 }}>
+                                {summaryText.length.toLocaleString()} {lang === 'vi' ? 'ký tự' : 'characters'}
+                              </div>
+                            </div>
+                          </div>
+                          <div
+                            style={{ fontSize: 14, color: '#e0e7ff', lineHeight: 1.75, maxHeight: 480, overflowY: 'auto' }}
+                            dangerouslySetInnerHTML={{ __html: `<p style="margin:0 0 12px">${renderMarkdown(summaryText)}</p>` }}
+                          />
+                        </div>
+                      )}
+
+                      {!summaryText && !summarizing && !summaryError && (
+                        <div style={{
+                          background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.1)',
+                          borderRadius: 16, padding: '28px 18px', textAlign: 'center',
+                        }}>
+                          <div style={{ fontSize: 28, marginBottom: 10 }}>🚀</div>
+                          <div style={{ fontSize: 12.5, color: 'rgba(255,255,255,0.4)' }}>
+                            {lang === 'vi' ? 'Nhấn "Bắt đầu tóm tắt" để AI phân tích tài liệu' : 'Click "Start Summarize" to let AI analyze the document'}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
