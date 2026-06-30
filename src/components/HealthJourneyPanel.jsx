@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import NavButtons from './NavButtons.jsx'
 import GPEmotionalCompanionView from './EmotionalCompanionView.jsx'
-import { CompactGlobalAIChatBar } from './GlobalAIChatbot.jsx'
 import { useApp } from '../context/AppContext.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { detectFileType, fileToBase64, fileToDataUrl, saveRecord } from '../lib/medicalStorage.js'
@@ -911,8 +910,8 @@ function HealthJourneyTabs({ activeTab, setActiveTab, lang }) {
 }
 
 
-function EmotionalCompanionView({ onOpenStressRelief, onOpenInBody, chatComposer }) {
-  return <GPEmotionalCompanionView onOpenStressRelief={onOpenStressRelief} onOpenInBody={onOpenInBody} chatComposer={chatComposer} />
+function EmotionalCompanionView({ onOpenStressRelief, onOpenInBody, hideComposer }) {
+  return <GPEmotionalCompanionView onOpenStressRelief={onOpenStressRelief} onOpenInBody={onOpenInBody} hideComposer={hideComposer} />
 }
 
 function CompanionTile({ icon, color, title, subtitle }) {
@@ -1228,7 +1227,7 @@ export default function HealthJourneyPanel({ onNext, onPrev, prevLabel, nextLabe
         <EmotionalCompanionView
           onOpenStressRelief={onOpenStressRelief}
           onOpenInBody={onOpenInBody}
-          chatComposer={<CompactGlobalAIChatBar activePanelLabel={lang === 'vi' ? 'Buổi Sáng' : 'Morning'} />}
+          hideComposer
         />
       )}
       {activeTab === 'meal' && <MealScanView onViewMedicalRecord={onViewMedicalRecord} />}

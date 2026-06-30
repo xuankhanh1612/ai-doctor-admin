@@ -59,7 +59,7 @@ function formatMessageTime(iso, lang) {
   }
 }
 
-export default function EmotionalCompanionView({ onOpenStressRelief, onOpenInBody, chatComposer }) {
+export default function EmotionalCompanionView({ onOpenStressRelief, onOpenInBody, chatComposer, hideComposer = false }) {
   const { lang } = useApp()
   const { user } = useAuth()
   // Cùng khoá uuid + cùng store với CheckinPanel — 2 nơi này dùng chung 1 lịch sử chat AI.
@@ -187,8 +187,9 @@ export default function EmotionalCompanionView({ onOpenStressRelief, onOpenInBod
         </section>
       </main>
 
-      <div style={{ position: 'absolute', left: 0, right: 0, bottom: 84, zIndex: 16, maxWidth: 820, margin: '0 auto', padding: '0 20px' }}>
-        {chatComposer ? (
+      {!hideComposer && (
+        <div style={{ position: 'absolute', left: 0, right: 0, bottom: 84, zIndex: 16, maxWidth: 820, margin: '0 auto', padding: '0 20px' }}>
+          {chatComposer ? (
           <div style={{ display: 'flex', justifyContent: 'center' }}>{chatComposer}</div>
         ) : (
           <div style={{ ...glass, display: 'flex', alignItems: 'center', gap: 8, padding: 8, borderRadius: 999 }}>
@@ -206,8 +207,9 @@ export default function EmotionalCompanionView({ onOpenStressRelief, onOpenInBod
             <button type="button" onClick={toggleMic} style={{ ...roundButton(recording ? '#ef4444' : '#edf4ff', recording ? '#fff' : BLUE), boxShadow: recording ? '0 0 0 6px rgba(239,68,68,0.12)' : 'none', cursor: transcribing ? 'wait' : 'pointer' }} title={recording ? (lang === 'en' ? 'Stop recording' : 'Dừng ghi âm') : (lang === 'en' ? 'Speak to the GP AI' : 'Nói với AI Bác sĩ đa khoa')}>{transcribing ? '⏳' : recording ? '■' : '🎙️'}</button>
             <button type="button" onClick={() => (speaking ? stop() : submitChatPrompt())} disabled={!speaking && !chatPrompt.trim()} style={{ ...roundButton(BLUE, '#fff'), opacity: speaking || chatPrompt.trim() ? 1 : 0.45, cursor: speaking || chatPrompt.trim() ? 'pointer' : 'not-allowed' }} title={speaking ? (lang === 'en' ? 'Stop voice' : 'Dừng đọc') : (lang === 'en' ? 'Send and play voice' : 'Gửi và phát giọng nói')}>{speaking ? 'Ⅱ' : '↑'}</button>
           </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
