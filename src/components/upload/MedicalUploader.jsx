@@ -1511,13 +1511,28 @@ Trả lời bằng tiếng Việt, ngắn gọn và rõ ràng. Nhắc nhở đâ
                           }}
                         >{summarizing ? '⏳ Đang tóm tắt…' : '🚀 Bắt đầu tóm tắt'}</button>
                         {summaryText && !summarizing && (
-                          <button
-                            onClick={() => { navigator.clipboard?.writeText(summaryText); setSummaryCopied(true); setTimeout(() => setSummaryCopied(false), 2000) }}
-                            style={{
-                              padding: '14px 18px', borderRadius: 14, border: '1px solid rgba(99,102,241,0.3)',
-                              background: 'transparent', color: '#a5b4fc', fontWeight: 800, fontSize: 13, cursor: 'pointer',
-                            }}
-                          >{summaryCopied ? '✅ Đã sao chép' : '📋 Sao chép'}</button>
+                          <>
+                            <button
+                              onClick={() => { navigator.clipboard?.writeText(summaryText); setSummaryCopied(true); setTimeout(() => setSummaryCopied(false), 2000) }}
+                              style={{
+                                padding: '14px 18px', borderRadius: 14, border: '1px solid rgba(99,102,241,0.3)',
+                                background: 'transparent', color: '#a5b4fc', fontWeight: 800, fontSize: 13, cursor: 'pointer',
+                              }}
+                            >{summaryCopied ? '✅ Đã sao chép' : '📋 Sao chép'}</button>
+                            <button
+                              onClick={() => {
+                                const blob = new Blob([summaryText], { type: 'text/plain;charset=utf-8' })
+                                const url = URL.createObjectURL(blob)
+                                const a = document.createElement('a')
+                                a.href = url; a.download = `${(selected.filename || 'summary-result').replace(/\.[^.]+$/, '')}_summary.txt`; a.click()
+                                URL.revokeObjectURL(url)
+                              }}
+                              style={{
+                                padding: '14px 18px', borderRadius: 14, border: '1px solid rgba(99,102,241,0.3)',
+                                background: 'transparent', color: '#a5b4fc', fontWeight: 800, fontSize: 13, cursor: 'pointer',
+                              }}
+                            >💾 {lang === 'vi' ? 'Tải .txt' : 'Download .txt'}</button>
+                          </>
                         )}
                       </div>
                       <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', fontFamily: 'monospace' }}>
