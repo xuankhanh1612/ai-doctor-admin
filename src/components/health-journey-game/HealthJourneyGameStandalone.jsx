@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useMemo } from 'react'
 import { useAuth } from '../../context/AuthContext.jsx'
+import { useApp } from '../../context/AppContext.jsx'
 import { completeHealthJourneyActivity, HEALTH_JOURNEY_EVENT, getTaskSnapshot, XP_TABLE, ACTIVITY_TASK_MAP, checkAndUnlockChapters } from './services/healthJourneyStorage.js'
 import { dataUrlToFile, drawAIWaterBottleOverlay, saveWaterProofImage, syncBeMeoWater } from './services/waterProofUpload.js'
 import dailyTasksData from './data/daily_tasks.json'
@@ -11,6 +12,31 @@ import HelpOverlay from './help/HelpOverlay.jsx'
 import { callGroqChat, useVoiceInput } from '../../lib/groqAiClient.js'
 
 const MEDIAPIPE_OBJECT_DETECTION_WEBCAM_URL = '/src/mediapipe-khanh/index.html?mode=webcam#/vision/object_detector'
+
+const stripCoachMarkdown = (text = '') => String(text)
+  .replace(/```[\s\S]*?```/g, ' ')
+  .replace(/`([^`]+)`/g, '$1')
+  .replace(/[*_#>\[\]()]/g, ' ')
+  .replace(/https?:\/\/\S+/g, ' ')
+  .replace(/\s+/g, ' ')
+  .trim()
+
+const splitTtsChunks = (text, maxLen = 180) => {
+  const sentences = text.match(/[^.!?。！？]+[.!?。！？]*/g) || [text]
+  const chunks = []
+  let current = ''
+  for (const sentence of sentences) {
+    if ((current + sentence).length > maxLen && current) {
+      chunks.push(current.trim())
+      current = sentence
+    } else {
+      current += sentence
+    }
+  }
+  if (current.trim()) chunks.push(current.trim())
+  return chunks.filter(Boolean)
+}
+
 
 // ─── Helpers to build dynamic content maps from JSON data ───
 const UNIT_LABEL_MAP = {
@@ -494,10 +520,14 @@ const styles = String.raw`
 
 export default function HealthJourneyGameStandalone({ onViewMedicalRecord }) {
   const containerRef = useRef(null)
+  const { lang } = useApp()
   const { user, loading: authLoading } = useAuth()
   const videoRef = useRef(null)
   const canvasRef = useRef(null)
   const streamRef = useRef(null)
+  const coachAudioRef = useRef(null)
+  const coachTtsStopRef = useRef(false)
+  const [coachSpeakingIndex, setCoachSpeakingIndex] = useState(null)
   const [snapshot, setSnapshot] = useState(() => getTaskSnapshot(user))
 
   // BUG FIX: `user` được AuthContext nạp BẤT ĐỒNG BỘ (đọc anon session từ
@@ -551,6 +581,8 @@ export default function HealthJourneyGameStandalone({ onViewMedicalRecord }) {
   useEffect(() => () => {
     streamRef.current?.getTracks?.().forEach((track) => track.stop())
   }, [])
+
+  useEffect(() => () => stopCoachTts(), [])
 
 
   useEffect(() => {
@@ -679,6 +711,66 @@ export default function HealthJourneyGameStandalone({ onViewMedicalRecord }) {
       event.preventDefault()
       sendCoachMessage()
     }
+  }
+
+  const stopCoachTts = () => {
+    coachTtsStopRef.current = true
+    setCoachSpeakingIndex(null)
+    if (coachAudioRef.current) {
+      coachAudioRef.current.pause()
+      coachAudioRef.current.removeAttribute('src')
+      coachAudioRef.current.load?.()
+    }
+    if (window.speechSynthesis) window.speechSynthesis.cancel()
+  }
+
+  const playCoachTts = async (text, messageIndex) => {
+    if (coachSpeakingIndex === messageIndex) {
+      stopCoachTts()
+      return
+    }
+
+    const clean = stripCoachMarkdown(text)
+    if (!clean) return
+
+    stopCoachTts()
+    coachTtsStopRef.current = false
+    setCoachSpeakingIndex(messageIndex)
+
+    if (lang === 'vi') {
+      const audio = coachAudioRef.current
+      if (!audio) {
+        setCoachSpeakingIndex(null)
+        return
+      }
+      const chunks = splitTtsChunks(clean, 180)
+      for (const chunk of chunks) {
+        if (coachTtsStopRef.current) break
+        audio.src = `/api/google-tts?tl=vi&q=${encodeURIComponent(chunk)}`
+        await new Promise((resolve) => {
+          audio.onended = resolve
+          audio.onerror = resolve
+          audio.play().catch(resolve)
+        })
+      }
+      if (!coachTtsStopRef.current) setCoachSpeakingIndex(null)
+      return
+    }
+
+    if (!window.speechSynthesis) {
+      setCoachSpeakingIndex(null)
+      return
+    }
+    const utterance = new SpeechSynthesisUtterance(clean)
+    utterance.lang = 'en-US'
+    utterance.rate = 0.95
+    const voices = window.speechSynthesis.getVoices()
+    const preferredVoice = voices.find((voice) => voice.lang.startsWith('en') && voice.localService)
+      || voices.find((voice) => voice.lang.startsWith('en'))
+    if (preferredVoice) utterance.voice = preferredVoice
+    utterance.onend = () => setCoachSpeakingIndex(null)
+    utterance.onerror = () => setCoachSpeakingIndex(null)
+    window.speechSynthesis.speak(utterance)
   }
 
   useEffect(() => {
@@ -1570,6 +1662,16 @@ export default function HealthJourneyGameStandalone({ onViewMedicalRecord }) {
                   <div style={{ fontSize: '12px', lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>
                     {msg.content}
                   </div>
+                  {msg.role === 'assistant' && (
+                    <button
+                      type="button"
+                      onClick={() => playCoachTts(msg.content, idx)}
+                      title={lang === 'vi' ? 'Phát giọng Việt qua Google Translate TTS' : 'Play en-US voice with Web Speech API'}
+                      style={{ marginTop: '8px', border: '1px solid var(--border)', borderRadius: '999px', background: 'rgba(255,255,255,.06)', color: 'var(--text)', fontSize: '11px', padding: '4px 8px', cursor: 'pointer' }}
+                    >
+                      {coachSpeakingIndex === idx ? '⏹ Dừng' : '🔊 Nghe'}
+                    </button>
+                  )}
                 </div>
               ))}
               {coachLoading && (
@@ -1583,6 +1685,7 @@ export default function HealthJourneyGameStandalone({ onViewMedicalRecord }) {
                 </div>
               )}
             </div>
+            <audio ref={coachAudioRef} preload="none" style={{ display: 'none' }} />
             <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
               <input
                 type="text"
