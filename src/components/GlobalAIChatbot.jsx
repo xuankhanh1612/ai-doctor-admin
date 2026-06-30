@@ -48,6 +48,7 @@ export default function GlobalAIChatbot({ activePanelLabel }) {
   const isVi = lang !== 'en'
 
   const [open, setOpen] = useState(false)
+  const [fullscreen, setFullscreen] = useState(false)
   const [input, setInput] = useState('')
   const [status, setStatus] = useState(isVi ? 'Sẵn sàng' : 'Ready')
   const [mode, setMode] = useState('idle')
@@ -65,7 +66,7 @@ export default function GlobalAIChatbot({ activePanelLabel }) {
   const scrollRef = useRef(null)
 
   const systemPrompt = isVi ? SYSTEM_PROMPT_VI : SYSTEM_PROMPT_EN
-  const styles = useMemo(() => createStyles(isDark), [isDark])
+  const styles = useMemo(() => createStyles(isDark, fullscreen), [isDark, fullscreen])
   const { speaking, speak } = useTTS(isVi ? 'vi' : 'en')
 
   const handleTranscript = (text) => {
@@ -226,7 +227,16 @@ export default function GlobalAIChatbot({ activePanelLabel }) {
   return (
     <section className="global-ai-chatbot-panel" style={styles.panel} aria-label="Chatbot AI chung">
       <header style={styles.header}>
-        <div>
+        <button
+          type="button"
+          onClick={() => setFullscreen(v => !v)}
+          style={styles.resizeBtn}
+          title={fullscreen ? (isVi ? 'Thu nhỏ' : 'Exit fullscreen') : (isVi ? 'Phóng to toàn màn hình' : 'Expand to fullscreen')}
+          aria-label={fullscreen ? 'Thu nhỏ chatbot' : 'Phóng to chatbot'}
+        >
+          {fullscreen ? '⤡' : '⤢'}
+        </button>
+        <div style={{ flex: 1, minWidth: 0 }}>
           <div style={styles.title}>🤗 Chatbot AI chung</div>
           <div style={styles.subtitle}>{status}</div>
         </div>
@@ -372,7 +382,7 @@ export default function GlobalAIChatbot({ activePanelLabel }) {
   )
 }
 
-function createStyles(isDark) {
+function createStyles(isDark, fullscreen) {
   const shell = isDark ? 'rgba(7, 12, 27, 0.96)' : 'rgba(255, 255, 255, 0.96)'
   const border = isDark ? 'rgba(148, 163, 184, 0.24)' : 'rgba(15, 76, 129, 0.16)'
   const text = isDark ? '#e8f0f8' : '#102033'
@@ -396,7 +406,25 @@ function createStyles(isDark) {
       fontFamily: 'inherit',
     },
     fabIcon: { fontSize: 24, width: 32, height: 32, display: 'grid', placeItems: 'center', background: 'rgba(255,255,255,0.16)', borderRadius: '50%' },
-    panel: {
+    panel: fullscreen ? {
+      position: 'fixed',
+      top: 0, left: 0, right: 0, bottom: 0,
+      zIndex: 240,
+      width: '100vw',
+      height: '100dvh',
+      maxHeight: '100dvh',
+      display: 'flex',
+      flexDirection: 'column',
+      border: 'none',
+      borderRadius: 0,
+      overflow: 'hidden',
+      minHeight: 0,
+      background: shell,
+      color: text,
+      boxShadow: 'none',
+      backdropFilter: 'blur(18px)',
+      transition: 'all 0.22s ease',
+    } : {
       position: 'fixed',
       right: 18,
       bottom: 104,
@@ -414,11 +442,13 @@ function createStyles(isDark) {
       color: text,
       boxShadow: '0 28px 90px rgba(0,0,0,0.34)',
       backdropFilter: 'blur(18px)',
+      transition: 'all 0.22s ease',
     },
     header: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, padding: '16px 18px', color: '#fff', background: 'linear-gradient(135deg, #0f4c81, #14b8a6)' },
     title: { fontSize: 16, fontWeight: 900 },
     subtitle: { marginTop: 4, fontSize: 11, opacity: 0.82, lineHeight: 1.35 },
     closeBtn: { border: 'none', background: 'rgba(255,255,255,0.16)', color: '#fff', borderRadius: 10, width: 30, height: 30, cursor: 'pointer', fontSize: 22, lineHeight: '28px' },
+    resizeBtn: { border: 'none', background: 'rgba(255,255,255,0.16)', color: '#fff', borderRadius: 10, width: 30, height: 30, cursor: 'pointer', fontSize: 14, lineHeight: '30px', flexShrink: 0 },
     metaRow: { flex: '0 0 auto', display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderBottom: `1px solid ${border}`, color: muted, fontSize: 11, flexWrap: 'wrap' },
     badge: { color: '#0f766e', background: isDark ? 'rgba(45, 212, 191, 0.16)' : '#ccfbf1', borderRadius: 999, padding: '4px 8px', fontWeight: 900 },
     current: { minWidth: 0, maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
