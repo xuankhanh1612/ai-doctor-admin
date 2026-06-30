@@ -95,3 +95,42 @@ export async function clearGlobalChatHistory(uuid) {
     console.error('[globalChatbotStorage] clear error:', e)
   }
 }
+
+// ─── Helpers cho trang "Lịch sử Chat với AI" (nhóm tin nhắn theo ngày) ─────────
+// Cùng định dạng YYYY-MM-DD (giờ local) như src/lib/beMeoChatStorage.js, để hiển thị
+// lịch sử theo ngày/tháng/năm nhất quán với trang Bé Mèo Nước.
+
+// YYYY-MM-DD theo giờ local của máy (không dùng UTC để tránh lệch ngày qua nửa đêm).
+export function dateKey(d = new Date()) {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+// Số ngày thực tế của một tháng dương lịch — tự đúng cho năm nhuận (28/29/30/31).
+export function daysInMonth(year, monthIndex0) {
+  return new Date(year, monthIndex0 + 1, 0).getDate()
+}
+
+// Lấy ngày của 1 tin nhắn — ưu tiên createdAt (ISO string); tin nhắn cũ chưa có
+// createdAt (trước khi field này được thêm) sẽ rơi vào fallback 'unknown'.
+function messageDateKey(message) {
+  if (!message?.createdAt) return null
+  const d = new Date(message.createdAt)
+  if (Number.isNaN(d.getTime())) return null
+  return dateKey(d)
+}
+
+// Gom toàn bộ messages thành map { 'YYYY-MM-DD': [messages...] }, sắp xếp tin nhắn
+// trong từng ngày theo đúng thứ tự thời gian gửi. Tin nhắn không xác định được ngày
+// (dữ liệu cũ) được gom vào nhóm 'unknown' để không bị mất dữ liệu.
+export function groupMessagesByDate(messages) {
+  const map = {}
+  for (const message of messages || []) {
+    const key = messageDateKey(message) || 'unknown'
+    if (!map[key]) map[key] = []
+    map[key].push(message)
+  }
+  return map
+}
