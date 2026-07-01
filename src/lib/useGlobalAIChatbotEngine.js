@@ -57,7 +57,10 @@ Rules:
 // isVi: ngôn ngữ hiện tại.
 // onMessagesChange: callback tuỳ chọn — gọi mỗi khi `messages` đổi (đã nạp xong lịch sử),
 //   dùng để nơi gọi (vd ChatHistoryPanel) tự refresh lại calendar/nhóm-theo-ngày của nó.
-export function useGlobalAIChatbotEngine({ userKey, activePanelLabel, isVi, onMessagesChange }) {
+// audioElementRef: <audio> element (tuỳ chọn) — dùng để phát TTS ổn định hơn trên
+//   mobile/Safari (unlock âm thanh qua đúng 1 element cố định thay vì tạo Audio() mới
+//   mỗi lần). Nơi gọi có thể render <audio ref={audioElementRef} /> và truyền vào đây.
+export function useGlobalAIChatbotEngine({ userKey, activePanelLabel, isVi, onMessagesChange, audioElementRef }) {
   const systemPrompt = isVi ? SYSTEM_PROMPT_VI : SYSTEM_PROMPT_EN
 
   const [input, setInput] = useState('')
@@ -74,7 +77,20 @@ export function useGlobalAIChatbotEngine({ userKey, activePanelLabel, isVi, onMe
       : "Hi! I'm Consensus Doctor's general AI assistant. I can chat, answer health and general questions, and guide you through uploading records, image analysis, InBody, family medical tree, or Print Portal. You can also talk to me with voice 🎙️ or have replies read aloud 🔊.",
   }])
 
-  const { speaking, speak } = useTTS(isVi ? 'vi' : 'en')
+  const { speaking, speak, stop: stopSpeaking } = useTTS(isVi ? 'vi' : 'en', audioElementRef)
+
+  // Tự động đọc to câu trả lời của AI ngay sau khi gửi tin (không cần bấm nút 🔊) —
+  // chỉ áp dụng cho tin nhắn do CHÍNH mình vừa gửi (không tự đọc khi nhận sync từ nơi khác).
+  const autoSpeakNextRef = useRef(false)
+  const lastAutoSpokenIdRef = useRef(null)
+  useEffect(() => {
+    if (busy || !historyLoaded || !autoSpeakNextRef.current) return
+    const lastAssistant = [...messages].reverse().find(m => m.role === 'assistant' && m.id !== 'hello')
+    if (!lastAssistant || lastAssistant.id === lastAutoSpokenIdRef.current) return
+    lastAutoSpokenIdRef.current = lastAssistant.id
+    autoSpeakNextRef.current = false
+    speak(lastAssistant.text)
+  }, [busy, historyLoaded, messages, speak])
 
   const handleTranscript = (text) => {
     setInput(prev => (prev ? `${prev} ${text}` : text))
@@ -201,6 +217,7 @@ export function useGlobalAIChatbotEngine({ userKey, activePanelLabel, isVi, onMe
     setInput('')
     setAttachedFiles([])
     setBusy(true)
+    autoSpeakNextRef.current = true
     pushMessage({
       role: 'user',
       text: question || (isVi ? `[Đã gửi ${files.length} file]` : `[Sent ${files.length} file(s)]`),
@@ -345,7 +362,7 @@ export function useGlobalAIChatbotEngine({ userKey, activePanelLabel, isVi, onMe
     attachedFiles, setAttachedFiles,
     handleFilesSelect, removeAttachedFile,
     submitQuestion, pushMessage,
-    speaking, speak,
+    speaking, speak, stop: stopSpeaking,
     recording, transcribing, toggleMic,
   }
 }
