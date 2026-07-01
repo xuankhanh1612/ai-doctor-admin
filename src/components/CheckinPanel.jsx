@@ -1,15 +1,69 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { PATIENT } from '../data/mockData.js'
 import { useApp } from '../context/AppContext'
 import { useAuth } from '../context/AuthContext.jsx'
 import NavButtons from './NavButtons.jsx'
+import { QUICK_PROMPTS } from '../lib/generalPractitionerChat.js'
 import {
-  QUICK_PROMPTS,
-  buildGeneralPractitionerReply,
-  createChatMessage,
-  createInitialAgentMessage,
-} from '../lib/generalPractitionerChat.js'
-import { getGpChatHistory, saveGpChatHistory } from '../lib/generalPractitionerChatStorage.js'
+  getGlobalChatHistory,
+  saveGlobalChatHistory,
+  ownerKeyOf,
+} from '../lib/globalChatbotStorage.js'
+import { callGroqChat, useVoiceInput, useTTS } from '../lib/groqAiClient.js'
+import { MAX_FILES } from '../lib/useGlobalAIChatbotEngine.js'
+
+// Cùng event name với useGlobalAIChatbotEngine (GlobalAIChatbot.jsx / ChatHistoryPanel.jsx)
+// và EmotionalCompanionView.jsx → mọi nơi mở song song đều nhận cập nhật realtime,
+// không cần đóng/mở lại.
+const SYNC_EVENT = 'global-ai-chatbot-sync'
+
+const CHECKIN_SYSTEM_VI = `Bạn là AI Bác sĩ đa khoa ảo trong phần "Symptom & History Check-in" — hỗ trợ thu thập triệu chứng và tiền sử bệnh để xây dựng digital twin cho bệnh nhân.
+
+Vai trò của bạn:
+1. Lắng nghe và khai thác kỹ triệu chứng: bắt đầu khi nào, kéo dài bao lâu, mức độ 0-10, sốt/ho/đau/tiêu hóa/giấc ngủ/tâm trạng, thuốc đang dùng, dị ứng, tiền sử bệnh cá nhân và gia đình.
+2. Nếu người dùng đính kèm ảnh (vd: vùng da, kết quả xét nghiệm, đơn thuốc) hoặc tài liệu, hãy phân tích kỹ và nêu nhận xét hữu ích.
+3. Trả lời các câu hỏi y tế phổ thông rõ ràng, chính xác, dễ hiểu.
+
+Quy tắc:
+- Luôn trả lời bằng tiếng Việt có dấu, giọng văn ấm áp, đồng cảm, súc tích.
+- Dùng markdown (đậm, danh sách) khi cần cho dễ đọc.
+- KHÔNG chẩn đoán bệnh hoặc kê đơn thay bác sĩ — luôn khuyến khích người dùng đặt lịch khám nếu triệu chứng kéo dài, nặng lên hoặc ảnh hưởng sinh hoạt.
+- Nếu có dấu hiệu cấp cứu (đau ngực, khó thở nặng, dấu hiệu đột quỵ, co giật, dị ứng nặng, chảy máu không cầm, lú lẫn, nguy cơ tự hại...): khuyên gọi cấp cứu ngay.
+- Không nhắc đến tên model, API hoặc chi tiết kỹ thuật nội bộ trong câu trả lời.`
+
+const CHECKIN_SYSTEM_EN = `You are the virtual General Practitioner AI inside "Symptom & History Check-in" — helping collect symptoms and medical history to seed the patient's digital twin.
+
+Your role:
+1. Listen closely and probe symptoms: onset, duration, severity 0-10, fever/cough/pain/digestion/sleep/mood, current medications, allergies, and personal/family medical history.
+2. If the user attaches images (e.g. skin area, lab results, prescriptions) or documents, analyze them carefully and give a useful assessment.
+3. Answer general medical questions clearly, accurately, and helpfully.
+
+Rules:
+- Be warm, empathetic, and concise; use markdown (bold, lists) when it helps readability.
+- Never diagnose a condition or prescribe treatment — always encourage booking a clinician visit if symptoms persist, worsen, or affect daily activities.
+- If a question suggests an emergency (chest pain, severe shortness of breath, stroke signs, seizure, severe allergic reaction, uncontrolled bleeding, confusion, self-harm risk): advise seeking emergency care immediately.
+- Never mention model names, APIs, or internal technical details in your reply.`
+
+function makeMsg(role, text, extra = {}) {
+  return {
+    id: `gp_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    role,
+    text,
+    createdAt: new Date().toISOString(),
+    ...extra,
+  }
+}
+
+function makeWelcome(lang) {
+  return {
+    id: 'checkin-welcome',
+    role: 'assistant',
+    text: lang === 'en'
+      ? "Hello, I'm your virtual General Practitioner AI. Tell me your symptoms, how you're feeling, when it started, severity, current medicines, allergies, and medical history. You can also talk to me with voice or send photos/documents for analysis."
+      : 'Xin chào, tôi là AI Bác sĩ đa khoa ảo. Bạn có thể mô tả triệu chứng, bắt đầu từ khi nào, mức độ nặng, thuốc đang dùng, dị ứng và tiền sử bệnh. Bạn cũng có thể nói chuyện bằng giọng nói hoặc gửi ảnh/tài liệu để tôi phân tích.',
+    createdAt: new Date().toISOString(),
+  }
+}
 
 const Tag = ({ children, color = 'cyan' }) => {
   const colors = {
@@ -51,44 +105,213 @@ const Card = ({ title, children }) => (
 export default function CheckinPanel({ onNext, nextLabel, onPrev, prevLabel }) {
   const { t, lang } = useApp()
   const { user } = useAuth()
-  // uuid là field nhận diện thống nhất cho mọi loại user (guest hay đã đăng nhập) —
-  // dùng làm khoá lưu trữ IndexedDB để mỗi user có lịch sử chat riêng.
   const userKey = user?.uuid || null
+  const ownerKey = ownerKeyOf(userKey)
+  const isVi = lang !== 'en'
+
   const [symptomPrompt, setSymptomPrompt] = useState('')
-  const [chatMessages, setChatMessages] = useState(() => [createInitialAgentMessage(lang)])
+  const [chatMessages, setChatMessages] = useState(() => [makeWelcome(lang)])
   const [historyLoaded, setHistoryLoaded] = useState(false)
   const [selectedMessageIds, setSelectedMessageIds] = useState([])
+  const [busy, setBusy] = useState(false)
+  const [attachedFiles, setAttachedFiles] = useState([])
+  const [speakingMsgId, setSpeakingMsgId] = useState(null)
 
-  // Nạp lịch sử chat đã lưu của user khi mount (hoặc khi đổi user)
+  const instanceIdRef = useRef(`checkin-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`)
+  const skipBroadcastRef = useRef(false)
+  const docInputRef = useRef(null)
+  const imageInputRef = useRef(null)
+
+  const { recording, transcribing, toggle: toggleMic } = useVoiceInput(
+    (text) => setSymptomPrompt(prev => (prev ? `${prev} ${text}` : text)),
+    isVi ? 'vi' : 'en',
+  )
+  const { speaking, speak, stop: stopSpeaking } = useTTS(isVi ? 'vi' : 'en')
+  useEffect(() => { if (!speaking) setSpeakingMsgId(null) }, [speaking])
+
   useEffect(() => {
     let cancelled = false
     setHistoryLoaded(false)
     ;(async () => {
-      const saved = await getGpChatHistory(userKey)
+      const saved = await getGlobalChatHistory(userKey)
       if (cancelled) return
-      if (saved.length > 0) setChatMessages(saved)
-      else setChatMessages([createInitialAgentMessage(lang)])
+      setChatMessages(saved.length > 0 ? saved : [makeWelcome(lang)])
       setHistoryLoaded(true)
     })()
     return () => { cancelled = true }
-  }, [userKey])
+  }, [userKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Tự động lưu mỗi khi messages đổi (chỉ sau khi đã nạp lịch sử xong, tránh ghi đè)
+  useEffect(() => {
+    const onSync = (event) => {
+      const detail = event.detail || {}
+      if (detail.ownerKey !== ownerKey) return
+      if (detail.instanceId === instanceIdRef.current) return
+      skipBroadcastRef.current = true
+      setChatMessages(detail.messages || [])
+    }
+    window.addEventListener(SYNC_EVENT, onSync)
+    return () => window.removeEventListener(SYNC_EVENT, onSync)
+  }, [ownerKey])
+
   useEffect(() => {
     if (!historyLoaded) return
-    saveGpChatHistory(userKey, chatMessages)
-  }, [chatMessages, historyLoaded, userKey])
+    saveGlobalChatHistory(userKey, chatMessages)
+    if (skipBroadcastRef.current) {
+      skipBroadcastRef.current = false
+      return
+    }
+    window.dispatchEvent(new CustomEvent(SYNC_EVENT, {
+      detail: { ownerKey, messages: chatMessages, instanceId: instanceIdRef.current },
+    }))
+  }, [chatMessages, historyLoaded, userKey, ownerKey])
 
-  const submitSymptomPrompt = () => {
-    const prompt = symptomPrompt.trim()
-    if (!prompt) return
+  const readFileAsDataUrl = (file) => new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result || ''))
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
+  const readFileAsText = (file) => new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result || ''))
+    reader.onerror = reject
+    reader.readAsText(file, 'utf-8')
+  })
+  const isTextLikeFile = (file) =>
+    file.type === 'text/plain' || file.type === 'text/csv' || file.type === 'application/vnd.ms-excel' ||
+    /\.(txt|csv|md)$/i.test(file.name || '')
 
-    setChatMessages(prev => [
-      ...prev,
-      createChatMessage('user', prompt),
-      createChatMessage('agent', buildGeneralPractitionerReply(prompt, lang)),
-    ])
+  const handleFilesSelect = async (event) => {
+    const files = Array.from(event.target.files || [])
+    event.target.value = ''
+    if (!files.length) return
+
+    const room = MAX_FILES - attachedFiles.length
+    if (room <= 0) {
+      window.alert(isVi ? `Bạn chỉ có thể đính kèm tối đa ${MAX_FILES} file cùng lúc.` : `You can attach up to ${MAX_FILES} files at once.`)
+      return
+    }
+    const toProcess = files.slice(0, room)
+    if (files.length > room) {
+      window.alert(isVi ? `Chỉ ${room} file đầu tiên được thêm vào (tối đa ${MAX_FILES} file).` : `Only the first ${room} files were added (max ${MAX_FILES}).`)
+    }
+
+    const newEntries = []
+    for (const file of toProcess) {
+      const id = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+      try {
+        if (file.type.startsWith('image/')) {
+          const dataUrl = await readFileAsDataUrl(file)
+          newEntries.push({ id, kind: 'image', dataUrl, base64: dataUrl.split(',')[1] || '', mimeType: file.type || 'image/jpeg', name: file.name })
+        } else if (file.type === 'application/pdf') {
+          const dataUrl = await readFileAsDataUrl(file)
+          newEntries.push({ id, kind: 'pdf', dataUrl, base64: dataUrl.split(',')[1] || '', mimeType: 'application/pdf', name: file.name })
+        } else if (isTextLikeFile(file)) {
+          const textContent = await readFileAsText(file)
+          newEntries.push({ id, kind: 'text', name: file.name, mimeType: file.type || 'text/plain', textContent })
+        } else {
+          console.warn('Unsupported file type for checkin chat attachment:', file.type, file.name)
+        }
+      } catch (err) {
+        console.error('Failed to read file', file.name, err)
+      }
+    }
+    if (newEntries.length) setAttachedFiles(prev => [...prev, ...newEntries])
+  }
+  const removeAttachedFile = (id) => setAttachedFiles(prev => prev.filter(f => f.id !== id))
+
+  const submitSymptomPrompt = async (rawPrompt = symptomPrompt) => {
+    const prompt = rawPrompt.trim()
+    const files = attachedFiles
+    if (!prompt && files.length === 0) return
+    if (busy) return
+
     setSymptomPrompt('')
+    setAttachedFiles([])
+    setBusy(true)
+
+    const userMsg = makeMsg('user', prompt || (isVi ? `[Đã gửi ${files.length} file]` : `[Sent ${files.length} file(s)]`), {
+      imageDataUrls: files.filter(f => f.kind === 'image' || f.kind === 'pdf').map(f => ({ dataUrl: f.dataUrl, kind: f.kind, name: f.name })),
+      fileNames: files.filter(f => f.kind === 'text').map(f => f.name),
+    })
+    setChatMessages(prev => [...prev, userMsg])
+
+    const systemPrompt = isVi ? CHECKIN_SYSTEM_VI : CHECKIN_SYSTEM_EN
+
+    try {
+      let answer = ''
+
+      if (files.length > 0) {
+        const visionFiles = files.filter(f => f.kind === 'image' || f.kind === 'pdf')
+        const textBlock = files.filter(f => f.kind === 'text').map(f => `--- ${f.name} ---\n${f.textContent}`).join('\n\n')
+        const defaultPrompt = isVi
+          ? 'Hãy phân tích sâu (các) tài liệu/hình ảnh này (đặc biệt nếu là tài liệu y tế: X-quang, CT, MRI, kết quả xét nghiệm, đơn thuốc...). Mô tả những gì quan sát được, lưu ý điểm bất thường nếu có, và đưa ra nhận xét hữu ích.'
+          : 'Please analyze these documents/images in depth (especially if medical: X-ray, CT, MRI, lab result, prescription...). Describe what you observe, note any abnormalities, and give a helpful assessment.'
+        const instruction = (prompt || defaultPrompt) + (textBlock ? `\n\n---\n${textBlock}` : '')
+
+        if (visionFiles.length > 0) {
+          const GROQ_MAX_IMAGES_PER_REQUEST = 5
+          const batches = []
+          for (let i = 0; i < visionFiles.length; i += GROQ_MAX_IMAGES_PER_REQUEST) {
+            batches.push(visionFiles.slice(i, i + GROQ_MAX_IMAGES_PER_REQUEST))
+          }
+          const batchAnswers = []
+          for (let b = 0; b < batches.length; b++) {
+            const batch = batches[b]
+            const batchInstruction = batches.length > 1
+              ? `${instruction}\n\n${isVi
+                  ? `(Đây là nhóm ảnh ${b + 1}/${batches.length}. Chỉ phân tích các ảnh trong nhóm này.)`
+                  : `(This is image batch ${b + 1}/${batches.length}. Only analyze the images in this batch.)`}`
+              : instruction
+            const res = await fetch('/api/groq-proxy', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+                max_tokens: 1024,
+                messages: [
+                  { role: 'system', content: systemPrompt },
+                  { role: 'user', content: [
+                    ...batch.map(f => ({ type: 'image_url', image_url: { url: `data:${f.mimeType};base64,${f.base64}` } })),
+                    { type: 'text', text: batchInstruction },
+                  ] },
+                ],
+              }),
+            })
+            const data = await res.json().catch(() => ({}))
+            if (!res.ok) throw new Error(data?.error?.message || `Groq Vision ${res.status}`)
+            batchAnswers.push(data?.choices?.[0]?.message?.content || '')
+          }
+          answer = batches.length > 1
+            ? batchAnswers.map((a, i) => `${isVi ? `Nhóm ảnh ${i + 1}/${batches.length}: ` : `Image batch ${i + 1}/${batches.length}: `}\n${a}`).join('\n\n---\n\n')
+            : batchAnswers[0]
+        } else {
+          answer = await callGroqChat([{ role: 'user', content: instruction }], systemPrompt)
+        }
+      } else {
+        const history = chatMessages
+          .filter(m => m.role === 'user' || m.role === 'assistant')
+          .map(m => ({ role: m.role, content: m.text }))
+        history.push({ role: 'user', content: prompt })
+        answer = await callGroqChat(history, systemPrompt)
+      }
+
+      setChatMessages(prev => [...prev, makeMsg('assistant', answer || (isVi ? 'Xin lỗi, tôi chưa có phản hồi phù hợp.' : 'Sorry, I could not generate a good answer.'))])
+    } catch (error) {
+      console.error('Checkin GP AI error:', error)
+      setChatMessages(prev => [...prev, makeMsg('assistant', isVi
+        ? 'Xin lỗi, tôi đang gặp sự cố kết nối AI. Vui lòng thử lại sau ít phút.'
+        : 'Sorry, I ran into an AI connection issue. Please try again in a moment.')])
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const toggleSpeak = (msgId, text) => {
+    if (speakingMsgId === msgId && speaking) { stopSpeaking(); setSpeakingMsgId(null); return }
+    stopSpeaking()
+    setSpeakingMsgId(msgId)
+    speak(text)
   }
 
   const toggleMessageSelection = (id) => {
@@ -106,14 +329,15 @@ export default function CheckinPanel({ onNext, nextLabel, onPrev, prevLabel }) {
 
   const deleteSelectedMessages = () => {
     if (selectedMessageIds.length === 0) return
-
     setChatMessages(prev => prev.filter(message => !selectedMessageIds.includes(message.id)))
     setSelectedMessageIds([])
   }
 
   const resetChatHistory = () => {
-    setChatMessages([createInitialAgentMessage(lang)])
+    stopSpeaking()
+    setChatMessages([makeWelcome(lang)])
     setSelectedMessageIds([])
+    setAttachedFiles([])
   }
 
   return (
@@ -136,8 +360,8 @@ export default function CheckinPanel({ onNext, nextLabel, onPrev, prevLabel }) {
                 </div>
                 <p style={{ color: 'var(--text2)', fontSize: 12, marginTop: 4, lineHeight: 1.6 }}>
                   {lang === 'en'
-                    ? 'Chat with a virtual General Practitioner to describe any symptom: fever, pain, cough, digestion, sleep, mood, medications, allergies, or medical history.'
-                    : 'Chat với AI Bác sĩ đa khoa để mô tả mọi triệu chứng: sốt, đau, ho, tiêu hóa, giấc ngủ, tâm trạng, thuốc, dị ứng hoặc tiền sử bệnh.'}
+                    ? 'Chat with a virtual General Practitioner to describe any symptom: fever, pain, cough, digestion, sleep, mood, medications, allergies, or medical history. Talk by voice, or attach photos/documents for deep AI analysis.'
+                    : 'Chat với AI Bác sĩ đa khoa để mô tả mọi triệu chứng: sốt, đau, ho, tiêu hóa, giấc ngủ, tâm trạng, thuốc, dị ứng hoặc tiền sử bệnh. Bạn có thể nói bằng giọng nói, hoặc đính kèm ảnh/tài liệu để AI phân tích sâu.'}
                 </p>
               </div>
               <Tag color="green">GENERAL PRACTITIONER AI</Tag>
@@ -146,8 +370,9 @@ export default function CheckinPanel({ onNext, nextLabel, onPrev, prevLabel }) {
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
               <div style={{ color: 'var(--text3)', fontSize: 10, fontFamily: 'var(--font-mono)' }}>
                 {lang === 'en'
-                  ? `${chatMessages.length} saved messages · local history`
-                  : `${chatMessages.length} tin nhắn đã lưu · local history`}
+                  ? `${chatMessages.length} messages · Groq AI · voice · files · synced with Global Chat`
+                  : `${chatMessages.length} tin nhắn · Groq AI · giọng nói · file · đồng bộ với Global Chat`}
+                {busy && (lang === 'en' ? ' · AI thinking…' : ' · AI đang soạn…')}
               </div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 <button
@@ -259,14 +484,93 @@ export default function CheckinPanel({ onNext, nextLabel, onPrev, prevLabel }) {
                           ×
                         </button>
                       </div>
+
+                      {message.imageDataUrls?.length > 0 && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: message.text ? 8 : 0 }}>
+                          {message.imageDataUrls.map((img, i) => (
+                            img.kind === 'pdf' ? (
+                              <div key={i} style={{ width: 52, height: 52, borderRadius: 10, background: 'rgba(255,255,255,0.08)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>
+                                📄
+                                <span style={{ fontSize: 8, marginTop: 2, maxWidth: 44, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{img.name}</span>
+                              </div>
+                            ) : (
+                              <img key={i} src={img.dataUrl} alt={img.name || 'attached'} style={{ width: 52, height: 52, borderRadius: 10, objectFit: 'cover', display: 'block' }} />
+                            )
+                          ))}
+                        </div>
+                      )}
+                      {message.fileNames?.length > 0 && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: message.text ? 8 : 0 }}>
+                          {message.fileNames.map((name, i) => (
+                            <span key={i} style={{ fontSize: 10, padding: '3px 8px', borderRadius: 8, background: 'rgba(255,255,255,0.08)' }}>📃 {name}</span>
+                          ))}
+                        </div>
+                      )}
+
                       {message.text}
+
+                      {!isUser && (
+                        <div style={{ marginTop: 6 }}>
+                          <button
+                            type="button"
+                            onClick={() => toggleSpeak(message.id, message.text)}
+                            title={speakingMsgId === message.id && speaking ? (lang === 'en' ? 'Stop' : 'Dừng đọc') : (lang === 'en' ? 'Read aloud' : 'Đọc to')}
+                            style={{
+                              border: '1px solid var(--border)',
+                              background: 'rgba(255,255,255,0.04)',
+                              color: 'var(--violet)',
+                              borderRadius: 8,
+                              padding: '3px 8px',
+                              fontSize: 11,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            {speakingMsgId === message.id && speaking ? '⏸ ' + (lang === 'en' ? 'Stop' : 'Dừng') : '🔊 ' + (lang === 'en' ? 'Listen' : 'Nghe')}
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )
               })}
+              {busy && (
+                <div style={{ alignSelf: 'flex-start', width: 'min(100%, 88%)', padding: '10px 12px', borderRadius: '14px 14px 14px 3px', background: 'rgba(156,111,255,0.12)', border: '1px solid rgba(156,111,255,0.24)' }}>
+                  <span style={{ display: 'inline-flex', gap: 4 }}>
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--violet)', display: 'inline-block', animation: 'checkinTypingDot 1.1s ease-in-out infinite' }} />
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--violet)', display: 'inline-block', animation: 'checkinTypingDot 1.1s 0.2s ease-in-out infinite' }} />
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--violet)', display: 'inline-block', animation: 'checkinTypingDot 1.1s 0.4s ease-in-out infinite' }} />
+                  </span>
+                </div>
+              )}
             </div>
 
+            {attachedFiles.length > 0 && (
+              <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 2 }}>
+                {attachedFiles.map(f => (
+                  <div key={f.id} style={{ position: 'relative', flexShrink: 0 }}>
+                    {f.kind === 'image' ? (
+                      <img src={f.dataUrl} alt={f.name} title={f.name} style={{ width: 48, height: 48, borderRadius: 10, objectFit: 'cover', display: 'block' }} />
+                    ) : (
+                      <div title={f.name} style={{ width: 48, height: 48, borderRadius: 10, background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>
+                        {f.kind === 'pdf' ? '📄' : '📃'}
+                        <span style={{ fontSize: 7, marginTop: 2, maxWidth: 40, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text3)' }}>{f.name}</span>
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => removeAttachedFile(f.id)}
+                      title={lang === 'en' ? 'Remove file' : 'Bỏ file'}
+                      style={{ position: 'absolute', top: -6, right: -6, border: 'none', background: '#fff', color: '#1a2035', borderRadius: '50%', width: 16, height: 16, cursor: 'pointer', fontSize: 10, lineHeight: '16px', padding: 0, textAlign: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.4)', fontWeight: 800 }}
+                    >×</button>
+                  </div>
+                ))}
+              </div>
+            )}
+
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <input ref={docInputRef} type="file" accept="application/pdf,text/plain,text/csv,.csv,.txt,.md" multiple onChange={handleFilesSelect} style={{ display: 'none' }} />
+              <input ref={imageInputRef} type="file" accept="image/*" multiple onChange={handleFilesSelect} style={{ display: 'none' }} />
+
               <textarea
                 value={symptomPrompt}
                 onChange={e => setSymptomPrompt(e.target.value)}
@@ -277,6 +581,7 @@ export default function CheckinPanel({ onNext, nextLabel, onPrev, prevLabel }) {
                   ? 'Example: I have fever, cough, headache, stomach pain, insomnia, or anxiety. It started 3 days ago...'
                   : 'Ví dụ: Tôi bị sốt, ho, đau đầu, đau bụng, mất ngủ hoặc lo lắng. Triệu chứng bắt đầu 3 ngày trước...'}
                 rows={4}
+                disabled={busy}
                 style={{
                   width: '100%',
                   resize: 'vertical',
@@ -290,31 +595,92 @@ export default function CheckinPanel({ onNext, nextLabel, onPrev, prevLabel }) {
                   fontFamily: 'var(--font-display)',
                   fontSize: 13,
                   lineHeight: 1.6,
+                  opacity: busy ? 0.7 : 1,
                 }}
               />
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
                 <div style={{ color: 'var(--text3)', fontSize: 10, fontFamily: 'var(--font-mono)' }}>
                   {lang === 'en' ? 'Press Ctrl/⌘ + Enter to send' : 'Nhấn Ctrl/⌘ + Enter để gửi'}
                 </div>
-                <button
-                  type="button"
-                  onClick={submitSymptomPrompt}
-                  disabled={!symptomPrompt.trim()}
-                  style={{
-                    padding: '10px 18px',
-                    borderRadius: 10,
-                    border: 'none',
-                    background: symptomPrompt.trim()
-                      ? 'linear-gradient(135deg, var(--cyan2), var(--violet2))'
-                      : 'rgba(255,255,255,0.06)',
-                    color: symptomPrompt.trim() ? '#fff' : 'var(--text3)',
-                    cursor: symptomPrompt.trim() ? 'pointer' : 'not-allowed',
-                    fontSize: 13,
-                    fontWeight: 700,
-                  }}
-                >
-                  {lang === 'en' ? 'Send to GP AI Doctor →' : 'Gửi cho AI Bác sĩ đa khoa →'}
-                </button>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    onClick={() => docInputRef.current?.click()}
+                    disabled={busy || attachedFiles.length >= MAX_FILES}
+                    title={lang === 'en' ? `Attach files (PDF, text, CSV) — up to ${MAX_FILES}` : `Đính kèm file (PDF, văn bản, CSV) — tối đa ${MAX_FILES}`}
+                    style={{
+                      padding: '10px 12px',
+                      borderRadius: 10,
+                      border: '1px solid var(--border2)',
+                      background: 'rgba(255,255,255,0.04)',
+                      color: 'var(--text2)',
+                      cursor: (busy || attachedFiles.length >= MAX_FILES) ? 'not-allowed' : 'pointer',
+                      opacity: (busy || attachedFiles.length >= MAX_FILES) ? 0.5 : 1,
+                      fontSize: 14,
+                      fontWeight: 800,
+                    }}
+                  >
+                    📎
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => imageInputRef.current?.click()}
+                    disabled={busy || attachedFiles.length >= MAX_FILES}
+                    title={lang === 'en' ? `Upload images for deep AI analysis — up to ${MAX_FILES}` : `Tải ảnh để AI phân tích sâu — tối đa ${MAX_FILES}`}
+                    style={{
+                      padding: '10px 12px',
+                      borderRadius: 10,
+                      border: `1px solid ${attachedFiles.length ? 'rgba(0,230,118,0.4)' : 'var(--border2)'}`,
+                      background: 'rgba(255,255,255,0.04)',
+                      color: 'var(--text2)',
+                      cursor: (busy || attachedFiles.length >= MAX_FILES) ? 'not-allowed' : 'pointer',
+                      opacity: (busy || attachedFiles.length >= MAX_FILES) ? 0.5 : 1,
+                      fontSize: 14,
+                      fontWeight: 800,
+                    }}
+                  >
+                    🖼️
+                  </button>
+                  <button
+                    type="button"
+                    onClick={toggleMic}
+                    disabled={busy && !recording}
+                    title={recording ? (lang === 'en' ? 'Stop recording' : 'Dừng ghi âm') : (lang === 'en' ? 'Speak to describe symptoms' : 'Nói để khai báo triệu chứng')}
+                    style={{
+                      padding: '10px 12px',
+                      borderRadius: 10,
+                      border: `1px solid ${recording ? 'var(--red)' : 'var(--border2)'}`,
+                      background: recording ? 'linear-gradient(135deg, var(--red), #dc2626)' : 'rgba(255,255,255,0.04)',
+                      color: recording ? '#fff' : 'var(--text2)',
+                      cursor: transcribing ? 'wait' : 'pointer',
+                      fontSize: 14,
+                      fontWeight: 800,
+                    }}
+                  >
+                    {transcribing ? '⏳' : recording ? '⏹️' : '🎙️'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => submitSymptomPrompt()}
+                    disabled={busy || (!symptomPrompt.trim() && attachedFiles.length === 0)}
+                    style={{
+                      padding: '10px 18px',
+                      borderRadius: 10,
+                      border: 'none',
+                      background: (symptomPrompt.trim() || attachedFiles.length > 0) && !busy
+                        ? 'linear-gradient(135deg, var(--cyan2), var(--violet2))'
+                        : 'rgba(255,255,255,0.06)',
+                      color: (symptomPrompt.trim() || attachedFiles.length > 0) && !busy ? '#fff' : 'var(--text3)',
+                      cursor: busy || (!symptomPrompt.trim() && attachedFiles.length === 0) ? 'not-allowed' : 'pointer',
+                      fontSize: 13,
+                      fontWeight: 700,
+                    }}
+                  >
+                    {busy
+                      ? (lang === 'en' ? 'Sending…' : 'Đang gửi…')
+                      : (lang === 'en' ? 'Send to GP AI Doctor →' : 'Gửi cho AI Bác sĩ đa khoa →')}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -340,6 +706,7 @@ export default function CheckinPanel({ onNext, nextLabel, onPrev, prevLabel }) {
                   <button
                     key={prompt}
                     type="button"
+                    disabled={busy}
                     onClick={() => setSymptomPrompt(prompt)}
                     style={{
                       textAlign: 'left',
@@ -348,7 +715,8 @@ export default function CheckinPanel({ onNext, nextLabel, onPrev, prevLabel }) {
                       border: '1px solid var(--border)',
                       background: 'rgba(255,255,255,0.03)',
                       color: 'var(--text2)',
-                      cursor: 'pointer',
+                      cursor: busy ? 'not-allowed' : 'pointer',
+                      opacity: busy ? 0.6 : 1,
                       fontSize: 11,
                       lineHeight: 1.45,
                     }}
@@ -436,6 +804,10 @@ export default function CheckinPanel({ onNext, nextLabel, onPrev, prevLabel }) {
       </Card>
 
       <NavButtons onNext={onNext} nextLabel={nextLabel || t('familyTree')} onPrev={onPrev} prevLabel={prevLabel} />
+
+      <style>{`
+        @keyframes checkinTypingDot { 0%,80%,100%{transform:scale(0.6);opacity:0.4} 40%{transform:scale(1);opacity:1} }
+      `}</style>
     </div>
   )
 }
