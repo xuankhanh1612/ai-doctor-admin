@@ -38,12 +38,14 @@ export default function ChatHistoryPanel({ onNext, onPrev, prevLabel, nextLabel,
   const scrollRef = useRef(null)
   const docInputRef = useRef(null)
   const fileInputRef = useRef(null)
+  const audioElementRef = useRef(null)
 
   // ── Bộ khung chat (gửi tin/đính kèm file/giọng nói) dùng CHUNG 1 hook với
   // GlobalAIChatbot.jsx (widget góc màn hình) — cùng đọc/ghi vào src/lib/globalChatbotStorage.js,
   // nên gửi tin ở đây hay ở widget đều đồng bộ song song, không trùng/lệch dữ liệu.
   // Mỗi khi `messages` đổi (đã nạp xong lịch sử, kể cả tin mới gửi), nhóm lại theo ngày
   // để vẽ calendar + tự động hiện hội thoại "hôm nay" lên khi vừa gửi tin xong.
+  // Hook cũng tự động đọc to (TTS) câu trả lời mới nhất ngay sau khi AI trả lời xong.
   const {
     messages,
     input, setInput,
@@ -60,6 +62,7 @@ export default function ChatHistoryPanel({ onNext, onPrev, prevLabel, nextLabel,
     userKey,
     activePanelLabel: activePanelLabel || 'Lịch sử Chat với AI',
     isVi,
+    audioElementRef,
     onMessagesChange: (msgs) => {
       setByDate(groupMessagesByDate(msgs))
       setSelectedDate(dateKey())
@@ -189,6 +192,7 @@ export default function ChatHistoryPanel({ onNext, onPrev, prevLabel, nextLabel,
 
   return (
     <div style={{ minHeight: '100%', background: isDark ? '#050b18' : '#eef8ff', padding: '22px clamp(14px, 3vw, 28px) 36px' }}>
+      <audio ref={audioElementRef} preload="none" style={{ display: 'none' }} />
       <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
 
         {/* ===== HEADER ===== */}

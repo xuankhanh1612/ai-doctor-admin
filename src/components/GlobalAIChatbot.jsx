@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useApp } from '../context/AppContext'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useGlobalAIChatbotEngine, quickPrompts, MAX_FILES, getModeLabel } from '../lib/useGlobalAIChatbotEngine.js'
-import { useTTS } from '../lib/groqAiClient.js'
 
 // Single named export used by the journey panels; do not add a second no-op export below.
 export function CompactGlobalAIChatBar({ activePanelLabel }) {
@@ -14,33 +13,19 @@ export function CompactGlobalAIChatBar({ activePanelLabel }) {
   const docInputRef = useRef(null)
   const imageInputRef = useRef(null)
   const audioElementRef = useRef(null)
-  const shouldReadNextReplyRef = useRef(false)
-  const lastSpokenAssistantIdRef = useRef(null)
 
   const {
-    messages,
     input, setInput,
     busy,
-    historyLoaded,
     attachedFiles,
     handleFilesSelect,
     submitQuestion,
     recording, transcribing, toggleMic,
-  } = useGlobalAIChatbotEngine({ userKey, activePanelLabel, isVi })
-  const { speaking, speak, stop } = useTTS(isVi ? 'vi' : 'en', audioElementRef)
-
-  useEffect(() => {
-    if (busy || !historyLoaded || !shouldReadNextReplyRef.current) return
-    const lastAssistant = [...messages].reverse().find(message => message.role === 'assistant' && message.id !== 'hello')
-    if (!lastAssistant || lastAssistant.id === lastSpokenAssistantIdRef.current) return
-    lastSpokenAssistantIdRef.current = lastAssistant.id
-    shouldReadNextReplyRef.current = false
-    speak(lastAssistant.text)
-  }, [busy, historyLoaded, messages, speak])
+    speaking, stop,
+  } = useGlobalAIChatbotEngine({ userKey, activePanelLabel, isVi, audioElementRef })
 
   const submitFromBar = () => {
     if (!input.trim() && attachedFiles.length === 0) return
-    shouldReadNextReplyRef.current = true
     submitQuestion()
   }
 
@@ -111,10 +96,12 @@ export default function GlobalAIChatbot({ activePanelLabel }) {
   const docInputRef = useRef(null)
   const cameraInputRef = useRef(null)
   const scrollRef = useRef(null)
+  const audioElementRef = useRef(null)
 
   // Toàn bộ state + logic gửi tin/đính kèm file/giọng nói/lưu lịch sử dùng CHUNG 1 hook
   // với trang "Lịch sử Chat với AI" (src/components/ChatHistoryPanel.jsx) — cùng đọc/ghi
   // vào src/lib/globalChatbotStorage.js, nên 2 nơi luôn đồng bộ song song với nhau.
+  // Hook tự động đọc to (TTS) câu trả lời mới nhất ngay sau khi AI trả lời xong.
   const {
     messages,
     input, setInput,
@@ -127,7 +114,7 @@ export default function GlobalAIChatbot({ activePanelLabel }) {
     submitQuestion,
     speaking, speak,
     recording, transcribing, toggleMic,
-  } = useGlobalAIChatbotEngine({ userKey, activePanelLabel, isVi })
+  } = useGlobalAIChatbotEngine({ userKey, activePanelLabel, isVi, audioElementRef })
 
   const styles = useMemo(() => createStyles(isDark, fullscreen), [isDark, fullscreen])
 
@@ -151,6 +138,7 @@ export default function GlobalAIChatbot({ activePanelLabel }) {
 
   return (
     <section className="global-ai-chatbot-panel" style={styles.panel} aria-label="Chatbot AI chung">
+      <audio ref={audioElementRef} preload="none" style={{ display: 'none' }} />
       <header style={styles.header}>
         <button
           type="button"
@@ -170,7 +158,7 @@ export default function GlobalAIChatbot({ activePanelLabel }) {
 
       <div style={styles.metaRow}>
         <span style={styles.badge}>{getModeLabel(mode, isVi)}</span>
-        <span style={styles.current}>{isVi ? 'Trợ lý website · Groq AI + giọng nói' : 'Website assistant · Groq AI + voice'}</span>
+        <span style={styles.current}>{isVi ? 'Trợ lý website · Groq AI + giọng nói · tự động đọc trả lời' : 'Website assistant · Groq AI + voice · auto voice reply'}</span>
         <span style={styles.current}>{isVi ? 'Mục hiện tại: ' : 'Current section: '}{activePanelLabel || 'Website'}</span>
       </div>
 
