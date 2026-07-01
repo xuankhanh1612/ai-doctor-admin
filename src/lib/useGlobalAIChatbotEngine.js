@@ -10,6 +10,7 @@ import { useEffect, useRef, useState } from 'react'
 import { callGroqChat, useVoiceInput, useTTS } from './groqAiClient.js'
 import { getDeterministicFallbackReply } from './huggingFaceTransformersChat.js'
 import { getGlobalChatHistory, saveGlobalChatHistory, ownerKeyOf } from './globalChatbotStorage.js'
+import { extractPdfTextForInBody, pdfPageToImageForInBody } from './inbodyImageConvert.js'
 
 // Sự kiện đồng bộ TRỰC TIẾP (không cần remount) giữa mọi nơi đang dùng hook này cùng lúc —
 // ví dụ: popup chatbot góc màn hình (GlobalAIChatbot.jsx) và trang Lịch sử Chat với AI
@@ -191,9 +192,20 @@ export function useGlobalAIChatbotEngine({ userKey, activePanelLabel, isVi, onMe
           const base64 = dataUrl.split(',')[1] || ''
           newEntries.push({ id, kind: 'image', dataUrl, base64, mimeType: file.type || 'image/jpeg', name: file.name })
         } else if (file.type === 'application/pdf') {
-          const dataUrl = await readFileAsDataUrl(file)
-          const base64 = dataUrl.split(',')[1] || ''
-          newEntries.push({ id, kind: 'pdf', dataUrl, base64, mimeType: 'application/pdf', name: file.name })
+          // Groq vision chỉ nhận ảnh thật (jpeg/png/...), KHÔNG nhận PDF thô qua image_url
+          // (gửi thẳng base64 PDF sẽ bị Groq trả lỗi "invalid image data").
+          // Nên: thử trích xuất text trước (PDF dạng text), nếu không có thì render trang 1 → JPEG.
+          const pdfText = await extractPdfTextForInBody(file)
+          if (pdfText) {
+            newEntries.push({ id, kind: 'text', name: file.name, mimeType: 'application/pdf', textContent: pdfText })
+          } else {
+            const imgB64 = await pdfPageToImageForInBody(file, 1)
+            if (imgB64) {
+              newEntries.push({ id, kind: 'image', dataUrl: `data:image/jpeg;base64,${imgB64}`, base64: imgB64, mimeType: 'image/jpeg', name: file.name })
+            } else {
+              console.error('Could not process PDF (no text, render failed):', file.name)
+            }
+          }
         } else if (isTextLikeFile(file)) {
           const textContent = await readFileAsText(file)
           newEntries.push({ id, kind: 'text', name: file.name, mimeType: file.type || 'text/plain', textContent })
@@ -221,7 +233,7 @@ export function useGlobalAIChatbotEngine({ userKey, activePanelLabel, isVi, onMe
     pushMessage({
       role: 'user',
       text: question || (isVi ? `[Đã gửi ${files.length} file]` : `[Sent ${files.length} file(s)]`),
-      imageDataUrls: files.filter(f => f.kind === 'image' || f.kind === 'pdf').map(f => ({ dataUrl: f.dataUrl, kind: f.kind, name: f.name })),
+      imageDataUrls: files.filter(f => f.kind === 'image').map(f => ({ dataUrl: f.dataUrl, kind: f.kind, name: f.name })),
       fileNames: files.filter(f => f.kind === 'text').map(f => f.name),
     })
 
@@ -231,7 +243,7 @@ export function useGlobalAIChatbotEngine({ userKey, activePanelLabel, isVi, onMe
         setStatus(isVi ? 'Đang phân tích file...' : 'Analyzing files...')
         setMode('thinking')
 
-        const visionFiles = files.filter(f => f.kind === 'image' || f.kind === 'pdf')
+        const visionFiles = files.filter(f => f.kind === 'image')
         const textFiles = files.filter(f => f.kind === 'text')
 
         const textBlock = textFiles.length
