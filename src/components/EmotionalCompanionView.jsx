@@ -9,6 +9,7 @@ import {
 } from '../lib/globalChatbotStorage.js'
 import { callGroqChat, useVoiceInput, useTTS } from '../lib/groqAiClient.js'
 import { MAX_FILES } from '../lib/useGlobalAIChatbotEngine.js'
+import { extractPdfTextForInBody, pdfPageToImageForInBody } from '../lib/inbodyImageConvert.js'
 
 // ── Cùng event name với useGlobalAIChatbotEngine → sync 2 chiều realtime ──
 const SYNC_EVENT = 'global-ai-chatbot-sync'
@@ -161,8 +162,20 @@ export default function EmotionalCompanionView({ onOpenStressRelief, onOpenInBod
           const dataUrl = await readDataUrl(f)
           entries.push({ id, kind:'image', dataUrl, base64: dataUrl.split(',')[1]||'', mimeType: f.type, name: f.name })
         } else if (f.type === 'application/pdf') {
-          const dataUrl = await readDataUrl(f)
-          entries.push({ id, kind:'pdf', dataUrl, base64: dataUrl.split(',')[1]||'', mimeType:'application/pdf', name: f.name })
+          // Groq vision chỉ nhận ảnh thật (jpeg/png/...), KHÔNG nhận PDF thô qua image_url
+          // (gửi thẳng base64 PDF sẽ bị Groq trả lỗi "invalid image data").
+          // Nên: thử trích xuất text trước (PDF dạng text), nếu không có thì render trang 1 → JPEG.
+          const pdfText = await extractPdfTextForInBody(f)
+          if (pdfText) {
+            entries.push({ id, kind:'text', name: f.name, mimeType:'application/pdf', textContent: pdfText })
+          } else {
+            const imgB64 = await pdfPageToImageForInBody(f, 1)
+            if (imgB64) {
+              entries.push({ id, kind:'image', dataUrl: `data:image/jpeg;base64,${imgB64}`, base64: imgB64, mimeType:'image/jpeg', name: f.name })
+            } else {
+              console.error('Could not process PDF (no text, render failed):', f.name)
+            }
+          }
         } else if (isTextLike(f)) {
           entries.push({ id, kind:'text', name: f.name, mimeType: f.type||'text/plain', textContent: await readText(f) })
         }
@@ -183,7 +196,7 @@ export default function EmotionalCompanionView({ onOpenStressRelief, onOpenInBod
 
     // Tin nhắn user — role: 'user' (đồng bộ format với GlobalAIChatbot)
     const userMsg = makeMsg('user', prompt || (isVi ? `[Đã gửi ${files.length} file]` : `[Sent ${files.length} file(s)]`), {
-      imageDataUrls: files.filter(f => f.kind==='image'||f.kind==='pdf').map(f => ({ dataUrl: f.dataUrl, kind: f.kind, name: f.name })),
+      imageDataUrls: files.filter(f => f.kind==='image').map(f => ({ dataUrl: f.dataUrl, kind: f.kind, name: f.name })),
       fileNames:     files.filter(f => f.kind==='text').map(f => f.name),
     })
     setMessages(prev => [...prev, userMsg])
@@ -194,7 +207,7 @@ export default function EmotionalCompanionView({ onOpenStressRelief, onOpenInBod
       let reply = ''
 
       if (files.length > 0) {
-        const visionFiles = files.filter(f => f.kind==='image'||f.kind==='pdf')
+        const visionFiles = files.filter(f => f.kind==='image')
         const textBlock   = files.filter(f => f.kind==='text').map(f => `--- ${f.name} ---\n${f.textContent}`).join('\n\n')
         const instruction = (prompt || (isVi ? 'Phân tích tài liệu/hình ảnh y tế này.' : 'Analyze this medical document/image.')) + (textBlock ? `\n\n---\n${textBlock}` : '')
 
