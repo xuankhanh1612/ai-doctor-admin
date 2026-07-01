@@ -121,6 +121,10 @@ export default function CheckinPanel({ onNext, nextLabel, onPrev, prevLabel }) {
   const skipBroadcastRef = useRef(false)
   const docInputRef = useRef(null)
   const imageInputRef = useRef(null)
+  // Tự động đọc to câu trả lời của AI ngay sau khi gửi tin (không cần bấm nút 🔊).
+  // Chỉ áp dụng cho tin nhắn do CHÍNH mình gửi (không tự đọc khi nhận sync từ nơi khác).
+  const autoSpeakNextRef = useRef(false)
+  const lastAutoSpokenIdRef = useRef(null)
 
   const { recording, transcribing, toggle: toggleMic } = useVoiceInput(
     (text) => setSymptomPrompt(prev => (prev ? `${prev} ${text}` : text)),
@@ -128,6 +132,18 @@ export default function CheckinPanel({ onNext, nextLabel, onPrev, prevLabel }) {
   )
   const { speaking, speak, stop: stopSpeaking } = useTTS(isVi ? 'vi' : 'en')
   useEffect(() => { if (!speaking) setSpeakingMsgId(null) }, [speaking])
+
+  // Sau khi AI trả lời xong (busy chuyển về false) và tin nhắn đó là do mình vừa gửi,
+  // tự động phát giọng đọc câu trả lời mới nhất — không cần bấm nút 🔊 nữa.
+  useEffect(() => {
+    if (busy || !historyLoaded || !autoSpeakNextRef.current) return
+    const lastAssistant = [...chatMessages].reverse().find(m => m.role === 'assistant' && m.id !== 'checkin-welcome')
+    if (!lastAssistant || lastAssistant.id === lastAutoSpokenIdRef.current) return
+    lastAutoSpokenIdRef.current = lastAssistant.id
+    autoSpeakNextRef.current = false
+    setSpeakingMsgId(lastAssistant.id)
+    speak(lastAssistant.text)
+  }, [busy, historyLoaded, chatMessages, speak])
 
   useEffect(() => {
     let cancelled = false
@@ -229,6 +245,7 @@ export default function CheckinPanel({ onNext, nextLabel, onPrev, prevLabel }) {
     setSymptomPrompt('')
     setAttachedFiles([])
     setBusy(true)
+    autoSpeakNextRef.current = true
 
     const userMsg = makeMsg('user', prompt || (isVi ? `[Đã gửi ${files.length} file]` : `[Sent ${files.length} file(s)]`), {
       imageDataUrls: files.filter(f => f.kind === 'image' || f.kind === 'pdf').map(f => ({ dataUrl: f.dataUrl, kind: f.kind, name: f.name })),
@@ -335,6 +352,8 @@ export default function CheckinPanel({ onNext, nextLabel, onPrev, prevLabel }) {
 
   const resetChatHistory = () => {
     stopSpeaking()
+    autoSpeakNextRef.current = false
+    lastAutoSpokenIdRef.current = null
     setChatMessages([makeWelcome(lang)])
     setSelectedMessageIds([])
     setAttachedFiles([])
@@ -370,8 +389,8 @@ export default function CheckinPanel({ onNext, nextLabel, onPrev, prevLabel }) {
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
               <div style={{ color: 'var(--text3)', fontSize: 10, fontFamily: 'var(--font-mono)' }}>
                 {lang === 'en'
-                  ? `${chatMessages.length} messages · Groq AI · voice · files · synced with Global Chat`
-                  : `${chatMessages.length} tin nhắn · Groq AI · giọng nói · file · đồng bộ với Global Chat`}
+                  ? `${chatMessages.length} messages · Groq AI · voice · files · auto voice reply · synced with Global Chat`
+                  : `${chatMessages.length} tin nhắn · Groq AI · giọng nói · file · tự động đọc trả lời · đồng bộ với Global Chat`}
                 {busy && (lang === 'en' ? ' · AI thinking…' : ' · AI đang soạn…')}
               </div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
