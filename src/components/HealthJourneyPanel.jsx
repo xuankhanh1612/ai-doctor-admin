@@ -2,11 +2,11 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import NavButtons from './NavButtons.jsx'
 import GPEmotionalCompanionView from './EmotionalCompanionView.jsx'
-import { CompactGlobalAIChatBar } from './GlobalAIChatbot.jsx'
 import { useApp } from '../context/AppContext.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { detectFileType, fileToBase64, fileToDataUrl, saveRecord } from '../lib/medicalStorage.js'
 import { notifyUpload } from '../hooks/useMedicalData.js'
+import { useGlobalAIChatbotEngine, quickPrompts, MAX_FILES, getModeLabel } from '../lib/useGlobalAIChatbotEngine.js'
 
 const BLUE = '#0058bc'
 const PRIMARY = '#0070eb'
@@ -24,6 +24,7 @@ const journeyTabs = [
   { id: 'emotion', icon: '🤖', titleVi: 'Bạn đồng hành cảm xúc AI', titleEn: 'AI Emotional Companion', subtitleVi: 'AI Bác sĩ đa khoa · lắng nghe và tâm sự', subtitleEn: 'Hope AI · anxiety relief and decompression' },
   { id: 'meal', icon: '🥗', titleVi: 'Quét bữa ăn AI', titleEn: 'AI Meal Scan', subtitleVi: 'Nhận diện món ăn · dinh dưỡng · phù hợp phác đồ', subtitleEn: 'Food recognition · nutrition · care-plan fit' },
   { id: 'medication', icon: '💊', titleVi: 'Trợ lý thuốc thông minh', titleEn: 'Smart Medication Assistant', subtitleVi: 'Quét thuốc · lịch uống · cảnh báo tương tác', subtitleEn: 'Medication scan · schedule · interaction warnings' },
+  { id: 'aiChat', icon: '🤗', titleVi: 'Chat AI chung', titleEn: 'General AI Chat', subtitleVi: 'Groq AI · giọng nói · đính kèm file · lịch sử đồng bộ', subtitleEn: 'Groq AI · voice · file attachments · synced history' },
   { id: 'faceDetector', icon: '🙂', titleVi: 'Face detector', titleEn: 'Face Detector', subtitleVi: 'Camera live · landmark khuôn mặt · sinh trắc', subtitleEn: 'Live camera · face landmarks · biometrics' },
   { id: 'bodyDetector', icon: '🏃', titleVi: 'Body detector', titleEn: 'Body Detector', subtitleVi: 'Camera live · khung xương · lớp phủ sinh học', subtitleEn: 'Live camera · pose skeleton · bio overlay' },
 ]
@@ -911,8 +912,8 @@ function HealthJourneyTabs({ activeTab, setActiveTab, lang }) {
 }
 
 
-function EmotionalCompanionView({ onOpenStressRelief, onOpenInBody, chatComposer, hideComposer }) {
-  return <GPEmotionalCompanionView onOpenStressRelief={onOpenStressRelief} onOpenInBody={onOpenInBody} chatComposer={chatComposer} hideComposer={hideComposer} />
+function EmotionalCompanionView({ onOpenStressRelief, onOpenInBody }) {
+  return <GPEmotionalCompanionView onOpenStressRelief={onOpenStressRelief} onOpenInBody={onOpenInBody} />
 }
 
 function CompanionTile({ icon, color, title, subtitle }) {
@@ -1201,6 +1202,173 @@ function MedicationAssistantView({ onViewMedicalRecord }) {
   )
 }
 
+// ─── Chat AI chung nhúng thẳng vào trang Buổi Sáng ───────────────────────────
+// Dùng CHUNG hook + kho lưu trữ với GlobalAIChatbot (widget góc màn hình)
+// → lịch sử tin nhắn đồng bộ 2 chiều, realtime, không cần đóng/mở lại.
+function MorningAIChatView() {
+  const { theme, lang } = useApp()
+  const { user } = useAuth()
+  const isDark = theme === 'dark'
+  const isVi = lang !== 'en'
+  const userKey = user?.uuid || null
+  const scrollRef = useRef(null)
+  const docInputRef = useRef(null)
+  const fileInputRef = useRef(null)
+
+  const {
+    messages,
+    input, setInput,
+    status,
+    mode,
+    busy,
+    attachedFiles,
+    handleFilesSelect, removeAttachedFile,
+    submitQuestion,
+    speaking, speak,
+    recording, transcribing, toggleMic,
+  } = useGlobalAIChatbotEngine({ userKey, activePanelLabel: isVi ? 'Buổi Sáng' : 'Morning Session', isVi })
+
+  useEffect(() => {
+    window.setTimeout(() => {
+      scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
+    }, 30)
+  }, [messages, busy])
+
+  const bg = isDark ? 'rgba(16,20,36,0.96)' : '#ffffff'
+  const surface = isDark ? 'rgba(255,255,255,0.05)' : '#f4f4f8'
+  const border = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.09)'
+  const ink = isDark ? '#e8eaf6' : '#1a2035'
+  const muted = isDark ? 'rgba(255,255,255,0.45)' : '#6b7280'
+  const userBubble = 'linear-gradient(135deg,#0058bc,#0099ff)'
+  const botBubble = isDark ? 'rgba(255,255,255,0.07)' : '#f0f2fa'
+  const accent = '#0058bc'
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 0, borderRadius: 20, overflow: 'hidden', border: `1px solid ${border}`, background: bg, boxShadow: isDark ? '0 20px 60px rgba(0,0,0,0.45)' : '0 12px 40px rgba(0,88,188,0.10)' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 18px', background: isDark ? 'rgba(255,255,255,0.04)' : '#f8f9ff', borderBottom: `1px solid ${border}` }}>
+        <span style={{ fontSize: 24 }}>🤗</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontWeight: 800, fontSize: 15, color: ink }}>{isVi ? 'Chat AI chung' : 'General AI Chat'}</div>
+          <div style={{ fontSize: 11, color: muted, marginTop: 2 }}>{status} · {getModeLabel(mode, isVi)}</div>
+        </div>
+        <span style={{ fontSize: 11, padding: '4px 10px', borderRadius: 20, background: isDark ? 'rgba(0,88,188,0.25)' : 'rgba(0,88,188,0.1)', color: accent, fontWeight: 700 }}>
+          {isVi ? 'Groq AI · giọng nói · đồng bộ' : 'Groq AI · voice · synced'}
+        </span>
+      </div>
+
+      {/* Quick prompts */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, padding: '10px 16px 0' }}>
+        {quickPrompts.map(prompt => (
+          <button key={prompt} type="button" disabled={busy} onClick={() => submitQuestion(prompt)}
+            style={{ fontSize: 11, padding: '5px 12px', borderRadius: 20, border: `1px solid ${border}`, background: surface, color: muted, cursor: busy ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: busy ? 0.6 : 1 }}>
+            {prompt}
+          </button>
+        ))}
+      </div>
+
+      {/* Messages */}
+      <div ref={scrollRef} style={{ flex: '1 1 auto', minHeight: 320, maxHeight: 440, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 12, padding: '14px 16px', scrollbarWidth: 'thin' }}>
+        {messages.map(msg => (
+          <div key={msg.id} style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
+            <div style={{ maxWidth: '82%', padding: '10px 14px', borderRadius: msg.role === 'user' ? '18px 18px 4px 18px' : '18px 18px 18px 4px', background: msg.role === 'user' ? userBubble : botBubble, color: msg.role === 'user' ? '#fff' : ink, fontSize: 13, lineHeight: 1.55, wordBreak: 'break-word' }}>
+              {msg.imageDataUrls && msg.imageDataUrls.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: msg.text ? 8 : 0 }}>
+                  {msg.imageDataUrls.map((img, i) => (
+                    img.kind === 'pdf'
+                      ? <div key={i} style={{ width: 52, height: 52, borderRadius: 10, background: 'rgba(255,255,255,0.15)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>📄<span style={{ fontSize: 8, marginTop: 2, maxWidth: 44, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{img.name}</span></div>
+                      : <img key={i} src={img.dataUrl} alt={img.name || 'attached'} style={{ width: 52, height: 52, borderRadius: 10, objectFit: 'cover', display: 'block' }} />
+                  ))}
+                </div>
+              )}
+              {msg.fileNames && msg.fileNames.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: msg.text ? 8 : 0 }}>
+                  {msg.fileNames.map((name, i) => <span key={i} style={{ fontSize: 10, padding: '3px 8px', borderRadius: 8, background: 'rgba(255,255,255,0.15)' }}>📃 {name}</span>)}
+                </div>
+              )}
+              {msg.text}
+            </div>
+            {msg.role === 'assistant' && (
+              <button type="button" onClick={() => speak(msg.text)}
+                title={speaking ? (isVi ? 'Dừng đọc' : 'Stop') : (isVi ? 'Đọc to' : 'Read aloud')}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: muted, padding: '2px 4px', borderRadius: 8 }}>
+                {speaking ? '⏸' : '🔊'}
+              </button>
+            )}
+          </div>
+        ))}
+        {busy && mode === 'thinking' && (
+          <div style={{ maxWidth: '82%', padding: '10px 14px', borderRadius: '18px 18px 18px 4px', background: botBubble, display: 'flex', gap: 5, alignItems: 'center' }}>
+            {[0, 0.2, 0.4].map((d, i) => (
+              <span key={i} style={{ width: 7, height: 7, borderRadius: '50%', background: accent, display: 'inline-block', animation: `morningChatDot 1.2s ${d}s ease-in-out infinite` }} />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Attached file previews */}
+      {attachedFiles.length > 0 && (
+        <div style={{ display: 'flex', gap: 8, padding: '8px 16px 0', overflowX: 'auto', scrollbarWidth: 'thin' }}>
+          {attachedFiles.map(f => (
+            <div key={f.id} style={{ position: 'relative', flexShrink: 0 }}>
+              {f.kind === 'image'
+                ? <img src={f.dataUrl} alt={f.name} title={f.name} style={{ width: 52, height: 52, borderRadius: 10, objectFit: 'cover', display: 'block' }} />
+                : <div title={f.name} style={{ width: 52, height: 52, borderRadius: 10, background: surface, border: `1px solid ${border}`, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>
+                    {f.kind === 'pdf' ? '📄' : '📃'}
+                    <span style={{ fontSize: 8, marginTop: 2, maxWidth: 44, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: muted }}>{f.name}</span>
+                  </div>}
+              <button type="button" onClick={() => removeAttachedFile(f.id)}
+                style={{ position: 'absolute', top: -5, right: -5, border: 'none', background: '#fff', color: '#1a2035', borderRadius: '50%', width: 17, height: 17, cursor: 'pointer', fontSize: 10, lineHeight: '17px', padding: 0, textAlign: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.35)', fontWeight: 800 }}>×</button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Input row */}
+      <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', padding: '10px 16px 14px', borderTop: `1px solid ${border}` }}>
+        <input ref={docInputRef} type="file" accept="image/*,application/pdf,text/plain,text/csv,.csv,.txt,.md" multiple onChange={handleFilesSelect} style={{ display: 'none' }} />
+        <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={handleFilesSelect} style={{ display: 'none' }} />
+
+        <button type="button" onClick={() => docInputRef.current?.click()} disabled={busy || attachedFiles.length >= MAX_FILES}
+          title={isVi ? `Đính kèm PDF / văn bản / ảnh (tối đa ${MAX_FILES})` : `Attach PDF / text / images (max ${MAX_FILES})`}
+          style={{ width: 38, height: 38, borderRadius: 12, border: `1px solid ${border}`, background: surface, color: ink, fontSize: 18, fontWeight: 900, cursor: (busy || attachedFiles.length >= MAX_FILES) ? 'not-allowed' : 'pointer', opacity: (busy || attachedFiles.length >= MAX_FILES) ? 0.5 : 1, flexShrink: 0 }}>
+          +
+        </button>
+
+        <textarea value={input} onChange={e => setInput(e.target.value)} rows={2}
+          placeholder={transcribing ? (isVi ? 'Đang nhận diện giọng nói…' : 'Transcribing…') : (isVi ? 'Hỏi AI bất cứ điều gì… (Enter để gửi)' : 'Ask AI anything… (Enter to send)')}
+          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitQuestion() } }}
+          style={{ flex: 1, resize: 'none', borderRadius: 12, border: `1px solid ${border}`, background: surface, color: ink, fontSize: 13, padding: '9px 12px', fontFamily: 'inherit', outline: 'none', lineHeight: 1.5 }} />
+
+        <button type="button" onClick={toggleMic} disabled={busy && !recording}
+          title={recording ? (isVi ? 'Dừng ghi âm' : 'Stop recording') : (isVi ? 'Nói để hỏi' : 'Speak to ask')}
+          style={{ width: 38, height: 38, borderRadius: 12, border: 'none', background: recording ? 'linear-gradient(135deg,#ef4444,#f97316)' : surface, color: recording ? '#fff' : ink, fontSize: 18, cursor: transcribing ? 'wait' : 'pointer', flexShrink: 0, opacity: transcribing ? 0.7 : 1 }}>
+          {transcribing ? '⏳' : recording ? '⏹️' : '🎙️'}
+        </button>
+
+        <button type="button" onClick={() => fileInputRef.current?.click()} disabled={busy || attachedFiles.length >= MAX_FILES}
+          title={isVi ? `Gửi hình ảnh để AI phân tích (tối đa ${MAX_FILES})` : `Upload images for AI analysis (max ${MAX_FILES})`}
+          style={{ width: 38, height: 38, borderRadius: 12, border: `1px solid ${border}`, background: attachedFiles.length > 0 ? 'rgba(0,88,188,0.12)' : surface, color: ink, fontSize: 18, cursor: (busy || attachedFiles.length >= MAX_FILES) ? 'not-allowed' : 'pointer', flexShrink: 0, opacity: (busy || attachedFiles.length >= MAX_FILES) ? 0.5 : 1 }}>
+          🖼️
+        </button>
+
+        <button type="button" onClick={() => submitQuestion()} disabled={busy || (!input.trim() && attachedFiles.length === 0)}
+          style={{ height: 38, padding: '0 18px', borderRadius: 12, border: 'none', background: accent, color: '#fff', fontWeight: 800, fontSize: 13, cursor: (busy || (!input.trim() && attachedFiles.length === 0)) ? 'not-allowed' : 'pointer', opacity: (busy || (!input.trim() && attachedFiles.length === 0)) ? 0.55 : 1, flexShrink: 0, fontFamily: 'inherit' }}>
+          {busy ? '…' : (isVi ? 'Gửi' : 'Send')}
+        </button>
+      </div>
+
+      <div style={{ fontSize: 10, color: muted, textAlign: 'center', padding: '0 16px 12px' }}>
+        {isVi ? 'Thông tin chỉ mang tính hỗ trợ, không thay thế tư vấn bác sĩ.' : "For support only — does not replace a doctor's advice."}
+      </div>
+
+      <style>{`
+        @keyframes morningChatDot { 0%,80%,100%{transform:scale(0.6);opacity:0.4} 40%{transform:scale(1);opacity:1} }
+      `}</style>
+    </div>
+  )
+}
+
 export default function HealthJourneyPanel({ onNext, onPrev, prevLabel, nextLabel, onOpenStressRelief, onOpenInBody, onViewMedicalRecord }) {
   const { lang, t } = useApp()
   const [activeTab, setActiveTab] = useState('emotion')
@@ -1224,15 +1392,10 @@ export default function HealthJourneyPanel({ onNext, onPrev, prevLabel, nextLabe
           </p>
         </div>
       </div>
-      {activeTab === 'emotion' && (
-        <EmotionalCompanionView
-          onOpenStressRelief={onOpenStressRelief}
-          onOpenInBody={onOpenInBody}
-          chatComposer={<CompactGlobalAIChatBar activePanelLabel={lang === 'vi' ? 'Buổi Sáng' : 'Morning'} />}
-        />
-      )}
+      {activeTab === 'emotion' && <EmotionalCompanionView onOpenStressRelief={onOpenStressRelief} onOpenInBody={onOpenInBody} />}
       {activeTab === 'meal' && <MealScanView onViewMedicalRecord={onViewMedicalRecord} />}
       {activeTab === 'medication' && <MedicationAssistantView onViewMedicalRecord={onViewMedicalRecord} />}
+      {activeTab === 'aiChat' && <MorningAIChatView />}
       {activeTab === 'faceDetector' && <MediaPipeDetectorView type="face" onViewMedicalRecord={onViewMedicalRecord} />}
       {activeTab === 'bodyDetector' && <MediaPipeDetectorView type="body" onViewMedicalRecord={onViewMedicalRecord} />}
       <HealthJourneyTabs activeTab={activeTab} setActiveTab={setActiveTab} lang={lang} />
