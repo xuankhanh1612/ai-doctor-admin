@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import NavButtons from './NavButtons.jsx'
 import GPEmotionalCompanionView from './EmotionalCompanionView.jsx'
+import { CompactGlobalAIChatBar } from './GlobalAIChatbot.jsx'
 import { useApp } from '../context/AppContext.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { detectFileType, fileToBase64, fileToDataUrl, saveRecord } from '../lib/medicalStorage.js'
@@ -910,8 +911,8 @@ function HealthJourneyTabs({ activeTab, setActiveTab, lang }) {
 }
 
 
-function EmotionalCompanionView({ onOpenStressRelief, onOpenInBody, hideComposer }) {
-  return <GPEmotionalCompanionView onOpenStressRelief={onOpenStressRelief} onOpenInBody={onOpenInBody} hideComposer={hideComposer} />
+function EmotionalCompanionView({ onOpenStressRelief, onOpenInBody, chatComposer, hideComposer }) {
+  return <GPEmotionalCompanionView onOpenStressRelief={onOpenStressRelief} onOpenInBody={onOpenInBody} chatComposer={chatComposer} hideComposer={hideComposer} />
 }
 
 function CompanionTile({ icon, color, title, subtitle }) {
@@ -1227,14 +1228,13 @@ export default function HealthJourneyPanel({ onNext, onPrev, prevLabel, nextLabe
         <EmotionalCompanionView
           onOpenStressRelief={onOpenStressRelief}
           onOpenInBody={onOpenInBody}
-          hideComposer
+          chatComposer={<CompactGlobalAIChatBar activePanelLabel={lang === 'vi' ? 'Buổi Sáng' : 'Morning'} />}
         />
       )}
       {activeTab === 'meal' && <MealScanView onViewMedicalRecord={onViewMedicalRecord} />}
       {activeTab === 'medication' && <MedicationAssistantView onViewMedicalRecord={onViewMedicalRecord} />}
       {activeTab === 'faceDetector' && <MediaPipeDetectorView type="face" onViewMedicalRecord={onViewMedicalRecord} />}
       {activeTab === 'bodyDetector' && <MediaPipeDetectorView type="body" onViewMedicalRecord={onViewMedicalRecord} />}
-      <CompactGlobalAIChatBar activePanelLabel={lang === 'vi' ? 'Buổi Sáng' : 'Morning'} />
       <HealthJourneyTabs activeTab={activeTab} setActiveTab={setActiveTab} lang={lang} />
       {(onNext || onPrev) && (
         <NavButtons

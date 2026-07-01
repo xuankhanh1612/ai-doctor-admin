@@ -911,8 +911,8 @@ function HealthJourneyTabs({ activeTab, setActiveTab, lang }) {
 }
 
 
-function EmotionalCompanionView({ onOpenStressRelief, onOpenInBody, hideComposer }) {
-  return <GPEmotionalCompanionView onOpenStressRelief={onOpenStressRelief} onOpenInBody={onOpenInBody} hideComposer={hideComposer} />
+function EmotionalCompanionView({ onOpenStressRelief, onOpenInBody, chatComposer, hideComposer }) {
+  return <GPEmotionalCompanionView onOpenStressRelief={onOpenStressRelief} onOpenInBody={onOpenInBody} chatComposer={chatComposer} hideComposer={hideComposer} />
 }
 
 function CompanionTile({ icon, color, title, subtitle }) {
@@ -1228,14 +1228,13 @@ export default function LunchJourneyPanel({ onNext, onPrev, prevLabel, nextLabel
         <EmotionalCompanionView
           onOpenStressRelief={onOpenStressRelief}
           onOpenInBody={onOpenInBody}
-          hideComposer
+          chatComposer={<CompactGlobalAIChatBar activePanelLabel={lang === 'vi' ? 'Buổi Trưa' : 'Noon'} />}
         />
       )}
       {activeTab === 'meal' && <MealScanView onViewMedicalRecord={onViewMedicalRecord} />}
       {activeTab === 'medication' && <MedicationAssistantView onViewMedicalRecord={onViewMedicalRecord} />}
       {activeTab === 'faceDetector' && <MediaPipeDetectorView type="face" onViewMedicalRecord={onViewMedicalRecord} />}
       {activeTab === 'bodyDetector' && <MediaPipeDetectorView type="body" onViewMedicalRecord={onViewMedicalRecord} />}
-      <CompactGlobalAIChatBar activePanelLabel={lang === 'vi' ? 'Buổi Trưa' : 'Noon'} />
       <HealthJourneyTabs activeTab={activeTab} setActiveTab={setActiveTab} lang={lang} />
       {(onNext || onPrev) && (
         <NavButtons
