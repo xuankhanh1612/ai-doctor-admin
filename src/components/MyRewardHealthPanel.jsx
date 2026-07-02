@@ -162,6 +162,195 @@ function makeInitialGrid() {
 
 function idx(x, y) { return ((y + GRID_H) % GRID_H) * GRID_W + ((x + GRID_W) % GRID_W) }
 
+/* ────────────────────────────────────────────────────────────────────── */
+/*  Per-organ pixel-art shapes, driven by each family member's pathology  */
+/* ────────────────────────────────────────────────────────────────────── */
+
+const clamp01 = (v) => Math.max(0, Math.min(1, v))
+const inEllipse = (x, y, cx, cy, rx, ry) => {
+  const dx = (x - cx) / rx
+  const dy = (y - cy) / ry
+  return dx * dx + dy * dy <= 1
+}
+
+// Regex per organ zone — matches Vietnamese/English condition names recorded
+// on a family member's medical record (see familyData.js CONDITION_COLORS).
+const ZONE_CONDITION_PATTERNS = {
+  liver:   /gan|liver|xơ gan|cirrhosis/i,
+  heart:   /tim|heart|huyết áp|hypertension/i,
+  lung:    /phổi|lung/i,
+  brain:   /não|brain|đột quỵ|stroke/i,
+  kidney:  /thận|kidney/i,
+  stomach: /dạ dày|stomach|đại tràng|colon/i,
+}
+
+// Boolean "is inside the organ silhouette" mask, built once per zone with
+// simple ellipse geometry — a stylised pixel-art outline, not an anatomy
+// reference, sized to fit the GRID_W x GRID_H cell world.
+function buildOrganMask(zoneId) {
+  const cx = GRID_W / 2
+  const cy = GRID_H / 2
+  const mask = new Array(GRID_W * GRID_H).fill(false)
+  const paint = (predicate) => {
+    for (let y = 0; y < GRID_H; y++) {
+      for (let x = 0; x < GRID_W; x++) {
+        if (predicate(x + 0.5, y + 0.5)) mask[idx(x, y)] = true
+      }
+    }
+  }
+
+  switch (zoneId) {
+    case 'liver':
+      // Large right lobe + smaller left lobe, notch cut near the top (falciform ligament).
+      paint((x, y) => (
+        (inEllipse(x, y, cx + 4, cy, 12, 7) || inEllipse(x, y, cx - 8, cy + 2, 6, 4.5)) &&
+        !inEllipse(x, y, cx + 1, cy - 6, 5, 3)
+      ))
+      break
+    case 'heart':
+      // Classic parametric heart curve ((x²+y²-1)³ - x²y³ ≤ 0), scaled to the grid.
+      paint((x, y) => {
+        const hx = (x - cx) / 9
+        const hy = -(y - (cy + 2)) / 8.2
+        const v = Math.pow(hx * hx + hy * hy - 1, 3) - hx * hx * Math.pow(hy, 3)
+        return v <= 0
+      })
+      break
+    case 'lung':
+      // Two bean-shaped lobes with a bite taken out of the inner edge, gap for the trachea.
+      paint((x, y) => (
+        (inEllipse(x, y, cx - 8, cy, 7, 9) && !inEllipse(x, y, cx - 3.5, cy, 3.4, 9)) ||
+        (inEllipse(x, y, cx + 8, cy, 7, 9) && !inEllipse(x, y, cx + 3.5, cy, 3.4, 9))
+      ))
+      break
+    case 'brain':
+      // Rounded shape split down the middle into two hemispheres.
+      paint((x, y) => (
+        inEllipse(x, y, cx, cy, 13, 8) && Math.abs(x - cx) > 0.6
+      ))
+      break
+    case 'kidney':
+      // Bean shape: an ellipse with a concave bite on the inner side.
+      paint((x, y) => (
+        inEllipse(x, y, cx, cy, 9, 7) && !inEllipse(x, y, cx + 4, cy, 5, 4)
+      ))
+      break
+    case 'stomach':
+      // J-shaped pouch with a narrow esophagus tube at the top.
+      paint((x, y) => (
+        inEllipse(x, y, cx + 2, cy + 2, 10, 6) ||
+        (x > cx - 3 && x < cx + 1 && y > cy - 8 && y < cy - 1)
+      ))
+      break
+    default:
+      return null // 'wholebody' has no fixed silhouette — see buildWholeBodyGrid
+  }
+  return mask
+}
+
+const ORGAN_MASK_CACHE = {}
+function getOrganMask(zoneId) {
+  if (!(zoneId in ORGAN_MASK_CACHE)) ORGAN_MASK_CACHE[zoneId] = buildOrganMask(zoneId)
+  return ORGAN_MASK_CACHE[zoneId]
+}
+
+// Pull the non-trivial condition names off a family member's record
+// (skips "Khỏe mạnh" / "Chưa rõ tiền sử" style placeholders).
+function memberConditionList(member) {
+  const raw = member?.conditions ?? member?.medicalRecord?.conditions ?? []
+  const list = Array.isArray(raw) ? raw : String(raw || '').split(',')
+  return list
+    .map(c => String(c || '').trim())
+    .filter(Boolean)
+    .filter(c => !/^(khỏe mạnh|healthy|chưa rõ tiền sử|unknown history)$/i.test(c))
+}
+
+// How much of an organ's silhouette should turn cancerous, based on how many
+// (and how severe) of the member's recorded conditions relate to that organ.
+function computeOrganCancerRatio(zoneId, member) {
+  const pattern = ZONE_CONDITION_PATTERNS[zoneId]
+  if (!pattern) return 0
+  const matches = memberConditionList(member).filter(c => pattern.test(c))
+  if (!matches.length) return 0
+  const hasCancerTerm = matches.some(c => /ung thư|cancer/i.test(c))
+  const base = hasCancerTerm ? 0.28 : 0.14
+  const extra = Math.min(matches.length - 1, 3) * 0.06
+  return Math.min(0.6, base + extra)
+}
+
+// Fisher-Yates shuffle (used to scatter cancer/immune cells randomly inside a shape).
+function shuffledIndices(indices) {
+  const arr = indices.slice()
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[arr[i], arr[j]] = [arr[j], arr[i]]
+  }
+  return arr
+}
+
+// Organ-shaped world: the whole silhouette starts HEALTHY, then a portion is
+// turned to Mutant/Cancer cells (with a defending ring of Immune cells) if the
+// member has a related condition on file. Everything outside the shape is DEAD.
+function buildOrganGrid(zoneId, member) {
+  const mask = getOrganMask(zoneId)
+  if (!mask) return buildWholeBodyGrid(member)
+
+  const grid = new Array(GRID_W * GRID_H).fill(S.DEAD)
+  const insideIdx = []
+  for (let i = 0; i < grid.length; i++) {
+    if (mask[i]) { grid[i] = S.HEALTHY; insideIdx.push(i) }
+  }
+
+  const cancerRatio = computeOrganCancerRatio(zoneId, member)
+  if (cancerRatio > 0 && insideIdx.length) {
+    const order = shuffledIndices(insideIdx)
+    const cancerCount = Math.max(1, Math.round(insideIdx.length * cancerRatio))
+    const immuneCount = Math.min(order.length - cancerCount, Math.round(cancerCount * 0.4))
+    for (let n = 0; n < cancerCount; n++) grid[order[n]] = S.CANCER
+    for (let n = cancerCount; n < cancerCount + immuneCount; n++) grid[order[n]] = S.IMMUNE
+  }
+  return grid
+}
+
+// "Toàn Cơ Thể" (Whole Body): no fixed silhouette — cells are scattered across
+// the *entire* grid, with the mix of Healthy/Cancer/Infected/Immune driven by
+// the member's overall pathology ratio (how many conditions, how severe).
+function buildWholeBodyGrid(member) {
+  const conditions = memberConditionList(member)
+  const cancerCount = conditions.filter(c => /ung thư|cancer/i.test(c)).length
+  const otherCount = Math.max(0, conditions.length - cancerCount)
+
+  const cancer = clamp01(cancerCount * 0.09)
+  const infected = clamp01(0.03 + otherCount * 0.04)
+  const immune = clamp01(0.04 + (cancerCount + otherCount) * 0.015)
+  const stem = 0.02
+  const healthy = clamp01(0.42 - cancer * 0.8 - infected * 0.5)
+  const deadFloor = clamp01(1 - (healthy + immune + stem + infected + cancer))
+
+  const grid = new Array(GRID_W * GRID_H).fill(S.DEAD)
+  for (let i = 0; i < grid.length; i++) {
+    const r = Math.random()
+    let acc = healthy
+    if (r < acc) { grid[i] = S.HEALTHY; continue }
+    acc += immune
+    if (r < acc) { grid[i] = S.IMMUNE; continue }
+    acc += stem
+    if (r < acc) { grid[i] = S.STEM; continue }
+    acc += infected
+    if (r < acc) { grid[i] = S.INFECTED; continue }
+    acc += cancer
+    if (r < acc) { grid[i] = S.CANCER; continue }
+    void deadFloor // remainder stays S.DEAD
+  }
+  return grid
+}
+
+// Single entry point used to (re)generate a member's cell world for a zone.
+function buildZoneGrid(zoneId, member) {
+  if (zoneId === 'wholebody') return buildWholeBodyGrid(member)
+  return buildOrganGrid(zoneId, member)
+}
+
 function countNeighbors(grid, x, y) {
   const counts = { [S.DEAD]: 0, [S.HEALTHY]: 0, [S.STEM]: 0, [S.IMMUNE]: 0, [S.REPAIR]: 0, [S.INFECTED]: 0, [S.CANCER]: 0 }
   for (let dy = -1; dy <= 1; dy++) {
@@ -259,10 +448,11 @@ function stepSimulation(grid, stats) {
   return { grid: next, stats: nextStats, pop, total }
 }
 
-function defaultUserState() {
+function defaultUserState(zoneId = 'liver', member = null) {
+  const zone = zoneId || 'liver'
   return {
-    version: 1,
-    grid: makeInitialGrid(),
+    version: 2,
+    grid: buildZoneGrid(zone, member),
     stats: { atp: 62, dna: 70, mutation: 12, virusLoad: 8, stress: 25, immunePower: 55 },
     gems: 600,
     lastTick: Date.now(),
@@ -270,7 +460,7 @@ function defaultUserState() {
     missionsDone: {},
     bossIndex: 0,
     bossHp: BOSSES[0].maxHp,
-    zone: 'liver',
+    zone,
     coachNote: null,
     ticks: 0,
   }
@@ -319,18 +509,30 @@ function persist() {
   setSetting(DB_KEY, memDb).catch((e) => console.warn('[MyRewardHealth] IndexedDB write failed', e))
 }
 
-function getUserState(userId) {
+// `compositeKey` is `${userId}::${familyMemberId}` so every family member gets
+// their own separate cell world (grid, boss, gems, missions...). `legacyUserId`
+// lets a member's *own* pre-existing world (saved before this feature existed,
+// under the plain userId key) carry over instead of being silently reset.
+function getUserState(compositeKey, zoneId, member, legacyUserId) {
   if (!memDb) memDb = { users: {} }
-  const existing = memDb.users[userId]
+  const existing = memDb.users[compositeKey]
   if (existing?.grid?.length === GRID_W * GRID_H) return existing
-  const fresh = defaultUserState()
-  memDb.users[userId] = fresh
+
+  const legacy = legacyUserId ? memDb.users[legacyUserId] : null
+  if (member?.relation === 'self' && legacy?.grid?.length === GRID_W * GRID_H) {
+    const migrated = { ...legacy, zone: zoneId || legacy.zone || 'liver' }
+    memDb.users[compositeKey] = migrated
+    return migrated
+  }
+
+  const fresh = defaultUserState(zoneId, member)
+  memDb.users[compositeKey] = fresh
   return fresh
 }
 
-function saveUserState(userId, state) {
+function saveUserState(compositeKey, state) {
   if (!memDb) memDb = { users: {} }
-  memDb.users[userId] = state
+  memDb.users[compositeKey] = state
   persist()
 }
 
@@ -371,10 +573,11 @@ export default function MyRewardHealthPanel({ onNext, nextLabel, onPrev, prevLab
   const canvasRef = useRef(null)
   const stateRef = useRef(state)
   stateRef.current = state
-  const userIdRef = useRef(userId)
-  userIdRef.current = userId
 
-  /* ── Family member viewer (banner combobox) ─────────────────────────── */
+  /* ── Family member viewer (banner combobox) ──────────────────────────
+     Each family member gets their own cell world: grid shape (organ
+     silhouette or whole-body distribution), boss, gems, missions — all
+     keyed by `${userId}::${familyMemberId}` below. */
   const familyOwnerId = user?.uuid || 'guest'
   const familyMembers = useMemo(
     () => (loadFamilyMembers(FAMILY_TREE_PATIENT_ID, familyOwnerId) || DEFAULT_FAMILY_MEMBERS),
@@ -388,16 +591,22 @@ export default function MyRewardHealthPanel({ onNext, nextLabel, onPrev, prevLab
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [familyMembers])
+  const selectedMember = familyMembers.find(m => m.id === selectedFamilyMemberId) || null
+  const storageKey = selectedFamilyMemberId ? `${userId}::${selectedFamilyMemberId}` : ''
+  const storageKeyRef = useRef(storageKey)
+  storageKeyRef.current = storageKey
 
   const boss = BOSSES[state.bossIndex % BOSSES.length]
 
-  /* Hydrate from IndexedDB (per user UUID), then run offline fast-forward */
+  /* Hydrate from IndexedDB (per user UUID + family member), then run offline fast-forward */
   useEffect(() => {
+    if (!storageKey) return undefined
     let cancelled = false
     setReady(false)
+    setOfflineSummary(null)
     hydrate().then(() => {
       if (cancelled) return
-      const loaded = getUserState(userId)
+      const loaded = getUserState(storageKey, 'liver', selectedMember, userId)
       const elapsedSec = (Date.now() - (loaded.lastTick || Date.now())) / 1000
 
       if (elapsedSec > 20) {
@@ -423,7 +632,7 @@ export default function MyRewardHealthPanel({ onNext, nextLabel, onPrev, prevLab
         }
         const newState = { ...loaded, grid, stats, lastTick: Date.now(), ticks: (loaded.ticks || 0) + simTicks }
         setState(newState)
-        saveUserState(userId, newState)
+        saveUserState(storageKey, newState)
         setOfflineSummary(summary)
       } else {
         setState(loaded)
@@ -431,7 +640,7 @@ export default function MyRewardHealthPanel({ onNext, nextLabel, onPrev, prevLab
       setReady(true)
     })
     return () => { cancelled = true }
-  }, [userId])
+  }, [storageKey])
 
   /* Reset daily missions if the day rolled over */
   useEffect(() => {
@@ -439,7 +648,7 @@ export default function MyRewardHealthPanel({ onNext, nextLabel, onPrev, prevLab
     if (state.missionsDate !== todayKey()) {
       setState(prev => {
         const next = { ...prev, missionsDate: todayKey(), missionsDone: {} }
-        saveUserState(userIdRef.current, next)
+        saveUserState(storageKeyRef.current, next)
         return next
       })
     }
@@ -467,7 +676,7 @@ export default function MyRewardHealthPanel({ onNext, nextLabel, onPrev, prevLab
           ...prev, grid, stats, gems, bossHp, bossIndex,
           lastTick: Date.now(), ticks: (prev.ticks || 0) + 1,
         }
-        saveUserState(userIdRef.current, next)
+        saveUserState(storageKeyRef.current, next)
         if (toastMsg) setToast(toastMsg)
         return next
       })
@@ -529,7 +738,7 @@ export default function MyRewardHealthPanel({ onNext, nextLabel, onPrev, prevLab
         gems: prev.gems + mission.gems,
         missionsDone: { ...prev.missionsDone, [mission.id]: true },
       }
-      saveUserState(userIdRef.current, next)
+      saveUserState(storageKeyRef.current, next)
       return next
     })
     setToast(`✅ ${mission.label} · +${mission.gems} Gem`)
@@ -565,14 +774,23 @@ export default function MyRewardHealthPanel({ onNext, nextLabel, onPrev, prevLab
         gems: prev.gems - item.cost,
         coachNote: item.coach ? buildCoachNote(stats, prev.pop, totalCells, boss.nameVi) : prev.coachNote,
       }
-      saveUserState(userIdRef.current, next)
+      saveUserState(storageKeyRef.current, next)
       return next
     })
     setToast(`🛒 Đã dùng ${item.name}`)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [boss.nameVi, totalCells])
 
-  const setZone = (id) => setState(prev => { const next = { ...prev, zone: id }; saveUserState(userIdRef.current, next); return next })
+  // Switching zone reshapes the current member's cell world into that organ's
+  // pixel-art silhouette (or the whole-body distribution), based on their
+  // recorded pathology — boss/gems/missions carry over unchanged.
+  const setZone = (id) => setState(prev => {
+    if (prev.zone === id) return prev
+    const grid = buildZoneGrid(id, selectedMember)
+    const next = { ...prev, zone: id, grid }
+    saveUserState(storageKeyRef.current, next)
+    return next
+  })
 
   /* ── Theme tokens (mirrors Sidebar.jsx palette) ─────────────────────── */
   const bg      = isDark ? 'rgba(10,14,26,0.9)'    : 'rgba(255,255,255,0.95)'
