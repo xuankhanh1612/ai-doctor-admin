@@ -20,6 +20,9 @@ import NavButtons from './NavButtons.jsx'
 import { useApp } from '../context/AppContext.jsx'
 import { useAuth } from '../context/AuthContext'
 import { getSetting, setSetting } from '../lib/anonDB.js'
+import { DEFAULT_FAMILY_MEMBERS, RELATION_META, loadFamilyMembers } from './family/familyData.js'
+
+const FAMILY_TREE_PATIENT_ID = 'LXK-2024'
 
 /* ────────────────────────────────────────────────────────────────────── */
 /*  Constants                                                             */
@@ -371,6 +374,21 @@ export default function MyRewardHealthPanel({ onNext, nextLabel, onPrev, prevLab
   const userIdRef = useRef(userId)
   userIdRef.current = userId
 
+  /* ── Family member viewer (banner combobox) ─────────────────────────── */
+  const familyOwnerId = user?.uuid || 'guest'
+  const familyMembers = useMemo(
+    () => (loadFamilyMembers(FAMILY_TREE_PATIENT_ID, familyOwnerId) || DEFAULT_FAMILY_MEMBERS),
+    [familyOwnerId]
+  )
+  const [selectedFamilyMemberId, setSelectedFamilyMemberId] = useState('')
+  useEffect(() => {
+    if (!familyMembers.some(m => m.id === selectedFamilyMemberId)) {
+      const selfMember = familyMembers.find(m => m.relation === 'self')
+      setSelectedFamilyMemberId(selfMember?.id || familyMembers[0]?.id || '')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [familyMembers])
+
   const boss = BOSSES[state.bossIndex % BOSSES.length]
 
   /* Hydrate from IndexedDB (per user UUID), then run offline fast-forward */
@@ -587,6 +605,32 @@ export default function MyRewardHealthPanel({ onNext, nextLabel, onPrev, prevLab
             <div style={{ fontSize: 22, fontWeight: 800, marginTop: 4 }}>Thế giới tế bào của bạn chạy 24/7</div>
             <div style={{ fontSize: 13, color: text2, marginTop: 4, maxWidth: 560 }}>
               Mô phỏng lấy cảm hứng từ Conway's Game of Life (như copy.sh/life) — mỗi thói quen lành mạnh bạn hoàn thành sẽ thay đổi thế giới tế bào bên trong cơ thể bạn.
+            </div>
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 10,
+              padding: '8px 12px', background: 'rgba(0,229,255,0.06)', border: '1px solid rgba(0,229,255,0.2)',
+              borderRadius: 10, maxWidth: 560,
+            }}>
+              <span style={{ fontSize: 14 }}>🌳</span>
+              <span style={{ fontSize: 12, fontWeight: 600, color: cyan }}>Từ Gia phả</span>
+              <span style={{ fontSize: 12, color: text2, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                Đang xem hồ sơ thành viên gia đình:
+                <select
+                  value={selectedFamilyMemberId}
+                  onChange={e => setSelectedFamilyMemberId(e.target.value)}
+                  style={{
+                    padding: '3px 8px', borderRadius: 6, border: '1px solid rgba(0,229,255,0.3)',
+                    background: isDark ? 'rgba(255,255,255,0.06)' : '#fff', color: cyan,
+                    fontSize: 12, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer',
+                  }}
+                >
+                  {familyMembers.map(m => (
+                    <option key={m.id} value={m.id}>
+                      {m.name}{RELATION_META[m.relation]?.label?.vi ? ` (${RELATION_META[m.relation].label.vi})` : ''}
+                    </option>
+                  ))}
+                </select>
+              </span>
             </div>
           </div>
           <div style={{ display: 'flex', gap: 10 }}>
