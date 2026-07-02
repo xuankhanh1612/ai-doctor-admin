@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext'
 import NavButtons from '../NavButtons.jsx'
 import { useMedicalData } from '../../hooks/useMedicalData.js'
 
-import { CONDITION_COLORS, DEFAULT_FAMILY_MEMBERS, LXK_PATIENT_PROFILE, RELATIONS, RELATION_META, isNonDiseaseCondition, loadFamilyMembers, saveFamilyMembers, stripMissingNamePrefix } from './familyData.js'
+import { CONDITION_COLORS, DEFAULT_FAMILY_MEMBERS, LXK_PATIENT_PROFILE, RELATIONS, RELATION_META, buildFamilyMemberPatientRecord, isNonDiseaseCondition, loadFamilyMembers, saveFamilyMembers, stripMissingNamePrefix } from './familyData.js'
 
 // Backward-compatible exports for panels that import shared family data through this component.
 export { DEFAULT_FAMILY_MEMBERS, loadFamilyMembers } from './familyData.js'
@@ -18,61 +18,7 @@ const formatDob = (dob) => {
 }
 
 // ─── Build patient record for Patient Record Visualizer ───────────────────
-const buildMemberRecord = (member) => {
-  const derivedDiseases = (member.conditions || [])
-    .filter(condition => !isNonDiseaseCondition(condition))
-    .map((condition, i) => ({
-      id: 'd' + i,
-      name: condition,
-      icd10: /ung thư|cancer/i.test(condition) ? 'C80.1' : /tiểu đường|diabetes/i.test(condition) ? 'E11' : /huyết áp|hypertension/i.test(condition) ? 'I10' : 'Z00.0',
-      onset: '—',
-      severity: /ung thư|cancer/i.test(condition) ? 'critical' : /tiểu đường|diabetes|huyết áp|hypertension/i.test(condition) ? 'moderate' : 'mild',
-    }))
-
-  const derivedRecord = {
-    id: 'FM-' + member.id,
-    familyMemberId: member.id,
-    name: member.name,
-    age: member.age,
-    gender: member.gender || (member.relation === 'mother' || member.relation === 'spouse' ? 'F' : 'M'),
-    blood_type: member.blood_type || member.medicalRecord?.blood_type || '—',
-    dob: member.dob || member.medicalRecord?.dob || (member.age ? `${new Date().getFullYear() - member.age}-01-01` : '—'),
-    avatar_initials: member.name.split(' ').slice(-2).map(w => w[0]).join('').toUpperCase(),
-    avatar_url: member.avatar_url || member.medicalRecord?.avatar_url,
-    diseases: derivedDiseases,
-    symptoms: [],
-    labs: [],
-    imaging: [],
-    medications: [],
-    allergies: [],
-    genomics: [],
-    timeline: [
-      { id:'t1', date:'—', event:`Thành viên gia đình · ${FAMILY_RELATION_META[member.relation]?.label?.vi || member.relation}`, type:'diagnosis' },
-      ...(member.note ? [{ id:'t2', date:'—', event: member.note, type:'consult' }] : []),
-      ...(member.alive === false ? [{ id:'t3', date:'—', event:'Đã mất', type:'consult' }] : []),
-    ],
-    risk_factors: derivedDiseases.map((d, i) => ({
-      id: 'r' + i,
-      name: d.name,
-      weight: /ung thư|cancer/i.test(d.name) ? 85 : /tiểu đường|diabetes|huyết áp|hypertension/i.test(d.name) ? 55 : 40,
-      category: /ung thư|cancer/i.test(d.name) ? 'genetic' : 'chronic',
-    })),
-  }
-
-  return {
-    ...derivedRecord,
-    ...(member.medicalRecord || {}),
-    id: member.medicalRecord?.id || derivedRecord.id,
-    familyMemberId: member.id,
-    name: member.name,
-    age: member.age,
-    gender: derivedRecord.gender,
-    blood_type: derivedRecord.blood_type,
-    dob: derivedRecord.dob,
-    avatar_initials: member.medicalRecord?.avatar_initials || derivedRecord.avatar_initials,
-    avatar_url: member.avatar_url || member.medicalRecord?.avatar_url || derivedRecord.avatar_url,
-  }
-}
+const buildMemberRecord = buildFamilyMemberPatientRecord
 
 // ─── Empty form state ──────────────────────────────────────────────────────
 const EMPTY_FORM = { name:'', age:'', gender:'M', relation:'child', dob:'', blood_type:'', conditions:'', symptoms:'', labs:'', imaging:'', medications:'', allergies:'', genomics:'', timeline:'', risk_factors:'', alive:true, note:'' }

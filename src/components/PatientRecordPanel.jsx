@@ -4,7 +4,9 @@ import { useAuth } from '../context/AuthContext'
 import NavButtons from './NavButtons.jsx'
 import { useMedicalData } from '../hooks/useMedicalData.js'
 import { LXK_PATIENT_RECORD } from '../data/lxkPatientRecord.js'
-import { DEFAULT_FAMILY_MEMBERS, loadFamilyMembers, saveFamilyMembers } from './family/familyData.js'
+import { DEFAULT_FAMILY_MEMBERS, RELATION_META, buildFamilyMemberPatientRecord, loadFamilyMembers, saveFamilyMembers } from './family/familyData.js'
+
+const FAMILY_TREE_PATIENT_ID = 'LXK-2024'
 
 
 
@@ -765,6 +767,22 @@ export default function PatientRecordPanel({ onNext, nextLabel, onPrev, prevLabe
   const [activeMethod, setActiveMethod]   = useState('bayesian')
   const [showConsensus, setShowConsensus] = useState(false)
   const isFromFamily = !!(selectedMember)
+  const familyMembers = useMemo(
+    () => (isFromFamily ? (loadFamilyMembers(FAMILY_TREE_PATIENT_ID, ownerId) || DEFAULT_FAMILY_MEMBERS) : []),
+    [isFromFamily, ownerId]
+  )
+  const handleSelectFamilyMember = useCallback((memberId) => {
+    const member = familyMembers.find(m => m.id === memberId)
+    if (!member) return
+    const nextPatient = buildFamilyMemberPatientRecord(member)
+    setPatient(nextPatient)
+    setEditForm(serializePatientForEdit(nextPatient))
+    setIsEditingRecord(false)
+    setSection('diseases')
+    setConsensusData(null)
+    setCError('')
+    setShowConsensus(false)
+  }, [familyMembers])
   const isDemoRecord = isDemoTemplatePatientRecord(patient)
   const displayedPatientAvatar = patientAvatarUrl(patient, user)
   const canSaveEditedRecord = editForm.name.trim() && !isDemoRecord
@@ -896,8 +914,26 @@ export default function PatientRecordPanel({ onNext, nextLabel, onPrev, prevLabe
             <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--cyan)' }}>
               {t('fromFamily')}
             </span>
-            <span style={{ fontSize: 12, color: text2, marginLeft: 8 }}>
-              {t('viewingMember')}: <b>{displayPatientName(patient)}</b>
+            <span style={{ fontSize: 12, color: text2, marginLeft: 8, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              {t('viewingMember')}:
+              <select
+                value={patient?.familyMemberId || ''}
+                onChange={e => handleSelectFamilyMember(e.target.value)}
+                style={{
+                  padding: '3px 8px', borderRadius: 6, border: '1px solid rgba(0,229,255,0.3)',
+                  background: isDark ? 'rgba(255,255,255,0.06)' : '#fff', color: 'var(--cyan)',
+                  fontSize: 12, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer',
+                }}
+              >
+                {!familyMembers.some(m => m.id === patient?.familyMemberId) && (
+                  <option value={patient?.familyMemberId || ''}>{displayPatientName(patient)}</option>
+                )}
+                {familyMembers.map(m => (
+                  <option key={m.id} value={m.id}>
+                    {m.name}{RELATION_META[m.relation]?.label?.[lang] ? ` (${RELATION_META[m.relation].label[lang]})` : ''}
+                  </option>
+                ))}
+              </select>
             </span>
           </div>
           <button

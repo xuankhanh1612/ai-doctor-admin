@@ -54,6 +54,63 @@ export const calculateAgeFromDob = (dob, now = new Date()) => {
 
 export const isNonDiseaseCondition = (condition) => /^(khỏe mạnh|healthy|chưa rõ tiền sử|unknown history)$/i.test(String(condition || '').trim())
 
+// ─── Build patient record for Patient Record Visualizer from a family member ──
+export const buildFamilyMemberPatientRecord = (member) => {
+  const derivedDiseases = (member.conditions || [])
+    .filter(condition => !isNonDiseaseCondition(condition))
+    .map((condition, i) => ({
+      id: 'd' + i,
+      name: condition,
+      icd10: /ung thư|cancer/i.test(condition) ? 'C80.1' : /tiểu đường|diabetes/i.test(condition) ? 'E11' : /huyết áp|hypertension/i.test(condition) ? 'I10' : 'Z00.0',
+      onset: '—',
+      severity: /ung thư|cancer/i.test(condition) ? 'critical' : /tiểu đường|diabetes|huyết áp|hypertension/i.test(condition) ? 'moderate' : 'mild',
+    }))
+
+  const derivedRecord = {
+    id: 'FM-' + member.id,
+    familyMemberId: member.id,
+    name: member.name,
+    age: member.age,
+    gender: member.gender || (member.relation === 'mother' || member.relation === 'spouse' ? 'F' : 'M'),
+    blood_type: member.blood_type || member.medicalRecord?.blood_type || '—',
+    dob: member.dob || member.medicalRecord?.dob || (member.age ? `${new Date().getFullYear() - member.age}-01-01` : '—'),
+    avatar_initials: member.name.split(' ').slice(-2).map(w => w[0]).join('').toUpperCase(),
+    avatar_url: member.avatar_url || member.medicalRecord?.avatar_url,
+    diseases: derivedDiseases,
+    symptoms: [],
+    labs: [],
+    imaging: [],
+    medications: [],
+    allergies: [],
+    genomics: [],
+    timeline: [
+      { id:'t1', date:'—', event:`Thành viên gia đình · ${RELATION_META[member.relation]?.label?.vi || member.relation}`, type:'diagnosis' },
+      ...(member.note ? [{ id:'t2', date:'—', event: member.note, type:'consult' }] : []),
+      ...(member.alive === false ? [{ id:'t3', date:'—', event:'Đã mất', type:'consult' }] : []),
+    ],
+    risk_factors: derivedDiseases.map((d, i) => ({
+      id: 'r' + i,
+      name: d.name,
+      weight: /ung thư|cancer/i.test(d.name) ? 85 : /tiểu đường|diabetes|huyết áp|hypertension/i.test(d.name) ? 55 : 40,
+      category: /ung thư|cancer/i.test(d.name) ? 'genetic' : 'chronic',
+    })),
+  }
+
+  return {
+    ...derivedRecord,
+    ...(member.medicalRecord || {}),
+    id: member.medicalRecord?.id || derivedRecord.id,
+    familyMemberId: member.id,
+    name: member.name,
+    age: member.age,
+    gender: derivedRecord.gender,
+    blood_type: derivedRecord.blood_type,
+    dob: derivedRecord.dob,
+    avatar_initials: member.medicalRecord?.avatar_initials || derivedRecord.avatar_initials,
+    avatar_url: member.avatar_url || member.medicalRecord?.avatar_url || derivedRecord.avatar_url,
+  }
+}
+
 
 export const FAMILY_STORAGE_KEY = 'cdoc_family_members'
 export const FAMILY_USER_STORAGE_KEY = 'cdoc_family_members_by_user'
