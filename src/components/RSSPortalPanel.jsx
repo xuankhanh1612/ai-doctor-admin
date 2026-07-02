@@ -50,8 +50,18 @@ const FACEBOOK_ITEMS = [
 // Widget hiển thị tối đa 10 video gần nhất của kênh, xếp dọc theo đúng tỉ lệ 9:16 gốc của TikTok.
 const TIKTOK_PROFILE_URL = 'https://www.tiktok.com/@xuankhanhsupertech'
 
+// Bộ sưu tập (collection) thật của @xuankhanhsupertech — "Trị Ung Thư với Xuân Khánh".
+// TikTok chưa có API/oEmbed công khai để liệt kê từng video bên trong một collection cụ thể
+// (Display API cần OAuth + app review), nên ta dùng chung TikTok Creator Profile Embed chính
+// thức (đã dùng cho tt0) để hiển thị — đây là widget "danh sách video" thật duy nhất mà TikTok
+// cho phép nhúng không cần API key. Đường link thật tới đúng collection vẫn được giữ lại
+// (tiktokListUrl) để người dùng bấm sang xem trọn bộ sưu tập gốc trên TikTok.
+const TIKTOK_COLLECTION_URL = 'https://www.tiktok.com/@xuankhanhsupertech/collection/Tr%E1%BB%8B%20Ung%20Th%C6%B0%20v%E1%BB%9Bi%20Xu%C3%A2n%20Kh%C3%A1nh-7623472867921578773'
+const TIKTOK_COLLECTION_TITLE = 'Bộ sưu tập: Trị Ung Thư với Xuân Khánh'
+
 const TIKTOK_ITEMS = [
   { id: 'tt0', icon: '🎵', title: '@xuankhanhsupertech · Danh sách video', duration: '', likes: '', url: TIKTOK_PROFILE_URL, tiktokProfile: true },
+  { id: 'tt_collection', icon: '🗂️', title: TIKTOK_COLLECTION_TITLE, duration: '', likes: '', url: TIKTOK_PROFILE_URL, tiktokListUrl: TIKTOK_COLLECTION_URL, tiktokProfile: true, isList: true },
   { id: 'tt1', icon: '🤒', title: 'Mẹo hạ sốt nhanh tại nhà', duration: '00:15', likes: '12.4K' },
   { id: 'tt2', icon: '🧼', title: 'Cách rửa tay đúng cách', duration: '00:21', likes: '8.7K' },
   { id: 'tt3', icon: '🧴', title: 'Skincare cho da nhạy cảm', duration: '00:18', likes: '15.3K' },
@@ -126,6 +136,24 @@ const YOUTUBE_ITEMS = [
 const FAVORITE_CHANNELS = [
   { id: 'ch1', icon: '🫀', name: 'The Organ Story', subs: 'Kênh chính thức', url: 'https://www.youtube.com/@TheOrganStory',
     title: 'The Organ Story - Khám phá cơ thể qua hoạt hình khoa học', channel: 'The Organ Story', views: 'Playlist chính thức', time: 'youtube.com/@TheOrganStory', embedUrl: ORGAN_STORY_EMBED, playlistId: ORGAN_STORY_PLAYLIST_ID },
+  // ── Các mục RSS "thật" khác (đã có link/nhúng thật trong Facebook/TikTok/YouTube RSS
+  // phía trên) được thêm vào đây để có thể mở nhanh từ khu Kênh yêu thích. ──
+  { id: 'ch_yt_featured', icon: '▶', name: 'Playlist sức khỏe nổi bật', subs: 'Playlist YouTube thật',
+    url: 'https://www.youtube.com/watch?v=LHkE3loNxJ4&list=PLhPgpmsoyA4GrZ5mGrOPyf1wb1Ke1Zw8p',
+    title: 'Playlist sức khỏe nổi bật', channel: 'YouTube Playlist', views: 'Playlist', time: 'youtube.com/watch?v=LHkE3loNxJ4',
+    embedUrl: FEATURED_PLAYLIST_EMBED, playlistId: FEATURED_PLAYLIST_ID },
+  { id: 'ch_fb_aipunk', icon: '🎬', name: 'AIPunkstudio', subs: 'Trang Facebook thật', url: FB_AIPUNK_REELS_URL,
+    title: 'AIPunkstudio · Danh sách Reels', channel: 'AIPunkstudio', views: 'Trang thật · danh sách video', time: 'facebook.com/AIPunkstudio',
+    embedUrl: FB_AIPUNK_EMBED, aspectRatio: '9/16' },
+  { id: 'ch_fb_reel', icon: '🎬', name: 'Facebook Reel', subs: 'Reel Facebook thật', url: FB_REEL_URL,
+    title: 'Video Facebook Reel', channel: 'Facebook Reel', views: 'Reel thật', time: 'facebook.com/reel',
+    embedUrl: FB_REEL_EMBED, aspectRatio: '9/16' },
+  { id: 'ch_tt_profile', icon: '🎵', name: '@xuankhanhsupertech', subs: 'Kênh TikTok thật', url: TIKTOK_PROFILE_URL,
+    title: '@xuankhanhsupertech · Danh sách video', channel: 'TikTok · xuankhanhsupertech', views: 'Danh sách video thật', time: TIKTOK_PROFILE_URL,
+    tiktokProfile: true, aspectRatio: '9/16' },
+  { id: 'ch_tt_collection', icon: '🗂️', name: 'Trị Ung Thư (Bộ sưu tập)', subs: 'Bộ sưu tập TikTok thật', url: TIKTOK_PROFILE_URL,
+    tiktokListUrl: TIKTOK_COLLECTION_URL, title: TIKTOK_COLLECTION_TITLE, channel: 'TikTok · Bộ sưu tập', views: 'Bộ sưu tập thật',
+    time: TIKTOK_COLLECTION_URL, tiktokProfile: true, isList: true, aspectRatio: '9/16' },
   { id: 'ch2', icon: '🥗', name: 'Dinh Dưỡng Việt', subs: '1.6M subscribers' },
   { id: 'ch3', icon: '🧘', name: 'Yoga Cùng Mai', subs: '1.4M subscribers' },
   { id: 'ch4', icon: '❤️', name: 'Sức Khỏe TV', subs: '3.7M subscribers' },
@@ -192,16 +220,19 @@ function ThumbCard({ item, active, onClick, orientation, border, surface, text, 
 // ─── TikTok Creator Profile Embed (real widget, no API key) ───────────────
 // Uses TikTok's official embed.js (blockquote data-embed-type="creator") which renders
 // a scrollable, vertical (9:16) list of the creator's most recent public videos.
-function TikTokCreatorEmbed({ url }) {
+function TikTokCreatorEmbed({ url, linkUrl }) {
   const containerRef = useRef(null)
 
   useEffect(() => {
     const container = containerRef.current
     if (!container || !url) return
     const username = (url.match(/@([\w.-]+)/) || [])[1] || ''
+    // cite/data-unique-id follow TikTok's official creator-embed format (profile URL), while
+    // the fallback link can point at a more specific real URL (e.g. a collection) when given.
+    const fallbackHref = linkUrl || `${url}?refer=creator_embed`
     container.innerHTML = `
       <blockquote class="tiktok-embed" cite="${url}" data-unique-id="${username}" data-embed-type="creator" style="max-width:720px;min-width:288px;margin:0;">
-        <section><a target="_blank" rel="noopener noreferrer" href="${url}?refer=creator_embed">@${username}</a></section>
+        <section><a target="_blank" rel="noopener noreferrer" href="${fallbackHref}">@${username}</a></section>
       </blockquote>`
     // Cache-bust so TikTok's embed.js re-scans the page and (re)renders this blockquote
     // even if the script had already been loaded for a previous selection.
@@ -492,7 +523,7 @@ export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel })
                 )}
                 {!current.playlistId && current.tiktokProfile ? (
                   <>
-                    <TikTokCreatorEmbed key={current.id} url={current.url} />
+                    <TikTokCreatorEmbed key={current.id} url={current.url} linkUrl={current.tiktokListUrl || current.url} />
                     <span style={{
                       position: 'absolute', top: 10, right: 10, fontSize: 10, fontWeight: 800, pointerEvents: 'none',
                       background: 'rgba(0,229,255,0.9)', color: '#04060f', padding: '3px 9px', borderRadius: 999,
@@ -631,6 +662,27 @@ export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel })
                     video được tra qua oEmbed công khai, không cần API key.
                   </p>
                 </div>
+              ) : current.tiktokProfile ? (
+                <div style={{ marginTop: 14, borderTop: `1px solid ${border}`, paddingTop: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <span style={{ fontSize: 11, fontWeight: 800, color: text2, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                      {current.isList ? 'Danh sách video trong bộ sưu tập' : 'Danh sách video của kênh'}
+                    </span>
+                  </div>
+                  <p style={{ margin: 0, fontSize: 13, color: text2, lineHeight: 1.6 }}>
+                    {current.isList
+                      ? 'Hiển thị bằng TikTok Creator Profile Embed chính thức (widget thật, không cần API key) — TikTok chưa cung cấp API/oEmbed công khai để liệt kê từng video riêng trong một bộ sưu tập cụ thể, nên danh sách bên trên là các video công khai gần nhất của kênh.'
+                      : 'Danh sách video thật lấy trực tiếp từ TikTok Creator Profile Embed chính thức (không cần API key), hiển thị tối đa 10 video gần nhất của kênh.'}
+                  </p>
+                  <a
+                    href={current.tiktokListUrl || current.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ display: 'inline-block', marginTop: 8, fontSize: 12, fontWeight: 700, color: accent }}
+                  >
+                    ↗ Xem trọn bộ {current.isList ? 'bộ sưu tập' : 'kênh'} gốc trên TikTok
+                  </a>
+                </div>
               ) : (
                 <p style={{ margin: '14px 0 0', fontSize: 13, color: text2, lineHeight: 1.6, borderTop: `1px solid ${border}`, paddingTop: 12 }}>
                   Video được tổng hợp tự động từ nguồn {meta.label}. Trong bản triển khai đầy đủ, nội dung này sẽ
@@ -652,7 +704,7 @@ export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel })
                 <button
                   key={ch.id}
                   type="button"
-                  onClick={() => { if (ch.embedUrl) { select(ch, 'channel') } else if (ch.url) { window.open(ch.url, '_blank', 'noopener,noreferrer') } }}
+                  onClick={() => { if (ch.embedUrl || ch.tiktokProfile) { select(ch, 'channel') } else if (ch.url) { window.open(ch.url, '_blank', 'noopener,noreferrer') } }}
                   style={{
                     display: 'flex', flexDirection: 'column', alignItems: 'center', width: 84, flexShrink: 0,
                     textAlign: 'center', background: 'transparent', border: 'none', padding: 0,
