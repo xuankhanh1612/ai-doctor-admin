@@ -18,12 +18,14 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import NavButtons from './NavButtons.jsx'
 import { useApp } from '../context/AppContext.jsx'
+import { useAuth } from '../context/AuthContext'
+import { getSetting, setSetting } from '../lib/anonDB.js'
 
 /* ────────────────────────────────────────────────────────────────────── */
 /*  Constants                                                             */
 /* ────────────────────────────────────────────────────────────────────── */
 
-const STORAGE_KEY = 'my_reward_health_engine_v1'
+const DB_KEY = 'my_reward_health_engine_db_v1'
 const GRID_W = 44
 const GRID_H = 22
 const CELL_PX = 12
@@ -252,14 +254,7 @@ function stepSimulation(grid, stats) {
   return { grid: next, stats: nextStats, pop, total }
 }
 
-function loadState() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (raw) {
-      const parsed = JSON.parse(raw)
-      if (parsed?.grid?.length === GRID_W * GRID_H) return parsed
-    }
-  } catch { /* ignore corrupt state */ }
+function defaultUserState() {
   return {
     version: 1,
     grid: makeInitialGrid(),
@@ -276,8 +271,62 @@ function loadState() {
   }
 }
 
-function saveState(state) {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)) } catch { /* storage full/blocked, ignore */ }
+// `uuid` là field nhận diện thống nhất cho mọi loại user (guest hay đã đăng nhập) —
+// dùng làm khóa lưu trữ trong IndexedDB, giống pattern của healthJourneyStorage.js,
+// để dữ liệu Medical Cell Engine của mỗi người được tách riêng và lưu lâu dài
+// (IndexedDB không có giới hạn ~5MB như localStorage, và không bị mất khi dọn cache trình duyệt
+// aggressively như localStorage đôi khi bị).
+const makeUserId = (user) => {
+  const raw = user?.uuid || 'guest'
+  return raw.toString().trim().toLowerCase().replace(/[^a-z0-9._-]+/g, '-') || 'guest'
+}
+
+// ─── In-memory cache + IndexedDB persistence ─────────────────────────────────
+// IndexedDB chỉ có API bất đồng bộ, nhưng component cần đọc/ghi state đồng bộ
+// trong tick loop (setInterval mỗi 2.2s) và trong các onClick (mua item, hoàn
+// thành nhiệm vụ). Giải pháp: giữ 1 bản cache trong RAM (`memDb`) làm "nguồn sự
+// thật" trong lúc trang đang chạy, đọc/ghi cache này luôn đồng bộ, còn việc ghi
+// xuống IndexedDB chạy nền (fire-and-forget) qua persist(). Khi panel vừa mount,
+// cache được "hydrate" (nạp) từ IndexedDB một lần bằng hydrate().
+let memDb = null
+let hydrated = false
+let hydratePromise = null
+
+function hydrate() {
+  if (hydratePromise) return hydratePromise
+  hydratePromise = (async () => {
+    try {
+      const stored = await getSetting(DB_KEY)
+      memDb = (stored && typeof stored === 'object' && stored.users) ? stored : { users: {} }
+    } catch {
+      memDb = { users: {} }
+    }
+    hydrated = true
+    return memDb
+  })()
+  return hydratePromise
+}
+
+function persist() {
+  // Tránh ghi đè dữ liệu thật bằng dữ liệu mặc định tạm khi chưa hydrate xong
+  // (cùng loại bug đã gặp và fix ở healthJourneyStorage.js).
+  if (!hydrated || !memDb) return
+  setSetting(DB_KEY, memDb).catch((e) => console.warn('[MyRewardHealth] IndexedDB write failed', e))
+}
+
+function getUserState(userId) {
+  if (!memDb) memDb = { users: {} }
+  const existing = memDb.users[userId]
+  if (existing?.grid?.length === GRID_W * GRID_H) return existing
+  const fresh = defaultUserState()
+  memDb.users[userId] = fresh
+  return fresh
+}
+
+function saveUserState(userId, state) {
+  if (!memDb) memDb = { users: {} }
+  memDb.users[userId] = state
+  persist()
 }
 
 function formatElapsed(seconds) {
@@ -304,9 +353,12 @@ function buildCoachNote(stats, pop, total, bossName) {
 
 export default function MyRewardHealthPanel({ onNext, nextLabel, onPrev, prevLabel }) {
   const { theme } = useApp()
+  const { user } = useAuth()
   const isDark = theme !== 'light'
+  const userId = useMemo(() => makeUserId(user), [user])
 
-  const [state, setState] = useState(() => loadState())
+  const [ready, setReady] = useState(false)
+  const [state, setState] = useState(() => defaultUserState())
   const [running, setRunning] = useState(true)
   const [activeShopTab, setActiveShopTab] = useState('nutrition')
   const [offlineSummary, setOfflineSummary] = useState(null)
@@ -314,59 +366,69 @@ export default function MyRewardHealthPanel({ onNext, nextLabel, onPrev, prevLab
   const canvasRef = useRef(null)
   const stateRef = useRef(state)
   stateRef.current = state
+  const userIdRef = useRef(userId)
+  userIdRef.current = userId
 
   const boss = BOSSES[state.bossIndex % BOSSES.length]
 
-  /* Offline fast-forward on mount */
+  /* Hydrate from IndexedDB (per user UUID), then run offline fast-forward */
   useEffect(() => {
-    const loaded = loadState()
-    const elapsedSec = (Date.now() - (loaded.lastTick || Date.now())) / 1000
-    if (elapsedSec > 20) {
-      const cappedSec = Math.min(elapsedSec, 14 * 86400) // cap at 14 days
-      const simTicks = Math.min(Math.floor(cappedSec / 20), 400) // ~1 tick per 20s offline, capped
-      let grid = loaded.grid
-      let stats = loaded.stats
-      let pop = null
-      let total = grid.length
-      const beforeHealthy = grid.filter(c => c === S.HEALTHY).length
-      for (let t = 0; t < simTicks; t++) {
-        const res = stepSimulation(grid, stats)
-        grid = res.grid; stats = res.stats; pop = res.pop; total = res.total
+    let cancelled = false
+    setReady(false)
+    hydrate().then(() => {
+      if (cancelled) return
+      const loaded = getUserState(userId)
+      const elapsedSec = (Date.now() - (loaded.lastTick || Date.now())) / 1000
+
+      if (elapsedSec > 20) {
+        const cappedSec = Math.min(elapsedSec, 14 * 86400) // cap at 14 days
+        const simTicks = Math.min(Math.floor(cappedSec / 20), 400) // ~1 tick per 20s offline, capped
+        let grid = loaded.grid
+        let stats = loaded.stats
+        let pop = null
+        let total = grid.length
+        const beforeHealthy = grid.filter(c => c === S.HEALTHY).length
+        for (let t = 0; t < simTicks; t++) {
+          const res = stepSimulation(grid, stats)
+          grid = res.grid; stats = res.stats; pop = res.pop; total = res.total
+        }
+        const afterHealthy = pop ? pop[S.HEALTHY] : beforeHealthy
+        const recovered = Math.max(0, afterHealthy - beforeHealthy) * 2341 // scale to feel "millions of cells" like the design doc
+        const summary = {
+          elapsedLabel: formatElapsed(elapsedSec),
+          recovered,
+          atpDelta: Math.round(stats.atp - loaded.stats.atp),
+          mutationDelta: Math.round(stats.mutation - loaded.stats.mutation),
+          immuneDelta: Math.round(stats.immunePower - loaded.stats.immunePower),
+        }
+        const newState = { ...loaded, grid, stats, lastTick: Date.now(), ticks: (loaded.ticks || 0) + simTicks }
+        setState(newState)
+        saveUserState(userId, newState)
+        setOfflineSummary(summary)
+      } else {
+        setState(loaded)
       }
-      const afterHealthy = pop ? pop[S.HEALTHY] : beforeHealthy
-      const recovered = Math.max(0, afterHealthy - beforeHealthy) * 2341 // scale to feel "millions of cells" like the design doc
-      const summary = {
-        elapsedLabel: formatElapsed(elapsedSec),
-        recovered,
-        atpDelta: Math.round(stats.atp - loaded.stats.atp),
-        mutationDelta: Math.round(stats.mutation - loaded.stats.mutation),
-        immuneDelta: Math.round(stats.immunePower - loaded.stats.immunePower),
-      }
-      const newState = { ...loaded, grid, stats, lastTick: Date.now(), ticks: (loaded.ticks || 0) + simTicks }
-      setState(newState)
-      saveState(newState)
-      setOfflineSummary(summary)
-    } else {
-      setState(loaded)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+      setReady(true)
+    })
+    return () => { cancelled = true }
+  }, [userId])
 
   /* Reset daily missions if the day rolled over */
   useEffect(() => {
+    if (!ready) return
     if (state.missionsDate !== todayKey()) {
       setState(prev => {
         const next = { ...prev, missionsDate: todayKey(), missionsDone: {} }
-        saveState(next)
+        saveUserState(userIdRef.current, next)
         return next
       })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [ready])
 
   /* Main tick loop — "Conway Update" */
   useEffect(() => {
-    if (!running) return undefined
+    if (!running || !ready) return undefined
     const id = setInterval(() => {
       setState(prev => {
         const { grid, stats, pop, total } = stepSimulation(prev.grid, prev.stats)
@@ -385,13 +447,13 @@ export default function MyRewardHealthPanel({ onNext, nextLabel, onPrev, prevLab
           ...prev, grid, stats, gems, bossHp, bossIndex,
           lastTick: Date.now(), ticks: (prev.ticks || 0) + 1,
         }
-        saveState(next)
+        saveUserState(userIdRef.current, next)
         if (toastMsg) setToast(toastMsg)
         return next
       })
     }, 2200)
     return () => clearInterval(id)
-  }, [running])
+  }, [running, ready])
 
   useEffect(() => {
     if (!toast) return undefined
@@ -447,7 +509,7 @@ export default function MyRewardHealthPanel({ onNext, nextLabel, onPrev, prevLab
         gems: prev.gems + mission.gems,
         missionsDone: { ...prev.missionsDone, [mission.id]: true },
       }
-      saveState(next)
+      saveUserState(userIdRef.current, next)
       return next
     })
     setToast(`✅ ${mission.label} · +${mission.gems} Gem`)
@@ -483,14 +545,14 @@ export default function MyRewardHealthPanel({ onNext, nextLabel, onPrev, prevLab
         gems: prev.gems - item.cost,
         coachNote: item.coach ? buildCoachNote(stats, prev.pop, totalCells, boss.nameVi) : prev.coachNote,
       }
-      saveState(next)
+      saveUserState(userIdRef.current, next)
       return next
     })
     setToast(`🛒 Đã dùng ${item.name}`)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [boss.nameVi, totalCells])
 
-  const setZone = (id) => setState(prev => { const next = { ...prev, zone: id }; saveState(next); return next })
+  const setZone = (id) => setState(prev => { const next = { ...prev, zone: id }; saveUserState(userIdRef.current, next); return next })
 
   /* ── Theme tokens (mirrors Sidebar.jsx palette) ─────────────────────── */
   const bg      = isDark ? 'rgba(10,14,26,0.9)'    : 'rgba(255,255,255,0.95)'
@@ -502,6 +564,15 @@ export default function MyRewardHealthPanel({ onNext, nextLabel, onPrev, prevLab
   const gold    = '#ffb74d'
 
   const cardStyle = { background: card, border: `1px solid ${border}`, borderRadius: 14, padding: 16 }
+
+  if (!ready) {
+    return (
+      <div className="animate-fade" style={{ padding: '60px 20px', maxWidth: 1180, margin: '0 auto', color: text, textAlign: 'center' }}>
+        <div style={{ fontSize: 32, marginBottom: 10 }}>🧬</div>
+        <div style={{ fontFamily: 'monospace', fontSize: 13, letterSpacing: '0.1em', color: cyan }}>ĐANG NẠP THẾ GIỚI TẾ BÀO TỪ INDEXEDDB...</div>
+      </div>
+    )
+  }
 
   return (
     <div className="animate-fade" style={{ padding: '20px 20px 40px', maxWidth: 1180, margin: '0 auto', color: text, fontFamily: 'inherit' }}>
