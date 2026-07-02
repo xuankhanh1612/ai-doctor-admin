@@ -29,6 +29,7 @@ import AIHealthcareVisionPanel from './components/AIHealthcareVisionPanel.jsx'
 import AIHealthcareVisionControlPanel from './components/AIHealthcareVisionControlPanel.jsx'
 import AIInbodyPortalPanel from './components/AIInbodyPortalPanel.jsx'
 import WaterDrinkChatBotPanel from './components/WaterDrinkChatBotPanel.jsx'
+import RSSPortalPanel from './components/RSSPortalPanel.jsx'
 import WikiMedVisionPanel from './components/WikiMedVisionPanel.jsx'
 import FullDocumentSummarizationPanel from './components/FullDocumentSummarizationPanel.jsx'
 import DocumentOCRPanel from './components/DocumentOCRPanel.jsx'
@@ -41,7 +42,7 @@ import LoginPage from './pages/LoginPage.jsx'
 import { addNotification } from './lib/notifications.js'
 
 // Swarm panel replaces simulation; keep consensus as classic fallback
-const PANELS = ['healthJourneyGame', 'myRewardHealth', 'waterDrinkChatBot', 'wikiMedVision', 'fullDocSummarization', 'documentOCR', 'organConnection', 'healthJourney', 'lunchJourney', 'dinnerJourney', 'upload', 'imaging', 'checkin', 'family', 'record', 'familyRelationship', 'matrix3dBody', 'omnidirectional3dBody', 'twin', 'telemedicine', 'statAnalysis', 'swarm', 'consensus', 'protein3d', 'aiHealthcareVision', 'aiHealthcareVisionControl', 'stressRelief', 'aiInbodyPortal', 'printPortal', 'chatHistory']
+const PANELS = ['healthJourneyGame', 'myRewardHealth', 'rssPortal', 'waterDrinkChatBot', 'wikiMedVision', 'fullDocSummarization', 'documentOCR', 'organConnection', 'healthJourney', 'lunchJourney', 'dinnerJourney', 'upload', 'imaging', 'checkin', 'family', 'record', 'familyRelationship', 'matrix3dBody', 'omnidirectional3dBody', 'twin', 'telemedicine', 'statAnalysis', 'swarm', 'consensus', 'protein3d', 'aiHealthcareVision', 'aiHealthcareVisionControl', 'stressRelief', 'aiInbodyPortal', 'printPortal', 'chatHistory']
 
 export default function App() {
   const { user, loading } = useAuth()
@@ -90,6 +91,7 @@ export default function App() {
     stressRelief: t('stressRelief'),
     aiInbodyPortal: t('aiInbodyPortal'),
     waterDrinkChatBot: t('waterDrinkChatBot'),
+    rssPortal: 'Healthy RSS Portal',
     wikiMedVision: t('wikiMedVision'),
     fullDocSummarization: 'Full-Document Summarization',
     documentOCR: 'Document OCR',
@@ -256,6 +258,7 @@ export default function App() {
             {active === 'aiHealthcareVisionControl' && <AIHealthcareVisionControlPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} onViewMedicalRecord={() => setActive('upload')} />}
             {active === 'stressRelief' && <StressReliefPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'aiInbodyPortal' && <AIInbodyPortalPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} onViewMedicalRecord={() => setActive('upload')} />}
+            {active === 'rssPortal' && <RSSPortalPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'waterDrinkChatBot' && <WaterDrinkChatBotPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} onViewMedicalRecord={() => setActive('upload')} />}
             {active === 'wikiMedVision' && <WikiMedVisionPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'fullDocSummarization' && <FullDocumentSummarizationPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} />}

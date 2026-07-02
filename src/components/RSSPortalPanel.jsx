@@ -1,0 +1,384 @@
+// src/components/RSSPortalPanel.jsx
+// Healthy RSS Portal — Trung tâm video sức khỏe tổng hợp từ Facebook, TikTok, YouTube
+// và các kênh yêu thích. Giao diện được thiết kế theo layout "4 cạnh + video trung tâm"
+// mô tả trong tài liệu nghiên cứu RSS Portal (deep-research-RSS-Portal.md).
+//
+// NOTE: Đây là bản demo với dữ liệu mock (chưa nối YouTube Data API / Facebook Graph API /
+// TikTok Display API thật — xem tài liệu nghiên cứu để biết hướng tích hợp backend).
+
+import React, { useState, useRef, useCallback } from 'react'
+import NavButtons from './NavButtons.jsx'
+
+// ─── Mock data (chủ đề sức khỏe, tiếng Việt) ───────────────────────────────
+const GRADIENTS = [
+  'linear-gradient(135deg,#0ea5e9,#2563eb)',
+  'linear-gradient(135deg,#f97316,#dc2626)',
+  'linear-gradient(135deg,#10b981,#059669)',
+  'linear-gradient(135deg,#a855f7,#6d28d9)',
+  'linear-gradient(135deg,#ec4899,#be185d)',
+  'linear-gradient(135deg,#eab308,#ca8a04)',
+  'linear-gradient(135deg,#14b8a6,#0f766e)',
+  'linear-gradient(135deg,#64748b,#334155)',
+]
+
+const FACEBOOK_ITEMS = [
+  { id: 'fb1', icon: '💧', title: '5 dấu hiệu cơ thể đang thiếu nước', duration: '04:35', time: '2 giờ trước' },
+  { id: 'fb2', icon: '🥤', title: 'Công thức nước ép detox giảm cân', duration: '06:12', time: '5 giờ trước' },
+  { id: 'fb3', icon: '🩺', title: 'Bài học từ một bệnh nhân tiểu đường', duration: '08:47', time: '1 ngày trước' },
+  { id: 'fb4', icon: '🍽️', title: 'Thực đơn giảm cân 7 ngày khoa học', duration: '05:33', time: '1 ngày trước' },
+  { id: 'fb5', icon: '🧘', title: 'Yoga thư giãn buổi tối trước khi ngủ', duration: '07:21', time: '2 ngày trước' },
+  { id: 'fb6', icon: '🏃', title: 'Bài tập giảm mỡ bụng tại nhà', duration: '06:05', time: '2 ngày trước' },
+  { id: 'fb7', icon: '💆', title: 'Massage giảm đau lưng đơn giản', duration: '04:18', time: '3 ngày trước' },
+]
+
+const TIKTOK_ITEMS = [
+  { id: 'tt1', icon: '🤒', title: 'Mẹo hạ sốt nhanh tại nhà', duration: '00:15', likes: '12.4K' },
+  { id: 'tt2', icon: '🧼', title: 'Cách rửa tay đúng cách', duration: '00:21', likes: '8.7K' },
+  { id: 'tt3', icon: '🧴', title: 'Skincare cho da nhạy cảm', duration: '00:18', likes: '15.3K' },
+  { id: 'tt4', icon: '🤸', title: '5 phút thể dục buổi sáng', duration: '00:20', likes: '11.1K' },
+  { id: 'tt5', icon: '🤱', title: 'Món ăn lợi sữa cho mẹ bỉm', duration: '00:17', likes: '9.8K' },
+  { id: 'tt6', icon: '😮\u200d💨', title: 'Bài tập thở giảm căng thẳng', duration: '00:16', likes: '13.2K' },
+  { id: 'tt7', icon: '🍵', title: 'Trà thảo mộc tốt cho gan', duration: '00:19', likes: '7.1K' },
+  { id: 'tt8', icon: '😴', title: 'Ngủ đủ giấc - bí quyết khỏe mạnh', duration: '00:14', likes: '6.3K' },
+]
+
+const YOUTUBE_ITEMS = [
+  { id: 'yt1', icon: '🩻', title: 'Khám sức khỏe định kỳ - vì sao quan trọng?', channel: 'BS. Minh Anh', views: '1.2M lượt xem', time: '1 ngày trước' },
+  { id: 'yt2', icon: '🥗', title: '7 ngày detox cùng chuyên gia dinh dưỡng', channel: 'Dinh Dưỡng Việt', views: '860K lượt xem', time: '2 ngày trước' },
+  { id: 'yt3', icon: '❤️', title: 'Hướng dẫn đo huyết áp tại nhà đúng chuẩn', channel: 'Sức Khỏe TV', views: '560K lượt xem', time: '3 ngày trước' },
+  { id: 'yt4', icon: '🍚', title: 'Chế độ ăn cho người tiểu đường', channel: 'BS. Gia Hân', views: '720K lượt xem', time: '4 ngày trước' },
+  { id: 'yt5', icon: '🌙', title: 'Cách ngủ ngon không cần thuốc', channel: 'Sleep Well VN', views: '410K lượt xem', time: '5 ngày trước' },
+  { id: 'yt6', icon: '⚖️', title: 'Review máy đo InBody 2024', channel: 'Fitness Review', views: '930K lượt xem', time: '6 ngày trước' },
+  { id: 'yt7', icon: '🧘\u200d♀️', title: '10 bài tập yoga giảm đau lưng', channel: 'Yoga Cùng Mai', views: '1.5M lượt xem', time: '1 tuần trước' },
+]
+
+const FAVORITE_CHANNELS = [
+  { id: 'ch1', icon: '🩺', name: 'BS. Minh Anh', subs: '2.1M subscribers' },
+  { id: 'ch2', icon: '🥗', name: 'Dinh Dưỡng Việt', subs: '1.6M subscribers' },
+  { id: 'ch3', icon: '🧘', name: 'Yoga Cùng Mai', subs: '1.4M subscribers' },
+  { id: 'ch4', icon: '❤️', name: 'Sức Khỏe TV', subs: '3.7M subscribers' },
+  { id: 'ch5', icon: '⚕️', name: 'Consensus Doctor', subs: '1.1M subscribers' },
+  { id: 'ch6', icon: '🍲', name: 'Ăn Gì Hôm Nay', subs: '2.2M subscribers' },
+  { id: 'ch7', icon: '🐱', name: 'Bé Mèo Nước', subs: '5.4M subscribers' },
+  { id: 'ch8', icon: '⚖️', name: 'InBody Việt', subs: '1.8M subscribers' },
+]
+
+const gradFor = (id) => {
+  let h = 0
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) % GRADIENTS.length
+  return GRADIENTS[h]
+}
+
+const DEMO_VIDEO_SRC = 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4'
+
+// ─── Thumbnail card ─────────────────────────────────────────────────────────
+function ThumbCard({ item, active, onClick, orientation, border, surface, text, text2 }) {
+  const isRow = orientation === 'row'
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        display: 'flex', flexDirection: 'column', textAlign: 'left', cursor: 'pointer',
+        width: isRow ? 128 : '100%', flexShrink: 0, padding: 0,
+        background: active ? 'rgba(0,229,255,0.08)' : surface,
+        border: `1px solid ${active ? '#00e5ff' : border}`,
+        borderRadius: 10, overflow: 'hidden', fontFamily: 'inherit',
+        transition: 'all 0.15s',
+      }}
+    >
+      <div style={{
+        position: 'relative', width: '100%', aspectRatio: isRow ? '9/16' : '16/10',
+        background: gradFor(item.id), display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        <span style={{ fontSize: isRow ? 26 : 22 }}>{item.icon}</span>
+        <span style={{
+          position: 'absolute', bottom: 4, right: 4, fontSize: 9, fontWeight: 700,
+          background: 'rgba(0,0,0,0.6)', color: '#fff', padding: '1px 5px', borderRadius: 4,
+        }}>{item.duration}</span>
+      </div>
+      <div style={{ padding: '7px 8px 9px' }}>
+        <div style={{
+          fontSize: 11, fontWeight: 700, color: text, lineHeight: 1.35,
+          display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+        }}>{item.title}</div>
+        <div style={{ fontSize: 10, color: text2, marginTop: 4 }}>
+          {item.channel ? `${item.channel} · ` : ''}{item.views || item.time || item.likes}
+        </div>
+      </div>
+    </button>
+  )
+}
+
+function SourceHeader({ icon, iconBg, iconColor, title, text }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+      <div style={{
+        width: 26, height: 26, borderRadius: 8, background: iconBg, color: iconColor,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, flexShrink: 0,
+      }}>{icon}</div>
+      <span style={{ fontSize: 12, fontWeight: 900, letterSpacing: 0.4, color: text, textTransform: 'uppercase' }}>{title}</span>
+    </div>
+  )
+}
+
+// ─── Main component ─────────────────────────────────────────────────────────
+export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel }) {
+  const [current, setCurrent] = useState(YOUTUBE_ITEMS[0])
+  const [currentKind, setCurrentKind] = useState('youtube')
+  const [playing, setPlaying] = useState(false)
+  const [liked, setLiked] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [mobileTab, setMobileTab] = useState('player')
+  const videoRef = useRef(null)
+
+  const select = useCallback((item, kind) => {
+    setCurrent(item)
+    setCurrentKind(kind)
+    setPlaying(false)
+    setLiked(false)
+    if (videoRef.current) { videoRef.current.pause(); videoRef.current.currentTime = 0 }
+  }, [])
+
+  const togglePlay = () => {
+    const v = videoRef.current
+    if (!v) return
+    if (v.paused) { v.play(); setPlaying(true) } else { v.pause(); setPlaying(false) }
+  }
+
+  // ── Theme (portal has its own dark, media-hub aesthetic) ──
+  const bg      = '#04060f'
+  const surface = 'rgba(255,255,255,0.035)'
+  const border  = 'rgba(255,255,255,0.09)'
+  const text    = '#e8f0f8'
+  const text2   = 'rgba(232,240,248,0.55)'
+  const text3   = 'rgba(232,240,248,0.35)'
+  const accent  = '#00e5ff'
+
+  const kindMeta = {
+    facebook: { label: 'Facebook RSS', icon: 'f', iconBg: 'rgba(24,119,242,0.18)', iconColor: '#1877f2' },
+    tiktok:   { label: 'TikTok RSS',   icon: '♪', iconBg: 'rgba(255,255,255,0.1)', iconColor: '#ff2d55' },
+    youtube:  { label: 'YouTube RSS',  icon: '▶', iconBg: 'rgba(255,0,0,0.16)', iconColor: '#ff0000' },
+    channel:  { label: 'Kênh yêu thích', icon: '★', iconBg: 'rgba(168,85,247,0.16)', iconColor: '#a855f7' },
+  }
+  const meta = kindMeta[currentKind]
+
+  const panelCard = { background: surface, border: `1px solid ${border}`, borderRadius: 14, padding: 14 }
+
+  return (
+    <div style={{ minHeight: '100vh', background: bg, padding: '20px 16px 120px', boxSizing: 'border-box', color: text }}>
+      <style>{`
+        .rss-scroll::-webkit-scrollbar { height: 6px; width: 6px; }
+        .rss-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
+        .rss-mobile-tabs { display: none; }
+        @media (max-width: 980px) {
+          .rss-grid { display: flex !important; flex-direction: column; }
+          .rss-side-col { display: none !important; }
+          .rss-side-col.rss-active { display: flex !important; flex-direction: row !important; overflow-x: auto !important; gap: 10px; }
+          .rss-mobile-tabs { display: flex !important; }
+          .rss-top-row { order: -1; }
+          .rss-player-block { display: none !important; }
+          .rss-player-block.rss-active { display: block !important; }
+        }
+      `}</style>
+
+      <div style={{ maxWidth: 1400, margin: '0 auto' }}>
+        {/* ── Header ── */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+          <div style={{
+            width: 42, height: 42, borderRadius: 12, flexShrink: 0,
+            background: 'linear-gradient(135deg,#00e5ff,#0284c7)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20,
+          }}>📡</div>
+          <div>
+            <h1 style={{ margin: 0, fontSize: 'clamp(20px,3vw,28px)', fontWeight: 900, letterSpacing: '-0.02em' }}>
+              Healthy{' '}
+              <span style={{ background: 'linear-gradient(135deg,#00e5ff,#0284c7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                RSS Portal
+              </span>
+            </h1>
+            <p style={{ margin: '2px 0 0', fontSize: 13, color: text2 }}>
+              Trung tâm video sức khỏe của bạn · tổng hợp từ Facebook, TikTok, YouTube &amp; kênh yêu thích
+            </p>
+          </div>
+        </div>
+
+        {/* ── Mobile tab switcher ── */}
+        <div className="rss-mobile-tabs" style={{ gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
+          {[
+            ['player', '▶ Video'],
+            ['facebook', 'f Facebook'],
+            ['tiktok', '♪ TikTok'],
+            ['youtube', '▶ YouTube'],
+            ['favorite', '★ Yêu thích'],
+          ].map(([id, label]) => (
+            <button key={id} type="button" onClick={() => setMobileTab(id)} style={{
+              padding: '6px 12px', borderRadius: 20, fontSize: 11, fontWeight: 700, cursor: 'pointer',
+              border: `1px solid ${mobileTab === id ? accent : border}`,
+              background: mobileTab === id ? 'rgba(0,229,255,0.12)' : 'transparent',
+              color: mobileTab === id ? accent : text2, fontFamily: 'inherit',
+            }}>{label}</button>
+          ))}
+        </div>
+
+        {/* ── Grid layout: left / center / right ── */}
+        <div className="rss-grid" style={{
+          display: 'grid',
+          gridTemplateColumns: '230px 1fr 230px',
+          gridTemplateRows: 'auto auto auto',
+          gap: 14,
+        }}>
+          {/* Left: Facebook RSS (spans all 3 rows) */}
+          <div
+            className={`rss-side-col ${mobileTab === 'facebook' ? 'rss-active' : ''}`}
+            style={{ ...panelCard, gridColumn: 1, gridRow: '1 / span 3', display: 'flex', flexDirection: 'column', gap: 8, overflowY: 'auto', maxHeight: 780 }}
+          >
+            <SourceHeader icon="f" iconBg="rgba(24,119,242,0.18)" iconColor="#1877f2" title="Facebook RSS" text={text} />
+            {FACEBOOK_ITEMS.map(item => (
+              <ThumbCard key={item.id} item={item} orientation="col" active={current.id === item.id}
+                onClick={() => select(item, 'facebook')} border={border} surface={surface} text={text} text2={text2} />
+            ))}
+          </div>
+
+          {/* Top-center: TikTok RSS (horizontal strip) */}
+          <div
+            className={`rss-top-row rss-side-col ${mobileTab === 'tiktok' ? 'rss-active' : ''}`}
+            style={{ ...panelCard, gridColumn: 2, gridRow: 1, display: 'flex', flexDirection: 'column' }}
+          >
+            <SourceHeader icon="♪" iconBg="rgba(255,255,255,0.1)" iconColor="#ff2d55" title="TikTok RSS" text={text} />
+            <div className="rss-scroll" style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 4 }}>
+              {TIKTOK_ITEMS.map(item => (
+                <ThumbCard key={item.id} item={item} orientation="row" active={current.id === item.id}
+                  onClick={() => select(item, 'tiktok')} border={border} surface={surface} text={text} text2={text2} />
+              ))}
+            </div>
+          </div>
+
+          {/* Center: Video player */}
+          <div
+            className={`rss-player-block ${mobileTab === 'player' ? 'rss-active' : ''}`}
+            style={{ ...panelCard, gridColumn: 2, gridRow: 2, padding: 0, overflow: 'hidden' }}
+          >
+            <div style={{ position: 'relative', width: '100%', aspectRatio: '16/9', background: '#000' }}>
+              <video
+                ref={videoRef}
+                src={DEMO_VIDEO_SRC}
+                poster=""
+                style={{ width: '100%', height: '100%', objectFit: 'cover', display: playing ? 'block' : 'none' }}
+                onPause={() => setPlaying(false)}
+                onPlay={() => setPlaying(true)}
+                onEnded={() => setPlaying(false)}
+                controls={playing}
+              />
+              {!playing && (
+                <div
+                  onClick={togglePlay}
+                  style={{
+                    position: 'absolute', inset: 0, background: gradFor(current.id),
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <span style={{ fontSize: 46, marginRight: 8 }}>{current.icon}</span>
+                  <div style={{
+                    width: 62, height: 62, borderRadius: '50%', background: 'rgba(0,0,0,0.45)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: 12,
+                    border: '2px solid rgba(255,255,255,0.85)',
+                  }}>
+                    <span style={{ fontSize: 22, color: '#fff', marginLeft: 3 }}>▶</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div style={{ padding: '16px 18px 18px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                <span style={{
+                  fontSize: 10, fontWeight: 800, letterSpacing: 0.5, textTransform: 'uppercase',
+                  color: meta.iconColor, background: meta.iconBg, borderRadius: 6, padding: '2px 8px',
+                }}>{meta.label}</span>
+              </div>
+              <h2 style={{ margin: '0 0 8px', fontSize: 18, fontWeight: 800, lineHeight: 1.35 }}>{current.title}</h2>
+
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{
+                    width: 32, height: 32, borderRadius: '50%', background: gradFor(current.id + 'ch'),
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0,
+                  }}>{current.icon}</div>
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 700 }}>{current.channel || 'Kênh sức khỏe'}</div>
+                    <div style={{ fontSize: 10, color: text3 }}>{current.views || current.time || `${current.likes || ''} lượt thích`}</div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button type="button" onClick={() => setLiked(l => !l)} style={{
+                    display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 20,
+                    border: `1px solid ${liked ? accent : border}`, background: liked ? 'rgba(0,229,255,0.1)' : 'transparent',
+                    color: liked ? accent : text2, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                  }}>{liked ? '👍' : '👍🏻'} Thích</button>
+                  <button type="button" style={{
+                    display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 20,
+                    border: `1px solid ${border}`, background: 'transparent', color: text2,
+                    fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                  }}>↗ Chia sẻ</button>
+                  <button type="button" onClick={() => setSaved(s => !s)} style={{
+                    display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 20,
+                    border: `1px solid ${saved ? accent : border}`, background: saved ? 'rgba(0,229,255,0.1)' : 'transparent',
+                    color: saved ? accent : text2, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+                  }}>{saved ? '🔖' : '📑'} Lưu</button>
+                </div>
+              </div>
+
+              <p style={{ margin: '14px 0 0', fontSize: 13, color: text2, lineHeight: 1.6, borderTop: `1px solid ${border}`, paddingTop: 12 }}>
+                Video được tổng hợp tự động từ nguồn {meta.label}. Trong bản triển khai đầy đủ, nội dung này sẽ
+                được lấy trực tiếp qua YouTube Data API, Facebook Graph API hoặc TikTok Display API và phát bằng
+                trình phát nhúng gốc của từng nền tảng (xem tài liệu nghiên cứu RSS Portal để biết chi tiết kiến trúc).
+              </p>
+            </div>
+          </div>
+
+          {/* Bottom-center: Favorite channels */}
+          <div
+            className={`rss-side-col ${mobileTab === 'favorite' ? 'rss-active' : ''}`}
+            style={{ ...panelCard, gridColumn: 2, gridRow: 3, display: 'flex', flexDirection: 'column' }}
+          >
+            <SourceHeader icon="★" iconBg="rgba(168,85,247,0.16)" iconColor="#a855f7" title="Kênh yêu thích" text={text} />
+            <div className="rss-scroll" style={{ display: 'flex', gap: 14, overflowX: 'auto', paddingBottom: 4 }}>
+              {FAVORITE_CHANNELS.map(ch => (
+                <div key={ch.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: 84, flexShrink: 0, textAlign: 'center' }}>
+                  <div style={{
+                    width: 52, height: 52, borderRadius: '50%', background: gradFor(ch.id),
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, marginBottom: 6,
+                    border: `2px solid ${border}`,
+                  }}>{ch.icon}</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, lineHeight: 1.3 }}>{ch.name}</div>
+                  <div style={{ fontSize: 9, color: text3, marginTop: 2 }}>{ch.subs}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Right: YouTube RSS (spans all 3 rows) */}
+          <div
+            className={`rss-side-col ${mobileTab === 'youtube' ? 'rss-active' : ''}`}
+            style={{ ...panelCard, gridColumn: 3, gridRow: '1 / span 3', display: 'flex', flexDirection: 'column', gap: 8, overflowY: 'auto', maxHeight: 780 }}
+          >
+            <SourceHeader icon="▶" iconBg="rgba(255,0,0,0.16)" iconColor="#ff0000" title="YouTube RSS" text={text} />
+            {YOUTUBE_ITEMS.map(item => (
+              <ThumbCard key={item.id} item={item} orientation="col" active={current.id === item.id}
+                onClick={() => select(item, 'youtube')} border={border} surface={surface} text={text} text2={text2} />
+            ))}
+          </div>
+        </div>
+
+        <p style={{ margin: '16px 2px 0', fontSize: 10, color: text3 }}>
+          Demo video: “Flower” (CC0, MDN interactive examples) — dùng để minh họa trình phát trung tâm.
+        </p>
+
+        <NavButtons onNext={onNext} nextLabel={nextLabel} onPrev={onPrev} prevLabel={prevLabel} style={{ marginTop: 24 }} />
+      </div>
+    </div>
+  )
+}
