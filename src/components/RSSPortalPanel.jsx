@@ -43,7 +43,7 @@ const TIKTOK_ITEMS = [
 ]
 
 const YOUTUBE_ITEMS = [
-  { id: 'yt1', icon: '🩻', title: 'Khám sức khỏe định kỳ - vì sao quan trọng?', channel: 'BS. Minh Anh', views: '1.2M lượt xem', time: '1 ngày trước' },
+  { id: 'yt1', icon: '🫀', title: 'The Organ Story - Khám phá cơ thể qua hoạt hình khoa học', channel: 'The Organ Story', views: 'Kênh chính thức', time: 'youtube.com/@TheOrganStory', url: 'https://www.youtube.com/@TheOrganStory' },
   { id: 'yt2', icon: '🥗', title: '7 ngày detox cùng chuyên gia dinh dưỡng', channel: 'Dinh Dưỡng Việt', views: '860K lượt xem', time: '2 ngày trước' },
   { id: 'yt3', icon: '❤️', title: 'Hướng dẫn đo huyết áp tại nhà đúng chuẩn', channel: 'Sức Khỏe TV', views: '560K lượt xem', time: '3 ngày trước' },
   { id: 'yt4', icon: '🍚', title: 'Chế độ ăn cho người tiểu đường', channel: 'BS. Gia Hân', views: '720K lượt xem', time: '4 ngày trước' },
@@ -53,7 +53,7 @@ const YOUTUBE_ITEMS = [
 ]
 
 const FAVORITE_CHANNELS = [
-  { id: 'ch1', icon: '🩺', name: 'BS. Minh Anh', subs: '2.1M subscribers' },
+  { id: 'ch1', icon: '🫀', name: 'The Organ Story', subs: 'Kênh chính thức', url: 'https://www.youtube.com/@TheOrganStory' },
   { id: 'ch2', icon: '🥗', name: 'Dinh Dưỡng Việt', subs: '1.6M subscribers' },
   { id: 'ch3', icon: '🧘', name: 'Yoga Cùng Mai', subs: '1.4M subscribers' },
   { id: 'ch4', icon: '❤️', name: 'Sức Khỏe TV', subs: '3.7M subscribers' },
@@ -92,10 +92,17 @@ function ThumbCard({ item, active, onClick, orientation, border, surface, text, 
         background: gradFor(item.id), display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
         <span style={{ fontSize: isRow ? 26 : 22 }}>{item.icon}</span>
-        <span style={{
-          position: 'absolute', bottom: 4, right: 4, fontSize: 9, fontWeight: 700,
-          background: 'rgba(0,0,0,0.6)', color: '#fff', padding: '1px 5px', borderRadius: 4,
-        }}>{item.duration}</span>
+        {item.url ? (
+          <span style={{
+            position: 'absolute', bottom: 4, right: 4, fontSize: 9, fontWeight: 800,
+            background: 'rgba(0,229,255,0.85)', color: '#04060f', padding: '1px 6px', borderRadius: 4,
+          }}>🔗 Kênh thật</span>
+        ) : (
+          <span style={{
+            position: 'absolute', bottom: 4, right: 4, fontSize: 9, fontWeight: 700,
+            background: 'rgba(0,0,0,0.6)', color: '#fff', padding: '1px 5px', borderRadius: 4,
+          }}>{item.duration}</span>
+        )}
       </div>
       <div style={{ padding: '7px 8px 9px' }}>
         <div style={{
@@ -133,6 +140,7 @@ export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel })
   const videoRef = useRef(null)
 
   const select = useCallback((item, kind) => {
+    if (item.url) { window.open(item.url, '_blank', 'noopener,noreferrer'); return }
     setCurrent(item)
     setCurrentKind(kind)
     setPlaying(false)
@@ -347,15 +355,33 @@ export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel })
             <SourceHeader icon="★" iconBg="rgba(168,85,247,0.16)" iconColor="#a855f7" title="Kênh yêu thích" text={text} />
             <div className="rss-scroll" style={{ display: 'flex', gap: 14, overflowX: 'auto', paddingBottom: 4 }}>
               {FAVORITE_CHANNELS.map(ch => (
-                <div key={ch.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: 84, flexShrink: 0, textAlign: 'center' }}>
+                <button
+                  key={ch.id}
+                  type="button"
+                  onClick={() => ch.url && window.open(ch.url, '_blank', 'noopener,noreferrer')}
+                  style={{
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', width: 84, flexShrink: 0,
+                    textAlign: 'center', background: 'transparent', border: 'none', padding: 0,
+                    cursor: ch.url ? 'pointer' : 'default', fontFamily: 'inherit',
+                  }}
+                >
                   <div style={{
-                    width: 52, height: 52, borderRadius: '50%', background: gradFor(ch.id),
+                    position: 'relative', width: 52, height: 52, borderRadius: '50%', background: gradFor(ch.id),
                     display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, marginBottom: 6,
-                    border: `2px solid ${border}`,
-                  }}>{ch.icon}</div>
-                  <div style={{ fontSize: 11, fontWeight: 700, lineHeight: 1.3 }}>{ch.name}</div>
+                    border: `2px solid ${ch.url ? '#00e5ff' : border}`,
+                  }}>
+                    {ch.icon}
+                    {ch.url && (
+                      <span style={{
+                        position: 'absolute', bottom: -2, right: -2, fontSize: 9, background: '#00e5ff',
+                        color: '#04060f', borderRadius: '50%', width: 16, height: 16, display: 'flex',
+                        alignItems: 'center', justifyContent: 'center', fontWeight: 900,
+                      }}>🔗</span>
+                    )}
+                  </div>
+                  <div style={{ fontSize: 11, fontWeight: 700, lineHeight: 1.3, color: text }}>{ch.name}</div>
                   <div style={{ fontSize: 9, color: text3, marginTop: 2 }}>{ch.subs}</div>
-                </div>
+                </button>
               ))}
             </div>
           </div>
