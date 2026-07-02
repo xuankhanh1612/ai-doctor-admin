@@ -42,8 +42,10 @@ const TIKTOK_ITEMS = [
   { id: 'tt8', icon: '😴', title: 'Ngủ đủ giấc - bí quyết khỏe mạnh', duration: '00:14', likes: '6.3K' },
 ]
 
+const ORGAN_STORY_EMBED = 'https://www.youtube.com/embed/fFFtJR_IG0U?list=PLKAAOJr1Akjvvi6IjW3v-cpZhE7Y0bbJN'
+
 const YOUTUBE_ITEMS = [
-  { id: 'yt1', icon: '🫀', title: 'The Organ Story - Khám phá cơ thể qua hoạt hình khoa học', channel: 'The Organ Story', views: 'Kênh chính thức', time: 'youtube.com/@TheOrganStory', url: 'https://www.youtube.com/@TheOrganStory' },
+  { id: 'yt1', icon: '🫀', title: 'The Organ Story - Khám phá cơ thể qua hoạt hình khoa học', channel: 'The Organ Story', views: 'Playlist chính thức', time: 'youtube.com/@TheOrganStory', url: 'https://www.youtube.com/@TheOrganStory', embedUrl: ORGAN_STORY_EMBED },
   { id: 'yt2', icon: '🥗', title: '7 ngày detox cùng chuyên gia dinh dưỡng', channel: 'Dinh Dưỡng Việt', views: '860K lượt xem', time: '2 ngày trước' },
   { id: 'yt3', icon: '❤️', title: 'Hướng dẫn đo huyết áp tại nhà đúng chuẩn', channel: 'Sức Khỏe TV', views: '560K lượt xem', time: '3 ngày trước' },
   { id: 'yt4', icon: '🍚', title: 'Chế độ ăn cho người tiểu đường', channel: 'BS. Gia Hân', views: '720K lượt xem', time: '4 ngày trước' },
@@ -53,7 +55,8 @@ const YOUTUBE_ITEMS = [
 ]
 
 const FAVORITE_CHANNELS = [
-  { id: 'ch1', icon: '🫀', name: 'The Organ Story', subs: 'Kênh chính thức', url: 'https://www.youtube.com/@TheOrganStory' },
+  { id: 'ch1', icon: '🫀', name: 'The Organ Story', subs: 'Kênh chính thức', url: 'https://www.youtube.com/@TheOrganStory',
+    title: 'The Organ Story - Khám phá cơ thể qua hoạt hình khoa học', channel: 'The Organ Story', views: 'Playlist chính thức', time: 'youtube.com/@TheOrganStory', embedUrl: ORGAN_STORY_EMBED },
   { id: 'ch2', icon: '🥗', name: 'Dinh Dưỡng Việt', subs: '1.6M subscribers' },
   { id: 'ch3', icon: '🧘', name: 'Yoga Cùng Mai', subs: '1.4M subscribers' },
   { id: 'ch4', icon: '❤️', name: 'Sức Khỏe TV', subs: '3.7M subscribers' },
@@ -140,7 +143,6 @@ export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel })
   const videoRef = useRef(null)
 
   const select = useCallback((item, kind) => {
-    if (item.url) { window.open(item.url, '_blank', 'noopener,noreferrer'); return }
     setCurrent(item)
     setCurrentKind(kind)
     setPlaying(false)
@@ -149,6 +151,7 @@ export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel })
   }, [])
 
   const togglePlay = () => {
+    if (current.embedUrl) { setPlaying(true); return }
     const v = videoRef.current
     if (!v) return
     if (v.paused) { v.play(); setPlaying(true) } else { v.pause(); setPlaying(false) }
@@ -268,16 +271,28 @@ export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel })
             style={{ ...panelCard, gridColumn: 2, gridRow: 2, padding: 0, overflow: 'hidden' }}
           >
             <div style={{ position: 'relative', width: '100%', aspectRatio: '16/9', background: '#000' }}>
-              <video
-                ref={videoRef}
-                src={DEMO_VIDEO_SRC}
-                poster=""
-                style={{ width: '100%', height: '100%', objectFit: 'cover', display: playing ? 'block' : 'none' }}
-                onPause={() => setPlaying(false)}
-                onPlay={() => setPlaying(true)}
-                onEnded={() => setPlaying(false)}
-                controls={playing}
-              />
+              {current.embedUrl ? (
+                playing && (
+                  <iframe
+                    src={`${current.embedUrl}${current.embedUrl.includes('?') ? '&' : '?'}autoplay=1&rel=0`}
+                    title={current.title}
+                    style={{ width: '100%', height: '100%', border: 0, display: 'block' }}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowFullScreen
+                  />
+                )
+              ) : (
+                <video
+                  ref={videoRef}
+                  src={DEMO_VIDEO_SRC}
+                  poster=""
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: playing ? 'block' : 'none' }}
+                  onPause={() => setPlaying(false)}
+                  onPlay={() => setPlaying(true)}
+                  onEnded={() => setPlaying(false)}
+                  controls={playing}
+                />
+              )}
               {!playing && (
                 <div
                   onClick={togglePlay}
@@ -295,6 +310,12 @@ export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel })
                   }}>
                     <span style={{ fontSize: 22, color: '#fff', marginLeft: 3 }}>▶</span>
                   </div>
+                  {current.embedUrl && (
+                    <span style={{
+                      position: 'absolute', top: 10, right: 10, fontSize: 10, fontWeight: 800,
+                      background: 'rgba(0,229,255,0.9)', color: '#04060f', padding: '3px 9px', borderRadius: 999,
+                    }}>🔗 Video/Playlist thật</span>
+                  )}
                 </div>
               )}
             </div>
@@ -358,7 +379,7 @@ export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel })
                 <button
                   key={ch.id}
                   type="button"
-                  onClick={() => ch.url && window.open(ch.url, '_blank', 'noopener,noreferrer')}
+                  onClick={() => { if (ch.embedUrl) { select(ch, 'channel') } else if (ch.url) { window.open(ch.url, '_blank', 'noopener,noreferrer') } }}
                   style={{
                     display: 'flex', flexDirection: 'column', alignItems: 'center', width: 84, flexShrink: 0,
                     textAlign: 'center', background: 'transparent', border: 'none', padding: 0,
