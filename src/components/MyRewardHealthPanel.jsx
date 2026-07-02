@@ -46,13 +46,13 @@ const CELL_META = {
 }
 
 const ZONES = [
+  { id: 'wholebody', name: 'Whole Body',   nameVi: 'Toàn Cơ Thể', icon: '🧍' },
   { id: 'liver',   name: 'Liver Region',   nameVi: 'Gan',        icon: '🫀' },
   { id: 'heart',   name: 'Heart Region',   nameVi: 'Tim',        icon: '❤️' },
   { id: 'lung',    name: 'Lung Region',    nameVi: 'Phổi',       icon: '🫁' },
   { id: 'brain',   name: 'Brain Region',   nameVi: 'Não',        icon: '🧠' },
   { id: 'kidney',  name: 'Kidney Region',  nameVi: 'Thận',       icon: '🧬' },
   { id: 'stomach', name: 'Stomach Region', nameVi: 'Dạ Dày',     icon: '🍽️' },
-  { id: 'wholebody', name: 'Whole Body',   nameVi: 'Toàn Cơ Thể', icon: '🧍' },
 ]
 
 const BOSSES = [
