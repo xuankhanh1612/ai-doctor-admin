@@ -610,7 +610,7 @@ function buildCoachNote(stats, pop, total, bossName) {
 /*  Component                                                             */
 /* ────────────────────────────────────────────────────────────────────── */
 
-export default function MyRewardHealthPanel({ onNext, nextLabel, onPrev, prevLabel }) {
+export default function MyRewardHealthPanel({ onNext, nextLabel, onPrev, prevLabel, onOpenFoodToday }) {
   const { theme } = useApp()
   const { user } = useAuth()
   const isDark = theme !== 'light'
@@ -951,12 +951,27 @@ export default function MyRewardHealthPanel({ onNext, nextLabel, onPrev, prevLab
               <div style={{ fontWeight: 800 }}>🌍 Thế giới tế bào (Conway Medical Engine)</div>
               <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                 {ZONES.map(z => (
-                  <button key={z.id} onClick={() => setZone(z.id)} style={{
-                    fontSize: 11, padding: '5px 9px', borderRadius: 8, cursor: 'pointer',
-                    border: `1px solid ${state.zone === z.id ? 'rgba(0,229,255,0.5)' : border}`,
-                    background: state.zone === z.id ? 'rgba(0,229,255,0.12)' : 'transparent',
-                    color: state.zone === z.id ? cyan : text2, fontWeight: 600,
-                  }}>{z.icon} {z.nameVi}</button>
+                  <React.Fragment key={z.id}>
+                    <button onClick={() => setZone(z.id)} style={{
+                      fontSize: 11, padding: '5px 9px', borderRadius: 8, cursor: 'pointer',
+                      border: `1px solid ${state.zone === z.id ? 'rgba(0,229,255,0.5)' : border}`,
+                      background: state.zone === z.id ? 'rgba(0,229,255,0.12)' : 'transparent',
+                      color: state.zone === z.id ? cyan : text2, fontWeight: 600,
+                    }}>{z.icon} {z.nameVi}</button>
+                    {z.id === 'stomach' && (
+                      <button
+                        onClick={onOpenFoodToday}
+                        style={{
+                          fontSize: 11, padding: '5px 9px', borderRadius: 8, cursor: 'pointer',
+                          border: '1px solid rgba(16,185,129,0.45)',
+                          background: 'linear-gradient(135deg, rgba(16,185,129,0.16), rgba(0,229,255,0.08))',
+                          color: '#34d399', fontWeight: 800,
+                        }}
+                      >
+                        🥗 ăn gì tốt
+                      </button>
+                    )}
+                  </React.Fragment>
                 ))}
               </div>
             </div>
