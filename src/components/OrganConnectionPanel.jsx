@@ -18,6 +18,12 @@ import organStomachUrl    from '../organ-connection/assets/stomach.png'
 import organStomachProUrl from '../organ-connection/assets/stomachpro.png'
 import organVegetablesUrl from '../organ-connection/assets/vegetables.png'
 
+// ─── Organ focus guidance videos ("X thích ăn gì?") ─────────────────────────
+const ORGAN_VIDEOS = {
+  brain: { id: 'lt2uHzTrKQA', start: 0,  title: 'Não bộ thích ăn gì?',  emoji: '🧠' },
+  liver: { id: 'wbh3SjzydnQ', start: 38, title: 'Gan thích ăn gì?',     emoji: '🫀' },
+}
+
 // ─── Database ────────────────────────────────────────────────────────────────
 const DB = {
   target: [
@@ -859,9 +865,11 @@ export default function OrganConnectionPanel({ onNext, onPrev, prevLabel, nextLa
   const [showOrganMap, setShowOrganMap]  = useState(false)
   const [showResult, setShowResult]     = useState(false)
   const [showHealthCard, setShowHealthCard] = useState(false)
+  const [showOrganVideo, setShowOrganVideo] = useState(false)
 
   const { scores, hasItem, targetOrgan } = calculateScores(selection)
   const aiMsg = getDoctorAIMsg(selection, scores)
+  const organVideo = ORGAN_VIDEOS[selection.target?.organKey]
 
   const selectItem = (cat, itemId) => {
     const itemData = DB[cat].find(i => i.id === itemId)
@@ -872,9 +880,11 @@ export default function OrganConnectionPanel({ onNext, onPrev, prevLabel, nextLa
           const el = document.getElementById(`plate-${cat}`)
           if (el) el.classList.remove('active')
         }
+        if (cat === 'target') setShowOrganVideo(false)
         return { ...prev, [cat]: null }
       }
       // select
+      if (cat === 'target') setShowOrganVideo(false)
       return { ...prev, [cat]: itemData }
     })
   }
@@ -926,6 +936,7 @@ export default function OrganConnectionPanel({ onNext, onPrev, prevLabel, nextLa
 
         /* Hazard pulse */
         @keyframes oc-pulse-red { 0%,100%{filter:drop-shadow(0 0 8px rgba(239,68,68,0.6))} 50%{filter:drop-shadow(0 0 16px rgba(239,68,68,0.9))} }
+        @keyframes ocVideoFlipIn { 0%{ opacity:0; transform:perspective(1200px) rotateY(-8deg) scale(0.96); } 100%{ opacity:1; transform:perspective(1200px) rotateY(0deg) scale(1); } }
         .hazard-active { animation:oc-pulse-red 2s infinite; }
 
         /* Custom scrollbar */
@@ -1125,6 +1136,19 @@ export default function OrganConnectionPanel({ onNext, onPrev, prevLabel, nextLa
             <p style={{ fontSize:12, color:'#64748b', marginTop:4 }}>
               {selection.target ? `Mục tiêu: ${selection.target.name.replace('Trọng tâm: ','')}` : 'Hãy chọn 1 mục tiêu sức khỏe để bắt đầu'}
             </p>
+            {organVideo && (
+              <button
+                type="button"
+                onClick={() => setShowOrganVideo(true)}
+                style={{
+                  marginTop:8, display:'inline-flex', alignItems:'center', gap:6, cursor:'pointer',
+                  padding:'6px 14px', borderRadius:999, border:'1px solid #c7d2fe', background:'#eef2ff',
+                  color:'#4338ca', fontSize:12, fontWeight:800,
+                }}
+              >
+                🔄 Lật thẻ · Xem video "{organVideo.title}"
+              </button>
+            )}
           </div>
 
           {/* Plate */}
@@ -1150,25 +1174,50 @@ export default function OrganConnectionPanel({ onNext, onPrev, prevLabel, nextLa
           <div style={{ fontSize:12, fontWeight:600, color:'#94a3b8' }}>
             Gợi ý: Thử chọn <span style={{ color:'#4f46e5', fontWeight:700 }}>Mục tiêu Gan</span> + <span style={{ color:'#059669', fontWeight:700 }}>Bông cải</span> + <span style={{ color:'#dc2626', fontWeight:700 }}>Bia</span> để xem AI phản ứng.
           </div>
+        </main>
 
-          {selection.target?.organKey === 'brain' && (
-            <div style={{ width:'100%', maxWidth:420, marginTop:4, background:'#fff', border:'1px solid #e0e7ff', borderRadius:16, padding:12, boxShadow:'0 8px 20px -8px rgba(79,70,229,0.25)' }}>
-              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
-                <span style={{ fontSize:18 }}>🧠</span>
-                <span style={{ fontSize:13, fontWeight:900, color:'#1e1b4b' }}>Não bộ thích ăn gì?</span>
+        {/* FULL-SCREEN FLIP: organ guidance video (always opens at full viewport height) */}
+        {showOrganVideo && organVideo && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={organVideo.title}
+            style={{
+              position:'fixed', inset:0, width:'100vw', height:'100vh', zIndex:2000,
+              background:'rgba(10,12,24,0.97)', display:'flex', flexDirection:'column',
+              animation:'ocVideoFlipIn 0.32s ease',
+            }}
+          >
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:12, padding:'14px 20px', flexShrink:0, flexWrap:'wrap' }}>
+              <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                <span style={{ fontSize:24 }}>{organVideo.emoji}</span>
+                <span style={{ fontSize:16, fontWeight:900, color:'#fff' }}>{organVideo.title}</span>
               </div>
-              <div style={{ position:'relative', width:'100%', aspectRatio:'9/16', maxHeight:480, margin:'0 auto', borderRadius:12, overflow:'hidden', background:'#000' }}>
+              <button
+                type="button"
+                onClick={() => setShowOrganVideo(false)}
+                style={{
+                  display:'flex', alignItems:'center', gap:6, cursor:'pointer',
+                  padding:'8px 16px', borderRadius:999, border:'1px solid rgba(255,255,255,0.25)',
+                  background:'rgba(255,255,255,0.08)', color:'#fff', fontSize:13, fontWeight:800,
+                }}
+              >
+                🔄 Lật thẻ · Về Mâm Cơm Thần Kỳ
+              </button>
+            </div>
+            <div style={{ flex:1, minHeight:0, display:'flex', alignItems:'center', justifyContent:'center', padding:'0 12px 16px' }}>
+              <div style={{ position:'relative', height:'100%', maxHeight:'calc(100vh - 76px)', width:'auto', aspectRatio:'9/16', maxWidth:'100%', borderRadius:16, overflow:'hidden', background:'#000', boxShadow:'0 25px 60px -15px rgba(0,0,0,0.6)' }}>
                 <iframe
-                  src="https://www.youtube.com/embed/lt2uHzTrKQA"
-                  title="Não bộ thích ăn gì?"
+                  src={`https://www.youtube.com/embed/${organVideo.id}${organVideo.start ? `?start=${organVideo.start}` : ''}`}
+                  title={organVideo.title}
                   style={{ position:'absolute', inset:0, width:'100%', height:'100%', border:0 }}
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                   allowFullScreen
                 />
               </div>
             </div>
-          )}
-        </main>
+          </div>
+        )}
 
         {/* RIGHT: Analytics */}
         <aside className="oc-aside-right">
