@@ -967,7 +967,7 @@ export default function OrganConnectionPanel({ onNext, onPrev, prevLabel, nextLa
         }
         .oc-aside-left { border-right:1px solid #e2e8f0; }
         .oc-aside-right { border-left:1px solid #e2e8f0; overflow:hidden; }
-        .oc-main-center { flex:1; display:flex; flex-direction:column; background:#eff3f7; position:relative; overflow:hidden; justify-content:space-between; align-items:center; padding:clamp(12px,3vh,32px) 0; }
+        .oc-main-center { flex:1; display:flex; flex-direction:column; background:#eff3f7; position:relative; overflow-x:hidden; overflow-y:auto; justify-content:space-between; align-items:center; padding:clamp(12px,3vh,32px) 0; gap:16px; }
 
         /* ── Tablet: 768px–1024px ── */
         @media (max-width:1024px) {
@@ -1150,6 +1150,24 @@ export default function OrganConnectionPanel({ onNext, onPrev, prevLabel, nextLa
           <div style={{ fontSize:12, fontWeight:600, color:'#94a3b8' }}>
             Gợi ý: Thử chọn <span style={{ color:'#4f46e5', fontWeight:700 }}>Mục tiêu Gan</span> + <span style={{ color:'#059669', fontWeight:700 }}>Bông cải</span> + <span style={{ color:'#dc2626', fontWeight:700 }}>Bia</span> để xem AI phản ứng.
           </div>
+
+          {selection.target?.organKey === 'brain' && (
+            <div style={{ width:'100%', maxWidth:420, marginTop:4, background:'#fff', border:'1px solid #e0e7ff', borderRadius:16, padding:12, boxShadow:'0 8px 20px -8px rgba(79,70,229,0.25)' }}>
+              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
+                <span style={{ fontSize:18 }}>🧠</span>
+                <span style={{ fontSize:13, fontWeight:900, color:'#1e1b4b' }}>Não bộ thích ăn gì?</span>
+              </div>
+              <div style={{ position:'relative', width:'100%', aspectRatio:'9/16', maxHeight:480, margin:'0 auto', borderRadius:12, overflow:'hidden', background:'#000' }}>
+                <iframe
+                  src="https://www.youtube.com/embed/lt2uHzTrKQA"
+                  title="Não bộ thích ăn gì?"
+                  style={{ position:'absolute', inset:0, width:'100%', height:'100%', border:0 }}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowFullScreen
+                />
+              </div>
+            </div>
+          )}
         </main>
 
         {/* RIGHT: Analytics */}
