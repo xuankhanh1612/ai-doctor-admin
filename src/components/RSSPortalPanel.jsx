@@ -406,15 +406,26 @@ export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel })
             style={{ ...panelCard, gridColumn: 2, gridRow: 2, padding: 0, overflow: 'hidden' }}
           >
             <div style={{ position: 'relative', width: '100%', aspectRatio: '16/9', background: '#000' }}>
-              {current.playlistId ? (
-                <>
-                  <div key={current.id} ref={ytContainerRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
-                  <span style={{
-                    position: 'absolute', top: 10, right: 10, fontSize: 10, fontWeight: 800, pointerEvents: 'none',
-                    background: 'rgba(0,229,255,0.9)', color: '#04060f', padding: '3px 9px', borderRadius: 999,
-                  }}>🔗 Video/Playlist thật</span>
-                </>
-              ) : current.embedUrl ? (
+              {/* YT.Player container: kept permanently mounted (no key, never removed by
+                  React) so the YouTube IFrame API always owns a stable DOM node. Switching
+                  away just hides it — the player itself is destroyed/recreated inside the
+                  effect via ytPlayerRef.current.destroy(), never by React's own unmount,
+                  which is what previously caused "removeChild" crashes when jumping
+                  between videos. */}
+              <div
+                ref={ytContainerRef}
+                style={{
+                  position: 'absolute', inset: 0, width: '100%', height: '100%',
+                  display: current.playlistId ? 'block' : 'none',
+                }}
+              />
+              {current.playlistId && (
+                <span style={{
+                  position: 'absolute', top: 10, right: 10, fontSize: 10, fontWeight: 800, pointerEvents: 'none',
+                  background: 'rgba(0,229,255,0.9)', color: '#04060f', padding: '3px 9px', borderRadius: 999,
+                }}>🔗 Video/Playlist thật</span>
+              )}
+              {!current.playlistId && current.embedUrl ? (
                 <>
                   <iframe
                     key={current.id}
@@ -429,7 +440,7 @@ export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel })
                     background: 'rgba(0,229,255,0.9)', color: '#04060f', padding: '3px 9px', borderRadius: 999,
                   }}>🔗 Video/Playlist thật</span>
                 </>
-              ) : (
+              ) : !current.playlistId ? (
                 <>
                   <video
                     ref={videoRef}
@@ -461,7 +472,7 @@ export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel })
                     </div>
                   )}
                 </>
-              )}
+              ) : null}
             </div>
 
             <div style={{ padding: '16px 18px 18px' }}>
