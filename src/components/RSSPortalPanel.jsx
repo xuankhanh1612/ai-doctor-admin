@@ -272,51 +272,52 @@ export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel })
           >
             <div style={{ position: 'relative', width: '100%', aspectRatio: '16/9', background: '#000' }}>
               {current.embedUrl ? (
-                playing && (
+                <>
                   <iframe
-                    src={`${current.embedUrl}${current.embedUrl.includes('?') ? '&' : '?'}autoplay=1&rel=0`}
+                    key={current.id}
+                    src={current.embedUrl}
                     title={current.title}
-                    style={{ width: '100%', height: '100%', border: 0, display: 'block' }}
+                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 0 }}
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                     allowFullScreen
                   />
-                )
+                  <span style={{
+                    position: 'absolute', top: 10, right: 10, fontSize: 10, fontWeight: 800, pointerEvents: 'none',
+                    background: 'rgba(0,229,255,0.9)', color: '#04060f', padding: '3px 9px', borderRadius: 999,
+                  }}>🔗 Video/Playlist thật</span>
+                </>
               ) : (
-                <video
-                  ref={videoRef}
-                  src={DEMO_VIDEO_SRC}
-                  poster=""
-                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: playing ? 'block' : 'none' }}
-                  onPause={() => setPlaying(false)}
-                  onPlay={() => setPlaying(true)}
-                  onEnded={() => setPlaying(false)}
-                  controls={playing}
-                />
-              )}
-              {!playing && (
-                <div
-                  onClick={togglePlay}
-                  style={{
-                    position: 'absolute', inset: 0, background: gradFor(current.id),
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    cursor: 'pointer',
-                  }}
-                >
-                  <span style={{ fontSize: 46, marginRight: 8 }}>{current.icon}</span>
-                  <div style={{
-                    width: 62, height: 62, borderRadius: '50%', background: 'rgba(0,0,0,0.45)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: 12,
-                    border: '2px solid rgba(255,255,255,0.85)',
-                  }}>
-                    <span style={{ fontSize: 22, color: '#fff', marginLeft: 3 }}>▶</span>
-                  </div>
-                  {current.embedUrl && (
-                    <span style={{
-                      position: 'absolute', top: 10, right: 10, fontSize: 10, fontWeight: 800,
-                      background: 'rgba(0,229,255,0.9)', color: '#04060f', padding: '3px 9px', borderRadius: 999,
-                    }}>🔗 Video/Playlist thật</span>
+                <>
+                  <video
+                    ref={videoRef}
+                    src={DEMO_VIDEO_SRC}
+                    poster=""
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', display: playing ? 'block' : 'none' }}
+                    onPause={() => setPlaying(false)}
+                    onPlay={() => setPlaying(true)}
+                    onEnded={() => setPlaying(false)}
+                    controls={playing}
+                  />
+                  {!playing && (
+                    <div
+                      onClick={togglePlay}
+                      style={{
+                        position: 'absolute', inset: 0, background: gradFor(current.id),
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <span style={{ fontSize: 46, marginRight: 8 }}>{current.icon}</span>
+                      <div style={{
+                        width: 62, height: 62, borderRadius: '50%', background: 'rgba(0,0,0,0.45)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: 12,
+                        border: '2px solid rgba(255,255,255,0.85)',
+                      }}>
+                        <span style={{ fontSize: 22, color: '#fff', marginLeft: 3 }}>▶</span>
+                      </div>
+                    </div>
                   )}
-                </div>
+                </>
               )}
             </div>
 
