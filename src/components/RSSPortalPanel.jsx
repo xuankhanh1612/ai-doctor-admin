@@ -42,7 +42,11 @@ const TIKTOK_ITEMS = [
   { id: 'tt8', icon: '😴', title: 'Ngủ đủ giấc - bí quyết khỏe mạnh', duration: '00:14', likes: '6.3K' },
 ]
 
-const ORGAN_STORY_EMBED = 'https://www.youtube.com/embed/fFFtJR_IG0U?list=PLKAAOJr1Akjvvi6IjW3v-cpZhE7Y0bbJN'
+const ORGAN_STORY_PLAYLIST_ID = 'PLKAAOJr1Akjvvi6IjW3v-cpZhE7Y0bbJN'
+// videoseries + list (no explicit video id) makes YouTube render its native playlist
+// panel alongside the player, so people can see every video in the list and jump to
+// any of them with one click — no extra API/backend needed.
+const ORGAN_STORY_EMBED = `https://www.youtube.com/embed/videoseries?list=${ORGAN_STORY_PLAYLIST_ID}`
 
 const YOUTUBE_ITEMS = [
   { id: 'yt1', icon: '🫀', title: 'The Organ Story - Khám phá cơ thể qua hoạt hình khoa học', channel: 'The Organ Story', views: 'Playlist chính thức', time: 'youtube.com/@TheOrganStory', url: 'https://www.youtube.com/@TheOrganStory', embedUrl: ORGAN_STORY_EMBED },
@@ -239,10 +243,10 @@ export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel })
           gridTemplateRows: 'auto auto auto',
           gap: 14,
         }}>
-          {/* Left: Facebook RSS (spans all 3 rows) */}
+          {/* Right: Facebook RSS (spans all 3 rows) */}
           <div
             className={`rss-side-col ${mobileTab === 'facebook' ? 'rss-active' : ''}`}
-            style={{ ...panelCard, gridColumn: 1, gridRow: '1 / span 3', display: 'flex', flexDirection: 'column', gap: 8, overflowY: 'auto', maxHeight: 780 }}
+            style={{ ...panelCard, gridColumn: 3, gridRow: '1 / span 3', display: 'flex', flexDirection: 'column', gap: 8, overflowY: 'auto', maxHeight: 780 }}
           >
             <SourceHeader icon="f" iconBg="rgba(24,119,242,0.18)" iconColor="#1877f2" title="Facebook RSS" text={text} />
             {FACEBOOK_ITEMS.map(item => (
@@ -408,10 +412,10 @@ export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel })
             </div>
           </div>
 
-          {/* Right: YouTube RSS (spans all 3 rows) */}
+          {/* Left: YouTube RSS (spans all 3 rows) */}
           <div
             className={`rss-side-col ${mobileTab === 'youtube' ? 'rss-active' : ''}`}
-            style={{ ...panelCard, gridColumn: 3, gridRow: '1 / span 3', display: 'flex', flexDirection: 'column', gap: 8, overflowY: 'auto', maxHeight: 780 }}
+            style={{ ...panelCard, gridColumn: 1, gridRow: '1 / span 3', display: 'flex', flexDirection: 'column', gap: 8, overflowY: 'auto', maxHeight: 780 }}
           >
             <SourceHeader icon="▶" iconBg="rgba(255,0,0,0.16)" iconColor="#ff0000" title="YouTube RSS" text={text} />
             {YOUTUBE_ITEMS.map(item => (
