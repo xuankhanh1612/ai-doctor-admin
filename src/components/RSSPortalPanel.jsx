@@ -48,6 +48,9 @@ const ORGAN_STORY_PLAYLIST_ID = 'PLKAAOJr1Akjvvi6IjW3v-cpZhE7Y0bbJN'
 // any of them with one click — no extra API/backend needed.
 const ORGAN_STORY_EMBED = `https://www.youtube.com/embed/videoseries?list=${ORGAN_STORY_PLAYLIST_ID}`
 
+const FEATURED_PLAYLIST_ID = 'PLhPgpmsoyA4GrZ5mGrOPyf1wb1Ke1Zw8p'
+const FEATURED_PLAYLIST_EMBED = `https://www.youtube.com/embed/videoseries?list=${FEATURED_PLAYLIST_ID}`
+
 // ─── YouTube IFrame Player API loader (singleton, no API key needed) ───────
 // We use the real IFrame Player API (not just a videoseries embed) so we can:
 //  1) read the actual ordered list of video IDs in the playlist (getPlaylist())
@@ -90,6 +93,7 @@ async function fetchYouTubeTitle(videoId) {
 }
 
 const YOUTUBE_ITEMS = [
+  { id: 'yt0', icon: '▶', title: 'Playlist sức khỏe nổi bật', channel: 'YouTube Playlist', views: 'Playlist', time: 'youtube.com/watch?v=LHkE3loNxJ4', url: 'https://www.youtube.com/watch?v=LHkE3loNxJ4&list=PLhPgpmsoyA4GrZ5mGrOPyf1wb1Ke1Zw8p', embedUrl: FEATURED_PLAYLIST_EMBED, playlistId: FEATURED_PLAYLIST_ID },
   { id: 'yt1', icon: '🫀', title: 'The Organ Story - Khám phá cơ thể qua hoạt hình khoa học', channel: 'The Organ Story', views: 'Playlist chính thức', time: 'youtube.com/@TheOrganStory', url: 'https://www.youtube.com/@TheOrganStory', embedUrl: ORGAN_STORY_EMBED, playlistId: ORGAN_STORY_PLAYLIST_ID },
   { id: 'yt2', icon: '🥗', title: '7 ngày detox cùng chuyên gia dinh dưỡng', channel: 'Dinh Dưỡng Việt', views: '860K lượt xem', time: '2 ngày trước' },
   { id: 'yt3', icon: '❤️', title: 'Hướng dẫn đo huyết áp tại nhà đúng chuẩn', channel: 'Sức Khỏe TV', views: '560K lượt xem', time: '3 ngày trước' },
