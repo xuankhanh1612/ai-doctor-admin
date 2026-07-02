@@ -46,7 +46,7 @@ const TIKTOK_ITEMS = [
   { id: 'tt6', icon: '😮\u200d💨', title: 'Bài tập thở giảm căng thẳng', duration: '00:16', likes: '13.2K' },
   { id: 'tt7', icon: '🍵', title: 'Trà thảo mộc tốt cho gan', duration: '00:19', likes: '7.1K' },
   { id: 'tt8', icon: '😴', title: 'Ngủ đủ giấc - bí quyết khỏe mạnh', duration: '00:14', likes: '6.3K' },
-]
+].map(item => ({ ...item, aspectRatio: '9/16' }))
 
 const ORGAN_STORY_PLAYLIST_ID = 'PLKAAOJr1Akjvvi6IjW3v-cpZhE7Y0bbJN'
 // videoseries + list (no explicit video id) makes YouTube render its native playlist
@@ -417,92 +417,80 @@ export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel })
                 ? { display: 'flex', justifyContent: 'center', alignItems: 'center', height: 'min(72vh, 640px)' }
                 : { aspectRatio: current.aspectRatio || '16/9' }),
             }}>
-              {current.aspectRatio === '9/16' ? (
-                <div style={{ position: 'relative', height: '100%', aspectRatio: '9/16', background: '#000' }}>
-                  <iframe
-                    key={current.id}
-                    src={current.embedUrl}
-                    title={current.title}
-                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 0 }}
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                    allowFullScreen
-                  />
+              <div style={{
+                position: 'relative', background: '#000',
+                ...(current.aspectRatio === '9/16'
+                  ? { height: '100%', aspectRatio: '9/16' }
+                  : { width: '100%', height: '100%' }),
+              }}>
+                {/* YT.Player container: kept permanently mounted (no key, never removed by
+                    React) so the YouTube IFrame API always owns a stable DOM node. Switching
+                    away just hides it — the player itself is destroyed/recreated inside the
+                    effect via ytPlayerRef.current.destroy(), never by React's own unmount,
+                    which is what previously caused "removeChild" crashes when jumping
+                    between videos. */}
+                <div
+                  ref={ytContainerRef}
+                  style={{
+                    position: 'absolute', inset: 0, width: '100%', height: '100%',
+                    display: current.playlistId ? 'block' : 'none',
+                  }}
+                />
+                {current.playlistId && (
                   <span style={{
                     position: 'absolute', top: 10, right: 10, fontSize: 10, fontWeight: 800, pointerEvents: 'none',
                     background: 'rgba(0,229,255,0.9)', color: '#04060f', padding: '3px 9px', borderRadius: 999,
                   }}>🔗 Video/Playlist thật</span>
-                </div>
-              ) : (
-              <>
-              {/* YT.Player container: kept permanently mounted (no key, never removed by
-                  React) so the YouTube IFrame API always owns a stable DOM node. Switching
-                  away just hides it — the player itself is destroyed/recreated inside the
-                  effect via ytPlayerRef.current.destroy(), never by React's own unmount,
-                  which is what previously caused "removeChild" crashes when jumping
-                  between videos. */}
-              <div
-                ref={ytContainerRef}
-                style={{
-                  position: 'absolute', inset: 0, width: '100%', height: '100%',
-                  display: current.playlistId ? 'block' : 'none',
-                }}
-              />
-              {current.playlistId && (
-                <span style={{
-                  position: 'absolute', top: 10, right: 10, fontSize: 10, fontWeight: 800, pointerEvents: 'none',
-                  background: 'rgba(0,229,255,0.9)', color: '#04060f', padding: '3px 9px', borderRadius: 999,
-                }}>🔗 Video/Playlist thật</span>
-              )}
-              {!current.playlistId && current.embedUrl ? (
-                <>
-                  <iframe
-                    key={current.id}
-                    src={current.embedUrl}
-                    title={current.title}
-                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 0 }}
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                    allowFullScreen
-                  />
-                  <span style={{
-                    position: 'absolute', top: 10, right: 10, fontSize: 10, fontWeight: 800, pointerEvents: 'none',
-                    background: 'rgba(0,229,255,0.9)', color: '#04060f', padding: '3px 9px', borderRadius: 999,
-                  }}>🔗 Video/Playlist thật</span>
-                </>
-              ) : !current.playlistId ? (
-                <>
-                  <video
-                    ref={videoRef}
-                    src={DEMO_VIDEO_SRC}
-                    poster=""
-                    style={{ width: '100%', height: '100%', objectFit: 'cover', display: playing ? 'block' : 'none' }}
-                    onPause={() => setPlaying(false)}
-                    onPlay={() => setPlaying(true)}
-                    onEnded={() => setPlaying(false)}
-                    controls={playing}
-                  />
-                  {!playing && (
-                    <div
-                      onClick={togglePlay}
-                      style={{
-                        position: 'absolute', inset: 0, background: gradFor(current.id),
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      <span style={{ fontSize: 46, marginRight: 8 }}>{current.icon}</span>
-                      <div style={{
-                        width: 62, height: 62, borderRadius: '50%', background: 'rgba(0,0,0,0.45)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: 12,
-                        border: '2px solid rgba(255,255,255,0.85)',
-                      }}>
-                        <span style={{ fontSize: 22, color: '#fff', marginLeft: 3 }}>▶</span>
+                )}
+                {!current.playlistId && current.embedUrl ? (
+                  <>
+                    <iframe
+                      key={current.id}
+                      src={current.embedUrl}
+                      title={current.title}
+                      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 0 }}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                    />
+                    <span style={{
+                      position: 'absolute', top: 10, right: 10, fontSize: 10, fontWeight: 800, pointerEvents: 'none',
+                      background: 'rgba(0,229,255,0.9)', color: '#04060f', padding: '3px 9px', borderRadius: 999,
+                    }}>🔗 Video/Playlist thật</span>
+                  </>
+                ) : !current.playlistId ? (
+                  <>
+                    <video
+                      ref={videoRef}
+                      src={DEMO_VIDEO_SRC}
+                      poster=""
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: playing ? 'block' : 'none' }}
+                      onPause={() => setPlaying(false)}
+                      onPlay={() => setPlaying(true)}
+                      onEnded={() => setPlaying(false)}
+                      controls={playing}
+                    />
+                    {!playing && (
+                      <div
+                        onClick={togglePlay}
+                        style={{
+                          position: 'absolute', inset: 0, background: gradFor(current.id),
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <span style={{ fontSize: 46, marginRight: 8 }}>{current.icon}</span>
+                        <div style={{
+                          width: 62, height: 62, borderRadius: '50%', background: 'rgba(0,0,0,0.45)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: 12,
+                          border: '2px solid rgba(255,255,255,0.85)',
+                        }}>
+                          <span style={{ fontSize: 22, color: '#fff', marginLeft: 3 }}>▶</span>
+                        </div>
                       </div>
-                    </div>
-                  )}
-                </>
-              ) : null}
-              </>
-              )}
+                    )}
+                  </>
+                ) : null}
+              </div>
             </div>
 
             <div style={{ padding: '16px 18px 18px' }}>
