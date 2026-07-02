@@ -26,7 +26,15 @@ const GRADIENTS = [
 const FB_REEL_URL = 'https://www.facebook.com/reel/809720335534900'
 const FB_REEL_EMBED = `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(FB_REEL_URL)}&show_text=false`
 
+// AIPunkstudio — nhúng cả danh sách video/reels công khai của trang (không chỉ 1 video)
+// bằng Facebook Page Plugin (plugins/page.php, tabs=timeline). Không cần App ID / SDK,
+// dùng chung kỹ thuật iframe trực tiếp như FB_REEL_EMBED ở trên.
+const FB_AIPUNK_REELS_URL = 'https://www.facebook.com/AIPunkstudio/reels/'
+const FB_AIPUNK_PAGE_URL = 'https://www.facebook.com/AIPunkstudio'
+const FB_AIPUNK_EMBED = `https://www.facebook.com/plugins/page.php?href=${encodeURIComponent(FB_AIPUNK_PAGE_URL)}&tabs=timeline&width=360&height=700&small_header=false&adapt_container_width=true&hide_cover=false&show_facepile=false`
+
 const FACEBOOK_ITEMS = [
+  { id: 'fb_aipunk', icon: '🎬', title: 'AIPunkstudio · Danh sách Reels', duration: '', time: 'Trang thật · danh sách video', url: FB_AIPUNK_REELS_URL, embedUrl: FB_AIPUNK_EMBED, aspectRatio: '9/16' },
   { id: 'fb0', icon: '🎬', title: 'Video Facebook Reel', duration: '', time: 'Mới · reel thật', url: FB_REEL_URL, embedUrl: FB_REEL_EMBED, aspectRatio: '9/16' },
   { id: 'fb1', icon: '💧', title: '5 dấu hiệu cơ thể đang thiếu nước', duration: '04:35', time: '2 giờ trước' },
   { id: 'fb2', icon: '🥤', title: 'Công thức nước ép detox giảm cân', duration: '06:12', time: '5 giờ trước' },
@@ -37,7 +45,13 @@ const FACEBOOK_ITEMS = [
   { id: 'fb7', icon: '💆', title: 'Massage giảm đau lưng đơn giản', duration: '04:18', time: '3 ngày trước' },
 ]
 
+// xuankhanhsupertech — nhúng cả danh sách video của kênh bằng TikTok Creator Profile
+// Embed chính thức (blockquote + embed.js, data-embed-type="creator"), không cần API key.
+// Widget hiển thị tối đa 10 video gần nhất của kênh, xếp dọc theo đúng tỉ lệ 9:16 gốc của TikTok.
+const TIKTOK_PROFILE_URL = 'https://www.tiktok.com/@xuankhanhsupertech'
+
 const TIKTOK_ITEMS = [
+  { id: 'tt0', icon: '🎵', title: '@xuankhanhsupertech · Danh sách video', duration: '', likes: '', url: TIKTOK_PROFILE_URL, tiktokProfile: true },
   { id: 'tt1', icon: '🤒', title: 'Mẹo hạ sốt nhanh tại nhà', duration: '00:15', likes: '12.4K' },
   { id: 'tt2', icon: '🧼', title: 'Cách rửa tay đúng cách', duration: '00:21', likes: '8.7K' },
   { id: 'tt3', icon: '🧴', title: 'Skincare cho da nhạy cảm', duration: '00:18', likes: '15.3K' },
@@ -172,6 +186,40 @@ function ThumbCard({ item, active, onClick, orientation, border, surface, text, 
         </div>
       </div>
     </button>
+  )
+}
+
+// ─── TikTok Creator Profile Embed (real widget, no API key) ───────────────
+// Uses TikTok's official embed.js (blockquote data-embed-type="creator") which renders
+// a scrollable, vertical (9:16) list of the creator's most recent public videos.
+function TikTokCreatorEmbed({ url }) {
+  const containerRef = useRef(null)
+
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container || !url) return
+    const username = (url.match(/@([\w.-]+)/) || [])[1] || ''
+    container.innerHTML = `
+      <blockquote class="tiktok-embed" cite="${url}" data-unique-id="${username}" data-embed-type="creator" style="max-width:720px;min-width:288px;margin:0;">
+        <section><a target="_blank" rel="noopener noreferrer" href="${url}?refer=creator_embed">@${username}</a></section>
+      </blockquote>`
+    // Cache-bust so TikTok's embed.js re-scans the page and (re)renders this blockquote
+    // even if the script had already been loaded for a previous selection.
+    const script = document.createElement('script')
+    script.src = `https://www.tiktok.com/embed.js?t=${Date.now()}`
+    script.async = true
+    document.body.appendChild(script)
+    return () => { script.remove() }
+  }, [url])
+
+  return (
+    <div
+      ref={containerRef}
+      style={{
+        width: '100%', height: '100%', overflowY: 'auto', display: 'flex',
+        alignItems: 'flex-start', justifyContent: 'center', background: '#000', padding: '10px 0',
+      }}
+    />
   )
 }
 
@@ -442,7 +490,15 @@ export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel })
                     background: 'rgba(0,229,255,0.9)', color: '#04060f', padding: '3px 9px', borderRadius: 999,
                   }}>🔗 Video/Playlist thật</span>
                 )}
-                {!current.playlistId && current.embedUrl ? (
+                {!current.playlistId && current.tiktokProfile ? (
+                  <>
+                    <TikTokCreatorEmbed key={current.id} url={current.url} />
+                    <span style={{
+                      position: 'absolute', top: 10, right: 10, fontSize: 10, fontWeight: 800, pointerEvents: 'none',
+                      background: 'rgba(0,229,255,0.9)', color: '#04060f', padding: '3px 9px', borderRadius: 999,
+                    }}>🔗 Danh sách video thật</span>
+                  </>
+                ) : !current.playlistId && current.embedUrl ? (
                   <>
                     <iframe
                       key={current.id}
