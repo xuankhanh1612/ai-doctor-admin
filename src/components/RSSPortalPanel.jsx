@@ -21,7 +21,13 @@ const GRADIENTS = [
   'linear-gradient(135deg,#64748b,#334155)',
 ]
 
+// Real Facebook video (Reel) embedded via Facebook's public Video Plugin —
+// no API key / app review needed, works for any public video or reel URL.
+const FB_REEL_URL = 'https://www.facebook.com/reel/809720335534900'
+const FB_REEL_EMBED = `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(FB_REEL_URL)}&show_text=false`
+
 const FACEBOOK_ITEMS = [
+  { id: 'fb0', icon: '🎬', title: 'Video Facebook Reel', duration: '', time: 'Mới · reel thật', url: FB_REEL_URL, embedUrl: FB_REEL_EMBED },
   { id: 'fb1', icon: '💧', title: '5 dấu hiệu cơ thể đang thiếu nước', duration: '04:35', time: '2 giờ trước' },
   { id: 'fb2', icon: '🥤', title: 'Công thức nước ép detox giảm cân', duration: '06:12', time: '5 giờ trước' },
   { id: 'fb3', icon: '🩺', title: 'Bài học từ một bệnh nhân tiểu đường', duration: '08:47', time: '1 ngày trước' },
@@ -183,8 +189,8 @@ function SourceHeader({ icon, iconBg, iconColor, title, text }) {
 
 // ─── Main component ─────────────────────────────────────────────────────────
 export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel }) {
-  const [current, setCurrent] = useState(YOUTUBE_ITEMS[0])
-  const [currentKind, setCurrentKind] = useState('youtube')
+  const [current, setCurrent] = useState(FACEBOOK_ITEMS[0])
+  const [currentKind, setCurrentKind] = useState('facebook')
   const [playing, setPlaying] = useState(false)
   const [liked, setLiked] = useState(false)
   const [saved, setSaved] = useState(false)
