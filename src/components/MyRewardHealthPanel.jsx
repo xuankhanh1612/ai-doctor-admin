@@ -254,6 +254,11 @@ function getOrganMask(zoneId) {
   return ORGAN_MASK_CACHE[zoneId]
 }
 
+// null for 'wholebody' (stats drift over the whole grid); an organ mask otherwise.
+function getTissueMaskForZone(zoneId) {
+  return zoneId === 'wholebody' ? null : getOrganMask(zoneId)
+}
+
 // Pull the non-trivial condition names off a family member's record
 // (skips "Khỏe mạnh" / "Chưa rõ tiền sử" style placeholders).
 function memberConditionList(member) {
@@ -321,7 +326,7 @@ function buildWholeBodyGrid(member) {
   const otherCount = Math.max(0, conditions.length - cancerCount)
 
   const cancer = clamp01(cancerCount * 0.09)
-  const infected = clamp01(0.03 + otherCount * 0.04)
+  const infected = otherCount > 0 ? clamp01(0.02 + otherCount * 0.04) : 0
   const immune = clamp01(0.04 + (cancerCount + otherCount) * 0.015)
   const stem = 0.02
   const healthy = clamp01(0.42 - cancer * 0.8 - infected * 0.5)
@@ -364,7 +369,11 @@ function countNeighbors(grid, x, y) {
 
 // One simulation tick — Conway-style neighbour rules extended with
 // medical stats (ATP / DNA / mutation / virus load / immune power).
-function stepSimulation(grid, stats) {
+// `tissueMask` marks which cells count as living tissue for the *stats*
+// calculation below (an organ's silhouette, or null for "Toàn Cơ Thể" =
+// the whole grid) — without this, the permanent black background outside
+// an organ shape would dominate the ratios and crash every stat to 0.
+function stepSimulation(grid, stats, tissueMask) {
   const next = new Array(grid.length)
   const atpFactor = stats.atp / 100
   const immuneFactor = stats.immunePower / 100
@@ -381,21 +390,34 @@ function stepSimulation(grid, stats) {
 
       switch (cell) {
         case S.DEAD: {
+          // Cells outside an organ's silhouette (permanent background) never
+          // revive — this keeps the pixel-art shape recognisable long-term
+          // instead of slowly bleeding outward. Only applies to organ zones;
+          // "Toàn Cơ Thể" has no fixed silhouette (tissueMask is null there).
+          if (tissueMask && !tissueMask[i]) break
           const repairPower = n[S.REPAIR] + n[S.STEM]
           if (repairPower >= 2 && Math.random() < 0.12 + dnaFactor * 0.25) out = S.HEALTHY
-          else if (n[S.HEALTHY] === 3 && Math.random() < 0.4 + atpFactor * 0.2) out = S.HEALTHY
           break
         }
         case S.HEALTHY: {
-          const threat = n[S.INFECTED] + n[S.CANCER]
-          const infectionChance = threat * (0.05 + virusFactor * 0.12) * (1 - immuneFactor * 0.7)
-          const cancerChance = n[S.CANCER] * (0.015 + mutationFactor * 0.05)
-          const alive = n[S.HEALTHY] + n[S.STEM] + n[S.REPAIR] + n[S.IMMUNE]
-          if (Math.random() < cancerChance) out = S.CANCER
+          // Disease only spreads from an existing Cancer/Infected neighbour — a
+          // healthy pixel with no sick neighbours essentially never turns bad,
+          // so a fully-healthy organ stays visually stable for a long time.
+          const cancerNeighbors = n[S.CANCER]
+          const infectedNeighbors = n[S.INFECTED]
+          const cancerSpreadChance = cancerNeighbors > 0
+            ? cancerNeighbors * (0.01 + mutationFactor * 0.05) * (1 - immuneFactor * 0.6) * (1 - dnaFactor * 0.3)
+            : 0
+          const infectionChance = infectedNeighbors > 0
+            ? infectedNeighbors * (0.015 + virusFactor * 0.05) * (1 - immuneFactor * 0.6)
+            : 0
+          // Cells only die from neglect (very low ATP) — never from crowding.
+          const neglectDeathChance = atpFactor < 0.3 ? (0.3 - atpFactor) * 0.15 : 0
+          if (Math.random() < cancerSpreadChance) out = S.CANCER
           else if (Math.random() < infectionChance) out = S.INFECTED
-          else if ((alive < 2 || alive > 4) && Math.random() > atpFactor * 0.85 + 0.1) out = S.DEAD
+          else if (Math.random() < neglectDeathChance) out = S.DEAD
           else if (n[S.IMMUNE] >= 2 && Math.random() < 0.04 * immuneFactor) out = S.IMMUNE
-          else if (Math.random() < 0.008 * dnaFactor) out = S.STEM
+          else if (Math.random() < 0.004 * dnaFactor) out = S.STEM
           break
         }
         case S.INFECTED: {
@@ -406,8 +428,14 @@ function stepSimulation(grid, stats) {
           break
         }
         case S.CANCER: {
+          // Untreated (low immune power / high mutation), cancer mostly persists
+          // and slowly recruits neighbours (see the HEALTHY case above). Good
+          // stats (high immune power + DNA repair, low mutation) let the body
+          // fight it back down — either killed outright or shrunk to Repair.
           const killChance = n[S.IMMUNE] * (0.04 + immuneFactor * 0.12)
+          const shrinkChance = (dnaFactor > 0.7 && mutationFactor < 0.2) ? 0.01 * dnaFactor : 0
           if (Math.random() < killChance) out = S.DEAD
+          else if (Math.random() < shrinkChance) out = S.REPAIR
           break
         }
         case S.IMMUNE: {
@@ -434,15 +462,27 @@ function stepSimulation(grid, stats) {
   const total = next.length
   const pop = { [S.DEAD]: 0, [S.HEALTHY]: 0, [S.STEM]: 0, [S.IMMUNE]: 0, [S.REPAIR]: 0, [S.INFECTED]: 0, [S.CANCER]: 0 }
   for (let i = 0; i < total; i++) pop[next[i]]++
-  const r = (t) => pop[t] / total
+
+  let statsPop = pop
+  let statsArea = total
+  if (tissueMask) {
+    statsPop = { [S.DEAD]: 0, [S.HEALTHY]: 0, [S.STEM]: 0, [S.IMMUNE]: 0, [S.REPAIR]: 0, [S.INFECTED]: 0, [S.CANCER]: 0 }
+    statsArea = 0
+    for (let i = 0; i < total; i++) {
+      if (!tissueMask[i]) continue
+      statsPop[next[i]]++
+      statsArea++
+    }
+  }
+  const r = (t) => (statsArea > 0 ? statsPop[t] / statsArea : 0)
 
   const nextStats = {
-    atp: clamp(stats.atp + (r(S.HEALTHY) * 60 - 22) * 0.6 - 0.15),
-    dna: clamp(stats.dna + (r(S.STEM) * 180) - r(S.CANCER) * 40 - 0.05),
-    mutation: clamp(stats.mutation + r(S.CANCER) * 55 + r(S.INFECTED) * 18 - stats.dna * 0.01 - 0.2),
-    virusLoad: clamp(stats.virusLoad + r(S.INFECTED) * 45 - r(S.IMMUNE) * 30 - 0.35),
-    stress: clamp(stats.stress + r(S.DEAD) * 20 - r(S.HEALTHY) * 6 - 0.15),
-    immunePower: clamp(stats.immunePower + r(S.IMMUNE) * 40 - 0.25),
+    atp: clamp(stats.atp + (r(S.HEALTHY) * 40 - stats.atp * 0.05) * 0.5),
+    dna: clamp(stats.dna + r(S.STEM) * 60 - r(S.CANCER) * 20 - (stats.dna - 60) * 0.01),
+    mutation: clamp(stats.mutation + r(S.CANCER) * 18 + r(S.INFECTED) * 6 - stats.dna * 0.02 - stats.immunePower * 0.015 - 0.1),
+    virusLoad: clamp(stats.virusLoad + r(S.INFECTED) * 20 - stats.immunePower * 0.05 - r(S.IMMUNE) * 10 - 0.1),
+    stress: clamp(stats.stress + r(S.DEAD) * 8 - r(S.HEALTHY) * 4 - (stats.stress - 25) * 0.02),
+    immunePower: clamp(stats.immunePower + r(S.IMMUNE) * 25 + (r(S.CANCER) + r(S.INFECTED)) * 8 - (stats.immunePower - 40) * 0.015),
   }
 
   return { grid: next, stats: nextStats, pop, total }
@@ -616,9 +656,10 @@ export default function MyRewardHealthPanel({ onNext, nextLabel, onPrev, prevLab
         let stats = loaded.stats
         let pop = null
         let total = grid.length
+        const tissueMask = getTissueMaskForZone(loaded.zone)
         const beforeHealthy = grid.filter(c => c === S.HEALTHY).length
         for (let t = 0; t < simTicks; t++) {
-          const res = stepSimulation(grid, stats)
+          const res = stepSimulation(grid, stats, tissueMask)
           grid = res.grid; stats = res.stats; pop = res.pop; total = res.total
         }
         const afterHealthy = pop ? pop[S.HEALTHY] : beforeHealthy
@@ -660,7 +701,7 @@ export default function MyRewardHealthPanel({ onNext, nextLabel, onPrev, prevLab
     if (!running || !ready) return undefined
     const id = setInterval(() => {
       setState(prev => {
-        const { grid, stats, pop, total } = stepSimulation(prev.grid, prev.stats)
+        const { grid, stats, pop, total } = stepSimulation(prev.grid, prev.stats, getTissueMaskForZone(prev.zone))
         const bossDmg = Math.round((pop[S.IMMUNE] * 1.2) + (prev.stats.atp > 60 ? 4 : 0))
         let bossHp = prev.bossHp - bossDmg
         let bossIndex = prev.bossIndex
