@@ -45,23 +45,30 @@ const FACEBOOK_ITEMS = [
   { id: 'fb7', icon: '💆', title: 'Massage giảm đau lưng đơn giản', duration: '04:18', time: '3 ngày trước' },
 ]
 
-// xuankhanhsupertech — nhúng cả danh sách video của kênh bằng TikTok Creator Profile
-// Embed chính thức (blockquote + embed.js, data-embed-type="creator"), không cần API key.
-// Widget hiển thị tối đa 10 video gần nhất của kênh, xếp dọc theo đúng tỉ lệ 9:16 gốc của TikTok.
-const TIKTOK_PROFILE_URL = 'https://www.tiktok.com/@xuankhanhsupertech'
-
-// Bộ sưu tập (collection) thật của @xuankhanhsupertech — "Trị Ung Thư với Xuân Khánh".
-// TikTok chưa có API/oEmbed công khai để liệt kê từng video bên trong một collection cụ thể
-// (Display API cần OAuth + app review), nên ta dùng chung TikTok Creator Profile Embed chính
-// thức (đã dùng cho tt0) để hiển thị — đây là widget "danh sách video" thật duy nhất mà TikTok
-// cho phép nhúng không cần API key. Đường link thật tới đúng collection vẫn được giữ lại
-// (tiktokListUrl) để người dùng bấm sang xem trọn bộ sưu tập gốc trên TikTok.
-const TIKTOK_COLLECTION_URL = 'https://www.tiktok.com/@xuankhanhsupertech/collection/Tr%E1%BB%8B%20Ung%20Th%C6%B0%20v%E1%BB%9Bi%20Xu%C3%A2n%20Kh%C3%A1nh-7623472867921578773'
-const TIKTOK_COLLECTION_TITLE = 'Bộ sưu tập: Trị Ung Thư với Xuân Khánh'
+// xuankhanhsupertech — các video thật của kênh, nhúng trực tiếp từng video bằng
+// TikTok Embed Player chính thức (iframe tiktok.com/embed/v2/{video_id}), không cần API key.
+const tiktokEmbedUrl = (videoId) => `https://www.tiktok.com/embed/v2/${videoId}`
+const TIKTOK_REAL_VIDEOS = [
+  { id: 'ttr1', videoId: '7638637936342273288' },
+  { id: 'ttr2', videoId: '7638634959804189959' },
+  { id: 'ttr3', videoId: '7638619457161612551' },
+  { id: 'ttr4', videoId: '7632628095916330258' },
+  { id: 'ttr5', videoId: '7626353617854926101' },
+  { id: 'ttr6', videoId: '7626640043922246932' },
+  { id: 'ttr7', videoId: '7627569676016504072' },
+].map((v, i) => ({
+  id: v.id,
+  icon: '🎵',
+  title: `@xuankhanhsupertech · Video ${i + 1}`,
+  duration: '',
+  likes: '',
+  url: `https://www.tiktok.com/@xuankhanhsupertech/video/${v.videoId}`,
+  embedUrl: tiktokEmbedUrl(v.videoId),
+  aspectRatio: '9/16',
+}))
 
 const TIKTOK_ITEMS = [
-  { id: 'tt0', icon: '🎵', title: '@xuankhanhsupertech · Danh sách video', duration: '', likes: '', url: TIKTOK_PROFILE_URL, tiktokProfile: true },
-  { id: 'tt_collection', icon: '🗂️', title: TIKTOK_COLLECTION_TITLE, duration: '', likes: '', url: TIKTOK_PROFILE_URL, tiktokListUrl: TIKTOK_COLLECTION_URL, tiktokProfile: true, isList: true },
+  ...TIKTOK_REAL_VIDEOS,
   { id: 'tt1', icon: '🤒', title: 'Mẹo hạ sốt nhanh tại nhà', duration: '00:15', likes: '12.4K' },
   { id: 'tt2', icon: '🧼', title: 'Cách rửa tay đúng cách', duration: '00:21', likes: '8.7K' },
   { id: 'tt3', icon: '🧴', title: 'Skincare cho da nhạy cảm', duration: '00:18', likes: '15.3K' },
@@ -131,36 +138,6 @@ const YOUTUBE_ITEMS = [
   { id: 'yt5', icon: '🌙', title: 'Cách ngủ ngon không cần thuốc', channel: 'Sleep Well VN', views: '410K lượt xem', time: '5 ngày trước' },
   { id: 'yt6', icon: '⚖️', title: 'Review máy đo InBody 2024', channel: 'Fitness Review', views: '930K lượt xem', time: '6 ngày trước' },
   { id: 'yt7', icon: '🧘\u200d♀️', title: '10 bài tập yoga giảm đau lưng', channel: 'Yoga Cùng Mai', views: '1.5M lượt xem', time: '1 tuần trước' },
-]
-
-const FAVORITE_CHANNELS = [
-  { id: 'ch1', icon: '🫀', name: 'The Organ Story', subs: 'Kênh chính thức', url: 'https://www.youtube.com/@TheOrganStory',
-    title: 'The Organ Story - Khám phá cơ thể qua hoạt hình khoa học', channel: 'The Organ Story', views: 'Playlist chính thức', time: 'youtube.com/@TheOrganStory', embedUrl: ORGAN_STORY_EMBED, playlistId: ORGAN_STORY_PLAYLIST_ID },
-  // ── Các mục RSS "thật" khác (đã có link/nhúng thật trong Facebook/TikTok/YouTube RSS
-  // phía trên) được thêm vào đây để có thể mở nhanh từ khu Kênh yêu thích. ──
-  { id: 'ch_yt_featured', icon: '▶', name: 'Playlist sức khỏe nổi bật', subs: 'Playlist YouTube thật',
-    url: 'https://www.youtube.com/watch?v=LHkE3loNxJ4&list=PLhPgpmsoyA4GrZ5mGrOPyf1wb1Ke1Zw8p',
-    title: 'Playlist sức khỏe nổi bật', channel: 'YouTube Playlist', views: 'Playlist', time: 'youtube.com/watch?v=LHkE3loNxJ4',
-    embedUrl: FEATURED_PLAYLIST_EMBED, playlistId: FEATURED_PLAYLIST_ID },
-  { id: 'ch_fb_aipunk', icon: '🎬', name: 'AIPunkstudio', subs: 'Trang Facebook thật', url: FB_AIPUNK_REELS_URL,
-    title: 'AIPunkstudio · Danh sách Reels', channel: 'AIPunkstudio', views: 'Trang thật · danh sách video', time: 'facebook.com/AIPunkstudio',
-    embedUrl: FB_AIPUNK_EMBED, aspectRatio: '9/16' },
-  { id: 'ch_fb_reel', icon: '🎬', name: 'Facebook Reel', subs: 'Reel Facebook thật', url: FB_REEL_URL,
-    title: 'Video Facebook Reel', channel: 'Facebook Reel', views: 'Reel thật', time: 'facebook.com/reel',
-    embedUrl: FB_REEL_EMBED, aspectRatio: '9/16' },
-  { id: 'ch_tt_profile', icon: '🎵', name: '@xuankhanhsupertech', subs: 'Kênh TikTok thật', url: TIKTOK_PROFILE_URL,
-    title: '@xuankhanhsupertech · Danh sách video', channel: 'TikTok · xuankhanhsupertech', views: 'Danh sách video thật', time: TIKTOK_PROFILE_URL,
-    tiktokProfile: true, aspectRatio: '9/16' },
-  { id: 'ch_tt_collection', icon: '🗂️', name: 'Trị Ung Thư (Bộ sưu tập)', subs: 'Bộ sưu tập TikTok thật', url: TIKTOK_PROFILE_URL,
-    tiktokListUrl: TIKTOK_COLLECTION_URL, title: TIKTOK_COLLECTION_TITLE, channel: 'TikTok · Bộ sưu tập', views: 'Bộ sưu tập thật',
-    time: TIKTOK_COLLECTION_URL, tiktokProfile: true, isList: true, aspectRatio: '9/16' },
-  { id: 'ch2', icon: '🥗', name: 'Dinh Dưỡng Việt', subs: '1.6M subscribers' },
-  { id: 'ch3', icon: '🧘', name: 'Yoga Cùng Mai', subs: '1.4M subscribers' },
-  { id: 'ch4', icon: '❤️', name: 'Sức Khỏe TV', subs: '3.7M subscribers' },
-  { id: 'ch5', icon: '⚕️', name: 'Consensus Doctor', subs: '1.1M subscribers' },
-  { id: 'ch6', icon: '🍲', name: 'Ăn Gì Hôm Nay', subs: '2.2M subscribers' },
-  { id: 'ch7', icon: '🐱', name: 'Bé Mèo Nước', subs: '5.4M subscribers' },
-  { id: 'ch8', icon: '⚖️', name: 'InBody Việt', subs: '1.8M subscribers' },
 ]
 
 const gradFor = (id) => {
@@ -429,7 +406,7 @@ export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel })
               </span>
             </h1>
             <p style={{ margin: '2px 0 0', fontSize: 13, color: text2 }}>
-              Trung tâm video sức khỏe của bạn · tổng hợp từ Facebook, TikTok, YouTube &amp; kênh yêu thích
+              Trung tâm video sức khỏe của bạn · tổng hợp từ Facebook, TikTok, YouTube
             </p>
           </div>
         </div>
@@ -441,7 +418,6 @@ export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel })
             ['facebook', 'f Facebook'],
             ['tiktok', '♪ TikTok'],
             ['youtube', '▶ YouTube'],
-            ['favorite', '★ Yêu thích'],
           ].map(([id, label]) => (
             <button key={id} type="button" onClick={() => setMobileTab(id)} style={{
               padding: '6px 12px', borderRadius: 20, fontSize: 11, fontWeight: 700, cursor: 'pointer',
@@ -456,13 +432,13 @@ export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel })
         <div className="rss-grid" style={{
           display: 'grid',
           gridTemplateColumns: '230px 1fr 230px',
-          gridTemplateRows: 'auto auto auto',
+          gridTemplateRows: 'auto auto',
           gap: 14,
         }}>
-          {/* Right: Facebook RSS (spans all 3 rows) */}
+          {/* Right: Facebook RSS (spans both rows) */}
           <div
             className={`rss-side-col ${mobileTab === 'facebook' ? 'rss-active' : ''}`}
-            style={{ ...panelCard, gridColumn: 3, gridRow: '1 / span 3', display: 'flex', flexDirection: 'column', gap: 8, overflowY: 'auto', maxHeight: 780 }}
+            style={{ ...panelCard, gridColumn: 3, gridRow: '1 / span 2', display: 'flex', flexDirection: 'column', gap: 8, overflowY: 'auto', maxHeight: 780 }}
           >
             <SourceHeader icon="f" iconBg="rgba(24,119,242,0.18)" iconColor="#1877f2" title="Facebook RSS" text={text} />
             {FACEBOOK_ITEMS.map(item => (
@@ -693,49 +669,10 @@ export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel })
             </div>
           </div>
 
-          {/* Bottom-center: Favorite channels */}
-          <div
-            className={`rss-side-col ${mobileTab === 'favorite' ? 'rss-active' : ''}`}
-            style={{ ...panelCard, gridColumn: 2, gridRow: 3, display: 'flex', flexDirection: 'column' }}
-          >
-            <SourceHeader icon="★" iconBg="rgba(168,85,247,0.16)" iconColor="#a855f7" title="Kênh yêu thích" text={text} />
-            <div className="rss-scroll" style={{ display: 'flex', gap: 14, overflowX: 'auto', paddingBottom: 4 }}>
-              {FAVORITE_CHANNELS.map(ch => (
-                <button
-                  key={ch.id}
-                  type="button"
-                  onClick={() => { if (ch.embedUrl || ch.tiktokProfile) { select(ch, 'channel') } else if (ch.url) { window.open(ch.url, '_blank', 'noopener,noreferrer') } }}
-                  style={{
-                    display: 'flex', flexDirection: 'column', alignItems: 'center', width: 84, flexShrink: 0,
-                    textAlign: 'center', background: 'transparent', border: 'none', padding: 0,
-                    cursor: ch.url ? 'pointer' : 'default', fontFamily: 'inherit',
-                  }}
-                >
-                  <div style={{
-                    position: 'relative', width: 52, height: 52, borderRadius: '50%', background: gradFor(ch.id),
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, marginBottom: 6,
-                    border: `2px solid ${ch.url ? '#00e5ff' : border}`,
-                  }}>
-                    {ch.icon}
-                    {ch.url && (
-                      <span style={{
-                        position: 'absolute', bottom: -2, right: -2, fontSize: 9, background: '#00e5ff',
-                        color: '#04060f', borderRadius: '50%', width: 16, height: 16, display: 'flex',
-                        alignItems: 'center', justifyContent: 'center', fontWeight: 900,
-                      }}>🔗</span>
-                    )}
-                  </div>
-                  <div style={{ fontSize: 11, fontWeight: 700, lineHeight: 1.3, color: text }}>{ch.name}</div>
-                  <div style={{ fontSize: 9, color: text3, marginTop: 2 }}>{ch.subs}</div>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Left: YouTube RSS (spans all 3 rows) */}
+          {/* Left: YouTube RSS (spans both rows) */}
           <div
             className={`rss-side-col ${mobileTab === 'youtube' ? 'rss-active' : ''}`}
-            style={{ ...panelCard, gridColumn: 1, gridRow: '1 / span 3', display: 'flex', flexDirection: 'column', gap: 8, overflowY: 'auto', maxHeight: 780 }}
+            style={{ ...panelCard, gridColumn: 1, gridRow: '1 / span 2', display: 'flex', flexDirection: 'column', gap: 8, overflowY: 'auto', maxHeight: 780 }}
           >
             <SourceHeader icon="▶" iconBg="rgba(255,0,0,0.16)" iconColor="#ff0000" title="YouTube RSS" text={text} />
             {YOUTUBE_ITEMS.map(item => (
