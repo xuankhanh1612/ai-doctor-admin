@@ -6,7 +6,7 @@
 // NOTE: Đây là bản demo với dữ liệu mock (chưa nối YouTube Data API / Facebook Graph API /
 // TikTok Display API thật — xem tài liệu nghiên cứu để biết hướng tích hợp backend).
 
-import React, { useState, useRef, useCallback } from 'react'
+import React, { useState, useRef, useCallback, useEffect } from 'react'
 import NavButtons from './NavButtons.jsx'
 
 // ─── Mock data (chủ đề sức khỏe, tiếng Việt) ───────────────────────────────
@@ -48,8 +48,49 @@ const ORGAN_STORY_PLAYLIST_ID = 'PLKAAOJr1Akjvvi6IjW3v-cpZhE7Y0bbJN'
 // any of them with one click — no extra API/backend needed.
 const ORGAN_STORY_EMBED = `https://www.youtube.com/embed/videoseries?list=${ORGAN_STORY_PLAYLIST_ID}`
 
+// ─── YouTube IFrame Player API loader (singleton, no API key needed) ───────
+// We use the real IFrame Player API (not just a videoseries embed) so we can:
+//  1) read the actual ordered list of video IDs in the playlist (getPlaylist())
+//  2) jump to any of them on click (playVideoAt())
+//  3) look up each video's real title via the public oEmbed endpoint (no key)
+let ytApiPromise = null
+function loadYouTubeIframeAPI() {
+  if (typeof window === 'undefined') return Promise.resolve(null)
+  if (window.YT && window.YT.Player) return Promise.resolve(window.YT)
+  if (ytApiPromise) return ytApiPromise
+  ytApiPromise = new Promise((resolve) => {
+    const prevCallback = window.onYouTubeIframeAPIReady
+    window.onYouTubeIframeAPIReady = () => {
+      if (typeof prevCallback === 'function') prevCallback()
+      resolve(window.YT)
+    }
+    if (!document.getElementById('youtube-iframe-api-script')) {
+      const tag = document.createElement('script')
+      tag.id = 'youtube-iframe-api-script'
+      tag.src = 'https://www.youtube.com/iframe_api'
+      document.head.appendChild(tag)
+    }
+  })
+  return ytApiPromise
+}
+
+// Public oEmbed endpoint — returns { title, author_name, thumbnail_url, ... }
+// for any public YouTube video, no API key required.
+async function fetchYouTubeTitle(videoId) {
+  try {
+    const res = await fetch(
+      `https://www.youtube.com/oembed?url=${encodeURIComponent(`https://www.youtube.com/watch?v=${videoId}`)}&format=json`
+    )
+    if (!res.ok) return null
+    const data = await res.json()
+    return data.title || null
+  } catch {
+    return null
+  }
+}
+
 const YOUTUBE_ITEMS = [
-  { id: 'yt1', icon: '🫀', title: 'The Organ Story - Khám phá cơ thể qua hoạt hình khoa học', channel: 'The Organ Story', views: 'Playlist chính thức', time: 'youtube.com/@TheOrganStory', url: 'https://www.youtube.com/@TheOrganStory', embedUrl: ORGAN_STORY_EMBED },
+  { id: 'yt1', icon: '🫀', title: 'The Organ Story - Khám phá cơ thể qua hoạt hình khoa học', channel: 'The Organ Story', views: 'Playlist chính thức', time: 'youtube.com/@TheOrganStory', url: 'https://www.youtube.com/@TheOrganStory', embedUrl: ORGAN_STORY_EMBED, playlistId: ORGAN_STORY_PLAYLIST_ID },
   { id: 'yt2', icon: '🥗', title: '7 ngày detox cùng chuyên gia dinh dưỡng', channel: 'Dinh Dưỡng Việt', views: '860K lượt xem', time: '2 ngày trước' },
   { id: 'yt3', icon: '❤️', title: 'Hướng dẫn đo huyết áp tại nhà đúng chuẩn', channel: 'Sức Khỏe TV', views: '560K lượt xem', time: '3 ngày trước' },
   { id: 'yt4', icon: '🍚', title: 'Chế độ ăn cho người tiểu đường', channel: 'BS. Gia Hân', views: '720K lượt xem', time: '4 ngày trước' },
@@ -60,7 +101,7 @@ const YOUTUBE_ITEMS = [
 
 const FAVORITE_CHANNELS = [
   { id: 'ch1', icon: '🫀', name: 'The Organ Story', subs: 'Kênh chính thức', url: 'https://www.youtube.com/@TheOrganStory',
-    title: 'The Organ Story - Khám phá cơ thể qua hoạt hình khoa học', channel: 'The Organ Story', views: 'Playlist chính thức', time: 'youtube.com/@TheOrganStory', embedUrl: ORGAN_STORY_EMBED },
+    title: 'The Organ Story - Khám phá cơ thể qua hoạt hình khoa học', channel: 'The Organ Story', views: 'Playlist chính thức', time: 'youtube.com/@TheOrganStory', embedUrl: ORGAN_STORY_EMBED, playlistId: ORGAN_STORY_PLAYLIST_ID },
   { id: 'ch2', icon: '🥗', name: 'Dinh Dưỡng Việt', subs: '1.6M subscribers' },
   { id: 'ch3', icon: '🧘', name: 'Yoga Cùng Mai', subs: '1.4M subscribers' },
   { id: 'ch4', icon: '❤️', name: 'Sức Khỏe TV', subs: '3.7M subscribers' },
@@ -146,6 +187,13 @@ export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel })
   const [mobileTab, setMobileTab] = useState('player')
   const videoRef = useRef(null)
 
+  // ── Real playlist video list (Organ Story) ──
+  const ytPlayerRef = useRef(null)
+  const ytContainerRef = useRef(null)
+  const [organVideos, setOrganVideos] = useState([])
+  const [organActiveId, setOrganActiveId] = useState(null)
+  const [organLoading, setOrganLoading] = useState(false)
+
   const select = useCallback((item, kind) => {
     setCurrent(item)
     setCurrentKind(kind)
@@ -155,11 +203,90 @@ export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel })
   }, [])
 
   const togglePlay = () => {
+    if (current.playlistId) {
+      if (ytPlayerRef.current && typeof ytPlayerRef.current.playVideo === 'function') {
+        ytPlayerRef.current.playVideo()
+      }
+      setPlaying(true)
+      return
+    }
     if (current.embedUrl) { setPlaying(true); return }
     const v = videoRef.current
     if (!v) return
     if (v.paused) { v.play(); setPlaying(true) } else { v.pause(); setPlaying(false) }
   }
+
+  const playOrganVideoAt = (index) => {
+    if (ytPlayerRef.current && typeof ytPlayerRef.current.playVideoAt === 'function') {
+      ytPlayerRef.current.playVideoAt(index)
+      setPlaying(true)
+    }
+  }
+
+  // Build (or destroy) a real YT.Player when the selected item is a playlist item.
+  useEffect(() => {
+    if (!current.playlistId) {
+      if (ytPlayerRef.current) {
+        ytPlayerRef.current.destroy()
+        ytPlayerRef.current = null
+      }
+      setOrganVideos([])
+      setOrganActiveId(null)
+      return
+    }
+
+    let cancelled = false
+    setOrganLoading(true)
+    setOrganVideos([])
+    setOrganActiveId(null)
+
+    loadYouTubeIframeAPI().then((YT) => {
+      if (cancelled || !YT || !ytContainerRef.current) return
+      if (ytPlayerRef.current) {
+        ytPlayerRef.current.destroy()
+        ytPlayerRef.current = null
+      }
+      ytPlayerRef.current = new YT.Player(ytContainerRef.current, {
+        width: '100%',
+        height: '100%',
+        playerVars: { listType: 'playlist', list: current.playlistId, rel: 0 },
+        events: {
+          onReady: (e) => {
+            if (cancelled) return
+            const ids = e.target.getPlaylist ? (e.target.getPlaylist() || []) : []
+            const idx = e.target.getPlaylistIndex ? e.target.getPlaylistIndex() : 0
+            setOrganActiveId(ids[idx] || ids[0] || null)
+            setOrganVideos(ids.map((id, i) => ({ id, title: `Video ${i + 1}` })))
+            setOrganLoading(false)
+            // Fill in real titles progressively via oEmbed (no API key needed).
+            ids.forEach(async (id) => {
+              const title = await fetchYouTubeTitle(id)
+              if (cancelled || !title) return
+              setOrganVideos(prev => prev.map(v => (v.id === id ? { ...v, title } : v)))
+            })
+          },
+          onStateChange: (e) => {
+            if (cancelled) return
+            const ids = e.target.getPlaylist ? (e.target.getPlaylist() || []) : []
+            const idx = e.target.getPlaylistIndex ? e.target.getPlaylistIndex() : -1
+            if (idx >= 0 && ids[idx]) setOrganActiveId(ids[idx])
+            if (e.data === 1) setPlaying(true)
+            if (e.data === 2) setPlaying(false)
+          },
+        },
+      })
+    })
+
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [current.id, current.playlistId])
+
+  // Destroy the player on unmount.
+  useEffect(() => {
+    return () => {
+      if (ytPlayerRef.current) { ytPlayerRef.current.destroy(); ytPlayerRef.current = null }
+    }
+  }, [])
 
   // ── Theme (portal has its own dark, media-hub aesthetic) ──
   const bg      = '#04060f'
@@ -275,7 +402,15 @@ export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel })
             style={{ ...panelCard, gridColumn: 2, gridRow: 2, padding: 0, overflow: 'hidden' }}
           >
             <div style={{ position: 'relative', width: '100%', aspectRatio: '16/9', background: '#000' }}>
-              {current.embedUrl ? (
+              {current.playlistId ? (
+                <>
+                  <div key={current.id} ref={ytContainerRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
+                  <span style={{
+                    position: 'absolute', top: 10, right: 10, fontSize: 10, fontWeight: 800, pointerEvents: 'none',
+                    background: 'rgba(0,229,255,0.9)', color: '#04060f', padding: '3px 9px', borderRadius: 999,
+                  }}>🔗 Video/Playlist thật</span>
+                </>
+              ) : current.embedUrl ? (
                 <>
                   <iframe
                     key={current.id}
@@ -365,11 +500,55 @@ export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel })
                 </div>
               </div>
 
-              <p style={{ margin: '14px 0 0', fontSize: 13, color: text2, lineHeight: 1.6, borderTop: `1px solid ${border}`, paddingTop: 12 }}>
-                Video được tổng hợp tự động từ nguồn {meta.label}. Trong bản triển khai đầy đủ, nội dung này sẽ
-                được lấy trực tiếp qua YouTube Data API, Facebook Graph API hoặc TikTok Display API và phát bằng
-                trình phát nhúng gốc của từng nền tảng (xem tài liệu nghiên cứu RSS Portal để biết chi tiết kiến trúc).
-              </p>
+              {current.playlistId ? (
+                <div style={{ marginTop: 14, borderTop: `1px solid ${border}`, paddingTop: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <span style={{ fontSize: 11, fontWeight: 800, color: text2, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                      Danh sách video trong playlist{organVideos.length > 0 ? ` (${organVideos.length})` : ''}
+                    </span>
+                    {organLoading && <span style={{ fontSize: 10, color: text3 }}>Đang tải…</span>}
+                  </div>
+                  <div className="rss-scroll" style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 4 }}>
+                    {organVideos.map((v, i) => (
+                      <button
+                        key={v.id}
+                        type="button"
+                        onClick={() => playOrganVideoAt(i)}
+                        title={v.title}
+                        style={{
+                          display: 'flex', flexDirection: 'column', width: 150, flexShrink: 0, textAlign: 'left',
+                          background: organActiveId === v.id ? 'rgba(0,229,255,0.08)' : surface,
+                          border: `1px solid ${organActiveId === v.id ? accent : border}`,
+                          borderRadius: 10, overflow: 'hidden', cursor: 'pointer', padding: 0, fontFamily: 'inherit',
+                        }}
+                      >
+                        <img
+                          src={`https://i.ytimg.com/vi/${v.id}/mqdefault.jpg`}
+                          alt={v.title}
+                          style={{ width: '100%', aspectRatio: '16/9', objectFit: 'cover', display: 'block', background: '#111' }}
+                        />
+                        <div style={{
+                          padding: '6px 8px 8px', fontSize: 11, fontWeight: 700, lineHeight: 1.3,
+                          color: organActiveId === v.id ? accent : text,
+                          display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+                        }}>
+                          {v.title}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                  <p style={{ margin: '10px 0 0', fontSize: 10, color: text3, lineHeight: 1.5 }}>
+                    Danh sách lấy trực tiếp từ playlist YouTube thật (YouTube IFrame Player API) — tiêu đề từng
+                    video được tra qua oEmbed công khai, không cần API key.
+                  </p>
+                </div>
+              ) : (
+                <p style={{ margin: '14px 0 0', fontSize: 13, color: text2, lineHeight: 1.6, borderTop: `1px solid ${border}`, paddingTop: 12 }}>
+                  Video được tổng hợp tự động từ nguồn {meta.label}. Trong bản triển khai đầy đủ, nội dung này sẽ
+                  được lấy trực tiếp qua YouTube Data API, Facebook Graph API hoặc TikTok Display API và phát bằng
+                  trình phát nhúng gốc của từng nền tảng (xem tài liệu nghiên cứu RSS Portal để biết chi tiết kiến trúc).
+                </p>
+              )}
             </div>
           </div>
 
