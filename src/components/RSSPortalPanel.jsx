@@ -27,7 +27,7 @@ const FB_REEL_URL = 'https://www.facebook.com/reel/809720335534900'
 const FB_REEL_EMBED = `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(FB_REEL_URL)}&show_text=false`
 
 const FACEBOOK_ITEMS = [
-  { id: 'fb0', icon: '🎬', title: 'Video Facebook Reel', duration: '', time: 'Mới · reel thật', url: FB_REEL_URL, embedUrl: FB_REEL_EMBED },
+  { id: 'fb0', icon: '🎬', title: 'Video Facebook Reel', duration: '', time: 'Mới · reel thật', url: FB_REEL_URL, embedUrl: FB_REEL_EMBED, aspectRatio: '9/16' },
   { id: 'fb1', icon: '💧', title: '5 dấu hiệu cơ thể đang thiếu nước', duration: '04:35', time: '2 giờ trước' },
   { id: 'fb2', icon: '🥤', title: 'Công thức nước ép detox giảm cân', duration: '06:12', time: '5 giờ trước' },
   { id: 'fb3', icon: '🩺', title: 'Bài học từ một bệnh nhân tiểu đường', duration: '08:47', time: '1 ngày trước' },
@@ -411,7 +411,29 @@ export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel })
             className={`rss-player-block ${mobileTab === 'player' ? 'rss-active' : ''}`}
             style={{ ...panelCard, gridColumn: 2, gridRow: 2, padding: 0, overflow: 'hidden' }}
           >
-            <div style={{ position: 'relative', width: '100%', aspectRatio: '16/9', background: '#000' }}>
+            <div style={{
+              position: 'relative', width: '100%', background: '#000',
+              ...(current.aspectRatio === '9/16'
+                ? { display: 'flex', justifyContent: 'center', alignItems: 'center', height: 'min(72vh, 640px)' }
+                : { aspectRatio: current.aspectRatio || '16/9' }),
+            }}>
+              {current.aspectRatio === '9/16' ? (
+                <div style={{ position: 'relative', height: '100%', aspectRatio: '9/16', background: '#000' }}>
+                  <iframe
+                    key={current.id}
+                    src={current.embedUrl}
+                    title={current.title}
+                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 0 }}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowFullScreen
+                  />
+                  <span style={{
+                    position: 'absolute', top: 10, right: 10, fontSize: 10, fontWeight: 800, pointerEvents: 'none',
+                    background: 'rgba(0,229,255,0.9)', color: '#04060f', padding: '3px 9px', borderRadius: 999,
+                  }}>🔗 Video/Playlist thật</span>
+                </div>
+              ) : (
+              <>
               {/* YT.Player container: kept permanently mounted (no key, never removed by
                   React) so the YouTube IFrame API always owns a stable DOM node. Switching
                   away just hides it — the player itself is destroyed/recreated inside the
@@ -479,6 +501,8 @@ export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel })
                   )}
                 </>
               ) : null}
+              </>
+              )}
             </div>
 
             <div style={{ padding: '16px 18px 18px' }}>
