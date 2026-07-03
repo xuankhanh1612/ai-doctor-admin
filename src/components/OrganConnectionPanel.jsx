@@ -1273,6 +1273,15 @@ export default function OrganConnectionPanel({ onNext, onPrev, prevLabel, nextLa
           <div style={{ fontSize:12, fontWeight:600, color:'#94a3b8' }}>
             Gợi ý: Thử chọn <span style={{ color:'#4f46e5', fontWeight:700 }}>Mục tiêu Gan</span> + <span style={{ color:'#059669', fontWeight:700 }}>Bông cải</span> + <span style={{ color:'#dc2626', fontWeight:700 }}>Bia</span> để xem AI phản ứng.
           </div>
+
+          {/* AI card — đã chuyển xuống đây (dưới vùng gợi ý), thay vì nằm bên cột phân tích bên phải */}
+          <div style={{ width:'100%', maxWidth:500, background:'#fff', border: selection.avoid?.id === 'bia' && selection.target?.organKey === 'liver' ? '1px solid #ef4444' : '1px solid #e2e8f0', borderRadius:16, padding:12, boxShadow:'0 1px 3px rgba(0,0,0,0.06)' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}>
+              <span style={{ fontSize:18 }}>💬</span>
+              <span style={{ fontSize:12, fontWeight:900, color:'#0f172a', textTransform:'uppercase', letterSpacing:'0.05em' }}>Bác sĩ AI chẩn đoán:</span>
+            </div>
+            <div style={{ fontSize:13, color:'#475569', lineHeight:1.6, fontStyle:'italic' }} dangerouslySetInnerHTML={{ __html: aiMsg }} />
+          </div>
         </main>
 
         {/* FULL-SCREEN FLIP: organ guidance video (always opens at full viewport height) */}
@@ -1361,15 +1370,6 @@ export default function OrganConnectionPanel({ onNext, onPrev, prevLabel, nextLa
 
           {/* Bottom: AI + receipt */}
           <div className="oc-scroll" style={{ flex:1, overflowY:'auto', padding:12, display:'flex', flexDirection:'column', gap:12, background:'rgba(241,245,249,0.6)' }}>
-            {/* AI card */}
-            <div style={{ background:'#fff', border: selection.avoid?.id === 'bia' && selection.target?.organKey === 'liver' ? '1px solid #ef4444' : '1px solid #e2e8f0', borderRadius:16, padding:12, boxShadow:'0 1px 3px rgba(0,0,0,0.06)' }}>
-              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}>
-                <span style={{ fontSize:18 }}>💬</span>
-                <span style={{ fontSize:12, fontWeight:900, color:'#0f172a', textTransform:'uppercase', letterSpacing:'0.05em' }}>Bác sĩ AI chẩn đoán:</span>
-              </div>
-              <div style={{ fontSize:13, color:'#475569', lineHeight:1.6, fontStyle:'italic' }} dangerouslySetInnerHTML={{ __html: aiMsg }} />
-            </div>
-
             {/* Receipt */}
             <div className="receipt-paper" style={{ border:'1px solid #e2e8f0', borderRadius:12, padding:12, fontFamily:'monospace', fontSize:12, color:'#334155', position:'relative' }}>
               <div style={{ position:'absolute', top:-12, right:16, background:'#065f46', color:'#fff', fontWeight:900, fontSize:10, padding:'2px 8px', borderRadius:999, textTransform:'uppercase', letterSpacing:'0.1em' }}>Custom Formula</div>
