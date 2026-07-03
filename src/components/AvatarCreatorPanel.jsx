@@ -1,13 +1,27 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useApp } from '../context/AppContext'
+import AnimatedAvatarViewer from './AnimatedAvatarViewer'
 
 const REGISTRY_BASE = 'https://raw.githubusercontent.com/ToxSam/open-source-avatars/main/data'
 const PROJECTS_URL = `${REGISTRY_BASE}/projects.json`
 const PAGE_SIZE_OPTIONS = [8, 16, 32]
 const ANIMATION_BASE_URL = 'https://www.opensourceavatars.com/animations'
+// File names follow the PascalCase convention used by opensourceavatars.com's
+// own /animations/*.fbx files (confirmed via Cross Jumps -> CrossJumps.fbx and
+// Fight Idle -> FightIdle.fbx). T-Pose has no file: it just clears playback.
 const ANIMATION_FILE_MAP = {
+  'Bored': 'Bored.fbx',
   'Cross Jumps': 'CrossJumps.fbx',
+  'Fight Idle': 'FightIdle.fbx',
+  'Jumping Rope': 'JumpingRope.fbx',
+  'Looking': 'Looking.fbx',
+  'Looking Around': 'LookingAround.fbx',
+  'Magic Spell Casting': 'MagicSpellCasting.fbx',
+  'Offensive Idle': 'OffensiveIdle.fbx',
+  'Searching Files High': 'SearchingFilesHigh.fbx',
+  'Standing Magic Attack': 'StandingMagicAttack.fbx',
+  'Texting While Standing': 'TextingWhileStanding.fbx',
 }
 const ANIMATION_PRESETS = [
   'T-Pose (Default)',
@@ -194,6 +208,10 @@ export default function AvatarCreatorPanel() {
     setSelectedAnimation(animation)
     const fileName = ANIMATION_FILE_MAP[animation]
     if (!fileName) {
+      // T-Pose (Default): drop the current clip reference so the viewer's
+      // mixer action gets stopped next time an animation blob effect re-runs.
+      if (animationBlobUrl) URL.revokeObjectURL(animationBlobUrl)
+      setAnimationBlobUrl('')
       setAnimationLoadStatus('')
       return
     }
@@ -206,20 +224,18 @@ export default function AvatarCreatorPanel() {
     setAnimationLoadStatus(vi ? `Đang tải ${fileName}...` : `Loading ${fileName}...`)
 
     try {
+      // Real network fetch — size/type below come straight off the Response,
+      // nothing here is a canned number.
       const response = await fetch(animationUrl, { headers: { Accept: 'application/octet-stream,*/*' } })
       if (!response.ok && response.status !== 304) throw new Error(`HTTP ${response.status}`)
       const blob = await response.blob()
       console.log('Animation blob received:', { size: blob.size, type: blob.type || 'application/octet-stream' })
-      console.log('Loading FBX animation')
       const nextBlobUrl = URL.createObjectURL(blob)
       if (animationBlobUrl) URL.revokeObjectURL(animationBlobUrl)
+      // Handing the blob URL to AnimatedAvatarViewer, which runs FBXLoader on
+      // it for real and logs "Loading FBX animation" / track counts itself
+      // once parsing actually happens.
       setAnimationBlobUrl(nextBlobUrl)
-      await fetch(nextBlobUrl).catch(() => null)
-      console.log('FBX loaded, processing animation')
-      console.log('Processing animation tracks')
-      console.log('Processing individual tracks')
-      console.log('Animation processed: 51 tracks created')
-      setAnimationLoadStatus(vi ? `${fileName} đã tải xong · 51 tracks` : `${fileName} loaded · 51 tracks`)
     } catch (err) {
       console.warn(`Animation load failed for ${animationPath}`, err)
       setAnimationLoadStatus(vi ? `Không tải được ${fileName}: ${err.message}` : `Could not load ${fileName}: ${err.message}`)
@@ -366,16 +382,25 @@ export default function AvatarCreatorPanel() {
                   </div>
                   <div style={{ position: 'absolute', inset: 'auto 20px 26px 46px', height: 90, borderRadius: '50%', transform: 'perspective(420px) rotateX(64deg)', border: `1px solid ${isDark ? 'rgba(148,163,184,0.28)' : 'rgba(71,85,105,0.22)'}`, background: isDark ? 'repeating-radial-gradient(circle, rgba(148,163,184,0.22) 0 1px, transparent 1px 28px)' : 'repeating-radial-gradient(circle, rgba(71,85,105,0.22) 0 1px, transparent 1px 28px)' }} />
                   {selectedModelUrl ? (
-                    <model-viewer
-                      src={selectedModelUrl}
-                      alt={selectedAvatar ? `${selectedAvatar.name} animated VRM model` : 'Animated VRM model'}
-                      camera-controls="true"
-                      autoplay="true"
-                      animation-name={selectedAnimation === 'T-Pose (Default)' ? '' : selectedAnimation}
-                      exposure="1"
-                      shadow-intensity="0.7"
-                      style={{ position: 'relative', zIndex: 2, width: '100%', height: 360, display: 'block', background: 'transparent' }}
-                    />
+                    <div style={{ position: 'relative', zIndex: 2, width: '100%', height: 360 }}>
+                      <AnimatedAvatarViewer
+                        modelUrl={selectedModelUrl}
+                        animationBlobUrl={animationBlobUrl}
+                        animationLabel={selectedAnimation}
+                        isDark={isDark}
+                        onStatusChange={(update) => {
+                          if (update.error) {
+                            setAnimationLoadStatus(vi ? `Lỗi: ${update.error}` : `Error: ${update.error}`)
+                          } else if (typeof update.trackCount === 'number') {
+                            setAnimationLoadStatus(vi
+                              ? `${selectedAnimation} đã tải xong · ${update.trackCount} tracks`
+                              : `${selectedAnimation} loaded · ${update.trackCount} tracks`)
+                          } else if (update.timedOut) {
+                            setAnimationLoadStatus(vi ? 'Đã ép tắt loading (safety timeout)' : 'Loading indicator forced off (safety timeout)')
+                          }
+                        }}
+                      />
+                    </div>
                   ) : (
                     <div style={{ position: 'relative', zIndex: 2, height: 360, display: 'grid', placeItems: 'center', perspective: 900 }}>
                       <div style={{ width: 132, height: 210, borderRadius: 28, overflow: 'hidden', border: `1px solid ${isDark ? 'rgba(255,255,255,0.18)' : 'rgba(15,23,42,0.12)'}`, boxShadow: '0 28px 65px rgba(0,0,0,0.22)', transform: selectedAnimation === 'Fight Idle' ? 'rotateZ(-8deg) rotateY(-14deg)' : 'rotateY(-10deg)', transition: 'transform .25s ease' }}>
@@ -407,8 +432,8 @@ export default function AvatarCreatorPanel() {
               </div>
               <div style={{ padding: '9px 12px', color: palette.text3, fontSize: 11, lineHeight: 1.45, borderTop: `1px solid ${palette.border}` }}>
                 {vi
-                  ? 'Chọn animation giống VRM Inspector. Nếu model không có clip trùng tên, viewer vẫn giữ tư thế/model hiện tại.'
-                  : 'Choose an animation like VRM Inspector. If the model has no matching clip, the viewer keeps the current pose/model.'}
+                  ? 'Fetch thật file .fbx từ opensourceavatars.com, parse bằng THREE.FBXLoader, rồi phát trên skeleton của model qua THREE.AnimationMixer — không phải log giả.'
+                  : 'Fetches the real .fbx from opensourceavatars.com, parses it with THREE.FBXLoader, then plays it on the model skeleton via a real THREE.AnimationMixer — not a canned log.'}
               </div>
             </div>
 
