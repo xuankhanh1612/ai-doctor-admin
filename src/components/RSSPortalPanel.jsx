@@ -21,6 +21,9 @@ const GRADIENTS = [
   'linear-gradient(135deg,#64748b,#334155)',
 ]
 
+const youtubeThumb = (videoId) => `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`
+const youtubePlaylistThumb = (fallbackVideoId) => (fallbackVideoId ? youtubeThumb(fallbackVideoId) : null)
+
 // Real Facebook video (Reel) embedded via Facebook's public Video Plugin —
 // no API key / app review needed, works for any public video or reel URL.
 const FB_REEL_URL = 'https://www.facebook.com/reel/809720335534900'
@@ -45,11 +48,7 @@ const FACEBOOK_ITEMS = [
   { id: 'fb7', icon: '💆', title: 'Massage giảm đau lưng đơn giản', duration: '04:18', time: '3 ngày trước' },
 ]
 
-// xuankhanhsupertech — các video thật của kênh. Dùng TikTok Embed Player CHÍNH THỨC
-// (blockquote data-video-id + script embed.js) thay vì gọi thẳng iframe
-// tiktok.com/embed/v2/{id}: gọi iframe trực tiếp không đi qua "bắt tay" của embed.js nên
-// TikTok chặn 403 các file video trên CDN của họ (vx-bdp.tiktokv.com) khi phát nhiều video
-// liên tiếp/khi cuộn — dùng đúng cơ chế nhúng chính thức thì không cần API key và không bị lỗi.
+// xuankhanhsupertech — các video thật của kênh, phát bằng TikTok embed URL theo từng video.
 const TIKTOK_REAL_VIDEOS = [
   { id: 'ttr1', videoId: '7638637936342273288' },
   { id: 'ttr2', videoId: '7638634959804189959' },
@@ -136,13 +135,43 @@ async function fetchYouTubeTitle(videoId) {
   }
 }
 
+async function fetchYouTubeOEmbed(url) {
+  try {
+    const res = await fetch(`https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`)
+    if (!res.ok) return null
+    const data = await res.json()
+    return {
+      title: data.title || null,
+      author: data.author_name || null,
+      thumbnailUrl: data.thumbnail_url || null,
+    }
+  } catch {
+    return null
+  }
+}
+
+async function fetchTikTokOEmbed(url) {
+  try {
+    const res = await fetch(`https://www.tiktok.com/oembed?url=${encodeURIComponent(url)}`)
+    if (!res.ok) return null
+    const data = await res.json()
+    return {
+      title: data.title || null,
+      author: data.author_name || null,
+      thumbnailUrl: data.thumbnail_url || null,
+    }
+  } catch {
+    return null
+  }
+}
+
 // Chỉ giữ lại các mục có link thật — đã bỏ các ô mock (yt2..yt7) không có link.
 const YOUTUBE_ITEMS = [
-  { id: 'yt0', icon: '▶', title: 'Playlist sức khỏe nổi bật', channel: 'YouTube Playlist', views: 'Playlist', time: 'youtube.com/watch?v=LHkE3loNxJ4', url: 'https://www.youtube.com/watch?v=LHkE3loNxJ4&list=PLhPgpmsoyA4GrZ5mGrOPyf1wb1Ke1Zw8p', embedUrl: FEATURED_PLAYLIST_EMBED, playlistId: FEATURED_PLAYLIST_ID },
-  { id: 'yt1', icon: '🫀', title: 'The Organ Story - Khám phá cơ thể qua hoạt hình khoa học', channel: 'The Organ Story', views: 'Playlist chính thức', time: 'youtube.com/@TheOrganStory', url: 'https://www.youtube.com/@TheOrganStory', embedUrl: ORGAN_STORY_EMBED, playlistId: ORGAN_STORY_PLAYLIST_ID },
-  { id: 'yt_playlists', icon: '📂', title: 'Playlist Kiến Thức Sức Khỏe 3D', channel: 'Kiến Thức Sức Khỏe 3D', views: 'Playlist', time: `youtube.com/watch?v=${KIENTHUC_PLAYLIST_START_VIDEO}&list=${KIENTHUC_PLAYLIST_ID}`, url: `https://www.youtube.com/watch?v=${KIENTHUC_PLAYLIST_START_VIDEO}&list=${KIENTHUC_PLAYLIST_ID}`, embedUrl: KIENTHUC_PLAYLIST_EMBED, playlistId: KIENTHUC_PLAYLIST_ID },
-  { id: 'yt_playlist2', icon: '▶', title: 'Playlist sức khỏe (thật)', channel: 'YouTube Playlist', views: 'Playlist', time: `youtube.com/playlist?list=${HEALTH_PLAYLIST_ID}`, url: `https://www.youtube.com/playlist?list=${HEALTH_PLAYLIST_ID}`, embedUrl: HEALTH_PLAYLIST_EMBED, playlistId: HEALTH_PLAYLIST_ID },
-  { id: 'yt_video1', icon: '🎬', title: 'Video sức khỏe (thật)', channel: 'YouTube', views: 'Video thật', time: `youtube.com/watch?v=${SINGLE_VIDEO_ID}`, url: `https://www.youtube.com/watch?v=${SINGLE_VIDEO_ID}`, embedUrl: SINGLE_VIDEO_EMBED },
+  { id: 'yt0', icon: '▶', thumbnailUrl: youtubeThumb('LHkE3loNxJ4'), title: 'Playlist sức khỏe nổi bật', channel: 'YouTube Playlist', views: 'Playlist', time: 'youtube.com/watch?v=LHkE3loNxJ4', url: 'https://www.youtube.com/watch?v=LHkE3loNxJ4&list=PLhPgpmsoyA4GrZ5mGrOPyf1wb1Ke1Zw8p', embedUrl: FEATURED_PLAYLIST_EMBED, playlistId: FEATURED_PLAYLIST_ID },
+  { id: 'yt1', icon: '🫀', thumbnailUrl: youtubePlaylistThumb(null), title: 'The Organ Story - Khám phá cơ thể qua hoạt hình khoa học', channel: 'The Organ Story', views: 'Playlist chính thức', time: 'youtube.com/@TheOrganStory', url: 'https://www.youtube.com/@TheOrganStory', embedUrl: ORGAN_STORY_EMBED, playlistId: ORGAN_STORY_PLAYLIST_ID },
+  { id: 'yt_playlists', icon: '📂', thumbnailUrl: youtubeThumb(KIENTHUC_PLAYLIST_START_VIDEO), title: 'Playlist Kiến Thức Sức Khỏe 3D', channel: 'Kiến Thức Sức Khỏe 3D', views: 'Playlist', time: `youtube.com/watch?v=${KIENTHUC_PLAYLIST_START_VIDEO}&list=${KIENTHUC_PLAYLIST_ID}`, url: `https://www.youtube.com/watch?v=${KIENTHUC_PLAYLIST_START_VIDEO}&list=${KIENTHUC_PLAYLIST_ID}`, embedUrl: KIENTHUC_PLAYLIST_EMBED, playlistId: KIENTHUC_PLAYLIST_ID },
+  { id: 'yt_playlist2', icon: '▶', thumbnailUrl: youtubePlaylistThumb(null), title: 'Playlist sức khỏe (thật)', channel: 'YouTube Playlist', views: 'Playlist', time: `youtube.com/playlist?list=${HEALTH_PLAYLIST_ID}`, url: `https://www.youtube.com/playlist?list=${HEALTH_PLAYLIST_ID}`, embedUrl: HEALTH_PLAYLIST_EMBED, playlistId: HEALTH_PLAYLIST_ID },
+  { id: 'yt_video1', icon: '🎬', thumbnailUrl: youtubeThumb(SINGLE_VIDEO_ID), title: 'Video sức khỏe (thật)', channel: 'YouTube', views: 'Video thật', time: `youtube.com/watch?v=${SINGLE_VIDEO_ID}`, url: `https://www.youtube.com/watch?v=${SINGLE_VIDEO_ID}`, embedUrl: SINGLE_VIDEO_EMBED },
 ]
 
 const FAVORITE_CHANNELS = [
@@ -195,8 +224,12 @@ const DEMO_VIDEO_SRC = 'https://interactive-examples.mdn.mozilla.net/media/cc0-v
 // ─── Thumbnail card ─────────────────────────────────────────────────────────
 function ThumbCard({ item, active, onClick, orientation, border, surface, text, text2 }) {
   const isRow = orientation === 'row'
+  const [imageFailed, setImageFailed] = useState(false)
+  const thumbnailUrl = !imageFailed ? item.thumbnailUrl : null
+
   return (
     <button
+      className={`rss-thumb-card rss-thumb-card--${isRow ? 'row' : 'col'}`}
       type="button"
       onClick={onClick}
       style={{
@@ -212,7 +245,24 @@ function ThumbCard({ item, active, onClick, orientation, border, surface, text, 
         position: 'relative', width: '100%', aspectRatio: isRow ? '9/16' : '16/10',
         background: gradFor(item.id), display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
-        <span style={{ fontSize: isRow ? 26 : 22 }}>{item.icon}</span>
+        {thumbnailUrl ? (
+          <img
+            src={thumbnailUrl}
+            alt={item.title}
+            loading="lazy"
+            referrerPolicy="no-referrer"
+            onError={() => setImageFailed(true)}
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+          />
+        ) : (
+          <span style={{ fontSize: isRow ? 26 : 22 }}>{item.icon}</span>
+        )}
+        {thumbnailUrl && (
+          <span style={{
+            position: 'absolute', inset: 0,
+            background: 'linear-gradient(180deg,rgba(0,0,0,0.04),rgba(0,0,0,0.42))',
+          }} />
+        )}
         {item.url ? (
           <span style={{
             position: 'absolute', bottom: 4, right: 4, fontSize: 9, fontWeight: 800,
@@ -276,37 +326,37 @@ function TikTokCreatorEmbed({ url, linkUrl }) {
 }
 
 // ─── TikTok Single Video Embed (real widget, no API key) ──────────────────
-// Uses TikTok's official embed.js with a data-video-id blockquote (the same
-// "handshake" mechanism as the creator embed above). Calling the raw iframe URL
-// (tiktok.com/embed/v2/{id}) directly — without going through embed.js — skips that
-// handshake, so TikTok's CDN (vx-bdp.tiktokv.com) starts rejecting the underlying
-// video files with 403 once several are opened in a row / while scrolling. Going
-// through the official script avoids that.
+// Render TikTok's per-video embed iframe directly so RSS items keep working in
+// React SPA navigation without depending on embed.js re-scanning replaced nodes.
 function TikTokVideoEmbed({ videoId, url }) {
-  const containerRef = useRef(null)
-
-  useEffect(() => {
-    const container = containerRef.current
-    if (!container || !videoId) return
-    container.innerHTML = `
-      <blockquote class="tiktok-embed" cite="${url}" data-video-id="${videoId}" style="max-width:100%;min-width:288px;width:100%;margin:0;">
-        <section><a target="_blank" rel="noopener noreferrer" href="${url}">Xem trên TikTok</a></section>
-      </blockquote>`
-    const script = document.createElement('script')
-    script.src = `https://www.tiktok.com/embed.js?t=${Date.now()}`
-    script.async = true
-    document.body.appendChild(script)
-    return () => { script.remove() }
-  }, [videoId, url])
-
   return (
     <div
-      ref={containerRef}
       style={{
-        width: '100%', height: '100%', overflow: 'hidden', display: 'flex',
+        position: 'relative', width: '100%', height: '100%', overflow: 'hidden', display: 'flex',
         alignItems: 'center', justifyContent: 'center', background: '#000',
       }}
-    />
+    >
+      <iframe
+        key={videoId}
+        src={`https://www.tiktok.com/embed/v2/${videoId}`}
+        title="TikTok video"
+        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 0 }}
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        allowFullScreen
+      />
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{
+          position: 'absolute', left: 10, bottom: 10, zIndex: 2, fontSize: 11, fontWeight: 800,
+          color: '#04060f', background: 'rgba(255,255,255,0.82)', borderRadius: 999, padding: '4px 9px',
+          textDecoration: 'none',
+        }}
+      >
+        Mở TikTok gốc
+      </a>
+    </div>
   )
 }
 
@@ -330,6 +380,8 @@ export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel })
   const [liked, setLiked] = useState(false)
   const [saved, setSaved] = useState(false)
   const [mobileTab, setMobileTab] = useState('player')
+  const [tiktokOEmbeds, setTiktokOEmbeds] = useState({})
+  const [youtubeOEmbeds, setYoutubeOEmbeds] = useState({})
   const videoRef = useRef(null)
 
   // ── Real playlist video list (Organ Story) ──
@@ -338,6 +390,52 @@ export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel })
   const [organVideos, setOrganVideos] = useState([])
   const [organActiveId, setOrganActiveId] = useState(null)
   const [organLoading, setOrganLoading] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    TIKTOK_ITEMS.forEach(async (item) => {
+      if (!item.url || tiktokOEmbeds[item.id]) return
+      const oembed = await fetchTikTokOEmbed(item.url)
+      if (cancelled || !oembed) return
+      setTiktokOEmbeds(prev => ({ ...prev, [item.id]: oembed }))
+    })
+    return () => { cancelled = true }
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    YOUTUBE_ITEMS.forEach(async (item) => {
+      if (!item.url) return
+      const oembed = await fetchYouTubeOEmbed(item.url)
+      if (cancelled || !oembed) return
+      setYoutubeOEmbeds(prev => ({ ...prev, [item.id]: oembed }))
+    })
+    return () => { cancelled = true }
+  }, [])
+
+  const tiktokItems = TIKTOK_ITEMS.map(item => {
+    const oembed = tiktokOEmbeds[item.id]
+    return oembed
+      ? {
+          ...item,
+          title: oembed.title || item.title,
+          channel: oembed.author || item.channel,
+          thumbnailUrl: oembed.thumbnailUrl || item.thumbnailUrl,
+        }
+      : item
+  })
+
+  const youtubeItems = YOUTUBE_ITEMS.map(item => {
+    const oembed = youtubeOEmbeds[item.id]
+    return oembed
+      ? {
+          ...item,
+          title: oembed.title || item.title,
+          channel: oembed.author || item.channel,
+          thumbnailUrl: oembed.thumbnailUrl || item.thumbnailUrl,
+        }
+      : item
+  })
 
   const select = useCallback((item, kind) => {
     setCurrent(item)
@@ -453,25 +551,96 @@ export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel })
   const panelCard = { background: surface, border: `1px solid ${border}`, borderRadius: 14, padding: 14 }
 
   return (
-    <div style={{ minHeight: '100vh', background: bg, padding: '20px 16px 120px', boxSizing: 'border-box', color: text }}>
+    <div className="rss-page" style={{ minHeight: '100vh', background: bg, padding: '20px 16px 120px', boxSizing: 'border-box', color: text }}>
       <style>{`
         .rss-scroll::-webkit-scrollbar { height: 6px; width: 6px; }
         .rss-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
         .rss-mobile-tabs { display: none; }
-        @media (max-width: 980px) {
-          .rss-grid { display: flex !important; flex-direction: column; }
+        .rss-thumb-card:focus-visible,
+        .rss-action-button:focus-visible,
+        .rss-channel-button:focus-visible,
+        .rss-tab-button:focus-visible {
+          outline: 2px solid ${accent};
+          outline-offset: 2px;
+        }
+        @media (max-width: 1280px) {
+          .rss-shell { max-width: 1180px !important; }
+          .rss-grid {
+            grid-template-columns: minmax(178px, 210px) minmax(0, 1fr) minmax(178px, 210px) !important;
+            gap: 12px !important;
+          }
+          .rss-thumb-card--row { width: 116px !important; }
+          .rss-thumb-card--col { min-width: 0 !important; }
+        }
+        @media (min-width: 721px) and (max-width: 1100px) {
+          .rss-page { padding: 18px 14px 100px !important; }
+          .rss-shell { max-width: 920px !important; }
+          .rss-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            grid-template-rows: auto auto auto auto !important;
+          }
+          .rss-top-row {
+            grid-column: 1 / span 2 !important;
+            grid-row: 1 !important;
+          }
+          .rss-player-block {
+            grid-column: 1 / span 2 !important;
+            grid-row: 2 !important;
+          }
+          .rss-youtube-col {
+            grid-column: 1 !important;
+            grid-row: 3 !important;
+            max-height: 520px !important;
+            overflow-y: auto !important;
+          }
+          .rss-facebook-col {
+            grid-column: 2 !important;
+            grid-row: 3 !important;
+            max-height: 520px !important;
+          }
+          .rss-favorite-row {
+            grid-column: 1 / span 2 !important;
+            grid-row: 4 !important;
+          }
+          .rss-thumb-card--row { width: 124px !important; }
+          .rss-media-stage { max-height: 620px !important; }
+        }
+        @media (max-width: 720px) {
+          .rss-page { padding: 14px 10px 96px !important; }
+          .rss-shell { max-width: 100% !important; }
+          .rss-header { align-items: flex-start !important; }
+          .rss-grid { display: flex !important; flex-direction: column; gap: 10px !important; }
           .rss-side-col { display: none !important; }
           .rss-side-col.rss-active { display: flex !important; flex-direction: row !important; overflow-x: auto !important; gap: 10px; }
           .rss-mobile-tabs { display: flex !important; }
+          .rss-tab-button { flex: 1 1 calc(50% - 8px); justify-content: center; }
           .rss-top-row { order: -1; }
           .rss-player-block { display: none !important; }
           .rss-player-block.rss-active { display: block !important; }
+          .rss-thumb-card--row { width: 112px !important; }
+          .rss-side-col.rss-active .rss-thumb-card--col { width: 150px !important; flex-shrink: 0 !important; }
+          .rss-media-stage {
+            height: auto !important;
+            min-height: 260px !important;
+            max-height: 68vh !important;
+          }
+          .rss-media-inner { width: 100% !important; max-width: min(100%, 420px) !important; }
+          .rss-player-meta { padding: 14px 14px 16px !important; }
+          .rss-player-actions { width: 100% !important; justify-content: space-between !important; }
+          .rss-action-button { flex: 1 1 0 !important; justify-content: center !important; padding: 7px 8px !important; }
+          .rss-channel-button { width: 72px !important; }
+          .rss-channel-avatar { width: 46px !important; height: 46px !important; }
+        }
+        @media (max-width: 420px) {
+          .rss-thumb-card--row { width: 104px !important; }
+          .rss-side-col.rss-active .rss-thumb-card--col { width: 138px !important; }
+          .rss-action-button { font-size: 11px !important; }
         }
       `}</style>
 
-      <div style={{ maxWidth: 1400, margin: '0 auto' }}>
+      <div className="rss-shell" style={{ maxWidth: 1400, margin: '0 auto' }}>
         {/* ── Header ── */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+        <div className="rss-header" style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
           <div style={{
             width: 42, height: 42, borderRadius: 12, flexShrink: 0,
             background: 'linear-gradient(135deg,#00e5ff,#0284c7)',
@@ -499,7 +668,7 @@ export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel })
             ['youtube', '▶ YouTube'],
             ['favorite', '★ Yêu thích'],
           ].map(([id, label]) => (
-            <button key={id} type="button" onClick={() => setMobileTab(id)} style={{
+            <button key={id} className="rss-tab-button" type="button" onClick={() => setMobileTab(id)} style={{
               padding: '6px 12px', borderRadius: 20, fontSize: 11, fontWeight: 700, cursor: 'pointer',
               border: `1px solid ${mobileTab === id ? accent : border}`,
               background: mobileTab === id ? 'rgba(0,229,255,0.12)' : 'transparent',
@@ -517,7 +686,7 @@ export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel })
         }}>
           {/* Right: Facebook RSS (spans all 3 rows) */}
           <div
-            className={`rss-side-col ${mobileTab === 'facebook' ? 'rss-active' : ''}`}
+            className={`rss-side-col rss-facebook-col ${mobileTab === 'facebook' ? 'rss-active' : ''}`}
             style={{ ...panelCard, gridColumn: 3, gridRow: '1 / span 3', display: 'flex', flexDirection: 'column', gap: 8, overflowY: 'auto', maxHeight: 780 }}
           >
             <SourceHeader icon="f" iconBg="rgba(24,119,242,0.18)" iconColor="#1877f2" title="Facebook RSS" text={text} />
@@ -534,7 +703,7 @@ export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel })
           >
             <SourceHeader icon="♪" iconBg="rgba(255,255,255,0.1)" iconColor="#ff2d55" title="TikTok RSS" text={text} />
             <div className="rss-scroll" style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 4 }}>
-              {TIKTOK_ITEMS.map(item => (
+              {tiktokItems.map(item => (
                 <ThumbCard key={item.id} item={item} orientation="row" active={current.id === item.id}
                   onClick={() => select(item, 'tiktok')} border={border} surface={surface} text={text} text2={text2} />
               ))}
@@ -551,8 +720,8 @@ export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel })
               ...(current.aspectRatio === '9/16'
                 ? { display: 'flex', justifyContent: 'center', alignItems: 'center', height: 'min(72vh, 640px)' }
                 : { aspectRatio: current.aspectRatio || '16/9' }),
-            }}>
-              <div style={{
+            }} className="rss-media-stage">
+              <div className="rss-media-inner" style={{
                 position: 'relative', background: '#000',
                 ...(current.aspectRatio === '9/16'
                   ? { height: '100%', aspectRatio: '9/16' }
@@ -644,7 +813,7 @@ export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel })
               </div>
             </div>
 
-            <div style={{ padding: '16px 18px 18px' }}>
+            <div className="rss-player-meta" style={{ padding: '16px 18px 18px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
                 <span style={{
                   fontSize: 10, fontWeight: 800, letterSpacing: 0.5, textTransform: 'uppercase',
@@ -665,18 +834,18 @@ export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel })
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button type="button" onClick={() => setLiked(l => !l)} style={{
+                <div className="rss-player-actions" style={{ display: 'flex', gap: 8 }}>
+                  <button className="rss-action-button" type="button" onClick={() => setLiked(l => !l)} style={{
                     display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 20,
                     border: `1px solid ${liked ? accent : border}`, background: liked ? 'rgba(0,229,255,0.1)' : 'transparent',
                     color: liked ? accent : text2, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
                   }}>{liked ? '👍' : '👍🏻'} Thích</button>
-                  <button type="button" style={{
+                  <button className="rss-action-button" type="button" style={{
                     display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 20,
                     border: `1px solid ${border}`, background: 'transparent', color: text2,
                     fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
                   }}>↗ Chia sẻ</button>
-                  <button type="button" onClick={() => setSaved(s => !s)} style={{
+                  <button className="rss-action-button" type="button" onClick={() => setSaved(s => !s)} style={{
                     display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 20,
                     border: `1px solid ${saved ? accent : border}`, background: saved ? 'rgba(0,229,255,0.1)' : 'transparent',
                     color: saved ? accent : text2, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
@@ -759,13 +928,14 @@ export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel })
 
           {/* Bottom-center: Favorite channels */}
           <div
-            className={`rss-side-col ${mobileTab === 'favorite' ? 'rss-active' : ''}`}
+            className={`rss-side-col rss-favorite-row ${mobileTab === 'favorite' ? 'rss-active' : ''}`}
             style={{ ...panelCard, gridColumn: 2, gridRow: 3, display: 'flex', flexDirection: 'column' }}
           >
             <SourceHeader icon="★" iconBg="rgba(168,85,247,0.16)" iconColor="#a855f7" title="Kênh yêu thích" text={text} />
             <div className="rss-scroll" style={{ display: 'flex', gap: 14, overflowX: 'auto', paddingBottom: 4 }}>
               {FAVORITE_CHANNELS.map(ch => (
                 <button
+                  className="rss-channel-button"
                   key={ch.id}
                   type="button"
                   onClick={() => { if (ch.linkOnly) { window.open(ch.url, '_blank', 'noopener,noreferrer') } else if (ch.embedUrl || ch.tiktokProfile || ch.tiktokVideoId) { select(ch, 'channel') } else if (ch.url) { window.open(ch.url, '_blank', 'noopener,noreferrer') } }}
@@ -775,7 +945,7 @@ export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel })
                     cursor: ch.url ? 'pointer' : 'default', fontFamily: 'inherit',
                   }}
                 >
-                  <div style={{
+                  <div className="rss-channel-avatar" style={{
                     position: 'relative', width: 52, height: 52, borderRadius: '50%', background: gradFor(ch.id),
                     display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, marginBottom: 6,
                     border: `2px solid ${ch.url ? '#00e5ff' : border}`,
@@ -798,11 +968,11 @@ export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel })
 
           {/* Left: YouTube RSS (spans all 3 rows) */}
           <div
-            className={`rss-side-col ${mobileTab === 'youtube' ? 'rss-active' : ''}`}
+            className={`rss-side-col rss-youtube-col ${mobileTab === 'youtube' ? 'rss-active' : ''}`}
             style={{ ...panelCard, gridColumn: 1, gridRow: '1 / span 3', display: 'flex', flexDirection: 'column', gap: 8, overflowY: 'visible' }}
           >
             <SourceHeader icon="▶" iconBg="rgba(255,0,0,0.16)" iconColor="#ff0000" title="YouTube RSS" text={text} />
-            {YOUTUBE_ITEMS.map(item => (
+            {youtubeItems.map(item => (
               <ThumbCard key={item.id} item={item} orientation="col" active={current.id === item.id}
                 onClick={() => item.linkOnly ? window.open(item.url, '_blank', 'noopener,noreferrer') : select(item, 'youtube')} border={border} surface={surface} text={text} text2={text2} />
             ))}
