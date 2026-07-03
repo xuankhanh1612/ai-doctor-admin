@@ -229,6 +229,7 @@ function ThumbCard({ item, active, onClick, orientation, border, surface, text, 
 
   return (
     <button
+      className={`rss-thumb-card rss-thumb-card--${isRow ? 'row' : 'col'}`}
       type="button"
       onClick={onClick}
       style={{
@@ -550,25 +551,96 @@ export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel })
   const panelCard = { background: surface, border: `1px solid ${border}`, borderRadius: 14, padding: 14 }
 
   return (
-    <div style={{ minHeight: '100vh', background: bg, padding: '20px 16px 120px', boxSizing: 'border-box', color: text }}>
+    <div className="rss-page" style={{ minHeight: '100vh', background: bg, padding: '20px 16px 120px', boxSizing: 'border-box', color: text }}>
       <style>{`
         .rss-scroll::-webkit-scrollbar { height: 6px; width: 6px; }
         .rss-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
         .rss-mobile-tabs { display: none; }
-        @media (max-width: 980px) {
-          .rss-grid { display: flex !important; flex-direction: column; }
+        .rss-thumb-card:focus-visible,
+        .rss-action-button:focus-visible,
+        .rss-channel-button:focus-visible,
+        .rss-tab-button:focus-visible {
+          outline: 2px solid ${accent};
+          outline-offset: 2px;
+        }
+        @media (max-width: 1280px) {
+          .rss-shell { max-width: 1180px !important; }
+          .rss-grid {
+            grid-template-columns: minmax(178px, 210px) minmax(0, 1fr) minmax(178px, 210px) !important;
+            gap: 12px !important;
+          }
+          .rss-thumb-card--row { width: 116px !important; }
+          .rss-thumb-card--col { min-width: 0 !important; }
+        }
+        @media (min-width: 721px) and (max-width: 1100px) {
+          .rss-page { padding: 18px 14px 100px !important; }
+          .rss-shell { max-width: 920px !important; }
+          .rss-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            grid-template-rows: auto auto auto auto !important;
+          }
+          .rss-top-row {
+            grid-column: 1 / span 2 !important;
+            grid-row: 1 !important;
+          }
+          .rss-player-block {
+            grid-column: 1 / span 2 !important;
+            grid-row: 2 !important;
+          }
+          .rss-youtube-col {
+            grid-column: 1 !important;
+            grid-row: 3 !important;
+            max-height: 520px !important;
+            overflow-y: auto !important;
+          }
+          .rss-facebook-col {
+            grid-column: 2 !important;
+            grid-row: 3 !important;
+            max-height: 520px !important;
+          }
+          .rss-favorite-row {
+            grid-column: 1 / span 2 !important;
+            grid-row: 4 !important;
+          }
+          .rss-thumb-card--row { width: 124px !important; }
+          .rss-media-stage { max-height: 620px !important; }
+        }
+        @media (max-width: 720px) {
+          .rss-page { padding: 14px 10px 96px !important; }
+          .rss-shell { max-width: 100% !important; }
+          .rss-header { align-items: flex-start !important; }
+          .rss-grid { display: flex !important; flex-direction: column; gap: 10px !important; }
           .rss-side-col { display: none !important; }
           .rss-side-col.rss-active { display: flex !important; flex-direction: row !important; overflow-x: auto !important; gap: 10px; }
           .rss-mobile-tabs { display: flex !important; }
+          .rss-tab-button { flex: 1 1 calc(50% - 8px); justify-content: center; }
           .rss-top-row { order: -1; }
           .rss-player-block { display: none !important; }
           .rss-player-block.rss-active { display: block !important; }
+          .rss-thumb-card--row { width: 112px !important; }
+          .rss-side-col.rss-active .rss-thumb-card--col { width: 150px !important; flex-shrink: 0 !important; }
+          .rss-media-stage {
+            height: auto !important;
+            min-height: 260px !important;
+            max-height: 68vh !important;
+          }
+          .rss-media-inner { width: 100% !important; max-width: min(100%, 420px) !important; }
+          .rss-player-meta { padding: 14px 14px 16px !important; }
+          .rss-player-actions { width: 100% !important; justify-content: space-between !important; }
+          .rss-action-button { flex: 1 1 0 !important; justify-content: center !important; padding: 7px 8px !important; }
+          .rss-channel-button { width: 72px !important; }
+          .rss-channel-avatar { width: 46px !important; height: 46px !important; }
+        }
+        @media (max-width: 420px) {
+          .rss-thumb-card--row { width: 104px !important; }
+          .rss-side-col.rss-active .rss-thumb-card--col { width: 138px !important; }
+          .rss-action-button { font-size: 11px !important; }
         }
       `}</style>
 
-      <div style={{ maxWidth: 1400, margin: '0 auto' }}>
+      <div className="rss-shell" style={{ maxWidth: 1400, margin: '0 auto' }}>
         {/* ── Header ── */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+        <div className="rss-header" style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
           <div style={{
             width: 42, height: 42, borderRadius: 12, flexShrink: 0,
             background: 'linear-gradient(135deg,#00e5ff,#0284c7)',
@@ -596,7 +668,7 @@ export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel })
             ['youtube', '▶ YouTube'],
             ['favorite', '★ Yêu thích'],
           ].map(([id, label]) => (
-            <button key={id} type="button" onClick={() => setMobileTab(id)} style={{
+            <button key={id} className="rss-tab-button" type="button" onClick={() => setMobileTab(id)} style={{
               padding: '6px 12px', borderRadius: 20, fontSize: 11, fontWeight: 700, cursor: 'pointer',
               border: `1px solid ${mobileTab === id ? accent : border}`,
               background: mobileTab === id ? 'rgba(0,229,255,0.12)' : 'transparent',
@@ -614,7 +686,7 @@ export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel })
         }}>
           {/* Right: Facebook RSS (spans all 3 rows) */}
           <div
-            className={`rss-side-col ${mobileTab === 'facebook' ? 'rss-active' : ''}`}
+            className={`rss-side-col rss-facebook-col ${mobileTab === 'facebook' ? 'rss-active' : ''}`}
             style={{ ...panelCard, gridColumn: 3, gridRow: '1 / span 3', display: 'flex', flexDirection: 'column', gap: 8, overflowY: 'auto', maxHeight: 780 }}
           >
             <SourceHeader icon="f" iconBg="rgba(24,119,242,0.18)" iconColor="#1877f2" title="Facebook RSS" text={text} />
@@ -648,8 +720,8 @@ export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel })
               ...(current.aspectRatio === '9/16'
                 ? { display: 'flex', justifyContent: 'center', alignItems: 'center', height: 'min(72vh, 640px)' }
                 : { aspectRatio: current.aspectRatio || '16/9' }),
-            }}>
-              <div style={{
+            }} className="rss-media-stage">
+              <div className="rss-media-inner" style={{
                 position: 'relative', background: '#000',
                 ...(current.aspectRatio === '9/16'
                   ? { height: '100%', aspectRatio: '9/16' }
@@ -741,7 +813,7 @@ export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel })
               </div>
             </div>
 
-            <div style={{ padding: '16px 18px 18px' }}>
+            <div className="rss-player-meta" style={{ padding: '16px 18px 18px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
                 <span style={{
                   fontSize: 10, fontWeight: 800, letterSpacing: 0.5, textTransform: 'uppercase',
@@ -762,18 +834,18 @@ export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel })
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button type="button" onClick={() => setLiked(l => !l)} style={{
+                <div className="rss-player-actions" style={{ display: 'flex', gap: 8 }}>
+                  <button className="rss-action-button" type="button" onClick={() => setLiked(l => !l)} style={{
                     display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 20,
                     border: `1px solid ${liked ? accent : border}`, background: liked ? 'rgba(0,229,255,0.1)' : 'transparent',
                     color: liked ? accent : text2, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
                   }}>{liked ? '👍' : '👍🏻'} Thích</button>
-                  <button type="button" style={{
+                  <button className="rss-action-button" type="button" style={{
                     display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 20,
                     border: `1px solid ${border}`, background: 'transparent', color: text2,
                     fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
                   }}>↗ Chia sẻ</button>
-                  <button type="button" onClick={() => setSaved(s => !s)} style={{
+                  <button className="rss-action-button" type="button" onClick={() => setSaved(s => !s)} style={{
                     display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 20,
                     border: `1px solid ${saved ? accent : border}`, background: saved ? 'rgba(0,229,255,0.1)' : 'transparent',
                     color: saved ? accent : text2, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
@@ -856,13 +928,14 @@ export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel })
 
           {/* Bottom-center: Favorite channels */}
           <div
-            className={`rss-side-col ${mobileTab === 'favorite' ? 'rss-active' : ''}`}
+            className={`rss-side-col rss-favorite-row ${mobileTab === 'favorite' ? 'rss-active' : ''}`}
             style={{ ...panelCard, gridColumn: 2, gridRow: 3, display: 'flex', flexDirection: 'column' }}
           >
             <SourceHeader icon="★" iconBg="rgba(168,85,247,0.16)" iconColor="#a855f7" title="Kênh yêu thích" text={text} />
             <div className="rss-scroll" style={{ display: 'flex', gap: 14, overflowX: 'auto', paddingBottom: 4 }}>
               {FAVORITE_CHANNELS.map(ch => (
                 <button
+                  className="rss-channel-button"
                   key={ch.id}
                   type="button"
                   onClick={() => { if (ch.linkOnly) { window.open(ch.url, '_blank', 'noopener,noreferrer') } else if (ch.embedUrl || ch.tiktokProfile || ch.tiktokVideoId) { select(ch, 'channel') } else if (ch.url) { window.open(ch.url, '_blank', 'noopener,noreferrer') } }}
@@ -872,7 +945,7 @@ export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel })
                     cursor: ch.url ? 'pointer' : 'default', fontFamily: 'inherit',
                   }}
                 >
-                  <div style={{
+                  <div className="rss-channel-avatar" style={{
                     position: 'relative', width: 52, height: 52, borderRadius: '50%', background: gradFor(ch.id),
                     display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, marginBottom: 6,
                     border: `2px solid ${ch.url ? '#00e5ff' : border}`,
@@ -895,7 +968,7 @@ export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel })
 
           {/* Left: YouTube RSS (spans all 3 rows) */}
           <div
-            className={`rss-side-col ${mobileTab === 'youtube' ? 'rss-active' : ''}`}
+            className={`rss-side-col rss-youtube-col ${mobileTab === 'youtube' ? 'rss-active' : ''}`}
             style={{ ...panelCard, gridColumn: 1, gridRow: '1 / span 3', display: 'flex', flexDirection: 'column', gap: 8, overflowY: 'visible' }}
           >
             <SourceHeader icon="▶" iconBg="rgba(255,0,0,0.16)" iconColor="#ff0000" title="YouTube RSS" text={text} />
