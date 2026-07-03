@@ -518,7 +518,7 @@ const styles = String.raw`
   .scan-area { border:1.5px dashed rgba(59,130,246,.4); border-radius:10px; padding:16px; text-align:center; background:rgba(59,130,246,.04); }
 `
 
-export default function HealthJourneyGameStandalone({ onViewMedicalRecord }) {
+export default function HealthJourneyGameStandalone({ onViewMedicalRecord, onOpenMyRewardHealth }) {
   const containerRef = useRef(null)
   const { lang } = useApp()
   const { user, loading: authLoading } = useAuth()
@@ -2043,6 +2043,34 @@ export default function HealthJourneyGameStandalone({ onViewMedicalRecord }) {
               </div>
               <button className="btn-sm" style={{ background: "linear-gradient(135deg,var(--purple),var(--blue))", color: "#fff" }}>
                 Đổi
+              </button>
+            </div>
+          </div>
+          {/* My Reward Health shortcut */}
+          <div className="section-head">
+            <span className="section-head-title">
+              My Reward Health
+            </span>
+          </div>
+          <div className="card" style={{ background: "linear-gradient(135deg,rgba(16,185,129,.12),rgba(139,92,246,.12))", border: "1px solid rgba(16,185,129,.28)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <div style={{ width: "44px", height: "44px", borderRadius: "14px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "24px", background: "rgba(16,185,129,.16)", border: "1px solid rgba(16,185,129,.32)" }}>
+                🧬
+              </div>
+              <div style={{ flex: "1" }}>
+                <div style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: "15px", fontWeight: "800", color: "var(--green)" }}>
+                  Medical Cell Reward
+                </div>
+                <div style={{ fontSize: "11px", color: "var(--text-dim)", lineHeight: "1.5" }}>
+                  Dùng điểm thưởng và thói quen tốt để mở thế giới tế bào Conway 24/7, nhận Gem và theo dõi ATP · DNA · Miễn dịch.
+                </div>
+              </div>
+              <button
+                className="btn-sm"
+                onClick={onOpenMyRewardHealth}
+                style={{ background: "linear-gradient(135deg,var(--green),var(--purple))", color: "#fff", whiteSpace: "nowrap" }}
+              >
+                Mở Cell Engine
               </button>
             </div>
           </div>
