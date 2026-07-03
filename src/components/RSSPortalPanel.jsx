@@ -45,11 +45,10 @@ const FACEBOOK_ITEMS = [
   { id: 'fb7', icon: '💆', title: 'Massage giảm đau lưng đơn giản', duration: '04:18', time: '3 ngày trước' },
 ]
 
-// xuankhanhsupertech — các video thật của kênh. Dùng TikTok Embed Player CHÍNH THỨC
-// (blockquote data-video-id + script embed.js) thay vì gọi thẳng iframe
-// tiktok.com/embed/v2/{id}: gọi iframe trực tiếp không đi qua "bắt tay" của embed.js nên
-// TikTok chặn 403 các file video trên CDN của họ (vx-bdp.tiktokv.com) khi phát nhiều video
-// liên tiếp/khi cuộn — dùng đúng cơ chế nhúng chính thức thì không cần API key và không bị lỗi.
+// xuankhanhsupertech — các video thật của kênh, nhúng trực tiếp từng video bằng
+// TikTok Embed Player chính thức (iframe tiktok.com/embed/v2/{video_id}), không cần API key.
+const tiktokEmbedUrl = (videoId) => `https://www.tiktok.com/embed/v2/${videoId}`
+const tiktokOEmbedUrl = (url) => `https://www.tiktok.com/oembed?url=${encodeURIComponent(url)}`
 const TIKTOK_REAL_VIDEOS = [
   { id: 'ttr1', videoId: '7638637936342273288' },
   { id: 'ttr2', videoId: '7638634959804189959' },
@@ -65,7 +64,9 @@ const TIKTOK_REAL_VIDEOS = [
   duration: '',
   likes: '',
   url: `https://www.tiktok.com/@xuankhanhsupertech/video/${v.videoId}`,
-  tiktokVideoId: v.videoId,
+  embedUrl: tiktokEmbedUrl(v.videoId),
+  oEmbedUrl: tiktokOEmbedUrl(`https://www.tiktok.com/@xuankhanhsupertech/video/${v.videoId}`),
+  tiktokVideo: true,
   aspectRatio: '9/16',
 }))
 
@@ -136,9 +137,27 @@ async function fetchYouTubeTitle(videoId) {
   }
 }
 
-// Chỉ giữ lại các mục có link thật — đã bỏ các ô mock (yt2..yt7) không có link.
+async function fetchOEmbedMetadata(oEmbedUrl) {
+  try {
+    const res = await fetch(oEmbedUrl)
+    if (!res.ok) return null
+    const data = await res.json()
+    return {
+      title: data.title || null,
+      authorName: data.author_name || null,
+      thumbnailUrl: data.thumbnail_url || null,
+    }
+  } catch {
+    return null
+  }
+}
+
+function youtubeThumbnail(videoId) {
+  return `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`
+}
+
 const YOUTUBE_ITEMS = [
-  { id: 'yt0', icon: '▶', title: 'Playlist sức khỏe nổi bật', channel: 'YouTube Playlist', views: 'Playlist', time: 'youtube.com/watch?v=LHkE3loNxJ4', url: 'https://www.youtube.com/watch?v=LHkE3loNxJ4&list=PLhPgpmsoyA4GrZ5mGrOPyf1wb1Ke1Zw8p', embedUrl: FEATURED_PLAYLIST_EMBED, playlistId: FEATURED_PLAYLIST_ID },
+  { id: 'yt0', icon: '▶', title: 'Playlist sức khỏe nổi bật', channel: 'YouTube Playlist', views: 'Playlist', time: 'youtube.com/watch?v=LHkE3loNxJ4', url: 'https://www.youtube.com/watch?v=LHkE3loNxJ4&list=PLhPgpmsoyA4GrZ5mGrOPyf1wb1Ke1Zw8p', embedUrl: FEATURED_PLAYLIST_EMBED, playlistId: FEATURED_PLAYLIST_ID, thumbnailUrl: youtubeThumbnail('LHkE3loNxJ4') },
   { id: 'yt1', icon: '🫀', title: 'The Organ Story - Khám phá cơ thể qua hoạt hình khoa học', channel: 'The Organ Story', views: 'Playlist chính thức', time: 'youtube.com/@TheOrganStory', url: 'https://www.youtube.com/@TheOrganStory', embedUrl: ORGAN_STORY_EMBED, playlistId: ORGAN_STORY_PLAYLIST_ID },
   { id: 'yt_playlists', icon: '📂', title: 'Playlist Kiến Thức Sức Khỏe 3D', channel: 'Kiến Thức Sức Khỏe 3D', views: 'Playlist', time: `youtube.com/watch?v=${KIENTHUC_PLAYLIST_START_VIDEO}&list=${KIENTHUC_PLAYLIST_ID}`, url: `https://www.youtube.com/watch?v=${KIENTHUC_PLAYLIST_START_VIDEO}&list=${KIENTHUC_PLAYLIST_ID}`, embedUrl: KIENTHUC_PLAYLIST_EMBED, playlistId: KIENTHUC_PLAYLIST_ID },
   { id: 'yt_playlist2', icon: '▶', title: 'Playlist sức khỏe (thật)', channel: 'YouTube Playlist', views: 'Playlist', time: `youtube.com/playlist?list=${HEALTH_PLAYLIST_ID}`, url: `https://www.youtube.com/playlist?list=${HEALTH_PLAYLIST_ID}`, embedUrl: HEALTH_PLAYLIST_EMBED, playlistId: HEALTH_PLAYLIST_ID },
@@ -212,7 +231,23 @@ function ThumbCard({ item, active, onClick, orientation, border, surface, text, 
         position: 'relative', width: '100%', aspectRatio: isRow ? '9/16' : '16/10',
         background: gradFor(item.id), display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
-        <span style={{ fontSize: isRow ? 26 : 22 }}>{item.icon}</span>
+        {item.thumbnailUrl ? (
+          <img
+            src={item.thumbnailUrl}
+            alt={item.title}
+            loading="lazy"
+            referrerPolicy="no-referrer"
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+          />
+        ) : (
+          <span style={{ fontSize: isRow ? 26 : 22 }}>{item.icon}</span>
+        )}
+        {item.thumbnailUrl && (
+          <span style={{
+            position: 'absolute', inset: 0,
+            background: 'linear-gradient(180deg,rgba(0,0,0,0.05),rgba(0,0,0,0.48))',
+          }} />
+        )}
         {item.url ? (
           <span style={{
             position: 'absolute', bottom: 4, right: 4, fontSize: 9, fontWeight: 800,
@@ -235,6 +270,35 @@ function ThumbCard({ item, active, onClick, orientation, border, surface, text, 
         </div>
       </div>
     </button>
+  )
+}
+
+// Official TikTok video embed. The previous iframe player can fail for some
+// public videos depending on TikTok headers/cookies; embed.js renders the same
+// blockquote format TikTok publishes for share embeds and works as the RSS
+// "play" surface with a normal link fallback.
+function TikTokVideoEmbed({ url }) {
+  const containerRef = useRef(null)
+
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container || !url) return
+    container.innerHTML = `
+      <blockquote class="tiktok-embed" cite="${url}" data-video-id="${(url.match(/video\/(\d+)/) || [])[1] || ''}" style="max-width:605px;min-width:288px;margin:0 auto;">
+        <section><a target="_blank" rel="noopener noreferrer" href="${url}">Xem video trên TikTok</a></section>
+      </blockquote>`
+    const script = document.createElement('script')
+    script.src = `https://www.tiktok.com/embed.js?t=${Date.now()}`
+    script.async = true
+    document.body.appendChild(script)
+    return () => { script.remove() }
+  }, [url])
+
+  return (
+    <div
+      ref={containerRef}
+      style={{ position: 'absolute', inset: 0, overflow: 'auto', display: 'flex', justifyContent: 'center', background: '#000' }}
+    />
   )
 }
 
@@ -330,6 +394,7 @@ export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel })
   const [liked, setLiked] = useState(false)
   const [saved, setSaved] = useState(false)
   const [mobileTab, setMobileTab] = useState('player')
+  const [metadataById, setMetadataById] = useState({})
   const videoRef = useRef(null)
 
   // ── Real playlist video list (Organ Story) ──
@@ -345,6 +410,33 @@ export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel })
     setPlaying(false)
     setLiked(false)
     if (videoRef.current) { videoRef.current.pause(); videoRef.current.currentTime = 0 }
+  }, [])
+
+  const withMetadata = useCallback((item) => ({ ...item, ...(metadataById[item.id] || {}) }), [metadataById])
+
+  useEffect(() => {
+    let cancelled = false
+
+    const jobs = [
+      ...TIKTOK_REAL_VIDEOS.filter(item => item.oEmbedUrl),
+    ]
+
+    jobs.forEach(async (item) => {
+      if (metadataById[item.id]?.thumbnailUrl) return
+      const meta = await fetchOEmbedMetadata(item.oEmbedUrl)
+      if (cancelled || !meta) return
+      setMetadataById(prev => ({
+        ...prev,
+        [item.id]: {
+          title: meta.title || prev[item.id]?.title || item.title,
+          channel: meta.authorName || prev[item.id]?.channel,
+          thumbnailUrl: meta.thumbnailUrl || prev[item.id]?.thumbnailUrl,
+        },
+      }))
+    })
+
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const togglePlay = () => {
@@ -451,6 +543,7 @@ export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel })
   const meta = kindMeta[currentKind]
 
   const panelCard = { background: surface, border: `1px solid ${border}`, borderRadius: 14, padding: 14 }
+  const currentItem = withMetadata(current)
 
   return (
     <div style={{ minHeight: '100vh', background: bg, padding: '20px 16px 120px', boxSizing: 'border-box', color: text }}>
@@ -521,10 +614,13 @@ export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel })
             style={{ ...panelCard, gridColumn: 3, gridRow: '1 / span 3', display: 'flex', flexDirection: 'column', gap: 8, overflowY: 'auto', maxHeight: 780 }}
           >
             <SourceHeader icon="f" iconBg="rgba(24,119,242,0.18)" iconColor="#1877f2" title="Facebook RSS" text={text} />
-            {FACEBOOK_ITEMS.map(item => (
-              <ThumbCard key={item.id} item={item} orientation="col" active={current.id === item.id}
-                onClick={() => select(item, 'facebook')} border={border} surface={surface} text={text} text2={text2} />
-            ))}
+            {FACEBOOK_ITEMS.map(item => {
+              const displayItem = withMetadata(item)
+              return (
+                <ThumbCard key={item.id} item={displayItem} orientation="col" active={current.id === item.id}
+                  onClick={() => select(displayItem, 'facebook')} border={border} surface={surface} text={text} text2={text2} />
+              )
+            })}
           </div>
 
           {/* Top-center: TikTok RSS (horizontal strip) */}
@@ -534,10 +630,13 @@ export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel })
           >
             <SourceHeader icon="♪" iconBg="rgba(255,255,255,0.1)" iconColor="#ff2d55" title="TikTok RSS" text={text} />
             <div className="rss-scroll" style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 4 }}>
-              {TIKTOK_ITEMS.map(item => (
-                <ThumbCard key={item.id} item={item} orientation="row" active={current.id === item.id}
-                  onClick={() => select(item, 'tiktok')} border={border} surface={surface} text={text} text2={text2} />
-              ))}
+              {TIKTOK_ITEMS.map(item => {
+                const displayItem = withMetadata(item)
+                return (
+                  <ThumbCard key={item.id} item={displayItem} orientation="row" active={current.id === item.id}
+                    onClick={() => select(displayItem, 'tiktok')} border={border} surface={surface} text={text} text2={text2} />
+                )
+              })}
             </div>
           </div>
 
@@ -585,13 +684,13 @@ export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel })
                       background: 'rgba(0,229,255,0.9)', color: '#04060f', padding: '3px 9px', borderRadius: 999,
                     }}>🔗 Danh sách video thật</span>
                   </>
-                ) : !current.playlistId && current.tiktokVideoId ? (
+                ) : !current.playlistId && current.tiktokVideo ? (
                   <>
-                    <TikTokVideoEmbed videoId={current.tiktokVideoId} url={current.url} />
+                    <TikTokVideoEmbed key={current.id} url={current.url} />
                     <span style={{
                       position: 'absolute', top: 10, right: 10, fontSize: 10, fontWeight: 800, pointerEvents: 'none',
                       background: 'rgba(0,229,255,0.9)', color: '#04060f', padding: '3px 9px', borderRadius: 999,
-                    }}>🔗 Video thật</span>
+                    }}>🔗 TikTok thật</span>
                   </>
                 ) : !current.playlistId && current.embedUrl ? (
                   <>
@@ -651,17 +750,17 @@ export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel })
                   color: meta.iconColor, background: meta.iconBg, borderRadius: 6, padding: '2px 8px',
                 }}>{meta.label}</span>
               </div>
-              <h2 style={{ margin: '0 0 8px', fontSize: 18, fontWeight: 800, lineHeight: 1.35 }}>{current.title}</h2>
+              <h2 style={{ margin: '0 0 8px', fontSize: 18, fontWeight: 800, lineHeight: 1.35 }}>{currentItem.title}</h2>
 
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <div style={{
                     width: 32, height: 32, borderRadius: '50%', background: gradFor(current.id + 'ch'),
                     display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0,
-                  }}>{current.icon}</div>
+                  }}>{currentItem.icon}</div>
                   <div>
-                    <div style={{ fontSize: 12, fontWeight: 700 }}>{current.channel || 'Kênh sức khỏe'}</div>
-                    <div style={{ fontSize: 10, color: text3 }}>{current.views || current.time || `${current.likes || ''} lượt thích`}</div>
+                    <div style={{ fontSize: 12, fontWeight: 700 }}>{currentItem.channel || 'Kênh sức khỏe'}</div>
+                    <div style={{ fontSize: 10, color: text3 }}>{currentItem.views || currentItem.time || `${currentItem.likes || ''} lượt thích`}</div>
                   </div>
                 </div>
 
@@ -802,10 +901,13 @@ export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel })
             style={{ ...panelCard, gridColumn: 1, gridRow: '1 / span 3', display: 'flex', flexDirection: 'column', gap: 8, overflowY: 'visible' }}
           >
             <SourceHeader icon="▶" iconBg="rgba(255,0,0,0.16)" iconColor="#ff0000" title="YouTube RSS" text={text} />
-            {YOUTUBE_ITEMS.map(item => (
-              <ThumbCard key={item.id} item={item} orientation="col" active={current.id === item.id}
-                onClick={() => item.linkOnly ? window.open(item.url, '_blank', 'noopener,noreferrer') : select(item, 'youtube')} border={border} surface={surface} text={text} text2={text2} />
-            ))}
+            {YOUTUBE_ITEMS.map(item => {
+              const displayItem = withMetadata(item)
+              return (
+                <ThumbCard key={item.id} item={displayItem} orientation="col" active={current.id === item.id}
+                  onClick={() => select(displayItem, 'youtube')} border={border} surface={surface} text={text} text2={text2} />
+              )
+            })}
           </div>
         </div>
 
