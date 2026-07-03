@@ -24,6 +24,46 @@ const ORGAN_VIDEOS = {
   liver: { id: 'wbh3SjzydnQ', start: 38, title: 'Gan thích ăn gì?',     emoji: '🫀' },
 }
 
+// ─── Playlist gợi ý ở cuối trang (video thật, nhúng bằng YouTube IFrame Player
+// API — giống hệt cơ chế playlist tương tác bên khu RSS Portal: có danh sách
+// video thật của playlist để bấm chuyển bài, không cần API key). ──────────────
+const KIENTHUC_PLAYLIST_ID = 'PLWivcxVBsMwLBuWyD6aGymzWx-IHBKPX-'
+const KIENTHUC_PLAYLIST_START_VIDEO = 'a0cnfEw-jCU'
+
+let ytApiPromise = null
+function loadYouTubeIframeAPI() {
+  if (typeof window === 'undefined') return Promise.resolve(null)
+  if (window.YT && window.YT.Player) return Promise.resolve(window.YT)
+  if (ytApiPromise) return ytApiPromise
+  ytApiPromise = new Promise((resolve) => {
+    const prevCallback = window.onYouTubeIframeAPIReady
+    window.onYouTubeIframeAPIReady = () => {
+      if (typeof prevCallback === 'function') prevCallback()
+      resolve(window.YT)
+    }
+    if (!document.getElementById('youtube-iframe-api-script')) {
+      const tag = document.createElement('script')
+      tag.id = 'youtube-iframe-api-script'
+      tag.src = 'https://www.youtube.com/iframe_api'
+      document.head.appendChild(tag)
+    }
+  })
+  return ytApiPromise
+}
+
+async function fetchYouTubeTitle(videoId) {
+  try {
+    const res = await fetch(
+      `https://www.youtube.com/oembed?url=${encodeURIComponent(`https://www.youtube.com/watch?v=${videoId}`)}&format=json`
+    )
+    if (!res.ok) return null
+    const data = await res.json()
+    return data.title || null
+  } catch {
+    return null
+  }
+}
+
 // ─── Database ────────────────────────────────────────────────────────────────
 const DB = {
   target: [
@@ -867,6 +907,64 @@ export default function OrganConnectionPanel({ onNext, onPrev, prevLabel, nextLa
   const [showHealthCard, setShowHealthCard] = useState(false)
   const [showOrganVideo, setShowOrganVideo] = useState(false)
 
+  // ── Playlist gợi ý cuối trang (real YT.Player, giống khu RSS) ──
+  const ytPlaylistPlayerRef = useRef(null)
+  const ytPlaylistContainerRef = useRef(null)
+  const [playlistVideos, setPlaylistVideos] = useState([])
+  const [playlistActiveId, setPlaylistActiveId] = useState(null)
+  const [playlistLoading, setPlaylistLoading] = useState(false)
+
+  const playPlaylistVideoAt = (index) => {
+    if (ytPlaylistPlayerRef.current && typeof ytPlaylistPlayerRef.current.playVideoAt === 'function') {
+      ytPlaylistPlayerRef.current.playVideoAt(index)
+    }
+  }
+
+  useEffect(() => {
+    let cancelled = false
+    setPlaylistLoading(true)
+
+    loadYouTubeIframeAPI().then((YT) => {
+      if (cancelled || !YT || !ytPlaylistContainerRef.current) return
+      if (ytPlaylistPlayerRef.current) {
+        ytPlaylistPlayerRef.current.destroy()
+        ytPlaylistPlayerRef.current = null
+      }
+      ytPlaylistPlayerRef.current = new YT.Player(ytPlaylistContainerRef.current, {
+        width: '100%',
+        height: '100%',
+        videoId: KIENTHUC_PLAYLIST_START_VIDEO,
+        playerVars: { listType: 'playlist', list: KIENTHUC_PLAYLIST_ID, rel: 0 },
+        events: {
+          onReady: (e) => {
+            if (cancelled) return
+            const ids = e.target.getPlaylist ? (e.target.getPlaylist() || []) : []
+            const idx = e.target.getPlaylistIndex ? e.target.getPlaylistIndex() : 0
+            setPlaylistActiveId(ids[idx] || ids[0] || null)
+            setPlaylistVideos(ids.map((id, i) => ({ id, title: `Video ${i + 1}` })))
+            setPlaylistLoading(false)
+            ids.forEach(async (id) => {
+              const title = await fetchYouTubeTitle(id)
+              if (cancelled || !title) return
+              setPlaylistVideos(prev => prev.map(v => (v.id === id ? { ...v, title } : v)))
+            })
+          },
+          onStateChange: (e) => {
+            if (cancelled) return
+            const ids = e.target.getPlaylist ? (e.target.getPlaylist() || []) : []
+            const idx = e.target.getPlaylistIndex ? e.target.getPlaylistIndex() : -1
+            if (idx >= 0 && ids[idx]) setPlaylistActiveId(ids[idx])
+          },
+        },
+      })
+    })
+
+    return () => {
+      cancelled = true
+      if (ytPlaylistPlayerRef.current) { ytPlaylistPlayerRef.current.destroy(); ytPlaylistPlayerRef.current = null }
+    }
+  }, [])
+
   const { scores, hasItem, targetOrgan } = calculateScores(selection)
   const aiMsg = getDoctorAIMsg(selection, scores)
   const organVideo = ORGAN_VIDEOS[selection.target?.organKey]
@@ -911,6 +1009,7 @@ export default function OrganConnectionPanel({ onNext, onPrev, prevLabel, nextLa
   const iframeH = `calc(100svh - ${TOPBAR_H}px)`
 
   return (
+    <>
     <div className="oc-root" style={{ height:iframeH, background: isDark ? '#0a0d1a' : '#f8fafc', display:'flex', flexDirection:'column', overflow:'hidden' }}>
       <style>{`
         /* ── Base font scale ── */
@@ -1174,6 +1273,15 @@ export default function OrganConnectionPanel({ onNext, onPrev, prevLabel, nextLa
           <div style={{ fontSize:12, fontWeight:600, color:'#94a3b8' }}>
             Gợi ý: Thử chọn <span style={{ color:'#4f46e5', fontWeight:700 }}>Mục tiêu Gan</span> + <span style={{ color:'#059669', fontWeight:700 }}>Bông cải</span> + <span style={{ color:'#dc2626', fontWeight:700 }}>Bia</span> để xem AI phản ứng.
           </div>
+
+          {/* AI card — đã chuyển xuống đây (dưới vùng gợi ý), thay vì nằm bên cột phân tích bên phải */}
+          <div style={{ width:'100%', maxWidth:500, background:'#fff', border: selection.avoid?.id === 'bia' && selection.target?.organKey === 'liver' ? '1px solid #ef4444' : '1px solid #e2e8f0', borderRadius:16, padding:12, boxShadow:'0 1px 3px rgba(0,0,0,0.06)' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}>
+              <span style={{ fontSize:18 }}>💬</span>
+              <span style={{ fontSize:12, fontWeight:900, color:'#0f172a', textTransform:'uppercase', letterSpacing:'0.05em' }}>Bác sĩ AI chẩn đoán:</span>
+            </div>
+            <div style={{ fontSize:13, color:'#475569', lineHeight:1.6, fontStyle:'italic' }} dangerouslySetInnerHTML={{ __html: aiMsg }} />
+          </div>
         </main>
 
         {/* FULL-SCREEN FLIP: organ guidance video (always opens at full viewport height) */}
@@ -1262,15 +1370,6 @@ export default function OrganConnectionPanel({ onNext, onPrev, prevLabel, nextLa
 
           {/* Bottom: AI + receipt */}
           <div className="oc-scroll" style={{ flex:1, overflowY:'auto', padding:12, display:'flex', flexDirection:'column', gap:12, background:'rgba(241,245,249,0.6)' }}>
-            {/* AI card */}
-            <div style={{ background:'#fff', border: selection.avoid?.id === 'bia' && selection.target?.organKey === 'liver' ? '1px solid #ef4444' : '1px solid #e2e8f0', borderRadius:16, padding:12, boxShadow:'0 1px 3px rgba(0,0,0,0.06)' }}>
-              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}>
-                <span style={{ fontSize:18 }}>💬</span>
-                <span style={{ fontSize:12, fontWeight:900, color:'#0f172a', textTransform:'uppercase', letterSpacing:'0.05em' }}>Bác sĩ AI chẩn đoán:</span>
-              </div>
-              <div style={{ fontSize:13, color:'#475569', lineHeight:1.6, fontStyle:'italic' }} dangerouslySetInnerHTML={{ __html: aiMsg }} />
-            </div>
-
             {/* Receipt */}
             <div className="receipt-paper" style={{ border:'1px solid #e2e8f0', borderRadius:12, padding:12, fontFamily:'monospace', fontSize:12, color:'#334155', position:'relative' }}>
               <div style={{ position:'absolute', top:-12, right:16, background:'#065f46', color:'#fff', fontWeight:900, fontSize:10, padding:'2px 8px', borderRadius:999, textTransform:'uppercase', letterSpacing:'0.1em' }}>Custom Formula</div>
@@ -1305,12 +1404,65 @@ export default function OrganConnectionPanel({ onNext, onPrev, prevLabel, nextLa
       <OrganMapModal open={showOrganMap} onClose={() => setShowOrganMap(false)} selection={selection} />
       <ResultModal open={showResult} onClose={() => setShowResult(false)} scores={scores} hasItem={hasItem} selection={selection} />
       <HealthCardModal open={showHealthCard} onClose={() => setShowHealthCard(false)} scores={scores} hasItem={hasItem} selection={selection} />
+    </div>
 
-      {/* Nav bar */}
-      <div className="organ-nav-bar">
-        <NavButtons onPrev={onPrev} prevLabel={prevLabel} onNext={onNext} nextLabel={nextLabel} />
+    {/* Playlist video gợi ý — nằm dưới cùng của trang, cuộn xuống để xem.
+        Nhúng bằng YouTube IFrame Player API thật (giống hệt playlist bên khu RSS):
+        có danh sách video thật của playlist để bấm chuyển bài, không cần API key. */}
+    <div style={{ padding: 'clamp(16px,3vw,28px) clamp(12px,3vw,24px) 24px', background: isDark ? '#0a0d1a' : '#f8fafc' }}>
+      <div style={{ maxWidth: 900, margin: '0 auto' }}>
+        <h3 style={{ margin: '0 0 12px', fontSize: 15, fontWeight: 800, color: isDark ? '#e2e8f0' : '#0f172a' }}>
+          🎬 Playlist gợi ý: Kiến Thức Sức Khỏe 3D
+        </h3>
+        <div style={{ position: 'relative', width: '100%', aspectRatio: '16/9', borderRadius: 14, overflow: 'hidden', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.15)', background: '#000' }}>
+          <div ref={ytPlaylistContainerRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
+        </div>
+
+        <div style={{ marginTop: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <span style={{ fontSize: 11, fontWeight: 800, color: isDark ? '#94a3b8' : '#64748b', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+              Danh sách video trong playlist{playlistVideos.length > 0 ? ` (${playlistVideos.length})` : ''}
+            </span>
+            {playlistLoading && <span style={{ fontSize: 10, color: isDark ? '#64748b' : '#94a3b8' }}>Đang tải…</span>}
+          </div>
+          <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 4 }}>
+            {playlistVideos.map((v, i) => (
+              <button
+                key={v.id}
+                type="button"
+                onClick={() => playPlaylistVideoAt(i)}
+                title={v.title}
+                style={{
+                  display: 'flex', flexDirection: 'column', width: 150, flexShrink: 0, textAlign: 'left',
+                  background: playlistActiveId === v.id ? 'rgba(79,70,229,0.08)' : (isDark ? 'rgba(255,255,255,0.04)' : '#fff'),
+                  border: `1px solid ${playlistActiveId === v.id ? '#4f46e5' : (isDark ? 'rgba(255,255,255,0.09)' : '#e2e8f0')}`,
+                  borderRadius: 10, overflow: 'hidden', cursor: 'pointer', padding: 0, fontFamily: 'inherit',
+                }}
+              >
+                <img
+                  src={`https://i.ytimg.com/vi/${v.id}/mqdefault.jpg`}
+                  alt={v.title}
+                  style={{ width: '100%', aspectRatio: '16/9', objectFit: 'cover', display: 'block', background: '#111' }}
+                />
+                <div style={{
+                  padding: '6px 8px 8px', fontSize: 11, fontWeight: 700, lineHeight: 1.3,
+                  color: playlistActiveId === v.id ? '#4f46e5' : (isDark ? '#e2e8f0' : '#0f172a'),
+                  display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+                }}>
+                  {v.title}
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
+
+    {/* Nav bar — luôn ở dưới cùng của toàn trang */}
+    <div className="organ-nav-bar">
+      <NavButtons onPrev={onPrev} prevLabel={prevLabel} onNext={onNext} nextLabel={nextLabel} />
+    </div>
+    </>
   )
 }
 

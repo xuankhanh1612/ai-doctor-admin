@@ -70,17 +70,8 @@ const TIKTOK_REAL_VIDEOS = [
   aspectRatio: '9/16',
 }))
 
-const TIKTOK_ITEMS = [
-  ...TIKTOK_REAL_VIDEOS,
-  { id: 'tt1', icon: '🤒', title: 'Mẹo hạ sốt nhanh tại nhà', duration: '00:15', likes: '12.4K' },
-  { id: 'tt2', icon: '🧼', title: 'Cách rửa tay đúng cách', duration: '00:21', likes: '8.7K' },
-  { id: 'tt3', icon: '🧴', title: 'Skincare cho da nhạy cảm', duration: '00:18', likes: '15.3K' },
-  { id: 'tt4', icon: '🤸', title: '5 phút thể dục buổi sáng', duration: '00:20', likes: '11.1K' },
-  { id: 'tt5', icon: '🤱', title: 'Món ăn lợi sữa cho mẹ bỉm', duration: '00:17', likes: '9.8K' },
-  { id: 'tt6', icon: '😮\u200d💨', title: 'Bài tập thở giảm căng thẳng', duration: '00:16', likes: '13.2K' },
-  { id: 'tt7', icon: '🍵', title: 'Trà thảo mộc tốt cho gan', duration: '00:19', likes: '7.1K' },
-  { id: 'tt8', icon: '😴', title: 'Ngủ đủ giấc - bí quyết khỏe mạnh', duration: '00:14', likes: '6.3K' },
-].map(item => ({ ...item, aspectRatio: '9/16' }))
+// Chỉ giữ lại các mục có link thật — đã bỏ các ô mock (tt1..tt8) không có link.
+const TIKTOK_ITEMS = TIKTOK_REAL_VIDEOS
 
 const ORGAN_STORY_PLAYLIST_ID = 'PLKAAOJr1Akjvvi6IjW3v-cpZhE7Y0bbJN'
 // videoseries + list (no explicit video id) makes YouTube render its native playlist
@@ -90,6 +81,20 @@ const ORGAN_STORY_EMBED = `https://www.youtube.com/embed/videoseries?list=${ORGA
 
 const FEATURED_PLAYLIST_ID = 'PLhPgpmsoyA4GrZ5mGrOPyf1wb1Ke1Zw8p'
 const FEATURED_PLAYLIST_EMBED = `https://www.youtube.com/embed/videoseries?list=${FEATURED_PLAYLIST_ID}`
+
+// Playlist thật thứ 2 do người dùng cung cấp.
+const HEALTH_PLAYLIST_ID = 'PLJicmE8fK0EgJTgTCK7-t-91bdwGm3Nit'
+const HEALTH_PLAYLIST_EMBED = `https://www.youtube.com/embed/videoseries?list=${HEALTH_PLAYLIST_ID}`
+
+// Video đơn thật do người dùng cung cấp — nhúng trực tiếp bằng iframe /embed/{video_id}.
+const SINGLE_VIDEO_ID = 'wbh3SjzydnQ'
+const SINGLE_VIDEO_EMBED = `https://www.youtube.com/embed/${SINGLE_VIDEO_ID}`
+
+// Playlist thật thứ 3 do người dùng cung cấp (thay cho link "danh sách playlist" chỉ mở
+// tab ngoài trước đây) — nhúng trực tiếp bằng videoseries embed như 2 playlist còn lại.
+const KIENTHUC_PLAYLIST_ID = 'PLWivcxVBsMwLBuWyD6aGymzWx-IHBKPX-'
+const KIENTHUC_PLAYLIST_START_VIDEO = 'a0cnfEw-jCU'
+const KIENTHUC_PLAYLIST_EMBED = `https://www.youtube.com/embed/${KIENTHUC_PLAYLIST_START_VIDEO}?list=${KIENTHUC_PLAYLIST_ID}`
 
 // ─── YouTube IFrame Player API loader (singleton, no API key needed) ───────
 // We use the real IFrame Player API (not just a videoseries embed) so we can:
@@ -154,12 +159,48 @@ function youtubeThumbnail(videoId) {
 const YOUTUBE_ITEMS = [
   { id: 'yt0', icon: '▶', title: 'Playlist sức khỏe nổi bật', channel: 'YouTube Playlist', views: 'Playlist', time: 'youtube.com/watch?v=LHkE3loNxJ4', url: 'https://www.youtube.com/watch?v=LHkE3loNxJ4&list=PLhPgpmsoyA4GrZ5mGrOPyf1wb1Ke1Zw8p', embedUrl: FEATURED_PLAYLIST_EMBED, playlistId: FEATURED_PLAYLIST_ID, thumbnailUrl: youtubeThumbnail('LHkE3loNxJ4') },
   { id: 'yt1', icon: '🫀', title: 'The Organ Story - Khám phá cơ thể qua hoạt hình khoa học', channel: 'The Organ Story', views: 'Playlist chính thức', time: 'youtube.com/@TheOrganStory', url: 'https://www.youtube.com/@TheOrganStory', embedUrl: ORGAN_STORY_EMBED, playlistId: ORGAN_STORY_PLAYLIST_ID },
-  { id: 'yt2', icon: '🥗', title: '7 ngày detox cùng chuyên gia dinh dưỡng', channel: 'Dinh Dưỡng Việt', views: '860K lượt xem', time: '2 ngày trước' },
-  { id: 'yt3', icon: '❤️', title: 'Hướng dẫn đo huyết áp tại nhà đúng chuẩn', channel: 'Sức Khỏe TV', views: '560K lượt xem', time: '3 ngày trước' },
-  { id: 'yt4', icon: '🍚', title: 'Chế độ ăn cho người tiểu đường', channel: 'BS. Gia Hân', views: '720K lượt xem', time: '4 ngày trước' },
-  { id: 'yt5', icon: '🌙', title: 'Cách ngủ ngon không cần thuốc', channel: 'Sleep Well VN', views: '410K lượt xem', time: '5 ngày trước' },
-  { id: 'yt6', icon: '⚖️', title: 'Review máy đo InBody 2024', channel: 'Fitness Review', views: '930K lượt xem', time: '6 ngày trước' },
-  { id: 'yt7', icon: '🧘\u200d♀️', title: '10 bài tập yoga giảm đau lưng', channel: 'Yoga Cùng Mai', views: '1.5M lượt xem', time: '1 tuần trước' },
+  { id: 'yt_playlists', icon: '📂', title: 'Playlist Kiến Thức Sức Khỏe 3D', channel: 'Kiến Thức Sức Khỏe 3D', views: 'Playlist', time: `youtube.com/watch?v=${KIENTHUC_PLAYLIST_START_VIDEO}&list=${KIENTHUC_PLAYLIST_ID}`, url: `https://www.youtube.com/watch?v=${KIENTHUC_PLAYLIST_START_VIDEO}&list=${KIENTHUC_PLAYLIST_ID}`, embedUrl: KIENTHUC_PLAYLIST_EMBED, playlistId: KIENTHUC_PLAYLIST_ID },
+  { id: 'yt_playlist2', icon: '▶', title: 'Playlist sức khỏe (thật)', channel: 'YouTube Playlist', views: 'Playlist', time: `youtube.com/playlist?list=${HEALTH_PLAYLIST_ID}`, url: `https://www.youtube.com/playlist?list=${HEALTH_PLAYLIST_ID}`, embedUrl: HEALTH_PLAYLIST_EMBED, playlistId: HEALTH_PLAYLIST_ID },
+  { id: 'yt_video1', icon: '🎬', title: 'Video sức khỏe (thật)', channel: 'YouTube', views: 'Video thật', time: `youtube.com/watch?v=${SINGLE_VIDEO_ID}`, url: `https://www.youtube.com/watch?v=${SINGLE_VIDEO_ID}`, embedUrl: SINGLE_VIDEO_EMBED },
+]
+
+const FAVORITE_CHANNELS = [
+  { id: 'ch1', icon: '🫀', name: 'The Organ Story', subs: 'Kênh chính thức', url: 'https://www.youtube.com/@TheOrganStory',
+    title: 'The Organ Story - Khám phá cơ thể qua hoạt hình khoa học', channel: 'The Organ Story', views: 'Playlist chính thức', time: 'youtube.com/@TheOrganStory', embedUrl: ORGAN_STORY_EMBED, playlistId: ORGAN_STORY_PLAYLIST_ID },
+  // ── Các mục RSS "thật" khác (đã có link/nhúng thật trong Facebook/TikTok/YouTube RSS
+  // phía trên) được thêm vào đây để có thể mở nhanh từ khu Kênh yêu thích. ──
+  { id: 'ch_yt_featured', icon: '▶', name: 'Playlist sức khỏe nổi bật', subs: 'Playlist YouTube thật',
+    url: 'https://www.youtube.com/watch?v=LHkE3loNxJ4&list=PLhPgpmsoyA4GrZ5mGrOPyf1wb1Ke1Zw8p',
+    title: 'Playlist sức khỏe nổi bật', channel: 'YouTube Playlist', views: 'Playlist', time: 'youtube.com/watch?v=LHkE3loNxJ4',
+    embedUrl: FEATURED_PLAYLIST_EMBED, playlistId: FEATURED_PLAYLIST_ID },
+  { id: 'ch_yt_playlist2', icon: '▶', name: 'Playlist sức khỏe (thật)', subs: 'Playlist YouTube thật',
+    url: `https://www.youtube.com/playlist?list=${HEALTH_PLAYLIST_ID}`,
+    title: 'Playlist sức khỏe (thật)', channel: 'YouTube Playlist', views: 'Playlist', time: `youtube.com/playlist?list=${HEALTH_PLAYLIST_ID}`,
+    embedUrl: HEALTH_PLAYLIST_EMBED, playlistId: HEALTH_PLAYLIST_ID },
+  { id: 'ch_yt_video1', icon: '🎬', name: 'Video sức khỏe (thật)', subs: 'Video YouTube thật',
+    url: `https://www.youtube.com/watch?v=${SINGLE_VIDEO_ID}`,
+    title: 'Video sức khỏe (thật)', channel: 'YouTube', views: 'Video thật', time: `youtube.com/watch?v=${SINGLE_VIDEO_ID}`,
+    embedUrl: SINGLE_VIDEO_EMBED },
+  { id: 'ch_yt_playlists', icon: '📂', name: 'Kiến Thức Sức Khỏe 3D', subs: 'Playlist YouTube thật',
+    url: `https://www.youtube.com/watch?v=${KIENTHUC_PLAYLIST_START_VIDEO}&list=${KIENTHUC_PLAYLIST_ID}`,
+    title: 'Playlist Kiến Thức Sức Khỏe 3D', channel: 'Kiến Thức Sức Khỏe 3D', views: 'Playlist', time: `youtube.com/watch?v=${KIENTHUC_PLAYLIST_START_VIDEO}`,
+    embedUrl: KIENTHUC_PLAYLIST_EMBED, playlistId: KIENTHUC_PLAYLIST_ID },
+  { id: 'ch_fb_aipunk', icon: '🎬', name: 'AIPunkstudio', subs: 'Trang Facebook thật', url: FB_AIPUNK_REELS_URL,
+    title: 'AIPunkstudio · Danh sách Reels', channel: 'AIPunkstudio', views: 'Trang thật · danh sách video', time: 'facebook.com/AIPunkstudio',
+    embedUrl: FB_AIPUNK_EMBED, aspectRatio: '9/16' },
+  { id: 'ch_fb_reel', icon: '🎬', name: 'Facebook Reel', subs: 'Reel Facebook thật', url: FB_REEL_URL,
+    title: 'Video Facebook Reel', channel: 'Facebook Reel', views: 'Reel thật', time: 'facebook.com/reel',
+    embedUrl: FB_REEL_EMBED, aspectRatio: '9/16' },
+  { id: 'ch_tt_video1', icon: '🎵', name: '@xuankhanhsupertech', subs: 'Video TikTok thật', url: TIKTOK_REAL_VIDEOS[0].url,
+    title: TIKTOK_REAL_VIDEOS[0].title, channel: 'TikTok · xuankhanhsupertech', views: 'Video thật', time: TIKTOK_REAL_VIDEOS[0].url,
+    tiktokVideoId: TIKTOK_REAL_VIDEOS[0].tiktokVideoId, aspectRatio: '9/16' },
+  { id: 'ch2', icon: '🥗', name: 'Dinh Dưỡng Việt', subs: '1.6M subscribers' },
+  { id: 'ch3', icon: '🧘', name: 'Yoga Cùng Mai', subs: '1.4M subscribers' },
+  { id: 'ch4', icon: '❤️', name: 'Sức Khỏe TV', subs: '3.7M subscribers' },
+  { id: 'ch5', icon: '⚕️', name: 'Consensus Doctor', subs: '1.1M subscribers' },
+  { id: 'ch6', icon: '🍲', name: 'Ăn Gì Hôm Nay', subs: '2.2M subscribers' },
+  { id: 'ch7', icon: '🐱', name: 'Bé Mèo Nước', subs: '5.4M subscribers' },
+  { id: 'ch8', icon: '⚖️', name: 'InBody Việt', subs: '1.8M subscribers' },
 ]
 
 const gradFor = (id) => {
@@ -298,6 +339,41 @@ function TikTokCreatorEmbed({ url, linkUrl }) {
   )
 }
 
+// ─── TikTok Single Video Embed (real widget, no API key) ──────────────────
+// Uses TikTok's official embed.js with a data-video-id blockquote (the same
+// "handshake" mechanism as the creator embed above). Calling the raw iframe URL
+// (tiktok.com/embed/v2/{id}) directly — without going through embed.js — skips that
+// handshake, so TikTok's CDN (vx-bdp.tiktokv.com) starts rejecting the underlying
+// video files with 403 once several are opened in a row / while scrolling. Going
+// through the official script avoids that.
+function TikTokVideoEmbed({ videoId, url }) {
+  const containerRef = useRef(null)
+
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container || !videoId) return
+    container.innerHTML = `
+      <blockquote class="tiktok-embed" cite="${url}" data-video-id="${videoId}" style="max-width:100%;min-width:288px;width:100%;margin:0;">
+        <section><a target="_blank" rel="noopener noreferrer" href="${url}">Xem trên TikTok</a></section>
+      </blockquote>`
+    const script = document.createElement('script')
+    script.src = `https://www.tiktok.com/embed.js?t=${Date.now()}`
+    script.async = true
+    document.body.appendChild(script)
+    return () => { script.remove() }
+  }, [videoId, url])
+
+  return (
+    <div
+      ref={containerRef}
+      style={{
+        width: '100%', height: '100%', overflow: 'hidden', display: 'flex',
+        alignItems: 'center', justifyContent: 'center', background: '#000',
+      }}
+    />
+  )
+}
+
 function SourceHeader({ icon, iconBg, iconColor, title, text }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
@@ -371,7 +447,7 @@ export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel })
       setPlaying(true)
       return
     }
-    if (current.embedUrl) { setPlaying(true); return }
+    if (current.embedUrl || current.tiktokVideoId) { setPlaying(true); return }
     const v = videoRef.current
     if (!v) return
     if (v.paused) { v.play(); setPlaying(true) } else { v.pause(); setPlaying(false) }
@@ -502,7 +578,7 @@ export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel })
               </span>
             </h1>
             <p style={{ margin: '2px 0 0', fontSize: 13, color: text2 }}>
-              Trung tâm video sức khỏe của bạn · tổng hợp từ Facebook, TikTok, YouTube
+              Trung tâm video sức khỏe của bạn · tổng hợp từ Facebook, TikTok, YouTube &amp; kênh yêu thích
             </p>
           </div>
         </div>
@@ -514,6 +590,7 @@ export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel })
             ['facebook', 'f Facebook'],
             ['tiktok', '♪ TikTok'],
             ['youtube', '▶ YouTube'],
+            ['favorite', '★ Yêu thích'],
           ].map(([id, label]) => (
             <button key={id} type="button" onClick={() => setMobileTab(id)} style={{
               padding: '6px 12px', borderRadius: 20, fontSize: 11, fontWeight: 700, cursor: 'pointer',
@@ -528,13 +605,13 @@ export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel })
         <div className="rss-grid" style={{
           display: 'grid',
           gridTemplateColumns: '230px 1fr 230px',
-          gridTemplateRows: 'auto auto',
+          gridTemplateRows: 'auto auto auto',
           gap: 14,
         }}>
-          {/* Right: Facebook RSS (spans both rows) */}
+          {/* Right: Facebook RSS (spans all 3 rows) */}
           <div
             className={`rss-side-col ${mobileTab === 'facebook' ? 'rss-active' : ''}`}
-            style={{ ...panelCard, gridColumn: 3, gridRow: '1 / span 2', display: 'flex', flexDirection: 'column', gap: 8, overflowY: 'auto', maxHeight: 780 }}
+            style={{ ...panelCard, gridColumn: 3, gridRow: '1 / span 3', display: 'flex', flexDirection: 'column', gap: 8, overflowY: 'auto', maxHeight: 780 }}
           >
             <SourceHeader icon="f" iconBg="rgba(24,119,242,0.18)" iconColor="#1877f2" title="Facebook RSS" text={text} />
             {FACEBOOK_ITEMS.map(item => {
@@ -779,10 +856,49 @@ export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel })
             </div>
           </div>
 
-          {/* Left: YouTube RSS (spans both rows) */}
+          {/* Bottom-center: Favorite channels */}
+          <div
+            className={`rss-side-col ${mobileTab === 'favorite' ? 'rss-active' : ''}`}
+            style={{ ...panelCard, gridColumn: 2, gridRow: 3, display: 'flex', flexDirection: 'column' }}
+          >
+            <SourceHeader icon="★" iconBg="rgba(168,85,247,0.16)" iconColor="#a855f7" title="Kênh yêu thích" text={text} />
+            <div className="rss-scroll" style={{ display: 'flex', gap: 14, overflowX: 'auto', paddingBottom: 4 }}>
+              {FAVORITE_CHANNELS.map(ch => (
+                <button
+                  key={ch.id}
+                  type="button"
+                  onClick={() => { if (ch.linkOnly) { window.open(ch.url, '_blank', 'noopener,noreferrer') } else if (ch.embedUrl || ch.tiktokProfile || ch.tiktokVideoId) { select(ch, 'channel') } else if (ch.url) { window.open(ch.url, '_blank', 'noopener,noreferrer') } }}
+                  style={{
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', width: 84, flexShrink: 0,
+                    textAlign: 'center', background: 'transparent', border: 'none', padding: 0,
+                    cursor: ch.url ? 'pointer' : 'default', fontFamily: 'inherit',
+                  }}
+                >
+                  <div style={{
+                    position: 'relative', width: 52, height: 52, borderRadius: '50%', background: gradFor(ch.id),
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, marginBottom: 6,
+                    border: `2px solid ${ch.url ? '#00e5ff' : border}`,
+                  }}>
+                    {ch.icon}
+                    {ch.url && (
+                      <span style={{
+                        position: 'absolute', bottom: -2, right: -2, fontSize: 9, background: '#00e5ff',
+                        color: '#04060f', borderRadius: '50%', width: 16, height: 16, display: 'flex',
+                        alignItems: 'center', justifyContent: 'center', fontWeight: 900,
+                      }}>🔗</span>
+                    )}
+                  </div>
+                  <div style={{ fontSize: 11, fontWeight: 700, lineHeight: 1.3, color: text }}>{ch.name}</div>
+                  <div style={{ fontSize: 9, color: text3, marginTop: 2 }}>{ch.subs}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Left: YouTube RSS (spans all 3 rows) */}
           <div
             className={`rss-side-col ${mobileTab === 'youtube' ? 'rss-active' : ''}`}
-            style={{ ...panelCard, gridColumn: 1, gridRow: '1 / span 2', display: 'flex', flexDirection: 'column', gap: 8, overflowY: 'auto', maxHeight: 780 }}
+            style={{ ...panelCard, gridColumn: 1, gridRow: '1 / span 3', display: 'flex', flexDirection: 'column', gap: 8, overflowY: 'visible' }}
           >
             <SourceHeader icon="▶" iconBg="rgba(255,0,0,0.16)" iconColor="#ff0000" title="YouTube RSS" text={text} />
             {YOUTUBE_ITEMS.map(item => {
