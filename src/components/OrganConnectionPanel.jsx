@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import NavButtons from './NavButtons.jsx'
 import { useApp } from '../context/AppContext'
 import { useAuth } from '../context/AuthContext.jsx'
@@ -902,7 +903,7 @@ const EMPTY_SEL = { target:null, base:null, protein:null, veg:null, top:null, av
 // Dùng CHUNG hook + kho lưu trữ (globalChatbotStorage.js) với widget GlobalAIChatbot
 // (góc màn hình) và trang "Lịch sử Chat với AI" → mọi tin nhắn gửi ở đây cũng xuất
 // hiện đồng bộ song song ở 2 nơi kia, và ngược lại — không cần đóng/mở lại trang.
-function NutritionAIChatView({ contextHint }) {
+function NutritionAIChatView({ contextHint, onClose }) {
   const { user } = useAuth()
   const userKey = user?.uuid || null
   const scrollRef = useRef(null)
@@ -937,7 +938,7 @@ function NutritionAIChatView({ contextHint }) {
   const accent = '#4f46e5'
 
   return (
-    <div style={{ width:'100%', maxWidth:500, display:'flex', flexDirection:'column', borderRadius:16, overflow:'hidden', border:`1px solid ${border}`, background:'#fff', boxShadow:'0 1px 3px rgba(0,0,0,0.06)' }}>
+    <div style={{ width:'100%', maxWidth:500, maxHeight:'100%', display:'flex', flexDirection:'column', borderRadius:16, overflow:'hidden', border:`1px solid ${border}`, background:'#fff', boxShadow:'0 24px 70px rgba(0,0,0,0.34)' }}>
       {/* Header */}
       <div style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 14px', background:surface, borderBottom:`1px solid ${border}` }}>
         <span style={{ fontSize:20 }}>🥗</span>
@@ -946,6 +947,9 @@ function NutritionAIChatView({ contextHint }) {
           <div style={{ fontSize:11, color:muted, marginTop:2 }}>{status} · {getModeLabel(mode, true)}</div>
         </div>
         <span style={{ fontSize:10, padding:'3px 8px', borderRadius:999, background:'#eef2ff', color:accent, fontWeight:800 }}>Đồng bộ lịch sử</span>
+        {onClose && (
+          <button type="button" onClick={onClose} title="Đóng chat" style={{ width:28, height:28, borderRadius:'50%', border:'none', background:'#e2e8f0', color:ink, fontSize:14, cursor:'pointer', flexShrink:0 }}>✕</button>
+        )}
       </div>
 
       {contextHint && (
@@ -963,7 +967,7 @@ function NutritionAIChatView({ contextHint }) {
       </div>
 
       {/* Messages */}
-      <div ref={scrollRef} style={{ flex:'1 1 auto', minHeight:220, maxHeight:340, overflowY:'auto', display:'flex', flexDirection:'column', gap:10, padding:'12px 14px' }}>
+      <div ref={scrollRef} style={{ flex:'1 1 auto', minHeight:220, overflowY:'auto', display:'flex', flexDirection:'column', gap:10, padding:'12px 14px' }}>
         {messages.length === 0 && !busy && (
           <div style={{ fontSize:12, color:muted, textAlign:'center', padding:'12px 0' }}>Hỏi Bác sĩ Dinh Dưỡng AI bất cứ điều gì về mâm cơm và mục tiêu sức khỏe của bạn 👇</div>
         )}
@@ -1460,10 +1464,25 @@ export default function OrganConnectionPanel({ onNext, onPrev, prevLabel, nextLa
             </div>
             <div style={{ fontSize:13, color:'#475569', lineHeight:1.6, fontStyle:'italic' }} dangerouslySetInnerHTML={{ __html: aiMsg }} />
           </div>
-
-          {/* Chat thật với Bác sĩ Dinh Dưỡng AI — dùng chung Global AI Chat, đồng bộ lịch sử */}
-          {showAIChat && <NutritionAIChatView />}
         </main>
+
+        {/* Chat thật với Bác sĩ Dinh Dưỡng AI — modal nổi lên trên, dùng chung Global AI Chat, đồng bộ lịch sử.
+            Render qua createPortal thẳng vào document.body để chắc chắn không bị ancestor nào
+            (overflow:hidden, stacking context, z-index cục bộ...) che mất hoặc cắt cụt. */}
+        {showAIChat && createPortal(
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Bác sĩ Dinh Dưỡng AI"
+            onClick={(e) => { if (e.target === e.currentTarget) setShowAIChat(false) }}
+            style={{ position:'fixed', inset:0, zIndex:99999, background:'rgba(15,23,42,0.55)', display:'flex', alignItems:'center', justifyContent:'center', padding:12, overflowY:'auto' }}
+          >
+            <div style={{ width:'100%', maxWidth:480, maxHeight:'calc(100vh - 24px)', display:'flex' }}>
+              <NutritionAIChatView onClose={() => setShowAIChat(false)} />
+            </div>
+          </div>,
+          document.body
+        )}
 
         {/* FULL-SCREEN FLIP: organ guidance video (always opens at full viewport height) */}
         {showOrganVideo && organVideo && (
