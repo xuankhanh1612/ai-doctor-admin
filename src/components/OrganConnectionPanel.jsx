@@ -769,7 +769,7 @@ function HealthCardModal({ open, onClose, scores, hasItem, selection }) {
       <div className="hc-grid-bg" style={{ background:'linear-gradient(135deg,#0f0c29,#141428,#1a1035)', borderRadius:24, width:'96vw', maxWidth:900, maxHeight:'calc(100vh - 24px)', position:'relative', overflow:'hidden', display:'flex', flexDirection:'column', flexShrink:0 }}>
         <div style={{ position:'relative', zIndex:10, display:'flex', alignItems:'center', justifyContent:'space-between', padding:'20px 28px 16px', borderBottom:'1px solid rgba(255,255,255,0.1)', flexShrink:0 }}>
           <div>
-            <h2 style={{ color:'#fff', fontSize:20, fontWeight:900, display:'flex', alignItems:'center', gap:12, margin:0 }}>🃏 Export My Health Level Card</h2>
+            <h2 style={{ color:'#fff', fontSize:20, fontWeight:900, display:'flex', alignItems:'center', gap:12, margin:0 }}>🃏 My Health Level Card</h2>
             <p style={{ color:'#6ee7b7', fontSize:12, margin:'4px 0 0' }}>Di chuyển chuột trên thẻ để xem hiệu ứng 3D • Tổng hợp toàn bộ chỉ số nội tạng</p>
           </div>
           <button onClick={onClose} style={{ width:36, height:36, borderRadius:'50%', background:'rgba(255,255,255,0.1)', border:'none', color:'#fff', fontSize:18, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>✕</button>
@@ -1310,7 +1310,6 @@ export default function OrganConnectionPanel({ onNext, onPrev, prevLabel, nextLa
           <div>
             <div className="oc-header-title" style={{ fontWeight:900, fontSize:17, color:'#0f172a', letterSpacing:'-0.01em', display:'flex', alignItems:'center', gap:8 }}>
               HEALTHY CUSTOMIZER
-              <span style={{ fontSize:11, background:'#059669', color:'#fff', fontWeight:700, padding:'2px 8px', borderRadius:999 }}>v3.1</span>
             </div>
             <div className="oc-header-sub" style={{ fontSize:12, color:'#94a3b8' }}>Organ Formula Builder</div>
           </div>
@@ -1318,9 +1317,8 @@ export default function OrganConnectionPanel({ onNext, onPrev, prevLabel, nextLa
         <div className="oc-header-btns" style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
           <button onClick={() => setShowOrganMap(true)} style={{ fontSize:12, fontWeight:700, color:'#fff', background:'#4f46e5', border:'none', padding:'6px 12px', borderRadius:8, cursor:'pointer' }}>🧬 Organ Connection</button>
           <button onClick={() => setShowResult(true)} style={{ fontSize:12, fontWeight:700, color:'#fff', background:'linear-gradient(to right,#c026d3,#f59e0b)', border:'none', padding:'6px 12px', borderRadius:8, cursor:'pointer' }}>✨ Show Result</button>
-          <button onClick={() => setShowHealthCard(true)} style={{ fontSize:12, fontWeight:700, color:'#fff', background:'linear-gradient(to right,#10b981,#14b8a6)', border:'none', padding:'6px 12px', borderRadius:8, cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}><span>🃏</span> Export My Health Level Card</button>
+          <button onClick={() => setShowHealthCard(true)} style={{ fontSize:12, fontWeight:700, color:'#fff', background:'linear-gradient(to right,#10b981,#14b8a6)', border:'none', padding:'6px 12px', borderRadius:8, cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}><span>🃏</span> My Health Level Card</button>
           <button onClick={resetAll} style={{ fontSize:12, fontWeight:700, color:'#64748b', background:'#fff', border:'1px solid #e2e8f0', padding:'6px 12px', borderRadius:8, cursor:'pointer' }}>🔄 Làm lại từ đầu</button>
-          <div className="oc-header-badge" style={{ background:'#0f172a', color:'#fff', padding:'6px 16px', borderRadius:12, fontSize:12, fontWeight:700, display:'flex', alignItems:'center', gap:8 }}>⚡ 46 Bio-Ingredients</div>
         </div>
       </header>
 
@@ -1532,7 +1530,10 @@ export default function OrganConnectionPanel({ onNext, onPrev, prevLabel, nextLa
           {/* Score bars */}
           <div style={{ padding:12, borderBottom:'1px solid #f1f5f9', background:'#f8fafc', flexShrink:0 }}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
-              <span style={{ fontSize:11, fontWeight:900, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'0.1em' }}>Hệ thống đo lường</span>
+              <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+                <span style={{ fontSize:11, fontWeight:900, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'0.1em' }}>Hệ thống đo lường</span>
+                <span className="oc-header-badge" style={{ background:'#0f172a', color:'#fff', padding:'4px 10px', borderRadius:10, fontSize:11, fontWeight:700, display:'flex', alignItems:'center', gap:6 }}>⚡ 46 Bio-Ingredients</span>
+              </div>
               <span style={{ fontSize:11, fontWeight:700, padding:'2px 8px', borderRadius:4, background:'#dcfce7', color:'#166534', display:'flex', alignItems:'center', gap:4 }}>
                 <span style={{ width:6, height:6, borderRadius:'50%', background:'#22c55e', animation:'pulse 2s infinite', display:'inline-block' }} /> Phản ứng nội tạng
               </span>
