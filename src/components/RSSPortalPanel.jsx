@@ -21,6 +21,9 @@ const GRADIENTS = [
   'linear-gradient(135deg,#64748b,#334155)',
 ]
 
+const youtubeThumb = (videoId) => `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`
+const youtubePlaylistThumb = (fallbackVideoId) => (fallbackVideoId ? youtubeThumb(fallbackVideoId) : null)
+
 // Real Facebook video (Reel) embedded via Facebook's public Video Plugin —
 // no API key / app review needed, works for any public video or reel URL.
 const FB_REEL_URL = 'https://www.facebook.com/reel/809720335534900'
@@ -45,11 +48,7 @@ const FACEBOOK_ITEMS = [
   { id: 'fb7', icon: '💆', title: 'Massage giảm đau lưng đơn giản', duration: '04:18', time: '3 ngày trước' },
 ]
 
-// xuankhanhsupertech — các video thật của kênh. Dùng TikTok Embed Player CHÍNH THỨC
-// (blockquote data-video-id + script embed.js) thay vì gọi thẳng iframe
-// tiktok.com/embed/v2/{id}: gọi iframe trực tiếp không đi qua "bắt tay" của embed.js nên
-// TikTok chặn 403 các file video trên CDN của họ (vx-bdp.tiktokv.com) khi phát nhiều video
-// liên tiếp/khi cuộn — dùng đúng cơ chế nhúng chính thức thì không cần API key và không bị lỗi.
+// xuankhanhsupertech — các video thật của kênh, phát bằng TikTok embed URL theo từng video.
 const TIKTOK_REAL_VIDEOS = [
   { id: 'ttr1', videoId: '7638637936342273288' },
   { id: 'ttr2', videoId: '7638634959804189959' },
@@ -136,13 +135,43 @@ async function fetchYouTubeTitle(videoId) {
   }
 }
 
+async function fetchYouTubeOEmbed(url) {
+  try {
+    const res = await fetch(`https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`)
+    if (!res.ok) return null
+    const data = await res.json()
+    return {
+      title: data.title || null,
+      author: data.author_name || null,
+      thumbnailUrl: data.thumbnail_url || null,
+    }
+  } catch {
+    return null
+  }
+}
+
+async function fetchTikTokOEmbed(url) {
+  try {
+    const res = await fetch(`https://www.tiktok.com/oembed?url=${encodeURIComponent(url)}`)
+    if (!res.ok) return null
+    const data = await res.json()
+    return {
+      title: data.title || null,
+      author: data.author_name || null,
+      thumbnailUrl: data.thumbnail_url || null,
+    }
+  } catch {
+    return null
+  }
+}
+
 // Chỉ giữ lại các mục có link thật — đã bỏ các ô mock (yt2..yt7) không có link.
 const YOUTUBE_ITEMS = [
-  { id: 'yt0', icon: '▶', title: 'Playlist sức khỏe nổi bật', channel: 'YouTube Playlist', views: 'Playlist', time: 'youtube.com/watch?v=LHkE3loNxJ4', url: 'https://www.youtube.com/watch?v=LHkE3loNxJ4&list=PLhPgpmsoyA4GrZ5mGrOPyf1wb1Ke1Zw8p', embedUrl: FEATURED_PLAYLIST_EMBED, playlistId: FEATURED_PLAYLIST_ID },
-  { id: 'yt1', icon: '🫀', title: 'The Organ Story - Khám phá cơ thể qua hoạt hình khoa học', channel: 'The Organ Story', views: 'Playlist chính thức', time: 'youtube.com/@TheOrganStory', url: 'https://www.youtube.com/@TheOrganStory', embedUrl: ORGAN_STORY_EMBED, playlistId: ORGAN_STORY_PLAYLIST_ID },
-  { id: 'yt_playlists', icon: '📂', title: 'Playlist Kiến Thức Sức Khỏe 3D', channel: 'Kiến Thức Sức Khỏe 3D', views: 'Playlist', time: `youtube.com/watch?v=${KIENTHUC_PLAYLIST_START_VIDEO}&list=${KIENTHUC_PLAYLIST_ID}`, url: `https://www.youtube.com/watch?v=${KIENTHUC_PLAYLIST_START_VIDEO}&list=${KIENTHUC_PLAYLIST_ID}`, embedUrl: KIENTHUC_PLAYLIST_EMBED, playlistId: KIENTHUC_PLAYLIST_ID },
-  { id: 'yt_playlist2', icon: '▶', title: 'Playlist sức khỏe (thật)', channel: 'YouTube Playlist', views: 'Playlist', time: `youtube.com/playlist?list=${HEALTH_PLAYLIST_ID}`, url: `https://www.youtube.com/playlist?list=${HEALTH_PLAYLIST_ID}`, embedUrl: HEALTH_PLAYLIST_EMBED, playlistId: HEALTH_PLAYLIST_ID },
-  { id: 'yt_video1', icon: '🎬', title: 'Video sức khỏe (thật)', channel: 'YouTube', views: 'Video thật', time: `youtube.com/watch?v=${SINGLE_VIDEO_ID}`, url: `https://www.youtube.com/watch?v=${SINGLE_VIDEO_ID}`, embedUrl: SINGLE_VIDEO_EMBED },
+  { id: 'yt0', icon: '▶', thumbnailUrl: youtubeThumb('LHkE3loNxJ4'), title: 'Playlist sức khỏe nổi bật', channel: 'YouTube Playlist', views: 'Playlist', time: 'youtube.com/watch?v=LHkE3loNxJ4', url: 'https://www.youtube.com/watch?v=LHkE3loNxJ4&list=PLhPgpmsoyA4GrZ5mGrOPyf1wb1Ke1Zw8p', embedUrl: FEATURED_PLAYLIST_EMBED, playlistId: FEATURED_PLAYLIST_ID },
+  { id: 'yt1', icon: '🫀', thumbnailUrl: youtubePlaylistThumb(null), title: 'The Organ Story - Khám phá cơ thể qua hoạt hình khoa học', channel: 'The Organ Story', views: 'Playlist chính thức', time: 'youtube.com/@TheOrganStory', url: 'https://www.youtube.com/@TheOrganStory', embedUrl: ORGAN_STORY_EMBED, playlistId: ORGAN_STORY_PLAYLIST_ID },
+  { id: 'yt_playlists', icon: '📂', thumbnailUrl: youtubeThumb(KIENTHUC_PLAYLIST_START_VIDEO), title: 'Playlist Kiến Thức Sức Khỏe 3D', channel: 'Kiến Thức Sức Khỏe 3D', views: 'Playlist', time: `youtube.com/watch?v=${KIENTHUC_PLAYLIST_START_VIDEO}&list=${KIENTHUC_PLAYLIST_ID}`, url: `https://www.youtube.com/watch?v=${KIENTHUC_PLAYLIST_START_VIDEO}&list=${KIENTHUC_PLAYLIST_ID}`, embedUrl: KIENTHUC_PLAYLIST_EMBED, playlistId: KIENTHUC_PLAYLIST_ID },
+  { id: 'yt_playlist2', icon: '▶', thumbnailUrl: youtubePlaylistThumb(null), title: 'Playlist sức khỏe (thật)', channel: 'YouTube Playlist', views: 'Playlist', time: `youtube.com/playlist?list=${HEALTH_PLAYLIST_ID}`, url: `https://www.youtube.com/playlist?list=${HEALTH_PLAYLIST_ID}`, embedUrl: HEALTH_PLAYLIST_EMBED, playlistId: HEALTH_PLAYLIST_ID },
+  { id: 'yt_video1', icon: '🎬', thumbnailUrl: youtubeThumb(SINGLE_VIDEO_ID), title: 'Video sức khỏe (thật)', channel: 'YouTube', views: 'Video thật', time: `youtube.com/watch?v=${SINGLE_VIDEO_ID}`, url: `https://www.youtube.com/watch?v=${SINGLE_VIDEO_ID}`, embedUrl: SINGLE_VIDEO_EMBED },
 ]
 
 const FAVORITE_CHANNELS = [
@@ -195,6 +224,9 @@ const DEMO_VIDEO_SRC = 'https://interactive-examples.mdn.mozilla.net/media/cc0-v
 // ─── Thumbnail card ─────────────────────────────────────────────────────────
 function ThumbCard({ item, active, onClick, orientation, border, surface, text, text2 }) {
   const isRow = orientation === 'row'
+  const [imageFailed, setImageFailed] = useState(false)
+  const thumbnailUrl = !imageFailed ? item.thumbnailUrl : null
+
   return (
     <button
       type="button"
@@ -212,7 +244,24 @@ function ThumbCard({ item, active, onClick, orientation, border, surface, text, 
         position: 'relative', width: '100%', aspectRatio: isRow ? '9/16' : '16/10',
         background: gradFor(item.id), display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
-        <span style={{ fontSize: isRow ? 26 : 22 }}>{item.icon}</span>
+        {thumbnailUrl ? (
+          <img
+            src={thumbnailUrl}
+            alt={item.title}
+            loading="lazy"
+            referrerPolicy="no-referrer"
+            onError={() => setImageFailed(true)}
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+          />
+        ) : (
+          <span style={{ fontSize: isRow ? 26 : 22 }}>{item.icon}</span>
+        )}
+        {thumbnailUrl && (
+          <span style={{
+            position: 'absolute', inset: 0,
+            background: 'linear-gradient(180deg,rgba(0,0,0,0.04),rgba(0,0,0,0.42))',
+          }} />
+        )}
         {item.url ? (
           <span style={{
             position: 'absolute', bottom: 4, right: 4, fontSize: 9, fontWeight: 800,
@@ -276,37 +325,37 @@ function TikTokCreatorEmbed({ url, linkUrl }) {
 }
 
 // ─── TikTok Single Video Embed (real widget, no API key) ──────────────────
-// Uses TikTok's official embed.js with a data-video-id blockquote (the same
-// "handshake" mechanism as the creator embed above). Calling the raw iframe URL
-// (tiktok.com/embed/v2/{id}) directly — without going through embed.js — skips that
-// handshake, so TikTok's CDN (vx-bdp.tiktokv.com) starts rejecting the underlying
-// video files with 403 once several are opened in a row / while scrolling. Going
-// through the official script avoids that.
+// Render TikTok's per-video embed iframe directly so RSS items keep working in
+// React SPA navigation without depending on embed.js re-scanning replaced nodes.
 function TikTokVideoEmbed({ videoId, url }) {
-  const containerRef = useRef(null)
-
-  useEffect(() => {
-    const container = containerRef.current
-    if (!container || !videoId) return
-    container.innerHTML = `
-      <blockquote class="tiktok-embed" cite="${url}" data-video-id="${videoId}" style="max-width:100%;min-width:288px;width:100%;margin:0;">
-        <section><a target="_blank" rel="noopener noreferrer" href="${url}">Xem trên TikTok</a></section>
-      </blockquote>`
-    const script = document.createElement('script')
-    script.src = `https://www.tiktok.com/embed.js?t=${Date.now()}`
-    script.async = true
-    document.body.appendChild(script)
-    return () => { script.remove() }
-  }, [videoId, url])
-
   return (
     <div
-      ref={containerRef}
       style={{
-        width: '100%', height: '100%', overflow: 'hidden', display: 'flex',
+        position: 'relative', width: '100%', height: '100%', overflow: 'hidden', display: 'flex',
         alignItems: 'center', justifyContent: 'center', background: '#000',
       }}
-    />
+    >
+      <iframe
+        key={videoId}
+        src={`https://www.tiktok.com/embed/v2/${videoId}`}
+        title="TikTok video"
+        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 0 }}
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        allowFullScreen
+      />
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{
+          position: 'absolute', left: 10, bottom: 10, zIndex: 2, fontSize: 11, fontWeight: 800,
+          color: '#04060f', background: 'rgba(255,255,255,0.82)', borderRadius: 999, padding: '4px 9px',
+          textDecoration: 'none',
+        }}
+      >
+        Mở TikTok gốc
+      </a>
+    </div>
   )
 }
 
@@ -330,6 +379,8 @@ export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel })
   const [liked, setLiked] = useState(false)
   const [saved, setSaved] = useState(false)
   const [mobileTab, setMobileTab] = useState('player')
+  const [tiktokOEmbeds, setTiktokOEmbeds] = useState({})
+  const [youtubeOEmbeds, setYoutubeOEmbeds] = useState({})
   const videoRef = useRef(null)
 
   // ── Real playlist video list (Organ Story) ──
@@ -338,6 +389,52 @@ export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel })
   const [organVideos, setOrganVideos] = useState([])
   const [organActiveId, setOrganActiveId] = useState(null)
   const [organLoading, setOrganLoading] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    TIKTOK_ITEMS.forEach(async (item) => {
+      if (!item.url || tiktokOEmbeds[item.id]) return
+      const oembed = await fetchTikTokOEmbed(item.url)
+      if (cancelled || !oembed) return
+      setTiktokOEmbeds(prev => ({ ...prev, [item.id]: oembed }))
+    })
+    return () => { cancelled = true }
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    YOUTUBE_ITEMS.forEach(async (item) => {
+      if (!item.url) return
+      const oembed = await fetchYouTubeOEmbed(item.url)
+      if (cancelled || !oembed) return
+      setYoutubeOEmbeds(prev => ({ ...prev, [item.id]: oembed }))
+    })
+    return () => { cancelled = true }
+  }, [])
+
+  const tiktokItems = TIKTOK_ITEMS.map(item => {
+    const oembed = tiktokOEmbeds[item.id]
+    return oembed
+      ? {
+          ...item,
+          title: oembed.title || item.title,
+          channel: oembed.author || item.channel,
+          thumbnailUrl: oembed.thumbnailUrl || item.thumbnailUrl,
+        }
+      : item
+  })
+
+  const youtubeItems = YOUTUBE_ITEMS.map(item => {
+    const oembed = youtubeOEmbeds[item.id]
+    return oembed
+      ? {
+          ...item,
+          title: oembed.title || item.title,
+          channel: oembed.author || item.channel,
+          thumbnailUrl: oembed.thumbnailUrl || item.thumbnailUrl,
+        }
+      : item
+  })
 
   const select = useCallback((item, kind) => {
     setCurrent(item)
@@ -534,7 +631,7 @@ export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel })
           >
             <SourceHeader icon="♪" iconBg="rgba(255,255,255,0.1)" iconColor="#ff2d55" title="TikTok RSS" text={text} />
             <div className="rss-scroll" style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 4 }}>
-              {TIKTOK_ITEMS.map(item => (
+              {tiktokItems.map(item => (
                 <ThumbCard key={item.id} item={item} orientation="row" active={current.id === item.id}
                   onClick={() => select(item, 'tiktok')} border={border} surface={surface} text={text} text2={text2} />
               ))}
@@ -802,7 +899,7 @@ export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel })
             style={{ ...panelCard, gridColumn: 1, gridRow: '1 / span 3', display: 'flex', flexDirection: 'column', gap: 8, overflowY: 'visible' }}
           >
             <SourceHeader icon="▶" iconBg="rgba(255,0,0,0.16)" iconColor="#ff0000" title="YouTube RSS" text={text} />
-            {YOUTUBE_ITEMS.map(item => (
+            {youtubeItems.map(item => (
               <ThumbCard key={item.id} item={item} orientation="col" active={current.id === item.id}
                 onClick={() => item.linkOnly ? window.open(item.url, '_blank', 'noopener,noreferrer') : select(item, 'youtube')} border={border} surface={surface} text={text} text2={text2} />
             ))}
