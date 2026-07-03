@@ -7,7 +7,7 @@ import HelpFlowMap from './health-journey-game/help/HelpFlowMap'
 import { HELP_SCREENS } from './health-journey-game/help/helpContent'
 import './health-journey-game/help/help.css'
 
-export default function HealthJourneyGamePanel({ onNext, nextLabel, onViewMedicalRecord }) {
+export default function HealthJourneyGamePanel({ onNext, nextLabel, onViewMedicalRecord, onOpenMyRewardHealth }) {
   const { lang } = useApp()
   const gameRef = useRef(null)
 
@@ -47,7 +47,7 @@ export default function HealthJourneyGamePanel({ onNext, nextLabel, onViewMedica
           loading="lazy"
         /> */}
 
-<HealthJourneyGameStandalone onViewMedicalRecord={onViewMedicalRecord} />
+<HealthJourneyGameStandalone onViewMedicalRecord={onViewMedicalRecord} onOpenMyRewardHealth={onOpenMyRewardHealth} />
       </section>
 
       <section className="ai-healthcare-vision-header health-journey-game-header health-journey-game-header-flow health-journey-game-header-flipped">
