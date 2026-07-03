@@ -660,6 +660,71 @@ export default function AvatarCreatorPanel() {
             </div>
 
           </div>
+
+          {/* ============ Full-width 3D preview, below the whole grid ============ */}
+          <div className="osa-card" style={{ marginTop: 16, overflow: 'hidden' }}>
+            <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, borderBottom: `1px solid ${palette.border}`, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                <span className="osa-label">{vi ? 'Xem trước 3D' : '3D Preview'}</span>
+                {selectedAvatar && (
+                  <span style={{ fontSize: 12, fontWeight: 800, color: palette.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {selectedAvatar.name} · {activeFormat?.label || selectedAvatar.format} · {selectedAnimation}
+                  </span>
+                )}
+              </div>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button type="button" onClick={() => setShowMeasureGrid((v) => !v)} style={iconBtnStyle(showMeasureGrid)} title={vi ? 'Lưới đo' : 'Measurement grid'}><Ruler size={15} /></button>
+                <button type="button" onClick={() => setAutoRotate((v) => !v)} style={iconBtnStyle(autoRotate)} title={vi ? 'Tự xoay' : 'Auto-rotate'}>{autoRotate ? <Pause size={15} /> : <Play size={15} />}</button>
+                <button type="button" onClick={handleShare} style={iconBtnStyle(false)} title={vi ? 'Copy link' : 'Share'}><Share2 size={15} /></button>
+              </div>
+            </div>
+
+            <div style={{ position: 'relative', height: 620, background: isDark ? 'linear-gradient(180deg,#0b1220,#050816)' : 'linear-gradient(180deg,#f4f0e8,#e8e1d7)' }}>
+              {activeModelUrl ? (
+                <AnimatedAvatarViewer
+                  modelUrl={activeModelUrl}
+                  modelKind={activeModelKind}
+                  animationBlobUrl={animationBlobUrl}
+                  animationLabel={selectedAnimation}
+                  isDark={isDark}
+                  autoRotate={autoRotate}
+                  showGrid={showMeasureGrid}
+                  onStatusChange={(update) => {
+                    if (update.error) {
+                      setAnimationLoadStatus(vi ? `Lỗi: ${update.error}` : `Error: ${update.error}`)
+                    } else if (update.stats) {
+                      setModelStats(update.stats)
+                    } else if (typeof update.trackCount === 'number') {
+                      setAnimationLoadStatus(vi
+                        ? `${selectedAnimation} đã tải xong · ${update.trackCount} tracks`
+                        : `${selectedAnimation} loaded · ${update.trackCount} tracks`)
+                    } else if (update.timedOut) {
+                      setAnimationLoadStatus(vi ? 'Đã ép tắt loading (safety timeout)' : 'Loading indicator forced off (safety timeout)')
+                    }
+                  }}
+                />
+              ) : (
+                <div style={{ height: '100%', display: 'grid', placeItems: 'center' }}>
+                  {selectedAvatar?.thumbnail_url
+                    ? <img src={selectedAvatar.thumbnail_url} alt={selectedAvatar.name} style={{ maxHeight: '70%', borderRadius: 16 }} />
+                    : <span style={{ fontSize: 96 }}>🧑‍🚀</span>}
+                </div>
+              )}
+            </div>
+
+            <div style={{ padding: '10px 16px', borderTop: `1px solid ${palette.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+              <span style={{ color: palette.text3, fontSize: 11 }}>
+                {vi
+                  ? 'Cùng model & animation đang chọn ở trên — chỉ hiển thị lớn hơn, giống khung xem 3D của opensourceavatars.com.'
+                  : 'Same model & animation selected above — just rendered larger, matching the 3D view on opensourceavatars.com.'}
+              </span>
+              {modelStats && (
+                <span style={{ color: palette.text3, fontSize: 11, fontWeight: 800 }}>
+                  {modelStats.vertices ? `${modelStats.vertices.toLocaleString()} ${vi ? 'đỉnh' : 'verts'}` : ''}
+                </span>
+              )}
+            </div>
+          </div>
         </div>
       </section>
     </div>

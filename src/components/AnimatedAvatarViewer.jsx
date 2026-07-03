@@ -111,6 +111,17 @@ export default function AnimatedAvatarViewer({
       stateRef.current.avatarRoot = avatarRoot
       stateRef.current.vrm = vrm || null
       onStatusChange?.({ modelLoaded: true, isVrm: !!vrm })
+
+      let vertices = 0
+      let triangles = 0
+      avatarRoot.traverse((obj) => {
+        if (obj.isMesh && obj.geometry) {
+          const geom = obj.geometry
+          vertices += geom.attributes?.position?.count || 0
+          triangles += geom.index ? geom.index.count / 3 : (geom.attributes?.position?.count || 0) / 3
+        }
+      })
+      onStatusChange?.({ stats: { vertices, triangles: Math.round(triangles) } })
     }
 
     if (modelUrl) {
