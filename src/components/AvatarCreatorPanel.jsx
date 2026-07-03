@@ -159,6 +159,34 @@ export default function AvatarCreatorPanel() {
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   const [saveNote, setSaveNote] = useState('')
+  const [modelViewerReady, setModelViewerReady] = useState(
+    typeof window !== 'undefined' && !!window.customElements?.get('model-viewer')
+  )
+
+  // ---- Load Google's <model-viewer> web component from a CDN, once. ----
+  // This is a genuine custom element with its own WebGL renderer — not an
+  // <iframe> — so embedding it never triggers the source site's CSP
+  // frame-ancestors restriction. It also ships a built-in drag-to-rotate
+  // "interaction prompt" (the finger/hand hint), which we lean on for the
+  // "Khung render 3D" panel at the bottom of the page instead of hand-rolling it.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (window.customElements?.get('model-viewer')) {
+      setModelViewerReady(true)
+      return
+    }
+    const existingScript = document.querySelector('script[data-avatar-model-viewer]')
+    if (existingScript) {
+      existingScript.addEventListener('load', () => setModelViewerReady(true), { once: true })
+      return
+    }
+    const script = document.createElement('script')
+    script.type = 'module'
+    script.src = 'https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js'
+    script.dataset.avatarModelViewer = 'true'
+    script.addEventListener('load', () => setModelViewerReady(true), { once: true })
+    document.head.appendChild(script)
+  }, [])
 
   useEffect(() => () => {
     if (animationBlobUrl) URL.revokeObjectURL(animationBlobUrl)
@@ -251,6 +279,8 @@ export default function AvatarCreatorPanel() {
   const activeFormat = formatOptions.find((option) => option.key === selectedFormatKey) || formatOptions[0] || null
   const activeModelUrl = activeFormat?.url || ''
   const activeModelKind = activeFormat?.kind || 'gltf'
+  // model-viewer only understands glTF/GLB (which VRM files are) — never FBX.
+  const modelViewerModelUrl = activeModelKind === 'fbx' ? '' : activeModelUrl
 
   const loadAnimationFile = async (animation) => {
     setSelectedAnimation(animation)
@@ -667,7 +697,7 @@ export default function AvatarCreatorPanel() {
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
                 <div>
                   <div style={{ fontSize: 17, fontWeight: 900, letterSpacing: '-0.01em', color: palette.text }}>
-                    {vi ? 'Khung render 3D' : '3D Render Frame'}
+                    {vi ? 'Trình xem 3D & Animation' : '3D & Animation Viewer'}
                   </div>
                   <div style={{ fontSize: 12, color: palette.text3, marginTop: 2 }}>
                     opensourceavatars.com/finder
@@ -742,6 +772,74 @@ export default function AvatarCreatorPanel() {
                   {modelStats.vertices ? `${modelStats.vertices.toLocaleString()} ${vi ? 'đỉnh' : 'verts'}` : ''}
                 </span>
               )}
+            </div>
+          </div>
+
+          {/* ============ "Khung render 3D" — genuine <model-viewer> web component ============ */}
+          {/* No <iframe> anywhere: this is Google's model-viewer custom element, which owns
+              its own WebGL canvas, so it can never trigger the source site's CSP
+              frame-ancestors restriction. Its built-in `interaction-prompt` is the
+              hand/finger drag hint (slides + fades) shown until the user first drags. */}
+          <div className="osa-card" style={{ marginTop: 16, overflow: 'hidden' }}>
+            <div style={{ padding: '16px 18px 14px', borderBottom: `1px solid ${palette.border}`, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+              <div>
+                <div style={{ fontSize: 17, fontWeight: 900, letterSpacing: '-0.01em', color: palette.text }}>
+                  {vi ? 'Khung render 3D' : '3D Render Frame'}
+                </div>
+                <div style={{ fontSize: 12, color: palette.text3, marginTop: 2 }}>
+                  opensourceavatars.com/finder
+                </div>
+              </div>
+              <a
+                href={selectedAvatarFinderUrl}
+                target="_blank"
+                rel="noreferrer"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: palette.accent, fontSize: 13, fontWeight: 900, textDecoration: 'none', whiteSpace: 'nowrap' }}
+              >
+                {vi ? 'Mở 3D' : 'Open 3D'} <ExternalLink size={14} />
+              </a>
+            </div>
+
+            <div style={{ position: 'relative', height: 560, overflow: 'hidden', background: isDark ? 'radial-gradient(circle at 50% 24%, rgba(0,229,255,0.16), transparent 42%), linear-gradient(180deg,#0b1220,#050816)' : 'radial-gradient(circle at 50% 24%, rgba(0,184,204,0.14), transparent 44%), linear-gradient(180deg,#f4f0e8,#e8e1d7)' }}>
+              {/* Decorative ground ring + light beam, matching opensourceavatars.com's viewer chrome */}
+              <div style={{ position: 'absolute', left: '50%', bottom: 46, width: '62%', maxWidth: 420, height: 92, transform: 'translateX(-50%) perspective(420px) rotateX(66deg)', borderRadius: '50%', border: `1px solid ${isDark ? 'rgba(148,163,184,0.28)' : 'rgba(71,85,105,0.22)'}`, background: isDark ? 'repeating-radial-gradient(circle, rgba(148,163,184,0.22) 0 1px, transparent 1px 26px)' : 'repeating-radial-gradient(circle, rgba(71,85,105,0.2) 0 1px, transparent 1px 26px)', pointerEvents: 'none' }} />
+              <div style={{ position: 'absolute', left: '50%', bottom: 70, width: 2, height: 320, transform: 'translateX(-50%)', background: isDark ? 'linear-gradient(transparent,rgba(0,229,255,0.32),transparent)' : 'linear-gradient(transparent,rgba(0,184,204,0.28),transparent)', pointerEvents: 'none' }} />
+
+              {modelViewerModelUrl ? (
+                <model-viewer
+                  src={modelViewerModelUrl}
+                  alt={selectedAvatar ? `${selectedAvatar.name} VRM model` : 'Selected avatar VRM model'}
+                  camera-controls="true"
+                  auto-rotate="true"
+                  interaction-prompt="auto"
+                  interaction-prompt-style="basic"
+                  exposure="1"
+                  shadow-intensity="0.7"
+                  style={{ position: 'relative', zIndex: 1, width: '100%', height: '100%', display: 'block', background: 'transparent' }}
+                />
+              ) : (
+                <div style={{ position: 'relative', zIndex: 1, height: '100%', display: 'grid', placeItems: 'center' }}>
+                  {selectedAvatar?.thumbnail_url
+                    ? <img src={selectedAvatar.thumbnail_url} alt={selectedAvatar.name} style={{ maxHeight: '60%', borderRadius: 16 }} />
+                    : <span style={{ fontSize: 88 }}>🧑‍🚀</span>}
+                </div>
+              )}
+            </div>
+
+            <div style={{ padding: '10px 16px', borderTop: `1px solid ${palette.border}` }}>
+              <span style={{ color: palette.text3, fontSize: 11, lineHeight: 1.5 }}>
+                {modelViewerModelUrl
+                  ? (vi
+                    ? 'Render 3D nội bộ bằng model-viewer, không dùng iframe nên tránh lỗi CSP frame-ancestors.'
+                    : 'Rendered locally with model-viewer — no iframe, so it avoids the source site\'s CSP frame-ancestors errors.')
+                  : (activeModelKind === 'fbx'
+                    ? (vi ? 'Định dạng FBX đang chọn không được model-viewer hỗ trợ trực tiếp — chọn định dạng VRM ở trên để xem tại đây.' : 'model-viewer can\'t load the selected FBX format directly — pick the VRM format above to preview it here.')
+                    : (vi ? 'Avatar này chưa có model URL, đang hiển thị ảnh preview.' : 'This avatar has no model URL yet, so a static preview image is shown.'))}
+                {' '}
+                {vi
+                  ? 'Animation Mixamo đã retarget nằm ở khung "Trình xem 3D & Animation" phía trên.'
+                  : 'The retargeted Mixamo animations live in the "3D & Animation Viewer" panel above.'}
+              </span>
             </div>
           </div>
         </div>
