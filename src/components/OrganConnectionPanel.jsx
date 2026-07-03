@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import NavButtons from './NavButtons.jsx'
 import { useApp } from '../context/AppContext'
+import { useAuth } from '../context/AuthContext.jsx'
+import { useGlobalAIChatbotEngine, quickPrompts, MAX_FILES, getModeLabel } from '../lib/useGlobalAIChatbotEngine.js'
 
 import organBoyUrl        from '../organ-connection/assets/boy.png'
 import organBrainUrl      from '../organ-connection/assets/brain.png'
@@ -896,6 +898,172 @@ function HealthCardModal({ open, onClose, scores, hasItem, selection }) {
 // ─── Main Component ───────────────────────────────────────────────────────────
 const EMPTY_SEL = { target:null, base:null, protein:null, veg:null, top:null, avoid:null }
 
+// ─── Bác sĩ Dinh Dưỡng AI — chat thật nhúng vào trang "Ăn gì tốt hôm nay" ───
+// Dùng CHUNG hook + kho lưu trữ (globalChatbotStorage.js) với widget GlobalAIChatbot
+// (góc màn hình) và trang "Lịch sử Chat với AI" → mọi tin nhắn gửi ở đây cũng xuất
+// hiện đồng bộ song song ở 2 nơi kia, và ngược lại — không cần đóng/mở lại trang.
+function NutritionAIChatView({ contextHint }) {
+  const { user } = useAuth()
+  const userKey = user?.uuid || null
+  const scrollRef = useRef(null)
+  const docInputRef = useRef(null)
+  const fileInputRef = useRef(null)
+
+  const {
+    messages,
+    input, setInput,
+    status,
+    mode,
+    busy,
+    attachedFiles,
+    handleFilesSelect, removeAttachedFile,
+    submitQuestion,
+    speaking, speak,
+    recording, transcribing, toggleMic,
+  } = useGlobalAIChatbotEngine({ userKey, activePanelLabel: 'Ăn gì tốt hôm nay', isVi: true })
+
+  useEffect(() => {
+    window.setTimeout(() => {
+      scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
+    }, 30)
+  }, [messages, busy])
+
+  const border = '#e2e8f0'
+  const surface = '#f8fafc'
+  const ink = '#0f172a'
+  const muted = '#64748b'
+  const userBubble = 'linear-gradient(135deg,#4f46e5,#6366f1)'
+  const botBubble = '#f1f5f9'
+  const accent = '#4f46e5'
+
+  return (
+    <div style={{ width:'100%', maxWidth:500, display:'flex', flexDirection:'column', borderRadius:16, overflow:'hidden', border:`1px solid ${border}`, background:'#fff', boxShadow:'0 1px 3px rgba(0,0,0,0.06)' }}>
+      {/* Header */}
+      <div style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 14px', background:surface, borderBottom:`1px solid ${border}` }}>
+        <span style={{ fontSize:20 }}>🥗</span>
+        <div style={{ flex:1, minWidth:0 }}>
+          <div style={{ fontWeight:900, fontSize:13, color:ink, textTransform:'uppercase', letterSpacing:'0.04em' }}>Bác sĩ Dinh Dưỡng AI</div>
+          <div style={{ fontSize:11, color:muted, marginTop:2 }}>{status} · {getModeLabel(mode, true)}</div>
+        </div>
+        <span style={{ fontSize:10, padding:'3px 8px', borderRadius:999, background:'#eef2ff', color:accent, fontWeight:800 }}>Đồng bộ lịch sử</span>
+      </div>
+
+      {contextHint && (
+        <div style={{ fontSize:12, color:'#475569', lineHeight:1.6, fontStyle:'italic', padding:'10px 14px', borderBottom:`1px solid ${border}`, background:'#fafbff' }} dangerouslySetInnerHTML={{ __html: contextHint }} />
+      )}
+
+      {/* Quick prompts */}
+      <div style={{ display:'flex', flexWrap:'wrap', gap:6, padding:'8px 12px 0' }}>
+        {['Mâm cơm này có tốt cho gan không?', 'Gợi ý món thay thế lành mạnh hơn', 'Uống bia có ảnh hưởng gì?'].map(prompt => (
+          <button key={prompt} type="button" disabled={busy} onClick={() => submitQuestion(prompt)}
+            style={{ fontSize:11, padding:'5px 10px', borderRadius:999, border:`1px solid ${border}`, background:surface, color:muted, cursor: busy ? 'not-allowed' : 'pointer', fontFamily:'inherit', opacity: busy ? 0.6 : 1 }}>
+            {prompt}
+          </button>
+        ))}
+      </div>
+
+      {/* Messages */}
+      <div ref={scrollRef} style={{ flex:'1 1 auto', minHeight:220, maxHeight:340, overflowY:'auto', display:'flex', flexDirection:'column', gap:10, padding:'12px 14px' }}>
+        {messages.length === 0 && !busy && (
+          <div style={{ fontSize:12, color:muted, textAlign:'center', padding:'12px 0' }}>Hỏi Bác sĩ Dinh Dưỡng AI bất cứ điều gì về mâm cơm và mục tiêu sức khỏe của bạn 👇</div>
+        )}
+        {messages.map(msg => (
+          <div key={msg.id} style={{ display:'flex', flexDirection:'column', gap:4, alignItems: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
+            <div style={{ maxWidth:'86%', padding:'9px 12px', borderRadius: msg.role === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px', background: msg.role === 'user' ? userBubble : botBubble, color: msg.role === 'user' ? '#fff' : ink, fontSize:12.5, lineHeight:1.55, wordBreak:'break-word' }}>
+              {msg.imageDataUrls && msg.imageDataUrls.length > 0 && (
+                <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom: msg.text ? 8 : 0 }}>
+                  {msg.imageDataUrls.map((img, i) => (
+                    img.kind === 'pdf'
+                      ? <div key={i} style={{ width:44, height:44, borderRadius:8, background:'rgba(255,255,255,0.2)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', fontSize:16 }}>📄</div>
+                      : <img key={i} src={img.dataUrl} alt={img.name || 'attached'} style={{ width:44, height:44, borderRadius:8, objectFit:'cover', display:'block' }} />
+                  ))}
+                </div>
+              )}
+              {msg.fileNames && msg.fileNames.length > 0 && (
+                <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom: msg.text ? 8 : 0 }}>
+                  {msg.fileNames.map((name, i) => <span key={i} style={{ fontSize:9, padding:'3px 7px', borderRadius:8, background:'rgba(255,255,255,0.2)' }}>📃 {name}</span>)}
+                </div>
+              )}
+              {msg.text}
+            </div>
+            {msg.role === 'assistant' && (
+              <button type="button" onClick={() => speak(msg.text)}
+                title={speaking ? 'Dừng đọc' : 'Đọc to'}
+                style={{ background:'none', border:'none', cursor:'pointer', fontSize:13, color:muted, padding:'2px 4px' }}>
+                {speaking ? '⏸' : '🔊'}
+              </button>
+            )}
+          </div>
+        ))}
+        {busy && mode === 'thinking' && (
+          <div style={{ maxWidth:'70%', padding:'9px 12px', borderRadius:'16px 16px 16px 4px', background:botBubble, display:'flex', gap:5, alignItems:'center' }}>
+            {[0, 0.2, 0.4].map((d, i) => (
+              <span key={i} style={{ width:6, height:6, borderRadius:'50%', background:accent, display:'inline-block', animation:`ocNutritionChatDot 1.2s ${d}s ease-in-out infinite` }} />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Attached file previews */}
+      {attachedFiles.length > 0 && (
+        <div style={{ display:'flex', gap:8, padding:'8px 14px 0', overflowX:'auto' }}>
+          {attachedFiles.map(f => (
+            <div key={f.id} style={{ position:'relative', flexShrink:0 }}>
+              {f.kind === 'image'
+                ? <img src={f.dataUrl} alt={f.name} title={f.name} style={{ width:44, height:44, borderRadius:8, objectFit:'cover', display:'block' }} />
+                : <div title={f.name} style={{ width:44, height:44, borderRadius:8, background:surface, border:`1px solid ${border}`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:16 }}>{f.kind === 'pdf' ? '📄' : '📃'}</div>}
+              <button type="button" onClick={() => removeAttachedFile(f.id)}
+                style={{ position:'absolute', top:-5, right:-5, border:'none', background:'#fff', color:ink, borderRadius:'50%', width:16, height:16, cursor:'pointer', fontSize:9, lineHeight:'16px', padding:0, textAlign:'center', boxShadow:'0 1px 4px rgba(0,0,0,0.35)', fontWeight:800 }}>×</button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Input row */}
+      <div style={{ display:'flex', gap:6, alignItems:'flex-end', padding:'10px 14px 12px', borderTop:`1px solid ${border}` }}>
+        <input ref={docInputRef} type="file" accept="image/*,application/pdf,text/plain,text/csv,.csv,.txt,.md" multiple onChange={handleFilesSelect} style={{ display:'none' }} />
+        <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={handleFilesSelect} style={{ display:'none' }} />
+
+        <button type="button" onClick={() => docInputRef.current?.click()} disabled={busy || attachedFiles.length >= MAX_FILES}
+          title={`Đính kèm PDF / văn bản / ảnh (tối đa ${MAX_FILES})`}
+          style={{ width:34, height:34, borderRadius:10, border:`1px solid ${border}`, background:surface, color:ink, fontSize:16, fontWeight:900, cursor: (busy || attachedFiles.length >= MAX_FILES) ? 'not-allowed' : 'pointer', opacity: (busy || attachedFiles.length >= MAX_FILES) ? 0.5 : 1, flexShrink:0 }}>
+          +
+        </button>
+
+        <textarea value={input} onChange={e => setInput(e.target.value)} rows={1}
+          placeholder={transcribing ? 'Đang nhận diện giọng nói…' : 'Hỏi Bác sĩ Dinh Dưỡng AI… (Enter để gửi)'}
+          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitQuestion() } }}
+          style={{ flex:1, resize:'none', borderRadius:10, border:`1px solid ${border}`, background:surface, color:ink, fontSize:12.5, padding:'8px 10px', fontFamily:'inherit', outline:'none', lineHeight:1.5 }} />
+
+        <button type="button" onClick={toggleMic} disabled={busy && !recording}
+          title={recording ? 'Dừng ghi âm' : 'Nói để hỏi'}
+          style={{ width:34, height:34, borderRadius:10, border:'none', background: recording ? 'linear-gradient(135deg,#ef4444,#f97316)' : surface, color: recording ? '#fff' : ink, fontSize:16, cursor: transcribing ? 'wait' : 'pointer', flexShrink:0, opacity: transcribing ? 0.7 : 1 }}>
+          {transcribing ? '⏳' : recording ? '⏹️' : '🎙️'}
+        </button>
+
+        <button type="button" onClick={() => fileInputRef.current?.click()} disabled={busy || attachedFiles.length >= MAX_FILES}
+          title={`Gửi hình ảnh để AI phân tích (tối đa ${MAX_FILES})`}
+          style={{ width:34, height:34, borderRadius:10, border:`1px solid ${border}`, background: attachedFiles.length > 0 ? '#eef2ff' : surface, color:ink, fontSize:16, cursor: (busy || attachedFiles.length >= MAX_FILES) ? 'not-allowed' : 'pointer', flexShrink:0, opacity: (busy || attachedFiles.length >= MAX_FILES) ? 0.5 : 1 }}>
+          🖼️
+        </button>
+
+        <button type="button" onClick={() => submitQuestion()} disabled={busy || (!input.trim() && attachedFiles.length === 0)}
+          style={{ height:34, padding:'0 14px', borderRadius:10, border:'none', background:accent, color:'#fff', fontWeight:800, fontSize:12.5, cursor: (busy || (!input.trim() && attachedFiles.length === 0)) ? 'not-allowed' : 'pointer', opacity: (busy || (!input.trim() && attachedFiles.length === 0)) ? 0.55 : 1, flexShrink:0, fontFamily:'inherit' }}>
+          {busy ? '…' : 'Gửi'}
+        </button>
+      </div>
+
+      <div style={{ fontSize:9.5, color:muted, textAlign:'center', padding:'0 14px 10px' }}>
+        Thông tin chỉ mang tính hỗ trợ, không thay thế tư vấn bác sĩ.
+      </div>
+
+      <style>{`
+        @keyframes ocNutritionChatDot { 0%,80%,100%{transform:scale(0.6);opacity:0.4} 40%{transform:scale(1);opacity:1} }
+      `}</style>
+    </div>
+  )
+}
+
 export default function OrganConnectionPanel({ onNext, onPrev, prevLabel, nextLabel }) {
   const { theme } = useApp()
   const isDark = theme === 'dark'
@@ -906,6 +1074,7 @@ export default function OrganConnectionPanel({ onNext, onPrev, prevLabel, nextLa
   const [showResult, setShowResult]     = useState(false)
   const [showHealthCard, setShowHealthCard] = useState(false)
   const [showOrganVideo, setShowOrganVideo] = useState(false)
+  const [showAIChat, setShowAIChat] = useState(false)
 
   // ── Playlist gợi ý cuối trang (real YT.Player, giống khu RSS) ──
   const ytPlaylistPlayerRef = useRef(null)
@@ -1276,12 +1445,24 @@ export default function OrganConnectionPanel({ onNext, onPrev, prevLabel, nextLa
 
           {/* AI card — đã chuyển xuống đây (dưới vùng gợi ý), thay vì nằm bên cột phân tích bên phải */}
           <div style={{ width:'100%', maxWidth:500, background:'#fff', border: selection.avoid?.id === 'bia' && selection.target?.organKey === 'liver' ? '1px solid #ef4444' : '1px solid #e2e8f0', borderRadius:16, padding:12, boxShadow:'0 1px 3px rgba(0,0,0,0.06)' }}>
-            <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}>
-              <span style={{ fontSize:18 }}>💬</span>
-              <span style={{ fontSize:12, fontWeight:900, color:'#0f172a', textTransform:'uppercase', letterSpacing:'0.05em' }}>Bác sĩ AI chẩn đoán:</span>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, marginBottom:8 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                <span style={{ fontSize:18 }}>💬</span>
+                <span style={{ fontSize:12, fontWeight:900, color:'#0f172a', textTransform:'uppercase', letterSpacing:'0.05em' }}>Bác sĩ Dinh Dưỡng AI:</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAIChat(v => !v)}
+                style={{ fontSize:11, fontWeight:800, color:'#4f46e5', background:'#eef2ff', border:'1px solid #c7d2fe', borderRadius:999, padding:'4px 10px', cursor:'pointer', flexShrink:0 }}
+              >
+                {showAIChat ? '✕ Đóng chat' : '🤗 Chat ngay'}
+              </button>
             </div>
             <div style={{ fontSize:13, color:'#475569', lineHeight:1.6, fontStyle:'italic' }} dangerouslySetInnerHTML={{ __html: aiMsg }} />
           </div>
+
+          {/* Chat thật với Bác sĩ Dinh Dưỡng AI — dùng chung Global AI Chat, đồng bộ lịch sử */}
+          {showAIChat && <NutritionAIChatView />}
         </main>
 
         {/* FULL-SCREEN FLIP: organ guidance video (always opens at full viewport height) */}
