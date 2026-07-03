@@ -663,23 +663,41 @@ export default function AvatarCreatorPanel() {
 
           {/* ============ Full-width 3D preview, below the whole grid ============ */}
           <div className="osa-card" style={{ marginTop: 16, overflow: 'hidden' }}>
-            <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, borderBottom: `1px solid ${palette.border}`, flexWrap: 'wrap' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                <span className="osa-label">{vi ? 'Xem trước 3D' : '3D Preview'}</span>
-                {selectedAvatar && (
-                  <span style={{ fontSize: 12, fontWeight: 800, color: palette.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <div style={{ padding: '16px 18px 12px', borderBottom: `1px solid ${palette.border}` }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                <div>
+                  <div style={{ fontSize: 17, fontWeight: 900, letterSpacing: '-0.01em', color: palette.text }}>
+                    {vi ? 'Khung render 3D' : '3D Render Frame'}
+                  </div>
+                  <div style={{ fontSize: 12, color: palette.text3, marginTop: 2 }}>
+                    opensourceavatars.com/finder
+                  </div>
+                </div>
+                <a
+                  href={selectedAvatarFinderUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: palette.accent, fontSize: 13, fontWeight: 900, textDecoration: 'none', whiteSpace: 'nowrap' }}
+                >
+                  {vi ? 'Mở 3D' : 'Open 3D'} <ExternalLink size={14} />
+                </a>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: 10, flexWrap: 'wrap' }}>
+                {selectedAvatar ? (
+                  <span style={{ fontSize: 11, fontWeight: 700, color: palette.text3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {selectedAvatar.name} · {activeFormat?.label || selectedAvatar.format} · {selectedAnimation}
                   </span>
-                )}
-              </div>
-              <div style={{ display: 'flex', gap: 6 }}>
-                <button type="button" onClick={() => setShowMeasureGrid((v) => !v)} style={iconBtnStyle(showMeasureGrid)} title={vi ? 'Lưới đo' : 'Measurement grid'}><Ruler size={15} /></button>
-                <button type="button" onClick={() => setAutoRotate((v) => !v)} style={iconBtnStyle(autoRotate)} title={vi ? 'Tự xoay' : 'Auto-rotate'}>{autoRotate ? <Pause size={15} /> : <Play size={15} />}</button>
-                <button type="button" onClick={handleShare} style={iconBtnStyle(false)} title={vi ? 'Copy link' : 'Share'}><Share2 size={15} /></button>
+                ) : <span />}
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button type="button" onClick={() => setShowMeasureGrid((v) => !v)} style={iconBtnStyle(showMeasureGrid)} title={vi ? 'Lưới đo' : 'Measurement grid'}><Ruler size={15} /></button>
+                  <button type="button" onClick={() => setAutoRotate((v) => !v)} style={iconBtnStyle(autoRotate)} title={vi ? 'Tự xoay' : 'Auto-rotate'}>{autoRotate ? <Pause size={15} /> : <Play size={15} />}</button>
+                  <button type="button" onClick={handleShare} style={iconBtnStyle(false)} title={vi ? 'Copy link' : 'Share'}><Share2 size={15} /></button>
+                </div>
               </div>
             </div>
 
-            <div style={{ position: 'relative', height: 620, background: isDark ? 'linear-gradient(180deg,#0b1220,#050816)' : 'linear-gradient(180deg,#f4f0e8,#e8e1d7)' }}>
+            <div style={{ position: 'relative', height: 620, background: isDark ? 'radial-gradient(120% 90% at 50% 20%, #142032 0%, #050816 72%)' : 'linear-gradient(180deg,#f4f0e8,#e8e1d7)' }}>
               {activeModelUrl ? (
                 <AnimatedAvatarViewer
                   modelUrl={activeModelUrl}
@@ -689,6 +707,7 @@ export default function AvatarCreatorPanel() {
                   isDark={isDark}
                   autoRotate={autoRotate}
                   showGrid={showMeasureGrid}
+                  showDragHint
                   onStatusChange={(update) => {
                     if (update.error) {
                       setAnimationLoadStatus(vi ? `Lỗi: ${update.error}` : `Error: ${update.error}`)
@@ -715,8 +734,8 @@ export default function AvatarCreatorPanel() {
             <div style={{ padding: '10px 16px', borderTop: `1px solid ${palette.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
               <span style={{ color: palette.text3, fontSize: 11 }}>
                 {vi
-                  ? 'Cùng model & animation đang chọn ở trên — chỉ hiển thị lớn hơn, giống khung xem 3D của opensourceavatars.com.'
-                  : 'Same model & animation selected above — just rendered larger, matching the 3D view on opensourceavatars.com.'}
+                  ? 'Render 3D nội bộ bằng THREE.js/WebGL (canvas thật, không dùng iframe) nên không dính lỗi CSP frame-ancestors của trang nguồn. Kéo để xoay.'
+                  : 'Rendered internally with THREE.js/WebGL (a real canvas, no iframe), so it never hits the source site\'s CSP frame-ancestors restriction. Drag to rotate.'}
               </span>
               {modelStats && (
                 <span style={{ color: palette.text3, fontSize: 11, fontWeight: 800 }}>

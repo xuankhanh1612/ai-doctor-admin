@@ -1,9 +1,10 @@
-import React, { useEffect, useRef } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { VRMLoaderPlugin } from '@pixiv/three-vrm'
+import { Pointer } from 'lucide-react'
 import { retargetMixamoClip } from '../lib/vrm/loadMixamoAnimation'
 
 // Real three.js viewer: loads the avatar with GLTFLoader (registering
@@ -23,11 +24,20 @@ export default function AnimatedAvatarViewer({
   isDark,
   autoRotate,
   showGrid,
+  showDragHint = true,
   onLog,
   onStatusChange,
 }) {
   const containerRef = useRef(null)
   const stateRef = useRef({})
+  const [interacted, setInteracted] = useState(false)
+  const [modelReady, setModelReady] = useState(false)
+
+  // A brand-new model (or a fresh mount) should show the drag hint again.
+  useEffect(() => {
+    setInteracted(false)
+    setModelReady(false)
+  }, [modelUrl])
 
   const log = (...args) => {
     console.log(...args)
@@ -67,6 +77,11 @@ export default function AnimatedAvatarViewer({
     controls.maxDistance = 6
     controls.autoRotate = !!autoRotate
     controls.autoRotateSpeed = 1.6
+
+    const markInteracted = () => setInteracted(true)
+    renderer.domElement.addEventListener('pointerdown', markInteracted)
+    renderer.domElement.addEventListener('wheel', markInteracted, { passive: true })
+    renderer.domElement.addEventListener('touchstart', markInteracted, { passive: true })
 
     let raf = 0
     const clock = new THREE.Clock()
@@ -111,6 +126,7 @@ export default function AnimatedAvatarViewer({
       stateRef.current.avatarRoot = avatarRoot
       stateRef.current.vrm = vrm || null
       onStatusChange?.({ modelLoaded: true, isVrm: !!vrm })
+      setModelReady(true)
 
       let vertices = 0
       let triangles = 0
@@ -168,6 +184,9 @@ export default function AnimatedAvatarViewer({
       stateRef.current.disposed = true
       cancelAnimationFrame(raf)
       resizeObserver.disconnect()
+      renderer.domElement.removeEventListener('pointerdown', markInteracted)
+      renderer.domElement.removeEventListener('wheel', markInteracted)
+      renderer.domElement.removeEventListener('touchstart', markInteracted)
       controls.dispose()
       renderer.dispose()
       scene.traverse((obj) => {
@@ -276,5 +295,49 @@ export default function AnimatedAvatarViewer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [animationBlobUrl])
 
-  return <div ref={containerRef} style={{ width: '100%', height: '100%', minHeight: 300 }} />
+  const showHint = showDragHint && modelReady && !interacted
+
+  return (
+    <div style={{ position: 'relative', width: '100%', height: '100%', minHeight: 300 }}>
+      <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
+      {showHint && (
+        <div
+          aria-hidden="true"
+          style={{
+            position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            pointerEvents: 'none', zIndex: 2,
+          }}
+        >
+          <style>{`
+            @keyframes osaDragSlide {
+              0%   { transform: translateX(-18px); opacity: 0; }
+              15%  { opacity: 1; }
+              50%  { transform: translateX(18px); opacity: 1; }
+              85%  { opacity: 1; }
+              100% { transform: translateX(-18px); opacity: 0; }
+            }
+            @keyframes osaDragPulse {
+              0%   { transform: scale(0.85); opacity: 0.55; }
+              70%  { transform: scale(1.35); opacity: 0; }
+              100% { transform: scale(1.35); opacity: 0; }
+            }
+          `}</style>
+          <span style={{ position: 'relative', width: 64, height: 64, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <span style={{
+              position: 'absolute', inset: 0, borderRadius: '50%',
+              background: 'rgba(0,229,255,0.35)', animation: 'osaDragPulse 1.8s ease-out infinite',
+            }} />
+            <span style={{
+              position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              width: 40, height: 40, borderRadius: '50%',
+              background: 'rgba(20,26,38,0.82)', boxShadow: '0 6px 18px rgba(0,0,0,0.35)',
+              animation: 'osaDragSlide 1.8s ease-in-out infinite',
+            }}>
+              <Pointer size={18} color="#ffffff" strokeWidth={2.25} />
+            </span>
+          </span>
+        </div>
+      )}
+    </div>
+  )
 }
