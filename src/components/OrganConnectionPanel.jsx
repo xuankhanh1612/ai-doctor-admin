@@ -911,6 +911,7 @@ export default function OrganConnectionPanel({ onNext, onPrev, prevLabel, nextLa
   const iframeH = `calc(100svh - ${TOPBAR_H}px)`
 
   return (
+    <>
     <div className="oc-root" style={{ height:iframeH, background: isDark ? '#0a0d1a' : '#f8fafc', display:'flex', flexDirection:'column', overflow:'hidden' }}>
       <style>{`
         /* ── Base font scale ── */
@@ -1311,6 +1312,25 @@ export default function OrganConnectionPanel({ onNext, onPrev, prevLabel, nextLa
         <NavButtons onPrev={onPrev} prevLabel={prevLabel} onNext={onNext} nextLabel={nextLabel} />
       </div>
     </div>
+
+    {/* Playlist video gợi ý — nằm dưới cùng của trang, cuộn xuống để xem */}
+    <div style={{ padding: 'clamp(16px,3vw,28px) clamp(12px,3vw,24px) 40px', background: isDark ? '#0a0d1a' : '#f8fafc' }}>
+      <div style={{ maxWidth: 900, margin: '0 auto' }}>
+        <h3 style={{ margin: '0 0 12px', fontSize: 15, fontWeight: 800, color: isDark ? '#e2e8f0' : '#0f172a' }}>
+          🎬 Playlist gợi ý: Kiến Thức Sức Khỏe 3D
+        </h3>
+        <div style={{ position: 'relative', width: '100%', aspectRatio: '16/9', borderRadius: 14, overflow: 'hidden', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.15)' }}>
+          <iframe
+            src="https://www.youtube.com/embed/a0cnfEw-jCU?list=PLWivcxVBsMwLBuWyD6aGymzWx-IHBKPX-"
+            title="Playlist Kiến Thức Sức Khỏe 3D"
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 0 }}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allowFullScreen
+          />
+        </div>
+      </div>
+    </div>
+    </>
   )
 }
 
