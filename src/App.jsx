@@ -36,6 +36,7 @@ import DocumentOCRPanel from './components/DocumentOCRPanel.jsx'
 import StressReliefPanel from './components/StressReliefPanel.jsx'
 import PrintCenter from './print/PrintCenter.jsx'
 import UserProfilePanel from './components/UserProfilePanel.jsx'
+import AvatarCreatorPanel from './components/AvatarCreatorPanel.jsx'
 import OrganConnectionPanel from './components/OrganConnectionPanel.jsx'
 import ChatHistoryPanel from './components/ChatHistoryPanel.jsx'
 import LoginPage from './pages/LoginPage.jsx'
@@ -99,6 +100,7 @@ export default function App() {
     printPortal: 'Print Portal',
     chatHistory: 'Lịch sử Chat với AI',
     profile: t('profile'),
+    avatarCreator: 'Tạo Avatar',
   }
 
   const navigateToRecord = (member) => { setSelectedMember(member); setActive('record') }
@@ -267,6 +269,7 @@ export default function App() {
             {active === 'printPortal' && <PrintCenter onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'chatHistory' && <ChatHistoryPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} activePanelLabel={panelLabels[active] || active} />}
             {active === 'profile'   && <UserProfilePanel />}
+            {active === 'avatarCreator' && <AvatarCreatorPanel />}
             {active === 'admin'     && user?.isAdmin && <AdminPanel />}
             {active === 'admin'     && !user?.isAdmin && (
               <div style={{ padding: 40, textAlign: 'center', color: '#ff5252' }}>🔒 Admin only</div>
