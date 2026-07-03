@@ -4,7 +4,7 @@ import { useApp } from '../context/AppContext'
 
 const REGISTRY_BASE = 'https://raw.githubusercontent.com/ToxSam/open-source-avatars/main/data'
 const PROJECTS_URL = `${REGISTRY_BASE}/projects.json`
-const MAX_COLLECTIONS_TO_LOAD = 3
+const PAGE_SIZE_OPTIONS = [8, 16, 32]
 const FALLBACK_AVATARS = [
   {
     id: 'fallback-health-01',
@@ -63,59 +63,88 @@ export default function AvatarCreatorPanel() {
 
   const [projects, setProjects] = useState([])
   const [avatars, setAvatars] = useState([])
-  const [selectedCollection, setSelectedCollection] = useState('all')
+  const [selectedCollection, setSelectedCollection] = useState('')
   const [selectedAvatar, setSelectedAvatar] = useState(null)
   const [query, setQuery] = useState('')
-  const [status, setStatus] = useState(vi ? 'Đang tải registry avatar mã nguồn mở...' : 'Loading open-source avatar registry...')
+  const [pageSize, setPageSize] = useState(8)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [status, setStatus] = useState(vi ? 'Đang tải danh sách chủ đề avatar...' : 'Loading avatar themes...')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     let cancelled = false
-    async function loadRegistry() {
-      setStatus(vi ? 'Đang tải registry avatar mã nguồn mở...' : 'Loading open-source avatar registry...')
+    async function loadProjects() {
+      setStatus(vi ? 'Đang tải danh sách chủ đề avatar từ projects.json...' : 'Loading avatar themes from projects.json...')
       setError('')
       try {
         const registryProjects = await fetchJson(PROJECTS_URL)
-        const publicProjects = registryProjects.filter(project => project?.is_public !== false)
-        const loadedGroups = await Promise.all(
-          publicProjects.slice(0, MAX_COLLECTIONS_TO_LOAD).map(async project => {
-            const dataFile = project.avatar_data_file || project.avatarDataFile
-            if (!dataFile) return []
-            const data = await fetchJson(`${REGISTRY_BASE}/${dataFile}`)
-            const list = Array.isArray(data) ? data : (Array.isArray(data?.avatars) ? data.avatars : [])
-            return list.map(item => normalizeAvatar(item, project)).filter(item => item.thumbnail_url || item.model_file_url)
-          })
-        )
+        const publicProjects = registryProjects.filter(project => project?.is_public !== false && (project.avatar_data_file || project.avatarDataFile))
         if (cancelled) return
-        const nextAvatars = loadedGroups.flat()
         setProjects(publicProjects)
-        setAvatars(nextAvatars.length ? nextAvatars : FALLBACK_AVATARS)
-        setSelectedAvatar(nextAvatars[0] || FALLBACK_AVATARS[0])
-        setStatus(nextAvatars.length
-          ? (vi ? `Đã tải ${nextAvatars.length} avatar từ Open Source Avatars.` : `Loaded ${nextAvatars.length} avatars from Open Source Avatars.`)
-          : (vi ? 'Dùng avatar dự phòng vì registry chưa có ảnh xem trước.' : 'Using fallback avatars because the registry has no preview images.'))
+        setSelectedCollection(current => current || publicProjects[0]?.id || '')
+        if (!publicProjects.length) {
+          setAvatars(FALLBACK_AVATARS)
+          setSelectedAvatar(FALLBACK_AVATARS[0])
+          setStatus(vi ? 'Không có chủ đề public, đang dùng avatar dự phòng.' : 'No public themes were found, using fallback avatars.')
+        }
       } catch (err) {
         if (cancelled) return
         setProjects([])
         setAvatars(FALLBACK_AVATARS)
         setSelectedAvatar(FALLBACK_AVATARS[0])
-        setError(vi ? `Không tải được registry: ${err.message}` : `Could not load registry: ${err.message}`)
+        setError(vi ? `Không tải được projects.json: ${err.message}` : `Could not load projects.json: ${err.message}`)
         setStatus(vi ? 'Bạn vẫn có thể dùng avatar dự phòng để cập nhật hồ sơ.' : 'You can still use a fallback avatar to update your profile.')
       }
     }
-    loadRegistry()
+    loadProjects()
     return () => { cancelled = true }
   }, [vi])
 
+  useEffect(() => {
+    const selectedProject = projects.find(project => project.id === selectedCollection)
+    if (!selectedProject) return
+    let cancelled = false
+    async function loadThemeAvatars() {
+      setStatus(vi ? `Đang tải avatar chủ đề ${selectedProject.name}...` : `Loading ${selectedProject.name} avatars...`)
+      setError('')
+      setAvatars([])
+      setSelectedAvatar(null)
+      try {
+        const dataFile = selectedProject.avatar_data_file || selectedProject.avatarDataFile
+        const data = await fetchJson(`${REGISTRY_BASE}/${dataFile}`)
+        const list = Array.isArray(data) ? data : (Array.isArray(data?.avatars) ? data.avatars : [])
+        const nextAvatars = list.map(item => normalizeAvatar(item, selectedProject)).filter(item => item.thumbnail_url || item.model_file_url)
+        if (cancelled) return
+        setAvatars(nextAvatars.length ? nextAvatars : FALLBACK_AVATARS)
+        setSelectedAvatar(nextAvatars[0] || FALLBACK_AVATARS[0])
+        setCurrentPage(1)
+        setStatus(nextAvatars.length
+          ? (vi ? `Đã tải ${nextAvatars.length} avatar trong chủ đề ${selectedProject.name}.` : `Loaded ${nextAvatars.length} avatars in ${selectedProject.name}.`)
+          : (vi ? 'Chủ đề này chưa có ảnh xem trước, đang dùng avatar dự phòng.' : 'This theme has no preview images, using fallback avatars.'))
+      } catch (err) {
+        if (cancelled) return
+        setAvatars(FALLBACK_AVATARS)
+        setSelectedAvatar(FALLBACK_AVATARS[0])
+        setCurrentPage(1)
+        setError(vi ? `Không tải được chủ đề ${selectedProject.name}: ${err.message}` : `Could not load ${selectedProject.name}: ${err.message}`)
+        setStatus(vi ? 'Bạn vẫn có thể dùng avatar dự phòng để cập nhật hồ sơ.' : 'You can still use a fallback avatar to update your profile.')
+      }
+    }
+    loadThemeAvatars()
+    return () => { cancelled = true }
+  }, [projects, selectedCollection, vi])
+
   const filteredAvatars = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase()
-    return avatars.filter(avatar => {
-      const matchesCollection = selectedCollection === 'all' || avatar.collectionId === selectedCollection
-      const matchesQuery = !normalizedQuery || `${avatar.name} ${avatar.collectionName} ${avatar.license}`.toLowerCase().includes(normalizedQuery)
-      return matchesCollection && matchesQuery
-    })
-  }, [avatars, query, selectedCollection])
+    return avatars.filter(avatar => !normalizedQuery || `${avatar.name} ${avatar.collectionName} ${avatar.license}`.toLowerCase().includes(normalizedQuery))
+  }, [avatars, query])
+
+  useEffect(() => { setCurrentPage(1) }, [query, pageSize, selectedCollection])
+
+  const totalPages = Math.max(1, Math.ceil(filteredAvatars.length / pageSize))
+  const safePage = Math.min(currentPage, totalPages)
+  const pagedAvatars = filteredAvatars.slice((safePage - 1) * pageSize, safePage * pageSize)
 
   const handleUseAvatar = async () => {
     if (!selectedAvatar) return
@@ -157,8 +186,8 @@ export default function AvatarCreatorPanel() {
               <h1 style={{ margin: '6px 0 8px', fontSize: 30, lineHeight: 1.12 }}>{vi ? 'Tạo avatar cho user' : 'Create user avatar'}</h1>
               <p style={{ margin: 0, color: palette.text2, maxWidth: 720, lineHeight: 1.6 }}>
                 {vi
-                  ? 'Chọn avatar VRM/3D từ registry ToxSam/open-source-avatars, xem license và lưu ảnh preview làm avatar hồ sơ của user.'
-                  : 'Pick a VRM/3D avatar from the ToxSam/open-source-avatars registry, review the license, and save its preview as the user profile avatar.'}
+                  ? 'Chọn chủ đề avatar từ projects.json của ToxSam/open-source-avatars, phân trang danh sách và lưu ảnh preview làm avatar hồ sơ của user.'
+                  : 'Choose an avatar theme from ToxSam/open-source-avatars projects.json, paginate the list, and save its preview as the user profile avatar.'}
               </p>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 250 }}>
@@ -194,16 +223,27 @@ export default function AvatarCreatorPanel() {
           </aside>
 
           <main>
-            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(180px, 1fr) minmax(180px, 1fr)', gap: 10, marginBottom: 14 }}>
-              <input value={query} onChange={e => setQuery(e.target.value)} placeholder={vi ? 'Tìm avatar, license, collection...' : 'Search avatar, license, collection...'} style={{ border: `1px solid ${palette.border}`, background: palette.card, color: palette.text, borderRadius: 12, padding: '11px 12px', fontFamily: 'inherit' }} />
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(180px, 1fr) minmax(180px, 1fr) minmax(130px, 160px)', gap: 10, marginBottom: 14 }}>
+              <input value={query} onChange={e => setQuery(e.target.value)} placeholder={vi ? 'Tìm avatar, license...' : 'Search avatar, license...'} style={{ border: `1px solid ${palette.border}`, background: palette.card, color: palette.text, borderRadius: 12, padding: '11px 12px', fontFamily: 'inherit' }} />
               <select value={selectedCollection} onChange={e => setSelectedCollection(e.target.value)} style={{ border: `1px solid ${palette.border}`, background: palette.card, color: palette.text, borderRadius: 12, padding: '11px 12px', fontFamily: 'inherit' }}>
-                <option value="all">{vi ? 'Tất cả collection đã tải' : 'All loaded collections'}</option>
-                {projects.slice(0, MAX_COLLECTIONS_TO_LOAD).map(project => <option key={project.id} value={project.id}>{project.name} · {project.license}</option>)}
+                {projects.map(project => <option key={project.id} value={project.id}>{project.name} · {project.license}</option>)}
+                {!projects.length && <option value="">{vi ? 'Avatar dự phòng' : 'Fallback avatars'}</option>}
               </select>
+              <select value={pageSize} onChange={e => setPageSize(Number(e.target.value))} style={{ border: `1px solid ${palette.border}`, background: palette.card, color: palette.text, borderRadius: 12, padding: '11px 12px', fontFamily: 'inherit' }} aria-label={vi ? 'Số avatar mỗi trang' : 'Avatars per page'}>
+                {PAGE_SIZE_OPTIONS.map(size => <option key={size} value={size}>{size} / {vi ? 'trang' : 'page'}</option>)}
+              </select>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 12, color: palette.text3, fontSize: 12, flexWrap: 'wrap' }}>
+              <span>{vi ? `Hiển thị ${pagedAvatars.length}/${filteredAvatars.length} avatar` : `Showing ${pagedAvatars.length}/${filteredAvatars.length} avatars`}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <button type="button" onClick={() => setCurrentPage(page => Math.max(1, page - 1))} disabled={safePage <= 1} style={{ border: `1px solid ${palette.border}`, borderRadius: 10, padding: '7px 10px', background: palette.card, color: safePage <= 1 ? palette.text3 : palette.text, cursor: safePage <= 1 ? 'not-allowed' : 'pointer' }}>‹</button>
+                <span>{vi ? 'Trang' : 'Page'} {safePage}/{totalPages}</span>
+                <button type="button" onClick={() => setCurrentPage(page => Math.min(totalPages, page + 1))} disabled={safePage >= totalPages} style={{ border: `1px solid ${palette.border}`, borderRadius: 10, padding: '7px 10px', background: palette.card, color: safePage >= totalPages ? palette.text3 : palette.text, cursor: safePage >= totalPages ? 'not-allowed' : 'pointer' }}>›</button>
+              </div>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(154px, 1fr))', gap: 12 }}>
-              {filteredAvatars.map(avatar => {
+              {pagedAvatars.map(avatar => {
                 const active = selectedAvatar?.id === avatar.id
                 return (
                   <button key={`${avatar.collectionId}-${avatar.id}`} type="button" onClick={() => setSelectedAvatar(avatar)} style={{ textAlign: 'left', border: `1px solid ${active ? '#00e5ff' : palette.border}`, borderRadius: 18, overflow: 'hidden', padding: 0, background: active ? 'rgba(0,229,255,0.12)' : palette.card, color: palette.text, cursor: 'pointer', boxShadow: active ? '0 0 0 3px rgba(0,229,255,0.12)' : 'none' }}>
