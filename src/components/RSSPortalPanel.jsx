@@ -89,10 +89,11 @@ const HEALTH_PLAYLIST_EMBED = `https://www.youtube.com/embed/videoseries?list=${
 const SINGLE_VIDEO_ID = 'wbh3SjzydnQ'
 const SINGLE_VIDEO_EMBED = `https://www.youtube.com/embed/${SINGLE_VIDEO_ID}`
 
-// Kênh Playlists thật — YouTube chưa có embed công khai cho cả trang danh sách playlist
-// của kênh, nên mục này chỉ liên kết thật ra kênh gốc (mở tab mới) thay vì phát trong
-// khung trung tâm.
-const CHANNEL_PLAYLISTS_URL = 'https://www.youtube.com/@kienthucsuckhoe3d/playlists'
+// Playlist thật thứ 3 do người dùng cung cấp (thay cho link "danh sách playlist" chỉ mở
+// tab ngoài trước đây) — nhúng trực tiếp bằng videoseries embed như 2 playlist còn lại.
+const KIENTHUC_PLAYLIST_ID = 'PLWivcxVBsMwLBuWyD6aGymzWx-IHBKPX-'
+const KIENTHUC_PLAYLIST_START_VIDEO = 'a0cnfEw-jCU'
+const KIENTHUC_PLAYLIST_EMBED = `https://www.youtube.com/embed/${KIENTHUC_PLAYLIST_START_VIDEO}?list=${KIENTHUC_PLAYLIST_ID}`
 
 // ─── YouTube IFrame Player API loader (singleton, no API key needed) ───────
 // We use the real IFrame Player API (not just a videoseries embed) so we can:
@@ -139,7 +140,7 @@ async function fetchYouTubeTitle(videoId) {
 const YOUTUBE_ITEMS = [
   { id: 'yt0', icon: '▶', title: 'Playlist sức khỏe nổi bật', channel: 'YouTube Playlist', views: 'Playlist', time: 'youtube.com/watch?v=LHkE3loNxJ4', url: 'https://www.youtube.com/watch?v=LHkE3loNxJ4&list=PLhPgpmsoyA4GrZ5mGrOPyf1wb1Ke1Zw8p', embedUrl: FEATURED_PLAYLIST_EMBED, playlistId: FEATURED_PLAYLIST_ID },
   { id: 'yt1', icon: '🫀', title: 'The Organ Story - Khám phá cơ thể qua hoạt hình khoa học', channel: 'The Organ Story', views: 'Playlist chính thức', time: 'youtube.com/@TheOrganStory', url: 'https://www.youtube.com/@TheOrganStory', embedUrl: ORGAN_STORY_EMBED, playlistId: ORGAN_STORY_PLAYLIST_ID },
-  { id: 'yt_playlists', icon: '📂', title: '@kienthucsuckhoe3d · Danh sách playlist', channel: 'Kiến Thức Sức Khỏe 3D', views: 'Kênh thật', time: 'youtube.com/@kienthucsuckhoe3d/playlists', url: CHANNEL_PLAYLISTS_URL, linkOnly: true },
+  { id: 'yt_playlists', icon: '📂', title: 'Playlist Kiến Thức Sức Khỏe 3D', channel: 'Kiến Thức Sức Khỏe 3D', views: 'Playlist', time: `youtube.com/watch?v=${KIENTHUC_PLAYLIST_START_VIDEO}&list=${KIENTHUC_PLAYLIST_ID}`, url: `https://www.youtube.com/watch?v=${KIENTHUC_PLAYLIST_START_VIDEO}&list=${KIENTHUC_PLAYLIST_ID}`, embedUrl: KIENTHUC_PLAYLIST_EMBED, playlistId: KIENTHUC_PLAYLIST_ID },
   { id: 'yt_playlist2', icon: '▶', title: 'Playlist sức khỏe (thật)', channel: 'YouTube Playlist', views: 'Playlist', time: `youtube.com/playlist?list=${HEALTH_PLAYLIST_ID}`, url: `https://www.youtube.com/playlist?list=${HEALTH_PLAYLIST_ID}`, embedUrl: HEALTH_PLAYLIST_EMBED, playlistId: HEALTH_PLAYLIST_ID },
   { id: 'yt_video1', icon: '🎬', title: 'Video sức khỏe (thật)', channel: 'YouTube', views: 'Video thật', time: `youtube.com/watch?v=${SINGLE_VIDEO_ID}`, url: `https://www.youtube.com/watch?v=${SINGLE_VIDEO_ID}`, embedUrl: SINGLE_VIDEO_EMBED },
 ]
@@ -161,9 +162,10 @@ const FAVORITE_CHANNELS = [
     url: `https://www.youtube.com/watch?v=${SINGLE_VIDEO_ID}`,
     title: 'Video sức khỏe (thật)', channel: 'YouTube', views: 'Video thật', time: `youtube.com/watch?v=${SINGLE_VIDEO_ID}`,
     embedUrl: SINGLE_VIDEO_EMBED },
-  { id: 'ch_yt_playlists', icon: '📂', name: '@kienthucsuckhoe3d', subs: 'Danh sách playlist thật', url: CHANNEL_PLAYLISTS_URL,
-    title: '@kienthucsuckhoe3d · Danh sách playlist', channel: 'Kiến Thức Sức Khỏe 3D', views: 'Kênh thật', time: CHANNEL_PLAYLISTS_URL,
-    linkOnly: true },
+  { id: 'ch_yt_playlists', icon: '📂', name: 'Kiến Thức Sức Khỏe 3D', subs: 'Playlist YouTube thật',
+    url: `https://www.youtube.com/watch?v=${KIENTHUC_PLAYLIST_START_VIDEO}&list=${KIENTHUC_PLAYLIST_ID}`,
+    title: 'Playlist Kiến Thức Sức Khỏe 3D', channel: 'Kiến Thức Sức Khỏe 3D', views: 'Playlist', time: `youtube.com/watch?v=${KIENTHUC_PLAYLIST_START_VIDEO}`,
+    embedUrl: KIENTHUC_PLAYLIST_EMBED, playlistId: KIENTHUC_PLAYLIST_ID },
   { id: 'ch_fb_aipunk', icon: '🎬', name: 'AIPunkstudio', subs: 'Trang Facebook thật', url: FB_AIPUNK_REELS_URL,
     title: 'AIPunkstudio · Danh sách Reels', channel: 'AIPunkstudio', views: 'Trang thật · danh sách video', time: 'facebook.com/AIPunkstudio',
     embedUrl: FB_AIPUNK_EMBED, aspectRatio: '9/16' },
