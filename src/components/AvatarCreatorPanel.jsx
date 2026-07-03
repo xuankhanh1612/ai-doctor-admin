@@ -5,6 +5,20 @@ import { useApp } from '../context/AppContext'
 const REGISTRY_BASE = 'https://raw.githubusercontent.com/ToxSam/open-source-avatars/main/data'
 const PROJECTS_URL = `${REGISTRY_BASE}/projects.json`
 const PAGE_SIZE_OPTIONS = [8, 16, 32]
+const ANIMATION_PRESETS = [
+  'T-Pose (Default)',
+  'Bored',
+  'Cross Jumps',
+  'Fight Idle',
+  'Jumping Rope',
+  'Looking',
+  'Looking Around',
+  'Magic Spell Casting',
+  'Offensive Idle',
+  'Searching Files High',
+  'Standing Magic Attack',
+  'Texting While Standing',
+]
 const FALLBACK_AVATARS = [
   {
     id: 'fallback-health-01',
@@ -76,6 +90,7 @@ export default function AvatarCreatorPanel() {
   const [query, setQuery] = useState('')
   const [pageSize, setPageSize] = useState(8)
   const [currentPage, setCurrentPage] = useState(1)
+  const [selectedAnimation, setSelectedAnimation] = useState('Fight Idle')
   const [status, setStatus] = useState(vi ? 'Đang tải danh sách chủ đề avatar...' : 'Loading avatar themes...')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
@@ -281,6 +296,68 @@ export default function AvatarCreatorPanel() {
                 {selectedModelUrl
                   ? (vi ? 'Render 3D nội bộ bằng model-viewer, không dùng iframe nên tránh lỗi CSP frame-ancestors.' : 'Local 3D render via model-viewer, with no iframe so CSP frame-ancestors errors are avoided.')
                   : (vi ? 'Avatar này chưa có model URL, đang hiển thị preview 3D giả lập từ thumbnail.' : 'This avatar has no model URL, so a 3D-styled thumbnail preview is shown.')}
+              </div>
+            </div>
+
+            <div style={{ marginTop: 16, border: `1px solid ${palette.border}`, borderRadius: 18, overflow: 'hidden', background: isDark ? '#090c14' : '#f5f1ea' }}>
+              <div style={{ padding: '10px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, borderBottom: `1px solid ${palette.border}` }}>
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 900 }}>{vi ? '3D Animations' : '3D Animations'}</div>
+                  <div style={{ fontSize: 10, color: palette.text3, marginTop: 2 }}>{selectedAnimation}</div>
+                </div>
+                <span style={{ padding: '4px 8px', borderRadius: 999, background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(15,23,42,0.08)', color: palette.text2, fontSize: 10, fontWeight: 900 }}>
+                  VRM Inspector
+                </span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr minmax(116px, 138px)', minHeight: 360 }}>
+                <div style={{ position: 'relative', overflow: 'hidden', background: isDark ? 'linear-gradient(180deg,#111827,#050816)' : 'linear-gradient(180deg,#f4f0e8,#e8e1d7)' }}>
+                  <div style={{ position: 'absolute', left: 16, top: 12, bottom: 18, width: 34, borderLeft: `1px solid ${isDark ? 'rgba(148,163,184,0.35)' : 'rgba(71,85,105,0.24)'}` }}>
+                    {[0, 0.5, 1, 1.5, 2, 2.5].map(mark => (
+                      <div key={mark} style={{ position: 'absolute', bottom: `${(mark / 2.5) * 100}%`, left: 0, width: mark % 1 === 0 ? 18 : 10, height: 1, background: isDark ? 'rgba(148,163,184,0.45)' : 'rgba(71,85,105,0.28)' }}>
+                        {mark % 1 === 0 && <span style={{ position: 'absolute', left: 20, top: -8, fontSize: 10, color: palette.text3, fontWeight: 800 }}>{mark.toFixed(1)}</span>}
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ position: 'absolute', inset: 'auto 20px 26px 46px', height: 90, borderRadius: '50%', transform: 'perspective(420px) rotateX(64deg)', border: `1px solid ${isDark ? 'rgba(148,163,184,0.28)' : 'rgba(71,85,105,0.22)'}`, background: isDark ? 'repeating-radial-gradient(circle, rgba(148,163,184,0.22) 0 1px, transparent 1px 28px)' : 'repeating-radial-gradient(circle, rgba(71,85,105,0.22) 0 1px, transparent 1px 28px)' }} />
+                  {selectedModelUrl ? (
+                    <model-viewer
+                      src={selectedModelUrl}
+                      alt={selectedAvatar ? `${selectedAvatar.name} animated VRM model` : 'Animated VRM model'}
+                      camera-controls="true"
+                      autoplay="true"
+                      animation-name={selectedAnimation === 'T-Pose (Default)' ? '' : selectedAnimation}
+                      exposure="1"
+                      shadow-intensity="0.7"
+                      style={{ position: 'relative', zIndex: 2, width: '100%', height: 360, display: 'block', background: 'transparent' }}
+                    />
+                  ) : (
+                    <div style={{ position: 'relative', zIndex: 2, height: 360, display: 'grid', placeItems: 'center', perspective: 900 }}>
+                      <div style={{ width: 132, height: 210, borderRadius: 28, overflow: 'hidden', border: `1px solid ${isDark ? 'rgba(255,255,255,0.18)' : 'rgba(15,23,42,0.12)'}`, boxShadow: '0 28px 65px rgba(0,0,0,0.22)', transform: selectedAnimation === 'Fight Idle' ? 'rotateZ(-8deg) rotateY(-14deg)' : 'rotateY(-10deg)', transition: 'transform .25s ease' }}>
+                        {selectedAvatar?.thumbnail_url
+                          ? <img src={selectedAvatar.thumbnail_url} alt={selectedAvatar.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          : <span style={{ display: 'grid', placeItems: 'center', width: '100%', height: '100%', fontSize: 70 }}>🧑‍🚀</span>}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div style={{ padding: 12, borderLeft: `1px solid ${palette.border}`, background: isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.52)', maxHeight: 360, overflowY: 'auto' }}>
+                  <div style={{ display: 'inline-block', marginBottom: 10, padding: '4px 6px', background: isDark ? '#fff' : '#111', color: isDark ? '#111' : '#fff', fontSize: 13, fontWeight: 900 }}>Animations</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {ANIMATION_PRESETS.map(animation => {
+                      const active = selectedAnimation === animation
+                      return (
+                        <button key={animation} type="button" onClick={() => setSelectedAnimation(animation)} style={{ textAlign: 'left', border: `1px solid ${active ? '#111' : 'transparent'}`, borderLeft: active ? '3px solid #111' : '3px solid transparent', background: active ? (isDark ? 'rgba(255,255,255,0.12)' : '#fff') : 'transparent', color: palette.text, borderRadius: 8, padding: '9px 8px', cursor: 'pointer', fontSize: 12, fontWeight: active ? 900 : 600 }}>
+                          {animation}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              </div>
+              <div style={{ padding: '9px 12px', color: palette.text3, fontSize: 11, lineHeight: 1.45, borderTop: `1px solid ${palette.border}` }}>
+                {vi
+                  ? 'Chọn animation giống VRM Inspector. Nếu model không có clip trùng tên, viewer vẫn giữ tư thế/model hiện tại.'
+                  : 'Choose an animation like VRM Inspector. If the model has no matching clip, the viewer keeps the current pose/model.'}
               </div>
             </div>
 
