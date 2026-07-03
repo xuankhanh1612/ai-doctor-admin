@@ -283,45 +283,48 @@ export default function AvatarCreatorPanel() {
   const modelViewerModelUrl = activeModelKind === 'fbx' ? '' : activeModelUrl
 
   // ---- "Khung render 3D" virtual-finger drag demo ----
-  // A one-time onboarding gesture: a finger icon glides left/right over the
+  // A recurring onboarding gesture: a finger icon glides left/right over the
   // model-viewer, and the model's own camera orbit rotates in lockstep with
   // it, so it's immediately obvious that dragging on the model spins it
-  // around. It stops the instant the user drags for real, or once it has
-  // played through, and replays whenever a freshly loaded model comes in.
+  // around. It replays every 6s while the user hasn't touched the model yet,
+  // and stops for good the instant they drag for real.
   const modelViewerRef = useRef(null)
   const [showModelViewerHint, setShowModelViewerHint] = useState(false)
   const [fingerRatio, setFingerRatio] = useState(0.5)
-  const modelViewerHintDoneRef = useRef(false)
+  const [demoCycle, setDemoCycle] = useState(0)
 
   useEffect(() => {
-    modelViewerHintDoneRef.current = false
-    setShowModelViewerHint(!!modelViewerModelUrl)
+    setShowModelViewerHint(false)
     setFingerRatio(0.5)
   }, [modelViewerModelUrl])
 
   useEffect(() => {
     if (!modelViewerModelUrl || !modelViewerReady) return
     const mv = modelViewerRef.current
-    if (!mv || modelViewerHintDoneRef.current) return
+    if (!mv) return
 
-    let cancelled = false
+    let cancelled = false // effect torn down (unmount / model or readiness change)
+    let interacted = false // user dragged for real — stop the demo permanently
     let rafId = 0
+    let repeatTimer = 0
 
-    const finish = () => {
-      if (cancelled) return
-      cancelled = true
+    const stopForever = () => {
+      if (interacted) return
+      interacted = true
       if (rafId) cancelAnimationFrame(rafId)
-      modelViewerHintDoneRef.current = true
+      if (repeatTimer) clearTimeout(repeatTimer)
       setShowModelViewerHint(false)
       mv.autoRotate = true
-      mv.removeEventListener('pointerdown', finish)
-      mv.removeEventListener('touchstart', finish)
+      mv.removeEventListener('pointerdown', stopForever)
+      mv.removeEventListener('touchstart', stopForever)
     }
-    mv.addEventListener('pointerdown', finish, { once: true })
-    mv.addEventListener('touchstart', finish, { once: true, passive: true })
+    mv.addEventListener('pointerdown', stopForever)
+    mv.addEventListener('touchstart', stopForever, { passive: true })
 
     const playDemo = () => {
-      if (cancelled) return
+      if (cancelled || interacted) return
+      setDemoCycle((n) => n + 1)
+      setShowModelViewerHint(true)
       mv.autoRotate = false
       const baseOrbit = mv.getCameraOrbit ? mv.getCameraOrbit() : null
       const startTheta = baseOrbit ? (baseOrbit.theta * 180) / Math.PI : 0
@@ -332,7 +335,7 @@ export default function AvatarCreatorPanel() {
       const start = performance.now()
 
       const frame = (now) => {
-        if (cancelled) return
+        if (cancelled || interacted) return
         const t = Math.min(1, (now - start) / duration)
         const swing = Math.sin(t * Math.PI * 2.4) * amplitude * (1 - t * 0.2)
         mv.cameraOrbit = `${(startTheta + swing).toFixed(2)}deg ${polarDeg}deg ${radius}`
@@ -340,7 +343,13 @@ export default function AvatarCreatorPanel() {
         if (t < 1) {
           rafId = requestAnimationFrame(frame)
         } else {
-          finish()
+          // One cycle done: restore auto-rotate, hide the finger, and — if the
+          // user still hasn't touched the model — queue up another cycle.
+          mv.autoRotate = true
+          setShowModelViewerHint(false)
+          if (!cancelled && !interacted) {
+            repeatTimer = setTimeout(playDemo, 6000)
+          }
         }
       }
       rafId = requestAnimationFrame(frame)
@@ -355,8 +364,9 @@ export default function AvatarCreatorPanel() {
     return () => {
       cancelled = true
       if (rafId) cancelAnimationFrame(rafId)
-      mv.removeEventListener('pointerdown', finish)
-      mv.removeEventListener('touchstart', finish)
+      if (repeatTimer) clearTimeout(repeatTimer)
+      mv.removeEventListener('pointerdown', stopForever)
+      mv.removeEventListener('touchstart', stopForever)
       mv.removeEventListener('load', playDemo)
     }
   }, [modelViewerModelUrl, modelViewerReady])
@@ -922,7 +932,7 @@ export default function AvatarCreatorPanel() {
                       100% { opacity: 0; }
                     }
                   `}</style>
-                  <div style={{ position: 'absolute', inset: 0, animation: 'osaHintFade 2.4s ease-in-out 1' }}>
+                  <div key={demoCycle} style={{ position: 'absolute', inset: 0, animation: 'osaHintFade 2.4s ease-in-out 1' }}>
                     <div style={{ position: 'absolute', top: '58%', left: `${fingerRatio * 100}%`, transform: 'translate(-50%, -50%)' }}>
                       <span style={{ position: 'relative', width: 56, height: 56, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <span style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: 'rgba(0,229,255,0.35)', animation: 'osaFingerPulse 1.4s ease-out infinite' }} />
