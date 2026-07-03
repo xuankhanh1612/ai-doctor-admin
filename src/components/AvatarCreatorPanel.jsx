@@ -1,7 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Search, Shuffle, ChevronLeft, ChevronRight, Info, LayoutGrid, List,
-  Share2, Ruler, Play, Pause, Download, ExternalLink, Sparkles,
+  Share2, Ruler, Play, Pause, Download, ExternalLink, Sparkles, Pointer,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useApp } from '../context/AppContext'
@@ -281,6 +281,85 @@ export default function AvatarCreatorPanel() {
   const activeModelKind = activeFormat?.kind || 'gltf'
   // model-viewer only understands glTF/GLB (which VRM files are) — never FBX.
   const modelViewerModelUrl = activeModelKind === 'fbx' ? '' : activeModelUrl
+
+  // ---- "Khung render 3D" virtual-finger drag demo ----
+  // A one-time onboarding gesture: a finger icon glides left/right over the
+  // model-viewer, and the model's own camera orbit rotates in lockstep with
+  // it, so it's immediately obvious that dragging on the model spins it
+  // around. It stops the instant the user drags for real, or once it has
+  // played through, and replays whenever a freshly loaded model comes in.
+  const modelViewerRef = useRef(null)
+  const [showModelViewerHint, setShowModelViewerHint] = useState(false)
+  const [fingerRatio, setFingerRatio] = useState(0.5)
+  const modelViewerHintDoneRef = useRef(false)
+
+  useEffect(() => {
+    modelViewerHintDoneRef.current = false
+    setShowModelViewerHint(!!modelViewerModelUrl)
+    setFingerRatio(0.5)
+  }, [modelViewerModelUrl])
+
+  useEffect(() => {
+    if (!modelViewerModelUrl || !modelViewerReady) return
+    const mv = modelViewerRef.current
+    if (!mv || modelViewerHintDoneRef.current) return
+
+    let cancelled = false
+    let rafId = 0
+
+    const finish = () => {
+      if (cancelled) return
+      cancelled = true
+      if (rafId) cancelAnimationFrame(rafId)
+      modelViewerHintDoneRef.current = true
+      setShowModelViewerHint(false)
+      mv.autoRotate = true
+      mv.removeEventListener('pointerdown', finish)
+      mv.removeEventListener('touchstart', finish)
+    }
+    mv.addEventListener('pointerdown', finish, { once: true })
+    mv.addEventListener('touchstart', finish, { once: true, passive: true })
+
+    const playDemo = () => {
+      if (cancelled) return
+      mv.autoRotate = false
+      const baseOrbit = mv.getCameraOrbit ? mv.getCameraOrbit() : null
+      const startTheta = baseOrbit ? (baseOrbit.theta * 180) / Math.PI : 0
+      const polarDeg = baseOrbit ? ((baseOrbit.phi * 180) / Math.PI).toFixed(2) : '75'
+      const radius = baseOrbit ? `${baseOrbit.radius.toFixed(2)}m` : '105%'
+      const duration = 2400
+      const amplitude = 24
+      const start = performance.now()
+
+      const frame = (now) => {
+        if (cancelled) return
+        const t = Math.min(1, (now - start) / duration)
+        const swing = Math.sin(t * Math.PI * 2.4) * amplitude * (1 - t * 0.2)
+        mv.cameraOrbit = `${(startTheta + swing).toFixed(2)}deg ${polarDeg}deg ${radius}`
+        setFingerRatio(Math.min(0.86, Math.max(0.14, 0.5 + swing / (amplitude * 2.2))))
+        if (t < 1) {
+          rafId = requestAnimationFrame(frame)
+        } else {
+          finish()
+        }
+      }
+      rafId = requestAnimationFrame(frame)
+    }
+
+    if (mv.loaded) {
+      playDemo()
+    } else {
+      mv.addEventListener('load', playDemo, { once: true })
+    }
+
+    return () => {
+      cancelled = true
+      if (rafId) cancelAnimationFrame(rafId)
+      mv.removeEventListener('pointerdown', finish)
+      mv.removeEventListener('touchstart', finish)
+      mv.removeEventListener('load', playDemo)
+    }
+  }, [modelViewerModelUrl, modelViewerReady])
 
   const loadAnimationFile = async (animation) => {
     setSelectedAnimation(animation)
@@ -807,12 +886,12 @@ export default function AvatarCreatorPanel() {
 
               {modelViewerModelUrl ? (
                 <model-viewer
+                  ref={modelViewerRef}
                   src={modelViewerModelUrl}
                   alt={selectedAvatar ? `${selectedAvatar.name} VRM model` : 'Selected avatar VRM model'}
                   camera-controls="true"
                   auto-rotate="true"
-                  interaction-prompt="auto"
-                  interaction-prompt-style="basic"
+                  interaction-prompt="none"
                   exposure="1"
                   shadow-intensity="0.7"
                   style={{ position: 'relative', zIndex: 1, width: '100%', height: '100%', display: 'block', background: 'transparent' }}
@@ -822,6 +901,40 @@ export default function AvatarCreatorPanel() {
                   {selectedAvatar?.thumbnail_url
                     ? <img src={selectedAvatar.thumbnail_url} alt={selectedAvatar.name} style={{ maxHeight: '60%', borderRadius: 16 }} />
                     : <span style={{ fontSize: 88 }}>🧑‍🚀</span>}
+                </div>
+              )}
+
+              {/* Virtual finger drag demo — plays once per freshly loaded model.
+                  The finger's left/right glide is mirrored 1:1 by cameraOrbit
+                  set in the effect above, so the avatar visibly turns with it. */}
+              {modelViewerModelUrl && showModelViewerHint && (
+                <div aria-hidden="true" style={{ position: 'absolute', inset: 0, zIndex: 2, pointerEvents: 'none', overflow: 'hidden' }}>
+                  <style>{`
+                    @keyframes osaFingerPulse {
+                      0%   { transform: scale(0.85); opacity: 0.55; }
+                      70%  { transform: scale(1.4); opacity: 0; }
+                      100% { transform: scale(1.4); opacity: 0; }
+                    }
+                    @keyframes osaHintFade {
+                      0%   { opacity: 0; }
+                      12%  { opacity: 1; }
+                      88%  { opacity: 1; }
+                      100% { opacity: 0; }
+                    }
+                  `}</style>
+                  <div style={{ position: 'absolute', inset: 0, animation: 'osaHintFade 2.4s ease-in-out 1' }}>
+                    <div style={{ position: 'absolute', top: '58%', left: `${fingerRatio * 100}%`, transform: 'translate(-50%, -50%)' }}>
+                      <span style={{ position: 'relative', width: 56, height: 56, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <span style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: 'rgba(0,229,255,0.35)', animation: 'osaFingerPulse 1.4s ease-out infinite' }} />
+                        <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 38, height: 38, borderRadius: '50%', background: 'rgba(20,26,38,0.85)', boxShadow: '0 6px 18px rgba(0,0,0,0.35)' }}>
+                          <Pointer size={17} color="#ffffff" strokeWidth={2.25} />
+                        </span>
+                      </span>
+                    </div>
+                    <div style={{ position: 'absolute', left: '50%', bottom: 26, transform: 'translateX(-50%)', padding: '6px 12px', borderRadius: 999, background: 'rgba(15,23,42,0.62)', color: '#fff', fontSize: 11, fontWeight: 800, whiteSpace: 'nowrap' }}>
+                      {vi ? 'Kéo để xoay mô hình' : 'Drag to rotate'}
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
