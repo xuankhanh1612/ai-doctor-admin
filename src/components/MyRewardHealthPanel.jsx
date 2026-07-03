@@ -73,6 +73,18 @@ const TICK_SCHEDULE = [
   { label: '1 ngày',  sub: 'Daily Quest',    icon: '📅' },
 ]
 
+const CONWAY_1970_RULE = {
+  name: 'Conway 1970 · B3/S23',
+  birth: 'B3',
+  survival: 'S23',
+  formula: 'Dead + đúng 3 láng giềng sống → Sinh; Live + 2 hoặc 3 láng giềng sống → Sống; còn lại → Chết',
+  medicalMapping: [
+    { icon: '🌱', title: 'Birth (B3)', text: 'Vùng chết chỉ hồi sinh khi có đủ Repair/Stem xung quanh — tương đương “3 hàng xóm sống” nhưng có ý nghĩa tái tạo mô.' },
+    { icon: '🫀', title: 'Survival (S23)', text: 'Tế bào khỏe sống ổn định khi môi trường không quá tải; ATP/DNA tốt làm tăng khả năng sống sót.' },
+    { icon: '🦠', title: 'Over/Under-population', text: 'Virus, đột biến và stress đóng vai trò nhiễu y khoa làm lệch luật Conway gốc để game gắn với hành vi sức khỏe.' },
+  ],
+}
+
 const DAILY_MISSIONS = [
   { id: 'water',    label: 'Uống 2 lít nước',   icon: '💧', gems: 40, effect: { atp: 10, virusLoad: -3 } },
   { id: 'walk',     label: 'Đi bộ 30 phút',     icon: '🚶', gems: 60, effect: { atp: 8, immunePower: 6 } },
@@ -598,7 +610,7 @@ function buildCoachNote(stats, pop, total, bossName) {
 /*  Component                                                             */
 /* ────────────────────────────────────────────────────────────────────── */
 
-export default function MyRewardHealthPanel({ onNext, nextLabel, onPrev, prevLabel }) {
+export default function MyRewardHealthPanel({ onNext, nextLabel, onPrev, prevLabel, onOpenFoodToday }) {
   const { theme } = useApp()
   const { user } = useAuth()
   const isDark = theme !== 'light'
@@ -939,12 +951,27 @@ export default function MyRewardHealthPanel({ onNext, nextLabel, onPrev, prevLab
               <div style={{ fontWeight: 800 }}>🌍 Thế giới tế bào (Conway Medical Engine)</div>
               <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                 {ZONES.map(z => (
-                  <button key={z.id} onClick={() => setZone(z.id)} style={{
-                    fontSize: 11, padding: '5px 9px', borderRadius: 8, cursor: 'pointer',
-                    border: `1px solid ${state.zone === z.id ? 'rgba(0,229,255,0.5)' : border}`,
-                    background: state.zone === z.id ? 'rgba(0,229,255,0.12)' : 'transparent',
-                    color: state.zone === z.id ? cyan : text2, fontWeight: 600,
-                  }}>{z.icon} {z.nameVi}</button>
+                  <React.Fragment key={z.id}>
+                    <button onClick={() => setZone(z.id)} style={{
+                      fontSize: 11, padding: '5px 9px', borderRadius: 8, cursor: 'pointer',
+                      border: `1px solid ${state.zone === z.id ? 'rgba(0,229,255,0.5)' : border}`,
+                      background: state.zone === z.id ? 'rgba(0,229,255,0.12)' : 'transparent',
+                      color: state.zone === z.id ? cyan : text2, fontWeight: 600,
+                    }}>{z.icon} {z.nameVi}</button>
+                    {z.id === 'stomach' && (
+                      <button
+                        onClick={onOpenFoodToday}
+                        style={{
+                          fontSize: 11, padding: '5px 9px', borderRadius: 8, cursor: 'pointer',
+                          border: '1px solid rgba(16,185,129,0.45)',
+                          background: 'linear-gradient(135deg, rgba(16,185,129,0.16), rgba(0,229,255,0.08))',
+                          color: '#34d399', fontWeight: 800,
+                        }}
+                      >
+                        🥗 ăn gì tốt
+                      </button>
+                    )}
+                  </React.Fragment>
                 ))}
               </div>
             </div>
@@ -989,6 +1016,35 @@ export default function MyRewardHealthPanel({ onNext, nextLabel, onPrev, prevLab
             </div>
             <div style={{ fontSize: 11, color: text2, marginTop: 10 }}>
               Engine mô phỏng khoảng 2.2 giây/lượt khi bạn mở màn hình này, và tự "tua nhanh" (fast-forward) khi bạn quay lại sau khi offline — giống mô tả trong Living Medical World Engine.
+            </div>
+          </div>
+
+          {/* Conway 1970 formula guide */}
+          <div style={{ ...cardStyle, borderColor: 'rgba(156,111,255,0.24)', background: 'linear-gradient(135deg, rgba(156,111,255,0.08), rgba(0,229,255,0.04))' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'flex-start', flexWrap: 'wrap', marginBottom: 10 }}>
+              <div>
+                <div style={{ fontWeight: 900 }}>🔷 Áp dụng công thức Conway 1970 cho web</div>
+                <div style={{ fontSize: 12, color: text2, marginTop: 4 }}>
+                  Luật gốc được giữ làm “xương sống” để mô phỏng dễ hiểu, sau đó thêm ATP, DNA, miễn dịch và hành vi thật để phù hợp sản phẩm y tế-game.
+                </div>
+              </div>
+              <div style={{ padding: '6px 10px', borderRadius: 999, border: '1px solid rgba(156,111,255,0.35)', color: '#c4b5fd', fontSize: 11, fontWeight: 800, fontFamily: 'monospace' }}>
+                {CONWAY_1970_RULE.name}
+              </div>
+            </div>
+            <div style={{ padding: 10, borderRadius: 12, background: 'rgba(0,0,0,0.18)', border: `1px solid ${border}`, fontSize: 12, color: text2, lineHeight: 1.65 }}>
+              <b style={{ color: text }}>Công thức:</b> {CONWAY_1970_RULE.formula}
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 8, marginTop: 10 }}>
+              {CONWAY_1970_RULE.medicalMapping.map(rule => (
+                <div key={rule.title} style={{ padding: 10, borderRadius: 12, background: 'rgba(255,255,255,0.03)', border: `1px solid ${border}` }}>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: cyan, marginBottom: 4 }}>{rule.icon} {rule.title}</div>
+                  <div style={{ fontSize: 11.5, color: text2, lineHeight: 1.55 }}>{rule.text}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{ marginTop: 10, fontSize: 11, color: text2, lineHeight: 1.6 }}>
+              Gợi ý vận hành hiệu quả: tick nhanh chỉ để hiển thị, còn “Conway Update” nên gom theo chu kỳ 1 phút/5 phút hoặc fast-forward khi offline để tiết kiệm CPU nhưng vẫn tạo cảm giác thế giới tế bào sống 24/7.
             </div>
           </div>
         </div>
