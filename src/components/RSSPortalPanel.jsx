@@ -26,7 +26,7 @@ const youtubePlaylistThumb = (fallbackVideoId) => (fallbackVideoId ? youtubeThum
 
 // Real Facebook video (Reel) embedded via Facebook's public Video Plugin —
 // no API key / app review needed, works for any public video or reel URL.
-const FB_REEL_URL = 'https://www.facebook.com/reel/809720335534900'
+const FB_REEL_URL = 'https://www.facebook.com/reel/1334947154813349'
 const FB_REEL_EMBED = `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(FB_REEL_URL)}&show_text=false`
 
 // AIPunkstudio — nhúng cả danh sách video/reels công khai của trang (không chỉ 1 video)
@@ -37,8 +37,8 @@ const FB_AIPUNK_PAGE_URL = 'https://www.facebook.com/AIPunkstudio'
 const FB_AIPUNK_EMBED = `https://www.facebook.com/plugins/page.php?href=${encodeURIComponent(FB_AIPUNK_PAGE_URL)}&tabs=timeline&width=360&height=700&small_header=false&adapt_container_width=true&hide_cover=false&show_facepile=false`
 
 const FACEBOOK_ITEMS = [
-  { id: 'fb_aipunk', icon: '🎬', title: 'AIPunkstudio · Danh sách Reels', duration: '', time: 'Trang thật · danh sách video', url: FB_AIPUNK_REELS_URL, embedUrl: FB_AIPUNK_EMBED, aspectRatio: '9/16' },
   { id: 'fb0', icon: '🎬', title: 'Video Facebook Reel', duration: '', time: 'Mới · reel thật', url: FB_REEL_URL, embedUrl: FB_REEL_EMBED, aspectRatio: '9/16' },
+  { id: 'fb_aipunk', icon: '🎬', title: 'AIPunkstudio · Danh sách Reels', duration: '', time: 'Trang thật · danh sách video', url: FB_AIPUNK_REELS_URL, embedUrl: FB_AIPUNK_EMBED, aspectRatio: '9/16' },
   { id: 'fb1', icon: '💧', title: '5 dấu hiệu cơ thể đang thiếu nước', duration: '04:35', time: '2 giờ trước' },
   { id: 'fb2', icon: '🥤', title: 'Công thức nước ép detox giảm cân', duration: '06:12', time: '5 giờ trước' },
   { id: 'fb3', icon: '🩺', title: 'Bài học từ một bệnh nhân tiểu đường', duration: '08:47', time: '1 ngày trước' },
@@ -593,7 +593,7 @@ export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel })
             max-height: 520px !important;
             overflow-y: auto !important;
           }
-          .rss-facebook-col {
+          .rss-tiktok-col {
             grid-column: 2 !important;
             grid-row: 3 !important;
             max-height: 520px !important;
@@ -684,28 +684,28 @@ export default function RSSPortalPanel({ onNext, nextLabel, onPrev, prevLabel })
           gridTemplateRows: 'auto auto auto',
           gap: 14,
         }}>
-          {/* Right: Facebook RSS (spans all 3 rows) */}
+          {/* Right: TikTok RSS (spans all 3 rows) */}
           <div
-            className={`rss-side-col rss-facebook-col ${mobileTab === 'facebook' ? 'rss-active' : ''}`}
+            className={`rss-side-col rss-tiktok-col ${mobileTab === 'tiktok' ? 'rss-active' : ''}`}
             style={{ ...panelCard, gridColumn: 3, gridRow: '1 / span 3', display: 'flex', flexDirection: 'column', gap: 8, overflowY: 'auto', maxHeight: 780 }}
           >
-            <SourceHeader icon="f" iconBg="rgba(24,119,242,0.18)" iconColor="#1877f2" title="Facebook RSS" text={text} />
-            {FACEBOOK_ITEMS.map(item => (
+            <SourceHeader icon="♪" iconBg="rgba(255,255,255,0.1)" iconColor="#ff2d55" title="TikTok RSS" text={text} />
+            {tiktokItems.map(item => (
               <ThumbCard key={item.id} item={item} orientation="col" active={current.id === item.id}
-                onClick={() => select(item, 'facebook')} border={border} surface={surface} text={text} text2={text2} />
+                onClick={() => select(item, 'tiktok')} border={border} surface={surface} text={text} text2={text2} />
             ))}
           </div>
 
-          {/* Top-center: TikTok RSS (horizontal strip) */}
+          {/* Top-center: Facebook RSS (horizontal strip) */}
           <div
-            className={`rss-top-row rss-side-col ${mobileTab === 'tiktok' ? 'rss-active' : ''}`}
+            className={`rss-top-row rss-side-col ${mobileTab === 'facebook' ? 'rss-active' : ''}`}
             style={{ ...panelCard, gridColumn: 2, gridRow: 1, display: 'flex', flexDirection: 'column' }}
           >
-            <SourceHeader icon="♪" iconBg="rgba(255,255,255,0.1)" iconColor="#ff2d55" title="TikTok RSS" text={text} />
+            <SourceHeader icon="f" iconBg="rgba(24,119,242,0.18)" iconColor="#1877f2" title="Facebook RSS" text={text} />
             <div className="rss-scroll" style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 4 }}>
-              {tiktokItems.map(item => (
+              {FACEBOOK_ITEMS.map(item => (
                 <ThumbCard key={item.id} item={item} orientation="row" active={current.id === item.id}
-                  onClick={() => select(item, 'tiktok')} border={border} surface={surface} text={text} text2={text2} />
+                  onClick={() => select(item, 'facebook')} border={border} surface={surface} text={text} text2={text2} />
               ))}
             </div>
           </div>
