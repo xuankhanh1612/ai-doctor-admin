@@ -1,0 +1,269 @@
+import React, { useEffect, useRef, useState } from 'react'
+import { Mic, MicOff, Send, PlugZap, Unplug, OctagonX, Loader2, Github } from 'lucide-react'
+import OpenAvatarChatClient, { CONNECTION_STATE } from '../services/openAvatarChatClient'
+
+const DEFAULT_SERVER = 'ws://localhost:8282'
+
+function StatusDot({ state }) {
+  const color = {
+    [CONNECTION_STATE.IDLE]: '#8a90a0',
+    [CONNECTION_STATE.CONNECTING]: '#f4b942',
+    [CONNECTION_STATE.INITIALIZING]: '#f4b942',
+    [CONNECTION_STATE.READY]: '#00e676',
+    [CONNECTION_STATE.CLOSED]: '#8a90a0',
+    [CONNECTION_STATE.ERROR]: '#ff5252',
+  }[state] || '#8a90a0'
+  return <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, display: 'inline-block', flexShrink: 0 }} />
+}
+
+export default function OpenAvatarChatPanel({ isDark, vi, border, surface, text, text2, text3 }) {
+  const [serverUrl, setServerUrl] = useState(DEFAULT_SERVER)
+  const [state, setState] = useState(CONNECTION_STATE.IDLE)
+  const [micOn, setMicOn] = useState(false)
+  const [micLevel, setMicLevel] = useState(0)
+  const [avatarLevel, setAvatarLevel] = useState(0)
+  const [input, setInput] = useState('')
+  const [messages, setMessages] = useState([]) // {role: 'human'|'avatar', text, id}
+  const [errorMsg, setErrorMsg] = useState('')
+
+  const clientRef = useRef(null)
+  const scrollRef = useRef(null)
+  const humanTurnRef = useRef(null)
+  const avatarTurnRef = useRef(null)
+
+  useEffect(() => {
+    return () => { clientRef.current?.disconnect() }
+  }, [])
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
+  }, [messages])
+
+  const appendOrUpdate = (role, textChunk, refKey) => {
+    const ref = refKey === 'human' ? humanTurnRef : avatarTurnRef
+    setMessages((prev) => {
+      if (ref.current && prev.length && prev[prev.length - 1].id === ref.current) {
+        const copy = [...prev]
+        copy[copy.length - 1] = { ...copy[copy.length - 1], text: textChunk }
+        return copy
+      }
+      const id = `${role}-${Date.now()}`
+      ref.current = id
+      return [...prev, { id, role, text: textChunk }]
+    })
+  }
+
+  const handleConnect = async () => {
+    setErrorMsg('')
+    humanTurnRef.current = null
+    avatarTurnRef.current = null
+    const client = new OpenAvatarChatClient({
+      onStateChange: setState,
+      onHumanText: ({ text: t, endOfSpeech }) => {
+        appendOrUpdate('human', t, 'human')
+        if (endOfSpeech) humanTurnRef.current = null
+      },
+      onAvatarText: ({ text: t, endOfSpeech }) => {
+        appendOrUpdate('avatar', t, 'avatar')
+        if (endOfSpeech) avatarTurnRef.current = null
+      },
+      onAvatarAudioLevel: setAvatarLevel,
+      onMicLevel: setMicLevel,
+      onError: (err) => setErrorMsg(err.message || String(err)),
+      onInterrupted: () => setAvatarLevel(0),
+    })
+    clientRef.current = client
+    try {
+      await client.connect(serverUrl)
+    } catch (err) {
+      setErrorMsg(vi
+        ? 'Không kết nối được tới server OpenAvatarChat. Hãy chắc chắn backend đang chạy và địa chỉ đúng.'
+        : 'Could not connect to the OpenAvatarChat server. Make sure the backend is running and the URL is correct.')
+    }
+  }
+
+  const handleDisconnect = () => {
+    setMicOn(false)
+    clientRef.current?.disconnect()
+    clientRef.current = null
+  }
+
+  const toggleMic = async () => {
+    if (!clientRef.current || state !== CONNECTION_STATE.READY) return
+    if (micOn) {
+      clientRef.current.stopMic()
+      setMicOn(false)
+    } else {
+      try {
+        await clientRef.current.startMic()
+        setMicOn(true)
+      } catch (err) {
+        setErrorMsg(vi ? 'Không truy cập được microphone.' : 'Could not access the microphone.')
+      }
+    }
+  }
+
+  const handleSend = () => {
+    if (!input.trim() || state !== CONNECTION_STATE.READY) return
+    clientRef.current?.sendText(input)
+    setMessages((prev) => [...prev, { id: `human-${Date.now()}`, role: 'human', text: input.trim() }])
+    humanTurnRef.current = null
+    setInput('')
+  }
+
+  const isConnected = state === CONNECTION_STATE.READY
+  const isBusy = state === CONNECTION_STATE.CONNECTING || state === CONNECTION_STATE.INITIALIZING
+
+  const stateLabel = {
+    [CONNECTION_STATE.IDLE]: vi ? 'Chưa kết nối' : 'Not connected',
+    [CONNECTION_STATE.CONNECTING]: vi ? 'Đang kết nối...' : 'Connecting...',
+    [CONNECTION_STATE.INITIALIZING]: vi ? 'Đang khởi tạo phiên...' : 'Initializing session...',
+    [CONNECTION_STATE.READY]: vi ? 'Đã kết nối' : 'Connected',
+    [CONNECTION_STATE.CLOSED]: vi ? 'Đã ngắt kết nối' : 'Disconnected',
+    [CONNECTION_STATE.ERROR]: vi ? 'Lỗi kết nối' : 'Connection error',
+  }[state]
+
+  return (
+    <div style={{ background: surface, border: `1px solid ${border}`, borderRadius: 14, padding: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 4, flexWrap: 'wrap' }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: text }}>
+          {vi ? 'Trò chuyện trực tiếp với AI Avatar' : 'Live chat with your AI Avatar'}
+        </div>
+        <a href="https://github.com/HumanAIGC-Engineering/OpenAvatarChat" target="_blank" rel="noopener noreferrer"
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: text3, textDecoration: 'none' }}>
+          <Github size={13} /> OpenAvatarChat
+        </a>
+      </div>
+      <p style={{ margin: '0 0 12px', fontSize: 12, color: text2, lineHeight: 1.55 }}>
+        {vi
+          ? 'Đây là client WebSocket thật, nói chuyện trực tiếp với backend OpenAvatarChat (LLM + ASR + TTS) mà bạn tự chạy. Không có dữ liệu giả lập — nếu chưa có server, hãy làm theo hướng dẫn tự host bên dưới.'
+          : 'This is a real WebSocket client talking directly to a self-hosted OpenAvatarChat backend (LLM + ASR + TTS). Nothing here is simulated — if you don\'t have a server yet, follow the self-hosting steps below.'}
+      </p>
+
+      {/* Connection bar */}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 10 }}>
+        <input
+          value={serverUrl}
+          onChange={(e) => setServerUrl(e.target.value)}
+          disabled={isConnected || isBusy}
+          placeholder="ws://localhost:8282"
+          style={{
+            flex: '1 1 220px', minWidth: 180, padding: '8px 10px', borderRadius: 8, fontSize: 12.5,
+            border: `1px solid ${border}`, background: isDark ? 'rgba(255,255,255,0.04)' : '#fff', color: text,
+            fontFamily: 'ui-monospace, monospace',
+          }}
+        />
+        {!isConnected && !isBusy && (
+          <button onClick={handleConnect} style={btnStyle(true)}>
+            <PlugZap size={14} /> {vi ? 'Kết nối' : 'Connect'}
+          </button>
+        )}
+        {isBusy && (
+          <button disabled style={btnStyle(true, true)}>
+            <Loader2 size={14} className="spin" /> {vi ? 'Đang kết nối...' : 'Connecting...'}
+          </button>
+        )}
+        {isConnected && (
+          <button onClick={handleDisconnect} style={btnStyle(false, false, '#ff5252')}>
+            <Unplug size={14} /> {vi ? 'Ngắt kết nối' : 'Disconnect'}
+          </button>
+        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: text2 }}>
+          <StatusDot state={state} /> {stateLabel}
+        </div>
+      </div>
+
+      {errorMsg && (
+        <div style={{ fontSize: 12, color: '#ff5252', marginBottom: 10 }}>{errorMsg}</div>
+      )}
+
+      {/* Conversation */}
+      <div
+        ref={scrollRef}
+        style={{
+          height: 240, overflowY: 'auto', borderRadius: 10, padding: 10, marginBottom: 10,
+          background: isDark ? 'rgba(0,0,0,0.25)' : 'rgba(0,0,0,0.03)', border: `1px solid ${border}`,
+        }}
+      >
+        {messages.length === 0 && (
+          <div style={{ fontSize: 12, color: text3, textAlign: 'center', marginTop: 90 }}>
+            {vi ? 'Cuộc trò chuyện sẽ hiện ở đây sau khi kết nối.' : 'Your conversation will appear here once connected.'}
+          </div>
+        )}
+        {messages.map((m) => (
+          <div key={m.id} style={{ display: 'flex', justifyContent: m.role === 'human' ? 'flex-end' : 'flex-start', marginBottom: 8 }}>
+            <div style={{
+              maxWidth: '78%', padding: '7px 11px', borderRadius: 10, fontSize: 12.5, lineHeight: 1.5,
+              background: m.role === 'human'
+                ? 'linear-gradient(135deg, #00b8cc, #6b3fd4)'
+                : (isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)'),
+              color: m.role === 'human' ? '#fff' : text,
+            }}>{m.text}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Avatar speaking level */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+        <span style={{ fontSize: 11, color: text3, width: 92 }}>{vi ? 'Avatar đang nói' : 'Avatar speaking'}</span>
+        <div style={{ flex: 1, height: 6, borderRadius: 4, background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)', overflow: 'hidden' }}>
+          <div style={{ height: '100%', width: `${Math.min(100, avatarLevel * 260)}%`, background: '#00e5ff', transition: 'width 0.08s linear' }} />
+        </div>
+      </div>
+
+      {/* Input row */}
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button
+          onClick={toggleMic}
+          disabled={!isConnected}
+          title={vi ? 'Bật/tắt micro' : 'Toggle microphone'}
+          style={{
+            ...btnStyle(false, !isConnected, micOn ? '#ff5252' : undefined),
+            padding: '9px 12px', position: 'relative',
+          }}
+        >
+          {micOn ? <MicOff size={15} /> : <Mic size={15} />}
+          {micOn && (
+            <span style={{
+              position: 'absolute', inset: -3, borderRadius: 10, border: '2px solid #ff5252',
+              opacity: Math.min(1, micLevel * 8), pointerEvents: 'none',
+            }} />
+          )}
+        </button>
+        <input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') handleSend() }}
+          disabled={!isConnected}
+          placeholder={vi ? 'Nhập tin nhắn...' : 'Type a message...'}
+          style={{
+            flex: 1, padding: '9px 12px', borderRadius: 8, fontSize: 13,
+            border: `1px solid ${border}`, background: isDark ? 'rgba(255,255,255,0.04)' : '#fff', color: text,
+          }}
+        />
+        <button onClick={handleSend} disabled={!isConnected || !input.trim()} style={btnStyle(true, !isConnected || !input.trim())}>
+          <Send size={14} />
+        </button>
+        <button
+          onClick={() => clientRef.current?.interrupt()}
+          disabled={!isConnected}
+          title={vi ? 'Ngắt lời avatar' : 'Interrupt the avatar'}
+          style={btnStyle(false, !isConnected, '#f4b942')}
+        >
+          <OctagonX size={15} />
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function btnStyle(primary, disabled, accentColor) {
+  return {
+    display: 'inline-flex', alignItems: 'center', gap: 6, justifyContent: 'center',
+    padding: '9px 14px', borderRadius: 8, fontSize: 12.5, fontWeight: 600, cursor: disabled ? 'default' : 'pointer',
+    border: primary ? '1px solid transparent' : `1px solid ${accentColor || 'rgba(128,128,128,0.35)'}`,
+    background: primary ? 'linear-gradient(135deg, #00b8cc, #6b3fd4)' : 'transparent',
+    color: primary ? '#fff' : (accentColor || 'inherit'),
+    opacity: disabled ? 0.5 : 1,
+  }
+}
