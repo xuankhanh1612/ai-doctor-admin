@@ -106,8 +106,13 @@ export default function Sidebar({ active, onNavigate, openSignal = 0 }) {
       </NavItem>
       <NavItem active={active === 'avatarCreator'} onClick={() => handleNavigate('avatarCreator')} text={text} text2={text2} isDark={isDark}>
         <span style={{ fontSize: 13 }}>🧑‍🚀</span>
-        <span style={{ flex: 1 }}>Tạo Avatar</span>
+        <span style={{ flex: 1 }}>Tạo AI</span>
         <span style={{ fontSize: 10, fontFamily: 'monospace', color: text3 }}>VRM</span>
+      </NavItem>
+      <NavItem active={active === 'myAIAvatar'} onClick={() => handleNavigate('myAIAvatar')} text={text} text2={text2} isDark={isDark}>
+        <span style={{ fontSize: 13 }}>🧬</span>
+        <span style={{ flex: 1 }}>My AI Avatar</span>
+        <span style={{ fontSize: 10, fontFamily: 'monospace', color: text3 }}>LAM</span>
       </NavItem>
 
       <SectionLabel color={text3} style={{ marginTop: 16 }}>{t('patients')} Journey</SectionLabel>

@@ -37,13 +37,14 @@ import StressReliefPanel from './components/StressReliefPanel.jsx'
 import PrintCenter from './print/PrintCenter.jsx'
 import UserProfilePanel from './components/UserProfilePanel.jsx'
 import AvatarCreatorPanel from './components/AvatarCreatorPanel.jsx'
+import MyAIAvatarPanel from './components/MyAIAvatarPanel.jsx'
 import OrganConnectionPanel from './components/OrganConnectionPanel.jsx'
 import ChatHistoryPanel from './components/ChatHistoryPanel.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 import { addNotification } from './lib/notifications.js'
 
 // Swarm panel replaces simulation; keep consensus as classic fallback
-const PANELS = ['healthJourneyGame', 'myRewardHealth', 'rssPortal', 'waterDrinkChatBot', 'wikiMedVision', 'fullDocSummarization', 'documentOCR', 'organConnection', 'healthJourney', 'lunchJourney', 'dinnerJourney', 'upload', 'imaging', 'checkin', 'family', 'record', 'familyRelationship', 'matrix3dBody', 'omnidirectional3dBody', 'twin', 'telemedicine', 'statAnalysis', 'swarm', 'consensus', 'protein3d', 'aiHealthcareVision', 'aiHealthcareVisionControl', 'stressRelief', 'aiInbodyPortal', 'printPortal', 'chatHistory']
+const PANELS = ['healthJourneyGame', 'myRewardHealth', 'rssPortal', 'waterDrinkChatBot', 'wikiMedVision', 'fullDocSummarization', 'documentOCR', 'organConnection', 'healthJourney', 'lunchJourney', 'dinnerJourney', 'upload', 'imaging', 'checkin', 'family', 'record', 'familyRelationship', 'matrix3dBody', 'omnidirectional3dBody', 'twin', 'telemedicine', 'statAnalysis', 'swarm', 'consensus', 'protein3d', 'aiHealthcareVision', 'aiHealthcareVisionControl', 'stressRelief', 'aiInbodyPortal', 'printPortal', 'chatHistory', 'myAIAvatar']
 
 export default function App() {
   const { user, loading } = useAuth()
@@ -100,7 +101,8 @@ export default function App() {
     printPortal: 'Print Portal',
     chatHistory: 'Lịch sử Chat với AI',
     profile: t('profile'),
-    avatarCreator: 'Tạo Avatar',
+    avatarCreator: 'Tạo AI',
+    myAIAvatar: 'My AI Avatar',
   }
 
   const navigateToRecord = (member) => { setSelectedMember(member); setActive('record') }
@@ -270,6 +272,7 @@ export default function App() {
             {active === 'chatHistory' && <ChatHistoryPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} activePanelLabel={panelLabels[active] || active} />}
             {active === 'profile'   && <UserProfilePanel />}
             {active === 'avatarCreator' && <AvatarCreatorPanel />}
+            {active === 'myAIAvatar' && <MyAIAvatarPanel />}
             {active === 'admin'     && user?.isAdmin && <AdminPanel />}
             {active === 'admin'     && !user?.isAdmin && (
               <div style={{ padding: 40, textAlign: 'center', color: '#ff5252' }}>🔒 Admin only</div>
