@@ -61,11 +61,11 @@ function base64FromInt16(int16Array) {
   return btoa(binary)
 }
 
-function int16FromBase64(b64) {
+function bytesFromBase64(b64) {
   const binary = atob(b64)
   const bytes = new Uint8Array(binary.length)
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
-  return new Int16Array(bytes.buffer)
+  return bytes
 }
 
 function downsampleTo16k(float32Data, inputSampleRate) {
@@ -125,6 +125,11 @@ export default class OpenAvatarChatClient {
     // avatar audio playback
     this.playbackContext = null
     this.playbackCursor = 0
+    // Streamed PCM16 chunks aren't guaranteed to split on 2-byte (sample) boundaries.
+    // A leftover single byte carried over to the next chunk keeps Int16 alignment
+    // correct — without this, one misaligned chunk permanently shifts every sample
+    // after it, which renders as garbled/pitchy audio that can sound like "no known language".
+    this.playbackLeftoverByte = null
 
     this.onStateChange = onStateChange || (() => {})
     this.onHumanText = onHumanText || (() => {})
@@ -209,6 +214,7 @@ export default class OpenAvatarChatClient {
         break
       case MSG.INTERRUPT_ACCEPTED:
       case MSG.INTERRUPT_NOTIFICATION:
+        this.playbackLeftoverByte = null
         this.onInterrupted()
         break
       case MSG.ERROR:
@@ -310,7 +316,23 @@ export default class OpenAvatarChatClient {
       return
     }
     const sampleRate = payload.sample_rate || 24000
-    const int16 = int16FromBase64(payload.data_base64)
+    let bytes = bytesFromBase64(payload.data_base64)
+
+    if (this.playbackLeftoverByte) {
+      const merged = new Uint8Array(this.playbackLeftoverByte.length + bytes.length)
+      merged.set(this.playbackLeftoverByte, 0)
+      merged.set(bytes, this.playbackLeftoverByte.length)
+      bytes = merged
+      this.playbackLeftoverByte = null
+    }
+    if (bytes.length % 2 !== 0) {
+      this.playbackLeftoverByte = bytes.slice(bytes.length - 1)
+      bytes = bytes.slice(0, bytes.length - 1)
+    }
+    if (payload.end_of_speech) this.playbackLeftoverByte = null // don't carry a stray byte into the next turn
+    if (!bytes.length) return
+
+    const int16 = new Int16Array(bytes.buffer, bytes.byteOffset, bytes.length / 2)
     this.onAvatarAudioLevel(rms(int16))
 
     const AudioCtx = window.AudioContext || window.webkitAudioContext
