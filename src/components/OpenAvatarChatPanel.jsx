@@ -118,10 +118,20 @@ export default function OpenAvatarChatPanel({ isDark, vi, border, surface, text,
     }
   }
 
+  const lastSentRef = useRef({ text: '', time: 0 })
+
   const handleSend = () => {
-    if (!input.trim() || state !== CONNECTION_STATE.READY) return
-    clientRef.current?.sendText(input)
-    setMessages((prev) => [...prev, { id: `human-${Date.now()}`, role: 'human', text: input.trim() }])
+    const trimmed = input.trim()
+    if (!trimmed || state !== CONNECTION_STATE.READY) return
+    // Guard against the exact same text being sent twice in quick succession —
+    // this happens if Enter-to-submit and a click both fire for one user action,
+    // or on a rapid accidental double-click/double-tap.
+    const now = Date.now()
+    if (lastSentRef.current.text === trimmed && now - lastSentRef.current.time < 1000) return
+    lastSentRef.current = { text: trimmed, time: now }
+
+    clientRef.current?.sendText(trimmed)
+    setMessages((prev) => [...prev, { id: `human-${Date.now()}`, role: 'human', text: trimmed }])
     humanTurnRef.current = null
     humanBufferRef.current = ''
     avatarTurnRef.current = null
@@ -251,7 +261,7 @@ export default function OpenAvatarChatPanel({ isDark, vi, border, surface, text,
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') handleSend() }}
+          onKeyDown={(e) => { if (e.key === 'Enter' && !e.repeat && !e.isComposing) handleSend() }}
           disabled={!isConnected}
           placeholder={vi ? 'Nhập tin nhắn...' : 'Type a message...'}
           style={{
