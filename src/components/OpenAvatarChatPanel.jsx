@@ -30,6 +30,12 @@ export default function OpenAvatarChatPanel({ isDark, vi, border, surface, text,
   const scrollRef = useRef(null)
   const humanTurnRef = useRef(null)
   const avatarTurnRef = useRef(null)
+  // Buffers that accumulate streamed text chunks for the turn currently in progress.
+  // The server streams EchoHumanText/EchoAvatarText as incremental deltas (each message
+  // carries only the newly generated piece, not the full text so far) — without
+  // accumulating, the bubble only ever shows the last tiny fragment (e.g. a lone ".").
+  const humanBufferRef = useRef('')
+  const avatarBufferRef = useRef('')
 
   useEffect(() => {
     return () => { clientRef.current?.disconnect() }
@@ -39,17 +45,24 @@ export default function OpenAvatarChatPanel({ isDark, vi, border, surface, text,
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
   }, [messages])
 
-  const appendOrUpdate = (role, textChunk, refKey) => {
-    const ref = refKey === 'human' ? humanTurnRef : avatarTurnRef
+  const appendOrUpdate = (role, textChunk, refKey, mode) => {
+    const turnRef = refKey === 'human' ? humanTurnRef : avatarTurnRef
+    const bufferRef = refKey === 'human' ? humanBufferRef : avatarBufferRef
+    const isNewTurn = !turnRef.current
+    // If the server ever sends the full cumulative text (mode === 'full_text'), trust it
+    // as-is. Otherwise treat each message as a delta chunk and keep appending to the
+    // running buffer for this turn.
+    bufferRef.current = mode === 'full_text' ? textChunk : (isNewTurn ? '' : bufferRef.current) + textChunk
+    const fullText = bufferRef.current
     setMessages((prev) => {
-      if (ref.current && prev.length && prev[prev.length - 1].id === ref.current) {
+      if (turnRef.current && prev.length && prev[prev.length - 1].id === turnRef.current) {
         const copy = [...prev]
-        copy[copy.length - 1] = { ...copy[copy.length - 1], text: textChunk }
+        copy[copy.length - 1] = { ...copy[copy.length - 1], text: fullText }
         return copy
       }
       const id = `${role}-${Date.now()}`
-      ref.current = id
-      return [...prev, { id, role, text: textChunk }]
+      turnRef.current = id
+      return [...prev, { id, role, text: fullText }]
     })
   }
 
@@ -57,15 +70,17 @@ export default function OpenAvatarChatPanel({ isDark, vi, border, surface, text,
     setErrorMsg('')
     humanTurnRef.current = null
     avatarTurnRef.current = null
+    humanBufferRef.current = ''
+    avatarBufferRef.current = ''
     const client = new OpenAvatarChatClient({
       onStateChange: setState,
-      onHumanText: ({ text: t, endOfSpeech }) => {
-        appendOrUpdate('human', t, 'human')
-        if (endOfSpeech) humanTurnRef.current = null
+      onHumanText: ({ text: t, mode, endOfSpeech }) => {
+        appendOrUpdate('human', t, 'human', mode)
+        if (endOfSpeech) { humanTurnRef.current = null; humanBufferRef.current = '' }
       },
-      onAvatarText: ({ text: t, endOfSpeech }) => {
-        appendOrUpdate('avatar', t, 'avatar')
-        if (endOfSpeech) avatarTurnRef.current = null
+      onAvatarText: ({ text: t, mode, endOfSpeech }) => {
+        appendOrUpdate('avatar', t, 'avatar', mode)
+        if (endOfSpeech) { avatarTurnRef.current = null; avatarBufferRef.current = '' }
       },
       onAvatarAudioLevel: setAvatarLevel,
       onMicLevel: setMicLevel,
@@ -108,6 +123,9 @@ export default function OpenAvatarChatPanel({ isDark, vi, border, surface, text,
     clientRef.current?.sendText(input)
     setMessages((prev) => [...prev, { id: `human-${Date.now()}`, role: 'human', text: input.trim() }])
     humanTurnRef.current = null
+    humanBufferRef.current = ''
+    avatarTurnRef.current = null
+    avatarBufferRef.current = ''
     setInput('')
   }
 
