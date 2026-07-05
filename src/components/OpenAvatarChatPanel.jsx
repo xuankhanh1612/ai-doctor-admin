@@ -48,7 +48,14 @@ export default function OpenAvatarChatPanel({ isDark, vi, border, surface, text,
   }, [])
 
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
+    // Streaming replies call setMessages once per token (several times a second).
+    // 'smooth' scrolling animates over ~300ms, so a new call arriving mid-animation
+    // cancels the previous one and restarts from wherever it currently was — over a
+    // fast token stream the scroll position can settle a line or two short of the
+    // true bottom, visually clipping the top of the newest bubble (looks like the
+    // first words of the reply are missing, even though the full text is there).
+    // An instant jump-to-bottom on every update avoids that race entirely.
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'auto' })
   }, [messages])
 
   const appendOrUpdate = (role, textChunk, refKey, mode) => {
