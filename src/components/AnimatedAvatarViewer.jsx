@@ -49,6 +49,7 @@ export default function AnimatedAvatarViewer({
 
   const applyBoneVisibility = (visible) => {
     ;(stateRef.current.boneHelpers || []).forEach((helper) => { helper.visible = !!visible })
+    ;(stateRef.current.boneMarkers || []).forEach(({ marker }) => { marker.visible = !!visible })
     ;(stateRef.current.modelMaterials || []).forEach((material) => {
       const originalOpacity = material.userData?.osaOriginalOpacity ?? 1
       const originalTransparent = material.userData?.osaOriginalTransparent ?? false
@@ -104,7 +105,7 @@ export default function AnimatedAvatarViewer({
 
     stateRef.current = {
       scene, camera, renderer, controls, grid,
-      mixer: null, avatarRoot: null, vrm: null, currentAction: null, boneHelpers: [], modelMaterials: [], disposed: false,
+      mixer: null, avatarRoot: null, vrm: null, currentAction: null, boneHelpers: [], boneMarkers: [], boneMarkerGeometry: null, boneMarkerMaterial: null, modelMaterials: [], disposed: false,
     }
 
     function animate() {
@@ -115,6 +116,9 @@ export default function AnimatedAvatarViewer({
       // animated normalized-bone pose onto the raw skeleton (spring bones,
       // look-at, and expressions are also ticked here).
       if (stateRef.current.vrm) stateRef.current.vrm.update(delta)
+      ;(stateRef.current.boneMarkers || []).forEach(({ bone, marker }) => {
+        bone.getWorldPosition(marker.position)
+      })
       controls.update()
       renderer.render(scene, camera)
     }
@@ -143,6 +147,19 @@ export default function AnimatedAvatarViewer({
       stateRef.current.vrm = vrm || null
 
       const boneHelpers = []
+      const boneMarkers = []
+      const markerGeometry = new THREE.SphereGeometry(0.018, 12, 12)
+      const markerMaterial = new THREE.MeshBasicMaterial({ color: 0xff3b4f, depthTest: false, depthWrite: false })
+      const seenBones = new Set()
+      const addBoneMarker = (bone) => {
+        if (!bone || seenBones.has(bone.uuid)) return
+        seenBones.add(bone.uuid)
+        const marker = new THREE.Mesh(markerGeometry, markerMaterial)
+        marker.visible = !!showBones
+        marker.renderOrder = 1000
+        scene.add(marker)
+        boneMarkers.push({ bone, marker })
+      }
       const modelMaterials = []
       avatarRoot.traverse((obj) => {
         if (obj.isMesh && obj.material) {
@@ -179,6 +196,7 @@ export default function AnimatedAvatarViewer({
           helper.renderOrder = 999
           scene.add(helper)
           boneHelpers.push(helper)
+          obj.skeleton.bones.forEach(addBoneMarker)
         }
       })
       if (!boneHelpers.length) {
@@ -192,8 +210,12 @@ export default function AnimatedAvatarViewer({
         helper.renderOrder = 999
         scene.add(helper)
         boneHelpers.push(helper)
+        avatarRoot.traverse((obj) => { if (obj.isBone) addBoneMarker(obj) })
       }
       stateRef.current.boneHelpers = boneHelpers
+      stateRef.current.boneMarkers = boneMarkers
+      stateRef.current.boneMarkerGeometry = markerGeometry
+      stateRef.current.boneMarkerMaterial = markerMaterial
       stateRef.current.modelMaterials = modelMaterials
 
       onStatusChange?.({ modelLoaded: true, isVrm: !!vrm, boneCount: boneHelpers.length })
@@ -276,6 +298,9 @@ export default function AnimatedAvatarViewer({
         helper.geometry?.dispose?.()
         helper.material?.dispose?.()
       })
+      ;(stateRef.current.boneMarkers || []).forEach(({ marker }) => { scene.remove(marker) })
+      stateRef.current.boneMarkerGeometry?.dispose?.()
+      stateRef.current.boneMarkerMaterial?.dispose?.()
       scene.traverse((obj) => {
         if (obj.geometry) obj.geometry.dispose()
         if (obj.material) {
