@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Search, Shuffle, ChevronLeft, ChevronRight, Info, LayoutGrid, List,
-  Share2, Ruler, Play, Pause, Download, ExternalLink, Sparkles, Pointer,
+  Share2, Ruler, Play, Pause, Download, ExternalLink, Sparkles,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useApp } from '../context/AppContext'
@@ -159,34 +159,6 @@ export default function AvatarCreatorPanel() {
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   const [saveNote, setSaveNote] = useState('')
-  const [modelViewerReady, setModelViewerReady] = useState(
-    typeof window !== 'undefined' && !!window.customElements?.get('model-viewer')
-  )
-
-  // ---- Load Google's <model-viewer> web component from a CDN, once. ----
-  // This is a genuine custom element with its own WebGL renderer — not an
-  // <iframe> — so embedding it never triggers the source site's CSP
-  // frame-ancestors restriction. It also ships a built-in drag-to-rotate
-  // "interaction prompt" (the finger/hand hint), which we lean on for the
-  // "Khung render 3D" panel at the bottom of the page instead of hand-rolling it.
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    if (window.customElements?.get('model-viewer')) {
-      setModelViewerReady(true)
-      return
-    }
-    const existingScript = document.querySelector('script[data-avatar-model-viewer]')
-    if (existingScript) {
-      existingScript.addEventListener('load', () => setModelViewerReady(true), { once: true })
-      return
-    }
-    const script = document.createElement('script')
-    script.type = 'module'
-    script.src = 'https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js'
-    script.dataset.avatarModelViewer = 'true'
-    script.addEventListener('load', () => setModelViewerReady(true), { once: true })
-    document.head.appendChild(script)
-  }, [])
 
   useEffect(() => () => {
     if (animationBlobUrl) URL.revokeObjectURL(animationBlobUrl)
@@ -279,97 +251,6 @@ export default function AvatarCreatorPanel() {
   const activeFormat = formatOptions.find((option) => option.key === selectedFormatKey) || formatOptions[0] || null
   const activeModelUrl = activeFormat?.url || ''
   const activeModelKind = activeFormat?.kind || 'gltf'
-  // model-viewer only understands glTF/GLB (which VRM files are) — never FBX.
-  const modelViewerModelUrl = activeModelKind === 'fbx' ? '' : activeModelUrl
-
-  // ---- "Khung render 3D" virtual-finger drag demo ----
-  // A recurring onboarding gesture: a finger icon glides left/right over the
-  // model-viewer, and the model's own camera orbit rotates in lockstep with
-  // it, so it's immediately obvious that dragging on the model spins it
-  // around. It replays every 6s while the user hasn't touched the model yet,
-  // and stops for good the instant they drag for real.
-  const modelViewerRef = useRef(null)
-  const [showModelViewerHint, setShowModelViewerHint] = useState(false)
-  const [fingerRatio, setFingerRatio] = useState(0.5)
-  const [demoCycle, setDemoCycle] = useState(0)
-
-  useEffect(() => {
-    setShowModelViewerHint(false)
-    setFingerRatio(0.5)
-  }, [modelViewerModelUrl])
-
-  useEffect(() => {
-    if (!modelViewerModelUrl || !modelViewerReady) return
-    const mv = modelViewerRef.current
-    if (!mv) return
-
-    let cancelled = false // effect torn down (unmount / model or readiness change)
-    let interacted = false // user dragged for real — stop the demo permanently
-    let rafId = 0
-    let repeatTimer = 0
-
-    const stopForever = () => {
-      if (interacted) return
-      interacted = true
-      if (rafId) cancelAnimationFrame(rafId)
-      if (repeatTimer) clearTimeout(repeatTimer)
-      setShowModelViewerHint(false)
-      mv.autoRotate = true
-      mv.removeEventListener('pointerdown', stopForever)
-      mv.removeEventListener('touchstart', stopForever)
-    }
-    mv.addEventListener('pointerdown', stopForever)
-    mv.addEventListener('touchstart', stopForever, { passive: true })
-
-    const playDemo = () => {
-      if (cancelled || interacted) return
-      setDemoCycle((n) => n + 1)
-      setShowModelViewerHint(true)
-      mv.autoRotate = false
-      const baseOrbit = mv.getCameraOrbit ? mv.getCameraOrbit() : null
-      const startTheta = baseOrbit ? (baseOrbit.theta * 180) / Math.PI : 0
-      const polarDeg = baseOrbit ? ((baseOrbit.phi * 180) / Math.PI).toFixed(2) : '75'
-      const radius = baseOrbit ? `${baseOrbit.radius.toFixed(2)}m` : '105%'
-      const duration = 2400
-      const amplitude = 24
-      const start = performance.now()
-
-      const frame = (now) => {
-        if (cancelled || interacted) return
-        const t = Math.min(1, (now - start) / duration)
-        const swing = Math.sin(t * Math.PI * 2.4) * amplitude * (1 - t * 0.2)
-        mv.cameraOrbit = `${(startTheta + swing).toFixed(2)}deg ${polarDeg}deg ${radius}`
-        setFingerRatio(Math.min(0.86, Math.max(0.14, 0.5 + swing / (amplitude * 2.2))))
-        if (t < 1) {
-          rafId = requestAnimationFrame(frame)
-        } else {
-          // One cycle done: restore auto-rotate, hide the finger, and — if the
-          // user still hasn't touched the model — queue up another cycle.
-          mv.autoRotate = true
-          setShowModelViewerHint(false)
-          if (!cancelled && !interacted) {
-            repeatTimer = setTimeout(playDemo, 6000)
-          }
-        }
-      }
-      rafId = requestAnimationFrame(frame)
-    }
-
-    if (mv.loaded) {
-      playDemo()
-    } else {
-      mv.addEventListener('load', playDemo, { once: true })
-    }
-
-    return () => {
-      cancelled = true
-      if (rafId) cancelAnimationFrame(rafId)
-      if (repeatTimer) clearTimeout(repeatTimer)
-      mv.removeEventListener('pointerdown', stopForever)
-      mv.removeEventListener('touchstart', stopForever)
-      mv.removeEventListener('load', playDemo)
-    }
-  }, [modelViewerModelUrl, modelViewerReady])
 
   const loadAnimationFile = async (animation) => {
     setSelectedAnimation(animation)
@@ -864,11 +745,12 @@ export default function AvatarCreatorPanel() {
             </div>
           </div>
 
-          {/* ============ "Khung render 3D" — genuine <model-viewer> web component ============ */}
-          {/* No <iframe> anywhere: this is Google's model-viewer custom element, which owns
-              its own WebGL canvas, so it can never trigger the source site's CSP
-              frame-ancestors restriction. Its built-in `interaction-prompt` is the
-              hand/finger drag hint (slides + fades) shown until the user first drags. */}
+          {/* ============ "Khung render 3D" — three.js/VRM render, posed not T-Posed ============ */}
+          {/* Shares the same AnimatedAvatarViewer used above, so this panel shows the
+              avatar in its currently selected Mixamo pose (e.g. "Fight Idle") instead
+              of the raw glTF bind pose — matching how opensourceavatars.com/finder
+              presents avatars — and it inherits that viewer's real OrbitControls drag
+              plus its built-in first-time finger drag hint. No iframe anywhere. */}
           <div className="osa-card" style={{ marginTop: 16, overflow: 'hidden' }}>
             <div style={{ padding: '16px 18px 14px', borderBottom: `1px solid ${palette.border}`, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
               <div>
@@ -894,18 +776,19 @@ export default function AvatarCreatorPanel() {
               <div style={{ position: 'absolute', left: '50%', bottom: 46, width: '62%', maxWidth: 420, height: 92, transform: 'translateX(-50%) perspective(420px) rotateX(66deg)', borderRadius: '50%', border: `1px solid ${isDark ? 'rgba(148,163,184,0.28)' : 'rgba(71,85,105,0.22)'}`, background: isDark ? 'repeating-radial-gradient(circle, rgba(148,163,184,0.22) 0 1px, transparent 1px 26px)' : 'repeating-radial-gradient(circle, rgba(71,85,105,0.2) 0 1px, transparent 1px 26px)', pointerEvents: 'none' }} />
               <div style={{ position: 'absolute', left: '50%', bottom: 70, width: 2, height: 320, transform: 'translateX(-50%)', background: isDark ? 'linear-gradient(transparent,rgba(0,229,255,0.32),transparent)' : 'linear-gradient(transparent,rgba(0,184,204,0.28),transparent)', pointerEvents: 'none' }} />
 
-              {modelViewerModelUrl ? (
-                <model-viewer
-                  ref={modelViewerRef}
-                  src={modelViewerModelUrl}
-                  alt={selectedAvatar ? `${selectedAvatar.name} VRM model` : 'Selected avatar VRM model'}
-                  camera-controls="true"
-                  auto-rotate="true"
-                  interaction-prompt="none"
-                  exposure="1"
-                  shadow-intensity="0.7"
-                  style={{ position: 'relative', zIndex: 1, width: '100%', height: '100%', display: 'block', background: 'transparent' }}
-                />
+              {activeModelUrl ? (
+                <div style={{ position: 'relative', zIndex: 1, width: '100%', height: '100%' }}>
+                  <AnimatedAvatarViewer
+                    modelUrl={activeModelUrl}
+                    modelKind={activeModelKind}
+                    animationBlobUrl={animationBlobUrl}
+                    animationLabel={selectedAnimation}
+                    isDark={isDark}
+                    autoRotate={autoRotate}
+                    showGrid={false}
+                    showDragHint
+                  />
+                </div>
               ) : (
                 <div style={{ position: 'relative', zIndex: 1, height: '100%', display: 'grid', placeItems: 'center' }}>
                   {selectedAvatar?.thumbnail_url
@@ -913,55 +796,19 @@ export default function AvatarCreatorPanel() {
                     : <span style={{ fontSize: 88 }}>🧑‍🚀</span>}
                 </div>
               )}
-
-              {/* Virtual finger drag demo — plays once per freshly loaded model.
-                  The finger's left/right glide is mirrored 1:1 by cameraOrbit
-                  set in the effect above, so the avatar visibly turns with it. */}
-              {modelViewerModelUrl && showModelViewerHint && (
-                <div aria-hidden="true" style={{ position: 'absolute', inset: 0, zIndex: 2, pointerEvents: 'none', overflow: 'hidden' }}>
-                  <style>{`
-                    @keyframes osaFingerPulse {
-                      0%   { transform: scale(0.85); opacity: 0.55; }
-                      70%  { transform: scale(1.4); opacity: 0; }
-                      100% { transform: scale(1.4); opacity: 0; }
-                    }
-                    @keyframes osaHintFade {
-                      0%   { opacity: 0; }
-                      12%  { opacity: 1; }
-                      88%  { opacity: 1; }
-                      100% { opacity: 0; }
-                    }
-                  `}</style>
-                  <div key={demoCycle} style={{ position: 'absolute', inset: 0, animation: 'osaHintFade 2.4s ease-in-out 1' }}>
-                    <div style={{ position: 'absolute', top: '58%', left: `${fingerRatio * 100}%`, transform: 'translate(-50%, -50%)' }}>
-                      <span style={{ position: 'relative', width: 56, height: 56, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <span style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: 'rgba(0,229,255,0.35)', animation: 'osaFingerPulse 1.4s ease-out infinite' }} />
-                        <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 38, height: 38, borderRadius: '50%', background: 'rgba(20,26,38,0.85)', boxShadow: '0 6px 18px rgba(0,0,0,0.35)' }}>
-                          <Pointer size={17} color="#ffffff" strokeWidth={2.25} />
-                        </span>
-                      </span>
-                    </div>
-                    <div style={{ position: 'absolute', left: '50%', bottom: 26, transform: 'translateX(-50%)', padding: '6px 12px', borderRadius: 999, background: 'rgba(15,23,42,0.62)', color: '#fff', fontSize: 11, fontWeight: 800, whiteSpace: 'nowrap' }}>
-                      {vi ? 'Kéo để xoay mô hình' : 'Drag to rotate'}
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
 
             <div style={{ padding: '10px 16px', borderTop: `1px solid ${palette.border}` }}>
               <span style={{ color: palette.text3, fontSize: 11, lineHeight: 1.5 }}>
-                {modelViewerModelUrl
+                {activeModelUrl
                   ? (vi
-                    ? 'Render 3D nội bộ bằng model-viewer, không dùng iframe nên tránh lỗi CSP frame-ancestors.'
-                    : 'Rendered locally with model-viewer — no iframe, so it avoids the source site\'s CSP frame-ancestors errors.')
-                  : (activeModelKind === 'fbx'
-                    ? (vi ? 'Định dạng FBX đang chọn không được model-viewer hỗ trợ trực tiếp — chọn định dạng VRM ở trên để xem tại đây.' : 'model-viewer can\'t load the selected FBX format directly — pick the VRM format above to preview it here.')
-                    : (vi ? 'Avatar này chưa có model URL, đang hiển thị ảnh preview.' : 'This avatar has no model URL yet, so a static preview image is shown.'))}
+                    ? `Render 3D nội bộ bằng three.js/VRM, không dùng iframe nên tránh lỗi CSP frame-ancestors. Đang hiển thị tư thế "${selectedAnimation}" thay vì T-Pose mặc định, giống cách opensourceavatars.com/finder trình bày avatar.`
+                    : `Rendered locally with three.js/VRM — no iframe, so it avoids the source site's CSP frame-ancestors errors. Showing the "${selectedAnimation}" pose instead of the default T-Pose, matching how opensourceavatars.com/finder presents avatars.`)
+                  : (vi ? 'Avatar này chưa có model URL, đang hiển thị ảnh preview.' : 'This avatar has no model URL yet, so a static preview image is shown.')}
                 {' '}
                 {vi
-                  ? 'Animation Mixamo đã retarget nằm ở khung "Trình xem 3D & Animation" phía trên.'
-                  : 'The retargeted Mixamo animations live in the "3D & Animation Viewer" panel above.'}
+                  ? 'Đổi animation ở khung "Trình xem 3D & Animation" phía trên để cập nhật tư thế ở đây.'
+                  : 'Change the animation in the "3D & Animation Viewer" panel above to update the pose shown here.'}
               </span>
             </div>
           </div>
