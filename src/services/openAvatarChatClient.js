@@ -23,6 +23,7 @@ const MSG = {
   SEND_HUMAN_TEXT: 'SendHumanText',
   TRIGGER_HEARTBEAT: 'TriggerHeartbeat',
   INTERRUPT: 'Interrupt',
+  END_SPEECH: 'EndSpeech',
 
   AVATAR_SESSION_INITIALIZED: 'AvatarSessionInitialized',
   ECHO_HUMAN_TEXT: 'EchoHumanText',
@@ -333,14 +334,27 @@ export default class OpenAvatarChatClient {
   }
 
   // ---- Avatar (TTS) audio playback ----
+  // IMPORTANT: the server runs in "simplex" mode — its VAD disables the mic
+  // (input_enabled = False) the moment it starts sending avatar audio, and only
+  // re-enables it once the CLIENT_PLAYBACK stream is closed server-side. That
+  // stream is only closed when the server receives an explicit `EndSpeech`
+  // message from us (see ws_input_delegate.py::_handle_end_speech). Without
+  // sending it, the server's mic stays permanently deaf after the very first
+  // avatar reply — every SendHumanAudio chunk after that is silently dropped by
+  // VAD (it returns immediately when input_enabled is false), with zero VAD/ASR
+  // log lines to show for it. So every time we reach the end of a turn's audio,
+  // we must send EndSpeech with that turn's stream_key, once playback is
+  // actually finished (not just scheduled), so the server knows it's safe to
+  // listen again.
   _playAvatarAudio(payload) {
-    if (!payload?.data_base64) return
+    if (!payload) return
     if ((payload.format || 'PCM').toUpperCase() !== 'PCM') {
       // OPUS decoding is intentionally out of scope for this lightweight client.
       return
     }
     const sampleRate = payload.sample_rate || 24000
-    let bytes = bytesFromBase64(payload.data_base64)
+    const streamKey = payload.stream_key
+    let bytes = payload.data_base64 ? bytesFromBase64(payload.data_base64) : new Uint8Array(0)
 
     if (this.playbackLeftoverByte) {
       const merged = new Uint8Array(this.playbackLeftoverByte.length + bytes.length)
@@ -354,31 +368,41 @@ export default class OpenAvatarChatClient {
       bytes = bytes.slice(0, bytes.length - 1)
     }
     if (payload.end_of_speech) this.playbackLeftoverByte = null // don't carry a stray byte into the next turn
-    if (!bytes.length) return
 
-    const int16 = new Int16Array(bytes.buffer, bytes.byteOffset, bytes.length / 2)
-    this.onAvatarAudioLevel(rms(int16))
+    let scheduledDurationMs = 0
+    if (bytes.length) {
+      const int16 = new Int16Array(bytes.buffer, bytes.byteOffset, bytes.length / 2)
+      this.onAvatarAudioLevel(rms(int16))
 
-    const AudioCtx = window.AudioContext || window.webkitAudioContext
-    if (!this.playbackContext) {
-      this.playbackContext = new AudioCtx()
-      this.playbackCursor = this.playbackContext.currentTime
+      const AudioCtx = window.AudioContext || window.webkitAudioContext
+      if (!this.playbackContext) {
+        this.playbackContext = new AudioCtx()
+        this.playbackCursor = this.playbackContext.currentTime
+      }
+      const ctx = this.playbackContext
+      const float32 = new Float32Array(int16.length)
+      for (let i = 0; i < int16.length; i++) float32[i] = int16[i] / 32768
+      const buffer = ctx.createBuffer(1, float32.length, sampleRate)
+      buffer.copyToChannel(float32, 0)
+
+      const source = ctx.createBufferSource()
+      source.buffer = buffer
+      source.connect(ctx.destination)
+      const startAt = Math.max(ctx.currentTime, this.playbackCursor)
+      source.start(startAt)
+      this.playbackCursor = startAt + buffer.duration
+      scheduledDurationMs = Math.max(0, (this.playbackCursor - ctx.currentTime) * 1000)
     }
-    const ctx = this.playbackContext
-    const float32 = new Float32Array(int16.length)
-    for (let i = 0; i < int16.length; i++) float32[i] = int16[i] / 32768
-    const buffer = ctx.createBuffer(1, float32.length, sampleRate)
-    buffer.copyToChannel(float32, 0)
-
-    const source = ctx.createBufferSource()
-    source.buffer = buffer
-    source.connect(ctx.destination)
-    const startAt = Math.max(ctx.currentTime, this.playbackCursor)
-    source.start(startAt)
-    this.playbackCursor = startAt + buffer.duration
 
     if (payload.end_of_speech) {
-      setTimeout(() => this.onAvatarAudioLevel(0), Math.max(0, (this.playbackCursor - ctx.currentTime) * 1000))
+      setTimeout(() => {
+        this.onAvatarAudioLevel(0)
+        // Tell the server we're done playing, so it re-enables the mic (VAD).
+        this._send({
+          ...makeHeader(MSG.END_SPEECH),
+          payload: { stream_key: streamKey || '' },
+        })
+      }, scheduledDurationMs)
     }
   }
 
