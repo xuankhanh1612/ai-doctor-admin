@@ -37,6 +37,7 @@ import StressReliefPanel from './components/StressReliefPanel.jsx'
 import PrintCenter from './print/PrintCenter.jsx'
 import UserProfilePanel from './components/UserProfilePanel.jsx'
 import AvatarCreatorPanel from './components/AvatarCreatorPanel.jsx'
+import My3DAssetPanel from './components/My3DAssetPanel.jsx'
 import MyAIAvatarPanel from './components/MyAIAvatarPanel.jsx'
 import OrganConnectionPanel from './components/OrganConnectionPanel.jsx'
 import ChatHistoryPanel from './components/ChatHistoryPanel.jsx'
@@ -102,6 +103,7 @@ export default function App() {
     chatHistory: 'Lịch sử Chat với AI',
     profile: t('profile'),
     avatarCreator: 'Tạo Avatar',
+    my3dAsset: 'My 3D Asset',
     myAiAvatar: 'My AI Avatar',
   }
 
@@ -271,8 +273,12 @@ export default function App() {
             {active === 'printPortal' && <PrintCenter onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'chatHistory' && <ChatHistoryPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} activePanelLabel={panelLabels[active] || active} />}
             {active === 'profile'   && <UserProfilePanel />}
-            {active === 'myAiAvatar' && <MyAIAvatarPanel />}
+            {active === 'myAiAvatar' && user?.isAdmin && <MyAIAvatarPanel />}
+            {active === 'myAiAvatar' && !user?.isAdmin && (
+              <div style={{ padding: 40, textAlign: 'center', color: '#ff5252' }}>🔒 Admin only</div>
+            )}
             {active === 'avatarCreator' && <AvatarCreatorPanel />}
+            {active === 'my3dAsset' && <My3DAssetPanel />}
             {active === 'admin'     && user?.isAdmin && <AdminPanel />}
             {active === 'admin'     && !user?.isAdmin && (
               <div style={{ padding: 40, textAlign: 'center', color: '#ff5252' }}>🔒 Admin only</div>
