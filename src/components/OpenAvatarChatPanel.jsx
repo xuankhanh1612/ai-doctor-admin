@@ -125,18 +125,26 @@ export default function OpenAvatarChatPanel({ isDark, vi, border, surface, text,
     clientRef.current = null
   }
 
+  const micTogglingRef = useRef(false)
+
   const toggleMic = async () => {
     if (!clientRef.current || state !== CONNECTION_STATE.READY) return
-    if (micOn) {
-      clientRef.current.stopMic()
-      setMicOn(false)
-    } else {
-      try {
-        await clientRef.current.startMic()
-        setMicOn(true)
-      } catch (err) {
-        setErrorMsg(vi ? 'Không truy cập được microphone.' : 'Could not access the microphone.')
+    if (micTogglingRef.current) return // guard against a double-fire before setMicOn re-renders
+    micTogglingRef.current = true
+    try {
+      if (micOn) {
+        clientRef.current.stopMic()
+        setMicOn(false)
+      } else {
+        try {
+          await clientRef.current.startMic()
+          setMicOn(true)
+        } catch (err) {
+          setErrorMsg(vi ? 'Không truy cập được microphone.' : 'Could not access the microphone.')
+        }
       }
+    } finally {
+      micTogglingRef.current = false
     }
   }
 
