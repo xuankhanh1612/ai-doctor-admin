@@ -70,7 +70,8 @@ export default function Sidebar({ active, onNavigate, openSignal = 0 }) {
 
   const ADMIN_STEPS = user?.isAdmin ? [
     { id: 'aiHealthcareVisionControl', label: t('aiHealthcareVisionControl'), step: '24b' },
-    { id: 'admin', label: t('adminPanel'), step: '★' },
+    { id: 'admin', label: t('adminPanel'), step: '★', icon: '🛡️' },
+    { id: 'myAiAvatar', label: 'My AI Avatar', step: 'LAM', icon: '🪄' },
   ] : []
 
   useEffect(() => {
@@ -104,15 +105,15 @@ export default function Sidebar({ active, onNavigate, openSignal = 0 }) {
         <span style={{ flex: 1 }}>{t('profile')}</span>
         <span style={{ fontSize: 10, fontFamily: 'monospace', color: text3 }}>ID</span>
       </NavItem>
-      <NavItem active={active === 'myAiAvatar'} onClick={() => handleNavigate('myAiAvatar')} text={text} text2={text2} isDark={isDark}>
-        <span style={{ fontSize: 13 }}>🪄</span>
-        <span style={{ flex: 1 }}>My AI Avatar</span>
-        <span style={{ fontSize: 10, fontFamily: 'monospace', color: text3 }}>LAM</span>
-      </NavItem>
       <NavItem active={active === 'avatarCreator'} onClick={() => handleNavigate('avatarCreator')} text={text} text2={text2} isDark={isDark}>
         <span style={{ fontSize: 13 }}>🧑‍🚀</span>
         <span style={{ flex: 1 }}>Tạo Avatar</span>
         <span style={{ fontSize: 10, fontFamily: 'monospace', color: text3 }}>VRM</span>
+      </NavItem>
+      <NavItem active={active === 'my3dAsset'} onClick={() => handleNavigate('my3dAsset')} text={text} text2={text2} isDark={isDark}>
+        <span style={{ fontSize: 13 }}>🧊</span>
+        <span style={{ flex: 1 }}>My 3D Asset</span>
+        <span style={{ fontSize: 10, fontFamily: 'monospace', color: text3 }}>GLB</span>
       </NavItem>
 
       <SectionLabel color={text3} style={{ marginTop: 16 }}>{t('patients')} Journey</SectionLabel>
@@ -129,7 +130,7 @@ export default function Sidebar({ active, onNavigate, openSignal = 0 }) {
           <SectionLabel color={text3} style={{ marginTop: 16 }}>Admin</SectionLabel>
           {ADMIN_STEPS.map(s => (
             <NavItem key={s.id} active={active === s.id} onClick={() => handleNavigate(s.id)} text="#ff5252" text2={text2} isDark={isDark} isAdmin>
-              <span style={{ fontSize: 12 }}>🛡️</span>
+              <span style={{ fontSize: 12 }}>{s.icon || '🛡️'}</span>
               <span style={{ flex: 1 }}>{s.label}</span>
               <span style={{ fontSize: 10, fontFamily: 'monospace', color: '#ff5252' }}>{s.step}</span>
             </NavItem>
