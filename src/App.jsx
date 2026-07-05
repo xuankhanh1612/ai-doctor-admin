@@ -38,6 +38,7 @@ import PrintCenter from './print/PrintCenter.jsx'
 import UserProfilePanel from './components/UserProfilePanel.jsx'
 import AvatarCreatorPanel from './components/AvatarCreatorPanel.jsx'
 import My3DAssetPanel from './components/My3DAssetPanel.jsx'
+import TwoDTo3DAssetPanel from './components/TwoDTo3DAssetPanel.jsx'
 import MyAIAvatarPanel from './components/MyAIAvatarPanel.jsx'
 import OrganConnectionPanel from './components/OrganConnectionPanel.jsx'
 import ChatHistoryPanel from './components/ChatHistoryPanel.jsx'
@@ -45,7 +46,7 @@ import LoginPage from './pages/LoginPage.jsx'
 import { addNotification } from './lib/notifications.js'
 
 // Swarm panel replaces simulation; keep consensus as classic fallback
-const PANELS = ['healthJourneyGame', 'myRewardHealth', 'rssPortal', 'waterDrinkChatBot', 'wikiMedVision', 'fullDocSummarization', 'documentOCR', 'organConnection', 'healthJourney', 'lunchJourney', 'dinnerJourney', 'upload', 'imaging', 'checkin', 'family', 'record', 'familyRelationship', 'matrix3dBody', 'omnidirectional3dBody', 'twin', 'telemedicine', 'statAnalysis', 'swarm', 'consensus', 'protein3d', 'aiHealthcareVision', 'aiHealthcareVisionControl', 'stressRelief', 'aiInbodyPortal', 'printPortal', 'chatHistory']
+const PANELS = ['healthJourneyGame', 'myRewardHealth', 'rssPortal', 'waterDrinkChatBot', 'wikiMedVision', 'fullDocSummarization', 'documentOCR', 'twoDTo3DAsset', 'organConnection', 'healthJourney', 'lunchJourney', 'dinnerJourney', 'upload', 'imaging', 'checkin', 'family', 'record', 'familyRelationship', 'matrix3dBody', 'omnidirectional3dBody', 'twin', 'telemedicine', 'statAnalysis', 'swarm', 'consensus', 'protein3d', 'aiHealthcareVision', 'aiHealthcareVisionControl', 'stressRelief', 'aiInbodyPortal', 'printPortal', 'chatHistory']
 
 export default function App() {
   const { user, loading } = useAuth()
@@ -98,6 +99,7 @@ export default function App() {
     wikiMedVision: t('wikiMedVision'),
     fullDocSummarization: 'Full-Document Summarization',
     documentOCR: 'Document OCR',
+    twoDTo3DAsset: '2D to 3D Asset',
     organConnection: 'Ăn gì tốt hôm nay',
     printPortal: 'Print Portal',
     chatHistory: 'Lịch sử Chat với AI',
@@ -269,6 +271,7 @@ export default function App() {
             {active === 'wikiMedVision' && <WikiMedVisionPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'fullDocSummarization' && <FullDocumentSummarizationPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'documentOCR' && <DocumentOCRPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} />}
+            {active === 'twoDTo3DAsset' && <TwoDTo3DAssetPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'organConnection' && <OrganConnectionPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'printPortal' && <PrintCenter onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'chatHistory' && <ChatHistoryPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} activePanelLabel={panelLabels[active] || active} />}

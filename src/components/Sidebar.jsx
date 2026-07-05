@@ -43,6 +43,7 @@ export default function Sidebar({ active, onNavigate, openSignal = 0 }) {
     { id: 'wikiMedVision',          label: t('wikiMedVision'),           step: '03' },
     { id: 'fullDocSummarization',   label: 'Full-Document Summarization', step: '04' },
     { id: 'documentOCR',            label: 'Document OCR',               step: '05' },
+    { id: 'twoDTo3DAsset',          label: '2D to 3D Asset',           step: '05b' },
     { id: 'organConnection',   label: 'Ăn gì tốt hôm nay',   step: '06' },
     { id: 'healthJourney', label: t('healthJourney'), step: '07' },
     { id: 'lunchJourney', label: t('lunchJourney'), step: '08' },
