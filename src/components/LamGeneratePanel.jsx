@@ -1,24 +1,49 @@
 import React, { useRef, useState } from 'react'
 import { UploadCloud, Wand2, AlertTriangle, Download, RotateCcw, Image as ImageIcon, Video as VideoIcon } from 'lucide-react'
+import { Client } from '@gradio/client'
 
-// Real client for /api/lam-generate — sends the actual uploaded photo (and
-// optional motion video) to the server, which drives the real LAM model
-// (github.com/aigc3d/LAM) running on Hugging Face's Gradio Space via the
-// official @gradio/client SDK. Nothing here is mocked: success shows
-// whatever file(s) the model itself produced, and failure shows the real
-// upstream error (e.g. the Space being asleep or out of GPU quota).
+// Real, direct-from-browser client for the LAM (Large Avatar Model) Hugging
+// Face Space (github.com/aigc3d/LAM). We deliberately do NOT proxy this
+// through our own server: Vercel serverless functions hard-cap request
+// bodies at 4.5MB, which a portrait photo + motion video in base64 blows
+// past instantly (413 Request Entity Too Large). @gradio/client is the
+// official Gradio SDK and is built to run in the browser — the browser
+// talks straight to Hugging Face's real inference endpoint, so there's no
+// server-side size limit and no proxy in the way. Nothing here is mocked:
+// success renders whatever file(s) the model itself produced, failure
+// shows the real upstream error (Space asleep, no GPU quota, etc).
 
-function fileToBase64(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(reader.result) // data:<mime>;base64,....
-    reader.onerror = reject
-    reader.readAsDataURL(file)
-  })
+const DEFAULT_SPACE = '3DAIGC/LAM'
+
+// view_api() describes every function the Space exposes. We pick the one
+// that (a) accepts an image and (b) looks like the actual "run inference"
+// button rather than a helper endpoint, so this keeps working even if the
+// 3DAIGC team renames internals.
+function pickEndpoint(apiInfo) {
+  const named = apiInfo?.named_endpoints || {}
+  const candidates = Object.entries(named).map(([path, def]) => {
+    const params = def.parameters || []
+    const hasImage = params.some(p => /image|photo|portrait/i.test(`${p.label || ''} ${p.parameter_name || ''} ${p.component || ''}`))
+    return { path, params, hasImage }
+  }).filter(c => c.hasImage)
+  if (!candidates.length) return null
+  return candidates.find(c => /generat|submit|run|infer|reconstruct/i.test(c.path)) || candidates[0]
+}
+
+function buildPayload(params, imageFile, videoFile) {
+  const payload = {}
+  for (const p of params) {
+    const key = p.parameter_name || p.label
+    if (!key) continue
+    const desc = `${p.label || ''} ${key} ${p.component || ''}`
+    if (/image|photo|portrait/i.test(desc) && imageFile) payload[key] = imageFile
+    else if (/video|motion/i.test(desc) && videoFile) payload[key] = videoFile
+    else if (p.parameter_has_default) payload[key] = p.parameter_default
+  }
+  return payload
 }
 
 function ResultItem({ item, border, surface, text2 }) {
-  // Gradio file outputs typically arrive as { url, path, orig_name, mime_type }
   if (item && typeof item === 'object' && (item.url || item.path)) {
     const url = item.url || item.path
     const mime = item.mime_type || ''
@@ -47,7 +72,7 @@ export default function LamGeneratePanel({ isDark, vi, border, surface, text, te
   const [imageFile, setImageFile] = useState(null)
   const [imagePreview, setImagePreview] = useState(null)
   const [videoFile, setVideoFile] = useState(null)
-  const [status, setStatus] = useState('idle') // idle | uploading | done | error
+  const [status, setStatus] = useState('idle') // idle | connecting | running | done | error
   const [error, setError] = useState(null)
   const [hint, setHint] = useState(null)
   const [result, setResult] = useState(null)
@@ -59,10 +84,7 @@ export default function LamGeneratePanel({ isDark, vi, border, surface, text, te
     setImagePreview(URL.createObjectURL(f))
     setStatus('idle'); setError(null); setResult(null)
   }
-  const onPickVideo = (e) => {
-    const f = e.target.files?.[0]
-    setVideoFile(f || null)
-  }
+  const onPickVideo = (e) => setVideoFile(e.target.files?.[0] || null)
 
   const reset = () => {
     setImageFile(null); setImagePreview(null); setVideoFile(null)
@@ -73,34 +95,32 @@ export default function LamGeneratePanel({ isDark, vi, border, surface, text, te
 
   const generate = async () => {
     if (!imageFile) return
-    setStatus('uploading'); setError(null); setHint(null); setResult(null)
+    setStatus('connecting'); setError(null); setHint(null); setResult(null)
     try {
-      const imageBase64 = await fileToBase64(imageFile)
-      const videoBase64 = videoFile ? await fileToBase64(videoFile) : null
-      const resp = await fetch('/api/lam-generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          imageBase64,
-          imageMimeType: imageFile.type,
-          videoBase64,
-          videoMimeType: videoFile?.type,
-        }),
-      })
-      const data = await resp.json()
-      if (!resp.ok || data.error) {
-        setError(data.error || `HTTP ${resp.status}`)
-        setHint(data.hint || null)
-        setStatus('error')
-        return
+      const client = await Client.connect(DEFAULT_SPACE)
+      const apiInfo = await client.view_api()
+      const endpoint = pickEndpoint(apiInfo)
+      if (!endpoint) {
+        throw new Error(vi
+          ? 'Space không lộ endpoint nhận ảnh (API có thể đã đổi hoặc Space đang lỗi build).'
+          : 'The Space does not expose an image-accepting endpoint (API may have changed or the Space failed to build).')
       }
-      setResult(data)
+      setStatus('running')
+      const payload = buildPayload(endpoint.params, imageFile, videoFile)
+      const res = await client.predict(endpoint.path, payload)
+      setResult({ space: DEFAULT_SPACE, endpoint: endpoint.path, data: res.data })
       setStatus('done')
     } catch (err) {
+      console.error('[LamGeneratePanel]', err)
       setError(err?.message || String(err))
+      setHint(vi
+        ? `Space công khai "${DEFAULT_SPACE}" có thể đang ngủ / hết lượt GPU (ZeroGPU) / crash. Kiểm tra trực tiếp tại huggingface.co/spaces/${DEFAULT_SPACE}, hoặc tự host LAM/OpenAvatarChat trên GPU riêng (hướng dẫn phía dưới).`
+        : `The public Space "${DEFAULT_SPACE}" may be asleep / out of ZeroGPU quota / crashed. Check huggingface.co/spaces/${DEFAULT_SPACE} directly, or self-host LAM/OpenAvatarChat on your own GPU (instructions below).`)
       setStatus('error')
     }
   }
+
+  const busy = status === 'connecting' || status === 'running'
 
   return (
     <div style={{ background: surface, border: `1px solid ${border}`, borderRadius: 14, padding: 16 }}>
@@ -112,8 +132,8 @@ export default function LamGeneratePanel({ isDark, vi, border, surface, text, te
       </div>
       <p style={{ margin: '0 0 12px', fontSize: 12, color: text3, lineHeight: 1.6 }}>
         {vi
-          ? 'Nút bên dưới gửi ảnh thẳng tới server, server gọi trực tiếp model LAM thật (mã nguồn aigc3d/LAM) đang chạy trên Hugging Face Space qua @gradio/client — không có kết quả giả lập. Vì đây là Space công khai dùng chung GPU, có lúc sẽ báo lỗi/timeout thật (Space ngủ, hết lượt GPU...); khi đó lỗi thật sẽ hiện ra, không bị che giấu.'
-          : 'The button below sends your photo to the server, which calls the real LAM model (aigc3d/LAM source) running on its Hugging Face Space via @gradio/client — nothing here is simulated. Since it is a shared public Space, it can genuinely fail sometimes (asleep, out of GPU quota); when that happens the real error is shown, not hidden.'}
+          ? 'Trình duyệt của bạn gọi THẲNG tới model LAM thật (mã nguồn aigc3d/LAM) đang chạy trên Hugging Face Space, qua SDK chính thức @gradio/client — không qua server trung gian, không giới hạn dung lượng, không có kết quả giả lập. Vì đây là Space công khai dùng chung GPU, đôi khi sẽ báo lỗi thật (Space ngủ, hết lượt GPU...); lỗi đó sẽ hiện nguyên văn bên dưới.'
+          : 'Your browser calls the real LAM model (aigc3d/LAM source) directly on its Hugging Face Space, via the official @gradio/client SDK — no server in between, no size limit, nothing simulated. Since it is a shared public Space, it can genuinely fail sometimes (asleep, out of GPU quota); that real error is shown verbatim below.'}
       </p>
 
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
@@ -154,17 +174,17 @@ export default function LamGeneratePanel({ isDark, vi, border, surface, text, te
       <div style={{ display: 'flex', gap: 10 }}>
         <button
           onClick={generate}
-          disabled={!imageFile || status === 'uploading'}
+          disabled={!imageFile || busy}
           style={{
             display: 'inline-flex', alignItems: 'center', gap: 8, padding: '9px 16px', borderRadius: 9,
             fontSize: 12.5, fontWeight: 700, border: '1px solid transparent', cursor: imageFile ? 'pointer' : 'not-allowed',
             background: imageFile ? 'linear-gradient(135deg, #00b8cc, #6b3fd4)' : (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'),
-            color: imageFile ? '#fff' : text3, opacity: status === 'uploading' ? 0.7 : 1,
+            color: imageFile ? '#fff' : text3, opacity: busy ? 0.7 : 1,
           }}>
           <UploadCloud size={14} />
-          {status === 'uploading'
-            ? (vi ? 'Đang gọi model LAM thật...' : 'Calling the real LAM model...')
-            : (vi ? 'Tạo avatar (gọi model thật)' : 'Generate (calls the real model)')}
+          {status === 'connecting' && (vi ? 'Đang kết nối Space...' : 'Connecting to the Space...')}
+          {status === 'running' && (vi ? 'Model đang xử lý (có thể mất 10-60s)...' : 'Model running (can take 10-60s)...')}
+          {!busy && (vi ? 'Tạo avatar (gọi model thật)' : 'Generate (calls the real model)')}
         </button>
         {(imageFile || result || error) && (
           <button onClick={reset} style={{
