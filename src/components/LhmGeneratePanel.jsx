@@ -158,13 +158,13 @@ export default function LhmGeneratePanel({ isDark, vi, border, surface, text, te
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
         <Wand2 size={15} color={isDark ? '#00e5ff' : '#00b8cc'} />
         <div style={{ fontSize: 13.5, fontWeight: 800, color: text }}>
-          {vi ? 'Tạo avatar 3D bằng LHM (mirror ModelScope)' : 'Generate a 3D avatar via LHM (ModelScope mirror)'}
+          {vi ? 'Tạo avatar 3D bằng LHM (Hugging Face Space)' : 'Generate a 3D avatar via LHM (Hugging Face Space)'}
         </div>
       </div>
       <p style={{ margin: '0 0 12px', fontSize: 12, color: text3, lineHeight: 1.6 }}>
         {vi
-          ? 'Gọi model LHM thật (aigc3d/LHM) đang chạy trên Studio ModelScope — bản mirror này được nhóm tác giả xác nhận chạy ổn định trên GPU L20 cố định, không giới hạn thời gian như bản ZeroGPU trên Hugging Face. Cần cấu hình biến môi trường MODELSCOPE_LHM_URL trên server (xem hướng dẫn trong api/lhm-generate.js) — nếu chưa cấu hình, lỗi thật sẽ hiện bên dưới, không có kết quả giả lập.'
-          : 'Calls the real LHM model (aigc3d/LHM) running on the ModelScope Studio mirror — the authors confirm it runs stably on a fixed L20 GPU with no time limit, unlike the ZeroGPU Hugging Face version. Requires the MODELSCOPE_LHM_URL server env var (see instructions in api/lhm-generate.js) — if unset, the real error shows below, nothing is simulated.'}
+          ? 'Gọi model LHM thật (aigc3d/LHM) trên Space "3DAIGC/LHM" — cùng nhóm tác giả với LAM nhưng đang chạy ổn định hơn. (Mirror ModelScope đã thử trước đó bị chặn cứng theo khu vực — chỉ nhận tài khoản đăng ký bằng SĐT Trung Quốc đại lục — nên không dùng được.) Vì vẫn dùng chung ZeroGPU công khai, có thể phải chờ hàng đợi hoặc gặp lỗi thật khi Space quá tải — lỗi đó hiện nguyên văn bên dưới, không có kết quả giả lập.'
+          : 'Calls the real LHM model (aigc3d/LHM) on the "3DAIGC/LHM" Space — same authors as LAM but currently running more reliably. (The ModelScope mirror tried earlier turned out to be hard geo-blocked to accounts registered with a mainland China phone number, so it\'s not usable.) It still shares public ZeroGPU, so it may queue or genuinely fail under load — that real error shows below, nothing is simulated.'}
       </p>
 
       <div style={{ display: 'flex', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>

@@ -1,41 +1,37 @@
 // api/lhm-generate.js
 // Vercel Serverless Function — bridge tới LHM (Large Animatable Human
-// Model, github.com/aigc3d/LHM) chạy trên mirror ModelScope Studio
-// (https://modelscope.cn/studios/Damo_XR_Lab/LHM), thay vì bản Hugging
-// Face Space ZeroGPU hay hết quota/ngủ. Nhóm tác giả xác nhận mirror này
-// chạy ổn định trên GPU L20 cố định, không giới hạn thời gian
-// (xem: huggingface.co/spaces/3DAIGC/LHM/discussions/5).
+// Model, github.com/aigc3d/LHM).
 //
-// ĐIỂM KHÁC BIỆT QUAN TRỌNG SO VỚI api/lam-generate.js:
-// ModelScope Studio KHÔNG có tài liệu API công khai chuẩn hoá như Hugging
-// Face (không có "Use via API" + endpoint <name>.hf.space rõ ràng cho mọi
-// Space). Bên dưới nó vẫn là Gradio, nên @gradio/client CÓ THỂ kết nối tới
-// nếu biết đúng URL runtime — nhưng URL đó không phải là URL trang
-// "modelscope.cn/studios/..." mà bạn thấy trên trình duyệt, mà là host
-// thật mà trang đó gọi ngầm (thường qua iframe/websocket riêng).
+// CẬP NHẬT: bản đầu của file này nhắm tới mirror ModelScope Studio
+// (modelscope.cn/studios/Damo_XR_Lab/LHM), nhưng đã XÁC NHẬN bằng ảnh chụp
+// màn hình thực tế rằng Studio đó chặn cứng theo khu vực:
+// "Sorry, this service is currently only available to users who register
+// with a mainland China mobile phone number." — không phải lỗi cấu hình
+// hay cookie, mà là rào chắn không vượt qua được bằng kỹ thuật nếu không
+// có tài khoản ModelScope đăng ký bằng SĐT Trung Quốc đại lục. Vì vậy
+// endpoint này quay lại dùng Space Hugging Face `3DAIGC/LHM` làm mặc định
+// (cùng nhóm tác giả với LAM, đang "Running on Zero" ổn định hơn LAM),
+// dùng lại đúng cơ chế wake-retry đã chứng minh hoạt động ở
+// api/lam-generate.js (ping <space>.hf.space rồi retry connect).
 //
-// => Bạn cần tự lấy URL đó MỘT LẦN:
-//   1. Mở https://modelscope.cn/studios/Damo_XR_Lab/LHM/summary
-//   2. Mở DevTools (F12) -> tab Network -> lọc "config" hoặc "queue"
-//   3. Tìm request gọi tới một host dạng https://*.modelscope.cn (khác
-//      domain trang chủ) hoặc một địa chỉ study-xxxx dạng số — copy
-//      phần gốc (origin) của URL đó.
-//   4. Dán vào biến môi trường MODELSCOPE_LHM_URL trên Vercel.
-// Nếu ModelScope yêu cầu cookie phiên đăng nhập cho hàng đợi (một số
-// Studio làm vậy để chống bot), bước connect bên dưới sẽ thất bại — khi đó
-// endpoint này trả lỗi thật (không giả lập thành công), và bạn nên quay lại
-// hướng tự host LHM (xem README github aigc3d/LHM) hoặc dùng lại
-// api/lam-generate.js trỏ sang 3DAIGC/LHM trên Hugging Face.
+// Nếu về sau bạn tự có một mirror Gradio khác (self-host, RunPod...) không
+// bị chặn khu vực, chỉ cần set LHM_GRADIO_URL trỏ tới URL Gradio raw đó —
+// code sẽ ưu tiên dùng URL đó thay vì Space HF.
 //
-// Env vars:
-//   MODELSCOPE_LHM_URL  - BẮT BUỘC. URL runtime thật lấy theo hướng dẫn trên.
-//                         (Không có giá trị mặc định đoán sẵn — một URL đoán
-//                         sai sẽ âm thầm gọi nhầm chỗ, tệ hơn là báo thiếu env.)
+// Env vars (đều tuỳ chọn):
+//   LHM_HF_SPACE     - đổi Space HF khác, default "3DAIGC/LHM"
+//   HF_TOKEN         - HF access token, tăng rate limit / dùng bản duplicate riêng
+//   LHM_GRADIO_URL   - nếu set, ưu tiên connect thẳng URL Gradio này thay vì Space HF
+//                      (dùng cho mirror tự host của riêng bạn, KHÔNG dùng cho
+//                      modelscope.cn/studios/... vì Studio đó chặn khu vực)
 
 import { Client } from '@gradio/client'
 import {
-  parseBody, dataUrlOrB64ToBlob, pickEndpoint, buildPayload, connectWithWakeRetry,
+  parseBody, dataUrlOrB64ToBlob, pickEndpoint, buildPayload,
+  connectWithWakeRetry, connectHfSpaceWithWakeRetry,
 } from './_lib/gradioBridge.js'
+
+const DEFAULT_SPACE = process.env.LHM_HF_SPACE || '3DAIGC/LHM'
 
 export async function lhmGenerateHandler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
@@ -44,14 +40,6 @@ export async function lhmGenerateHandler(req, res) {
 
   if (req.method === 'OPTIONS') return res.status(200).end()
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
-
-  const target = process.env.MODELSCOPE_LHM_URL
-  if (!target) {
-    return res.status(500).json({
-      error: 'Thiếu biến môi trường MODELSCOPE_LHM_URL.',
-      hint: 'Mở https://modelscope.cn/studios/Damo_XR_Lab/LHM/summary, dùng DevTools > Network để tìm URL runtime thật (không phải URL trang), rồi khai báo MODELSCOPE_LHM_URL trên Vercel. Xem comment đầu file api/lhm-generate.js để biết chi tiết từng bước.',
-    })
-  }
 
   let body
   try {
@@ -68,14 +56,22 @@ export async function lhmGenerateHandler(req, res) {
     return res.status(400).json({ error: 'imageBase64 is required (a single front/half-body portrait photo).' })
   }
 
+  const rawUrl = process.env.LHM_GRADIO_URL
+  const target = rawUrl || DEFAULT_SPACE
+  const isHfSpace = !rawUrl
+
   let client
   try {
-    client = await connectWithWakeRetry(Client, target, undefined, 2)
+    client = isHfSpace
+      ? await connectHfSpaceWithWakeRetry(Client, target, process.env.HF_TOKEN ? { hf_token: process.env.HF_TOKEN } : undefined)
+      : await connectWithWakeRetry(Client, target, undefined, 2)
   } catch (err) {
     console.error('[lhm-generate] connect failed:', err?.message)
     return res.status(502).json({
-      error: `Không kết nối được tới ModelScope Studio tại "${target}": ${err?.message || err}`,
-      hint: 'Nếu lỗi là 401/403 hoặc CORS, rất có thể Studio này yêu cầu cookie phiên đăng nhập ModelScope cho hàng đợi Gradio và không thể gọi ẩn danh từ server ngoài — trong trường hợp đó, dùng lại api/lam-generate.js trỏ tới "3DAIGC/LHM" trên Hugging Face (đổi biến LAM_HF_SPACE) hoặc tự host LHM theo README của github.com/aigc3d/LHM.',
+      error: `Không kết nối được tới ${isHfSpace ? `Hugging Face Space "${target}"` : `Gradio URL "${target}"`} sau nhiều lần thử: ${err?.message || err}`,
+      hint: isHfSpace
+        ? `Space công khai dùng ZeroGPU nên hay "ngủ" hoặc hết hàng đợi GPU — đã tự thử lại vài lần nhưng vẫn không được. Đợi 30-60s rồi thử lại, hoặc xem trực tiếp https://huggingface.co/spaces/${target}.`
+        : 'Kiểm tra lại LHM_GRADIO_URL có đúng là URL Gradio đang chạy công khai không.',
     })
   }
 
@@ -83,15 +79,13 @@ export async function lhmGenerateHandler(req, res) {
   try {
     apiInfo = await client.view_api()
   } catch (err) {
-    return res.status(502).json({ error: `Không đọc được API của Studio: ${err?.message || err}` })
+    return res.status(502).json({ error: `Không đọc được API: ${err?.message || err}` })
   }
 
-  // Bắt buộc có tham số ảnh; video là tuỳ chọn (một số phiên bản LHM tự
-  // sinh chuyển động mặc định nếu không truyền video).
   const endpoint = pickEndpoint(apiInfo, { image: /image|photo|portrait/, optional: /.*/ })
   if (!endpoint) {
     return res.status(502).json({
-      error: 'Studio này hiện không lộ endpoint nhận ảnh qua view_api() (API có thể đã đổi, hoặc Studio dùng cơ chế khác Gradio chuẩn).',
+      error: 'Không tìm thấy endpoint nhận ảnh qua view_api() (API có thể đã đổi hoặc Space đang lỗi build).',
       apiInfo,
     })
   }
@@ -106,7 +100,7 @@ export async function lhmGenerateHandler(req, res) {
     const result = await client.predict(endpoint.path, payload)
     return res.status(200).json({
       ok: true,
-      source: 'modelscope',
+      source: isHfSpace ? 'huggingface' : 'custom',
       target,
       endpoint: endpoint.path,
       data: result.data,
@@ -114,10 +108,12 @@ export async function lhmGenerateHandler(req, res) {
   } catch (err) {
     console.error('[lhm-generate] predict failed:', err?.message)
     return res.status(502).json({
-      error: err?.message || 'LHM inference call failed on the ModelScope Studio.',
+      error: err?.message || 'LHM inference call failed.',
       target,
       endpoint: endpoint.path,
-      hint: 'Studio công khai vẫn có thể có hàng đợi hoặc giới hạn theo IP. Xem trực tiếp tại https://modelscope.cn/studios/Damo_XR_Lab/LHM/summary để kiểm tra trạng thái.',
+      hint: isHfSpace
+        ? `Space công khai có thể đang ngủ / hết quota ZeroGPU / crash. Xem trực tiếp tại https://huggingface.co/spaces/${target}.`
+        : undefined,
     })
   }
 }

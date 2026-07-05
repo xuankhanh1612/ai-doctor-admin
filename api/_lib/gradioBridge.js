@@ -89,9 +89,8 @@ export function buildPayload(params, fileMap) {
   return payload
 }
 
-// Vừa dùng cho ZeroGPU (hay "ngủ" khi rảnh) vừa dùng chung cho ModelScope —
-// ping trước một lần cho "tỉnh", rồi thử connect vài lần có backoff trước
-// khi trả lỗi thật.
+// Dùng cho ModelScope hoặc bất kỳ URL Gradio raw nào — connect thẳng,
+// retry có backoff, không ping trước (không biết host phụ để ping).
 export async function connectWithWakeRetry(Client, target, opts, attempts = 3) {
   let lastErr
   for (let i = 0; i < attempts; i++) {
@@ -101,6 +100,27 @@ export async function connectWithWakeRetry(Client, target, opts, attempts = 3) {
       lastErr = err
       const waitMs = 3000 * (i + 1)
       console.warn(`[gradioBridge] connect attempt ${i + 1}/${attempts} to "${target}" failed (${err?.message}), retrying in ${waitMs}ms`)
+      await sleep(waitMs)
+    }
+  }
+  throw lastErr
+}
+
+// ZeroGPU Spaces trên Hugging Face (như 3DAIGC/LAM, 3DAIGC/LHM) hay "ngủ"
+// khi rảnh — request đầu tiên sau khi ngủ thường 503 trong lúc HF khởi
+// động container/cấp GPU. Ping thẳng host <space>.hf.space một lần cho
+// "tỉnh", rồi mới retry Client.connect(spaceId) vài lần có backoff.
+export async function connectHfSpaceWithWakeRetry(Client, spaceId, opts, attempts = 4) {
+  const host = `https://${spaceId.toLowerCase().replace(/[/_]/g, '-')}.hf.space`
+  let lastErr
+  for (let i = 0; i < attempts; i++) {
+    try {
+      await fetch(host, { method: 'GET' }).catch(() => {})
+      return await Client.connect(spaceId, opts)
+    } catch (err) {
+      lastErr = err
+      const waitMs = 3000 * (i + 1)
+      console.warn(`[gradioBridge] connect attempt ${i + 1}/${attempts} to HF space "${spaceId}" failed (${err?.message}), retrying in ${waitMs}ms`)
       await sleep(waitMs)
     }
   }
