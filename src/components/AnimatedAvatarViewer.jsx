@@ -26,6 +26,7 @@ export default function AnimatedAvatarViewer({
   showGrid,
   showBones = false,
   showWireframe = false,
+  showTextures = true,
   showDragHint = true,
   onLog,
   onStatusChange,
@@ -136,7 +137,14 @@ export default function AnimatedAvatarViewer({
           materials.forEach((material) => {
             material.userData = material.userData || {}
             if (typeof material.userData.osaOriginalWireframe !== 'boolean') material.userData.osaOriginalWireframe = !!material.wireframe
+            if (!material.userData.osaOriginalTextureMaps) {
+              material.userData.osaOriginalTextureMaps = {
+                map: material.map || null, normalMap: material.normalMap || null, roughnessMap: material.roughnessMap || null,
+                metalnessMap: material.metalnessMap || null, emissiveMap: material.emissiveMap || null, aoMap: material.aoMap || null, alphaMap: material.alphaMap || null,
+              }
+            }
             material.wireframe = !!showWireframe
+            Object.entries(material.userData.osaOriginalTextureMaps).forEach(([mapKey, originalMap]) => { material[mapKey] = showTextures ? originalMap : null })
             material.needsUpdate = true
             modelMaterials.push(material)
           })
@@ -233,6 +241,9 @@ export default function AnimatedAvatarViewer({
         if (typeof material.userData?.osaOriginalWireframe === 'boolean') {
           material.wireframe = material.userData.osaOriginalWireframe
         }
+        if (material.userData?.osaOriginalTextureMaps) {
+          Object.entries(material.userData.osaOriginalTextureMaps).forEach(([mapKey, originalMap]) => { material[mapKey] = originalMap })
+        }
       })
       ;(stateRef.current.boneHelpers || []).forEach((helper) => {
         scene.remove(helper)
@@ -267,6 +278,14 @@ export default function AnimatedAvatarViewer({
       material.needsUpdate = true
     })
   }, [showWireframe])
+  useEffect(() => {
+    ;(stateRef.current.modelMaterials || []).forEach((material) => {
+      const originalMaps = material.userData?.osaOriginalTextureMaps
+      if (!originalMaps) return
+      Object.entries(originalMaps).forEach(([mapKey, originalMap]) => { material[mapKey] = showTextures ? originalMap : null })
+      material.needsUpdate = true
+    })
+  }, [showTextures])
 
   // Animation loading — runs whenever a new FBX blob URL comes in.
   useEffect(() => {
