@@ -6,6 +6,8 @@ import {
 import { useApp } from '../context/AppContext'
 import OpenAvatarChatPanel from './OpenAvatarChatPanel'
 import OpenAvatarChatVideoPanel from './OpenAvatarChatVideoPanel'
+import LamGeneratePanel from './LamGeneratePanel'
+import LhmGeneratePanel from './LhmGeneratePanel'
 
 const LINKS = {
   space: 'https://huggingface.co/spaces/3DAIGC/LAM',
@@ -183,11 +185,43 @@ export default function MyAIAvatarPanel() {
         </div>
       </div>
 
+      {/* Real photo -> 3D avatar generation, calling the actual LAM model server-side */}
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+          <Zap size={16} color={isDark ? '#00e5ff' : '#00b8cc'} />
+          <div style={{ fontSize: 14, fontWeight: 800, color: text }}>
+            {vi ? 'Chạy model LAM thật ngay trong app' : 'Run the real LAM model right in this app'}
+          </div>
+        </div>
+        <LamGeneratePanel isDark={isDark} vi={vi} border={border} surface={surface} text={text} text2={text2} text3={text3} />
+      </div>
+
+      {/* Alternative: LHM model via the more stable ModelScope Studio mirror,
+          for when the LAM/LHM Hugging Face Spaces are asleep or out of ZeroGPU quota */}
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+          <Zap size={16} color={isDark ? '#00e5ff' : '#00b8cc'} />
+          <div style={{ fontSize: 14, fontWeight: 800, color: text }}>
+            {vi ? 'Thay thế: LHM (thường ổn định hơn LAM)' : 'Alternative: LHM (usually more stable than LAM)'}
+          </div>
+          <span style={{
+            fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 999,
+            background: isDark ? 'rgba(0,230,118,0.15)' : 'rgba(0,230,118,0.1)', color: '#00c46a',
+          }}>3DAIGC/LHM</span>
+        </div>
+        <p style={{ margin: '0 0 12px', fontSize: 12.5, color: text2, lineHeight: 1.6 }}>
+          {vi
+            ? 'Nếu Space LAM trên Hugging Face đang lỗi runtime hoặc hết quota ZeroGPU, đây là model LHM (github.com/aigc3d/LHM) — dự án "chị em" của LAM, cùng nhóm tác giả, chạy trên Space "3DAIGC/LHM" riêng. (Đã thử mirror ModelScope trước đó nhưng bị chặn theo khu vực, chỉ nhận SĐT Trung Quốc đại lục, nên bỏ hướng đó.)'
+            : 'If the LAM Space on Hugging Face is erroring or out of ZeroGPU quota, this calls LHM (github.com/aigc3d/LHM) — LAM\'s sister project from the same authors, running on its own "3DAIGC/LHM" Space. (The ModelScope mirror was tried first but turned out to be geo-blocked to mainland China phone numbers only, so that route was dropped.)'}
+        </p>
+        <LhmGeneratePanel isDark={isDark} vi={vi} border={border} surface={surface} text={text} text2={text2} text3={text3} />
+      </div>
+
       {/* Embedded live demo */}
       <div style={{ marginBottom: 20 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: text }}>
-            {vi ? 'Demo trực tiếp (Hugging Face Space)' : 'Live demo (Hugging Face Space)'}
+            {vi ? 'Demo trực tiếp (Hugging Face Space, tham khảo trực quan)' : 'Live demo (Hugging Face Space, visual reference)'}
           </div>
           <LinkButton href={LINKS.space} icon={<ExternalLink size={13} />} label={vi ? 'Mở demo trong tab mới' : 'Open demo in new tab'} isDark={isDark} />
         </div>

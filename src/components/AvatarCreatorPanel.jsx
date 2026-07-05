@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Search, Shuffle, ChevronLeft, ChevronRight, Info, LayoutGrid, List,
-  Share2, Ruler, Play, Pause, Sparkles,
+  Share2, Ruler, Play, Pause, Download, ExternalLink, Sparkles,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useApp } from '../context/AppContext'
@@ -536,6 +536,10 @@ export default function AvatarCreatorPanel() {
                 </>
               )}
 
+              <a href={selectedAvatarFinderUrl} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 12, color: palette.accent, fontSize: 11, fontWeight: 800, textDecoration: 'none' }}>
+                {vi ? 'Mở trong Finder' : 'Open in Finder'} <ExternalLink size={11} />
+              </a>
+
               <button type="button" onClick={handleUseAvatar} disabled={!selectedAvatar || saving} style={{ marginTop: 12, width: '100%', border: 'none', borderRadius: 12, padding: '11px 14px', cursor: saving ? 'wait' : 'pointer', fontWeight: 900, fontSize: 12, color: '#001018', background: 'linear-gradient(135deg,#00e5ff,#00e676)' }}>
                 {saving ? (vi ? 'Đang lưu...' : 'Saving...') : (vi ? 'Dùng làm avatar hồ sơ' : 'Use as profile avatar')}
               </button>
@@ -605,6 +609,22 @@ export default function AvatarCreatorPanel() {
                     </button>
                   )) : <span style={{ color: palette.text3, fontSize: 12 }}>{vi ? 'Không có file model.' : 'No model file available.'}</span>}
                 </div>
+                <a
+                  href={activeModelUrl || undefined}
+                  target="_blank"
+                  rel="noreferrer"
+                  download
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', borderRadius: 12, padding: '11px 14px',
+                    fontWeight: 900, fontSize: 13, textDecoration: 'none',
+                    color: activeModelUrl ? '#001018' : palette.text3,
+                    background: activeModelUrl ? 'linear-gradient(135deg,#00e5ff,#9c6fff)' : palette.card,
+                    border: activeModelUrl ? 'none' : `1px solid ${palette.border}`,
+                    pointerEvents: activeModelUrl ? 'auto' : 'none',
+                  }}
+                >
+                  <Download size={15} /> {vi ? 'Tải xuống' : 'Download'}
+                </a>
               </div>
 
               <p style={{ padding: '0 14px 14px', color: error ? '#ff6b6b' : palette.text3, fontSize: 11, lineHeight: 1.5, margin: 0 }}>{error || status}</p>
@@ -641,6 +661,157 @@ export default function AvatarCreatorPanel() {
 
           </div>
 
+          {/* ============ Full-width 3D preview, below the whole grid ============ */}
+          <div className="osa-card" style={{ marginTop: 16, overflow: 'hidden' }}>
+            <div style={{ padding: '16px 18px 12px', borderBottom: `1px solid ${palette.border}` }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                <div>
+                  <div style={{ fontSize: 17, fontWeight: 900, letterSpacing: '-0.01em', color: palette.text }}>
+                    {vi ? 'Trình xem 3D & Animation' : '3D & Animation Viewer'}
+                  </div>
+                  <div style={{ fontSize: 12, color: palette.text3, marginTop: 2 }}>
+                    opensourceavatars.com/finder
+                  </div>
+                </div>
+                <a
+                  href={selectedAvatarFinderUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: palette.accent, fontSize: 13, fontWeight: 900, textDecoration: 'none', whiteSpace: 'nowrap' }}
+                >
+                  {vi ? 'Mở 3D' : 'Open 3D'} <ExternalLink size={14} />
+                </a>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: 10, flexWrap: 'wrap' }}>
+                {selectedAvatar ? (
+                  <span style={{ fontSize: 11, fontWeight: 700, color: palette.text3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {selectedAvatar.name} · {activeFormat?.label || selectedAvatar.format} · {selectedAnimation}
+                  </span>
+                ) : <span />}
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button type="button" onClick={() => setShowMeasureGrid((v) => !v)} style={iconBtnStyle(showMeasureGrid)} title={vi ? 'Lưới đo' : 'Measurement grid'}><Ruler size={15} /></button>
+                  <button type="button" onClick={() => setAutoRotate((v) => !v)} style={iconBtnStyle(autoRotate)} title={vi ? 'Tự xoay' : 'Auto-rotate'}>{autoRotate ? <Pause size={15} /> : <Play size={15} />}</button>
+                  <button type="button" onClick={handleShare} style={iconBtnStyle(false)} title={vi ? 'Copy link' : 'Share'}><Share2 size={15} /></button>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ position: 'relative', height: 620, background: isDark ? 'radial-gradient(120% 90% at 50% 20%, #142032 0%, #050816 72%)' : 'linear-gradient(180deg,#f4f0e8,#e8e1d7)' }}>
+              {activeModelUrl ? (
+                <AnimatedAvatarViewer
+                  modelUrl={activeModelUrl}
+                  modelKind={activeModelKind}
+                  animationBlobUrl={animationBlobUrl}
+                  animationLabel={selectedAnimation}
+                  isDark={isDark}
+                  autoRotate={autoRotate}
+                  showGrid={showMeasureGrid}
+                  showDragHint
+                  onStatusChange={(update) => {
+                    if (update.error) {
+                      setAnimationLoadStatus(vi ? `Lỗi: ${update.error}` : `Error: ${update.error}`)
+                    } else if (update.stats) {
+                      setModelStats(update.stats)
+                    } else if (typeof update.trackCount === 'number') {
+                      setAnimationLoadStatus(vi
+                        ? `${selectedAnimation} đã tải xong · ${update.trackCount} tracks`
+                        : `${selectedAnimation} loaded · ${update.trackCount} tracks`)
+                    } else if (update.timedOut) {
+                      setAnimationLoadStatus(vi ? 'Đã ép tắt loading (safety timeout)' : 'Loading indicator forced off (safety timeout)')
+                    }
+                  }}
+                />
+              ) : (
+                <div style={{ height: '100%', display: 'grid', placeItems: 'center' }}>
+                  {selectedAvatar?.thumbnail_url
+                    ? <img src={selectedAvatar.thumbnail_url} alt={selectedAvatar.name} style={{ maxHeight: '70%', borderRadius: 16 }} />
+                    : <span style={{ fontSize: 96 }}>🧑‍🚀</span>}
+                </div>
+              )}
+            </div>
+
+            <div style={{ padding: '10px 16px', borderTop: `1px solid ${palette.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+              <span style={{ color: palette.text3, fontSize: 11 }}>
+                {vi
+                  ? 'Render 3D nội bộ bằng THREE.js/WebGL (canvas thật, không dùng iframe) nên không dính lỗi CSP frame-ancestors của trang nguồn. Kéo để xoay.'
+                  : 'Rendered internally with THREE.js/WebGL (a real canvas, no iframe), so it never hits the source site\'s CSP frame-ancestors restriction. Drag to rotate.'}
+              </span>
+              {modelStats && (
+                <span style={{ color: palette.text3, fontSize: 11, fontWeight: 800 }}>
+                  {modelStats.vertices ? `${modelStats.vertices.toLocaleString()} ${vi ? 'đỉnh' : 'verts'}` : ''}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* ============ "Khung render 3D" — three.js/VRM render, posed not T-Posed ============ */}
+          {/* Shares the same AnimatedAvatarViewer used above, so this panel shows the
+              avatar in its currently selected Mixamo pose (e.g. "Fight Idle") instead
+              of the raw glTF bind pose — matching how opensourceavatars.com/finder
+              presents avatars — and it inherits that viewer's real OrbitControls drag
+              plus its built-in first-time finger drag hint. No iframe anywhere. */}
+          <div className="osa-card" style={{ marginTop: 16, overflow: 'hidden' }}>
+            <div style={{ padding: '16px 18px 14px', borderBottom: `1px solid ${palette.border}`, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+              <div>
+                <div style={{ fontSize: 17, fontWeight: 900, letterSpacing: '-0.01em', color: palette.text }}>
+                  {vi ? 'Khung render 3D' : '3D Render Frame'}
+                </div>
+                <div style={{ fontSize: 12, color: palette.text3, marginTop: 2 }}>
+                  opensourceavatars.com/finder
+                </div>
+              </div>
+              <a
+                href={selectedAvatarFinderUrl}
+                target="_blank"
+                rel="noreferrer"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: palette.accent, fontSize: 13, fontWeight: 900, textDecoration: 'none', whiteSpace: 'nowrap' }}
+              >
+                {vi ? 'Mở 3D' : 'Open 3D'} <ExternalLink size={14} />
+              </a>
+            </div>
+
+            <div style={{ position: 'relative', height: 560, overflow: 'hidden', background: isDark ? 'radial-gradient(circle at 50% 24%, rgba(0,229,255,0.16), transparent 42%), linear-gradient(180deg,#0b1220,#050816)' : 'radial-gradient(circle at 50% 24%, rgba(0,184,204,0.14), transparent 44%), linear-gradient(180deg,#f4f0e8,#e8e1d7)' }}>
+              {/* Decorative ground ring + light beam, matching opensourceavatars.com's viewer chrome */}
+              <div style={{ position: 'absolute', left: '50%', bottom: 46, width: '62%', maxWidth: 420, height: 92, transform: 'translateX(-50%) perspective(420px) rotateX(66deg)', borderRadius: '50%', border: `1px solid ${isDark ? 'rgba(148,163,184,0.28)' : 'rgba(71,85,105,0.22)'}`, background: isDark ? 'repeating-radial-gradient(circle, rgba(148,163,184,0.22) 0 1px, transparent 1px 26px)' : 'repeating-radial-gradient(circle, rgba(71,85,105,0.2) 0 1px, transparent 1px 26px)', pointerEvents: 'none' }} />
+              <div style={{ position: 'absolute', left: '50%', bottom: 70, width: 2, height: 320, transform: 'translateX(-50%)', background: isDark ? 'linear-gradient(transparent,rgba(0,229,255,0.32),transparent)' : 'linear-gradient(transparent,rgba(0,184,204,0.28),transparent)', pointerEvents: 'none' }} />
+
+              {activeModelUrl ? (
+                <div style={{ position: 'relative', zIndex: 1, width: '100%', height: '100%' }}>
+                  <AnimatedAvatarViewer
+                    modelUrl={activeModelUrl}
+                    modelKind={activeModelKind}
+                    animationBlobUrl={animationBlobUrl}
+                    animationLabel={selectedAnimation}
+                    isDark={isDark}
+                    autoRotate={autoRotate}
+                    showGrid={false}
+                    showDragHint
+                  />
+                </div>
+              ) : (
+                <div style={{ position: 'relative', zIndex: 1, height: '100%', display: 'grid', placeItems: 'center' }}>
+                  {selectedAvatar?.thumbnail_url
+                    ? <img src={selectedAvatar.thumbnail_url} alt={selectedAvatar.name} style={{ maxHeight: '60%', borderRadius: 16 }} />
+                    : <span style={{ fontSize: 88 }}>🧑‍🚀</span>}
+                </div>
+              )}
+            </div>
+
+            <div style={{ padding: '10px 16px', borderTop: `1px solid ${palette.border}` }}>
+              <span style={{ color: palette.text3, fontSize: 11, lineHeight: 1.5 }}>
+                {activeModelUrl
+                  ? (vi
+                    ? `Render 3D nội bộ bằng three.js/VRM, không dùng iframe nên tránh lỗi CSP frame-ancestors. Đang hiển thị tư thế "${selectedAnimation}" thay vì T-Pose mặc định, giống cách opensourceavatars.com/finder trình bày avatar.`
+                    : `Rendered locally with three.js/VRM — no iframe, so it avoids the source site's CSP frame-ancestors errors. Showing the "${selectedAnimation}" pose instead of the default T-Pose, matching how opensourceavatars.com/finder presents avatars.`)
+                  : (vi ? 'Avatar này chưa có model URL, đang hiển thị ảnh preview.' : 'This avatar has no model URL yet, so a static preview image is shown.')}
+                {' '}
+                {vi
+                  ? 'Đổi animation ở khung "Trình xem 3D & Animation" phía trên để cập nhật tư thế ở đây.'
+                  : 'Change the animation in the "3D & Animation Viewer" panel above to update the pose shown here.'}
+              </span>
+            </div>
+          </div>
         </div>
       </section>
     </div>
