@@ -5,6 +5,7 @@ import {
 } from 'lucide-react'
 import { useApp } from '../context/AppContext'
 import OpenAvatarChatPanel from './OpenAvatarChatPanel'
+import OpenAvatarChatVideoPanel from './OpenAvatarChatVideoPanel'
 
 const LINKS = {
   space: 'https://huggingface.co/spaces/3DAIGC/LAM',
@@ -19,15 +20,17 @@ const LINKS = {
 
 const OAC_SETUP_CMD = `git clone https://github.com/HumanAIGC-Engineering/OpenAvatarChat.git
 cd OpenAvatarChat
+git submodule update --init --recursive --depth 1
 uv venv --python 3.11.11
 uv pip install --editable .
-python install.py --uv --config config/chat_with_openai_compatible.yaml
-# Mở config/chat_with_openai_compatible.yaml, thêm WsClient dưới handler_configs:
-#   WsClient:
-#     module: client/ws_client/ws_client_handler
-#     connection_ttl: 900
-python src/demo.py --config config/chat_with_openai_compatible.yaml
-# Server chạy ở ws://<host>:8282 — dán địa chỉ đó vào ô "Server URL" bên dưới`
+# Config mặc định (chat_with_openai_compatible_edge_tts.yaml) đã dùng RtcClient (WebRTC)
+# + LiteAvatar — GIỮ NGUYÊN để có mặt avatar chuyển động thật, không đổi sang WsClient.
+python install.py --uv --config config/chat_with_openai_compatible_edge_tts.yaml
+bash scripts/download_liteavatar_weights.sh   # tải model khuôn mặt LiteAvatar
+python src/demo.py --config config/chat_with_openai_compatible_edge_tts.yaml
+# Server (kèm giao diện web gốc có avatar) chạy ở https://<host>:8282
+# -> dán địa chỉ đó vào ô "Video avatar thật" bên dưới.
+# Nếu client và server không cùng mạng, WebRTC cần thêm TURN server (xem ghi chú notebook Colab).`
 
 const CITATION = `@inproceedings{he2025lam,
   title={LAM: Large Avatar Model for One-shot Animatable Gaussian Head},
@@ -225,8 +228,8 @@ export default function MyAIAvatarPanel() {
         </div>
         <p style={{ margin: '0 0 12px', fontSize: 12.5, color: text2, lineHeight: 1.6 }}>
           {vi
-            ? 'Tính năng này dùng chính giao thức WebSocket của dự án mã nguồn mở OpenAvatarChat (ghép LLM + ASR + TTS + Avatar) để nói chuyện thời gian thực với trợ lý AI có giọng nói. Vì backend cần GPU và tải model nặng, bạn cần tự chạy nó (miễn phí, mã nguồn mở) rồi dán địa chỉ server vào bên dưới — không có mô phỏng hay dữ liệu giả.'
-            : 'This feature speaks the actual WebSocket protocol of the open-source OpenAvatarChat project (LLM + ASR + TTS + Avatar) to hold a real-time voice conversation. Because the backend needs a GPU and heavyweight models, you run it yourself (free, open source) and paste the server address below — nothing here is simulated.'}
+            ? 'Dự án mã nguồn mở OpenAvatarChat (ghép LLM + ASR + TTS + Avatar) tự phục vụ MỘT giao diện web đầy đủ, đã vẽ sẵn khuôn mặt avatar chuyển động (LiteAvatar/LAM) qua WebRTC. Vì backend cần GPU và tải model nặng, bạn tự chạy nó (miễn phí, mã nguồn mở) rồi dán URL server vào panel video bên dưới — không có mô phỏng hay dữ liệu giả.'
+            : 'The open-source OpenAvatarChat project (LLM + ASR + TTS + Avatar) serves a complete web frontend of its own that already draws the moving avatar face (LiteAvatar/LAM) over WebRTC. Because the backend needs a GPU and heavyweight models, you run it yourself (free, open source) and paste the server URL into the video panel below — nothing here is simulated.'}
         </p>
 
         <div style={{ background: surface, border: `1px solid ${border}`, borderRadius: 14, padding: 16, marginBottom: 14 }}>
@@ -249,10 +252,29 @@ export default function MyAIAvatarPanel() {
           }}>{OAC_SETUP_CMD}</pre>
           <div style={{ marginTop: 10, fontSize: 11.5, color: text3 }}>
             {vi
-              ? 'Cần: máy có GPU NVIDIA (khuyến nghị), Python 3.11 và uv. Docker + docker-compose.yml có sẵn trong repo nếu bạn muốn chạy container hoá. Yêu cầu API key cho LLM (ví dụ DASHSCOPE_API_KEY) tuỳ theo file config bạn chọn trong thư mục config/.'
-              : 'Requires: an NVIDIA GPU (recommended), Python 3.11, and uv. A Docker + docker-compose.yml setup ships in the repo if you\'d rather containerize it. You\'ll need an LLM API key (e.g. DASHSCOPE_API_KEY) depending on which config file under config/ you pick.'}
+              ? 'Cần: máy có GPU NVIDIA (khuyến nghị), Python 3.11 và uv. Docker + docker-compose.yml có sẵn trong repo nếu bạn muốn chạy container hoá. Yêu cầu API key cho LLM (ví dụ DASHSCOPE_API_KEY) tuỳ theo file config bạn chọn. Không chạy được máy riêng? Dùng notebook Colab đính kèm (chọn AVATAR_MODE = "native_video") để có URL public trong vài phút.'
+              : 'Requires: an NVIDIA GPU (recommended), Python 3.11, and uv. A Docker + docker-compose.yml setup ships in the repo if you\'d rather containerize it. You\'ll need an LLM API key (e.g. DASHSCOPE_API_KEY) depending on the config you pick. No spare machine? Use the bundled Colab notebook (set AVATAR_MODE = "native_video") to get a public URL in a few minutes.'}
           </div>
         </div>
+
+        <div style={{ marginBottom: 14 }}>
+          <OpenAvatarChatVideoPanel
+            isDark={isDark} vi={vi} border={border} surface={surface} text={text} text2={text2} text3={text3}
+          />
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '4px 0 8px' }}>
+          <div style={{ flex: 1, height: 1, background: border }} />
+          <span style={{ fontSize: 11, color: text3, whiteSpace: 'nowrap' }}>
+            {vi ? 'Hoặc: chế độ nhẹ, chỉ chữ + âm thanh (không có mặt)' : 'Or: lightweight mode, text + audio only (no face)'}
+          </span>
+          <div style={{ flex: 1, height: 1, background: border }} />
+        </div>
+        <p style={{ margin: '0 0 10px', fontSize: 11.5, color: text3, lineHeight: 1.55 }}>
+          {vi
+            ? 'Panel dưới đây là client WebSocket tự viết (không dùng WebRTC, né được vấn đề TURN/NAT) — chỉ hiển thị chữ và phát âm thanh, KHÔNG vẽ mặt avatar. Cần chạy backend ở chế độ AVATAR_MODE = "text_only_legacy" (đổi RtcClient → WsClient) trong notebook Colab để dùng được chế độ này.'
+            : 'The panel below is a hand-written WebSocket client (no WebRTC, so no TURN/NAT hassle) — it shows text and plays audio only, it does NOT draw the avatar face. It needs the backend run with AVATAR_MODE = "text_only_legacy" (RtcClient → WsClient) in the Colab notebook.'}
+        </p>
 
         <OpenAvatarChatPanel
           isDark={isDark} vi={vi} border={border} surface={surface} text={text} text2={text2} text3={text3}
