@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Search, Shuffle, ChevronLeft, ChevronRight, Info, LayoutGrid, List,
-  Share2, Ruler, Play, Pause, Download, ExternalLink, Sparkles,
+  Share2, Ruler, Play, Pause, Download, ExternalLink, Sparkles, Box, Image as ImageIcon,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useApp } from '../context/AppContext'
@@ -124,6 +124,79 @@ function getFormatOptions(avatar) {
   return options.filter((option) => (seen.has(option.label) ? false : (seen.add(option.label), true)))
 }
 
+const TEXTURE_URL_KEYS = [
+  'texture', 'textures', 'texture_url', 'textureUrl', 'albedo', 'albedo_url', 'albedoUrl',
+  'diffuse', 'diffuse_url', 'diffuseUrl', 'base_color', 'baseColor', 'base_color_url', 'baseColorUrl',
+  'image', 'image_url', 'imageUrl', 'thumbnail', 'thumbnail_url', 'thumbnailUrl', 'preview', 'preview_url', 'previewUrl',
+]
+
+function titleFromTextureKey(key) {
+  const normalized = String(key || 'Texture').replace(/[_-]+/g, ' ')
+  return normalized.replace(/\b\w/g, (char) => char.toUpperCase())
+}
+
+function getFileNameFromUrl(url) {
+  try {
+    const path = new URL(url).pathname
+    return decodeURIComponent(path.split('/').filter(Boolean).pop() || url)
+  } catch {
+    return String(url || '').split('/').filter(Boolean).pop() || String(url || '')
+  }
+}
+
+function normalizeTextureCandidate(value, key = 'Texture', seen = new Set()) {
+  if (typeof value !== 'string' || !value.trim()) return null
+  const url = value.trim()
+  if (!/^https?:\/\//i.test(url) && !/^data:image\//i.test(url)) return null
+  if (seen.has(url)) return null
+  seen.add(url)
+  const name = titleFromTextureKey(key)
+  const fileName = getFileNameFromUrl(url)
+  const lower = `${key} ${fileName}`.toLowerCase()
+  const type = lower.includes('normal') ? 'Normal'
+    : lower.includes('rough') ? 'Roughness'
+      : lower.includes('metal') ? 'Metalness'
+        : lower.includes('emissive') ? 'Emissive'
+          : lower.includes('ao') || lower.includes('occlusion') ? 'Ambient Occlusion'
+            : lower.includes('alpha') ? 'Alpha'
+              : lower.includes('thumb') || lower.includes('preview') ? 'Preview'
+                : 'Albedo/Diffuse'
+  return { key: `${key}-${seen.size}`, name, fileName, url, type }
+}
+
+function collectTextureOptions(avatar) {
+  if (!avatar) return []
+  const seen = new Set()
+  const textures = []
+  const visit = (value, key = 'Texture', depth = 0) => {
+    if (depth > 4 || value == null) return
+    if (typeof value === 'string') {
+      const candidate = normalizeTextureCandidate(value, key, seen)
+      if (candidate) textures.push(candidate)
+      return
+    }
+    if (Array.isArray(value)) {
+      value.forEach((item, index) => visit(item, `${key} ${index + 1}`, depth + 1))
+      return
+    }
+    if (typeof value === 'object') {
+      Object.entries(value).forEach(([childKey, childValue]) => {
+        const searchableKey = String(childKey).toLowerCase()
+        if (TEXTURE_URL_KEYS.some((textureKey) => searchableKey.includes(textureKey.toLowerCase())) || depth > 0) {
+          visit(childValue, childKey, depth + 1)
+        }
+      })
+    }
+  }
+  visit(avatar.metadata, 'metadata')
+  ;['texture_url', 'textureUrl', 'albedo_url', 'albedoUrl', 'diffuse_url', 'diffuseUrl', 'image_url', 'thumbnail_url'].forEach((key) => visit(avatar[key], key))
+  if (!textures.length && avatar.thumbnail_url) {
+    const fallback = normalizeTextureCandidate(avatar.thumbnail_url, 'Preview texture', seen)
+    if (fallback) textures.push(fallback)
+  }
+  return textures
+}
+
 function licenseUsageNote(license, vi) {
   const normalized = (license || '').toUpperCase()
   if (normalized.includes('CC0')) return vi ? 'Mọi người (miễn phí bản quyền)' : 'Everyone (public domain)'
@@ -151,6 +224,9 @@ export default function AvatarCreatorPanel() {
   const [autoRotate, setAutoRotate] = useState(true)
   const [showMeasureGrid, setShowMeasureGrid] = useState(true)
   const [showBones, setShowBones] = useState(false)
+  const [showWireframe, setShowWireframe] = useState(false)
+  const [showTextures, setShowTextures] = useState(true)
+  const [assetTab, setAssetTab] = useState('model')
   const [showInfoOverlay, setShowInfoOverlay] = useState(true)
   const [shareStatus, setShareStatus] = useState('')
   const [selectedAnimation, setSelectedAnimation] = useState('Fight Idle')
@@ -249,6 +325,7 @@ export default function AvatarCreatorPanel() {
   const pagedAvatars = filteredAvatars.slice((safePage - 1) * pageSize, safePage * pageSize)
 
   const formatOptions = useMemo(() => getFormatOptions(selectedAvatar), [selectedAvatar])
+  const textureOptions = useMemo(() => collectTextureOptions(selectedAvatar), [selectedAvatar])
   const activeFormat = formatOptions.find((option) => option.key === selectedFormatKey) || formatOptions[0] || null
   const activeModelUrl = activeFormat?.url || ''
   const activeModelKind = activeFormat?.kind || 'gltf'
@@ -555,6 +632,8 @@ export default function AvatarCreatorPanel() {
                   <button type="button" onClick={handleShare} style={iconBtnStyle(false)} title={vi ? 'Copy link' : 'Share'}><Share2 size={15} /></button>
                   <button type="button" onClick={() => setShowMeasureGrid((v) => !v)} style={iconBtnStyle(showMeasureGrid)} title={vi ? 'Lưới đo' : 'Measurement grid'}><Ruler size={15} /></button>
                   <button type="button" onClick={() => setShowBones((v) => !v)} style={iconBtnStyle(showBones)} title={vi ? 'Hiện xương' : 'Show Bones'} aria-pressed={showBones}>🦴</button>
+                  <button type="button" onClick={() => setShowWireframe((v) => !v)} style={iconBtnStyle(showWireframe)} title="Wireframe" aria-pressed={showWireframe}><Box size={15} /></button>
+                  <button type="button" onClick={() => setShowTextures((v) => !v)} style={iconBtnStyle(showTextures)} title="Textures" aria-pressed={showTextures}><ImageIcon size={15} /></button>
                   <button type="button" onClick={() => setAutoRotate((v) => !v)} style={iconBtnStyle(autoRotate)} title={vi ? 'Tự xoay' : 'Auto-rotate'}>{autoRotate ? <Pause size={15} /> : <Play size={15} />}</button>
                 </div>
                 <span style={{ padding: '4px 8px', borderRadius: 999, background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(15,23,42,0.08)', color: palette.text2, fontSize: 10, fontWeight: 900 }}>
@@ -579,6 +658,8 @@ export default function AvatarCreatorPanel() {
                       autoRotate={autoRotate}
                       showGrid={showMeasureGrid}
                       showBones={showBones}
+                      showWireframe={showWireframe}
+                      showTextures={showTextures}
                       onStatusChange={(update) => {
                         if (update.error) {
                           setAnimationLoadStatus(vi ? `Lỗi: ${update.error}` : `Error: ${update.error}`)
@@ -604,14 +685,41 @@ export default function AvatarCreatorPanel() {
               </div>
 
               <div style={{ padding: '12px 14px', borderTop: `1px solid ${palette.border}` }}>
-                <div className="osa-label" style={{ marginBottom: 8 }}>{vi ? 'Định dạng' : 'Format'}</div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
-                  {formatOptions.length ? formatOptions.map((option) => (
-                    <button key={option.key} type="button" onClick={() => setSelectedFormatKey(option.key)} style={{ padding: '8px 14px', borderRadius: 10, border: `1px solid ${option.key === (activeFormat?.key) ? palette.accent : palette.border}`, background: option.key === (activeFormat?.key) ? 'rgba(0,184,204,0.14)' : palette.card, color: palette.text, fontWeight: 800, fontSize: 12, cursor: 'pointer' }}>
-                      {option.label}
-                    </button>
-                  )) : <span style={{ color: palette.text3, fontSize: 12 }}>{vi ? 'Không có file model.' : 'No model file available.'}</span>}
+                <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+                  <button type="button" onClick={() => setAssetTab('model')} style={{ padding: '7px 12px', borderRadius: 999, border: `1px solid ${assetTab === 'model' ? palette.accent : palette.border}`, background: assetTab === 'model' ? 'rgba(0,184,204,0.14)' : palette.card, color: assetTab === 'model' ? palette.accent : palette.text2, fontWeight: 900, fontSize: 11, cursor: 'pointer' }}>Model</button>
+                  <button type="button" onClick={() => setAssetTab('textures')} style={{ padding: '7px 12px', borderRadius: 999, border: `1px solid ${assetTab === 'textures' ? palette.accent : palette.border}`, background: assetTab === 'textures' ? 'rgba(0,184,204,0.14)' : palette.card, color: assetTab === 'textures' ? palette.accent : palette.text2, fontWeight: 900, fontSize: 11, cursor: 'pointer' }}>Textures</button>
                 </div>
+                {assetTab === 'model' ? (
+                  <>
+                    <div className="osa-label" style={{ marginBottom: 8 }}>{vi ? 'Định dạng' : 'Format'}</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+                      {formatOptions.length ? formatOptions.map((option) => (
+                        <button key={option.key} type="button" onClick={() => setSelectedFormatKey(option.key)} style={{ padding: '8px 14px', borderRadius: 10, border: `1px solid ${option.key === (activeFormat?.key) ? palette.accent : palette.border}`, background: option.key === (activeFormat?.key) ? 'rgba(0,184,204,0.14)' : palette.card, color: palette.text, fontWeight: 800, fontSize: 12, cursor: 'pointer' }}>
+                          {option.label}
+                        </button>
+                      )) : <span style={{ color: palette.text3, fontSize: 12 }}>{vi ? 'Không có file model.' : 'No model file available.'}</span>}
+                    </div>
+                  </>
+                ) : (
+                  <div style={{ marginBottom: 12 }}>
+                    <div className="osa-label" style={{ marginBottom: 8 }}>{vi ? 'Textures' : 'Textures'}</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
+                      {textureOptions.map((texture) => (
+                        <div key={texture.url} className="osa-card" style={{ overflow: 'hidden', background: palette.card }}>
+                          <div style={{ aspectRatio: '1 / 1', background: isDark ? '#111827' : '#f1f5f9', display: 'grid', placeItems: 'center' }}>
+                            <img src={texture.url} alt={texture.name} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                          </div>
+                          <div style={{ padding: 9 }}>
+                            <div style={{ fontSize: 12, fontWeight: 900, color: palette.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{texture.name}</div>
+                            <div style={{ fontSize: 10, color: palette.text3, marginTop: 3 }}>{texture.type}</div>
+                            <a href={texture.url} target="_blank" rel="noreferrer" download style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginTop: 8, color: palette.accent, fontSize: 10, fontWeight: 900, textDecoration: 'none' }}><Download size={12} /> {vi ? 'Tải texture' : 'Download texture'}</a>
+                          </div>
+                        </div>
+                      ))}
+                      {!textureOptions.length && <span style={{ color: palette.text3, fontSize: 12 }}>{vi ? 'Chưa tìm thấy texture trong dữ liệu avatar.' : 'No texture assets were found in this avatar record.'}</span>}
+                    </div>
+                  </div>
+                )}
                 <a
                   href={activeModelUrl || undefined}
                   target="_blank"
@@ -694,6 +802,8 @@ export default function AvatarCreatorPanel() {
                 ) : <span />}
                 <div style={{ display: 'flex', gap: 6 }}>
                   <button type="button" onClick={() => setShowMeasureGrid((v) => !v)} style={iconBtnStyle(showMeasureGrid)} title={vi ? 'Lưới đo' : 'Measurement grid'}><Ruler size={15} /></button>
+                  <button type="button" onClick={() => setShowWireframe((v) => !v)} style={iconBtnStyle(showWireframe)} title="Wireframe" aria-pressed={showWireframe}><Box size={15} /></button>
+                  <button type="button" onClick={() => setShowTextures((v) => !v)} style={iconBtnStyle(showTextures)} title="Textures" aria-pressed={showTextures}><ImageIcon size={15} /></button>
                   <button type="button" onClick={() => setAutoRotate((v) => !v)} style={iconBtnStyle(autoRotate)} title={vi ? 'Tự xoay' : 'Auto-rotate'}>{autoRotate ? <Pause size={15} /> : <Play size={15} />}</button>
                   <button type="button" onClick={handleShare} style={iconBtnStyle(false)} title={vi ? 'Copy link' : 'Share'}><Share2 size={15} /></button>
                 </div>
@@ -710,6 +820,8 @@ export default function AvatarCreatorPanel() {
                   isDark={isDark}
                   autoRotate={autoRotate}
                   showGrid={showMeasureGrid}
+                  showWireframe={showWireframe}
+                  showTextures={showTextures}
                   showDragHint
                   onStatusChange={(update) => {
                     if (update.error) {
@@ -764,6 +876,9 @@ export default function AvatarCreatorPanel() {
                   opensourceavatars.com/finder
                 </div>
               </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <button type="button" onClick={() => setShowWireframe((v) => !v)} style={iconBtnStyle(showWireframe)} title="Wireframe" aria-pressed={showWireframe}><Box size={15} /></button>
+                <button type="button" onClick={() => setShowTextures((v) => !v)} style={iconBtnStyle(showTextures)} title="Textures" aria-pressed={showTextures}><ImageIcon size={15} /></button>
               <a
                 href={selectedAvatarFinderUrl}
                 target="_blank"
@@ -772,6 +887,7 @@ export default function AvatarCreatorPanel() {
               >
                 {vi ? 'Mở 3D' : 'Open 3D'} <ExternalLink size={14} />
               </a>
+              </div>
             </div>
 
             <div style={{ position: 'relative', height: 560, overflow: 'hidden', background: isDark ? 'radial-gradient(circle at 50% 24%, rgba(0,229,255,0.16), transparent 42%), linear-gradient(180deg,#0b1220,#050816)' : 'radial-gradient(circle at 50% 24%, rgba(0,184,204,0.14), transparent 44%), linear-gradient(180deg,#f4f0e8,#e8e1d7)' }}>
@@ -789,6 +905,8 @@ export default function AvatarCreatorPanel() {
                     isDark={isDark}
                     autoRotate={autoRotate}
                     showGrid={false}
+                    showWireframe={showWireframe}
+                    showTextures={showTextures}
                     showDragHint
                   />
                 </div>

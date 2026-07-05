@@ -25,6 +25,8 @@ export default function AnimatedAvatarViewer({
   autoRotate,
   showGrid,
   showBones = false,
+  showWireframe = false,
+  showTextures = true,
   showDragHint = true,
   onLog,
   onStatusChange,
@@ -89,7 +91,7 @@ export default function AnimatedAvatarViewer({
 
     stateRef.current = {
       scene, camera, renderer, controls, grid,
-      mixer: null, avatarRoot: null, vrm: null, currentAction: null, boneHelpers: [], disposed: false,
+      mixer: null, avatarRoot: null, vrm: null, currentAction: null, boneHelpers: [], modelMaterials: [], disposed: false,
     }
 
     function animate() {
@@ -128,7 +130,25 @@ export default function AnimatedAvatarViewer({
       stateRef.current.vrm = vrm || null
 
       const boneHelpers = []
+      const modelMaterials = []
       avatarRoot.traverse((obj) => {
+        if (obj.isMesh && obj.material) {
+          const materials = Array.isArray(obj.material) ? obj.material : [obj.material]
+          materials.forEach((material) => {
+            material.userData = material.userData || {}
+            if (typeof material.userData.osaOriginalWireframe !== 'boolean') material.userData.osaOriginalWireframe = !!material.wireframe
+            if (!material.userData.osaOriginalTextureMaps) {
+              material.userData.osaOriginalTextureMaps = {
+                map: material.map || null, normalMap: material.normalMap || null, roughnessMap: material.roughnessMap || null,
+                metalnessMap: material.metalnessMap || null, emissiveMap: material.emissiveMap || null, aoMap: material.aoMap || null, alphaMap: material.alphaMap || null,
+              }
+            }
+            material.wireframe = !!showWireframe
+            Object.entries(material.userData.osaOriginalTextureMaps).forEach(([mapKey, originalMap]) => { material[mapKey] = showTextures ? originalMap : null })
+            material.needsUpdate = true
+            modelMaterials.push(material)
+          })
+        }
         if (obj.isSkinnedMesh && obj.skeleton) {
           const helper = new THREE.SkeletonHelper(obj)
           helper.visible = !!showBones
@@ -151,6 +171,7 @@ export default function AnimatedAvatarViewer({
         boneHelpers.push(helper)
       }
       stateRef.current.boneHelpers = boneHelpers
+      stateRef.current.modelMaterials = modelMaterials
 
       onStatusChange?.({ modelLoaded: true, isVrm: !!vrm, boneCount: boneHelpers.length })
       setModelReady(true)
@@ -216,6 +237,14 @@ export default function AnimatedAvatarViewer({
       renderer.domElement.removeEventListener('touchstart', markInteracted)
       controls.dispose()
       renderer.dispose()
+      ;(stateRef.current.modelMaterials || []).forEach((material) => {
+        if (typeof material.userData?.osaOriginalWireframe === 'boolean') {
+          material.wireframe = material.userData.osaOriginalWireframe
+        }
+        if (material.userData?.osaOriginalTextureMaps) {
+          Object.entries(material.userData.osaOriginalTextureMaps).forEach(([mapKey, originalMap]) => { material[mapKey] = originalMap })
+        }
+      })
       ;(stateRef.current.boneHelpers || []).forEach((helper) => {
         scene.remove(helper)
         helper.geometry?.dispose?.()
@@ -243,6 +272,20 @@ export default function AnimatedAvatarViewer({
   useEffect(() => {
     ;(stateRef.current.boneHelpers || []).forEach((helper) => { helper.visible = !!showBones })
   }, [showBones])
+  useEffect(() => {
+    ;(stateRef.current.modelMaterials || []).forEach((material) => {
+      material.wireframe = !!showWireframe
+      material.needsUpdate = true
+    })
+  }, [showWireframe])
+  useEffect(() => {
+    ;(stateRef.current.modelMaterials || []).forEach((material) => {
+      const originalMaps = material.userData?.osaOriginalTextureMaps
+      if (!originalMaps) return
+      Object.entries(originalMaps).forEach(([mapKey, originalMap]) => { material[mapKey] = showTextures ? originalMap : null })
+      material.needsUpdate = true
+    })
+  }, [showTextures])
 
   // Animation loading — runs whenever a new FBX blob URL comes in.
   useEffect(() => {
