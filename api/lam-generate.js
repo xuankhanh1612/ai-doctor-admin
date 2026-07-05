@@ -4,10 +4,19 @@
 // This does NOT run the model on this server (LAM needs a compiled CUDA
 // `diff-gaussian-rasterization` extension + an NVIDIA GPU + ~10-20GB of
 // checkpoints — that cannot run on a Vercel/Node lambda). Instead it drives
-// the *actual* LAM inference code (github.com/aigc3d/LAM, the same repo
-// this panel links to) that the 3DAIGC team hosts as a Gradio Space, using
-// the official @gradio/client SDK — i.e. a real remote procedure call into
-// the real model, not a mock.
+// the *actual* LAM inference code (github.com/aigc3d/LAM) that the 3DAIGC
+// team hosts as a Gradio Space, using the official @gradio/client SDK.
+//
+// IMPORTANT: this call is made from the SERVER, not the browser. The
+// Space's CORS setup rejects credentialed cross-origin requests from a
+// browser origin (Access-Control-Allow-Credentials comes back empty
+// instead of "true"), so calling it with @gradio/client directly from
+// client-side code fails with a CORS error no matter what. CORS is a
+// browser-only restriction — a Node server calling the same Space has no
+// such restriction — so the real fix is to keep this call server-side and
+// just make sure the request body from the browser to *this* endpoint
+// stays small (Vercel hard-caps Serverless Function request bodies at
+// 4.5MB). The client resizes the photo before sending it here.
 //
 // Because it's someone else's shared community Space, it can be asleep,
 // out of ZeroGPU quota, or crashed (we've seen it crash with
@@ -24,12 +33,22 @@
 import { Client } from '@gradio/client'
 
 const DEFAULT_SPACE = process.env.LAM_HF_SPACE || '3DAIGC/LAM'
+const MAX_BODY_BYTES = 4 * 1024 * 1024 // stay safely under Vercel's 4.5MB hard cap
 
 function parseBody(req) {
   return new Promise((resolve, reject) => {
     if (req.body && typeof req.body === 'object') return resolve(req.body)
     let data = ''
-    req.on('data', (chunk) => (data += chunk))
+    let size = 0
+    req.on('data', (chunk) => {
+      size += chunk.length
+      if (size > MAX_BODY_BYTES) {
+        reject(Object.assign(new Error('Payload too large'), { statusCode: 413 }))
+        req.destroy()
+        return
+      }
+      data += chunk
+    })
     req.on('end', () => {
       try { resolve(data ? JSON.parse(data) : {}) }
       catch { reject(new Error('Invalid JSON body')) }
@@ -66,7 +85,7 @@ function pickEndpoint(apiInfo) {
   return preferred || candidates[0]
 }
 
-function buildPayload(params, imageBlob, videoBlob) {
+function buildPayload(params, imageBlob) {
   const payload = {}
   for (const p of params) {
     const key = p.parameter_name || p.label
@@ -74,8 +93,6 @@ function buildPayload(params, imageBlob, videoBlob) {
     const desc = `${p.label || ''} ${key} ${p.component || ''}`
     if (/image|photo|portrait/i.test(desc) && imageBlob) {
       payload[key] = imageBlob
-    } else if (/video|motion/i.test(desc) && videoBlob) {
-      payload[key] = videoBlob
     } else if (p.parameter_has_default) {
       payload[key] = p.parameter_default
     }
@@ -83,7 +100,7 @@ function buildPayload(params, imageBlob, videoBlob) {
   return payload
 }
 
-export default async function handler(req, res) {
+export async function lamGenerateHandler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
@@ -95,10 +112,15 @@ export default async function handler(req, res) {
   try {
     body = await parseBody(req)
   } catch (e) {
+    if (e.statusCode === 413) {
+      return res.status(413).json({
+        error: 'Ảnh gửi lên quá lớn cho một request server (>4MB). Hãy để client tự resize ảnh trước khi gửi (đã bật mặc định trong panel).',
+      })
+    }
     return res.status(400).json({ error: 'Failed to parse request body: ' + e.message })
   }
 
-  const { imageBase64, imageMimeType, videoBase64, videoMimeType, space } = body
+  const { imageBase64, imageMimeType, space } = body
   if (!imageBase64) {
     return res.status(400).json({ error: 'imageBase64 is required (a single front-facing portrait photo).' })
   }
@@ -131,9 +153,8 @@ export default async function handler(req, res) {
     })
   }
 
-  const imageBlob = dataUrlOrB64ToBlob(imageBase64, imageMimeType || 'image/png')
-  const videoBlob = videoBase64 ? dataUrlOrB64ToBlob(videoBase64, videoMimeType || 'video/mp4') : null
-  const payload = buildPayload(endpoint.params, imageBlob, videoBlob)
+  const imageBlob = dataUrlOrB64ToBlob(imageBase64, imageMimeType || 'image/jpeg')
+  const payload = buildPayload(endpoint.params, imageBlob)
 
   console.log('[lam-generate] space:', spaceId, '| endpoint:', endpoint.path, '| params:', Object.keys(payload))
 
@@ -157,4 +178,8 @@ export default async function handler(req, res) {
       hint: `Space công khai có thể đang ngủ / hết quota ZeroGPU / crash. Xem trực tiếp tại https://huggingface.co/spaces/${spaceId}, hoặc tự host LAM/OpenAvatarChat trên GPU riêng (xem hướng dẫn trong tab "My AI Avatar").`,
     })
   }
+}
+
+export default async function handler(req, res) {
+  return lamGenerateHandler(req, res)
 }
