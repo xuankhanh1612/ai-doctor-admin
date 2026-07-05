@@ -273,7 +273,10 @@ export default function App() {
             {active === 'printPortal' && <PrintCenter onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'chatHistory' && <ChatHistoryPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} activePanelLabel={panelLabels[active] || active} />}
             {active === 'profile'   && <UserProfilePanel />}
-            {active === 'myAiAvatar' && <MyAIAvatarPanel />}
+            {active === 'myAiAvatar' && user?.isAdmin && <MyAIAvatarPanel />}
+            {active === 'myAiAvatar' && !user?.isAdmin && (
+              <div style={{ padding: 40, textAlign: 'center', color: '#ff5252' }}>🔒 Admin only</div>
+            )}
             {active === 'avatarCreator' && <AvatarCreatorPanel />}
             {active === 'my3dAsset' && <My3DAssetPanel />}
             {active === 'admin'     && user?.isAdmin && <AdminPanel />}
