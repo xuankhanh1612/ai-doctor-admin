@@ -422,8 +422,17 @@ export default class OpenAvatarChatClient {
 
     if (payload.end_of_speech) {
       // Explicit end-of-turn signal from the server — trust it, once actual
-      // playback of this chunk has finished.
-      setTimeout(() => this._finishAvatarStream(streamKey), scheduledDurationMs)
+      // playback of this chunk has finished. IMPORTANT: still register this
+      // timer in _audioEndTimers (same as the fallback branch below). The
+      // server reuses the same stream_key across separate conversation turns
+      // (it's tied to the TTS handler instance, not the utterance), so a later
+      // chunk for a *new* turn can arrive under this same debounceKey. Without
+      // registering it here, this timer had no way to be cancelled and could
+      // fire a stray/duplicate EndSpeech well after the turn already closed
+      // correctly — which is what silently left the server's mic gate closed
+      // (input_enabled stuck false) with zero client-visible error.
+      const timer = setTimeout(() => this._finishAvatarStream(streamKey), scheduledDurationMs)
+      this._audioEndTimers.set(debounceKey, timer)
     } else {
       // No explicit signal (yet, or ever, for this chunk) — arm the fallback:
       // if nothing else for this stream_key shows up soon, assume it's over.
