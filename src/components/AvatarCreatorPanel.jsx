@@ -217,6 +217,26 @@ function licenseUsageNote(license, vi) {
   return license
 }
 
+function TexturePreviewCard({ texture, meta, palette, isDark, vi, onLoad, large = false }) {
+  if (!texture) return null
+  return (
+    <div className="osa-card" style={{ overflow: 'hidden', background: palette.card }}>
+      <div style={{ aspectRatio: '1 / 1', background: isDark ? '#111827' : '#f8fafc', display: 'grid', placeItems: 'center', padding: large ? 18 : 10 }}>
+        <img src={texture.url} alt={texture.name} loading="lazy" onLoad={(event) => onLoad(texture, event)} style={{ width: '100%', height: '100%', objectFit: 'contain', imageRendering: 'auto' }} />
+      </div>
+      <div style={{ padding: large ? 16 : 12, borderTop: `1px solid ${palette.border}` }}>
+        <div style={{ fontSize: large ? 16 : 14, fontWeight: 900, color: palette.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{texture.name}</div>
+        <div style={{ marginTop: 10, display: 'grid', gap: 8, fontSize: 12 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}><span style={{ color: palette.text3 }}>{vi ? 'Kích thước' : 'Dimensions'}:</span><strong>{meta?.width ? `${meta.width} × ${meta.height}` : '—'}</strong></div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}><span style={{ color: palette.text3 }}>{vi ? 'Dung lượng' : 'File Size'}:</span><strong>{formatBytes(meta?.bytes)}</strong></div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}><span style={{ color: palette.text3 }}>{vi ? 'Loại' : 'Type'}:</span><strong>{texture.type}</strong></div>
+        </div>
+        <a href={texture.url} target="_blank" rel="noreferrer" download style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, marginTop: 14, borderRadius: 10, border: `1px solid ${palette.border}`, padding: '9px 10px', color: palette.accent, fontSize: 11, fontWeight: 900, textDecoration: 'none' }}><Download size={14} /> {vi ? 'Tải texture' : 'Download texture'}</a>
+      </div>
+    </div>
+  )
+}
+
 export default function AvatarCreatorPanel() {
   const { user, updateProfile } = useAuth()
   const { theme, lang } = useApp()
@@ -485,6 +505,7 @@ export default function AvatarCreatorPanel() {
         .osa-thumb-btn { text-align:left; border-radius:16px; overflow:hidden; padding:0; cursor:pointer; transition: transform .12s ease, box-shadow .12s ease; }
         .osa-thumb-btn:hover { transform: translateY(-2px); }
         .osa-layout { display:grid; grid-template-columns: minmax(230px,290px) minmax(230px,270px) minmax(360px,1fr) minmax(190px,220px); gap:16px; align-items:start; }
+        .osa-texture-inspector { display:grid; grid-template-columns:minmax(260px,360px) minmax(360px,1fr) minmax(210px,260px); gap:16px; align-items:stretch; }
         .osa-scroll::-webkit-scrollbar { width:6px; }
         .osa-scroll::-webkit-scrollbar-thumb { background:${palette.border}; border-radius:6px; }
         @media (max-width: 1360px) {
@@ -493,10 +514,12 @@ export default function AvatarCreatorPanel() {
           .osa-detail-col { order:2; }
           .osa-viewer-col { order:3; grid-column: 1 / -1; }
           .osa-anim-col { order:4; grid-column: 1 / -1; }
+          .osa-texture-inspector { grid-template-columns:1fr; }
         }
         @media (max-width: 760px) {
           .osa-layout { grid-template-columns: 1fr; }
           .osa-browse-col, .osa-detail-col, .osa-viewer-col, .osa-anim-col { grid-column: 1 / -1; }
+          .osa-texture-inspector { grid-template-columns:1fr; }
         }
       `}</style>
 
@@ -752,18 +775,7 @@ export default function AvatarCreatorPanel() {
                     {selectedTexture ? (
                       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(190px, 1.1fr) minmax(160px, 0.9fr)', gap: 12 }}>
                         <div className="osa-card" style={{ overflow: 'hidden', background: palette.card }}>
-                          <div style={{ aspectRatio: '1 / 1', background: isDark ? '#111827' : '#f1f5f9', display: 'grid', placeItems: 'center', padding: 10 }}>
-                            <img src={selectedTexture.url} alt={selectedTexture.name} loading="lazy" onLoad={(event) => handleTextureImageLoad(selectedTexture, event)} style={{ width: '100%', height: '100%', objectFit: 'contain', imageRendering: 'auto' }} />
-                          </div>
-                          <div style={{ padding: 12, borderTop: `1px solid ${palette.border}` }}>
-                            <div style={{ fontSize: 14, fontWeight: 900, color: palette.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selectedTexture.name}</div>
-                            <div style={{ marginTop: 8, display: 'grid', gap: 6, fontSize: 12 }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}><span style={{ color: palette.text3 }}>{vi ? 'Kích thước' : 'Dimensions'}:</span><strong>{selectedTextureMeta?.width ? `${selectedTextureMeta.width} × ${selectedTextureMeta.height}` : '—'}</strong></div>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}><span style={{ color: palette.text3 }}>{vi ? 'Dung lượng' : 'File Size'}:</span><strong>{formatBytes(selectedTextureMeta?.bytes)}</strong></div>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}><span style={{ color: palette.text3 }}>{vi ? 'Loại' : 'Type'}:</span><strong>{selectedTexture.type}</strong></div>
-                            </div>
-                            <a href={selectedTexture.url} target="_blank" rel="noreferrer" download style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, marginTop: 12, borderRadius: 10, border: `1px solid ${palette.border}`, padding: '9px 10px', color: palette.accent, fontSize: 11, fontWeight: 900, textDecoration: 'none' }}><Download size={14} /> {vi ? 'Tải texture' : 'Download texture'}</a>
-                          </div>
+                          <TexturePreviewCard texture={selectedTexture} meta={selectedTextureMeta} palette={palette} isDark={isDark} vi={vi} onLoad={handleTextureImageLoad} />
                         </div>
                         <div className="osa-scroll" style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 330, overflowY: 'auto' }}>
                           {textureOptions.map((texture) => {
@@ -835,6 +847,73 @@ export default function AvatarCreatorPanel() {
               </div>
             </div>
 
+          </div>
+
+          {/* ============ OSA-style 2D texture inspector, like Finder/Inspector texture views ============ */}
+          <div className="osa-card" style={{ marginTop: 16, overflow: 'hidden' }}>
+            <div style={{ padding: '16px 18px 12px', borderBottom: `1px solid ${palette.border}`, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+              <div>
+                <div style={{ fontSize: 17, fontWeight: 900, letterSpacing: '-0.01em', color: palette.text }}>{vi ? 'Textures 2D' : '2D Textures'}</div>
+                <div style={{ fontSize: 12, color: palette.text3, marginTop: 2 }}>
+                  {vi ? 'Xem UV/texture giống tab Textures của opensourceavatars.com' : 'UV/texture view styled after the opensourceavatars.com Textures tab'}
+                </div>
+              </div>
+              <span style={{ padding: '5px 10px', borderRadius: 999, background: isDark ? 'rgba(0,229,255,0.12)' : 'rgba(0,184,204,0.12)', color: palette.accent, fontSize: 11, fontWeight: 900 }}>
+                {textureOptions.length} {vi ? 'texture' : 'textures'}
+              </span>
+            </div>
+            {selectedTexture ? (
+              <div className="osa-texture-inspector" style={{ padding: 16 }}>
+                <TexturePreviewCard texture={selectedTexture} meta={selectedTextureMeta} palette={palette} isDark={isDark} vi={vi} onLoad={handleTextureImageLoad} large />
+                <div style={{ minHeight: 420, borderRadius: 18, overflow: 'hidden', border: `1px solid ${palette.border}`, background: isDark ? 'linear-gradient(180deg,#0b1220,#050816)' : 'linear-gradient(180deg,#f4f0e8,#e8e1d7)' }}>
+                  <div style={{ padding: '10px 14px', borderBottom: `1px solid ${palette.border}`, display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+                    <strong style={{ fontSize: 13 }}>{selectedAvatar?.name || (vi ? 'Avatar đã chọn' : 'Selected avatar')}</strong>
+                    <span style={{ color: palette.text3, fontSize: 11 }}>{activeFormat?.label || selectedAvatar?.format || 'VRM'} · {selectedTexture.type}</span>
+                  </div>
+                  <div style={{ height: 390 }}>
+                    {activeModelUrl ? (
+                      <AnimatedAvatarViewer
+                        modelUrl={activeModelUrl}
+                        modelKind={activeModelKind}
+                        animationBlobUrl={animationBlobUrl}
+                        animationLabel={selectedAnimation}
+                        isDark={isDark}
+                        autoRotate={autoRotate}
+                        showGrid={showMeasureGrid}
+                        showBones={false}
+                        showWireframe={false}
+                        showTextures={showTextures}
+                      />
+                    ) : (
+                      <div style={{ height: '100%', display: 'grid', placeItems: 'center' }}>
+                        {selectedAvatar?.thumbnail_url ? <img src={selectedAvatar.thumbnail_url} alt={selectedAvatar.name} style={{ maxHeight: '72%', borderRadius: 16 }} /> : <span style={{ fontSize: 88 }}>🧑‍🚀</span>}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="osa-card" style={{ padding: 14, background: palette.card }}>
+                  <div className="osa-label" style={{ marginBottom: 10 }}>{vi ? 'Danh sách texture' : 'Texture list'}</div>
+                  <div className="osa-scroll" style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 390, overflowY: 'auto' }}>
+                    {textureOptions.map((texture) => {
+                      const activeTexture = selectedTexture?.url === texture.url
+                      return (
+                        <button key={`inspector-${texture.url}`} type="button" onClick={() => setSelectedTextureUrl(texture.url)} style={{ display: 'flex', alignItems: 'center', gap: 9, textAlign: 'left', border: `1px solid ${activeTexture ? palette.accent : palette.border}`, borderLeft: activeTexture ? `3px solid ${palette.accent}` : `3px solid transparent`, background: activeTexture ? 'rgba(0,184,204,0.12)' : palette.card2, color: palette.text, borderRadius: 10, padding: 8, cursor: 'pointer' }}>
+                          <span style={{ width: 46, height: 46, borderRadius: 8, overflow: 'hidden', background: isDark ? '#111827' : '#f1f5f9', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+                            <img src={texture.url} alt="" loading="lazy" onLoad={(event) => handleTextureImageLoad(texture, event)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          </span>
+                          <span style={{ minWidth: 0 }}>
+                            <span style={{ display: 'block', fontSize: 12, fontWeight: 900, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{texture.name}</span>
+                            <span style={{ display: 'block', fontSize: 10, color: palette.text3, marginTop: 2 }}>{texture.type}</span>
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div style={{ padding: 18, color: palette.text3, fontSize: 12 }}>{vi ? 'Chưa tìm thấy texture trong dữ liệu avatar này.' : 'No texture assets were found in this avatar record.'}</div>
+            )}
           </div>
 
           {/* ============ Full-width 3D preview, below the whole grid ============ */}
