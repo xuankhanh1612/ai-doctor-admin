@@ -144,6 +144,18 @@ function getFileNameFromUrl(url) {
   }
 }
 
+function formatBytes(bytes) {
+  if (!Number.isFinite(bytes) || bytes <= 0) return '—'
+  const units = ['B', 'KB', 'MB', 'GB']
+  let value = bytes
+  let unitIndex = 0
+  while (value >= 1024 && unitIndex < units.length - 1) {
+    value /= 1024
+    unitIndex += 1
+  }
+  return `${value >= 10 || unitIndex === 0 ? value.toFixed(0) : value.toFixed(1)} ${units[unitIndex]}`
+}
+
 function normalizeTextureCandidate(value, key = 'Texture', seen = new Set()) {
   if (typeof value !== 'string' || !value.trim()) return null
   const url = value.trim()
@@ -227,6 +239,8 @@ export default function AvatarCreatorPanel() {
   const [showWireframe, setShowWireframe] = useState(false)
   const [showTextures, setShowTextures] = useState(true)
   const [assetTab, setAssetTab] = useState('model')
+  const [selectedTextureUrl, setSelectedTextureUrl] = useState('')
+  const [textureMeta, setTextureMeta] = useState({})
   const [showInfoOverlay, setShowInfoOverlay] = useState(true)
   const [shareStatus, setShareStatus] = useState('')
   const [selectedAnimation, setSelectedAnimation] = useState('Fight Idle')
@@ -326,9 +340,41 @@ export default function AvatarCreatorPanel() {
 
   const formatOptions = useMemo(() => getFormatOptions(selectedAvatar), [selectedAvatar])
   const textureOptions = useMemo(() => collectTextureOptions(selectedAvatar), [selectedAvatar])
+  const selectedTexture = textureOptions.find((texture) => texture.url === selectedTextureUrl) || textureOptions[0] || null
+  const selectedTextureMeta = selectedTexture ? textureMeta[selectedTexture.url] : null
   const activeFormat = formatOptions.find((option) => option.key === selectedFormatKey) || formatOptions[0] || null
   const activeModelUrl = activeFormat?.url || ''
   const activeModelKind = activeFormat?.kind || 'gltf'
+
+  useEffect(() => {
+    setSelectedTextureUrl((current) => (textureOptions.some((texture) => texture.url === current) ? current : (textureOptions[0]?.url || '')))
+  }, [textureOptions])
+
+  useEffect(() => {
+    const controller = new AbortController()
+    textureOptions.forEach((texture) => {
+      fetch(texture.url, { method: 'HEAD', signal: controller.signal })
+        .then((response) => {
+          const length = Number(response.headers.get('content-length'))
+          if (!Number.isFinite(length) || length <= 0) return
+          setTextureMeta((current) => ({ ...current, [texture.url]: { ...(current[texture.url] || {}), bytes: length } }))
+        })
+        .catch(() => {})
+    })
+    return () => controller.abort()
+  }, [textureOptions])
+
+  const handleTextureImageLoad = (texture, event) => {
+    const img = event.currentTarget
+    setTextureMeta((current) => ({
+      ...current,
+      [texture.url]: {
+        ...(current[texture.url] || {}),
+        width: img.naturalWidth || 0,
+        height: img.naturalHeight || 0,
+      },
+    }))
+  }
 
   const loadAnimationFile = async (animation) => {
     setSelectedAnimation(animation)
@@ -702,22 +748,41 @@ export default function AvatarCreatorPanel() {
                   </>
                 ) : (
                   <div style={{ marginBottom: 12 }}>
-                    <div className="osa-label" style={{ marginBottom: 8 }}>{vi ? 'Textures' : 'Textures'}</div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
-                      {textureOptions.map((texture) => (
-                        <div key={texture.url} className="osa-card" style={{ overflow: 'hidden', background: palette.card }}>
-                          <div style={{ aspectRatio: '1 / 1', background: isDark ? '#111827' : '#f1f5f9', display: 'grid', placeItems: 'center' }}>
-                            <img src={texture.url} alt={texture.name} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                    <div className="osa-label" style={{ marginBottom: 8 }}>{vi ? 'Textures 2D' : '2D Textures'}</div>
+                    {selectedTexture ? (
+                      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(190px, 1.1fr) minmax(160px, 0.9fr)', gap: 12 }}>
+                        <div className="osa-card" style={{ overflow: 'hidden', background: palette.card }}>
+                          <div style={{ aspectRatio: '1 / 1', background: isDark ? '#111827' : '#f1f5f9', display: 'grid', placeItems: 'center', padding: 10 }}>
+                            <img src={selectedTexture.url} alt={selectedTexture.name} loading="lazy" onLoad={(event) => handleTextureImageLoad(selectedTexture, event)} style={{ width: '100%', height: '100%', objectFit: 'contain', imageRendering: 'auto' }} />
                           </div>
-                          <div style={{ padding: 9 }}>
-                            <div style={{ fontSize: 12, fontWeight: 900, color: palette.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{texture.name}</div>
-                            <div style={{ fontSize: 10, color: palette.text3, marginTop: 3 }}>{texture.type}</div>
-                            <a href={texture.url} target="_blank" rel="noreferrer" download style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginTop: 8, color: palette.accent, fontSize: 10, fontWeight: 900, textDecoration: 'none' }}><Download size={12} /> {vi ? 'Tải texture' : 'Download texture'}</a>
+                          <div style={{ padding: 12, borderTop: `1px solid ${palette.border}` }}>
+                            <div style={{ fontSize: 14, fontWeight: 900, color: palette.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selectedTexture.name}</div>
+                            <div style={{ marginTop: 8, display: 'grid', gap: 6, fontSize: 12 }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}><span style={{ color: palette.text3 }}>{vi ? 'Kích thước' : 'Dimensions'}:</span><strong>{selectedTextureMeta?.width ? `${selectedTextureMeta.width} × ${selectedTextureMeta.height}` : '—'}</strong></div>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}><span style={{ color: palette.text3 }}>{vi ? 'Dung lượng' : 'File Size'}:</span><strong>{formatBytes(selectedTextureMeta?.bytes)}</strong></div>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}><span style={{ color: palette.text3 }}>{vi ? 'Loại' : 'Type'}:</span><strong>{selectedTexture.type}</strong></div>
+                            </div>
+                            <a href={selectedTexture.url} target="_blank" rel="noreferrer" download style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, marginTop: 12, borderRadius: 10, border: `1px solid ${palette.border}`, padding: '9px 10px', color: palette.accent, fontSize: 11, fontWeight: 900, textDecoration: 'none' }}><Download size={14} /> {vi ? 'Tải texture' : 'Download texture'}</a>
                           </div>
                         </div>
-                      ))}
-                      {!textureOptions.length && <span style={{ color: palette.text3, fontSize: 12 }}>{vi ? 'Chưa tìm thấy texture trong dữ liệu avatar.' : 'No texture assets were found in this avatar record.'}</span>}
-                    </div>
+                        <div className="osa-scroll" style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 330, overflowY: 'auto' }}>
+                          {textureOptions.map((texture) => {
+                            const activeTexture = selectedTexture?.url === texture.url
+                            return (
+                              <button key={texture.url} type="button" onClick={() => setSelectedTextureUrl(texture.url)} style={{ display: 'flex', alignItems: 'center', gap: 9, textAlign: 'left', border: `1px solid ${activeTexture ? palette.accent : palette.border}`, borderLeft: activeTexture ? `3px solid ${palette.accent}` : `3px solid transparent`, background: activeTexture ? 'rgba(0,184,204,0.12)' : palette.card, color: palette.text, borderRadius: 10, padding: 7, cursor: 'pointer' }}>
+                                <span style={{ width: 42, height: 42, borderRadius: 8, overflow: 'hidden', background: isDark ? '#111827' : '#f1f5f9', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+                                  <img src={texture.url} alt="" loading="lazy" onLoad={(event) => handleTextureImageLoad(texture, event)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                </span>
+                                <span style={{ minWidth: 0 }}>
+                                  <span style={{ display: 'block', fontSize: 11, fontWeight: 900, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{texture.name}</span>
+                                  <span style={{ display: 'block', fontSize: 10, color: palette.text3, marginTop: 2 }}>{texture.type}</span>
+                                </span>
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    ) : <span style={{ color: palette.text3, fontSize: 12 }}>{vi ? 'Chưa tìm thấy texture trong dữ liệu avatar.' : 'No texture assets were found in this avatar record.'}</span>}
                   </div>
                 )}
                 <a
@@ -802,6 +867,7 @@ export default function AvatarCreatorPanel() {
                 ) : <span />}
                 <div style={{ display: 'flex', gap: 6 }}>
                   <button type="button" onClick={() => setShowMeasureGrid((v) => !v)} style={iconBtnStyle(showMeasureGrid)} title={vi ? 'Lưới đo' : 'Measurement grid'}><Ruler size={15} /></button>
+                  <button type="button" onClick={() => setShowBones((v) => !v)} style={iconBtnStyle(showBones)} title={vi ? 'Hiện xương' : 'Show Bones'} aria-pressed={showBones}>🦴</button>
                   <button type="button" onClick={() => setShowWireframe((v) => !v)} style={iconBtnStyle(showWireframe)} title="Wireframe" aria-pressed={showWireframe}><Box size={15} /></button>
                   <button type="button" onClick={() => setShowTextures((v) => !v)} style={iconBtnStyle(showTextures)} title="Textures" aria-pressed={showTextures}><ImageIcon size={15} /></button>
                   <button type="button" onClick={() => setAutoRotate((v) => !v)} style={iconBtnStyle(autoRotate)} title={vi ? 'Tự xoay' : 'Auto-rotate'}>{autoRotate ? <Pause size={15} /> : <Play size={15} />}</button>
@@ -820,6 +886,7 @@ export default function AvatarCreatorPanel() {
                   isDark={isDark}
                   autoRotate={autoRotate}
                   showGrid={showMeasureGrid}
+                  showBones={showBones}
                   showWireframe={showWireframe}
                   showTextures={showTextures}
                   showDragHint
@@ -877,6 +944,7 @@ export default function AvatarCreatorPanel() {
                 </div>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <button type="button" onClick={() => setShowBones((v) => !v)} style={iconBtnStyle(showBones)} title={vi ? 'Hiện xương' : 'Show Bones'} aria-pressed={showBones}>🦴</button>
                 <button type="button" onClick={() => setShowWireframe((v) => !v)} style={iconBtnStyle(showWireframe)} title="Wireframe" aria-pressed={showWireframe}><Box size={15} /></button>
                 <button type="button" onClick={() => setShowTextures((v) => !v)} style={iconBtnStyle(showTextures)} title="Textures" aria-pressed={showTextures}><ImageIcon size={15} /></button>
               <a
@@ -905,6 +973,7 @@ export default function AvatarCreatorPanel() {
                     isDark={isDark}
                     autoRotate={autoRotate}
                     showGrid={false}
+                    showBones={showBones}
                     showWireframe={showWireframe}
                     showTextures={showTextures}
                     showDragHint

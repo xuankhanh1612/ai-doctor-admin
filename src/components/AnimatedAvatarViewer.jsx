@@ -47,6 +47,19 @@ export default function AnimatedAvatarViewer({
     onLog?.(args.join(' '))
   }
 
+  const applyBoneVisibility = (visible) => {
+    ;(stateRef.current.boneHelpers || []).forEach((helper) => { helper.visible = !!visible })
+    ;(stateRef.current.modelMaterials || []).forEach((material) => {
+      const originalOpacity = material.userData?.osaOriginalOpacity ?? 1
+      const originalTransparent = material.userData?.osaOriginalTransparent ?? false
+      const originalDepthWrite = material.userData?.osaOriginalDepthWrite ?? true
+      material.transparent = visible ? true : originalTransparent
+      material.opacity = visible ? Math.min(originalOpacity, 0.38) : originalOpacity
+      material.depthWrite = visible ? false : originalDepthWrite
+      material.needsUpdate = true
+    })
+  }
+
   // Scene / renderer bootstrap — runs once per mount, rebuilt if the model changes.
   useEffect(() => {
     const container = containerRef.current
@@ -137,6 +150,9 @@ export default function AnimatedAvatarViewer({
           materials.forEach((material) => {
             material.userData = material.userData || {}
             if (typeof material.userData.osaOriginalWireframe !== 'boolean') material.userData.osaOriginalWireframe = !!material.wireframe
+            if (typeof material.userData.osaOriginalOpacity !== 'number') material.userData.osaOriginalOpacity = material.opacity ?? 1
+            if (typeof material.userData.osaOriginalTransparent !== 'boolean') material.userData.osaOriginalTransparent = !!material.transparent
+            if (typeof material.userData.osaOriginalDepthWrite !== 'boolean') material.userData.osaOriginalDepthWrite = material.depthWrite !== false
             if (!material.userData.osaOriginalTextureMaps) {
               material.userData.osaOriginalTextureMaps = {
                 map: material.map || null, normalMap: material.normalMap || null, roughnessMap: material.roughnessMap || null,
@@ -145,6 +161,9 @@ export default function AnimatedAvatarViewer({
             }
             material.wireframe = !!showWireframe
             Object.entries(material.userData.osaOriginalTextureMaps).forEach(([mapKey, originalMap]) => { material[mapKey] = showTextures ? originalMap : null })
+            material.transparent = showBones ? true : material.userData.osaOriginalTransparent
+            material.opacity = showBones ? Math.min(material.userData.osaOriginalOpacity, 0.38) : material.userData.osaOriginalOpacity
+            material.depthWrite = showBones ? false : material.userData.osaOriginalDepthWrite
             material.needsUpdate = true
             modelMaterials.push(material)
           })
@@ -153,9 +172,11 @@ export default function AnimatedAvatarViewer({
           const helper = new THREE.SkeletonHelper(obj)
           helper.visible = !!showBones
           helper.material.depthTest = false
+          helper.material.depthWrite = false
           helper.material.transparent = true
-          helper.material.opacity = 0.95
-          helper.renderOrder = 20
+          helper.material.opacity = 1
+          helper.material.color?.set?.(0x00e5ff)
+          helper.renderOrder = 999
           scene.add(helper)
           boneHelpers.push(helper)
         }
@@ -164,9 +185,11 @@ export default function AnimatedAvatarViewer({
         const helper = new THREE.SkeletonHelper(avatarRoot)
         helper.visible = !!showBones
         helper.material.depthTest = false
+        helper.material.depthWrite = false
         helper.material.transparent = true
-        helper.material.opacity = 0.95
-        helper.renderOrder = 20
+        helper.material.opacity = 1
+        helper.material.color?.set?.(0x00e5ff)
+        helper.renderOrder = 999
         scene.add(helper)
         boneHelpers.push(helper)
       }
@@ -244,6 +267,9 @@ export default function AnimatedAvatarViewer({
         if (material.userData?.osaOriginalTextureMaps) {
           Object.entries(material.userData.osaOriginalTextureMaps).forEach(([mapKey, originalMap]) => { material[mapKey] = originalMap })
         }
+        if (typeof material.userData?.osaOriginalOpacity === 'number') material.opacity = material.userData.osaOriginalOpacity
+        if (typeof material.userData?.osaOriginalTransparent === 'boolean') material.transparent = material.userData.osaOriginalTransparent
+        if (typeof material.userData?.osaOriginalDepthWrite === 'boolean') material.depthWrite = material.userData.osaOriginalDepthWrite
       })
       ;(stateRef.current.boneHelpers || []).forEach((helper) => {
         scene.remove(helper)
@@ -270,7 +296,7 @@ export default function AnimatedAvatarViewer({
     if (stateRef.current.grid) stateRef.current.grid.visible = !!showGrid
   }, [showGrid])
   useEffect(() => {
-    ;(stateRef.current.boneHelpers || []).forEach((helper) => { helper.visible = !!showBones })
+    applyBoneVisibility(showBones)
   }, [showBones])
   useEffect(() => {
     ;(stateRef.current.modelMaterials || []).forEach((material) => {
