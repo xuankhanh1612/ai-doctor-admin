@@ -166,6 +166,10 @@ export default function OpenAvatarChatPanel({ isDark, vi, border, surface, text,
     humanBufferRef.current = ''
     avatarTurnRef.current = null
     avatarBufferRef.current = ''
+    // The server echoes back the human message it just received (normally used to show
+    // ASR transcripts for voice input) — for typed input that echo duplicates the bubble
+    // we already added above. Mark it as "already finalized" so that echo gets deduped.
+    lastFinalizedRef.current.human = { text: trimmed, time: now }
     setInput('')
   }
 
