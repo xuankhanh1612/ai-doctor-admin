@@ -80,9 +80,20 @@ export default function OpenAvatarChatPanel({ isDark, vi, border, surface, text,
       // instead of adding a visually-identical twin underneath it.
       if (prev.length) {
         const last = prev[prev.length - 1]
+        // Exact repeat of the last bubble (already-finalized turn re-sent verbatim).
         if (last.role === role && last.text === fullText && fullText) {
           turnRef.current = last.id
           return prev
+        }
+        // The last bubble was finalized early (e.g. an intermediate end_of_speech),
+        // and this "new turn" is actually the same answer continuing/recapping —
+        // its text fully contains the previous bubble's text as a prefix. Merge into
+        // that bubble instead of rendering a visible duplicate underneath it.
+        if (last.role === role && fullText && last.text && fullText.startsWith(last.text)) {
+          turnRef.current = last.id
+          const copy = [...prev]
+          copy[copy.length - 1] = { ...last, text: fullText }
+          return copy
         }
       }
       turnRef.current = id
