@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Search, Shuffle, ChevronLeft, ChevronRight, Info, LayoutGrid, List,
-  Share2, Ruler, Play, Pause, Download, ExternalLink, Sparkles,
+  Share2, Ruler, Play, Pause, Download, ExternalLink, Sparkles, Box,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useApp } from '../context/AppContext'
@@ -151,6 +151,7 @@ export default function AvatarCreatorPanel() {
   const [autoRotate, setAutoRotate] = useState(true)
   const [showMeasureGrid, setShowMeasureGrid] = useState(true)
   const [showBones, setShowBones] = useState(false)
+  const [showWireframe, setShowWireframe] = useState(false)
   const [showInfoOverlay, setShowInfoOverlay] = useState(true)
   const [shareStatus, setShareStatus] = useState('')
   const [selectedAnimation, setSelectedAnimation] = useState('Fight Idle')
@@ -555,6 +556,7 @@ export default function AvatarCreatorPanel() {
                   <button type="button" onClick={handleShare} style={iconBtnStyle(false)} title={vi ? 'Copy link' : 'Share'}><Share2 size={15} /></button>
                   <button type="button" onClick={() => setShowMeasureGrid((v) => !v)} style={iconBtnStyle(showMeasureGrid)} title={vi ? 'Lưới đo' : 'Measurement grid'}><Ruler size={15} /></button>
                   <button type="button" onClick={() => setShowBones((v) => !v)} style={iconBtnStyle(showBones)} title={vi ? 'Hiện xương' : 'Show Bones'} aria-pressed={showBones}>🦴</button>
+                  <button type="button" onClick={() => setShowWireframe((v) => !v)} style={iconBtnStyle(showWireframe)} title="Wireframe" aria-pressed={showWireframe}><Box size={15} /></button>
                   <button type="button" onClick={() => setAutoRotate((v) => !v)} style={iconBtnStyle(autoRotate)} title={vi ? 'Tự xoay' : 'Auto-rotate'}>{autoRotate ? <Pause size={15} /> : <Play size={15} />}</button>
                 </div>
                 <span style={{ padding: '4px 8px', borderRadius: 999, background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(15,23,42,0.08)', color: palette.text2, fontSize: 10, fontWeight: 900 }}>
@@ -579,6 +581,7 @@ export default function AvatarCreatorPanel() {
                       autoRotate={autoRotate}
                       showGrid={showMeasureGrid}
                       showBones={showBones}
+                      showWireframe={showWireframe}
                       onStatusChange={(update) => {
                         if (update.error) {
                           setAnimationLoadStatus(vi ? `Lỗi: ${update.error}` : `Error: ${update.error}`)
@@ -694,6 +697,7 @@ export default function AvatarCreatorPanel() {
                 ) : <span />}
                 <div style={{ display: 'flex', gap: 6 }}>
                   <button type="button" onClick={() => setShowMeasureGrid((v) => !v)} style={iconBtnStyle(showMeasureGrid)} title={vi ? 'Lưới đo' : 'Measurement grid'}><Ruler size={15} /></button>
+                  <button type="button" onClick={() => setShowWireframe((v) => !v)} style={iconBtnStyle(showWireframe)} title="Wireframe" aria-pressed={showWireframe}><Box size={15} /></button>
                   <button type="button" onClick={() => setAutoRotate((v) => !v)} style={iconBtnStyle(autoRotate)} title={vi ? 'Tự xoay' : 'Auto-rotate'}>{autoRotate ? <Pause size={15} /> : <Play size={15} />}</button>
                   <button type="button" onClick={handleShare} style={iconBtnStyle(false)} title={vi ? 'Copy link' : 'Share'}><Share2 size={15} /></button>
                 </div>
@@ -710,6 +714,7 @@ export default function AvatarCreatorPanel() {
                   isDark={isDark}
                   autoRotate={autoRotate}
                   showGrid={showMeasureGrid}
+                  showWireframe={showWireframe}
                   showDragHint
                   onStatusChange={(update) => {
                     if (update.error) {
@@ -764,6 +769,8 @@ export default function AvatarCreatorPanel() {
                   opensourceavatars.com/finder
                 </div>
               </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <button type="button" onClick={() => setShowWireframe((v) => !v)} style={iconBtnStyle(showWireframe)} title="Wireframe" aria-pressed={showWireframe}><Box size={15} /></button>
               <a
                 href={selectedAvatarFinderUrl}
                 target="_blank"
@@ -772,6 +779,7 @@ export default function AvatarCreatorPanel() {
               >
                 {vi ? 'Mở 3D' : 'Open 3D'} <ExternalLink size={14} />
               </a>
+              </div>
             </div>
 
             <div style={{ position: 'relative', height: 560, overflow: 'hidden', background: isDark ? 'radial-gradient(circle at 50% 24%, rgba(0,229,255,0.16), transparent 42%), linear-gradient(180deg,#0b1220,#050816)' : 'radial-gradient(circle at 50% 24%, rgba(0,184,204,0.14), transparent 44%), linear-gradient(180deg,#f4f0e8,#e8e1d7)' }}>
@@ -789,6 +797,7 @@ export default function AvatarCreatorPanel() {
                     isDark={isDark}
                     autoRotate={autoRotate}
                     showGrid={false}
+                    showWireframe={showWireframe}
                     showDragHint
                   />
                 </div>
