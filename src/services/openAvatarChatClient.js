@@ -283,6 +283,14 @@ export default class OpenAvatarChatClient {
     }
     const AudioCtx = window.AudioContext || window.webkitAudioContext
     this.audioContext = new AudioCtx()
+    // Browsers can create an AudioContext already 'suspended' (autoplay/gesture
+    // policies), especially for a context created after an `await` has broken the
+    // direct link to the click that started this call. A suspended context never
+    // fires onaudioprocess — mic capture then sends nothing, with zero error shown
+    // anywhere in the UI. Resuming explicitly closes that gap.
+    if (this.audioContext.state === 'suspended') {
+      try { await this.audioContext.resume() } catch { /* noop */ }
+    }
     this.micSourceNode = this.audioContext.createMediaStreamSource(this.micStream)
     // ScriptProcessorNode is deprecated but has no dependency-free universal
     // replacement for raw PCM taps across browsers; buffer size chosen for ~85ms chunks.
@@ -327,6 +335,17 @@ export default class OpenAvatarChatClient {
     try { this.micSilentGainNode?.disconnect() } catch { /* noop */ }
     try { this.micSourceNode?.disconnect() } catch { /* noop */ }
     try { this.micStream?.getTracks().forEach((t) => t.stop()) } catch { /* noop */ }
+    // Previously left the AudioContext open across mic toggles. Each startMic() call
+    // creates a brand-new AudioContext, so toggling the mic off/on several times (as
+    // happens when someone retries after voice "isn't heard") silently accumulates
+    // multiple live AudioContext instances. A context created outside a direct user
+    // gesture — e.g. the *n*th one, after the initial click's gesture has expired by
+    // the time the getUserMedia await resolves — can end up stuck 'suspended', so its
+    // ScriptProcessorNode never fires onaudioprocess and no audio is ever sent, with
+    // no error surfaced anywhere. Closing it here guarantees each mic session starts
+    // from a single fresh context instead of piling them up.
+    try { this.audioContext?.close() } catch { /* noop */ }
+    this.audioContext = null
     this.micProcessorNode = null
     this.micSilentGainNode = null
     this.micSourceNode = null
