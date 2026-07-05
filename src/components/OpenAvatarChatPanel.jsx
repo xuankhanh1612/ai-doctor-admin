@@ -90,10 +90,17 @@ export default function OpenAvatarChatPanel({ isDark, vi, border, surface, text,
 
   const handleConnect = async () => {
     setErrorMsg('')
+    // A previous connection may have died silently (e.g. heartbeat timeout) and left its
+    // chat bubbles on screen. Without clearing here, a brand-new session's first answer
+    // renders right under the old session's last answer — which looks exactly like a
+    // duplicated/doubled response even though each session only answered once.
+    setMessages([])
     humanTurnRef.current = null
     avatarTurnRef.current = null
     humanBufferRef.current = ''
     avatarBufferRef.current = ''
+    lastFinalizedRef.current = { human: { text: '', time: 0 }, avatar: { text: '', time: 0 } }
+    lastSentRef.current = { text: '', time: 0 }
     const client = new OpenAvatarChatClient({
       onStateChange: setState,
       onHumanText: ({ text: t, mode, endOfSpeech }) => {
