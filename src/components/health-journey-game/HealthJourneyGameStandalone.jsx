@@ -95,6 +95,27 @@ function buildChapterDetailContent(journeys) {
   return map
 }
 
+
+const DAILY_SPIN_SEGMENTS = [
+  { label: '+500 XP', shortLabel: '500 XP', color: '#f59e0b', weight: 18, reward: '💎 500' },
+  { label: '+100 Coins', shortLabel: '100 xu', color: '#22c55e', weight: 22, reward: '🪙 100' },
+  { label: '+50 Energy', shortLabel: '50 NL', color: '#38bdf8', weight: 20, reward: '⚡ 50' },
+  { label: 'Mystery Chest ×1', shortLabel: 'Rương', color: '#8b5cf6', weight: 12, reward: '🎁 ×1' },
+  { label: '+15 Discipline', shortLabel: '+15 Kỷ luật', color: '#ec4899', weight: 14, reward: '⭐ 15' },
+  { label: 'Double Streak Shield', shortLabel: 'Shield', color: '#06b6d4', weight: 8, reward: '🛡️ ×2' },
+  { label: 'Legendary Bonus', shortLabel: 'Huyền thoại', color: '#ef4444', weight: 6, reward: '👑 Bonus' },
+]
+
+const getWeightedSpinIndex = (segments) => {
+  const total = segments.reduce((sum, segment) => sum + (segment.weight || 1), 0)
+  let ticket = Math.random() * total
+  for (let i = 0; i < segments.length; i += 1) {
+    ticket -= segments[i].weight || 1
+    if (ticket <= 0) return i
+  }
+  return segments.length - 1
+}
+
 const TASK_DETAIL_CONTENT = buildTaskDetailContent(dailyTasksData.tasks || [])
 const CHAPTER_DETAIL_CONTENT = buildChapterDetailContent(journeysData.journeys || [])
 
@@ -424,6 +445,21 @@ const styles = String.raw`
   .day-label { font-size:8px; color:var(--text-muted); margin-bottom:4px; }
   .day-check { font-size:14px; }
 
+
+  /* ─── DAILY REWARD SPIN WHEEL ─── */
+  .spin-wheel-card { position:relative; overflow:hidden; background:linear-gradient(135deg, rgba(245,158,11,.14), rgba(139,92,246,.12)); border:1px solid rgba(245,158,11,.32); border-radius:16px; padding:14px; margin-bottom:14px; }
+  .spin-wheel-stage { position:relative; width:min(260px, 82vw); height:min(260px, 82vw); margin:8px auto 12px; display:flex; align-items:center; justify-content:center; }
+  .spin-wheel-pointer { position:absolute; top:-3px; left:50%; transform:translateX(-50%); width:0; height:0; border-left:15px solid transparent; border-right:15px solid transparent; border-top:28px solid #fef3c7; filter:drop-shadow(0 4px 8px rgba(0,0,0,.45)); z-index:3; }
+  .spin-wheel { width:100%; height:100%; border-radius:50%; border:7px solid rgba(255,255,255,.16); box-shadow:0 0 0 1px rgba(245,158,11,.55), 0 22px 42px rgba(0,0,0,.45), inset 0 0 28px rgba(0,0,0,.34); position:relative; transition:transform 4.2s cubic-bezier(.12,.72,.08,1); }
+  .spin-wheel::after { content:''; position:absolute; inset:18%; border-radius:50%; background:radial-gradient(circle, #fff7ed 0 0, #f59e0b 34%, #7c2d12 72%); border:5px solid rgba(255,255,255,.2); box-shadow:0 0 18px rgba(245,158,11,.5); }
+  .spin-wheel-label { position:absolute; left:50%; top:50%; width:42%; transform-origin:0 0; text-align:right; padding-right:14px; color:#fff; font-size:10px; font-weight:800; text-shadow:0 2px 5px rgba(0,0,0,.65); z-index:2; pointer-events:none; }
+  .spin-wheel-hub { position:absolute; width:74px; height:74px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:1px; left:50%; top:50%; transform:translate(-50%,-50%); z-index:4; background:linear-gradient(160deg, #fff7ed, #f59e0b 58%, #92400e); border:4px solid rgba(255,255,255,.36); box-shadow:0 10px 24px rgba(0,0,0,.4); color:#3b1804; font-family:'Rajdhani',sans-serif; font-size:11px; font-weight:800; }
+  .spin-wheel-actions { display:flex; gap:8px; justify-content:center; align-items:center; flex-wrap:wrap; }
+  .spin-wheel-result { min-height:34px; display:flex; align-items:center; justify-content:center; gap:8px; color:var(--text); font-size:12px; margin-top:10px; }
+  .spin-confetti { position:absolute; inset:0; pointer-events:none; overflow:hidden; }
+  .spin-confetti span { position:absolute; top:-12px; font-size:16px; animation:spin-confetti-fall 1.8s ease-in forwards; }
+  @keyframes spin-confetti-fall { to { transform:translateY(330px) rotate(540deg); opacity:0; } }
+
   /* ─── TABS ─── */
   .tab-row { display:flex; gap:0; margin-bottom:12px; background:rgba(255,255,255,0.04); border-radius:8px; padding:3px; }
   .tab-btn { flex:1; padding:6px; text-align:center; font-size:11px; font-weight:600; color:var(--text-dim); border-radius:6px; cursor:pointer; border:none; background:transparent; }
@@ -557,6 +593,11 @@ export default function HealthJourneyGameStandalone({ onViewMedicalRecord, onOpe
   // này — vì panel bị unmount/remount mỗi khi chuyển qua trang khác rồi quay lại, theo App.jsx).
   // User bấm nút "✕" trong HelpOverlay (đã có sẵn, gọi onClose) để đóng khi không cần nữa.
   const [helpOpen, setHelpOpen] = useState(true)
+  const [spinRotation, setSpinRotation] = useState(0)
+  const [spinPrize, setSpinPrize] = useState(DAILY_SPIN_SEGMENTS[0])
+  const [spinWon, setSpinWon] = useState(false)
+  const [spinSpinning, setSpinSpinning] = useState(false)
+  const [spinConfetti, setSpinConfetti] = useState([])
 
   // ── AI Coach chat (real Groq LLM, không còn là tin nhắn tĩnh) ──
   const [coachMessages, setCoachMessages] = useState([
@@ -937,6 +978,39 @@ export default function HealthJourneyGameStandalone({ onViewMedicalRecord, onOpe
       tabButton.classList.remove('active')
     })
     btn.classList.add('active')
+  }
+
+  const spinWheelBackground = `conic-gradient(${DAILY_SPIN_SEGMENTS.map((segment, index) => {
+    const start = (index / DAILY_SPIN_SEGMENTS.length) * 100
+    const end = ((index + 1) / DAILY_SPIN_SEGMENTS.length) * 100
+    return `${segment.color} ${start}% ${end}%`
+  }).join(', ')})`
+
+  const handleDailySpin = () => {
+    if (spinSpinning) return
+
+    const prizeIndex = getWeightedSpinIndex(DAILY_SPIN_SEGMENTS)
+    const segmentAngle = 360 / DAILY_SPIN_SEGMENTS.length
+    const prizeCenter = prizeIndex * segmentAngle + segmentAngle / 2
+    const extraTurns = 5 + Math.floor(Math.random() * 3)
+    const targetRotation = spinRotation + extraTurns * 360 + (360 - prizeCenter)
+    const confetti = Array.from({ length: 24 }, (_, index) => ({
+      id: `${Date.now()}-${index}`,
+      left: `${8 + Math.random() * 84}%`,
+      delay: `${Math.random() * 0.55}s`,
+      icon: ['✨', '🎉', '💎', '⭐', '🎁'][index % 5],
+    }))
+
+    setSpinSpinning(true)
+    setSpinWon(false)
+    setSpinRotation(targetRotation)
+    window.setTimeout(() => {
+      setSpinPrize(DAILY_SPIN_SEGMENTS[prizeIndex])
+      setSpinWon(true)
+      setSpinConfetti(confetti)
+      setSpinSpinning(false)
+    }, 4300)
+    window.setTimeout(() => setSpinConfetti([]), 6500)
   }
 
   const handleOverlayClick = (event) => {
@@ -3133,6 +3207,59 @@ export default function HealthJourneyGameStandalone({ onViewMedicalRecord, onOpe
                 <div className="day-check">
                   🎁
                 </div>
+              </div>
+            </div>
+            <div className="spin-wheel-card">
+              <div style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: "15px", fontWeight: "700", color: "var(--gold)" }}>
+                🎡 Spin Wheel may mắn
+              </div>
+              <div style={{ fontSize: "10px", color: "var(--text-dim)", marginTop: "2px" }}>
+                Quay để chốt phần thưởng ngày hôm nay · Có trọng số như vòng quay phần thưởng
+              </div>
+              <div className="spin-wheel-stage" aria-live="polite">
+                <div className="spin-wheel-pointer" />
+                <div className="spin-wheel" style={{ background: spinWheelBackground, transform: `rotate(${spinRotation}deg)` }}>
+                  {DAILY_SPIN_SEGMENTS.map((segment, index) => {
+                    const segmentAngle = 360 / DAILY_SPIN_SEGMENTS.length
+                    return (
+                      <div
+                        className="spin-wheel-label"
+                        key={segment.label}
+                        style={{ transform: `rotate(${index * segmentAngle + segmentAngle / 2}deg) translateY(-50%)` }}
+                      >
+                        {segment.shortLabel}
+                      </div>
+                    )
+                  })}
+                </div>
+                <div className="spin-wheel-hub">
+                  <span>SPIN</span>
+                  <span>🎁</span>
+                </div>
+                {spinConfetti.length > 0 && (
+                  <div className="spin-confetti" aria-hidden="true">
+                    {spinConfetti.map((piece) => (
+                      <span key={piece.id} style={{ left: piece.left, animationDelay: piece.delay }}>{piece.icon}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="spin-wheel-actions">
+                <button className="btn-primary" onClick={handleDailySpin} disabled={spinSpinning} style={{ minWidth: "132px" }}>
+                  {spinSpinning ? 'ĐANG QUAY...' : 'QUAY NGAY'}
+                </button>
+                <span className="badge badge-gold">Tỉ lệ cao: XP / Coins</span>
+              </div>
+              <div className="spin-wheel-result">
+                {spinWon ? (
+                  <>
+                    <span>🎉 Bạn trúng:</span>
+                    <span className="badge badge-purple">{spinPrize.reward}</span>
+                    <strong style={{ color: "var(--gold)" }}>{spinPrize.label}</strong>
+                  </>
+                ) : (
+                  <span style={{ color: "var(--text-dim)" }}>Bấm quay để phát hiện ô chiến thắng.</span>
+                )}
               </div>
             </div>
             <div style={{ background: "rgba(245,158,11,.08)", border: "1px solid rgba(245,158,11,.3)", borderRadius: "12px", padding: "16px", marginBottom: "14px" }}>
