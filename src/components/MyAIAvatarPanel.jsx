@@ -7,6 +7,7 @@ import { useApp } from '../context/AppContext'
 import OpenAvatarChatPanel from './OpenAvatarChatPanel'
 import OpenAvatarChatVideoPanel from './OpenAvatarChatVideoPanel'
 import LamGeneratePanel from './LamGeneratePanel'
+import LhmGeneratePanel from './LhmGeneratePanel'
 
 const LINKS = {
   space: 'https://huggingface.co/spaces/3DAIGC/LAM',
@@ -193,6 +194,27 @@ export default function MyAIAvatarPanel() {
           </div>
         </div>
         <LamGeneratePanel isDark={isDark} vi={vi} border={border} surface={surface} text={text} text2={text2} text3={text3} />
+      </div>
+
+      {/* Alternative: LHM model via the more stable ModelScope Studio mirror,
+          for when the LAM/LHM Hugging Face Spaces are asleep or out of ZeroGPU quota */}
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+          <Zap size={16} color={isDark ? '#00e5ff' : '#00b8cc'} />
+          <div style={{ fontSize: 14, fontWeight: 800, color: text }}>
+            {vi ? 'Thay thế: LHM qua mirror ModelScope (ổn định hơn)' : 'Alternative: LHM via the ModelScope mirror (more stable)'}
+          </div>
+          <span style={{
+            fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 999,
+            background: isDark ? 'rgba(0,230,118,0.15)' : 'rgba(0,230,118,0.1)', color: '#00c46a',
+          }}>GPU L20 · no time limit</span>
+        </div>
+        <p style={{ margin: '0 0 12px', fontSize: 12.5, color: text2, lineHeight: 1.6 }}>
+          {vi
+            ? 'Nếu Space LAM/LHM trên Hugging Face đang lỗi runtime hoặc hết quota ZeroGPU, đây là model LHM (github.com/aigc3d/LHM) chạy trên Studio ModelScope (modelscope.cn/studios/Damo_XR_Lab/LHM) — nhóm tác giả xác nhận GPU cố định, không giới hạn thời gian.'
+            : 'If the LAM/LHM Hugging Face Spaces are down or out of ZeroGPU quota, this calls the LHM model (github.com/aigc3d/LHM) hosted on the ModelScope Studio mirror (modelscope.cn/studios/Damo_XR_Lab/LHM) — the authors confirm a fixed GPU with no time limit.'}
+        </p>
+        <LhmGeneratePanel isDark={isDark} vi={vi} border={border} surface={surface} text={text} text2={text2} text3={text3} />
       </div>
 
       {/* Embedded live demo */}
