@@ -24,6 +24,7 @@ export default function AnimatedAvatarViewer({
   isDark,
   autoRotate,
   showGrid,
+  showBones = false,
   showDragHint = true,
   onLog,
   onStatusChange,
@@ -88,7 +89,7 @@ export default function AnimatedAvatarViewer({
 
     stateRef.current = {
       scene, camera, renderer, controls, grid,
-      mixer: null, avatarRoot: null, vrm: null, currentAction: null, disposed: false,
+      mixer: null, avatarRoot: null, vrm: null, currentAction: null, boneHelpers: [], disposed: false,
     }
 
     function animate() {
@@ -125,7 +126,33 @@ export default function AnimatedAvatarViewer({
       stateRef.current.mixer = mixer
       stateRef.current.avatarRoot = avatarRoot
       stateRef.current.vrm = vrm || null
-      onStatusChange?.({ modelLoaded: true, isVrm: !!vrm })
+
+      const boneHelpers = []
+      avatarRoot.traverse((obj) => {
+        if (obj.isSkinnedMesh && obj.skeleton) {
+          const helper = new THREE.SkeletonHelper(obj)
+          helper.visible = !!showBones
+          helper.material.depthTest = false
+          helper.material.transparent = true
+          helper.material.opacity = 0.95
+          helper.renderOrder = 20
+          scene.add(helper)
+          boneHelpers.push(helper)
+        }
+      })
+      if (!boneHelpers.length) {
+        const helper = new THREE.SkeletonHelper(avatarRoot)
+        helper.visible = !!showBones
+        helper.material.depthTest = false
+        helper.material.transparent = true
+        helper.material.opacity = 0.95
+        helper.renderOrder = 20
+        scene.add(helper)
+        boneHelpers.push(helper)
+      }
+      stateRef.current.boneHelpers = boneHelpers
+
+      onStatusChange?.({ modelLoaded: true, isVrm: !!vrm, boneCount: boneHelpers.length })
       setModelReady(true)
 
       let vertices = 0
@@ -189,6 +216,11 @@ export default function AnimatedAvatarViewer({
       renderer.domElement.removeEventListener('touchstart', markInteracted)
       controls.dispose()
       renderer.dispose()
+      ;(stateRef.current.boneHelpers || []).forEach((helper) => {
+        scene.remove(helper)
+        helper.geometry?.dispose?.()
+        helper.material?.dispose?.()
+      })
       scene.traverse((obj) => {
         if (obj.geometry) obj.geometry.dispose()
         if (obj.material) {
@@ -208,6 +240,9 @@ export default function AnimatedAvatarViewer({
   useEffect(() => {
     if (stateRef.current.grid) stateRef.current.grid.visible = !!showGrid
   }, [showGrid])
+  useEffect(() => {
+    ;(stateRef.current.boneHelpers || []).forEach((helper) => { helper.visible = !!showBones })
+  }, [showBones])
 
   // Animation loading — runs whenever a new FBX blob URL comes in.
   useEffect(() => {

@@ -150,6 +150,7 @@ export default function AvatarCreatorPanel() {
   const [modelStats, setModelStats] = useState(null)
   const [autoRotate, setAutoRotate] = useState(true)
   const [showMeasureGrid, setShowMeasureGrid] = useState(true)
+  const [showBones, setShowBones] = useState(false)
   const [showInfoOverlay, setShowInfoOverlay] = useState(true)
   const [shareStatus, setShareStatus] = useState('')
   const [selectedAnimation, setSelectedAnimation] = useState('Fight Idle')
@@ -553,6 +554,7 @@ export default function AvatarCreatorPanel() {
                   <button type="button" onClick={() => setShowInfoOverlay((v) => !v)} style={iconBtnStyle(showInfoOverlay)} title={vi ? 'Hiện thông tin' : 'Toggle info'}><Info size={15} /></button>
                   <button type="button" onClick={handleShare} style={iconBtnStyle(false)} title={vi ? 'Copy link' : 'Share'}><Share2 size={15} /></button>
                   <button type="button" onClick={() => setShowMeasureGrid((v) => !v)} style={iconBtnStyle(showMeasureGrid)} title={vi ? 'Lưới đo' : 'Measurement grid'}><Ruler size={15} /></button>
+                  <button type="button" onClick={() => setShowBones((v) => !v)} style={iconBtnStyle(showBones)} title={vi ? 'Hiện xương' : 'Show Bones'} aria-pressed={showBones}>🦴</button>
                   <button type="button" onClick={() => setAutoRotate((v) => !v)} style={iconBtnStyle(autoRotate)} title={vi ? 'Tự xoay' : 'Auto-rotate'}>{autoRotate ? <Pause size={15} /> : <Play size={15} />}</button>
                 </div>
                 <span style={{ padding: '4px 8px', borderRadius: 999, background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(15,23,42,0.08)', color: palette.text2, fontSize: 10, fontWeight: 900 }}>
@@ -576,6 +578,7 @@ export default function AvatarCreatorPanel() {
                       isDark={isDark}
                       autoRotate={autoRotate}
                       showGrid={showMeasureGrid}
+                      showBones={showBones}
                       onStatusChange={(update) => {
                         if (update.error) {
                           setAnimationLoadStatus(vi ? `Lỗi: ${update.error}` : `Error: ${update.error}`)
