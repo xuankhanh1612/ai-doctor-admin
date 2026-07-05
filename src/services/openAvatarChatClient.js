@@ -293,7 +293,16 @@ export default class OpenAvatarChatClient {
     }
 
     this.micSourceNode.connect(this.micProcessorNode)
-    this.micProcessorNode.connect(this.audioContext.destination)
+    // ScriptProcessorNode only fires onaudioprocess while connected somewhere in the
+    // graph that reaches destination — but connecting it straight to destination plays
+    // the raw mic input out loud through the speakers in real time. That live feedback
+    // loop is picked up by the mic again, which is what was causing garbled/duplicated
+    // turns and a confusing "is this working?" mic experience. Route through a silent
+    // (gain = 0) node instead so the processor stays active without leaking audio out.
+    this.micSilentGainNode = this.audioContext.createGain()
+    this.micSilentGainNode.gain.value = 0
+    this.micProcessorNode.connect(this.micSilentGainNode)
+    this.micSilentGainNode.connect(this.audioContext.destination)
     this.micEnabled = true
   }
 
@@ -301,9 +310,11 @@ export default class OpenAvatarChatClient {
     this.micEnabled = false
     this.onMicLevel(0)
     try { this.micProcessorNode?.disconnect() } catch { /* noop */ }
+    try { this.micSilentGainNode?.disconnect() } catch { /* noop */ }
     try { this.micSourceNode?.disconnect() } catch { /* noop */ }
     try { this.micStream?.getTracks().forEach((t) => t.stop()) } catch { /* noop */ }
     this.micProcessorNode = null
+    this.micSilentGainNode = null
     this.micSourceNode = null
     this.micStream = null
   }
