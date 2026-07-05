@@ -341,11 +341,29 @@ export default class OpenAvatarChatClient {
   // message from us (see ws_input_delegate.py::_handle_end_speech). Without
   // sending it, the server's mic stays permanently deaf after the very first
   // avatar reply — every SendHumanAudio chunk after that is silently dropped by
-  // VAD (it returns immediately when input_enabled is false), with zero VAD/ASR
-  // log lines to show for it. So every time we reach the end of a turn's audio,
-  // we must send EndSpeech with that turn's stream_key, once playback is
-  // actually finished (not just scheduled), so the server knows it's safe to
-  // listen again.
+  // VAD, with zero VAD/ASR log lines to show for it.
+  //
+  // We can't rely solely on payload.end_of_speech arriving true: the server's
+  // _send_avatar_audio() returns early (never sending anything to the client at
+  // all) whenever the final/is_last_data chunk happens to carry zero audio
+  // samples — so the one message that would have told us "this is the end" can
+  // simply never arrive. To stay correct even then, we track the last chunk
+  // time per stream_key and use a fallback debounce timer: if no further chunk
+  // for that stream_key shows up within ~900ms, we treat the turn as finished
+  // and send EndSpeech ourselves, in addition to reacting immediately when an
+  // explicit end_of_speech: true chunk does arrive.
+  _finishAvatarStream(streamKey) {
+    const key = streamKey || '__default__'
+    if (this._endSpeechSentKeys?.has(key)) return
+    if (!this._endSpeechSentKeys) this._endSpeechSentKeys = new Set()
+    this._endSpeechSentKeys.add(key)
+    this.onAvatarAudioLevel(0)
+    this._send({
+      ...makeHeader(MSG.END_SPEECH),
+      payload: { stream_key: streamKey || '' },
+    })
+  }
+
   _playAvatarAudio(payload) {
     if (!payload) return
     if ((payload.format || 'PCM').toUpperCase() !== 'PCM') {
@@ -354,7 +372,15 @@ export default class OpenAvatarChatClient {
     }
     const sampleRate = payload.sample_rate || 24000
     const streamKey = payload.stream_key
+    const debounceKey = streamKey || '__default__'
     let bytes = payload.data_base64 ? bytesFromBase64(payload.data_base64) : new Uint8Array(0)
+
+    // Any chunk for this stream_key means it's still live — reset the fallback
+    // end-of-turn timer and allow a future EndSpeech to fire again for it.
+    if (!this._audioEndTimers) this._audioEndTimers = new Map()
+    if (this._endSpeechSentKeys) this._endSpeechSentKeys.delete(debounceKey)
+    const existingTimer = this._audioEndTimers.get(debounceKey)
+    if (existingTimer) clearTimeout(existingTimer)
 
     if (this.playbackLeftoverByte) {
       const merged = new Uint8Array(this.playbackLeftoverByte.length + bytes.length)
@@ -395,14 +421,14 @@ export default class OpenAvatarChatClient {
     }
 
     if (payload.end_of_speech) {
-      setTimeout(() => {
-        this.onAvatarAudioLevel(0)
-        // Tell the server we're done playing, so it re-enables the mic (VAD).
-        this._send({
-          ...makeHeader(MSG.END_SPEECH),
-          payload: { stream_key: streamKey || '' },
-        })
-      }, scheduledDurationMs)
+      // Explicit end-of-turn signal from the server — trust it, once actual
+      // playback of this chunk has finished.
+      setTimeout(() => this._finishAvatarStream(streamKey), scheduledDurationMs)
+    } else {
+      // No explicit signal (yet, or ever, for this chunk) — arm the fallback:
+      // if nothing else for this stream_key shows up soon, assume it's over.
+      const timer = setTimeout(() => this._finishAvatarStream(streamKey), scheduledDurationMs + 900)
+      this._audioEndTimers.set(debounceKey, timer)
     }
   }
 
