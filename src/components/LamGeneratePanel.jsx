@@ -1,46 +1,43 @@
 import React, { useRef, useState } from 'react'
-import { UploadCloud, Wand2, AlertTriangle, Download, RotateCcw, Image as ImageIcon, Video as VideoIcon } from 'lucide-react'
-import { Client } from '@gradio/client'
+import { UploadCloud, Wand2, AlertTriangle, Download, RotateCcw, Image as ImageIcon } from 'lucide-react'
 
-// Real, direct-from-browser client for the LAM (Large Avatar Model) Hugging
-// Face Space (github.com/aigc3d/LAM). We deliberately do NOT proxy this
-// through our own server: Vercel serverless functions hard-cap request
-// bodies at 4.5MB, which a portrait photo + motion video in base64 blows
-// past instantly (413 Request Entity Too Large). @gradio/client is the
-// official Gradio SDK and is built to run in the browser — the browser
-// talks straight to Hugging Face's real inference endpoint, so there's no
-// server-side size limit and no proxy in the way. Nothing here is mocked:
-// success renders whatever file(s) the model itself produced, failure
-// shows the real upstream error (Space asleep, no GPU quota, etc).
+// Real client for /api/lam-generate. The call to the LAM Hugging Face
+// Space (github.com/aigc3d/LAM) happens SERVER-SIDE (see api/lam-generate.js):
+// calling it directly from the browser hits a hard CORS wall (the Space's
+// Access-Control-Allow-Credentials header comes back empty instead of
+// "true", which browsers reject) — CORS only restricts browsers, not
+// servers, so routing through our own Node endpoint is the real fix, not a
+// workaround. To stay under Vercel's fixed 4.5MB request body limit, the
+// photo is downscaled client-side before it's sent. Nothing is mocked:
+// success shows whatever file the model itself produced, failure shows the
+// real upstream error.
 
-const DEFAULT_SPACE = '3DAIGC/LAM'
+const MAX_DIMENSION = 1024 // px, long edge
+const JPEG_QUALITY = 0.85
 
-// view_api() describes every function the Space exposes. We pick the one
-// that (a) accepts an image and (b) looks like the actual "run inference"
-// button rather than a helper endpoint, so this keeps working even if the
-// 3DAIGC team renames internals.
-function pickEndpoint(apiInfo) {
-  const named = apiInfo?.named_endpoints || {}
-  const candidates = Object.entries(named).map(([path, def]) => {
-    const params = def.parameters || []
-    const hasImage = params.some(p => /image|photo|portrait/i.test(`${p.label || ''} ${p.parameter_name || ''} ${p.component || ''}`))
-    return { path, params, hasImage }
-  }).filter(c => c.hasImage)
-  if (!candidates.length) return null
-  return candidates.find(c => /generat|submit|run|infer|reconstruct/i.test(c.path)) || candidates[0]
-}
-
-function buildPayload(params, imageFile, videoFile) {
-  const payload = {}
-  for (const p of params) {
-    const key = p.parameter_name || p.label
-    if (!key) continue
-    const desc = `${p.label || ''} ${key} ${p.component || ''}`
-    if (/image|photo|portrait/i.test(desc) && imageFile) payload[key] = imageFile
-    else if (/video|motion/i.test(desc) && videoFile) payload[key] = videoFile
-    else if (p.parameter_has_default) payload[key] = p.parameter_default
-  }
-  return payload
+function resizeImageToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    const objectUrl = URL.createObjectURL(file)
+    img.onload = () => {
+      let { width, height } = img
+      const longEdge = Math.max(width, height)
+      if (longEdge > MAX_DIMENSION) {
+        const scale = MAX_DIMENSION / longEdge
+        width = Math.round(width * scale)
+        height = Math.round(height * scale)
+      }
+      const canvas = document.createElement('canvas')
+      canvas.width = width
+      canvas.height = height
+      const ctx = canvas.getContext('2d')
+      ctx.drawImage(img, 0, 0, width, height)
+      URL.revokeObjectURL(objectUrl)
+      resolve(canvas.toDataURL('image/jpeg', JPEG_QUALITY))
+    }
+    img.onerror = (e) => { URL.revokeObjectURL(objectUrl); reject(e) }
+    img.src = objectUrl
+  })
 }
 
 function ResultItem({ item, border, surface, text2 }) {
@@ -68,11 +65,9 @@ function ResultItem({ item, border, surface, text2 }) {
 
 export default function LamGeneratePanel({ isDark, vi, border, surface, text, text2, text3 }) {
   const imgInputRef = useRef(null)
-  const vidInputRef = useRef(null)
   const [imageFile, setImageFile] = useState(null)
   const [imagePreview, setImagePreview] = useState(null)
-  const [videoFile, setVideoFile] = useState(null)
-  const [status, setStatus] = useState('idle') // idle | connecting | running | done | error
+  const [status, setStatus] = useState('idle') // idle | resizing | running | done | error
   const [error, setError] = useState(null)
   const [hint, setHint] = useState(null)
   const [result, setResult] = useState(null)
@@ -84,43 +79,41 @@ export default function LamGeneratePanel({ isDark, vi, border, surface, text, te
     setImagePreview(URL.createObjectURL(f))
     setStatus('idle'); setError(null); setResult(null)
   }
-  const onPickVideo = (e) => setVideoFile(e.target.files?.[0] || null)
 
   const reset = () => {
-    setImageFile(null); setImagePreview(null); setVideoFile(null)
+    setImageFile(null); setImagePreview(null)
     setStatus('idle'); setError(null); setHint(null); setResult(null)
     if (imgInputRef.current) imgInputRef.current.value = ''
-    if (vidInputRef.current) vidInputRef.current.value = ''
   }
 
   const generate = async () => {
     if (!imageFile) return
-    setStatus('connecting'); setError(null); setHint(null); setResult(null)
+    setStatus('resizing'); setError(null); setHint(null); setResult(null)
     try {
-      const client = await Client.connect(DEFAULT_SPACE)
-      const apiInfo = await client.view_api()
-      const endpoint = pickEndpoint(apiInfo)
-      if (!endpoint) {
-        throw new Error(vi
-          ? 'Space không lộ endpoint nhận ảnh (API có thể đã đổi hoặc Space đang lỗi build).'
-          : 'The Space does not expose an image-accepting endpoint (API may have changed or the Space failed to build).')
-      }
+      const imageBase64 = await resizeImageToDataUrl(imageFile)
       setStatus('running')
-      const payload = buildPayload(endpoint.params, imageFile, videoFile)
-      const res = await client.predict(endpoint.path, payload)
-      setResult({ space: DEFAULT_SPACE, endpoint: endpoint.path, data: res.data })
+      const resp = await fetch('/api/lam-generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageBase64, imageMimeType: 'image/jpeg' }),
+      })
+      const data = await resp.json()
+      if (!resp.ok || data.error) {
+        setError(data.error || `HTTP ${resp.status}`)
+        setHint(data.hint || null)
+        setStatus('error')
+        return
+      }
+      setResult(data)
       setStatus('done')
     } catch (err) {
       console.error('[LamGeneratePanel]', err)
       setError(err?.message || String(err))
-      setHint(vi
-        ? `Space công khai "${DEFAULT_SPACE}" có thể đang ngủ / hết lượt GPU (ZeroGPU) / crash. Kiểm tra trực tiếp tại huggingface.co/spaces/${DEFAULT_SPACE}, hoặc tự host LAM/OpenAvatarChat trên GPU riêng (hướng dẫn phía dưới).`
-        : `The public Space "${DEFAULT_SPACE}" may be asleep / out of ZeroGPU quota / crashed. Check huggingface.co/spaces/${DEFAULT_SPACE} directly, or self-host LAM/OpenAvatarChat on your own GPU (instructions below).`)
       setStatus('error')
     }
   }
 
-  const busy = status === 'connecting' || status === 'running'
+  const busy = status === 'resizing' || status === 'running'
 
   return (
     <div style={{ background: surface, border: `1px solid ${border}`, borderRadius: 14, padding: 16 }}>
@@ -132,43 +125,27 @@ export default function LamGeneratePanel({ isDark, vi, border, surface, text, te
       </div>
       <p style={{ margin: '0 0 12px', fontSize: 12, color: text3, lineHeight: 1.6 }}>
         {vi
-          ? 'Trình duyệt của bạn gọi THẲNG tới model LAM thật (mã nguồn aigc3d/LAM) đang chạy trên Hugging Face Space, qua SDK chính thức @gradio/client — không qua server trung gian, không giới hạn dung lượng, không có kết quả giả lập. Vì đây là Space công khai dùng chung GPU, đôi khi sẽ báo lỗi thật (Space ngủ, hết lượt GPU...); lỗi đó sẽ hiện nguyên văn bên dưới.'
-          : 'Your browser calls the real LAM model (aigc3d/LAM source) directly on its Hugging Face Space, via the official @gradio/client SDK — no server in between, no size limit, nothing simulated. Since it is a shared public Space, it can genuinely fail sometimes (asleep, out of GPU quota); that real error is shown verbatim below.'}
+          ? 'Ảnh được resize ngay trên trình duyệt rồi gửi tới server của bạn; server gọi trực tiếp model LAM thật (mã nguồn aigc3d/LAM) đang chạy trên Hugging Face Space qua @gradio/client — không có kết quả giả lập. (Gọi thẳng từ trình duyệt sang Hugging Face bị chính Space đó chặn bởi CORS, nên bước trung gian server là bắt buộc, không phải hạn chế của app này.) Vì là Space công khai dùng chung GPU, đôi khi sẽ có lỗi thật (Space ngủ, hết lượt GPU...) — lỗi đó hiện nguyên văn bên dưới.'
+          : 'Your photo is resized right in the browser, then sent to your own server; the server calls the real LAM model (aigc3d/LAM source) running on its Hugging Face Space via @gradio/client — nothing is simulated. (Calling Hugging Face straight from the browser is blocked by that Space\'s own CORS setup, so the server hop is required, not a limitation of this app.) Since it\'s a shared public Space, it can genuinely fail sometimes (asleep, out of GPU quota) — that real error is shown verbatim below.'}
       </p>
 
-      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
-        <div>
-          <input ref={imgInputRef} type="file" accept="image/*" onChange={onPickImage} style={{ display: 'none' }} />
-          <button onClick={() => imgInputRef.current?.click()} style={{
-            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6,
-            width: 140, height: 140, borderRadius: 12, cursor: 'pointer',
-            border: `1.5px dashed ${border}`, background: isDark ? 'rgba(255,255,255,0.02)' : '#fff',
-            overflow: 'hidden', padding: 0,
-          }}>
-            {imagePreview
-              ? <img src={imagePreview} alt="preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              : <>
-                  <ImageIcon size={20} color={text3} />
-                  <span style={{ fontSize: 11, color: text3, textAlign: 'center', padding: '0 8px' }}>
-                    {vi ? 'Ảnh chân dung (bắt buộc)' : 'Portrait photo (required)'}
-                  </span>
-                </>}
-          </button>
-        </div>
-
-        <div>
-          <input ref={vidInputRef} type="file" accept="video/*" onChange={onPickVideo} style={{ display: 'none' }} />
-          <button onClick={() => vidInputRef.current?.click()} style={{
-            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6,
-            width: 140, height: 140, borderRadius: 12, cursor: 'pointer',
-            border: `1.5px dashed ${border}`, background: isDark ? 'rgba(255,255,255,0.02)' : '#fff',
-          }}>
-            <VideoIcon size={20} color={text3} />
-            <span style={{ fontSize: 11, color: text3, textAlign: 'center', padding: '0 8px' }}>
-              {videoFile ? videoFile.name : (vi ? 'Video chuyển động (tuỳ chọn)' : 'Motion video (optional)')}
-            </span>
-          </button>
-        </div>
+      <div style={{ marginBottom: 12 }}>
+        <input ref={imgInputRef} type="file" accept="image/*" onChange={onPickImage} style={{ display: 'none' }} />
+        <button onClick={() => imgInputRef.current?.click()} style={{
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6,
+          width: 140, height: 140, borderRadius: 12, cursor: 'pointer',
+          border: `1.5px dashed ${border}`, background: isDark ? 'rgba(255,255,255,0.02)' : '#fff',
+          overflow: 'hidden', padding: 0,
+        }}>
+          {imagePreview
+            ? <img src={imagePreview} alt="preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            : <>
+                <ImageIcon size={20} color={text3} />
+                <span style={{ fontSize: 11, color: text3, textAlign: 'center', padding: '0 8px' }}>
+                  {vi ? 'Ảnh chân dung (bắt buộc)' : 'Portrait photo (required)'}
+                </span>
+              </>}
+        </button>
       </div>
 
       <div style={{ display: 'flex', gap: 10 }}>
@@ -182,7 +159,7 @@ export default function LamGeneratePanel({ isDark, vi, border, surface, text, te
             color: imageFile ? '#fff' : text3, opacity: busy ? 0.7 : 1,
           }}>
           <UploadCloud size={14} />
-          {status === 'connecting' && (vi ? 'Đang kết nối Space...' : 'Connecting to the Space...')}
+          {status === 'resizing' && (vi ? 'Đang xử lý ảnh...' : 'Preparing photo...')}
           {status === 'running' && (vi ? 'Model đang xử lý (có thể mất 10-60s)...' : 'Model running (can take 10-60s)...')}
           {!busy && (vi ? 'Tạo avatar (gọi model thật)' : 'Generate (calls the real model)')}
         </button>
