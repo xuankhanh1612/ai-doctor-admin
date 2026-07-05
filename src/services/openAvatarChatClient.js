@@ -264,10 +264,22 @@ export default class OpenAvatarChatClient {
 
   // ---- Mic capture -> SendHumanAudio (base64 PCM16 @16kHz mono) ----
   async startMic() {
-    if (this.micEnabled) return
-    this.micStream = await navigator.mediaDevices.getUserMedia({
-      audio: { channelCount: 1, echoCancellation: true, noiseSuppression: false, autoGainControl: false },
-    })
+    if (this.micEnabled || this._micStarting) return
+    // Set this synchronously, before the `await` below. Without it, if startMic() gets
+    // called again while the first call is still awaiting getUserMedia (e.g. the mic
+    // button firing twice for one click), the guard above sees micEnabled still false
+    // and lets a second — or third — independent mic stream through. Each one then
+    // sends its own SendHumanAudio for the same utterance, which is what produced
+    // 2-3 duplicate turns/answers for a single "hi".
+    this._micStarting = true
+    try {
+      this.micStream = await navigator.mediaDevices.getUserMedia({
+        audio: { channelCount: 1, echoCancellation: true, noiseSuppression: false, autoGainControl: false },
+      })
+    } catch (err) {
+      this._micStarting = false
+      throw err
+    }
     const AudioCtx = window.AudioContext || window.webkitAudioContext
     this.audioContext = new AudioCtx()
     this.micSourceNode = this.audioContext.createMediaStreamSource(this.micStream)
@@ -304,6 +316,7 @@ export default class OpenAvatarChatClient {
     this.micProcessorNode.connect(this.micSilentGainNode)
     this.micSilentGainNode.connect(this.audioContext.destination)
     this.micEnabled = true
+    this._micStarting = false
   }
 
   stopMic() {
