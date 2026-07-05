@@ -100,6 +100,31 @@ function buildPayload(params, imageBlob) {
   return payload
 }
 
+function sleep(ms) { return new Promise((resolve) => setTimeout(resolve, ms)) }
+
+// ZeroGPU Spaces (like 3DAIGC/LAM) go to sleep when idle. The first request
+// after sleeping typically 503s while HF boots the container/allocates a
+// GPU, and a retry a few seconds later succeeds. We ping the raw Space host
+// once to kick off the wake-up, then retry Client.connect a few times with
+// backoff before giving up and surfacing the real error.
+async function connectWithWakeRetry(spaceId, opts, attempts = 4) {
+  const host = `https://${spaceId.toLowerCase().replace(/[/_]/g, '-')}.hf.space`
+  let lastErr
+  for (let i = 0; i < attempts; i++) {
+    try {
+      // best-effort wake ping, ignore its own failures
+      await fetch(host, { method: 'GET' }).catch(() => {})
+      return await Client.connect(spaceId, opts)
+    } catch (err) {
+      lastErr = err
+      const waitMs = 3000 * (i + 1)
+      console.warn(`[lam-generate] connect attempt ${i + 1}/${attempts} failed (${err?.message}), retrying in ${waitMs}ms`)
+      await sleep(waitMs)
+    }
+  }
+  throw lastErr
+}
+
 export async function lamGenerateHandler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
@@ -129,12 +154,12 @@ export async function lamGenerateHandler(req, res) {
 
   let client
   try {
-    client = await Client.connect(spaceId, process.env.HF_TOKEN ? { hf_token: process.env.HF_TOKEN } : undefined)
+    client = await connectWithWakeRetry(spaceId, process.env.HF_TOKEN ? { hf_token: process.env.HF_TOKEN } : undefined)
   } catch (err) {
-    console.error('[lam-generate] connect failed:', err?.message)
+    console.error('[lam-generate] connect failed after retries:', err?.message)
     return res.status(502).json({
-      error: `Không kết nối được tới Hugging Face Space "${spaceId}": ${err?.message || err}`,
-      hint: `Kiểm tra trạng thái tại https://huggingface.co/spaces/${spaceId}`,
+      error: `Không kết nối được tới Hugging Face Space "${spaceId}" sau nhiều lần thử: ${err?.message || err}`,
+      hint: `Space công khai này dùng ZeroGPU nên hay "ngủ" hoặc hết hàng đợi GPU (lỗi 503) — đã tự thử lại vài lần nhưng vẫn không được. Hãy đợi khoảng 30-60s rồi bấm "Tạo avatar" lại (Space có thể đang khởi động), hoặc mở trực tiếp https://huggingface.co/spaces/${spaceId} để xem trạng thái, hoặc tự host LAM/OpenAvatarChat trên GPU riêng (hướng dẫn phía dưới).`,
     })
   }
 
