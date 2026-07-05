@@ -36,6 +36,12 @@ export default function OpenAvatarChatPanel({ isDark, vi, border, surface, text,
   // accumulating, the bubble only ever shows the last tiny fragment (e.g. a lone ".").
   const humanBufferRef = useRef('')
   const avatarBufferRef = useRef('')
+  // Tracks the last message that was fully completed (turn reset) per role, so that if
+  // the server re-delivers the exact same "final" text after the turn already closed
+  // (observed in practice — a duplicate finalize event for one logical answer), we
+  // recognize it as a repeat instead of rendering a second identical bubble.
+  const lastFinalizedRef = useRef({ human: { text: '', time: 0 }, avatar: { text: '', time: 0 } })
+  const DUPLICATE_WINDOW_MS = 4000
 
   useEffect(() => {
     return () => { clientRef.current?.disconnect() }
@@ -49,6 +55,12 @@ export default function OpenAvatarChatPanel({ isDark, vi, border, surface, text,
     const turnRef = refKey === 'human' ? humanTurnRef : avatarTurnRef
     const bufferRef = refKey === 'human' ? humanBufferRef : avatarBufferRef
     const isNewTurn = !turnRef.current
+    if (isNewTurn) {
+      const last = lastFinalizedRef.current[refKey]
+      if (textChunk && textChunk === last.text && Date.now() - last.time < DUPLICATE_WINDOW_MS) {
+        return // drop: server re-sent an already-finalized turn's text verbatim
+      }
+    }
     // If the server ever sends the full cumulative text (mode === 'full_text'), trust it
     // as-is. Otherwise treat each message as a delta chunk and keep appending to the
     // running buffer for this turn.
@@ -66,6 +78,16 @@ export default function OpenAvatarChatPanel({ isDark, vi, border, surface, text,
     })
   }
 
+  const finalizeTurn = (refKey) => {
+    const turnRef = refKey === 'human' ? humanTurnRef : avatarTurnRef
+    const bufferRef = refKey === 'human' ? humanBufferRef : avatarBufferRef
+    if (bufferRef.current) {
+      lastFinalizedRef.current[refKey] = { text: bufferRef.current, time: Date.now() }
+    }
+    turnRef.current = null
+    bufferRef.current = ''
+  }
+
   const handleConnect = async () => {
     setErrorMsg('')
     humanTurnRef.current = null
@@ -76,11 +98,11 @@ export default function OpenAvatarChatPanel({ isDark, vi, border, surface, text,
       onStateChange: setState,
       onHumanText: ({ text: t, mode, endOfSpeech }) => {
         appendOrUpdate('human', t, 'human', mode)
-        if (endOfSpeech) { humanTurnRef.current = null; humanBufferRef.current = '' }
+        if (endOfSpeech) finalizeTurn('human')
       },
       onAvatarText: ({ text: t, mode, endOfSpeech }) => {
         appendOrUpdate('avatar', t, 'avatar', mode)
-        if (endOfSpeech) { avatarTurnRef.current = null; avatarBufferRef.current = '' }
+        if (endOfSpeech) finalizeTurn('avatar')
       },
       onAvatarAudioLevel: setAvatarLevel,
       onMicLevel: setMicLevel,
