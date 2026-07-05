@@ -73,6 +73,18 @@ export default function OpenAvatarChatPanel({ isDark, vi, border, surface, text,
         return copy
       }
       const id = `${role}-${Date.now()}`
+      // Final safety net: if the message immediately before this one is the same role
+      // with byte-identical text, we're looking at a duplicate re-delivery of content
+      // that's already on screen (confirmed via server logs to sometimes happen even
+      // though the server itself only processed the turn once) — reuse that bubble
+      // instead of adding a visually-identical twin underneath it.
+      if (prev.length) {
+        const last = prev[prev.length - 1]
+        if (last.role === role && last.text === fullText && fullText) {
+          turnRef.current = last.id
+          return prev
+        }
+      }
       turnRef.current = id
       return [...prev, { id, role, text: fullText }]
     })
