@@ -112,6 +112,15 @@ export default function Sidebar({ active, onNavigate, openSignal = 0 }) {
         <span style={{ flex: 1 }}>Tạo Avatar</span>
         <span style={{ fontSize: 10, fontFamily: 'monospace', color: text3 }}>VRM</span>
       </NavItem>
+      <SectionLabel color={text3} style={{ marginTop: 16 }}>{t('patients')} Journey</SectionLabel>
+      {STEPS.map(s => (
+        <NavItem key={s.id} active={active === s.id} onClick={() => handleNavigate(s.id)} text={text} text2={text2} isDark={isDark}>
+          <div style={{ width: 6, height: 6, borderRadius: '50%', background: active === s.id ? '#00e5ff' : text3, flexShrink: 0, transition: 'background 0.2s' }} />
+          <span style={{ flex: 1 }}>{s.label}</span>
+          <span style={{ fontSize: 10, fontFamily: 'monospace', color: text3 }}>{s.step}</span>
+        </NavItem>
+      ))}
+
       <NavItem active={active === 'make3DModel'} onClick={() => handleNavigate('make3DModel')} text={text} text2={text2} isDark={isDark}>
         <span style={{ fontSize: 13 }}>🧙‍♀️</span>
         <span style={{ flex: 1 }}>Make 3D Model</span>
@@ -122,15 +131,6 @@ export default function Sidebar({ active, onNavigate, openSignal = 0 }) {
         <span style={{ flex: 1 }}>My 3D Asset</span>
         <span style={{ fontSize: 10, fontFamily: 'monospace', color: text3 }}>GLB</span>
       </NavItem>
-
-      <SectionLabel color={text3} style={{ marginTop: 16 }}>{t('patients')} Journey</SectionLabel>
-      {STEPS.map(s => (
-        <NavItem key={s.id} active={active === s.id} onClick={() => handleNavigate(s.id)} text={text} text2={text2} isDark={isDark}>
-          <div style={{ width: 6, height: 6, borderRadius: '50%', background: active === s.id ? '#00e5ff' : text3, flexShrink: 0, transition: 'background 0.2s' }} />
-          <span style={{ flex: 1 }}>{s.label}</span>
-          <span style={{ fontSize: 10, fontFamily: 'monospace', color: text3 }}>{s.step}</span>
-        </NavItem>
-      ))}
 
       {ADMIN_STEPS.length > 0 && (
         <>
