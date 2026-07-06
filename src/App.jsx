@@ -38,6 +38,7 @@ import StressReliefPanel from './components/StressReliefPanel.jsx'
 import PrintCenter from './print/PrintCenter.jsx'
 import UserProfilePanel from './components/UserProfilePanel.jsx'
 import AvatarCreatorPanel from './components/AvatarCreatorPanel.jsx'
+import Make3DModelPanel from './components/Make3DModelPanel.jsx'
 import My3DAssetPanel from './components/My3DAssetPanel.jsx'
 import TwoDTo3DAssetPanel from './components/TwoDTo3DAssetPanel.jsx'
 import MyAIAvatarPanel from './components/MyAIAvatarPanel.jsx'
@@ -107,6 +108,7 @@ export default function App() {
     chatHistory: 'Lịch sử Chat với AI',
     profile: t('profile'),
     avatarCreator: 'Tạo Avatar',
+    make3DModel: 'Make 3D Model',
     my3dAsset: 'My 3D Asset',
     myAiAvatar: 'My AI Avatar',
   }
@@ -282,6 +284,7 @@ export default function App() {
               <div style={{ padding: 40, textAlign: 'center', color: '#ff5252' }}>🔒 Admin only</div>
             )}
             {active === 'avatarCreator' && <AvatarCreatorPanel />}
+            {active === 'make3DModel' && <Make3DModelPanel />}
             {active === 'my3dAsset' && <My3DAssetPanel />}
             {active === 'admin'     && user?.isAdmin && <AdminPanel />}
             {active === 'admin'     && !user?.isAdmin && (

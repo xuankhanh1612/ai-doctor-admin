@@ -112,6 +112,11 @@ export default function Sidebar({ active, onNavigate, openSignal = 0 }) {
         <span style={{ flex: 1 }}>Tạo Avatar</span>
         <span style={{ fontSize: 10, fontFamily: 'monospace', color: text3 }}>VRM</span>
       </NavItem>
+      <NavItem active={active === 'make3DModel'} onClick={() => handleNavigate('make3DModel')} text={text} text2={text2} isDark={isDark}>
+        <span style={{ fontSize: 13 }}>🧙‍♀️</span>
+        <span style={{ flex: 1 }}>Make 3D Model</span>
+        <span style={{ fontSize: 10, fontFamily: 'monospace', color: text3 }}>CULTS</span>
+      </NavItem>
       <NavItem active={active === 'my3dAsset'} onClick={() => handleNavigate('my3dAsset')} text={text} text2={text2} isDark={isDark}>
         <span style={{ fontSize: 13 }}>🧊</span>
         <span style={{ flex: 1 }}>My 3D Asset</span>
