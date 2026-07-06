@@ -74,6 +74,7 @@ export default function Sidebar({ active, onNavigate, openSignal = 0 }) {
     { id: 'aiHealthcareVisionControl', label: t('aiHealthcareVisionControl'), step: '24b' },
     { id: 'admin', label: t('adminPanel'), step: '★', icon: '🛡️' },
     { id: 'myAiAvatar', label: 'My AI Avatar', step: 'LAM', icon: '🪄' },
+    { id: 'myAiAvatarLam', label: 'My AI Avatar (LAM)', step: 'LAM2', icon: '🧑‍🎤' },
   ] : []
 
   useEffect(() => {

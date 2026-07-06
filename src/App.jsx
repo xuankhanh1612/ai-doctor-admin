@@ -42,6 +42,7 @@ import Make3DModelPanel from './components/Make3DModelPanel.jsx'
 import My3DAssetPanel from './components/My3DAssetPanel.jsx'
 import TwoDTo3DAssetPanel from './components/TwoDTo3DAssetPanel.jsx'
 import MyAIAvatarPanel from './components/MyAIAvatarPanel.jsx'
+import MyAIAvatarLAMPanel from './components/MyAIAvatarLAMPanel.jsx'
 import OrganConnectionPanel from './components/OrganConnectionPanel.jsx'
 import ChatHistoryPanel from './components/ChatHistoryPanel.jsx'
 import LoginPage from './pages/LoginPage.jsx'
@@ -111,6 +112,7 @@ export default function App() {
     make3DModel: 'Make 3D Model',
     my3dAsset: 'My 3D Asset',
     myAiAvatar: 'My AI Avatar',
+    myAiAvatarLam: 'My AI Avatar (LAM)',
   }
 
   const navigateToRecord = (member) => { setSelectedMember(member); setActive('record') }
@@ -281,6 +283,10 @@ export default function App() {
             {active === 'profile'   && <UserProfilePanel />}
             {active === 'myAiAvatar' && user?.isAdmin && <MyAIAvatarPanel />}
             {active === 'myAiAvatar' && !user?.isAdmin && (
+              <div style={{ padding: 40, textAlign: 'center', color: '#ff5252' }}>🔒 Admin only</div>
+            )}
+            {active === 'myAiAvatarLam' && user?.isAdmin && <MyAIAvatarLAMPanel />}
+            {active === 'myAiAvatarLam' && !user?.isAdmin && (
               <div style={{ padding: 40, textAlign: 'center', color: '#ff5252' }}>🔒 Admin only</div>
             )}
             {active === 'avatarCreator' && <AvatarCreatorPanel />}
