@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Search, Shuffle, ChevronLeft, ChevronRight, Info, LayoutGrid, List,
   Share2, Ruler, Play, Pause, Download, ExternalLink, Sparkles, Box, Image as ImageIcon,
+  ShieldCheck, Link as LinkIcon, Hash, Coins,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useApp } from '../context/AppContext'
@@ -32,6 +33,49 @@ const AVATAR_SOURCES = [
   },
 ]
 const PAGE_SIZE_OPTIONS = [8, 16, 32]
+
+const BLOCKCHAIN_LABELS = {
+  ethereum: 'Ethereum',
+  base: 'Base',
+  optimism: 'Optimism',
+  polygon: 'Polygon',
+  shape: 'Shape',
+}
+
+function parseOpenSeaItemUrl(url) {
+  if (typeof url !== 'string' || !url.trim()) return null
+  let parsed
+  try {
+    parsed = new URL(url.trim())
+  } catch {
+    return null
+  }
+  if (!/(^|\.)opensea\.io$/i.test(parsed.hostname)) return null
+  const parts = parsed.pathname.split('/').filter(Boolean)
+  const itemIndex = parts.findIndex((part) => part.toLowerCase() === 'item')
+  if (itemIndex < 0 || parts.length < itemIndex + 4) return null
+  const chain = parts[itemIndex + 1]
+  const contract = parts[itemIndex + 2]
+  const tokenId = parts[itemIndex + 3]
+  if (!chain || !contract || !tokenId) return null
+  return {
+    url: parsed.toString(),
+    marketplace: 'OpenSea',
+    chain,
+    chainLabel: BLOCKCHAIN_LABELS[chain.toLowerCase()] || chain.replace(/-/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase()),
+    contract,
+    tokenId,
+  }
+}
+
+function shortenAddress(address) {
+  if (!address) return '—'
+  return address.length > 14 ? `${address.slice(0, 6)}…${address.slice(-4)}` : address
+}
+
+function getAvatarOpenSeaInfo(avatar) {
+  return parseOpenSeaItemUrl(avatar?.external_url || avatar?.externalUrl || avatar?.metadata?.external_url || avatar?.metadata?.externalUrl)
+}
 const ANIMATION_BASE_URL = 'https://www.opensourceavatars.com/animations'
 // File names follow the PascalCase convention used by opensourceavatars.com's
 // own /animations/*.fbx files (confirmed via Cross Jumps -> CrossJumps.fbx and
@@ -102,6 +146,8 @@ function normalizeAvatar(item, project) {
   const name = valueOf(item, ['name', 'title', 'display_name'], `Avatar ${id}`)
   const thumbnail = valueOf(item, ['thumbnail_url', 'preview_image_url', 'image_url', 'image', 'thumbnail', 'preview'])
   const modelUrl = valueOf(item, ['model_file_url', 'vrm_url', 'download_url', 'model_url', 'file_url'])
+  const externalUrl = valueOf(item, ['external_url', 'externalUrl']) || valueOf(item?.metadata, ['external_url', 'externalUrl'])
+  const openSea = parseOpenSeaItemUrl(externalUrl)
   return {
     ...item,
     id,
@@ -115,6 +161,8 @@ function normalizeAvatar(item, project) {
     collectionName: project?.name || 'Open Source Avatars',
     license: project?.license || item?.license || 'Open license',
     author: project?.creator_id || '',
+    external_url: externalUrl,
+    openSea,
   }
 }
 
@@ -294,6 +342,7 @@ export default function AvatarCreatorPanel() {
   const [selectedCollection, setSelectedCollection] = useState('')
   const [selectedAvatar, setSelectedAvatar] = useState(null)
   const [query, setQuery] = useState('')
+  const [nftOnly, setNftOnly] = useState(false)
   const [pageSize, setPageSize] = useState(8)
   const [currentPage, setCurrentPage] = useState(1)
   const [browseView, setBrowseView] = useState('grid') // 'grid' | 'list'
@@ -407,10 +456,15 @@ export default function AvatarCreatorPanel() {
 
   const filteredAvatars = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase()
-    return avatars.filter((avatar) => !normalizedQuery || `${avatar.name} ${avatar.collectionName} ${avatar.license}`.toLowerCase().includes(normalizedQuery))
-  }, [avatars, query])
+    return avatars.filter((avatar) => {
+      const openSea = getAvatarOpenSeaInfo(avatar)
+      if (nftOnly && !openSea) return false
+      const searchable = `${avatar.name} ${avatar.collectionName} ${avatar.license} ${openSea?.chainLabel || ''} ${openSea?.tokenId || ''}`.toLowerCase()
+      return !normalizedQuery || searchable.includes(normalizedQuery)
+    })
+  }, [avatars, query, nftOnly])
 
-  useEffect(() => { setCurrentPage(1) }, [query, pageSize, selectedCollection])
+  useEffect(() => { setCurrentPage(1) }, [query, pageSize, selectedCollection, nftOnly])
 
   // Reset the format/model-stats whenever the selected avatar changes, so we
   // never show stale triangle/material counts from a previously loaded model.
@@ -506,6 +560,7 @@ export default function AvatarCreatorPanel() {
         thumbnailUrl: selectedAvatar.thumbnail_url || '',
         modelFileUrl: selectedAvatar.model_file_url || '',
         source: 'ToxSam/open-source-avatars',
+        openSea: getAvatarOpenSeaInfo(selectedAvatar),
       },
     })
     setSaveNote(vi ? 'Đã lưu làm avatar hồ sơ!' : 'Saved as profile avatar!')
@@ -560,6 +615,8 @@ export default function AvatarCreatorPanel() {
 
   const metadata = selectedAvatar?.metadata
   const nftAttributes = Array.isArray(metadata?.attributes) ? metadata.attributes.slice(0, 4) : []
+  const selectedOpenSea = getAvatarOpenSeaInfo(selectedAvatar)
+  const nftAvatarCount = avatars.filter((avatar) => getAvatarOpenSeaInfo(avatar)).length
 
   return (
     <div style={{ padding: 24, color: palette.text, maxWidth: 1440, margin: '0 auto' }}>
@@ -628,11 +685,16 @@ export default function AvatarCreatorPanel() {
                 </span>
               )
             })}
+            {nftAvatarCount > 0 && (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, border: `1px solid ${palette.accent}`, borderRadius: 999, padding: '5px 9px', background: 'linear-gradient(135deg, rgba(0,184,204,0.16), rgba(99,102,241,0.16))', color: palette.accent, fontSize: 11, fontWeight: 900 }}>
+                <ShieldCheck size={12} /> {nftAvatarCount} {vi ? 'NFT Blockchain' : 'Blockchain NFTs'}
+              </span>
+            )}
           </div>
           <p style={{ margin: '10px 0 0', color: palette.text2, maxWidth: 760, lineHeight: 1.6, fontSize: 13 }}>
             {vi
-              ? 'Chọn chủ đề từ projects.json của xuankhanh1612/open-source-avatars, duyệt & phân trang danh sách avatar, xem 3D thật và lưu làm avatar hồ sơ.'
-              : 'Pick a theme from xuankhanh1612/open-source-avatars projects.json, browse the paginated list, view a real 3D model, and save it as the profile avatar.'}
+              ? 'Chọn chủ đề từ projects.json của xuankhanh1612/open-source-avatars, duyệt & phân trang danh sách avatar, xem 3D thật, nhận diện item có link OpenSea và lưu làm avatar hồ sơ.'
+              : 'Pick a theme from xuankhanh1612/open-source-avatars projects.json, browse the paginated list, view a real 3D model, detect OpenSea-linked items, and save it as the profile avatar.'}
           </p>
         </div>
 
@@ -667,9 +729,33 @@ export default function AvatarCreatorPanel() {
                 <Shuffle size={14} /> {vi ? 'Avatar ngẫu nhiên' : 'Random Avatar'}
               </button>
 
+              <button
+                type="button"
+                onClick={() => setNftOnly((value) => !value)}
+                disabled={!nftAvatarCount}
+                className="osa-card"
+                style={{
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  padding: '10px 12px',
+                  marginBottom: 12,
+                  cursor: nftAvatarCount ? 'pointer' : 'not-allowed',
+                  fontWeight: 900,
+                  fontSize: 12,
+                  color: nftOnly ? '#fff' : palette.text,
+                  background: nftOnly ? 'linear-gradient(135deg,#00b8cc,#8b5cf6)' : palette.card,
+                  opacity: nftAvatarCount ? 1 : 0.55,
+                }}
+              >
+                <ShieldCheck size={14} /> {nftOnly ? (vi ? 'Đang lọc NFT OpenSea' : 'Filtering OpenSea NFTs') : (vi ? 'Chỉ NFT Blockchain' : 'Blockchain NFTs only')}
+              </button>
+
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, gap: 8 }}>
                 <span style={{ color: palette.text3, fontSize: 11 }}>
-                  {vi ? `${filteredAvatars.length} avatar` : `${filteredAvatars.length} avatars`}
+                  {vi ? `${filteredAvatars.length} avatar${nftOnly ? ' NFT' : ''}` : `${filteredAvatars.length} ${nftOnly ? 'NFT ' : ''}avatars`}
                 </span>
                 <div style={{ display: 'flex', gap: 4 }}>
                   <button type="button" onClick={() => setBrowseView('grid')} style={iconBtnStyle(browseView === 'grid')} title={vi ? 'Xem dạng lưới' : 'Grid view'}><LayoutGrid size={14} /></button>
@@ -680,6 +766,7 @@ export default function AvatarCreatorPanel() {
               <div className="osa-scroll" style={{ maxHeight: 480, overflowY: 'auto', display: browseView === 'grid' ? 'grid' : 'flex', gridTemplateColumns: browseView === 'grid' ? 'repeat(2, 1fr)' : undefined, flexDirection: browseView === 'list' ? 'column' : undefined, gap: 8 }}>
                 {pagedAvatars.map((avatar) => {
                   const active = selectedAvatar?.id === avatar.id
+                  const openSea = getAvatarOpenSeaInfo(avatar)
                   if (browseView === 'list') {
                     return (
                       <button key={`${avatar.collectionId}-${avatar.id}`} type="button" onClick={() => setSelectedAvatar(avatar)} className="osa-thumb-btn" style={{ display: 'flex', alignItems: 'center', gap: 10, border: `1px solid ${active ? palette.accent : palette.border}`, background: active ? 'rgba(0,184,204,0.10)' : palette.card, padding: 6 }}>
@@ -688,7 +775,7 @@ export default function AvatarCreatorPanel() {
                         </div>
                         <div style={{ minWidth: 0 }}>
                           <div style={{ fontSize: 12, fontWeight: 900, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{avatar.name}</div>
-                          <div style={{ fontSize: 10, color: palette.text3 }}>{avatar.format}</div>
+                          <div style={{ fontSize: 10, color: openSea ? palette.accent : palette.text3 }}>{openSea ? `NFT · ${openSea.chainLabel} · #${openSea.tokenId}` : avatar.format}</div>
                         </div>
                       </button>
                     )
@@ -700,7 +787,7 @@ export default function AvatarCreatorPanel() {
                       </div>
                       <div style={{ padding: 7 }}>
                         <div style={{ fontSize: 11, fontWeight: 900, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{avatar.name}</div>
-                        <div style={{ fontSize: 9, color: palette.accent, fontWeight: 800, marginTop: 2 }}>{avatar.format}</div>
+                        <div style={{ fontSize: 9, color: openSea ? '#8b5cf6' : palette.accent, fontWeight: 800, marginTop: 2 }}>{openSea ? `NFT · ${openSea.chainLabel}` : avatar.format}</div>
                       </div>
                     </button>
                   )
@@ -731,6 +818,32 @@ export default function AvatarCreatorPanel() {
 
               <h2 style={{ margin: '12px 0 2px', fontSize: 18 }}>{selectedAvatar?.name || (vi ? 'Chọn avatar' : 'Select an avatar')}</h2>
               {selectedAvatar?.description && <div style={{ color: palette.text3, fontSize: 11, marginBottom: 10 }}>{selectedAvatar.description}</div>}
+
+              {selectedOpenSea && (
+                <div className="osa-card" style={{ padding: 12, marginTop: 10, background: 'linear-gradient(135deg, rgba(0,184,204,0.12), rgba(139,92,246,0.14))', borderColor: 'rgba(139,92,246,0.38)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                    <ShieldCheck size={16} style={{ color: '#8b5cf6' }} />
+                    <strong style={{ fontSize: 13 }}>{vi ? 'NFT Blockchain' : 'Blockchain NFT'}</strong>
+                  </div>
+                  <div style={{ display: 'grid', gap: 8, fontSize: 11 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: palette.text3 }}><Coins size={12} /> Chain</span>
+                      <strong>{selectedOpenSea.chainLabel}</strong>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: palette.text3 }}><Hash size={12} /> Token ID</span>
+                      <strong>#{selectedOpenSea.tokenId}</strong>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: palette.text3 }}><LinkIcon size={12} /> Contract</span>
+                      <strong title={selectedOpenSea.contract}>{shortenAddress(selectedOpenSea.contract)}</strong>
+                    </div>
+                  </div>
+                  <a href={selectedOpenSea.url} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, marginTop: 12, borderRadius: 10, border: `1px solid ${palette.border}`, padding: '9px 10px', color: palette.accent, fontSize: 11, fontWeight: 900, textDecoration: 'none', background: palette.card }}>
+                    {vi ? 'Mở item trên OpenSea' : 'Open item on OpenSea'} <ExternalLink size={13} />
+                  </a>
+                </div>
+              )}
 
               <div className="osa-label" style={{ margin: '10px 0 6px' }}>{vi ? 'Chi tiết kỹ thuật' : 'Technical Details'}</div>
               <div style={{ fontSize: 12, lineHeight: 2 }}>
