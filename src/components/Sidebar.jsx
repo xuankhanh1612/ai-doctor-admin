@@ -37,6 +37,7 @@ export default function Sidebar({ active, onNavigate, openSignal = 0 }) {
 
   const STEPS = [
     { id: 'healthJourneyGame', label: 'Health Journey Game', step: '01' },
+    { id: 'medicalAssetStore', label: 'Chợ Tài nguyên 3D', step: '01a' },
     { id: 'myRewardHealth', label: 'My Reward Health', step: '01b' },
     { id: 'rssPortal', label: 'Healthy RSS Portal', step: '01c' },
     { id: 'waterDrinkChatBot', label: t('waterDrinkChatBot'), step: '02' },

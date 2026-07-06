@@ -1,0 +1,102 @@
+[
+  {
+    "id": 1,
+    "title": "Mô hình Trái tim bóc tách 3D (Anatomy) - Định dạng GLB",
+    "author": "Dr. Xuan Khanh",
+    "price": 500,
+    "downloads": 1240,
+    "thumbnail": "https://images.unsplash.com/photo-1530026405186-ed1f139313f8?auto=format&fit=crop&q=80&w=400",
+    "modelUrl": "https://modelviewer.dev/shared-assets/models/Astronaut.glb",
+    "tags": ["Tim mạch", "3D Model", "Digital Twin"]
+  },
+  {
+    "id": 2,
+    "title": "Gói Hành trình: Phục hồi chức năng Cột sống 30 ngày",
+    "author": "PT. Nguyen Van A",
+    "price": 300,
+    "downloads": 856,
+    "thumbnail": "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?auto=format&fit=crop&q=80&w=400",
+    "modelUrl": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/CesiumMan/glTF-Binary/CesiumMan.glb",
+    "tags": ["Xương khớp", "Gamification", "Bài tập"]
+  },
+  {
+    "id": 3,
+    "title": "Avatar Skin VRM: Bác sĩ phẫu thuật",
+    "author": "AI Clinic Team",
+    "price": 150,
+    "downloads": 3200,
+    "thumbnail": "https://images.unsplash.com/photo-1584982751601-97dcc096659c?auto=format&fit=crop&q=80&w=400",
+    "modelUrl": "https://modelviewer.dev/shared-assets/models/RobotExpressive.glb",
+    "tags": ["Avatar VRM", "Trang phục"]
+  },
+  {
+    "id": 4,
+    "title": "Phổi người hút thuốc vs Phổi khỏe mạnh (AR/VR)",
+    "author": "LungHealth Institute",
+    "price": 0,
+    "downloads": 5042,
+    "thumbnail": "https://images.unsplash.com/photo-1599045118108-bf9954418b76?auto=format&fit=crop&q=80&w=400",
+    "modelUrl": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/Avocado/glTF-Binary/Avocado.glb",
+    "tags": ["Hô hấp", "Miễn phí", "Giáo dục"]
+  },
+  {
+    "id": 5,
+    "title": "Nẹp cổ tay cố định có rãnh thoáng khí (Tệp STL In 3D)",
+    "author": "OrthoMaker",
+    "price": 800,
+    "downloads": 412,
+    "thumbnail": "https://images.unsplash.com/photo-1618641986557-1de223cb2f4f?auto=format&fit=crop&q=80&w=400",
+    "modelUrl": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/Duck/glTF-Binary/Duck.glb",
+    "tags": ["In 3D", "Chỉnh hình", "STL"]
+  },
+  {
+    "id": 6,
+    "title": "Mô hình Phân tử Protein AlphaFold",
+    "author": "BioTech Lab",
+    "price": 1200,
+    "downloads": 89,
+    "thumbnail": "https://images.unsplash.com/photo-1532187863486-abf9dbad1b69?auto=format&fit=crop&q=80&w=400",
+    "modelUrl": "https://modelviewer.dev/shared-assets/models/glTF-Sample-Assets/Models/MaterialsVariantsShoe/glTF-Binary/MaterialsVariantsShoe.glb",
+    "tags": ["Nghiên cứu", "Protein", "Cấp cao"]
+  },
+  {
+    "id": 7,
+    "title": "Gói Hành trình: Thử thách uống nước 7 ngày với Mèo AI",
+    "author": "Dr. Xuan Khanh",
+    "price": 0,
+    "downloads": 15030,
+    "thumbnail": "https://images.unsplash.com/photo-1523362628745-0c100150b504?auto=format&fit=crop&q=80&w=400",
+    "modelUrl": "https://modelviewer.dev/shared-assets/models/glTF-Sample-Assets/Models/WaterBottle/glTF-Binary/WaterBottle.glb",
+    "tags": ["Gamification", "Thói quen", "Miễn phí"]
+  },
+  {
+    "id": 8,
+    "title": "Mô hình Răng hàm mặt chuẩn nha khoa (Tệp OBJ/STL)",
+    "author": "Dental3D Pro",
+    "price": 450,
+    "downloads": 670,
+    "thumbnail": "https://images.unsplash.com/photo-1606811841689-23dfddce3e95?auto=format&fit=crop&q=80&w=400",
+    "modelUrl": "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/ToyCar/glTF-Binary/ToyCar.glb",
+    "tags": ["Nha khoa", "In 3D", "Giải phẫu"]
+  },
+  {
+    "id": 9,
+    "title": "Môi trường VR tĩnh tâm (Dành cho Stress Relief)",
+    "author": "MentalHealth AI",
+    "price": 1500,
+    "downloads": 210,
+    "thumbnail": "https://images.unsplash.com/photo-1518241353330-0f7941c2d1fd?auto=format&fit=crop&q=80&w=400",
+    "modelUrl": "https://modelviewer.dev/shared-assets/models/glTF-Sample-Assets/Models/Lantern/glTF-Binary/Lantern.glb",
+    "tags": ["Tâm lý", "VR Environment", "Thư giãn"]
+  },
+  {
+    "id": 10,
+    "title": "Khớp gối nhân tạo - Mô phỏng thay khớp (GLB)",
+    "author": "OrthoSim",
+    "price": 600,
+    "downloads": 154,
+    "thumbnail": "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&q=80&w=400",
+    "modelUrl": "https://modelviewer.dev/shared-assets/models/glTF-Sample-Assets/Models/BrainStem/glTF-Binary/BrainStem.glb",
+    "tags": ["Xương khớp", "Phẫu thuật", "Digital Twin"]
+  }
+]

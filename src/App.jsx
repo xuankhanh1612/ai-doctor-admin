@@ -18,6 +18,7 @@ import UploadPanel from './components/upload/UploadPanel.jsx'
 import HealthJourneyPanel from './components/HealthJourneyPanel.jsx'
 import HealthJourneyGamePanel from './components/HealthJourneyGamePanel.jsx'
 import MyRewardHealthPanel from './components/MyRewardHealthPanel.jsx'
+import MedicalAssetStorePanel from './components/MedicalAssetStorePanel.jsx' // <--- IMPORT PANEL MỚI Ở ĐÂY
 import LunchJourneyPanel from './components/LunchJourneyPanel.jsx'
 import DinnerJourneyPanel from './components/DinnerJourneyPanel.jsx'
 import FamilyTreePanel from './components/family/FamilyTreePanel.jsx'
@@ -45,8 +46,8 @@ import ChatHistoryPanel from './components/ChatHistoryPanel.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 import { addNotification } from './lib/notifications.js'
 
-// Swarm panel replaces simulation; keep consensus as classic fallback
-const PANELS = ['healthJourneyGame', 'myRewardHealth', 'rssPortal', 'waterDrinkChatBot', 'wikiMedVision', 'fullDocSummarization', 'documentOCR', 'twoDTo3DAsset', 'organConnection', 'healthJourney', 'lunchJourney', 'dinnerJourney', 'upload', 'imaging', 'checkin', 'family', 'record', 'familyRelationship', 'matrix3dBody', 'omnidirectional3dBody', 'twin', 'telemedicine', 'statAnalysis', 'swarm', 'consensus', 'protein3d', 'aiHealthcareVision', 'aiHealthcareVisionControl', 'stressRelief', 'aiInbodyPortal', 'printPortal', 'chatHistory']
+// THÊM 'medicalAssetStore' NGAY SAU 'healthJourneyGame'
+const PANELS = ['healthJourneyGame', 'medicalAssetStore', 'myRewardHealth', 'rssPortal', 'waterDrinkChatBot', 'wikiMedVision', 'fullDocSummarization', 'documentOCR', 'twoDTo3DAsset', 'organConnection', 'healthJourney', 'lunchJourney', 'dinnerJourney', 'upload', 'imaging', 'checkin', 'family', 'record', 'familyRelationship', 'matrix3dBody', 'omnidirectional3dBody', 'twin', 'telemedicine', 'statAnalysis', 'swarm', 'consensus', 'protein3d', 'aiHealthcareVision', 'aiHealthcareVisionControl', 'stressRelief', 'aiInbodyPortal', 'printPortal', 'chatHistory']
 
 export default function App() {
   const { user, loading } = useAuth()
@@ -72,6 +73,7 @@ export default function App() {
 
   const panelLabels = {
     healthJourneyGame: 'Health Journey Game',
+    medicalAssetStore: 'Chợ Tài nguyên 3D', // <--- THÊM NHÃN TẠI ĐÂY
     myRewardHealth: 'My Reward Health',
     healthJourney: t('healthJourney'),
     lunchJourney: t('lunchJourney'),
@@ -225,8 +227,6 @@ export default function App() {
 
   const isDark = theme === 'dark'
   const mainBg = isDark ? 'var(--bg2)' : '#f4f7fb'
-  // `uuid` là field nhận diện thống nhất cho mọi loại user (guest hay đã đăng nhập) —
-  // dùng làm khóa lưu trữ Family Tree / Patient Record thay cho email.
   const familyStorageOwnerId = user?.uuid || 'guest'
 
   return (
@@ -244,6 +244,7 @@ export default function App() {
             user={user}
           >
             {active === 'healthJourneyGame' && <HealthJourneyGamePanel onNext={goNext} nextLabel={nextLabel} onViewMedicalRecord={() => setActive('upload')} onOpenMyRewardHealth={() => setActive('myRewardHealth')} />}
+            {active === 'medicalAssetStore' && <MedicalAssetStorePanel />} {/* <--- RENDER PANEL Ở ĐÂY */}
             {active === 'myRewardHealth' && <MyRewardHealthPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} onOpenFoodToday={() => setActive('organConnection')} />}
             {active === 'healthJourney' && <HealthJourneyPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} onOpenStressRelief={() => setActive('stressRelief')} onOpenInBody={() => setActive('aiInbodyPortal')} onViewMedicalRecord={() => setActive('upload')} />}
             {active === 'lunchJourney' && <LunchJourneyPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} onOpenStressRelief={() => setActive('stressRelief')} onOpenInBody={() => setActive('aiInbodyPortal')} onViewMedicalRecord={() => setActive('upload')} />}
@@ -305,12 +306,11 @@ export default function App() {
   )
 }
 
-
 function GlobalBottomNav({ active, onOpenMainMenu, onNavigate }) {
   const { theme } = useApp()
   const isDark = theme === 'dark'
   const items = [
-    { id: 'health', label: 'Health', icon: '♿', action: onOpenMainMenu, active: ['healthJourneyGame', 'myRewardHealth', 'healthJourney', 'lunchJourney', 'dinnerJourney'].includes(active) },
+    { id: 'health', label: 'Health', icon: '♿', action: onOpenMainMenu, active: ['healthJourneyGame', 'medicalAssetStore', 'myRewardHealth', 'healthJourney', 'lunchJourney', 'dinnerJourney'].includes(active) },
     { id: 'family', label: 'Community', icon: '👥', action: () => onNavigate('family'), active: active === 'family' },
     { id: 'aiHealthcareVision', label: 'AI Scan', icon: '🧬', action: () => onNavigate('aiHealthcareVision'), active: active === 'aiHealthcareVision' || active === 'aiHealthcareVisionControl' },
     { id: 'upload', label: 'Record', icon: '📄', action: () => onNavigate('upload'), active: active === 'upload' },
@@ -383,7 +383,6 @@ class PanelErrorBoundary extends React.Component {
 
   handleClearFamilyData = () => {
     try {
-      // Also clear health journey DB to free quota
       try { localStorage.removeItem('health_journey_local_db_v1') } catch (_) {}
       const ownerKey = String(this.props.familyStorageOwnerId || 'guest').trim().toLowerCase() || 'guest'
       const byUser = JSON.parse(localStorage.getItem('cdoc_family_members_by_user') || '{}')
@@ -459,7 +458,6 @@ class PanelErrorBoundary extends React.Component {
     )
   }
 }
-
 
 function GlobalScrollButtons({ showTop, showEnd, onGoTop, onGoEnd }) {
   return (
