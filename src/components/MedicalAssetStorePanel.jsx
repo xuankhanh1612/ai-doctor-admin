@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react'; // Import Icon phân trang
 import marketData from '../data/medical_3d_market.json';
-import { useAuth } from '../context/AuthContext'; // Import useAuth để cập nhật Avatar toàn cục
+import { useAuth } from '../context/AuthContext';
 
 // ============================================================================
 // 1. MODULE INDEXED-DB (Lưu trữ vĩnh viễn dữ liệu tài khoản, ví tiền, kho đồ và avatar)
@@ -53,10 +54,14 @@ const loadDataFromDB = async (key, defaultValue) => {
     return defaultValue;
   }
 };
+
+// Cấu hình phân trang
+const PAGE_SIZE_OPTIONS = [8, 16, 32];
+
 // ============================================================================
 
 export default function MedicalAssetStorePanel() {
-  const { updateProfile } = useAuth(); // Lấy hàm updateProfile từ Context
+  const { updateProfile } = useAuth();
 
   // --- STATE MANAGEMENT ---
   const [viewMode, setViewMode] = useState("store"); 
@@ -65,17 +70,20 @@ export default function MedicalAssetStorePanel() {
   const [sortBy, setSortBy] = useState("popular");
   const [previewAsset, setPreviewAsset] = useState(null);
   
+  // States Phân trang
+  const [pageSize, setPageSize] = useState(8);
+  const [currentPage, setCurrentPage] = useState(1);
+  
   // Quản lý dữ liệu người dùng
   const [isDbLoaded, setIsDbLoaded] = useState(false);
   const [userCoins, setUserCoins] = useState(2500); 
   const [unlockedAssets, setUnlockedAssets] = useState([4, 7]); 
   const [toast, setToast] = useState(null);
 
-  // States hỗ trợ nút Lưu Avatar (Giống AvatarCreatorPanel)
   const [saving, setSaving] = useState(false);
   const [saveNote, setSaveNote] = useState('');
 
-  // 1. Tự động load dữ liệu từ IndexedDB khi mở component
+  // 1. Tự động load dữ liệu từ IndexedDB
   useEffect(() => {
     const fetchUserData = async () => {
       const savedCoins = await loadDataFromDB('user_health_coins', 2500);
@@ -88,7 +96,7 @@ export default function MedicalAssetStorePanel() {
     fetchUserData();
   }, []);
 
-  // 2. Load thư viện Google Model Viewer hỗ trợ render tương tác 3D xoay lật
+  // 2. Load thư viện Google Model Viewer
   useEffect(() => {
     const scriptId = 'google-model-viewer-script';
     if (!document.getElementById(scriptId)) {
@@ -99,6 +107,11 @@ export default function MedicalAssetStorePanel() {
       document.body.appendChild(script);
     }
   }, []);
+
+  // 3. Reset phân trang về Trang 1 khi điều kiện lọc thay đổi
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, selectedTag, sortBy, viewMode, pageSize]);
 
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
@@ -129,16 +142,14 @@ export default function MedicalAssetStorePanel() {
     showToast(`Đã lưu "${asset.title}" vào Kho đồ cá nhân!`, "success");
   };
 
-  // --- LOGIC THIẾT LẬP AVATAR HỒ SƠ DÙNG CONTEXT (AuthContext) ---
+  // --- LOGIC THIẾT LẬP AVATAR HỒ SƠ ---
   const handleSetAsAvatar = async (asset) => {
     if (!asset) return;
     
     setSaving(true);
     try {
-      // 1. Lưu backup vào IndexedDB (đề phòng)
       await saveDataToDB('user_current_avatar_asset', asset);
       
-      // 2. Gọi hàm updateProfile của AuthContext để đồng bộ toàn bộ giao diện (Sidebar, Topbar...)
       updateProfile({
         avatar: asset.thumbnail,
         avatarCustomized: true,
@@ -157,11 +168,10 @@ export default function MedicalAssetStorePanel() {
       setSaveNote('Đã lưu làm avatar hồ sơ!');
       showToast(`✨ Đã thiết lập thành công "${asset.title}" làm hình đại diện!`, "success");
       
-      // 3. Tắt trạng thái lưu sau một khoảng nhỏ để tạo hiệu ứng mượt mà (Giống AvatarCreatorPanel)
       setTimeout(() => {
         setSaving(false);
         setSaveNote('');
-        setPreviewAsset(null); // Đóng popup
+        setPreviewAsset(null); 
       }, 1500);
 
     } catch (err) {
@@ -171,9 +181,9 @@ export default function MedicalAssetStorePanel() {
     }
   };
 
-  // --- PHÂN LOẠI DANH MỤC NHANH ---
   const quickCategories = ["Tất cả", "3D Model", "In 3D", "Digital Twin", "Avatar VRM", "Gamification"];
 
+  // --- LỌC DỮ LIỆU ---
   const filteredAssets = marketData
     .filter(asset => {
       if (viewMode === "inventory" && !unlockedAssets.includes(asset.id)) {
@@ -193,6 +203,12 @@ export default function MedicalAssetStorePanel() {
       if (sortBy === "price-high") return b.price - a.price;
       return 0;
     });
+
+  // --- TÍNH TOÁN PHÂN TRANG ---
+  const totalPages = Math.max(1, Math.ceil(filteredAssets.length / pageSize));
+  const safePage = Math.min(currentPage, totalPages);
+  // Cắt mảng dữ liệu để lấy đúng số lượng item của trang hiện tại
+  const pagedAssets = filteredAssets.slice((safePage - 1) * pageSize, safePage * pageSize);
 
   if (!isDbLoaded) {
     return <div className="p-6 text-center text-white h-full flex items-center justify-center font-mono tracking-widest">ĐANG TẢI DỮ LIỆU Y TẾ AN TOÀN...</div>;
@@ -237,7 +253,7 @@ export default function MedicalAssetStorePanel() {
         </div>
       </div>
 
-      {/* NAVIGATION TABS: CHỢ <-> KHO ĐỒ */}
+      {/* NAVIGATION TABS */}
       <div className="flex bg-black/50 p-1.5 rounded-2xl border border-white/10 w-full sm:w-fit mb-8 mx-auto sm:mx-0 shadow-inner">
         <button 
           onClick={() => setViewMode("store")}
@@ -262,7 +278,7 @@ export default function MedicalAssetStorePanel() {
       </div>
 
       {/* SEARCH BAR & FILTER OPTIONS */}
-      <div className="flex flex-col gap-4 mb-8 bg-white/5 p-4 rounded-xl border border-white/5">
+      <div className="flex flex-col gap-4 mb-6 bg-white/5 p-4 rounded-xl border border-white/5">
         <div className="flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="relative w-full md:w-96">
             <span className="absolute inset-y-0 left-3 flex items-center text-gray-400 pointer-events-none">🔍</span>
@@ -306,9 +322,14 @@ export default function MedicalAssetStorePanel() {
         </div>
       </div>
 
-      {/* ASSET ITEMS GRID */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {filteredAssets.map((asset) => {
+      {/* HIỂN THỊ SỐ LƯỢNG ITEM */}
+      <div className="text-xs text-gray-400 mb-4 font-mono">
+        Tìm thấy <strong className="text-[#00e5ff]">{filteredAssets.length}</strong> tài nguyên
+      </div>
+
+      {/* ASSET ITEMS GRID (Sử dụng pagedAssets thay vì filteredAssets) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-6">
+        {pagedAssets.map((asset) => {
           const isOwned = unlockedAssets.includes(asset.id);
           
           return (
@@ -406,6 +427,44 @@ export default function MedicalAssetStorePanel() {
           );
         })}
       </div>
+
+      {/* PAGINATION CONTROLS (Thanh Điều Khiển Phân Trang) */}
+      {filteredAssets.length > 0 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between mt-4 mb-8 bg-white/5 p-4 rounded-xl border border-white/5 gap-4">
+          <div className="flex items-center gap-3 w-full sm:w-auto">
+            <span className="text-xs text-gray-400 font-mono uppercase tracking-widest whitespace-nowrap">Hiển thị</span>
+            <select
+              className="bg-black/50 border border-white/10 text-white px-3 py-1.5 rounded-lg text-sm focus:ring-1 focus:ring-[#00e5ff] focus:outline-none cursor-pointer w-full sm:w-auto"
+              value={pageSize}
+              onChange={(e) => setPageSize(Number(e.target.value))}
+            >
+              {PAGE_SIZE_OPTIONS.map(size => (
+                <option key={size} value={size}>{size} / trang</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={safePage <= 1}
+              className="w-10 h-10 flex items-center justify-center rounded-xl border border-white/10 bg-black/40 text-gray-400 hover:text-[#00e5ff] hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+            >
+              <ChevronLeft size={18} />
+            </button>
+            <span className="text-sm font-mono text-gray-400 tracking-widest">
+              <strong className="text-white text-base">{safePage}</strong> / {totalPages}
+            </span>
+            <button
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={safePage >= totalPages}
+              className="w-10 h-10 flex items-center justify-center rounded-xl border border-white/10 bg-black/40 text-gray-400 hover:text-[#00e5ff] hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+            >
+              <ChevronRight size={18} />
+            </button>
+          </div>
+        </div>
+      )}
       
       {/* EMPTY STATE CONTAINER */}
       {filteredAssets.length === 0 && (
@@ -420,12 +479,11 @@ export default function MedicalAssetStorePanel() {
         </div>
       )}
 
-      {/* POPUP MODAL DETAIL - PHÙ HỢP HOÀN HẢO THEO MOCK-UP DESIGN CỦA BẠN */}
+      {/* POPUP MODAL DETAIL */}
       {previewAsset && (
         <div className="fixed inset-0 bg-black/85 backdrop-blur-md z-[100] flex items-center justify-center p-4 animate-fade">
           <div className="bg-[#0b101d] text-white rounded-2xl border border-cyan-500/20 max-w-3xl w-full p-6 relative shadow-[0_0_60px_rgba(0,229,255,0.15)] flex flex-col h-[85vh]">
             
-            {/* Nút đóng góc phải */}
             <button 
               onClick={() => setPreviewAsset(null)}
               className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/5 hover:bg-white/15 text-gray-400 hover:text-white flex items-center justify-center transition-colors text-lg z-10"
@@ -433,10 +491,8 @@ export default function MedicalAssetStorePanel() {
               ✕
             </button>
 
-            {/* Tiêu đề sản phẩm */}
             <h2 className="text-2xl font-bold text-white pr-8 mb-4 tracking-tight">{previewAsset.title}</h2>
             
-            {/* TRÌNH XEM MÔ HÌNH 3D LIVE HOÀN CHỈNH */}
             <div className="flex-grow bg-black/40 rounded-xl relative overflow-hidden border border-white/5 flex items-center justify-center shadow-inner">
               {previewAsset.modelUrl ? (
                 <model-viewer
@@ -458,17 +514,14 @@ export default function MedicalAssetStorePanel() {
               )}
             </div>
 
-            {/* DÒNG METADATA THÔNG TIN CHI TIẾT */}
             <div className="grid grid-cols-3 text-center border-t border-b border-white/5 py-3 my-4 text-xs font-mono text-gray-400">
               <div>Tác giả: <span className="text-cyan-400 font-semibold">{previewAsset.author}</span></div>
               <div>Tệp tin: <span className="text-purple-400 font-semibold">{previewAsset.modelUrl ? 'glb' : 'json'}</span></div>
               <div>Lượt tải: <span className="text-amber-400 font-semibold">{previewAsset.downloads.toLocaleString()}</span></div>
             </div>
 
-            {/* HÀNH ĐỘNG DƯỚI POPUP */}
             <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
               
-              {/* PHẦN TRÁI: NÚT DÙNG LÀM AVATAR CHỈ HIỆN KHI ĐÃ SỞ HỮU VẬT PHẨM VÀ ÁP DỤNG STYLE CỦA AVATARCREATORPANEL */}
               <div className="w-full sm:w-auto flex flex-col items-center sm:items-start gap-1">
                 {unlockedAssets.includes(previewAsset.id) ? (
                   <>
@@ -499,7 +552,6 @@ export default function MedicalAssetStorePanel() {
                 )}
               </div>
               
-              {/* PHẦN PHẢI: NÚT TẢI VỀ NGUỒN VÀ ĐÓNG MODAL */}
               <div className="flex gap-2 w-full sm:w-auto justify-end">
                 <button 
                   onClick={() => handleUnlockAsset(previewAsset)}
