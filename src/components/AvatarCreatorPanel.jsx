@@ -6,6 +6,9 @@ import {
 import { useAuth } from '../context/AuthContext'
 import { useApp } from '../context/AppContext'
 import AnimatedAvatarViewer from './AnimatedAvatarViewer'
+import offlineProjects from '../data/projects.json'
+
+const OFFLINE_AVATAR_MODULES = import.meta.glob('../data/avatars/*.json', { eager: true })
 
 const AVATAR_SOURCES = [
   {
@@ -25,6 +28,7 @@ const AVATAR_SOURCES = [
     label: 'Off-Line',
     baseUrl: 'src/data',
     projectsUrl: 'src/data/projects.json',
+    offline: true,
   },
 ]
 const PAGE_SIZE_OPTIONS = [8, 16, 32]
@@ -59,6 +63,11 @@ const ANIMATION_PRESETS = [
   'Standing Magic Attack',
   'Texting While Standing',
 ]
+const fallbackAvatarSvg = (name, background) => {
+  const initials = name.split(/\s+/).map((part) => part[0]).join('').slice(0, 2).toUpperCase()
+  return `data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512"><rect width="512" height="512" rx="96" fill="#${background}"/><text x="50%" y="54%" text-anchor="middle" dominant-baseline="middle" font-family="Arial, Helvetica, sans-serif" font-size="150" font-weight="800" fill="#fff">${initials}</text></svg>`)}`
+}
+
 const FALLBACK_AVATARS = [
   {
     id: 'fallback-health-01',
@@ -66,7 +75,7 @@ const FALLBACK_AVATARS = [
     collectionName: 'Local fallback',
     license: 'Generated preview',
     format: 'PNG',
-    thumbnail_url: 'https://ui-avatars.com/api/?name=Health+Explorer&background=00b8cc&color=fff&size=512&bold=true&rounded=true',
+    thumbnail_url: fallbackAvatarSvg('Health Explorer', '00b8cc'),
     model_file_url: '',
   },
   {
@@ -75,7 +84,7 @@ const FALLBACK_AVATARS = [
     collectionName: 'Local fallback',
     license: 'Generated preview',
     format: 'PNG',
-    thumbnail_url: 'https://ui-avatars.com/api/?name=VRM+Pilot&background=6b3fd4&color=fff&size=512&bold=true&rounded=true',
+    thumbnail_url: fallbackAvatarSvg('VRM Pilot', '6b3fd4'),
     model_file_url: '',
   },
 ]
@@ -113,6 +122,23 @@ async function fetchJson(url) {
   const response = await fetch(url)
   if (!response.ok) throw new Error(`HTTP ${response.status}`)
   return response.json()
+}
+
+function moduleDefault(module) {
+  return module?.default ?? module
+}
+
+async function loadProjectsJson(source) {
+  if (source.offline) return offlineProjects
+  return fetchJson(source.projectsUrl)
+}
+
+async function loadAvatarDataJson(source, dataFile) {
+  if (!source.offline) return fetchJson(`${source.baseUrl}/${dataFile}`)
+  const modulePath = `../data/${dataFile}`
+  const module = OFFLINE_AVATAR_MODULES[modulePath]
+  if (!module) throw new Error(`Missing offline avatar data: ${dataFile}`)
+  return moduleDefault(module)
 }
 
 function avatarFinderSlug(avatar) {
@@ -313,7 +339,7 @@ export default function AvatarCreatorPanel() {
         if (cancelled) return
         markSourceStatus(source.key, 'loading')
         try {
-          const registryProjects = await fetchJson(source.projectsUrl)
+          const registryProjects = await loadProjectsJson(source)
           const publicProjects = registryProjects.filter((project) => project?.is_public !== false && (project.avatar_data_file || project.avatarDataFile))
           if (cancelled) return
           markSourceStatus(source.key, 'ok')
@@ -356,7 +382,7 @@ export default function AvatarCreatorPanel() {
       setSelectedAvatar(null)
       try {
         const dataFile = selectedProject.avatar_data_file || selectedProject.avatarDataFile
-        const data = await fetchJson(`${activeSource.baseUrl}/${dataFile}`)
+        const data = await loadAvatarDataJson(activeSource, dataFile)
         const list = Array.isArray(data) ? data : (Array.isArray(data?.avatars) ? data.avatars : [])
         const nextAvatars = list.map((item) => normalizeAvatar(item, selectedProject)).filter((item) => item.thumbnail_url || item.model_file_url)
         if (cancelled) return
