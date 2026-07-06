@@ -7,7 +7,7 @@ import { useAuth } from '../context/AuthContext'
 import { useApp } from '../context/AppContext'
 import AnimatedAvatarViewer from './AnimatedAvatarViewer'
 
-const REGISTRY_BASE = 'https://raw.githubusercontent.com/ToxSam/open-source-avatars/main/data'
+const REGISTRY_BASE = 'https://raw.githubusercontent.com/xuankhanh1612/open-source-avatars/main/data'
 const PROJECTS_URL = `${REGISTRY_BASE}/projects.json`
 const PAGE_SIZE_OPTIONS = [8, 16, 32]
 const ANIMATION_BASE_URL = 'https://www.opensourceavatars.com/animations'
@@ -553,8 +553,8 @@ export default function AvatarCreatorPanel() {
           </div>
           <p style={{ margin: '10px 0 0', color: palette.text2, maxWidth: 760, lineHeight: 1.6, fontSize: 13 }}>
             {vi
-              ? 'Chọn chủ đề từ projects.json của ToxSam/open-source-avatars, duyệt & phân trang danh sách avatar, xem 3D thật và lưu làm avatar hồ sơ.'
-              : 'Pick a theme from ToxSam/open-source-avatars projects.json, browse the paginated list, view a real 3D model, and save it as the profile avatar.'}
+              ? 'Chọn chủ đề từ projects.json của xuankhanh1612/open-source-avatars, duyệt & phân trang danh sách avatar, xem 3D thật và lưu làm avatar hồ sơ.'
+              : 'Pick a theme from xuankhanh1612/open-source-avatars projects.json, browse the paginated list, view a real 3D model, and save it as the profile avatar.'}
           </p>
         </div>
 
