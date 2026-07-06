@@ -6,9 +6,31 @@ import {
 import { useAuth } from '../context/AuthContext'
 import { useApp } from '../context/AppContext'
 import AnimatedAvatarViewer from './AnimatedAvatarViewer'
+import offlineProjects from '../data/projects.json'
 
-const REGISTRY_BASE = 'https://raw.githubusercontent.com/xuankhanh1612/open-source-avatars/main/data'
-const PROJECTS_URL = `${REGISTRY_BASE}/projects.json`
+const OFFLINE_AVATAR_MODULES = import.meta.glob('../data/avatars/*.json', { eager: true })
+
+const AVATAR_SOURCES = [
+  {
+    key: 'realtime',
+    label: 'Real-Time',
+    baseUrl: 'https://raw.githubusercontent.com/ToxSam/open-source-avatars/main/data',
+    projectsUrl: 'https://raw.githubusercontent.com/ToxSam/open-source-avatars/main/data/projects.json',
+  },
+  {
+    key: 'online',
+    label: 'On-Line',
+    baseUrl: 'https://raw.githubusercontent.com/xuankhanh1612/open-source-avatars/main/data',
+    projectsUrl: 'https://raw.githubusercontent.com/xuankhanh1612/open-source-avatars/main/data/projects.json',
+  },
+  {
+    key: 'offline',
+    label: 'Off-Line',
+    baseUrl: 'src/data',
+    projectsUrl: 'src/data/projects.json',
+    offline: true,
+  },
+]
 const PAGE_SIZE_OPTIONS = [8, 16, 32]
 const ANIMATION_BASE_URL = 'https://www.opensourceavatars.com/animations'
 // File names follow the PascalCase convention used by opensourceavatars.com's
@@ -41,6 +63,11 @@ const ANIMATION_PRESETS = [
   'Standing Magic Attack',
   'Texting While Standing',
 ]
+const fallbackAvatarSvg = (name, background) => {
+  const initials = name.split(/\s+/).map((part) => part[0]).join('').slice(0, 2).toUpperCase()
+  return `data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512"><rect width="512" height="512" rx="96" fill="#${background}"/><text x="50%" y="54%" text-anchor="middle" dominant-baseline="middle" font-family="Arial, Helvetica, sans-serif" font-size="150" font-weight="800" fill="#fff">${initials}</text></svg>`)}`
+}
+
 const FALLBACK_AVATARS = [
   {
     id: 'fallback-health-01',
@@ -48,7 +75,7 @@ const FALLBACK_AVATARS = [
     collectionName: 'Local fallback',
     license: 'Generated preview',
     format: 'PNG',
-    thumbnail_url: 'https://ui-avatars.com/api/?name=Health+Explorer&background=00b8cc&color=fff&size=512&bold=true&rounded=true',
+    thumbnail_url: fallbackAvatarSvg('Health Explorer', '00b8cc'),
     model_file_url: '',
   },
   {
@@ -57,7 +84,7 @@ const FALLBACK_AVATARS = [
     collectionName: 'Local fallback',
     license: 'Generated preview',
     format: 'PNG',
-    thumbnail_url: 'https://ui-avatars.com/api/?name=VRM+Pilot&background=6b3fd4&color=fff&size=512&bold=true&rounded=true',
+    thumbnail_url: fallbackAvatarSvg('VRM Pilot', '6b3fd4'),
     model_file_url: '',
   },
 ]
@@ -95,6 +122,23 @@ async function fetchJson(url) {
   const response = await fetch(url)
   if (!response.ok) throw new Error(`HTTP ${response.status}`)
   return response.json()
+}
+
+function moduleDefault(module) {
+  return module?.default ?? module
+}
+
+async function loadProjectsJson(source) {
+  if (source.offline) return offlineProjects
+  return fetchJson(source.projectsUrl)
+}
+
+async function loadAvatarDataJson(source, dataFile) {
+  if (!source.offline) return fetchJson(`${source.baseUrl}/${dataFile}`)
+  const modulePath = `../data/${dataFile}`
+  const module = OFFLINE_AVATAR_MODULES[modulePath]
+  if (!module) throw new Error(`Missing offline avatar data: ${dataFile}`)
+  return moduleDefault(module)
 }
 
 function avatarFinderSlug(avatar) {
@@ -244,6 +288,8 @@ export default function AvatarCreatorPanel() {
   const vi = lang === 'vi'
 
   const [projects, setProjects] = useState([])
+  const [sourceStatuses, setSourceStatuses] = useState(() => AVATAR_SOURCES.map((source) => ({ ...source, status: 'pending' })))
+  const [activeSource, setActiveSource] = useState(null)
   const [avatars, setAvatars] = useState([])
   const [selectedCollection, setSelectedCollection] = useState('')
   const [selectedAvatar, setSelectedAvatar] = useState(null)
@@ -278,28 +324,47 @@ export default function AvatarCreatorPanel() {
   // ---- Load the theme/category list from projects.json (drives the combobox) ----
   useEffect(() => {
     let cancelled = false
+    const markSourceStatus = (key, nextStatus) => {
+      setSourceStatuses((current) => current.map((source) => (source.key === key ? { ...source, status: nextStatus } : source)))
+    }
+
     async function loadProjects() {
       setStatus(vi ? 'Đang tải danh sách chủ đề avatar từ projects.json...' : 'Loading avatar themes from projects.json...')
       setError('')
-      try {
-        const registryProjects = await fetchJson(PROJECTS_URL)
-        const publicProjects = registryProjects.filter((project) => project?.is_public !== false && (project.avatar_data_file || project.avatarDataFile))
+      setActiveSource(null)
+      setSourceStatuses(AVATAR_SOURCES.map((source) => ({ ...source, status: 'pending' })))
+
+      const failures = []
+      for (const source of AVATAR_SOURCES) {
         if (cancelled) return
-        setProjects(publicProjects)
-        setSelectedCollection((current) => current || publicProjects[0]?.id || '')
-        if (!publicProjects.length) {
-          setAvatars(FALLBACK_AVATARS)
-          setSelectedAvatar(FALLBACK_AVATARS[0])
-          setStatus(vi ? 'Không có chủ đề public, đang dùng avatar dự phòng.' : 'No public themes were found, using fallback avatars.')
+        markSourceStatus(source.key, 'loading')
+        try {
+          const registryProjects = await loadProjectsJson(source)
+          const publicProjects = registryProjects.filter((project) => project?.is_public !== false && (project.avatar_data_file || project.avatarDataFile))
+          if (cancelled) return
+          markSourceStatus(source.key, 'ok')
+          setActiveSource(source)
+          setProjects(publicProjects)
+          setSelectedCollection((current) => (publicProjects.some((project) => project.id === current) ? current : (publicProjects[0]?.id || '')))
+          if (!publicProjects.length) {
+            setAvatars(FALLBACK_AVATARS)
+            setSelectedAvatar(FALLBACK_AVATARS[0])
+            setStatus(vi ? 'Không có chủ đề public, đang dùng avatar dự phòng.' : 'No public themes were found, using fallback avatars.')
+          }
+          return
+        } catch (err) {
+          failures.push(`${source.label}: ${err.message}`)
+          if (cancelled) return
+          markSourceStatus(source.key, 'error')
         }
-      } catch (err) {
-        if (cancelled) return
-        setProjects([])
-        setAvatars(FALLBACK_AVATARS)
-        setSelectedAvatar(FALLBACK_AVATARS[0])
-        setError(vi ? `Không tải được projects.json: ${err.message}` : `Could not load projects.json: ${err.message}`)
-        setStatus(vi ? 'Bạn vẫn có thể dùng avatar dự phòng để cập nhật hồ sơ.' : 'You can still use a fallback avatar to update your profile.')
       }
+
+      if (cancelled) return
+      setProjects([])
+      setAvatars(FALLBACK_AVATARS)
+      setSelectedAvatar(FALLBACK_AVATARS[0])
+      setError(vi ? `Không tải được projects.json: ${failures.join('; ')}` : `Could not load projects.json: ${failures.join('; ')}`)
+      setStatus(vi ? 'Bạn vẫn có thể dùng avatar dự phòng để cập nhật hồ sơ.' : 'You can still use a fallback avatar to update your profile.')
     }
     loadProjects()
     return () => { cancelled = true }
@@ -308,7 +373,7 @@ export default function AvatarCreatorPanel() {
   // ---- Load avatars for whichever theme is selected in the combobox ----
   useEffect(() => {
     const selectedProject = projects.find((project) => project.id === selectedCollection)
-    if (!selectedProject) return
+    if (!selectedProject || !activeSource) return
     let cancelled = false
     async function loadThemeAvatars() {
       setStatus(vi ? `Đang tải avatar chủ đề ${selectedProject.name}...` : `Loading ${selectedProject.name} avatars...`)
@@ -317,7 +382,7 @@ export default function AvatarCreatorPanel() {
       setSelectedAvatar(null)
       try {
         const dataFile = selectedProject.avatar_data_file || selectedProject.avatarDataFile
-        const data = await fetchJson(`${REGISTRY_BASE}/${dataFile}`)
+        const data = await loadAvatarDataJson(activeSource, dataFile)
         const list = Array.isArray(data) ? data : (Array.isArray(data?.avatars) ? data.avatars : [])
         const nextAvatars = list.map((item) => normalizeAvatar(item, selectedProject)).filter((item) => item.thumbnail_url || item.model_file_url)
         if (cancelled) return
@@ -338,7 +403,7 @@ export default function AvatarCreatorPanel() {
     }
     loadThemeAvatars()
     return () => { cancelled = true }
-  }, [projects, selectedCollection, vi])
+  }, [projects, selectedCollection, activeSource, vi])
 
   const filteredAvatars = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase()
@@ -550,6 +615,19 @@ export default function AvatarCreatorPanel() {
                 <div style={{ color: palette.text3, fontSize: 11 }}>{user?.email || user?.uuid || 'guest'}</div>
               </div>
             </div>
+          </div>
+
+          <div style={{ margin: '10px 0 0', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 12, fontWeight: 900, color: palette.text2 }}>{vi ? 'Nguồn/Source' : 'Source'}</span>
+            {sourceStatuses.map((source) => {
+              const dotColor = source.status === 'ok' ? '#22c55e' : source.status === 'error' ? '#ef4444' : source.status === 'loading' ? '#f59e0b' : palette.text3
+              return (
+                <span key={source.key} title={source.projectsUrl} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, border: `1px solid ${activeSource?.key === source.key ? palette.accent : palette.border}`, borderRadius: 999, padding: '5px 9px', background: activeSource?.key === source.key ? 'rgba(0,229,255,0.12)' : palette.card, color: palette.text2, fontSize: 11, fontWeight: 900 }}>
+                  <span aria-hidden="true" style={{ width: 9, height: 9, borderRadius: 999, background: dotColor, boxShadow: source.status === 'ok' ? '0 0 0 3px rgba(34,197,94,0.16)' : source.status === 'error' ? '0 0 0 3px rgba(239,68,68,0.14)' : 'none' }} />
+                  {source.label}
+                </span>
+              )
+            })}
           </div>
           <p style={{ margin: '10px 0 0', color: palette.text2, maxWidth: 760, lineHeight: 1.6, fontSize: 13 }}>
             {vi
