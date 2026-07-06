@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react'; // Import Icon phân trang
+import { ChevronLeft, ChevronRight } from 'lucide-react'; 
 import marketData from '../data/medical_3d_market.json';
 import { useAuth } from '../context/AuthContext';
 
@@ -257,13 +257,16 @@ export default function MedicalAssetStorePanel() {
       <div className="flex bg-black/50 p-1.5 rounded-2xl border border-white/10 w-full sm:w-fit mb-8 mx-auto sm:mx-0 shadow-inner">
         <button 
           onClick={() => setViewMode("store")}
-          className={`flex-1 sm:px-8 py-2.5 rounded-xl text-sm font-bold tracking-wide transition-all duration-300 ${
+          className={`flex-1 sm:px-8 py-2.5 rounded-xl text-sm font-bold tracking-wide transition-all duration-300 flex items-center justify-center gap-2 ${
             viewMode === "store" 
               ? 'bg-gradient-to-r from-[#00e5ff] to-[#00b8cc] text-black shadow-[0_0_15px_rgba(0,229,255,0.4)]' 
               : 'text-gray-400 hover:text-white hover:bg-white/5'
           }`}
         >
-          🛒 Chợ Mua Sắm
+          🛒 Chợ Mua Sắm 
+          <span className={`px-2 py-0.5 rounded-md text-[10px] ${viewMode === "store" ? "bg-black/20 text-black" : "bg-white/20 text-gray-300"}`}>
+            {marketData.length}
+          </span>
         </button>
         <button 
           onClick={() => setViewMode("inventory")}
@@ -273,7 +276,10 @@ export default function MedicalAssetStorePanel() {
               : 'text-gray-400 hover:text-white hover:bg-white/5'
           }`}
         >
-          🎒 Kho Đồ <span className="bg-white/20 px-2 py-0.5 rounded-md text-[10px]">{unlockedAssets.length}</span>
+          🎒 Kho Đồ 
+          <span className={`px-2 py-0.5 rounded-md text-[10px] ${viewMode === "inventory" ? "bg-white/20 text-white" : "bg-white/20 text-gray-300"}`}>
+            {unlockedAssets.length}
+          </span>
         </button>
       </div>
 
@@ -327,7 +333,7 @@ export default function MedicalAssetStorePanel() {
         Tìm thấy <strong className="text-[#00e5ff]">{filteredAssets.length}</strong> tài nguyên
       </div>
 
-      {/* ASSET ITEMS GRID (Sử dụng pagedAssets thay vì filteredAssets) */}
+      {/* ASSET ITEMS GRID */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-6">
         {pagedAssets.map((asset) => {
           const isOwned = unlockedAssets.includes(asset.id);
