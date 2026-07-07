@@ -7,40 +7,129 @@ import { useAuth } from '../context/AuthContext';
 // CHỦ ĐỀ (THEME) COMBOBOX — cùng ý tưởng với "Chủ đề (projects.json)" của
 // trang Tạo Avatar: một danh sách "chủ đề" để chọn, mỗi chủ đề trỏ tới một
 // nguồn dữ liệu JSON riêng. Ở đây item đầu tiên là kho nội bộ
-// (medical_3d_market.json), 4 item còn lại là 4 link .json lấy trực tiếp từ
-// README của modelscope/richdreamer (dataset gobjaverse):
-// https://github.com/modelscope/richdreamer/blob/main/dataset/gobjaverse/README.md
+// (medical_3d_market.json).
+//
+// 2 NHÓM chủ đề ngoài, cả hai đều lấy từ dataset gobjaverse của
+// modelscope/richdreamer (https://github.com/modelscope/richdreamer/blob/main/dataset/gobjaverse/README.md):
+//
+//  A) "Map" theme (previewable: true) — trỏ thẳng tới FILE MODEL THẬT
+//     (glb_map.json / fbx_map.json / obj_map.json / sketchfab_map.json trong
+//     gobjaverse_xl_alignment_map). Đây là nhóm popup có thể hiển thị 3D thật
+//     vì mỗi entry là {tarPath: link_file_model}. Với glb trên GitHub, link
+//     gốc là dạng "blob" (trang xem HTML) nên phải đổi sang
+//     raw.githubusercontent.com mới tải được file nhị phân cho <model-viewer>.
+//     FBX/OBJ vẫn được liệt kê để tham khảo/tải về, nhưng <model-viewer>
+//     (Google) chỉ hỗ trợ glTF/GLB nên 2 định dạng này không xem 3D trực tiếp
+//     được trong popup — vẫn hiện link tải gốc.
+//
+//  B) "Index/Caption" theme (previewable: false) — 4 link .json cũ, chỉ là
+//     cấu trúc index để hiển thị caption text theo ID item (không có file
+//     model thật), nên popup sẽ không render 3D, chỉ hiện thông tin văn bản.
 // ============================================================================
 const INTERNAL_THEME_ID = 'medical_internal';
 
 const EXTERNAL_THEMES = [
+  // ---- Nhóm A: Map theme — có model thật, xem 3D được trong popup ----
+  {
+    id: 'xl_align_glb_map',
+    name: 'XL Alignment · GLB Map (GitHub)',
+    license: 'gobjaverse_xl_alignment_map',
+    url: 'https://virutalbuy-public.oss-cn-hangzhou.aliyuncs.com/share/aigc3d/gobjaverse_xl_alignment_map/glb_map.json',
+    isMapTheme: true,
+    format: 'glb',
+    previewable: true,
+  },
+  {
+    id: 'xl_align_sketchfab_map',
+    name: 'XL Alignment · Sketchfab Map',
+    license: 'gobjaverse_xl_alignment_map',
+    url: 'https://virutalbuy-public.oss-cn-hangzhou.aliyuncs.com/share/aigc3d/gobjaverse_xl_alignment_map/sketchfab_map.json',
+    isMapTheme: true,
+    format: 'glb',
+    previewable: true,
+  },
+  {
+    id: 'xl_align_fbx_map',
+    name: 'XL Alignment · FBX Map (GitHub)',
+    license: 'gobjaverse_xl_alignment_map',
+    url: 'https://virutalbuy-public.oss-cn-hangzhou.aliyuncs.com/share/aigc3d/gobjaverse_xl_alignment_map/fbx_map.json',
+    isMapTheme: true,
+    format: 'fbx',
+    previewable: false, // model-viewer không hỗ trợ FBX
+  },
+  {
+    id: 'xl_align_obj_map',
+    name: 'XL Alignment · OBJ Map (GitHub)',
+    license: 'gobjaverse_xl_alignment_map',
+    url: 'https://virutalbuy-public.oss-cn-hangzhou.aliyuncs.com/share/aigc3d/gobjaverse_xl_alignment_map/obj_map.json',
+    isMapTheme: true,
+    format: 'obj',
+    previewable: false, // model-viewer không hỗ trợ OBJ
+  },
+  // ---- Nhóm B: Index/Caption theme cũ — chỉ có text/ID, không xem 3D ----
   {
     id: 'gobjaverse_280k',
-    name: 'G-Objaverse 280K',
+    name: 'G-Objaverse 280K (Index)',
     license: 'Objaverse (gobjaverse)',
     url: 'https://virutalbuy-public.oss-cn-hangzhou.aliyuncs.com/share/aigc3d/gobjaverse_280k.json',
+    previewable: false,
   },
   {
     id: 'category_annotation',
     name: 'Category Annotation (10 nhóm)',
     license: 'Objaverse subset',
     url: 'https://virutalbuy-public.oss-cn-hangzhou.aliyuncs.com/share/aigc3d/category_annotation.json',
+    previewable: false,
   },
   {
     id: 'text_captions_cap3d',
     name: 'Cap3D Text Captions',
     license: 'Cap3D',
     url: 'https://virutalbuy-public.oss-cn-hangzhou.aliyuncs.com/share/aigc3d/text_captions_cap3d.json',
+    previewable: false,
   },
   {
     id: 'gobjaverse_alignment',
-    name: 'Objaverse-XL Alignment',
+    name: 'Objaverse-XL Alignment (Index)',
     license: 'Objaverse-XL',
     url: 'https://virutalbuy-public.oss-cn-hangzhou.aliyuncs.com/share/aigc3d/gobjaverse_alignment.json',
+    previewable: false,
   },
 ];
 
 const MAX_EXTERNAL_PREVIEW = 100; // các file gốc có thể lên tới hàng trăm nghìn dòng -> chỉ xem trước
+
+// Đổi link "blob" (trang xem HTML) của GitHub sang raw.githubusercontent.com
+// để lấy được byte thật của file — <model-viewer> không tải được trang HTML.
+// https://github.com/{owner}/{repo}/blob/{ref}/{path...} -> https://raw.githubusercontent.com/{owner}/{repo}/{ref}/{path...}
+function toGithubRawUrl(url) {
+  try {
+    const parsed = new URL(url);
+    if (!/(^|\.)github\.com$/i.test(parsed.hostname)) return '';
+    const parts = parsed.pathname.split('/').filter(Boolean);
+    const blobIndex = parts.findIndex((part) => part === 'blob');
+    if (blobIndex < 2 || parts.length < blobIndex + 3) return '';
+    const [owner, repo] = parts;
+    const ref = parts[blobIndex + 1];
+    const filePath = parts.slice(blobIndex + 2).join('/');
+    if (!owner || !repo || !ref || !filePath) return '';
+    return `https://raw.githubusercontent.com/${owner}/${repo}/${ref}/${filePath}`;
+  } catch {
+    return '';
+  }
+}
+
+// Chỉ trả về modelUrl khi ta chắc chắn đó là link tải file trực tiếp
+// (raw GitHub, hoặc link đã kết thúc bằng .glb/.gltf) — nếu không chắc
+// (ví dụ trang xem model của Sketchfab, không phải file tải trực tiếp) thì
+// để trống, popup sẽ hiện link "Xem nguồn" thay vì cố render lỗi.
+function resolveDirectModelUrl(rawUrl) {
+  if (!rawUrl) return '';
+  const githubRaw = toGithubRawUrl(rawUrl);
+  if (githubRaw) return githubRaw;
+  if (/\.(glb|gltf)(\?|#|$)/i.test(rawUrl)) return rawUrl;
+  return '';
+}
 
 function externalThumbnail(themeName) {
   const initials = String(themeName || '3D').split(/\s+/).map((p) => p[0]).join('').slice(0, 2).toUpperCase();
@@ -63,6 +152,20 @@ function toEntriesArray(data) {
   if (Array.isArray(data)) return data.map((value, index) => ({ id: `item-${index}`, value }));
   if (data && typeof data === 'object') return Object.entries(data).map(([id, value]) => ({ id, value }));
   return [];
+}
+
+// Các file "map" (glb_map.json, fbx_map.json, obj_map.json, sketchfab_map.json)
+// có cấu trúc riêng: một MẢNG các object 1-cặp-key, ví dụ
+// [{ "1246/6228028.tar.gz": "https://github.com/.../vishnu.glb" }, ...]
+// -> quy về {id: tarPath, value: link_model}.
+function toMapEntriesArray(data) {
+  if (!Array.isArray(data)) return [];
+  const entries = [];
+  data.forEach((row) => {
+    if (!row || typeof row !== 'object') return;
+    Object.entries(row).forEach(([tarPath, link]) => entries.push({ id: tarPath, value: link }));
+  });
+  return entries;
 }
 
 function normalizeExternalItem(entry, theme, index) {
@@ -100,13 +203,40 @@ function normalizeExternalItem(entry, theme, index) {
   };
 }
 
+// Chuẩn hoá 1 dòng của "map" theme thành asset — chỉ gán modelUrl (để popup
+// gọi <model-viewer>) khi theme.previewable=true VÀ link được resolve chắc
+// chắn là file tải trực tiếp (raw GitHub .glb/.gltf); ngược lại để trống,
+// popup sẽ hiện link "Xem nguồn" thay vì cố render và báo lỗi.
+function normalizeMapItem(entry, theme, index) {
+  const { id: tarPath, value } = entry;
+  const rawUrl = typeof value === 'string' ? value.trim() : '';
+  const modelUrl = theme.previewable ? resolveDirectModelUrl(rawUrl) : '';
+
+  return {
+    id: `${theme.id}-${index}-${String(tarPath).slice(0, 60)}`,
+    title: (rawUrl ? fileNameFromUrl(rawUrl) : tarPath) || tarPath,
+    author: theme.name,
+    price: 0,
+    downloads: 0,
+    thumbnail: externalThumbnail(theme.name),
+    modelUrl,
+    tags: ['Open Dataset', (theme.format || '').toUpperCase(), theme.name].filter(Boolean),
+    isExternal: true,
+    sourceUrl: rawUrl || theme.url,
+    format: theme.format || '',
+    previewable: Boolean(theme.previewable),
+  };
+}
+
 async function loadExternalTheme(theme) {
   const response = await fetch(theme.url);
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   const data = await response.json();
-  const entries = toEntriesArray(data);
+  const entries = theme.isMapTheme ? toMapEntriesArray(data) : toEntriesArray(data);
   const total = entries.length;
-  const preview = entries.slice(0, MAX_EXTERNAL_PREVIEW).map((entry, index) => normalizeExternalItem(entry, theme, index));
+  const preview = entries
+    .slice(0, MAX_EXTERNAL_PREVIEW)
+    .map((entry, index) => (theme.isMapTheme ? normalizeMapItem(entry, theme, index) : normalizeExternalItem(entry, theme, index)));
   return { assets: preview, total };
 }
 
