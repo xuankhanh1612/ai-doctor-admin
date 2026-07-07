@@ -38,6 +38,7 @@ import StressReliefPanel from './components/StressReliefPanel.jsx'
 import PrintCenter from './print/PrintCenter.jsx'
 import UserProfilePanel from './components/UserProfilePanel.jsx'
 import DonationHeroPanel from './components/DonationHeroPanel.jsx'
+import ChooseUserRolePanel from './components/ChooseUserRolePanel.jsx'
 import AvatarCreatorPanel from './components/AvatarCreatorPanel.jsx'
 import Make3DModelPanel from './components/Make3DModelPanel.jsx'
 import My3DAssetPanel from './components/My3DAssetPanel.jsx'
@@ -116,6 +117,7 @@ export default function App() {
   }, [user?.uuid])
 
   const panelLabels = {
+    chooseUserRole: 'Chọn Vai Trò Anh Hùng',
     healthJourneyGame: 'Health Journey Game',
     medicalAssetStore: 'Chợ Tài nguyên 3D', // <--- THÊM NHÃN TẠI ĐÂY
     myRewardHealth: 'My Reward Health',
@@ -341,6 +343,13 @@ export default function App() {
             {active === 'organConnection' && <OrganConnectionPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'printPortal' && <PrintCenter onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'chatHistory' && <ChatHistoryPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} activePanelLabel={panelLabels[active] || active} />}
+            {active === 'chooseUserRole' && (
+              <ChooseUserRolePanel
+                onSelectRole={() => setActive('donationHero')}
+                onEnterAction={() => setActive('donationHero')}
+                onMicPress={() => setChatOpenSignal(s => s + 1)}
+              />
+            )}
             {active === 'donationHero' && (
               <DonationHeroPanel mode="member" onMicPress={() => setChatOpenSignal(s => s + 1)} />
             )}
