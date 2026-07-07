@@ -37,6 +37,7 @@ import DocumentOCRPanel from './components/DocumentOCRPanel.jsx'
 import StressReliefPanel from './components/StressReliefPanel.jsx'
 import PrintCenter from './print/PrintCenter.jsx'
 import UserProfilePanel from './components/UserProfilePanel.jsx'
+import DonationHeroPanel from './components/DonationHeroPanel.jsx'
 import AvatarCreatorPanel from './components/AvatarCreatorPanel.jsx'
 import Make3DModelPanel from './components/Make3DModelPanel.jsx'
 import My3DAssetPanel from './components/My3DAssetPanel.jsx'
@@ -53,7 +54,7 @@ import { addNotification } from './lib/notifications.js'
 const PANELS = ['healthJourneyGame', 'medicalAssetStore', 'myRewardHealth', 'rssPortal', 'waterDrinkChatBot', 'wikiMedVision', 'fullDocSummarization', 'documentOCR', 'twoDTo3DAsset', 'organConnection', 'healthJourney', 'lunchJourney', 'dinnerJourney', 'upload', 'imaging', 'checkin', 'family', 'record', 'familyRelationship', 'matrix3dBody', 'omnidirectional3dBody', 'twin', 'telemedicine', 'statAnalysis', 'swarm', 'consensus', 'protein3d', 'aiHealthcareVision', 'aiHealthcareVisionControl', 'stressRelief', 'aiInbodyPortal', 'printPortal', 'chatHistory']
 
 export default function App() {
-  const { user, loading } = useAuth()
+  const { user, loading, loginAnonymous } = useAuth()
   const { theme, t } = useApp()
   const [active, setActive]               = useState('healthJourneyGame')
   const [selectedMember, setSelectedMember] = useState(null)
@@ -67,6 +68,46 @@ export default function App() {
     showEnd: false,
   })
   const [sidebarOpenSignal, setSidebarOpenSignal] = useState(0)
+
+  // Màn hình "Anh Hùng Hiến Tặng" chạy TRƯỚC trang Login khi vào web (guest
+  // chưa đăng nhập) — preLoginView 'hero' hiện DonationHeroPanel, bấm 1
+  // trong 3 nút (Tạo tài khoản / Hiến tặng ngay / Nâng cao kiến thức) sẽ
+  // chuyển 'login' để hiện LoginPage thật. chatOpenSignal dùng chung cho cả
+  // 2 nhánh guest và đã đăng nhập: mỗi lần đổi số là 1 yêu cầu "mở Global
+  // Chatbot + bật mic ngay" từ nút mic trên DonationHeroPanel.
+  const [preLoginView, setPreLoginView] = useState('hero')
+  const [chatOpenSignal, setChatOpenSignal] = useState(0)
+  const prevUserRef = useRef(null)
+
+  useEffect(() => {
+    // Vừa logout (trước đó có user, giờ không còn) -> lần vào tiếp theo lại
+    // bắt đầu từ màn hình Anh Hùng Hiến Tặng thay vì thẳng vào Login.
+    if (prevUserRef.current && !user) setPreLoginView('hero')
+    prevUserRef.current = user
+  }, [user])
+
+  // Bấm mic khi CÒN LÀ KHÁCH (chưa có user) -> tạo ngay 1 phiên "anonymous"
+  // (uuid thật, lưu bền trong IndexedDB qua loginAnonymous() — cùng cơ chế
+  // nút "Tiếp tục với tư cách khách" trên LoginPage đã dùng) TRƯỚC khi mở
+  // chat, thay vì để userKey = null. Nhờ vậy lịch sử chat được gắn với 1
+  // danh tính thật ngay từ tin nhắn đầu tiên: nếu người này quay lại cùng
+  // thiết bị, hoặc sau này hoàn tất "Tạo tài khoản" bằng cùng phiên anon
+  // này, lịch sử chat vẫn còn nguyên — không bị mất/tách rời như khi lưu
+  // dưới khoá guest "null" chung chung.
+  // Vì loginAnonymous() gọi setUser(...), sau khi resolve app sẽ tự chuyển
+  // từ màn hình guest sang "app đã đăng nhập" (do điều kiện `if (!user)`
+  // bên dưới) — nên chủ động set active = 'donationHero' để người dùng vẫn
+  // thấy đúng màn hình này (giờ ở chế độ member), không bị nhảy sang panel
+  // mặc định khác.
+  const handleGuestMicPress = async () => {
+    try {
+      await loginAnonymous()
+    } catch (e) {
+      console.warn('Không tạo được phiên khách (anonymous) khi bấm mic:', e)
+    }
+    setActive('donationHero')
+    setChatOpenSignal(s => s + 1)
+  }
 
   useEffect(() => {
     setCompareImage(null)
@@ -229,7 +270,25 @@ export default function App() {
     )
   }
 
-  if (!user) return <LoginPage onSuccess={() => {}} />
+  if (!user) {
+    if (preLoginView === 'hero') {
+      return (
+        <div style={{ minHeight: '100vh', background: '#eef7f1' }}>
+          <DonationHeroPanel
+            mode="guest"
+            onEnterAction={() => setPreLoginView('login')}
+            onMicPress={handleGuestMicPress}
+          />
+          {/* Không mount GlobalAIChatbot riêng ở đây: bấm mic đã tự tạo
+          phiên anonymous (handleGuestMicPress) rồi chuyển thẳng sang màn
+          hình "đã đăng nhập" (donationHero, mode="member") trước khi mở
+          chat — nơi GlobalAIChatbot thật (dưới cùng layout chính) xử lý
+          việc mở + bật mic thông qua chatOpenSignal dùng chung. */}
+        </div>
+      )
+    }
+    return <LoginPage onSuccess={() => {}} />
+  }
 
   const isDark = theme === 'dark'
   const mainBg = isDark ? 'var(--bg2)' : '#f4f7fb'
@@ -282,6 +341,9 @@ export default function App() {
             {active === 'organConnection' && <OrganConnectionPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'printPortal' && <PrintCenter onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'chatHistory' && <ChatHistoryPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} activePanelLabel={panelLabels[active] || active} />}
+            {active === 'donationHero' && (
+              <DonationHeroPanel mode="member" onMicPress={() => setChatOpenSignal(s => s + 1)} />
+            )}
             {active === 'profile'   && <UserProfilePanel />}
             {active === 'myAiAvatar' && user?.isAdmin && <MyAIAvatarPanel />}
             {active === 'myAiAvatar' && !user?.isAdmin && (
@@ -315,7 +377,7 @@ export default function App() {
           onOpenMainMenu={openMainMenu}
           onNavigate={(id) => setActive(id)}
         />
-        <GlobalAIChatbot activePanelLabel={panelLabels[active] || active} />
+        <GlobalAIChatbot activePanelLabel={panelLabels[active] || active} externalOpenSignal={chatOpenSignal} autoStartMic />
       </div>
     </div>
   )
