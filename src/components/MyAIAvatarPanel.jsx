@@ -38,11 +38,11 @@ const LINKS = {
   hi3dgenProject: 'https://stable-x.github.io/Hi3DGen/',
   // ReconViaGen (ICLR2026, GAP-LAB-CUHK-SZ) — tái dựng 3D vật thể từ NHIỀU
   // ảnh góc chụp khác nhau bằng generation (khác Hi3DGen: 1 ảnh; khác
-  // LAM/LHM: không chuyên người). Alpha demo host trên Space của Stable-X,
-  // đang "Running on Zero" tại thời điểm viết.
-  reconViaGenGithub: 'https://github.com/GAP-LAB-CUHK-SZ/ReconViaGen',
-  reconViaGenSpace: 'https://huggingface.co/spaces/Stable-X/ReconViaGen',
-  reconViaGenSpaceEmbed: 'https://stable-x-reconviagen.hf.space',
+  // LAM/LHM: không chuyên người). Khung bên dưới nhúng demo v0.5 host
+  // trên Space của Stable-X, đang "Running on Zero" tại thời điểm viết.
+  reconViaGenGithub: 'https://github.com/GAP-LAB-CUHK-SZ/ReconViaGen/tree/v0.5',
+  reconViaGenSpace: 'https://huggingface.co/spaces/Stable-X/ReconViaGen-v0.5',
+  reconViaGenSpaceEmbed: 'https://stable-x-reconviagen-v0-5.hf.space',
   reconViaGenProject: 'https://jiahao620.github.io/reconviagen/',
 }
 
@@ -492,21 +492,21 @@ export default function MyAIAvatarPanel() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
           <Sparkles size={16} color={isDark ? '#00e5ff' : '#00b8cc'} />
           <div style={{ fontSize: 14, fontWeight: 800, color: text }}>
-            {vi ? 'Bonus: ReconViaGen (tái dựng 3D từ nhiều ảnh)' : 'Bonus: ReconViaGen (multi-view 3D reconstruction)'}
+            {vi ? 'Bonus: ReconViaGen v0.5 (tái dựng vật thể 3D đa góc)' : 'Bonus: ReconViaGen v0.5 (multi-view 3D object reconstruction)'}
           </div>
           <span style={{
             fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 999,
             background: isDark ? 'rgba(0,230,118,0.15)' : 'rgba(0,230,118,0.1)', color: '#00c46a',
-          }}>ICLR 2026 · Stable-X/ReconViaGen</span>
+          }}>ICLR 2026 · ReconViaGen-v0.5</span>
         </div>
         <p style={{ margin: '0 0 12px', fontSize: 12.5, color: text2, lineHeight: 1.6 }}>
           {vi
-            ? 'ReconViaGen (github.com/GAP-LAB-CUHK-SZ/ReconViaGen, ICLR 2026) khác Hi3DGen ở trên: thay vì dựng mesh từ MỘT ảnh, nó dựng lại vật thể 3D chính xác hơn khi có NHIỀU ảnh chụp từ các góc khác nhau, bằng cách kết hợp reconstruction với generation để lấp đầy phần bị che khuất. Bản v0.5 còn kết hợp với TRELLIS.2 để xuất mesh độ phân giải cao kèm vật liệu PBR. Phù hợp khi bạn có sẵn vài ảnh chụp cùng một vật thể/dụng cụ y tế từ nhiều góc và muốn mesh 3D chính xác hơn so với chỉ dùng 1 ảnh.'
-            : 'ReconViaGen (github.com/GAP-LAB-CUHK-SZ/ReconViaGen, ICLR 2026) differs from Hi3DGen above: instead of building a mesh from a single image, it reconstructs the 3D object more accurately when given multiple images from different viewpoints, combining reconstruction with generation to fill in occluded parts. The v0.5 branch also pairs with TRELLIS.2 to export high-resolution meshes with PBR materials. Good fit when you already have several photos of the same object/medical instrument from different angles and want a more accurate mesh than a single image would give.'}
+            ? 'ReconViaGen v0.5 (github.com/GAP-LAB-CUHK-SZ/ReconViaGen/tree/v0.5, ICLR 2026) khác Hi3DGen ở trên: thay vì dựng mesh từ MỘT ảnh, nó dựng lại vật thể 3D chính xác hơn khi có NHIỀU ảnh chụp từ các góc khác nhau, bằng cách kết hợp reconstruction với generation để lấp đầy phần bị che khuất. Bản v0.5 (theo link bạn cung cấp) còn kết hợp với TRELLIS.2 để xuất mesh độ phân giải cao kèm vật liệu PBR. Phù hợp khi bạn có sẵn vài ảnh chụp cùng một vật thể/dụng cụ y tế từ nhiều góc và muốn mesh 3D chính xác hơn so với chỉ dùng 1 ảnh.'
+            : 'ReconViaGen v0.5 (github.com/GAP-LAB-CUHK-SZ/ReconViaGen/tree/v0.5, ICLR 2026) differs from Hi3DGen above: instead of building a mesh from a single image, it reconstructs the 3D object more accurately when given multiple images from different viewpoints, combining reconstruction with generation to fill in occluded parts. The v0.5 branch (from the provided link) also pairs with TRELLIS.2 to export high-resolution meshes with PBR materials. Good fit when you already have several photos of the same object/medical instrument from different angles and want a more accurate mesh than a single image would give.'}
         </p>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
-          <LinkButton href={LINKS.reconViaGenGithub} icon={<Github size={13} />} label={vi ? 'Mã nguồn ReconViaGen' : 'ReconViaGen source'} isDark={isDark} />
-          <LinkButton href={LINKS.reconViaGenSpace} icon={<ExternalLink size={13} />} label={vi ? 'Space demo (Stable-X/ReconViaGen)' : 'Demo Space (Stable-X/ReconViaGen)'} isDark={isDark} />
+          <LinkButton href={LINKS.reconViaGenGithub} icon={<Github size={13} />} label={vi ? 'Mã nguồn v0.5' : 'v0.5 source'} isDark={isDark} />
+          <LinkButton href={LINKS.reconViaGenSpace} icon={<ExternalLink size={13} />} label={vi ? 'Space demo v0.5' : 'v0.5 Demo Space'} isDark={isDark} />
           <LinkButton href={LINKS.reconViaGenProject} icon={<ExternalLink size={13} />} label={vi ? 'Trang dự án ReconViaGen' : 'ReconViaGen project page'} isDark={isDark} />
         </div>
         <div style={{
@@ -523,7 +523,7 @@ export default function MyAIAvatarPanel() {
             </div>
           )}
           <iframe
-            title="ReconViaGen (Stable-X) - Hugging Face Space"
+            title="ReconViaGen v0.5 (Stable-X) - Hugging Face Space"
             src={LINKS.reconViaGenSpaceEmbed}
             onLoad={() => setReconViaGenIframeLoaded(true)}
             style={{ width: '100%', height: '100%', border: 'none', opacity: reconViaGenIframeLoaded ? 1 : 0, transition: 'opacity 0.3s' }}
