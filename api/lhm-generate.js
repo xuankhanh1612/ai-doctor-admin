@@ -18,8 +18,15 @@
 // bị chặn khu vực, chỉ cần set LHM_GRADIO_URL trỏ tới URL Gradio raw đó —
 // code sẽ ưu tiên dùng URL đó thay vì Space HF.
 //
+// CẬP NHẬT LẦN 2: 3DAIGC/LHM (bản LHM gốc) vẫn "Build error" tại thời điểm
+// viết. Nhóm tác giả đã ra bản kế nhiệm LHM++ (github aigc3d/LHM-plusplus,
+// nhanh hơn LHM gốc nhờ kiến trúc Encoder-Decoder Point-Image Transformer),
+// với Space demo riêng "Lingteng/LHMPP" đang "Running on Zero" (còn sống).
+// Đổi mặc định sang Space đó để có kết quả dùng được ngay; vẫn có thể ép về
+// LHM gốc qua LHM_HF_SPACE=3DAIGC/LHM nếu sau này bên đó tự sửa xong.
+//
 // Env vars (đều tuỳ chọn):
-//   LHM_HF_SPACE     - đổi Space HF khác, default "3DAIGC/LHM"
+//   LHM_HF_SPACE     - đổi Space HF khác, default "Lingteng/LHMPP" (LHM++)
 //   HF_TOKEN         - HF access token, tăng rate limit / dùng bản duplicate riêng
 //   LHM_GRADIO_URL   - nếu set, ưu tiên connect thẳng URL Gradio này thay vì Space HF
 //                      (dùng cho mirror tự host của riêng bạn, KHÔNG dùng cho
@@ -31,7 +38,7 @@ import {
   connectWithWakeRetry, connectHfSpaceWithWakeRetry,
 } from './_lib/gradioBridge.js'
 
-const DEFAULT_SPACE = process.env.LHM_HF_SPACE || '3DAIGC/LHM'
+const DEFAULT_SPACE = process.env.LHM_HF_SPACE || 'Lingteng/LHMPP'
 
 export async function lhmGenerateHandler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')

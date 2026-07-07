@@ -159,16 +159,16 @@ export default function LhmGeneratePanel({ isDark, vi, border, surface, text, te
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
         <Wand2 size={15} color={isDark ? '#00e5ff' : '#00b8cc'} />
         <div style={{ fontSize: 13.5, fontWeight: 800, color: text }}>
-          {vi ? 'Tạo avatar 3D bằng LHM (Hugging Face Space)' : 'Generate a 3D avatar via LHM (Hugging Face Space)'}
+          {vi ? 'Tạo avatar 3D bằng LHM++ (Hugging Face Space)' : 'Generate a 3D avatar via LHM++ (Hugging Face Space)'}
         </div>
       </div>
       <div style={{ marginBottom: 8 }}>
-        <SpaceStatusBadge space="3DAIGC/LHM" vi={vi} text3={text3} />
+        <SpaceStatusBadge space="Lingteng/LHMPP" vi={vi} text3={text3} />
       </div>
       <p style={{ margin: '0 0 12px', fontSize: 12, color: text3, lineHeight: 1.6 }}>
         {vi
-          ? 'Gọi model LHM thật (aigc3d/LHM) trên Space "3DAIGC/LHM" — cùng nhóm tác giả với LAM nhưng đang chạy ổn định hơn. (Mirror ModelScope đã thử trước đó bị chặn cứng theo khu vực — chỉ nhận tài khoản đăng ký bằng SĐT Trung Quốc đại lục — nên không dùng được.) Vì vẫn dùng chung ZeroGPU công khai, có thể phải chờ hàng đợi hoặc gặp lỗi thật khi Space quá tải — lỗi đó hiện nguyên văn bên dưới, không có kết quả giả lập.'
-          : 'Calls the real LHM model (aigc3d/LHM) on the "3DAIGC/LHM" Space — same authors as LAM but currently running more reliably. (The ModelScope mirror tried earlier turned out to be hard geo-blocked to accounts registered with a mainland China phone number, so it\'s not usable.) It still shares public ZeroGPU, so it may queue or genuinely fail under load — that real error shows below, nothing is simulated.'}
+          ? 'Gọi model LHM++ thật (aigc3d/LHM-plusplus) trên Space "Lingteng/LHMPP" — bản kế nhiệm LHM, nhanh hơn đáng kể nhờ kiến trúc Encoder-Decoder Point-Image Transformer, và Space này đang chạy ("Running on Zero") thay vì bị lỗi build như 3DAIGC/LHM gốc. Vì vẫn dùng chung ZeroGPU công khai, có thể phải chờ hàng đợi hoặc gặp lỗi thật khi Space quá tải — lỗi đó hiện nguyên văn bên dưới, không có kết quả giả lập.'
+          : 'Calls the real LHM++ model (aigc3d/LHM-plusplus) on the "Lingteng/LHMPP" Space — the successor to LHM, substantially faster thanks to its Encoder-Decoder Point-Image Transformer architecture, and this Space is actually running ("Running on Zero") instead of erroring like the original 3DAIGC/LHM. It still shares public ZeroGPU, so it may queue or genuinely fail under load — that real error shows below, nothing is simulated.'}
       </p>
 
       <div style={{ display: 'flex', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>

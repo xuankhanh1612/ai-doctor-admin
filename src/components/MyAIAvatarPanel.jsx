@@ -18,6 +18,16 @@ const LINKS = {
   audio2exp: 'https://github.com/aigc3d/LAM_Audio2Expression',
   webRender: 'https://github.com/aigc3d/LAM_WebRender',
   openAvatarChat: 'https://github.com/HumanAIGC-Engineering/OpenAvatarChat',
+  // LHM++ — bản kế nhiệm LHM, nhanh hơn đáng kể (Encoder-Decoder Point-Image
+  // Transformer), Space HF đang "Running on Zero" (còn sống, khác với
+  // 3DAIGC/LHM cũ đang Build error)
+  lhmppGithub: 'https://github.com/aigc3d/LHM-plusplus',
+  lhmppSpace: 'https://huggingface.co/spaces/Lingteng/LHMPP',
+  lhmppProject: 'https://lingtengqiu.github.io/LHM++/',
+  // OpenAvatarChat — bản demo CHÍNH THỨC do team tự host trên HF Space
+  // (đang "Running"), dùng ngay được, không cần tự host nữa
+  openAvatarChatSpace: 'https://huggingface.co/spaces/HumanAIGC-Engineering-Team/open-avatar-chat',
+  openAvatarChatSpaceEmbed: 'https://humanaigc-engineering-team-open-avatar-chat.static.hf.space/index.html',
 }
 
 const OAC_SETUP_CMD = `git clone https://github.com/HumanAIGC-Engineering/OpenAvatarChat.git
@@ -105,6 +115,7 @@ export default function MyAIAvatarPanel() {
   const vi = lang === 'vi'
 
   const [iframeLoaded, setIframeLoaded] = useState(false)
+  const [oacIframeLoaded, setOacIframeLoaded] = useState(false)
   const [copied, setCopied] = useState(false)
   const [copiedSetup, setCopiedSetup] = useState(false)
   const [copiedLhmSetup, setCopiedLhmSetup] = useState(false)
@@ -224,30 +235,35 @@ export default function MyAIAvatarPanel() {
         <LamGeneratePanel isDark={isDark} vi={vi} border={border} surface={surface} text={text} text2={text2} text3={text3} />
       </div>
 
-      {/* Alternative: LHM model via the more stable ModelScope Studio mirror,
-          for when the LAM/LHM Hugging Face Spaces are asleep or out of ZeroGPU quota */}
+      {/* Alternative: LHM++ (aigc3d/LHM-plusplus), the faster successor to
+          LHM whose HF Space is actually alive, unlike the original 3DAIGC/LHM */}
       <div style={{ marginBottom: 20 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
           <Zap size={16} color={isDark ? '#00e5ff' : '#00b8cc'} />
           <div style={{ fontSize: 14, fontWeight: 800, color: text }}>
-            {vi ? 'Thay thế: LHM (thường ổn định hơn LAM)' : 'Alternative: LHM (usually more stable than LAM)'}
+            {vi ? 'Thay thế: LHM++ (nhanh hơn, Space đang sống)' : 'Alternative: LHM++ (faster, Space is alive)'}
           </div>
           <span style={{
             fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 999,
             background: isDark ? 'rgba(0,230,118,0.15)' : 'rgba(0,230,118,0.1)', color: '#00c46a',
-          }}>3DAIGC/LHM</span>
+          }}>Lingteng/LHMPP</span>
         </div>
         <p style={{ margin: '0 0 12px', fontSize: 12.5, color: text2, lineHeight: 1.6 }}>
           {vi
-            ? 'Nếu Space LAM trên Hugging Face đang lỗi runtime hoặc hết quota ZeroGPU, đây là model LHM (github.com/aigc3d/LHM) — dự án "chị em" của LAM, cùng nhóm tác giả, chạy trên Space "3DAIGC/LHM" riêng. (Đã thử mirror ModelScope trước đó nhưng bị chặn theo khu vực, chỉ nhận SĐT Trung Quốc đại lục, nên bỏ hướng đó.)'
-            : 'If the LAM Space on Hugging Face is erroring or out of ZeroGPU quota, this calls LHM (github.com/aigc3d/LHM) — LAM\'s sister project from the same authors, running on its own "3DAIGC/LHM" Space. (The ModelScope mirror was tried first but turned out to be geo-blocked to mainland China phone numbers only, so that route was dropped.)'}
+            ? 'LHM++ (github.com/aigc3d/LHM-plusplus) là bản kế nhiệm LHM, tái thiết kế kiến trúc (Encoder-Decoder Point-Image Transformer) để nhanh hơn đáng kể, dựng người từ ảnh không cần tư thế chuẩn. Space demo "Lingteng/LHMPP" đang thực sự chạy — khác với 3DAIGC/LAM (lỗi driver GPU) và 3DAIGC/LHM gốc (lỗi build) đã gặp ở trên. (Mirror ModelScope thử trước đó bị chặn theo khu vực, chỉ nhận SĐT Trung Quốc đại lục, nên đã bỏ hướng đó.)'
+            : 'LHM++ (github.com/aigc3d/LHM-plusplus) is the successor to LHM, redesigned (Encoder-Decoder Point-Image Transformer architecture) to be substantially faster, reconstructing a person from images without needing a canonical pose. The "Lingteng/LHMPP" demo Space is actually running — unlike 3DAIGC/LAM (GPU driver error) and the original 3DAIGC/LHM (build error) hit earlier. (The ModelScope mirror tried first turned out to be geo-blocked to mainland China phone numbers only, so that route was dropped.)'}
         </p>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+          <LinkButton href={LINKS.lhmppGithub} icon={<Github size={13} />} label={vi ? 'Mã nguồn LHM++' : 'LHM++ source'} isDark={isDark} />
+          <LinkButton href={LINKS.lhmppSpace} icon={<ExternalLink size={13} />} label={vi ? 'Space demo (Lingteng/LHMPP)' : 'Demo Space (Lingteng/LHMPP)'} isDark={isDark} />
+          <LinkButton href={LINKS.lhmppProject} icon={<ExternalLink size={13} />} label={vi ? 'Trang dự án LHM++' : 'LHM++ project page'} isDark={isDark} />
+        </div>
         <LhmGeneratePanel isDark={isDark} vi={vi} border={border} surface={surface} text={text} text2={text2} text3={text3} />
 
         <div style={{ background: surface, border: `1px solid ${border}`, borderRadius: 14, padding: 16, marginTop: 14 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, color: text }}>
-              <Terminal size={14} /> {vi ? 'Tự host LHM (không phụ thuộc Space công khai)' : 'Self-host LHM (no dependence on the public Space)'}
+              <Terminal size={14} /> {vi ? 'Tự host LHM/LHM++ (dự phòng nếu Space công khai lại sập)' : 'Self-host LHM/LHM++ (backup if the public Space goes down again)'}
             </div>
             <button onClick={copyLhmSetupCmd} style={{
               display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11.5, fontWeight: 600,
@@ -264,8 +280,8 @@ export default function MyAIAvatarPanel() {
           }}>{LHM_SETUP_CMD}</pre>
           <div style={{ marginTop: 10, fontSize: 11.5, color: text3 }}>
             {vi
-              ? 'Vì Space công khai 3DAIGC/LAM và 3DAIGC/LHM đang lỗi (build/runtime) và mirror ModelScope bị chặn khu vực, đây là cách duy nhất bảo đảm chạy được ngay: tự host trên máy/VPS có GPU riêng của bạn, rồi khai báo LHM_GRADIO_URL trỏ tới đó (xem .env.example). Sau khi 3DAIGC sửa Space công khai, bạn có thể bỏ biến này để quay lại dùng Space miễn phí của họ.'
-              : 'Since the public Spaces 3DAIGC/LAM and 3DAIGC/LHM are currently erroring (build/runtime) and the ModelScope mirror is geo-blocked, this is the one path guaranteed to work right now: self-host on your own GPU machine/VPS, then set LHM_GRADIO_URL to point at it (see .env.example). Once 3DAIGC fixes the public Space, you can drop this env var to go back to their free one.'}
+              ? 'Panel phía trên giờ gọi thẳng Space "Lingteng/LHMPP" đang sống nên phần lớn trường hợp bạn không cần tự host nữa. Khối lệnh này chỉ để dự phòng nếu Space đó cũng sập hoặc quá tải — tự host xong thì khai báo LHM_GRADIO_URL trỏ tới server riêng của bạn (xem .env.example) để ghi đè, không cần đổi code.'
+              : 'The panel above now calls the live "Lingteng/LHMPP" Space directly, so in most cases you no longer need to self-host. Keep this command block as a backup for if that Space also goes down or gets overloaded — once self-hosted, set LHM_GRADIO_URL to your own server (see .env.example) to override, no code change needed.'}
           </div>
         </div>
       </div>
@@ -320,9 +336,44 @@ export default function MyAIAvatarPanel() {
         </p>
 
         <div style={{ background: surface, border: `1px solid ${border}`, borderRadius: 14, padding: 16, marginBottom: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, color: text }}>
+              <Sparkles size={14} /> {vi ? 'Cách nhanh nhất: demo chính thức (không cần tự host)' : 'Fastest option: official demo (no self-hosting needed)'}
+            </div>
+            <LinkButton href={LINKS.openAvatarChatSpace} icon={<ExternalLink size={13} />} label={vi ? 'Mở trong tab mới' : 'Open in new tab'} isDark={isDark} />
+          </div>
+          <p style={{ margin: '0 0 10px', fontSize: 12, color: text3, lineHeight: 1.6 }}>
+            {vi
+              ? 'Chính team HumanAIGC-Engineering-Team tự host sẵn một bản demo đầy đủ (chọn được LiteAvatar hoặc LAM) trên Hugging Face Space — dùng thử ngay bên dưới, không cần dựng server riêng.'
+              : 'The HumanAIGC-Engineering-Team itself hosts a complete demo (choice of LiteAvatar or LAM) on a Hugging Face Space — try it right below, no need to stand up your own server.'}
+          </p>
+          <div style={{
+            position: 'relative', width: '100%', height: 560, borderRadius: 12, overflow: 'hidden',
+            border: `1px solid ${border}`, background: isDark ? '#05070f' : '#f4f6fa',
+          }}>
+            {!oacIframeLoaded && (
+              <div style={{
+                position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column',
+                alignItems: 'center', justifyContent: 'center', gap: 8, color: text3, fontSize: 12.5,
+              }}>
+                <Sparkles size={20} className="spin" />
+                {vi ? 'Đang tải demo OpenAvatarChat...' : 'Loading the OpenAvatarChat demo...'}
+              </div>
+            )}
+            <iframe
+              title="Open Avatar Chat - Hugging Face Space"
+              src={LINKS.openAvatarChatSpaceEmbed}
+              onLoad={() => setOacIframeLoaded(true)}
+              style={{ width: '100%', height: '100%', border: 'none', opacity: oacIframeLoaded ? 1 : 0, transition: 'opacity 0.3s' }}
+              allow="camera; microphone; autoplay; fullscreen"
+            />
+          </div>
+        </div>
+
+        <div style={{ background: surface, border: `1px solid ${border}`, borderRadius: 14, padding: 16, marginBottom: 14 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, color: text }}>
-              <Terminal size={14} /> {vi ? 'Tự host backend (một lần)' : 'Self-host the backend (one time)'}
+              <Terminal size={14} /> {vi ? 'Hoặc tự host backend riêng (tuỳ chỉnh được nhiều hơn)' : 'Or self-host your own backend (more customizable)'}
             </div>
             <button onClick={copySetupCmd} style={{
               display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11.5, fontWeight: 600,
