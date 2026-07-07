@@ -128,16 +128,89 @@ const GOBJAVERSE_INDEX_TO_OBJAVERSE_URL = 'https://virutalbuy-public.oss-cn-hang
 const GOBJAVERSE_280K_INDEX_TO_OBJAVERSE_URL = 'https://virutalbuy-public.oss-cn-hangzhou.aliyuncs.com/share/aigc3d/gobjaverse_280k_index_to_objaverse.json';
 const TEXT_CAPTIONS_CAP3D_URL = 'https://virutalbuy-public.oss-cn-hangzhou.aliyuncs.com/share/aigc3d/text_captions_cap3d.json';
 
-// Cache module-level: url -> Promise<JSON đã tải> (chỉ fetch 1 lần / phiên trang)
+// ============================================================================
+// WEB WORKER CHO JSON.parse — offload việc parse các file JSON lớn (Cap3D
+// captions, gobjaverse index, *_map.json...) ra khỏi main thread, tránh đơ
+// UI khi mở theme/popup lần đầu. 1 worker singleton dùng chung cho cả phiên
+// trang; nhiều lệnh gọi song song được tương quan bằng requestId. Nếu Worker
+// không khởi tạo được (môi trường lạ / CSP chặn) thì fallback JSON.parse
+// thẳng trên main thread để tính năng vẫn chạy, chỉ mất phần tối ưu UI.
+// ============================================================================
+let jsonParseWorker = null;
+let jsonParseRequestSeq = 0;
+const jsonParsePending = new Map();
+
+function getJsonParseWorker() {
+  if (jsonParseWorker) return jsonParseWorker;
+  try {
+    jsonParseWorker = new Worker(new URL('../workers/jsonParseWorker.js', import.meta.url), { type: 'module' });
+    jsonParseWorker.onmessage = (event) => {
+      const { requestId, ok, data, error } = event.data || {};
+      const pending = jsonParsePending.get(requestId);
+      if (!pending) return;
+      jsonParsePending.delete(requestId);
+      if (ok) pending.resolve(data);
+      else pending.reject(new Error(error || 'JSON.parse lỗi (worker)'));
+    };
+    jsonParseWorker.onerror = () => {
+      // Lỗi ở cấp worker (hiếm) -> reject mọi request đang chờ để không treo
+      // promise mãi mãi; lần gọi kế tiếp sẽ tự tạo lại worker mới.
+      jsonParsePending.forEach(({ reject }) => reject(new Error('Worker JSON.parse lỗi')));
+      jsonParsePending.clear();
+      jsonParseWorker = null;
+    };
+  } catch {
+    jsonParseWorker = null;
+  }
+  return jsonParseWorker;
+}
+
+function parseJsonInWorker(text) {
+  const worker = getJsonParseWorker();
+  if (!worker) return Promise.reject(new Error('Không tạo được Worker'));
+  const requestId = ++jsonParseRequestSeq;
+  return new Promise((resolve, reject) => {
+    jsonParsePending.set(requestId, { resolve, reject });
+    worker.postMessage({ requestId, text });
+  });
+}
+
+// Parse "thông minh": ưu tiên Worker (không chặn main thread); nếu vì lý do
+// gì đó Worker lỗi/không dùng được thì fallback JSON.parse thẳng.
+async function parseJsonSmart(text) {
+  try {
+    return await parseJsonInWorker(text);
+  } catch {
+    return JSON.parse(text);
+  }
+}
+
+// Cache module-level: url -> Promise<JSON đã tải/parse> (dùng trong 1 phiên
+// trang — nếu 2 nơi cùng cần 1 url cùng lúc, chỉ 1 lượt tải+parse chạy).
+// Tầng bền vững hơn (sống sót qua F5 / đóng mở lại trang) nằm ở IndexedDB —
+// xem loadJsonCacheFromDB/saveJsonCacheToDB ở khối "MODULE INDEXED-DB" bên
+// dưới; các dataset này gần như tĩnh nên không cần tải+parse lại mỗi lần.
 const jsonFetchCache = new Map();
 function fetchJsonOnce(url) {
   if (!jsonFetchCache.has(url)) {
     jsonFetchCache.set(
       url,
-      fetch(url).then((res) => {
+      (async () => {
+        // 1) Đã có trong IndexedDB từ phiên trước -> dùng luôn, khỏi tải mạng.
+        const cached = await loadJsonCacheFromDB(url);
+        if (cached !== undefined) return cached;
+
+        // 2) Chưa có -> tải text thô rồi parse TRONG WORKER (không chặn main
+        // thread), thay vì res.json() chạy thẳng trên main thread.
+        const res = await fetch(url);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json();
-      })
+        const text = await res.text();
+        const data = await parseJsonSmart(text);
+
+        // 3) Lưu lại cho lần sau (F5 / mở lại trang không phải tải+parse lại).
+        saveJsonCacheToDB(url, data);
+        return data;
+      })()
     );
   }
   return jsonFetchCache.get(url);
@@ -506,7 +579,14 @@ function normalizeMapItem(entry, theme, index) {
 // ============================================================================
 const DB_NAME = 'AiDoctor_Store_DB';
 const STORE_NAME = 'user_assets_store';
-const DB_VERSION = 1;
+// Store mới: cache JSON đã parse của các theme/URL ngoài (Cap3D captions,
+// gobjaverse index, *_map.json...) — sống sót qua F5/đóng mở lại trang, để
+// khỏi phải tải+parse lại file nặng mỗi lần vào trang (dataset gần như tĩnh,
+// không cần làm mới liên tục). Bump DB_VERSION lên 2 để trigger
+// onupgradeneeded tạo thêm store này cho DB cũ đã tồn tại (v1) trên máy
+// người dùng.
+const JSON_CACHE_STORE_NAME = 'external_json_cache';
+const DB_VERSION = 2;
 
 const initDB = () => {
   return new Promise((resolve, reject) => {
@@ -516,18 +596,24 @@ const initDB = () => {
       if (!db.objectStoreNames.contains(STORE_NAME)) {
         db.createObjectStore(STORE_NAME);
       }
+      if (!db.objectStoreNames.contains(JSON_CACHE_STORE_NAME)) {
+        db.createObjectStore(JSON_CACHE_STORE_NAME);
+      }
     };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
   });
 };
 
-const saveDataToDB = async (key, value) => {
+// storeName mặc định = STORE_NAME (dữ liệu tài khoản) để không phải sửa các
+// lời gọi hiện có (coin, unlocked assets); JSON cache dùng lại 2 hàm này với
+// storeName = JSON_CACHE_STORE_NAME thay vì viết lặp code IndexedDB riêng.
+const saveDataToDB = async (key, value, storeName = STORE_NAME) => {
   try {
     const db = await initDB();
     return new Promise((resolve, reject) => {
-      const tx = db.transaction(STORE_NAME, 'readwrite');
-      const store = tx.objectStore(STORE_NAME);
+      const tx = db.transaction(storeName, 'readwrite');
+      const store = tx.objectStore(storeName);
       store.put(value, key);
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
@@ -537,12 +623,12 @@ const saveDataToDB = async (key, value) => {
   }
 };
 
-const loadDataFromDB = async (key, defaultValue) => {
+const loadDataFromDB = async (key, defaultValue, storeName = STORE_NAME) => {
   try {
     const db = await initDB();
     return new Promise((resolve, reject) => {
-      const tx = db.transaction(STORE_NAME, 'readonly');
-      const store = tx.objectStore(STORE_NAME);
+      const tx = db.transaction(storeName, 'readonly');
+      const store = tx.objectStore(storeName);
       const request = store.get(key);
       request.onsuccess = () => resolve(request.result !== undefined ? request.result : defaultValue);
       request.onerror = () => reject(request.error);
@@ -552,6 +638,20 @@ const loadDataFromDB = async (key, defaultValue) => {
     return defaultValue;
   }
 };
+
+// Cache JSON bền vững cho fetchJsonOnce (xem phía trên). defaultValue để
+// undefined có chủ đích: đây là cách fetchJsonOnce phân biệt "chưa từng
+// cache" (undefined) với "đã cache" (mọi giá trị JSON hợp lệ khác, kể cả
+// null/0/false). saveJsonCacheToDB không await/throw ra ngoài — lỗi lưu
+// cache (vd Safari private mode chặn IndexedDB) chỉ nên làm mất phần tối ưu
+// lâu dài, không được làm hỏng luồng hiển thị dữ liệu hiện tại.
+function loadJsonCacheFromDB(url) {
+  return loadDataFromDB(url, undefined, JSON_CACHE_STORE_NAME);
+}
+
+function saveJsonCacheToDB(url, data) {
+  saveDataToDB(url, data, JSON_CACHE_STORE_NAME);
+}
 
 // Cấu hình phân trang
 const PAGE_SIZE_OPTIONS = [8, 16, 32];
