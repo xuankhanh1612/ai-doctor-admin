@@ -70,43 +70,48 @@ export default function App() {
   })
   const [sidebarOpenSignal, setSidebarOpenSignal] = useState(0)
 
-  // Màn hình "Anh Hùng Hiến Tặng" chạy TRƯỚC trang Login khi vào web (guest
-  // chưa đăng nhập) — preLoginView 'hero' hiện DonationHeroPanel, bấm 1
-  // trong 3 nút (Tạo tài khoản / Hiến tặng ngay / Nâng cao kiến thức) sẽ
-  // chuyển 'login' để hiện LoginPage thật. chatOpenSignal dùng chung cho cả
-  // 2 nhánh guest và đã đăng nhập: mỗi lần đổi số là 1 yêu cầu "mở Global
-  // Chatbot + bật mic ngay" từ nút mic trên DonationHeroPanel.
-  const [preLoginView, setPreLoginView] = useState('hero')
+  // Thứ tự màn hình cho KHÁCH (guest, chưa đăng nhập) khi vào web:
+  // 1) 'chooseRole'  -> ChooseUserRolePanel ("Chọn Vai Trò Anh Hùng") — CHẠY
+  //    ĐẦU TIÊN, trước cả "Anh Hùng Hiến Tặng".
+  // 2) 'hero'        -> DonationHeroPanel ("Anh Hùng Hiến Tặng") — vào sau
+  //    khi bấm chọn 1 vai trò hoặc "Tiếp tục tìm hiểu" ở bước 1.
+  // 3) 'login'        -> LoginPage thật — vào khi bấm "Tạo tài khoản" ở bước
+  //    1 hoặc 2, hoặc bấm nút hành động ở bước 2.
+  // chatOpenSignal dùng chung cho cả 2 nhánh guest và đã đăng nhập: mỗi lần
+  // đổi số là 1 yêu cầu "mở Global Chatbot + bật mic ngay" từ nút mic trên
+  // ChooseUserRolePanel / DonationHeroPanel.
+  const [preLoginView, setPreLoginView] = useState('chooseRole')
   const [chatOpenSignal, setChatOpenSignal] = useState(0)
   const prevUserRef = useRef(null)
 
   useEffect(() => {
     // Vừa logout (trước đó có user, giờ không còn) -> lần vào tiếp theo lại
-    // bắt đầu từ màn hình Anh Hùng Hiến Tặng thay vì thẳng vào Login.
-    if (prevUserRef.current && !user) setPreLoginView('hero')
+    // bắt đầu từ màn hình "Chọn Vai Trò Anh Hùng" thay vì thẳng vào Login.
+    if (prevUserRef.current && !user) setPreLoginView('chooseRole')
     prevUserRef.current = user
   }, [user])
 
-  // Bấm mic khi CÒN LÀ KHÁCH (chưa có user) -> tạo ngay 1 phiên "anonymous"
+  // Bấm mic khi CÒN LÀ KHÁCH (chưa có user) -> tạo NGAY 1 phiên "anonymous"
   // (uuid thật, lưu bền trong IndexedDB qua loginAnonymous() — cùng cơ chế
   // nút "Tiếp tục với tư cách khách" trên LoginPage đã dùng) TRƯỚC khi mở
   // chat, thay vì để userKey = null. Nhờ vậy lịch sử chat được gắn với 1
-  // danh tính thật ngay từ tin nhắn đầu tiên: nếu người này quay lại cùng
-  // thiết bị, hoặc sau này hoàn tất "Tạo tài khoản" bằng cùng phiên anon
-  // này, lịch sử chat vẫn còn nguyên — không bị mất/tách rời như khi lưu
-  // dưới khoá guest "null" chung chung.
+  // danh tính thật ngay từ tin nhắn đầu tiên (đồng bộ luôn với menu "Lịch
+  // sử Chat với AI"): nếu người này quay lại cùng thiết bị, hoặc sau này
+  // hoàn tất "Tạo tài khoản" bằng cùng phiên anon này, lịch sử chat vẫn còn
+  // nguyên — không bị mất/tách rời như khi lưu dưới khoá guest "null" chung
+  // chung.
   // Vì loginAnonymous() gọi setUser(...), sau khi resolve app sẽ tự chuyển
   // từ màn hình guest sang "app đã đăng nhập" (do điều kiện `if (!user)`
-  // bên dưới) — nên chủ động set active = 'donationHero' để người dùng vẫn
-  // thấy đúng màn hình này (giờ ở chế độ member), không bị nhảy sang panel
-  // mặc định khác.
-  const handleGuestMicPress = async () => {
+  // bên dưới) — nên chủ động set active = targetActive để người dùng vẫn
+  // thấy đúng màn hình đang xem lúc bấm mic (chooseUserRole hoặc
+  // donationHero), không bị nhảy sang panel mặc định khác.
+  const handleGuestMicPress = async (targetActive = 'donationHero') => {
     try {
       await loginAnonymous()
     } catch (e) {
       console.warn('Không tạo được phiên khách (anonymous) khi bấm mic:', e)
     }
-    setActive('donationHero')
+    setActive(targetActive)
     setChatOpenSignal(s => s + 1)
   }
 
@@ -273,13 +278,31 @@ export default function App() {
   }
 
   if (!user) {
+    if (preLoginView === 'chooseRole') {
+      return (
+        <div style={{ minHeight: '100vh', background: '#eef7f1' }}>
+          <ChooseUserRolePanel
+            mode="guest"
+            onSelectRole={() => setPreLoginView('hero')}
+            onEnterAction={() => setPreLoginView('hero')}
+            onCreateAccount={() => setPreLoginView('login')}
+            onMicPress={() => handleGuestMicPress('chooseUserRole')}
+          />
+          {/* Không mount GlobalAIChatbot riêng ở đây: bấm mic đã tự tạo
+          phiên anonymous (handleGuestMicPress) rồi chuyển thẳng sang màn
+          hình "đã đăng nhập" (chooseUserRole, mode="member") trước khi mở
+          chat — nơi GlobalAIChatbot thật (dưới cùng layout chính) xử lý
+          việc mở + bật mic thông qua chatOpenSignal dùng chung. */}
+        </div>
+      )
+    }
     if (preLoginView === 'hero') {
       return (
         <div style={{ minHeight: '100vh', background: '#eef7f1' }}>
           <DonationHeroPanel
             mode="guest"
             onEnterAction={() => setPreLoginView('login')}
-            onMicPress={handleGuestMicPress}
+            onMicPress={() => handleGuestMicPress('donationHero')}
           />
           {/* Không mount GlobalAIChatbot riêng ở đây: bấm mic đã tự tạo
           phiên anonymous (handleGuestMicPress) rồi chuyển thẳng sang màn
@@ -345,6 +368,7 @@ export default function App() {
             {active === 'chatHistory' && <ChatHistoryPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} activePanelLabel={panelLabels[active] || active} />}
             {active === 'chooseUserRole' && (
               <ChooseUserRolePanel
+                mode="member"
                 onSelectRole={() => setActive('donationHero')}
                 onEnterAction={() => setActive('donationHero')}
                 onMicPress={() => setChatOpenSignal(s => s + 1)}
