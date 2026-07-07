@@ -11,37 +11,42 @@ import ObjModelViewer from './ObjModelViewer';
 // nguồn dữ liệu JSON riêng. Ở đây item đầu tiên là kho nội bộ
 // (medical_3d_market.json).
 //
-// 2 NHÓM chủ đề ngoài, cả hai đều lấy từ dataset gobjaverse của
-// modelscope/richdreamer (https://github.com/modelscope/richdreamer/blob/main/dataset/gobjaverse/README.md):
+// Các chủ đề ngoài lấy từ dataset gobjaverse của modelscope/richdreamer
+// (https://github.com/modelscope/richdreamer/blob/main/dataset/gobjaverse/README.md),
+// CHỈ gồm nhóm "Map" theme (previewable: true) — trỏ thẳng tới FILE MODEL
+// THẬT (glb_map.json / fbx_map.json / obj_map.json / sketchfab_map.json
+// trong gobjaverse_xl_alignment_map), vì đây là nhóm duy nhất popup hiển
+// thị được 3D thật (mỗi entry là {tarPath: link_file_model}). Với glb/fbx/obj
+// trên GitHub, link gốc là dạng "blob" (trang xem HTML) nên phải đổi sang
+// raw.githubusercontent.com mới tải được file nhị phân.
+//   - GLB/GLTF: render bằng <model-viewer> (Google), chỉ đọc glTF/GLB.
+//   - FBX: <model-viewer> KHÔNG hỗ trợ định dạng này, nên popup dùng lại
+//     AnimatedAvatarViewer (THREE.FBXLoader + OrbitControls, cùng viewer
+//     đang dùng cho hoạt ảnh avatar) để xem 3D thật thay vì chỉ hiện link
+//     tải gốc.
+//   - OBJ: <model-viewer> cũng không đọc được OBJ -> dùng ObjModelViewer
+//     (THREE.OBJLoader + OrbitControls, tự canh giữa/scale mesh). OBJ không
+//     mang màu/texture nếu thiếu file .mtl đi kèm — không phải lỗi.
+//   - Sketchfab: rawUrl là TRANG XEM model (không phải file tải trực tiếp)
+//     nên dùng iframe embed chính chủ của Sketchfab thay vì cố tải file
+//     nhị phân.
 //
-//  A) "Map" theme (previewable: true) — trỏ thẳng tới FILE MODEL THẬT
-//     (glb_map.json / fbx_map.json / obj_map.json / sketchfab_map.json trong
-//     gobjaverse_xl_alignment_map). Đây là nhóm popup có thể hiển thị 3D thật
-//     vì mỗi entry là {tarPath: link_file_model}. Với glb/fbx/obj trên
-//     GitHub, link gốc là dạng "blob" (trang xem HTML) nên phải đổi sang
-//     raw.githubusercontent.com mới tải được file nhị phân.
-//     - GLB/GLTF: render bằng <model-viewer> (Google), chỉ đọc glTF/GLB.
-//     - FBX: <model-viewer> KHÔNG hỗ trợ định dạng này, nên popup dùng lại
-//       AnimatedAvatarViewer (THREE.FBXLoader + OrbitControls, cùng viewer
-//       đang dùng cho hoạt ảnh avatar) để xem 3D thật thay vì chỉ hiện link
-//       tải gốc.
-//     - OBJ: <model-viewer> cũng không đọc được OBJ -> dùng ObjModelViewer
-//       (THREE.OBJLoader + OrbitControls, tự canh giữa/scale mesh). OBJ
-//       không mang màu/texture nếu thiếu file .mtl đi kèm — không phải lỗi.
-//     - Sketchfab: rawUrl là TRANG XEM model (không phải file tải trực
-//       tiếp) nên dùng iframe embed chính chủ của Sketchfab thay vì cố
-//       tải file nhị phân.
-//
-//  B) "Index/Caption" theme (previewable: false) — 4 link .json cũ, chỉ là
-//     cấu trúc index để hiển thị caption text theo ID item (không có file
-//     model thật), nên popup sẽ không render 3D, chỉ hiện thông tin văn bản.
+// ĐÃ TẮT khỏi dropdown (không xoá code xử lý, chỉ không cho chọn nữa) — 4
+// theme "Index/Caption" cũ (gobjaverse_280k.json, category_annotation.json,
+// text_captions_cap3d.json, gobjaverse_alignment.json): đây chỉ là cấu trúc
+// index/text, KHÔNG có file model 3D thật để xem trong popup. Vẫn giữ lại
+// nhánh xử lý cho các id này trong normalizeExternalItem (không dùng tới,
+// vô hại) để không phải sửa lan sang các hàm khác; 2 file
+// text_captions_cap3d.json / gobjaverse_index_to_objaverse.json vẫn ĐANG
+// ĐƯỢC DÙNG NGẦM cho tính năng tra caption Cap3D của popup Map theme (xem
+// resolveCaptionForAsset bên dưới) — không liên quan tới dropdown này.
 // ============================================================================
 const INTERNAL_THEME_ID = 'medical_internal';
 
 
 
 const EXTERNAL_THEMES = [
-  // ---- Nhóm A: Map theme — có model thật, xem 3D được trong popup ----
+  // ---- Map theme — có model thật, xem 3D được trong popup ----
   {
     id: 'xl_align_glb_map',
     name: 'XL Alignment · GLB Map (GitHub)',
@@ -78,36 +83,8 @@ const EXTERNAL_THEMES = [
     format: 'obj',
     previewable: true, // xem 3D thật qua ObjModelViewer (THREE.OBJLoader), không dùng <model-viewer>
   },
-  // ---- Nhóm B: Index/Caption theme cũ — chỉ có text/ID, không xem 3D ----
-  {
-    id: 'gobjaverse_280k',
-    name: 'G-Objaverse 280K (Index)',
-    license: 'Objaverse (gobjaverse)',
-    url: 'https://virutalbuy-public.oss-cn-hangzhou.aliyuncs.com/share/aigc3d/gobjaverse_280k.json',
-    previewable: false,
-  },
-  {
-    id: 'category_annotation',
-    name: 'Category Annotation (10 nhóm)',
-    license: 'Objaverse subset',
-    url: 'https://virutalbuy-public.oss-cn-hangzhou.aliyuncs.com/share/aigc3d/category_annotation.json',
-    previewable: false,
-  },
-  {
-    id: 'text_captions_cap3d',
-    name: 'Cap3D Text Captions',
-    license: 'Cap3D',
-    url: 'https://virutalbuy-public.oss-cn-hangzhou.aliyuncs.com/share/aigc3d/text_captions_cap3d.json',
-    previewable: false,
-  },
-  {
-    id: 'gobjaverse_alignment',
-    name: 'Objaverse-XL Alignment (Index)',
-    license: 'Objaverse-XL',
-    url: 'https://virutalbuy-public.oss-cn-hangzhou.aliyuncs.com/share/aigc3d/gobjaverse_alignment.json',
-    previewable: false,
-  },
 ];
+
 
 // ============================================================================
 // CAPTION LOOKUP (chỉ dùng cho Nhóm A — Map theme) — popup item detail cần
@@ -905,9 +882,7 @@ export default function MedicalAssetStorePanel() {
 
   const quickCategories = isInternalTheme
     ? ["Tất cả", "3D Model", "In 3D", "Digital Twin", "Avatar VRM", "Gamification"]
-    : selectedTheme === 'category_annotation'
-      ? ["Tất cả", ...Array.from(new Set(externalAssets.flatMap((a) => a.tags).filter((t) => t !== 'Open Dataset' && t !== activeThemeMeta?.name)))]
-      : ["Tất cả", "Open Dataset", activeThemeMeta?.name].filter(Boolean);
+    : ["Tất cả", "Open Dataset", activeThemeMeta?.name].filter(Boolean);
 
   // --- LỌC DỮ LIỆU ---
   const filteredAssets = activeThemeData
