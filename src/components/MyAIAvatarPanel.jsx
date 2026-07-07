@@ -10,8 +10,8 @@ import LamGeneratePanel from './LamGeneratePanel'
 import LhmGeneratePanel from './LhmGeneratePanel'
 
 const LINKS = {
-  space: 'https://huggingface.co/spaces/3DAIGC/LAM',
-  spaceEmbed: 'https://3daigc-lam.hf.space',
+  space: 'https://huggingface.co/spaces/Lingteng/LHMPP',
+  spaceEmbed: 'https://lingteng-lhmpp.hf.space',
   github: 'https://github.com/aigc3d/LAM',
   project: 'https://aigc3d.github.io/projects/LAM/',
   paper: 'https://arxiv.org/abs/2502.17796',
@@ -28,6 +28,14 @@ const LINKS = {
   // (đang "Running"), dùng ngay được, không cần tự host nữa
   openAvatarChatSpace: 'https://huggingface.co/spaces/HumanAIGC-Engineering-Team/open-avatar-chat',
   openAvatarChatSpaceEmbed: 'https://humanaigc-engineering-team-open-avatar-chat.static.hf.space/index.html',
+  // Hi3DGen (Stable3DGen) — KHÁC nhóm với LAM/LHM: đây là mesh 3D chất lượng
+  // cao cho VẬT THỂ NÓI CHUNG (không chuyên avatar người), dùng normal-map
+  // làm cầu nối trung gian giữa ảnh 2D và hình học 3D. Space đang "Running
+  // on Zero" tại thời điểm viết.
+  stable3dgenGithub: 'https://github.com/Stable-X/Stable3DGen',
+  hi3dgenSpace: 'https://huggingface.co/spaces/Stable-X/Hi3DGen',
+  hi3dgenSpaceEmbed: 'https://stable-x-hi3dgen.hf.space/?__theme=system',
+  hi3dgenProject: 'https://stable-x.github.io/Hi3DGen/',
 }
 
 const OAC_SETUP_CMD = `git clone https://github.com/HumanAIGC-Engineering/OpenAvatarChat.git
@@ -116,6 +124,7 @@ export default function MyAIAvatarPanel() {
 
   const [iframeLoaded, setIframeLoaded] = useState(false)
   const [oacIframeLoaded, setOacIframeLoaded] = useState(false)
+  const [hi3dgenIframeLoaded, setHi3dgenIframeLoaded] = useState(false)
   const [copied, setCopied] = useState(false)
   const [copiedSetup, setCopiedSetup] = useState(false)
   const [copiedLhmSetup, setCopiedLhmSetup] = useState(false)
@@ -290,7 +299,7 @@ export default function MyAIAvatarPanel() {
       <div style={{ marginBottom: 20 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: text }}>
-            {vi ? 'Demo trực tiếp (Hugging Face Space, tham khảo trực quan)' : 'Live demo (Hugging Face Space, visual reference)'}
+            {vi ? 'Demo trực tiếp (LHM++, Hugging Face Space, tham khảo trực quan)' : 'Live demo (LHM++, Hugging Face Space, visual reference)'}
           </div>
           <LinkButton href={LINKS.space} icon={<ExternalLink size={13} />} label={vi ? 'Mở demo trong tab mới' : 'Open demo in new tab'} isDark={isDark} />
         </div>
@@ -304,11 +313,11 @@ export default function MyAIAvatarPanel() {
               alignItems: 'center', justifyContent: 'center', gap: 8, color: text3, fontSize: 12.5,
             }}>
               <Sparkles size={20} className="spin" />
-              {vi ? 'Đang tải demo LAM từ Hugging Face...' : 'Loading LAM demo from Hugging Face...'}
+              {vi ? 'Đang tải demo LHM++ từ Hugging Face...' : 'Loading LHM++ demo from Hugging Face...'}
             </div>
           )}
           <iframe
-            title="LAM - Hugging Face Space"
+            title="LHM++ (Lingteng/LHMPP) - Hugging Face Space"
             src={LINKS.spaceEmbed}
             onLoad={() => setIframeLoaded(true)}
             style={{ width: '100%', height: '100%', border: 'none', opacity: iframeLoaded ? 1 : 0, transition: 'opacity 0.3s' }}
@@ -417,6 +426,54 @@ export default function MyAIAvatarPanel() {
         <OpenAvatarChatPanel
           isDark={isDark} vi={vi} border={border} surface={surface} text={text} text2={text2} text3={text3}
         />
+      </div>
+
+      {/* Bonus: Hi3DGen (Stable3DGen) — mesh 3D chất lượng cao cho VẬT THỂ
+          NÓI CHUNG, khác nhánh với LAM/LHM (chuyên avatar người). Dùng khi
+          cần dựng mesh chi tiết từ 1 ảnh cho vật thể bất kỳ, không riêng
+          người/mặt. */}
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+          <Sparkles size={16} color={isDark ? '#00e5ff' : '#00b8cc'} />
+          <div style={{ fontSize: 14, fontWeight: 800, color: text }}>
+            {vi ? 'Bonus: Hi3DGen / Stable3DGen (mesh 3D vật thể chung)' : 'Bonus: Hi3DGen / Stable3DGen (general-object 3D mesh)'}
+          </div>
+          <span style={{
+            fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 999,
+            background: isDark ? 'rgba(0,230,118,0.15)' : 'rgba(0,230,118,0.1)', color: '#00c46a',
+          }}>Stable-X/Hi3DGen</span>
+        </div>
+        <p style={{ margin: '0 0 12px', fontSize: 12.5, color: text2, lineHeight: 1.6 }}>
+          {vi
+            ? 'Khác nhánh với LAM/LHM ở trên (chuyên avatar người có thể tạo dáng/animate): Hi3DGen (github.com/Stable-X/Stable3DGen) dựng mesh 3D độ chi tiết cao từ MỘT ảnh bất kỳ — dùng normal-map làm cầu nối trung gian giữa ảnh 2D và hình học 3D, cho biên/chi tiết sắc nét hơn các phương pháp đi thẳng ảnh→3D. Phù hợp khi bạn cần mesh (OBJ/GLB/PLY/STL) cho vật thể chung (mô hình giải phẫu, dụng cụ y tế, đồ vật...) chứ không phải avatar người có thể cử động. Space demo đang chạy — nhúng trực tiếp bên dưới.'
+            : 'A different branch from LAM/LHM above (which specialize in posable/animatable human avatars): Hi3DGen (github.com/Stable-X/Stable3DGen) builds a high-detail 3D mesh from a single arbitrary image — using a normal map as an intermediate bridge between the 2D image and 3D geometry, giving sharper edges/detail than direct image→3D methods. Good fit when you need a mesh (OBJ/GLB/PLY/STL) for a general object (anatomical models, medical instruments, everyday objects...) rather than a posable human avatar. The demo Space is live — embedded directly below.'}
+        </p>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+          <LinkButton href={LINKS.stable3dgenGithub} icon={<Github size={13} />} label={vi ? 'Mã nguồn Stable3DGen' : 'Stable3DGen source'} isDark={isDark} />
+          <LinkButton href={LINKS.hi3dgenSpace} icon={<ExternalLink size={13} />} label={vi ? 'Space demo (Stable-X/Hi3DGen)' : 'Demo Space (Stable-X/Hi3DGen)'} isDark={isDark} />
+          <LinkButton href={LINKS.hi3dgenProject} icon={<ExternalLink size={13} />} label={vi ? 'Trang dự án Hi3DGen' : 'Hi3DGen project page'} isDark={isDark} />
+        </div>
+        <div style={{
+          position: 'relative', width: '100%', height: 640, borderRadius: 14, overflow: 'hidden',
+          border: `1px solid ${border}`, background: isDark ? '#05070f' : '#f4f6fa',
+        }}>
+          {!hi3dgenIframeLoaded && (
+            <div style={{
+              position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center', gap: 8, color: text3, fontSize: 12.5,
+            }}>
+              <Sparkles size={20} className="spin" />
+              {vi ? 'Đang tải demo Hi3DGen...' : 'Loading the Hi3DGen demo...'}
+            </div>
+          )}
+          <iframe
+            title="Hi3DGen (Stable-X) - Hugging Face Space"
+            src={LINKS.hi3dgenSpaceEmbed}
+            onLoad={() => setHi3dgenIframeLoaded(true)}
+            style={{ width: '100%', height: '100%', border: 'none', opacity: hi3dgenIframeLoaded ? 1 : 0, transition: 'opacity 0.3s' }}
+            allow="fullscreen"
+          />
+        </div>
       </div>
 
       {/* Links & ecosystem */}
