@@ -452,6 +452,12 @@ function normalizeMapItem(entry, theme, index) {
   const rawUrl = typeof value === 'string' ? value.trim() : '';
   const modelUrl = theme.previewable ? resolveDirectModelUrl(rawUrl) : '';
 
+  // Riêng theme Sketchfab: rawUrl là trang xem model (không phải file .glb
+  // tải trực tiếp) nên resolveDirectModelUrl() luôn trả về '' cho nó -> phải
+  // tách UID và dựng link iframe embed riêng để popup vẫn xem 3D được.
+  const sketchfabUid = theme.previewable ? extractSketchfabModelUid(rawUrl) : '';
+  const sketchfabEmbedUrl = sketchfabUid ? buildSketchfabEmbedUrl(sketchfabUid) : '';
+
   return {
     id: `${theme.id}-${index}-${String(tarPath).slice(0, 60)}`,
     title: (rawUrl ? fileNameFromUrl(rawUrl) : tarPath) || tarPath,
@@ -460,6 +466,7 @@ function normalizeMapItem(entry, theme, index) {
     downloads: 0,
     thumbnail: externalThumbnail(theme.name),
     modelUrl,
+    sketchfabEmbedUrl,
     tags: ['Open Dataset', (theme.format || '').toUpperCase(), theme.name].filter(Boolean),
     isExternal: true,
     sourceUrl: rawUrl || theme.url,
@@ -1145,6 +1152,19 @@ export default function MedicalAssetStorePanel() {
                   touch-action="pan-y"
                   style={{ width: '100%', height: '100%', '--poster-color': 'transparent', outline: 'none' }}
                 ></model-viewer>
+              ) : previewAsset.sketchfabEmbedUrl ? (
+                // sketchfab_map.json trỏ tới trang xem model, không phải file
+                // .glb tải trực tiếp -> <model-viewer> không đọc được. Dùng
+                // iframe embed chính chủ của Sketchfab thay thế (vẫn xoay/zoom
+                // 3D thật, chỉ khác là chạy trong iframe của Sketchfab).
+                <iframe
+                  title={previewAsset.title}
+                  src={previewAsset.sketchfabEmbedUrl}
+                  frameBorder="0"
+                  allow="autoplay; fullscreen; xr-spatial-tracking"
+                  allowFullScreen
+                  style={{ width: '100%', height: '100%', border: 'none' }}
+                ></iframe>
               ) : (
                 <div className="text-center p-6 max-w-sm">
                   <span className="text-5xl mb-3 block">{previewAsset.isExternal ? '🗂️' : '📜'}</span>
@@ -1167,7 +1187,7 @@ export default function MedicalAssetStorePanel() {
 
             <div className="grid grid-cols-3 text-center border-t border-b border-white/5 py-3 my-4 text-xs font-mono text-gray-400">
               <div>Tác giả: <span className="text-cyan-400 font-semibold">{previewAsset.author}</span></div>
-              <div>Tệp tin: <span className="text-purple-400 font-semibold">{previewAsset.modelUrl ? 'glb' : 'json'}</span></div>
+              <div>Tệp tin: <span className="text-purple-400 font-semibold">{previewAsset.modelUrl ? 'glb' : previewAsset.sketchfabEmbedUrl ? 'sketchfab' : 'json'}</span></div>
               <div>Lượt tải: <span className="text-amber-400 font-semibold">{previewAsset.downloads.toLocaleString()}</span></div>
             </div>
 
