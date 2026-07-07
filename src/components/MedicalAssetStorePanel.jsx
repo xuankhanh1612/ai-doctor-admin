@@ -907,10 +907,31 @@ export default function MedicalAssetStorePanel() {
     });
 
   // --- TÍNH TOÁN PHÂN TRANG ---
-  const totalPages = Math.max(1, Math.ceil(filteredAssets.length / pageSize));
+  // BUG đã sửa: trước đây totalPages tính bằng filteredAssets.length — với
+  // theme ngoài, filteredAssets chỉ là CỬA SỔ đã "chuẩn hoá" vào RAM
+  // (externalAssets, xem PREFETCH_PAGES phía trên), không phải toàn bộ
+  // dataset. Kết quả là tổng số trang luôn bị khoá cứng ở khoảng
+  // (1 + PREFETCH_PAGES) trang, nút "Trang sau" bị disable ngay cả khi
+  // dataset còn hàng trăm nghìn mục chưa xem tới.
+  //
+  // Đúng ra: khi KHÔNG lọc/tìm kiếm, tổng số trang phải phản ánh toàn bộ
+  // externalTotal — vì effect #4b (dòng ~760) đã lo việc tự mở rộng cửa sổ
+  // RAM (re-slice từ entries thô đã cache, không tải mạng lại) mỗi khi
+  // currentPage vượt quá phần đã chuẩn hoá. Khi ĐANG lọc/tìm kiếm thì khác:
+  // ta chỉ biết được kết quả trong phạm vi cửa sổ đã tải (đúng như ghi chú
+  // "Tìm kiếm chỉ áp dụng trong số này" ở ô search), nên totalPages vẫn
+  // phải dựa trên filteredAssets.length trong trường hợp này.
+  const isFiltering = Boolean(searchTerm) || selectedTag !== "Tất cả";
+  const totalCount = (!isInternalTheme && !isFiltering) ? externalTotal : filteredAssets.length;
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
   const safePage = Math.min(currentPage, totalPages);
   // Cắt mảng dữ liệu để lấy đúng số lượng item của trang hiện tại
   const pagedAssets = filteredAssets.slice((safePage - 1) * pageSize, safePage * pageSize);
+
+  // Vừa chuyển sang 1 trang mà cửa sổ RAM chưa kịp mở rộng tới (effect #4b
+  // chạy sau khi currentPage đổi) -> đừng hiện "Không tìm thấy", chỉ là
+  // đang chờ 1 nhịp render để normalize thêm từ entries đã cache sẵn.
+  const isWindowCatchingUp = !isInternalTheme && !isFiltering && pagedAssets.length === 0 && totalCount > 0;
 
   if (!isDbLoaded) {
     return <div className="p-6 text-center text-white h-full flex items-center justify-center font-mono tracking-widest">ĐANG TẢI DỮ LIỆU Y TẾ AN TOÀN...</div>;
@@ -1179,7 +1200,7 @@ export default function MedicalAssetStorePanel() {
       </div>
 
       {/* PAGINATION CONTROLS (Thanh Điều Khiển Phân Trang) */}
-      {filteredAssets.length > 0 && (
+      {totalCount > 0 && (
         <div className="flex flex-col sm:flex-row items-center justify-between mt-4 mb-8 bg-white/5 p-4 rounded-xl border border-white/5 gap-4">
           <div className="flex items-center gap-3 w-full sm:w-auto">
             <span className="text-xs text-gray-400 font-mono uppercase tracking-widest whitespace-nowrap">Hiển thị</span>
@@ -1217,7 +1238,14 @@ export default function MedicalAssetStorePanel() {
       )}
       
       {/* EMPTY STATE CONTAINER */}
-      {filteredAssets.length === 0 && (
+      {pagedAssets.length === 0 && isWindowCatchingUp && (
+        <div className="text-center py-24 text-gray-500 border border-dashed border-gray-700 rounded-2xl bg-gray-900/20">
+          <span className="text-4xl block mb-2">⏳</span>
+          <p className="text-lg font-medium">Đang tải thêm dữ liệu cho trang này...</p>
+          <p className="text-sm text-gray-600 mt-1">Cửa sổ dữ liệu đang mở rộng để bắt kịp trang bạn vừa chuyển tới.</p>
+        </div>
+      )}
+      {pagedAssets.length === 0 && !isWindowCatchingUp && (
         <div className="text-center py-24 text-gray-500 border border-dashed border-gray-700 rounded-2xl bg-gray-900/20">
           <span className="text-4xl block mb-2">{viewMode === "inventory" ? "🎒" : "🔍"}</span>
           <p className="text-lg font-medium">
