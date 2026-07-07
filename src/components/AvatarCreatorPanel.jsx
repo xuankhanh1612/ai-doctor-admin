@@ -7,6 +7,7 @@ import {
 import { useAuth } from '../context/AuthContext'
 import { useApp } from '../context/AppContext'
 import AnimatedAvatarViewer from './AnimatedAvatarViewer'
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import offlineProjects from '../data/projects.json'
 
 const OFFLINE_AVATAR_MODULES = import.meta.glob('../data/avatars/*.json', { eager: true })
@@ -309,6 +310,87 @@ function licenseUsageNote(license, vi) {
   return license
 }
 
+// ============================================================================
+// TRÍCH XUẤT TEXTURE THẬT TỪ FILE MODEL (.vrm/.glb) — giống hệt cách tab
+// "Textures" của opensourceavatars.com/en/finder và /en/vrminspector hiển
+// thị: field ardriveFiles.textures trong projects.json THỰC RA chỉ là TÊN
+// FILE (vd "031_Devil_Voxel_Texture.png"), không phải link tải được, nên
+// không thể "lấy" texture qua đó. Cách đúng là PARSE trực tiếp ảnh nhúng bên
+// trong chính file .vrm/.glb (chuẩn glTF nhúng ảnh dạng bufferView/base64)
+// bằng GLTFLoader rồi liệt kê từng texture THẬT (kích thước/dung lượng thật,
+// không đoán) — vì vậy tên texture ở đây theo đúng quy ước "new_texture_N"
+// (N = chỉ số texture) như OSA hiển thị, thay vì tên field JSON.
+// ============================================================================
+const modelTextureCache = new Map() // model url -> Promise<texture[]>
+
+function bytesFromDataUrl(dataUrl) {
+  const commaIndex = dataUrl.indexOf(',')
+  if (commaIndex < 0) return 0
+  const base64Length = dataUrl.length - commaIndex - 1
+  return Math.round((base64Length * 3) / 4)
+}
+
+function extractModelTextures(url) {
+  if (!url) return Promise.resolve([])
+  if (modelTextureCache.has(url)) return modelTextureCache.get(url)
+
+  const promise = new Promise((resolve) => {
+    const loader = new GLTFLoader()
+    loader.load(
+      url,
+      (gltf) => {
+        try {
+          const parser = gltf.parser
+          const textureDefs = parser?.json?.textures || []
+          if (!textureDefs.length) { resolve([]); return }
+          Promise.all(textureDefs.map((_, index) => parser.getDependency('texture', index).catch(() => null)))
+            .then((loadedTextures) => {
+              const results = []
+              loadedTextures.forEach((tex, index) => {
+                const img = tex?.image
+                if (!img) return
+                const width = img.naturalWidth || img.width || 0
+                const height = img.naturalHeight || img.height || 0
+                let previewUrl = ''
+                let bytes = 0
+                try {
+                  const canvas = document.createElement('canvas')
+                  canvas.width = width || 512
+                  canvas.height = height || 512
+                  const ctx = canvas.getContext('2d')
+                  ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+                  previewUrl = canvas.toDataURL('image/png')
+                  bytes = bytesFromDataUrl(previewUrl)
+                } catch {
+                  previewUrl = img.src || ''
+                }
+                if (!previewUrl) return
+                results.push({
+                  key: `embedded-${index}`,
+                  name: `new_texture_${index}`,
+                  fileName: `new_texture_${index}.png`,
+                  url: previewUrl,
+                  type: 'Albedo/Diffuse',
+                  width,
+                  height,
+                  bytes,
+                })
+              })
+              resolve(results)
+            })
+        } catch {
+          resolve([])
+        }
+      },
+      undefined,
+      () => resolve([]) // model lỗi/CORS -> coi như không có texture nhúng, fallback dùng collectTextureOptions
+    )
+  })
+
+  modelTextureCache.set(url, promise)
+  return promise
+}
+
 function TexturePreviewCard({ texture, meta, palette, isDark, vi, onLoad, large = false }) {
   if (!texture) return null
   return (
@@ -356,6 +438,12 @@ export default function AvatarCreatorPanel() {
   const [assetTab, setAssetTab] = useState('model')
   const [selectedTextureUrl, setSelectedTextureUrl] = useState('')
   const [textureMeta, setTextureMeta] = useState({})
+  // Texture THẬT trích xuất trực tiếp từ file .vrm/.glb đang chọn (xem
+  // extractModelTextures phía trên) — ưu tiên dùng thay cho
+  // collectTextureOptions (chỉ đoán từ field JSON, thường không có link ảnh
+  // thật) để bảng Texture giống hệt tab Textures của opensourceavatars.com.
+  const [embeddedTextures, setEmbeddedTextures] = useState([])
+  const [embeddedTexturesStatus, setEmbeddedTexturesStatus] = useState('idle') // idle | loading | ok | empty
   const [showInfoOverlay, setShowInfoOverlay] = useState(true)
   const [shareStatus, setShareStatus] = useState('')
   const [selectedAnimation, setSelectedAnimation] = useState('Fight Idle')
@@ -478,7 +566,12 @@ export default function AvatarCreatorPanel() {
   const pagedAvatars = filteredAvatars.slice((safePage - 1) * pageSize, safePage * pageSize)
 
   const formatOptions = useMemo(() => getFormatOptions(selectedAvatar), [selectedAvatar])
-  const textureOptions = useMemo(() => collectTextureOptions(selectedAvatar), [selectedAvatar])
+  const metadataTextureOptions = useMemo(() => collectTextureOptions(selectedAvatar), [selectedAvatar])
+  // Textures hiện trên UI: ưu tiên texture THẬT trích xuất từ chính file
+  // .vrm/.glb (embeddedTextures); chỉ dùng heuristic JSON (metadataTextureOptions)
+  // làm phương án dự phòng khi model chưa tải xong / không parse được (lỗi
+  // CORS, định dạng FBX không hỗ trợ trích embedded texture qua GLTFLoader...).
+  const textureOptions = embeddedTextures.length ? embeddedTextures : metadataTextureOptions
   const selectedTexture = textureOptions.find((texture) => texture.url === selectedTextureUrl) || textureOptions[0] || null
   const selectedTextureMeta = selectedTexture ? textureMeta[selectedTexture.url] : null
   const activeFormat = formatOptions.find((option) => option.key === selectedFormatKey) || formatOptions[0] || null
@@ -489,9 +582,41 @@ export default function AvatarCreatorPanel() {
     setSelectedTextureUrl((current) => (textureOptions.some((texture) => texture.url === current) ? current : (textureOptions[0]?.url || '')))
   }, [textureOptions])
 
+  // Parse thật file .vrm/.glb đang chọn để lấy texture nhúng bên trong (xem
+  // extractModelTextures) — chỉ áp dụng cho định dạng gltf/vrm (GLTFLoader
+  // không đọc được FBX). Cache theo URL nên đổi qua lại giữa các định dạng/
+  // avatar đã xem không phải tải lại.
+  useEffect(() => {
+    if (!activeModelUrl || activeModelKind !== 'gltf') {
+      setEmbeddedTextures([])
+      setEmbeddedTexturesStatus('idle')
+      return
+    }
+    let cancelled = false
+    setEmbeddedTexturesStatus('loading')
+    extractModelTextures(activeModelUrl).then((textures) => {
+      if (cancelled) return
+      setEmbeddedTextures(textures)
+      setEmbeddedTexturesStatus(textures.length ? 'ok' : 'empty')
+      if (textures.length) {
+        setTextureMeta((current) => {
+          const next = { ...current }
+          textures.forEach((texture) => {
+            next[texture.url] = { width: texture.width, height: texture.height, bytes: texture.bytes }
+          })
+          return next
+        })
+      }
+    })
+    return () => { cancelled = true }
+  }, [activeModelUrl, activeModelKind])
+
   useEffect(() => {
     const controller = new AbortController()
-    textureOptions.forEach((texture) => {
+    // Texture trích xuất thật (data: URL) đã có sẵn width/height/bytes chính
+    // xác ngay khi extract xong, không cần HEAD fetch — chỉ còn dùng cách
+    // này cho texture theo link http(s) thật (nhánh dự phòng metadata).
+    textureOptions.filter((texture) => /^https?:\/\//i.test(texture.url)).forEach((texture) => {
       fetch(texture.url, { method: 'HEAD', signal: controller.signal })
         .then((response) => {
           const length = Number(response.headers.get('content-length'))
@@ -963,6 +1088,11 @@ export default function AvatarCreatorPanel() {
                 ) : (
                   <div style={{ marginBottom: 12 }}>
                     <div className="osa-label" style={{ marginBottom: 8 }}>{vi ? 'Textures 2D' : '2D Textures'}</div>
+                    {embeddedTexturesStatus === 'loading' && (
+                      <div style={{ fontSize: 11, color: palette.text3, marginBottom: 8 }}>
+                        {vi ? '⏳ Đang phân tích texture nhúng trong model...' : '⏳ Extracting embedded textures from the model...'}
+                      </div>
+                    )}
                     {selectedTexture ? (
                       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(190px, 1.1fr) minmax(160px, 0.9fr)', gap: 12 }}>
                         <div className="osa-card" style={{ overflow: 'hidden', background: palette.card }}>
@@ -1050,7 +1180,9 @@ export default function AvatarCreatorPanel() {
                 </div>
               </div>
               <span style={{ padding: '5px 10px', borderRadius: 999, background: isDark ? 'rgba(0,229,255,0.12)' : 'rgba(0,184,204,0.12)', color: palette.accent, fontSize: 11, fontWeight: 900 }}>
-                {textureOptions.length} {vi ? 'texture' : 'textures'}
+                {embeddedTexturesStatus === 'loading'
+                  ? (vi ? '⏳ Đang phân tích...' : '⏳ Extracting...')
+                  : `${textureOptions.length} ${vi ? 'texture' : 'textures'}`}
               </span>
             </div>
             {selectedTexture ? (
