@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react'; 
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react'; 
 import marketData from '../data/medical_3d_market.json';
 import { useAuth } from '../context/AuthContext';
 import AnimatedAvatarViewer from './AnimatedAvatarViewer';
@@ -1168,10 +1168,20 @@ export default function MedicalAssetStorePanel() {
             <input
               type="text"
               placeholder="Tìm kiếm cấu trúc, tác giả, tag..."
-              className="w-full pl-9 pr-4 py-2 border border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#00e5ff] bg-black/40 text-white placeholder-gray-500 text-sm transition"
+              className="w-full pl-9 pr-9 py-2 border border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#00e5ff] bg-black/40 text-white placeholder-gray-500 text-sm transition"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => setSearchTerm("")}
+                aria-label="Xoá tìm kiếm"
+                className="absolute inset-y-0 right-3 flex items-center text-gray-400 hover:text-white transition-colors"
+              >
+                ✕
+              </button>
+            )}
             {/* Nhóm B/A (theme ngoài) có thể có tới hàng trăm nghìn mục, nhưng
             chỉ 1 phần đã được "chuẩn hoá" vào externalAssets (xem
             PREFETCH_PAGES). Search chạy trên phần đã tải này, KHÔNG quét lại
