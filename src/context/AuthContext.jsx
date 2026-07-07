@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import { FAMILY_MEMBERS_CHANGED_EVENT, FAMILY_USER_STORAGE_KEY, LXK_PATIENT_PROFILE, getFamilyOwnerKey } from '../components/family/familyData.js'
-import { getAnonSession, saveAnonSession, updateAnonSession, clearAllGuestData } from '../lib/anonDB.js'
+import { getAnonSession, saveAnonSession, updateAnonSession, deleteAnonSession, clearAllGuestData } from '../lib/anonDB.js'
 
 const AuthContext = createContext(null)
 const ADMIN_EMAIL = 'khanhlegood1@gmail.com'
@@ -243,8 +243,47 @@ export function AuthProvider({ children }) {
     return enriched
   }
 
+  // ── Uuid cho TÀI KHOẢN THẬT mới tạo (đăng ký email hoặc lần đầu login
+  // Google/Apple) ───────────────────────────────────────────────────────────
+  // Yêu cầu: uuid CHỈ được sinh 1 LẦN DUY NHẤT — nếu thiết bị này đã có 1
+  // phiên "khách" (anonymous, vd từ lúc bấm nút mic trên Anh Hùng Hiến Tặng
+  // hoặc "Tiếp tục với tư cách khách") thì tài khoản thật phải TÁI SỬ DỤNG
+  // đúng uuid đó thay vì sinh uuid mới, để mọi thứ đã lưu theo uuid (lịch sử
+  // chat, v.v.) tự động "đồng bộ" sang tài khoản thật — không bị tách rời
+  // thành 2 danh tính khác nhau. Chỉ khi thiết bị CHƯA từng có phiên nào
+  // (guest lẫn tài khoản) mới sinh uuid mới hoàn toàn.
+  const resolveUUIDForNewAccount = async () => {
+    // 1. Phiên anonymous đang có sẵn trong state (đã gọi loginAnonymous() ở
+    // tab này, vd qua nút mic) -> dùng luôn, khỏi cần đọc IndexedDB.
+    if (user?.isAnonymous && user?.uuid) {
+      // Uuid này vừa được "thăng cấp" thành tài khoản thật -> xoá phiên
+      // anonymous cũ trong IndexedDB, để nếu có 1 khách KHÁC dùng chung
+      // thiết bị này sau khi đăng xuất, loginAnonymous() sẽ sinh uuid mới
+      // thay vì vô tình dùng lại uuid đã thuộc về tài khoản vừa tạo.
+      deleteAnonSession().catch(() => {})
+      return user.uuid
+    }
+    // 2. Chưa có trong state (vd người dùng mở thẳng form đăng ký mà chưa
+    // từng bấm mic/"Tiếp tục với tư cách khách" trong tab này) -> vẫn có
+    // thể đã tồn tại phiên anonymous từ lần ghé thăm trước TRÊN CÙNG THIẾT
+    // BỊ (lưu bền trong IndexedDB) -> đọc ra dùng lại.
+    try {
+      const anon = await getAnonSession()
+      const existingUUID = anon?.uuid || anon?.anonUUID
+      if (existingUUID) {
+        deleteAnonSession().catch(() => {}) // tương tự lý do ở nhánh (1)
+        return existingUUID
+      }
+    } catch (e) {
+      console.warn('Không đọc được phiên anonymous khi tạo tài khoản mới:', e)
+    }
+    // 3. Thật sự chưa từng có phiên nào trước đó -> đây là lần đầu tiên,
+    // sinh uuid mới duy nhất 1 lần.
+    return generateAnonUUID()
+  }
+
   // Create user from OAuth profile if first time, else merge only non-overridable fields
-  const _upsertOAuth = (oauthProfile) => {
+  const _upsertOAuth = async (oauthProfile) => {
     const users = getUsers()
     const existing = users[oauthProfile.email]
 
@@ -252,7 +291,7 @@ export function AuthProvider({ children }) {
       // First-time login: seed from Google/Apple profile
       const newUser = {
         email: oauthProfile.email,
-        uuid: generateAnonUUID(),
+        uuid: await resolveUUIDForNewAccount(),
         name: oauthProfile.name,                  // from Google
         given_name: oauthProfile.given_name,
         family_name: oauthProfile.family_name,
@@ -361,7 +400,7 @@ export function AuthProvider({ children }) {
       if (users[email]) throw new Error('Email đã tồn tại. Vui lòng đăng nhập.')
       const u = {
         email, name,
-        uuid: generateAnonUUID(),
+        uuid: await resolveUUIDForNewAccount(),
         given_name: name.split(' ').pop(),
         family_name: name.split(' ').slice(0, -1).join(' '),
         password,
