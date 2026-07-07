@@ -1034,6 +1034,7 @@ export default function MedicalAssetStorePanel() {
           {!isInternalTheme && themeStatus === 'ok' && (
             <span className="text-[11px] text-emerald-400 font-mono">
               ✓ Đã tải {externalAssets.length}/{externalTotal.toLocaleString()} mục (tự mở rộng khi chuyển trang)
+              {externalAssets.length < externalTotal && ' · Tìm kiếm chỉ áp dụng trong số này'}
             </span>
           )}
           {!isInternalTheme && themeStatus === 'error' && (
@@ -1053,6 +1054,16 @@ export default function MedicalAssetStorePanel() {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
+            {/* Nhóm B/A (theme ngoài) có thể có tới hàng trăm nghìn mục, nhưng
+            chỉ 1 phần đã được "chuẩn hoá" vào externalAssets (xem
+            PREFETCH_PAGES). Search chạy trên phần đã tải này, KHÔNG quét lại
+            toàn bộ dataset — ghi chú ngay dưới ô search để người dùng không
+            hiểu nhầm "không có kết quả" thành dataset thiếu dữ liệu. */}
+            {!isInternalTheme && searchTerm && externalAssets.length < externalTotal && (
+              <p className="absolute left-1 top-full mt-1 text-[10px] text-gray-500 italic leading-snug">
+                Chỉ tìm trong {externalAssets.length.toLocaleString()}/{externalTotal.toLocaleString()} mục đã tải — chuyển sang trang cuối để mở rộng cửa sổ tìm kiếm.
+              </p>
+            )}
           </div>
 
           <div className="flex items-center gap-2 w-full md:w-auto justify-end">
