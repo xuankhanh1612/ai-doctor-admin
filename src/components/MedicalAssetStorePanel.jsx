@@ -542,6 +542,7 @@ function normalizeMapItem(entry, theme, index) {
     modelUrl,
     mtlUrl,
     sketchfabEmbedUrl,
+    sketchfabUid,
     tags: ['Open Dataset', (theme.format || '').toUpperCase(), theme.name].filter(Boolean),
     isExternal: true,
     sourceUrl: rawUrl || theme.url,
@@ -550,6 +551,127 @@ function normalizeMapItem(entry, theme, index) {
     captionKey: String(tarPath || '') || undefined,
   };
 }
+
+// ============================================================================
+// THUMBNAIL "THẬT" CHO ITEM MAP THEME (GLB/FBX/OBJ/Sketchfab) Ở MÀN HÌNH
+// CHÍNH — trước đây card dùng externalThumbnail() (ảnh SVG chữ cái viết tắt,
+// không liên quan gì tới model thật). Giờ:
+//   - Sketchfab: gọi oEmbed API chính chủ (sketchfab.com/oembed?url=...) lấy
+//     thumbnail_url — đây là ảnh chụp thật của model, không phải screenshot
+//     tự dựng. Cache theo uid để không gọi lại khi cuộn qua cuộn lại.
+//   - GLB: render thẳng <model-viewer> thật (auto-rotate, không
+//     camera-controls) làm thumbnail — tức chính là model 3D thật, không
+//     phải ảnh tĩnh.
+//   - FBX/OBJ: dùng lại AnimatedAvatarViewer/ObjModelViewer thật (cùng
+//     viewer popup đang dùng) ở kích thước nhỏ.
+// Để không dựng hàng chục 3D viewer cùng lúc (1 trang có thể tới 32 item),
+// CHỈ mount viewer thật khi card đã cuộn vào viewport (IntersectionObserver,
+// rootMargin đệm trước 200px) và giữ nguyên sau đó (không unmount lại khi
+// cuộn ra, tránh tải lại model). Trước khi vào viewport, card hiện tạm ảnh
+// placeholder cũ để không bị trống ô.
+// ============================================================================
+const sketchfabThumbCache = new Map(); // uid -> Promise<string thumbnail_url | ''>
+function fetchSketchfabThumbnail(uid) {
+  if (!sketchfabThumbCache.has(uid)) {
+    sketchfabThumbCache.set(
+      uid,
+      fetch(`https://sketchfab.com/oembed?url=${encodeURIComponent(`https://sketchfab.com/models/${uid}`)}&format=json`)
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => (data && typeof data.thumbnail_url === 'string' ? data.thumbnail_url : ''))
+        .catch(() => '')
+    );
+  }
+  return sketchfabThumbCache.get(uid);
+}
+
+function AssetCardThumbnail3D({ asset }) {
+  const containerRef = useRef(null);
+  const [inView, setInView] = useState(false);
+  const [sketchfabThumbUrl, setSketchfabThumbUrl] = useState('');
+
+  // Quan sát 1 lần: khi card lọt vào viewport thì mount viewer thật, sau đó
+  // ngắt observer (giữ nguyên viewer, không unmount khi cuộn ra khỏi màn hình).
+  useEffect(() => {
+    if (inView) return;
+    const el = containerRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') {
+      setInView(true); // môi trường không hỗ trợ IntersectionObserver -> hiện luôn
+      return;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          setInView(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: '200px' }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [inView]);
+
+  useEffect(() => {
+    if (!inView || !asset.sketchfabUid) return;
+    let cancelled = false;
+    fetchSketchfabThumbnail(asset.sketchfabUid).then((url) => {
+      if (!cancelled) setSketchfabThumbUrl(url);
+    });
+    return () => { cancelled = true; };
+  }, [inView, asset.sketchfabUid]);
+
+  const placeholder = (
+    <img src={asset.thumbnail} alt={asset.title} className="w-full h-full object-cover" />
+  );
+
+  if (!inView) {
+    return <div ref={containerRef} className="w-full h-full">{placeholder}</div>;
+  }
+
+  if (asset.sketchfabUid) {
+    return (
+      <div ref={containerRef} className="w-full h-full">
+        {sketchfabThumbUrl ? (
+          <img src={sketchfabThumbUrl} alt={asset.title} className="w-full h-full object-cover" />
+        ) : (
+          placeholder
+        )}
+      </div>
+    );
+  }
+
+  if (asset.modelUrl && asset.format === 'glb') {
+    return (
+      <div ref={containerRef} className="w-full h-full">
+        <model-viewer
+          src={asset.modelUrl}
+          alt={asset.title}
+          auto-rotate
+          style={{ width: '100%', height: '100%', pointerEvents: 'none', '--poster-color': 'transparent' }}
+        ></model-viewer>
+      </div>
+    );
+  }
+
+  if (asset.modelUrl && asset.format === 'fbx') {
+    return (
+      <div ref={containerRef} className="w-full h-full" style={{ pointerEvents: 'none' }}>
+        <AnimatedAvatarViewer modelUrl={asset.modelUrl} modelKind="fbx" isDark autoRotate showGrid={false} showDragHint={false} />
+      </div>
+    );
+  }
+
+  if (asset.modelUrl && asset.format === 'obj') {
+    return (
+      <div ref={containerRef} className="w-full h-full" style={{ pointerEvents: 'none' }}>
+        <ObjModelViewer modelUrl={asset.modelUrl} mtlUrl={asset.mtlUrl} isDark autoRotate showGrid={false} />
+      </div>
+    );
+  }
+
+  return <div ref={containerRef} className="w-full h-full">{placeholder}</div>;
+}
+
 
 // ============================================================================
 // 1. MODULE INDEXED-DB (Lưu trữ vĩnh viễn dữ liệu tài khoản, ví tiền, kho đồ và avatar)
@@ -1109,12 +1231,18 @@ export default function MedicalAssetStorePanel() {
               className="bg-gradient-to-b from-white/10 to-white/5 rounded-2xl shadow-xl hover:shadow-[0_15px_30px_rgba(0,229,255,0.15)] transition-all duration-300 border border-white/10 flex flex-col overflow-hidden group group-hover:border-[#00e5ff]/40"
             >
               <div className="relative h-48 bg-black/40 overflow-hidden cursor-pointer">
-                <img
-                  src={asset.thumbnail}
-                  alt={asset.title}
-                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                  onClick={() => setPreviewAsset(asset)}
-                />
+                {asset.previewable && (asset.modelUrl || asset.sketchfabUid) ? (
+                  <div className="w-full h-full transition-transform duration-500 group-hover:scale-105">
+                    <AssetCardThumbnail3D asset={asset} />
+                  </div>
+                ) : (
+                  <img
+                    src={asset.thumbnail}
+                    alt={asset.title}
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    onClick={() => setPreviewAsset(asset)}
+                  />
+                )}
                 <div 
                   onClick={() => setPreviewAsset(asset)}
                   className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center text-xs font-bold tracking-wider text-[#00e5ff] gap-1.5"
