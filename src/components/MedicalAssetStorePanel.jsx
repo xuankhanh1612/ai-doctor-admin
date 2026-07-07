@@ -5,6 +5,20 @@ import { useAuth } from '../context/AuthContext';
 import AnimatedAvatarViewer from './AnimatedAvatarViewer';
 import ObjModelViewer from './ObjModelViewer';
 
+// medical_3d_market.json đã có sẵn modelUrl trỏ tới file .glb thật cho từng
+// item, nhưng thiếu cờ previewable/format nên trước đây thẻ item luôn hiện
+// ảnh tĩnh (asset.thumbnail) thay vì thumbnail 3D xoay thật như các theme
+// ngoài (xem AssetCardThumbnail3D — chỉ bật 3D khi previewable && format).
+// Bật previewable+format ở đây để NHẤT QUÁN: mọi item trên toàn trang (nội
+// bộ lẫn ngoài) đều hiện thumbnail 3D thật xoay tự động thay vì ảnh chụp
+// đại diện; asset.thumbnail vẫn còn đó để làm poster/fallback lúc model
+// chưa kịp tải (component tự dùng placeholder này khi cần).
+const INTERNAL_MARKET_DATA = marketData.map((item) => ({
+  ...item,
+  previewable: true,
+  format: 'glb',
+}));
+
 // ============================================================================
 // CHỦ ĐỀ (THEME) COMBOBOX — cùng ý tưởng với "Chủ đề (projects.json)" của
 // trang Tạo Avatar: một danh sách "chủ đề" để chọn, mỗi chủ đề trỏ tới một
@@ -801,7 +815,15 @@ const PAGE_SIZE_OPTIONS = [8, 16, 32];
 // ============================================================================
 
 export default function MedicalAssetStorePanel() {
-  const { updateProfile } = useAuth();
+  const { updateProfile, user } = useAuth();
+
+  // "Kho đồ" (unlockedAssets) phải lưu riêng theo TỪNG user đang đăng nhập —
+  // trước đây key 'unlocked_medical_assets' là CHUNG cho mọi user trên cùng
+  // trình duyệt (mọi tài khoản thấy chung 1 kho đồ, sai). Dùng user.uuid làm
+  // định danh (đã có sẵn cho mọi loại tài khoản: email/OAuth/guest — xem
+  // AuthContext.jsx), fallback về email rồi 'guest' nếu uuid chưa kịp có.
+  const userStorageId = user?.uuid || user?.email || 'guest';
+  const unlockedAssetsKey = `unlocked_medical_assets_${userStorageId}`;
 
   // --- STATE MANAGEMENT ---
   const [viewMode, setViewMode] = useState("store"); 
@@ -846,18 +868,25 @@ export default function MedicalAssetStorePanel() {
   const [captionStatus, setCaptionStatus] = useState('idle'); // idle | loading | ok | empty
   const [captionText, setCaptionText] = useState('');
 
-  // 1. Tự động load dữ liệu từ IndexedDB
+  // 1. Tự động load dữ liệu từ IndexedDB — chạy lại mỗi khi user đổi (đăng
+  // nhập tài khoản khác) để "Kho đồ" luôn đúng của người đang đăng nhập,
+  // không bị lẫn giữa các tài khoản dùng chung trình duyệt. Ví (coins) vẫn
+  // dùng chung 1 key toàn cục như trước (không nằm trong yêu cầu đổi lần này).
   useEffect(() => {
+    let cancelled = false;
+    setIsDbLoaded(false);
     const fetchUserData = async () => {
       const savedCoins = await loadDataFromDB('user_health_coins', 2500);
-      const savedAssets = await loadDataFromDB('unlocked_medical_assets', [4, 7]);
-      
+      const savedAssets = await loadDataFromDB(unlockedAssetsKey, [4, 7]);
+      if (cancelled) return;
+
       setUserCoins(savedCoins);
       setUnlockedAssets(savedAssets);
       setIsDbLoaded(true);
     };
     fetchUserData();
-  }, []);
+    return () => { cancelled = true; };
+  }, [unlockedAssetsKey]);
 
   // 2. Load thư viện Google Model Viewer
   useEffect(() => {
@@ -1013,7 +1042,7 @@ export default function MedicalAssetStorePanel() {
     setUnlockedAssets(newUnlocked);
     
     await saveDataToDB('user_health_coins', newCoins);
-    await saveDataToDB('unlocked_medical_assets', newUnlocked);
+    await saveDataToDB(unlockedAssetsKey, newUnlocked);
     
     showToast(`Đã lưu "${asset.title}" vào Kho đồ cá nhân!`, "success");
   };
@@ -1058,10 +1087,17 @@ export default function MedicalAssetStorePanel() {
   };
 
   const isInternalTheme = selectedTheme === INTERNAL_THEME_ID;
-  const activeThemeData = isInternalTheme ? marketData : externalAssets;
+  const activeThemeData = isInternalTheme ? INTERNAL_MARKET_DATA : externalAssets;
   const activeThemeMeta = isInternalTheme
     ? { id: INTERNAL_THEME_ID, name: 'Kho Y Tế (Nội bộ)', license: 'Consensus Doctor' }
     : EXTERNAL_THEMES.find((t) => t.id === selectedTheme);
+
+  // Số hiện trên tab "🛒 Chợ Mua Sắm" phải là TỔNG số lượng thật của cả
+  // dataset đang chọn — với theme ngoài, activeThemeData (externalAssets)
+  // chỉ là CỬA SỔ đã chuẩn hoá trong RAM (xem PREFETCH_PAGES phía trên),
+  // dùng externalTotal (vài trăm nghìn mục từ gobjaverse) mới đúng, không
+  // phải activeThemeData.length (luôn bị khoá cứng ở vài chục mục).
+  const storeItemCount = isInternalTheme ? activeThemeData.length : (externalTotal || activeThemeData.length);
 
   const quickCategories = isInternalTheme
     ? ["Tất cả", "3D Model", "In 3D", "Digital Twin", "Avatar VRM", "Gamification"]
@@ -1187,7 +1223,7 @@ export default function MedicalAssetStorePanel() {
         >
           🛒 Chợ Mua Sắm 
           <span className={`px-2 py-0.5 rounded-md text-[10px] ${viewMode === "store" ? "bg-black/20 text-black" : "bg-white/20 text-gray-300"}`}>
-            {activeThemeData.length}
+            {storeItemCount.toLocaleString()}
           </span>
         </button>
         <button 
