@@ -459,10 +459,22 @@ function normalizeExternalItem(entry, theme, index) {
 // gọi <model-viewer>) khi theme.previewable=true VÀ link được resolve chắc
 // chắn là file tải trực tiếp (raw GitHub .glb/.gltf); ngược lại để trống,
 // popup sẽ hiện link "Xem nguồn" thay vì cố render và báo lỗi.
+// Nhiều bộ OBJ (đặc biệt file export từ Unity, ví dụ gate_1.obj + gate_1.mtl
+// trong repo Quicksands) đặt file .mtl CÙNG TÊN, CÙNG THƯ MỤC với file .obj
+// — chỉ khác đuôi. Thử suy ra link .mtl theo quy ước đó; nếu không tồn tại,
+// ObjModelViewer sẽ tự fallback về vật liệu mặc định (xem catch trong
+// MTLLoader.load ở ObjModelViewer.jsx), không có gì hỏng nếu đoán sai.
+function deriveSiblingMtlUrl(objModelUrl) {
+  if (!objModelUrl) return '';
+  if (!/\.obj(\?|#|$)/i.test(objModelUrl)) return '';
+  return objModelUrl.replace(/\.obj(\?|#|$)/i, '.mtl$1');
+}
+
 function normalizeMapItem(entry, theme, index) {
   const { id: tarPath, value } = entry;
   const rawUrl = typeof value === 'string' ? value.trim() : '';
   const modelUrl = theme.previewable ? resolveDirectModelUrl(rawUrl) : '';
+  const mtlUrl = theme.format === 'obj' ? deriveSiblingMtlUrl(modelUrl) : '';
 
   // Riêng theme Sketchfab: rawUrl là trang xem model (không phải file .glb
   // tải trực tiếp) nên resolveDirectModelUrl() luôn trả về '' cho nó -> phải
@@ -478,6 +490,7 @@ function normalizeMapItem(entry, theme, index) {
     downloads: 0,
     thumbnail: externalThumbnail(theme.name),
     modelUrl,
+    mtlUrl,
     sketchfabEmbedUrl,
     tags: ['Open Dataset', (theme.format || '').toUpperCase(), theme.name].filter(Boolean),
     isExternal: true,
@@ -1173,7 +1186,7 @@ export default function MedicalAssetStorePanel() {
                 // (THREE.OBJLoader thật + OrbitControls). OBJ không có .mtl đi
                 // kèm trong obj_map.json nên mesh hiện bằng vật liệu mặc định
                 // (không phải lỗi tải, chỉ là thiếu thông tin màu/texture).
-                <ObjModelViewer modelUrl={previewAsset.modelUrl} isDark autoRotate showGrid={false} />
+                <ObjModelViewer modelUrl={previewAsset.modelUrl} mtlUrl={previewAsset.mtlUrl} isDark autoRotate showGrid={false} />
               ) : previewAsset.modelUrl ? (
                 <model-viewer
                   src={previewAsset.modelUrl}
