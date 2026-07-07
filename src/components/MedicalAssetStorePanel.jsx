@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react'; 
 import marketData from '../data/medical_3d_market.json';
 import { useAuth } from '../context/AuthContext';
@@ -97,18 +97,20 @@ const EXTERNAL_THEMES = [
   },
 ];
 
-const MAX_EXTERNAL_PREVIEW = 100; // các file gốc có thể lên tới hàng trăm nghìn dòng -> chỉ xem trước
-
 // ============================================================================
 // CAPTION LOOKUP (chỉ dùng cho Nhóm A — Map theme) — popup item detail cần
-// hiện caption text thật của vật thể, không chỉ tên file/tarPath. Theo đúng
-// pipeline gobjaverse:
-//   tarPath (vd "1246/6228026.tar.gz") --lấy index tuyệt đối--> 6228026
-//     -> tra gobjaverse_index_to_objaverse.json (hoặc bản 280k)  -> objaverse UID
-//     -> tra text_captions_cap3d.json                             -> caption text
-// Cả 2 file index->objaverse đều được thử (bản đầy đủ trước, bản 280k sau)
-// vì ta không chắc entry nằm trong tập con nào. Toàn bộ JSON được fetch 1
-// lần và cache lại trong bộ nhớ (module-level) để không tải lại mỗi lần mở popup.
+// hiện caption text thật của vật thể, không chỉ tên file/tarPath.
+//
+// Cấu trúc THẬT của 2 file (đã xác nhận qua mẫu dữ liệu):
+//   gobjaverse_index_to_objaverse.json: { "0/10042": "000-000/0028b77...glb", ... }
+//   text_captions_cap3d.json:           { "0/10042": "A pair of white flip flops.", ... }
+// Cả hai dùng CHUNG một khoá dạng "folder/index" — chính là tarPath trong
+// glb_map.json/fbx_map.json/obj_map.json/sketchfab_map.json nhưng bỏ đuôi
+// file (vd tarPath "1246/6228026.tar.gz" -> khoá "1246/6228026").
+// => Caption tra được TRỰC TIẾP bằng khoá này, không cần qua UID objaverse.
+// File index_to_objaverse chỉ dùng để lấy đường dẫn objaverse gốc (tham khảo/
+// tải), và làm phương án dự phòng nếu 1 số entry của Cap3D lỡ được key theo
+// UID thay vì theo "folder/index".
 // ============================================================================
 const GOBJAVERSE_INDEX_TO_OBJAVERSE_URL = 'https://virutalbuy-public.oss-cn-hangzhou.aliyuncs.com/share/aigc3d/gobjaverse_index_to_objaverse.json';
 const GOBJAVERSE_280K_INDEX_TO_OBJAVERSE_URL = 'https://virutalbuy-public.oss-cn-hangzhou.aliyuncs.com/share/aigc3d/gobjaverse_280k_index_to_objaverse.json';
@@ -129,18 +131,38 @@ function fetchJsonOnce(url) {
   return jsonFetchCache.get(url);
 }
 
-// tarPath dạng "1246/6228026.tar.gz" hoặc "1246/6228026" -> lấy phần số cuối
-// (index tuyệt đối trong toàn bộ dataset gobjaverse) làm khoá tra cứu.
-function parseAbsoluteIndexFromTarPath(tarPath) {
-  const raw = String(tarPath || '');
-  const lastSegment = raw.split('/').pop() || raw;
-  const match = lastSegment.match(/(\d+)/);
-  return match ? match[1] : '';
+// tarPath dạng "1246/6228026.tar.gz" -> bỏ đuôi file, giữ "1246/6228026"
+// (đúng dạng khoá "folder/index" mà 2 file JSON caption/index dùng chung).
+function tarPathToMapKey(tarPath) {
+  const raw = String(tarPath || '').trim();
+  // bỏ mọi đuôi dạng .tar.gz / .tar / .glb / .fbx / .obj / .zip ở cuối
+  return raw.replace(/\.(tar\.gz|tgz|tar|glb|gltf|fbx|obj|zip)$/i, '');
 }
 
-// Tra một map (có thể là object {key: value} hoặc mảng [value theo vị trí])
-// bằng nhiều dạng khoá khác nhau (string / number) vì ta không chắc cấu trúc
-// JSON gốc lưu khoá dạng gì.
+// UID objaverse = tên file (bỏ đuôi) trong đường dẫn "000-000/hash.glb" hoặc
+// "dictionary_index/object_index.glb" (category_annotation.json).
+function extractUidFromObjaversePath(path) {
+  const raw = String(path || '');
+  const base = raw.split('/').pop() || raw;
+  return base.replace(/\.[a-z0-9]+$/i, '');
+}
+
+// gobjaverse_alignment.json chứa link tải TRỰC TIẾP dạng
+// ".../gobjaverse_alignment/1000/5002955.tar.gz" — 2 segment cuối của path
+// (bỏ đuôi) chính là khoá "folder/index" giống hệt map theme.
+function extractMapKeyFromAlignmentUrl(url) {
+  try {
+    const path = new URL(url).pathname;
+    const parts = path.split('/').filter(Boolean);
+    if (parts.length < 2) return '';
+    const folder = parts[parts.length - 2];
+    const file = tarPathToMapKey(parts[parts.length - 1]);
+    return file ? `${folder}/${file}` : '';
+  } catch {
+    return '';
+  }
+}
+
 function lookupInMap(map, key) {
   if (!map || !key) return undefined;
   if (Array.isArray(map)) {
@@ -148,53 +170,108 @@ function lookupInMap(map, key) {
     return Number.isFinite(idx) ? map[idx] : undefined;
   }
   if (typeof map === 'object') {
-    return map[key] ?? map[String(key)] ?? map[Number(key)];
+    return map[key];
   }
   return undefined;
 }
 
-// Từ 1 objaverse UID, lấy caption text trong text_captions_cap3d.json — file
-// này có thể lưu {uid: "caption"} hoặc {uid: ["caption", ...]}.
-function extractCaptionValue(captionsMap, uid) {
-  const value = lookupInMap(captionsMap, uid);
-  if (!value) return '';
-  if (typeof value === 'string') return value;
-  if (Array.isArray(value)) return typeof value[0] === 'string' ? value[0] : '';
-  if (typeof value === 'object') return value.caption || value.text || '';
-  return '';
-}
-
-// Pipeline đầy đủ: tarPath -> absolute index -> objaverse UID -> caption text.
-// Trả về chuỗi rỗng nếu bất kỳ bước nào không tìm được (thay vì throw), để
-// popup có thể hiện "Không tìm thấy caption" thay vì lỗi.
-async function resolveCaptionForTarPath(tarPath) {
-  const absoluteIndex = parseAbsoluteIndexFromTarPath(tarPath);
-  if (!absoluteIndex) return '';
-
-  let uid;
-  // Thử bản đầy đủ trước, nếu không có entry thì thử bản 280k.
-  try {
-    const fullIndexMap = await fetchJsonOnce(GOBJAVERSE_INDEX_TO_OBJAVERSE_URL);
-    uid = lookupInMap(fullIndexMap, absoluteIndex);
-  } catch {
-    // bỏ qua, thử nguồn tiếp theo
-  }
-  if (!uid) {
-    try {
-      const idx280kMap = await fetchJsonOnce(GOBJAVERSE_280K_INDEX_TO_OBJAVERSE_URL);
-      uid = lookupInMap(idx280kMap, absoluteIndex);
-    } catch {
-      // bỏ qua
-    }
-  }
-  if (!uid) return '';
-
+// Tra caption cho 1 asset. Asset có thể mang 1 trong 2 kiểu khoá:
+//  - captionUid: UID objaverse trực tiếp (từ category_annotation.json)
+//    -> tra thẳng text_captions_cap3d.json[uid].
+//  - captionKey: khoá "folder/index" (từ map theme / gobjaverse_280k /
+//    gobjaverse_alignment) -> tra trực tiếp text_captions_cap3d.json[key];
+//    nếu miss, thử lấy UID qua gobjaverse_index_to_objaverse.json (bản đầy
+//    đủ rồi tới bản 280k) rồi tra lại theo UID.
+// Luôn trả về '' thay vì throw nếu bất kỳ bước nào miss.
+async function resolveCaptionForAsset(asset) {
+  if (!asset) return '';
   try {
     const captionsMap = await fetchJsonOnce(TEXT_CAPTIONS_CAP3D_URL);
-    return extractCaptionValue(captionsMap, uid);
+
+    if (asset.captionUid) {
+      const byUid = lookupInMap(captionsMap, asset.captionUid);
+      return typeof byUid === 'string' ? byUid : '';
+    }
+
+    if (asset.captionKey) {
+      const mapKey = tarPathToMapKey(asset.captionKey);
+      const direct = lookupInMap(captionsMap, mapKey);
+      if (typeof direct === 'string' && direct) return direct;
+
+      let objaversePath;
+      try {
+        const fullIndexMap = await fetchJsonOnce(GOBJAVERSE_INDEX_TO_OBJAVERSE_URL);
+        objaversePath = lookupInMap(fullIndexMap, mapKey);
+      } catch {
+        // bỏ qua, thử bản 280k
+      }
+      if (!objaversePath) {
+        try {
+          const idx280kMap = await fetchJsonOnce(GOBJAVERSE_280K_INDEX_TO_OBJAVERSE_URL);
+          objaversePath = lookupInMap(idx280kMap, mapKey);
+        } catch {
+          // bỏ qua
+        }
+      }
+      if (!objaversePath) return '';
+
+      const uid = extractUidFromObjaversePath(objaversePath);
+      const byUid = lookupInMap(captionsMap, uid);
+      return typeof byUid === 'string' ? byUid : '';
+    }
+
+    return '';
   } catch {
     return '';
   }
+}
+
+// ============================================================================
+// TẢI DỮ LIỆU THEO "CỬA SỔ" (LAZY WINDOW) — thay vì luôn CHUẨN HOÁ (normalize)
+// cứng 100 mục đầu tiên bất kể pageSize là 8/16/32, giờ:
+//   1. Cache JSON thô + mảng entries đã "dàn phẳng" theo url (module-level
+//      Map) -> đổi qua đổi lại theme không fetch/parse lại từ đầu.
+//   2. Chỉ CHUẨN HOÁ đủ số lượng cần cho trang hiện tại + vài trang đệm phía
+//      sau (PREFETCH_PAGES) — không dựng object/thumbnail cho phần chưa cần
+//      hiển thị. pageSize=8 sẽ chuẩn hoá ít hơn hẳn pageSize=32.
+//   3. Khi người dùng chuyển trang vượt "cửa sổ" đã chuẩn hoá, chỉ re-slice
+//      + normalize thêm từ entries đã cache sẵn trong RAM (không gọi mạng
+//      lại) — rất rẻ vì dữ liệu thô đã có sẵn.
+// Lưu ý: phần tốn kém thật sự (tải + JSON.parse toàn bộ file — có thể tới
+// hàng trăm nghìn dòng, xem sketchfab_map.json ~340k entries) là không tránh
+// được với 1 file JSON tĩnh không hỗ trợ phân trang phía server. Cải thiện ở
+// đây là: (a) không lặp lại việc tải/parse đó mỗi lần đổi theme qua lại,
+// (b) không lãng phí CPU dựng object cho các mục chưa hiển thị.
+// ============================================================================
+const PREFETCH_PAGES = 3; // dựng sẵn thêm vài trang kế tiếp để chuyển trang mượt, không giật
+
+// Cache: theme.url -> Promise<{ entries, total }> — entries đã dàn phẳng
+// (chưa chuẩn hoá thành asset), dùng lại cho mọi lần chọn lại theme này.
+const themeEntriesCache = new Map();
+function loadThemeEntries(theme) {
+  if (!themeEntriesCache.has(theme.url)) {
+    themeEntriesCache.set(
+      theme.url,
+      fetchJsonOnce(theme.url).then((data) => {
+        const entries = theme.isMapTheme ? toMapEntriesArray(data) : toEntriesArray(data);
+        return { entries, total: entries.length };
+      })
+    );
+  }
+  return themeEntriesCache.get(theme.url);
+}
+
+// Số mục cần chuẩn hoá để phủ hết trang hiện tại + PREFETCH_PAGES trang đệm,
+// không bao giờ vượt quá tổng số entry thật.
+function computeNeededPreviewCount(pageSizeVal, currentPageVal, totalVal) {
+  const needed = currentPageVal * pageSizeVal + pageSizeVal * PREFETCH_PAGES;
+  return Math.min(totalVal, Math.max(needed, pageSizeVal));
+}
+
+function normalizeEntriesSlice(entries, theme, count) {
+  return entries
+    .slice(0, count)
+    .map((entry, index) => (theme.isMapTheme ? normalizeMapItem(entry, theme, index) : normalizeExternalItem(entry, theme, index)));
 }
 
 // Đổi link "blob" (trang xem HTML) của GitHub sang raw.githubusercontent.com
@@ -266,13 +343,46 @@ function toMapEntriesArray(data) {
   return entries;
 }
 
+// Chuẩn hoá 1 dòng của Nhóm B (Index/Caption theme) — 4 file có 4 hình dạng
+// dữ liệu khác nhau (đã xác nhận qua mẫu thật), nên xử lý riêng theo theme.id:
+//
+//  - gobjaverse_280k: value là string "folder/index" (khoá y hệt map theme)
+//    -> dùng làm captionKey để tra caption, dù theme này không có model 3D.
+//  - category_annotation: value là { dictionary_index, object_index, label }
+//    -> object_index là UID+.glb -> dùng captionUid tra thẳng caption; label
+//    dùng làm tag phân loại (10 nhóm: Daily-Used, Animals, Human-Shape...).
+//  - text_captions_cap3d: value CHÍNH LÀ caption text -> hiện luôn làm tiêu
+//    đề (presetCaption), không cần fetch lại khi mở popup.
+//  - gobjaverse_alignment: value là link tải .tar.gz trực tiếp -> lấy tên
+//    file làm tiêu đề, tách khoá "folder/index" từ URL để tra caption; KHÔNG
+//    gán modelUrl vì .tar.gz không phải định dạng <model-viewer> đọc được.
 function normalizeExternalItem(entry, theme, index) {
   const { id, value } = entry;
   let rawUrl = '';
   let titleFromValue = '';
   let downloads = 0;
+  let tags = ['Open Dataset', theme.name];
+  let captionKey = '';
+  let captionUid = '';
+  let presetCaption = '';
 
-  if (typeof value === 'string') {
+  if (theme.id === 'gobjaverse_280k' && typeof value === 'string') {
+    captionKey = value.trim();
+    titleFromValue = captionKey;
+  } else if (theme.id === 'category_annotation' && value && typeof value === 'object') {
+    const dictionaryIndex = value.dictionary_index || '';
+    const objectIndex = value.object_index || '';
+    captionUid = extractUidFromObjaversePath(objectIndex);
+    titleFromValue = captionUid || `${dictionaryIndex}/${objectIndex}`;
+    if (value.label) tags = ['Open Dataset', value.label, theme.name];
+  } else if (theme.id === 'text_captions_cap3d' && typeof value === 'string') {
+    presetCaption = value.trim();
+    captionKey = String(id || '');
+    titleFromValue = captionKey ? `Cap3D · ${captionKey}` : presetCaption;
+  } else if (theme.id === 'gobjaverse_alignment' && typeof value === 'string' && /^https?:\/\//i.test(value)) {
+    rawUrl = value;
+    captionKey = extractMapKeyFromAlignmentUrl(value);
+  } else if (typeof value === 'string') {
     if (/^https?:\/\//i.test(value)) rawUrl = value;
     else titleFromValue = value.trim();
   } else if (Array.isArray(value)) {
@@ -285,7 +395,12 @@ function normalizeExternalItem(entry, theme, index) {
     downloads = value;
   }
 
-  const title = titleFromValue || (rawUrl ? fileNameFromUrl(rawUrl) : String(id)).slice(0, 140);
+  const title = (titleFromValue || (rawUrl ? fileNameFromUrl(rawUrl) : String(id))).slice(0, 140);
+
+  // Toàn bộ Nhóm B có previewable=false -> chỉ gán modelUrl nếu ai đó bật lại
+  // cờ này trong tương lai VÀ link resolve chắc chắn là .glb/.gltf tải trực
+  // tiếp (không bao giờ gán thẳng link .tar.gz cho <model-viewer>).
+  const modelUrl = theme.previewable ? resolveDirectModelUrl(rawUrl) : '';
 
   return {
     id: `${theme.id}-${index}-${String(id).slice(0, 40)}`,
@@ -294,10 +409,13 @@ function normalizeExternalItem(entry, theme, index) {
     price: 0,
     downloads,
     thumbnail: externalThumbnail(theme.name),
-    modelUrl: rawUrl,
-    tags: ['Open Dataset', theme.name],
+    modelUrl,
+    tags,
     isExternal: true,
-    sourceUrl: theme.url,
+    sourceUrl: rawUrl || theme.url,
+    captionKey: captionKey || undefined,
+    captionUid: captionUid || undefined,
+    presetCaption: presetCaption || undefined,
   };
 }
 
@@ -323,21 +441,8 @@ function normalizeMapItem(entry, theme, index) {
     sourceUrl: rawUrl || theme.url,
     format: theme.format || '',
     previewable: Boolean(theme.previewable),
-    tarPath: String(tarPath || ''),
-    isMapTheme: true,
+    captionKey: String(tarPath || '') || undefined,
   };
-}
-
-async function loadExternalTheme(theme) {
-  const response = await fetch(theme.url);
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
-  const data = await response.json();
-  const entries = theme.isMapTheme ? toMapEntriesArray(data) : toEntriesArray(data);
-  const total = entries.length;
-  const preview = entries
-    .slice(0, MAX_EXTERNAL_PREVIEW)
-    .map((entry, index) => (theme.isMapTheme ? normalizeMapItem(entry, theme, index) : normalizeExternalItem(entry, theme, index)));
-  return { assets: preview, total };
 }
 
 // ============================================================================
@@ -427,6 +532,10 @@ export default function MedicalAssetStorePanel() {
   const [saving, setSaving] = useState(false);
   const [saveNote, setSaveNote] = useState('');
 
+  // Cache trong RAM của entries thô (chưa chuẩn hoá) cho theme đang chọn —
+  // dùng để "mở rộng cửa sổ" khi phân trang mà KHÔNG cần fetch mạng lại.
+  const rawEntriesRef = useRef({ url: '', entries: [], total: 0 });
+
   // Caption text (Cap3D) cho item đang xem trong popup — chỉ áp dụng cho
   // Nhóm A (Map theme: glb/fbx/obj/sketchfab), tra cứu qua chuỗi
   // tarPath -> gobjaverse index -> objaverse UID -> caption text.
@@ -464,8 +573,10 @@ export default function MedicalAssetStorePanel() {
   }, [searchTerm, selectedTag, sortBy, viewMode, pageSize, selectedTheme]);
 
   // 4. Tải dữ liệu chủ đề (theme) đang chọn trong combobox — nếu là chủ đề
-  // ngoài (1 trong 4 link .json của gobjaverse) thì fetch trực tiếp; chủ đề
-  // nội bộ dùng luôn medical_3d_market.json đã import sẵn.
+  // ngoài (1 trong 4 link .json của gobjaverse) thì fetch (có cache), sau đó
+  // chỉ CHUẨN HOÁ đủ 1 trang + vài trang đệm (xem PREFETCH_PAGES phía trên)
+  // thay vì luôn dựng cứng 100 mục; chủ đề nội bộ dùng luôn
+  // medical_3d_market.json đã import sẵn.
   useEffect(() => {
     if (selectedTheme === INTERNAL_THEME_ID) {
       setThemeStatus('ok');
@@ -473,6 +584,7 @@ export default function MedicalAssetStorePanel() {
       setExternalAssets([]);
       setExternalTotal(0);
       setSelectedTag('Tất cả');
+      rawEntriesRef.current = { url: '', entries: [], total: 0 };
       return;
     }
     const theme = EXTERNAL_THEMES.find((t) => t.id === selectedTheme);
@@ -483,15 +595,20 @@ export default function MedicalAssetStorePanel() {
     setThemeError('');
     setSelectedTag('Tất cả');
 
-    loadExternalTheme(theme)
-      .then(({ assets, total }) => {
+    loadThemeEntries(theme)
+      .then(({ entries, total }) => {
         if (cancelled) return;
-        setExternalAssets(assets);
+        rawEntriesRef.current = { url: theme.url, entries, total };
+        // Vừa đổi theme -> trang sẽ reset về 1 (effect #3 bên dưới), nên chỉ
+        // cần chuẩn hoá đủ cho trang 1 + đệm.
+        const count = computeNeededPreviewCount(pageSize, 1, total);
+        setExternalAssets(normalizeEntriesSlice(entries, theme, count));
         setExternalTotal(total);
         setThemeStatus('ok');
       })
       .catch((err) => {
         if (cancelled) return;
+        rawEntriesRef.current = { url: '', entries: [], total: 0 };
         setExternalAssets([]);
         setExternalTotal(0);
         setThemeStatus('error');
@@ -501,10 +618,36 @@ export default function MedicalAssetStorePanel() {
     return () => { cancelled = true; };
   }, [selectedTheme]);
 
-  // 5. Tra cứu caption text (Cap3D) mỗi khi mở popup cho 1 item thuộc
-  // Nhóm A (Map theme) — chạy pipeline tarPath -> index -> UID -> caption.
+  // 4b. Khi người dùng đổi cỡ trang hoặc chuyển sang trang cần nhiều mục hơn
+  // "cửa sổ" đã chuẩn hoá hiện tại, chỉ re-slice + normalize thêm từ entries
+  // đã cache trong rawEntriesRef (không gọi mạng lại) — thao tác rẻ vì dữ
+  // liệu thô đã có sẵn trong RAM.
   useEffect(() => {
-    if (!previewAsset || !previewAsset.isMapTheme || !previewAsset.tarPath) {
+    if (selectedTheme === INTERNAL_THEME_ID) return;
+    const { entries, total, url } = rawEntriesRef.current;
+    const theme = EXTERNAL_THEMES.find((t) => t.id === selectedTheme);
+    if (!theme || theme.url !== url || !total) return; // chưa sẵn sàng / đang tải theme khác
+
+    const neededCount = computeNeededPreviewCount(pageSize, currentPage, total);
+    setExternalAssets((prev) => (neededCount > prev.length ? normalizeEntriesSlice(entries, theme, neededCount) : prev));
+  }, [currentPage, pageSize, selectedTheme]);
+
+  // 5. Tra cứu caption text (Cap3D) mỗi khi mở popup cho 1 item Nhóm A/B có
+  // gắn captionKey/captionUid — chạy pipeline captionKey/UID -> caption.
+  // Nếu item đã có sẵn caption (theme "Cap3D Text Captions" — value chính là
+  // caption) thì hiện luôn, không cần fetch lại.
+  useEffect(() => {
+    if (!previewAsset) {
+      setCaptionStatus('idle');
+      setCaptionText('');
+      return;
+    }
+    if (previewAsset.presetCaption) {
+      setCaptionText(previewAsset.presetCaption);
+      setCaptionStatus('ok');
+      return;
+    }
+    if (!previewAsset.captionKey && !previewAsset.captionUid) {
       setCaptionStatus('idle');
       setCaptionText('');
       return;
@@ -514,7 +657,7 @@ export default function MedicalAssetStorePanel() {
     setCaptionStatus('loading');
     setCaptionText('');
 
-    resolveCaptionForTarPath(previewAsset.tarPath).then((caption) => {
+    resolveCaptionForAsset(previewAsset).then((caption) => {
       if (cancelled) return;
       if (caption) {
         setCaptionText(caption);
@@ -606,7 +749,9 @@ export default function MedicalAssetStorePanel() {
 
   const quickCategories = isInternalTheme
     ? ["Tất cả", "3D Model", "In 3D", "Digital Twin", "Avatar VRM", "Gamification"]
-    : ["Tất cả", "Open Dataset", activeThemeMeta?.name].filter(Boolean);
+    : selectedTheme === 'category_annotation'
+      ? ["Tất cả", ...Array.from(new Set(externalAssets.flatMap((a) => a.tags).filter((t) => t !== 'Open Dataset' && t !== activeThemeMeta?.name)))]
+      : ["Tất cả", "Open Dataset", activeThemeMeta?.name].filter(Boolean);
 
   // --- LỌC DỮ LIỆU ---
   const filteredAssets = activeThemeData
@@ -617,6 +762,7 @@ export default function MedicalAssetStorePanel() {
       const matchesSearch = 
         asset.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         asset.author.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (asset.presetCaption || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         asset.tags.some(t => t.toLowerCase().includes(searchTerm.toLowerCase()));
       
       const matchesTab = selectedTag === "Tất cả" || asset.tags.includes(selectedTag);
@@ -731,7 +877,7 @@ export default function MedicalAssetStorePanel() {
           )}
           {!isInternalTheme && themeStatus === 'ok' && (
             <span className="text-[11px] text-emerald-400 font-mono">
-              ✓ Xem trước {externalAssets.length}/{externalTotal.toLocaleString()} mục (giới hạn bản xem trước)
+              ✓ Đã tải {externalAssets.length}/{externalTotal.toLocaleString()} mục (tự mở rộng khi chuyển trang)
             </span>
           )}
           {!isInternalTheme && themeStatus === 'error' && (
@@ -955,14 +1101,15 @@ export default function MedicalAssetStorePanel() {
 
             <h2 className="text-2xl font-bold text-white pr-8 mb-1 tracking-tight">{previewAsset.title}</h2>
 
-            {previewAsset.isMapTheme && (
+            {(previewAsset.captionKey || previewAsset.captionUid || previewAsset.presetCaption) ? (
               <p className="text-xs text-gray-400 italic mb-4 leading-relaxed">
                 {captionStatus === 'loading' && '⏳ Đang tra caption (Cap3D)...'}
                 {captionStatus === 'ok' && `“${captionText}”`}
                 {captionStatus === 'empty' && 'Không tìm thấy caption cho vật thể này trong Cap3D.'}
               </p>
+            ) : (
+              <div className="mb-4" />
             )}
-            {!previewAsset.isMapTheme && <div className="mb-4" />}
 
             <div className="flex-grow bg-black/40 rounded-xl relative overflow-hidden border border-white/5 flex items-center justify-center shadow-inner">
               {previewAsset.modelUrl ? (
