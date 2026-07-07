@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react'; 
 import marketData from '../data/medical_3d_market.json';
 import { useAuth } from '../context/AuthContext';
+import AnimatedAvatarViewer from './AnimatedAvatarViewer';
 
 // ============================================================================
 // CHỦ ĐỀ (THEME) COMBOBOX — cùng ý tưởng với "Chủ đề (projects.json)" của
@@ -15,18 +16,26 @@ import { useAuth } from '../context/AuthContext';
 //  A) "Map" theme (previewable: true) — trỏ thẳng tới FILE MODEL THẬT
 //     (glb_map.json / fbx_map.json / obj_map.json / sketchfab_map.json trong
 //     gobjaverse_xl_alignment_map). Đây là nhóm popup có thể hiển thị 3D thật
-//     vì mỗi entry là {tarPath: link_file_model}. Với glb trên GitHub, link
-//     gốc là dạng "blob" (trang xem HTML) nên phải đổi sang
-//     raw.githubusercontent.com mới tải được file nhị phân cho <model-viewer>.
-//     FBX/OBJ vẫn được liệt kê để tham khảo/tải về, nhưng <model-viewer>
-//     (Google) chỉ hỗ trợ glTF/GLB nên 2 định dạng này không xem 3D trực tiếp
-//     được trong popup — vẫn hiện link tải gốc.
+//     vì mỗi entry là {tarPath: link_file_model}. Với glb/fbx trên GitHub,
+//     link gốc là dạng "blob" (trang xem HTML) nên phải đổi sang
+//     raw.githubusercontent.com mới tải được file nhị phân.
+//     - GLB/GLTF: render bằng <model-viewer> (Google), chỉ đọc glTF/GLB.
+//     - FBX: <model-viewer> KHÔNG hỗ trợ định dạng này, nên popup dùng lại
+//       AnimatedAvatarViewer (THREE.FBXLoader + OrbitControls, cùng viewer
+//       đang dùng cho hoạt ảnh avatar) để xem 3D thật thay vì chỉ hiện link
+//       tải gốc.
+//     - OBJ: chưa có OBJLoader trong repo nên vẫn chỉ liệt kê để tải về,
+//       không xem 3D trực tiếp trong popup được.
+//     - Sketchfab: rawUrl là TRANG XEM model (không phải file tải trực
+//       tiếp) nên dùng iframe embed chính chủ của Sketchfab thay vì cố
+//       tải file nhị phân.
 //
 //  B) "Index/Caption" theme (previewable: false) — 4 link .json cũ, chỉ là
 //     cấu trúc index để hiển thị caption text theo ID item (không có file
 //     model thật), nên popup sẽ không render 3D, chỉ hiện thông tin văn bản.
 // ============================================================================
 const INTERNAL_THEME_ID = 'medical_internal';
+
 
 const EXTERNAL_THEMES = [
   // ---- Nhóm A: Map theme — có model thật, xem 3D được trong popup ----
@@ -55,7 +64,7 @@ const EXTERNAL_THEMES = [
     url: 'https://virutalbuy-public.oss-cn-hangzhou.aliyuncs.com/share/aigc3d/gobjaverse_xl_alignment_map/fbx_map.json',
     isMapTheme: true,
     format: 'fbx',
-    previewable: false, // model-viewer không hỗ trợ FBX
+    previewable: true, // xem 3D thật qua AnimatedAvatarViewer (THREE.FBXLoader), không dùng <model-viewer>
   },
   {
     id: 'xl_align_obj_map',
@@ -319,14 +328,14 @@ function buildSketchfabEmbedUrl(uid) {
 }
 
 // Chỉ trả về modelUrl khi ta chắc chắn đó là link tải file trực tiếp
-// (raw GitHub, hoặc link đã kết thúc bằng .glb/.gltf) — nếu không chắc
+// (raw GitHub, hoặc link đã kết thúc bằng .glb/.gltf/.fbx) — nếu không chắc
 // (ví dụ trang xem model của Sketchfab, không phải file tải trực tiếp) thì
 // để trống, popup sẽ hiện link "Xem nguồn" thay vì cố render lỗi.
 function resolveDirectModelUrl(rawUrl) {
   if (!rawUrl) return '';
   const githubRaw = toGithubRawUrl(rawUrl);
   if (githubRaw) return githubRaw;
-  if (/\.(glb|gltf)(\?|#|$)/i.test(rawUrl)) return rawUrl;
+  if (/\.(glb|gltf|fbx)(\?|#|$)/i.test(rawUrl)) return rawUrl;
   return '';
 }
 
@@ -1143,7 +1152,20 @@ export default function MedicalAssetStorePanel() {
             )}
 
             <div className="flex-grow bg-black/40 rounded-xl relative overflow-hidden border border-white/5 flex items-center justify-center shadow-inner">
-              {previewAsset.modelUrl ? (
+              {previewAsset.modelUrl && previewAsset.format === 'fbx' ? (
+                // <model-viewer> (Google) chỉ đọc glTF/GLB, không đọc được FBX.
+                // Dùng lại AnimatedAvatarViewer (THREE.FBXLoader thật +
+                // OrbitControls) — cùng viewer đang chạy cho hoạt ảnh avatar —
+                // để xem 3D thật thay vì rơi vào fallback text.
+                <AnimatedAvatarViewer
+                  modelUrl={previewAsset.modelUrl}
+                  modelKind="fbx"
+                  isDark
+                  autoRotate
+                  showGrid={false}
+                  showDragHint={false}
+                />
+              ) : previewAsset.modelUrl ? (
                 <model-viewer
                   src={previewAsset.modelUrl}
                   alt={previewAsset.title}
@@ -1187,7 +1209,7 @@ export default function MedicalAssetStorePanel() {
 
             <div className="grid grid-cols-3 text-center border-t border-b border-white/5 py-3 my-4 text-xs font-mono text-gray-400">
               <div>Tác giả: <span className="text-cyan-400 font-semibold">{previewAsset.author}</span></div>
-              <div>Tệp tin: <span className="text-purple-400 font-semibold">{previewAsset.modelUrl ? 'glb' : previewAsset.sketchfabEmbedUrl ? 'sketchfab' : 'json'}</span></div>
+              <div>Tệp tin: <span className="text-purple-400 font-semibold">{previewAsset.modelUrl ? (previewAsset.format === 'fbx' ? 'fbx' : 'glb') : previewAsset.sketchfabEmbedUrl ? 'sketchfab' : 'json'}</span></div>
               <div>Lượt tải: <span className="text-amber-400 font-semibold">{previewAsset.downloads.toLocaleString()}</span></div>
             </div>
 
