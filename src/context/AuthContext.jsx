@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import { FAMILY_MEMBERS_CHANGED_EVENT, FAMILY_USER_STORAGE_KEY, LXK_PATIENT_PROFILE, getFamilyOwnerKey } from '../components/family/familyData.js'
-import { getAnonSession, saveAnonSession, updateAnonSession, deleteAnonSession, clearAllGuestData } from '../lib/anonDB.js'
+import { getAnonSession, saveAnonSession, updateAnonSession, deleteAnonSession, clearAllGuestData, migrateGuestDataToUuid } from '../lib/anonDB.js'
 
 const AuthContext = createContext(null)
 const ADMIN_EMAIL = 'khanhlegood1@gmail.com'
@@ -256,6 +256,11 @@ export function AuthProvider({ children }) {
     // 1. Phiên anonymous đang có sẵn trong state (đã gọi loginAnonymous() ở
     // tab này, vd qua nút mic) -> dùng luôn, khỏi cần đọc IndexedDB.
     if (user?.isAnonymous && user?.uuid) {
+      // Khoá lại toàn bộ dữ liệu journey/inventory/records đang ở "bucket
+      // khách chung" của thiết bị vào ĐÚNG uuid vừa nâng cấp — nếu không làm
+      // bước này, dữ liệu đó vẫn nằm ở dạng "chưa có chủ" và một vị khách
+      // khác dùng chung thiết bị sau khi đăng xuất có thể vô tình ghi đè lên.
+      migrateGuestDataToUuid(user.uuid).catch(() => {})
       // Uuid này vừa được "thăng cấp" thành tài khoản thật -> xoá phiên
       // anonymous cũ trong IndexedDB, để nếu có 1 khách KHÁC dùng chung
       // thiết bị này sau khi đăng xuất, loginAnonymous() sẽ sinh uuid mới
@@ -271,6 +276,7 @@ export function AuthProvider({ children }) {
       const anon = await getAnonSession()
       const existingUUID = anon?.uuid || anon?.anonUUID
       if (existingUUID) {
+        migrateGuestDataToUuid(existingUUID).catch(() => {}) // tương tự lý do ở nhánh (1)
         deleteAnonSession().catch(() => {}) // tương tự lý do ở nhánh (1)
         return existingUUID
       }
