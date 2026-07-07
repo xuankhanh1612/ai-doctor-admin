@@ -85,6 +85,28 @@ const EXTERNAL_THEMES = [
   },
 ];
 
+// Danh sách gộp để render combobox chủ đề với thumbnail thật — item nội bộ
+// (đầu tiên) dùng luôn ảnh của vật phẩm đầu tiên trong medical_3d_market.json
+// (mô hình Tim bóc tách 3D) làm ảnh đại diện, thay vì chỉ hiện chữ trong
+// thẻ <select> gốc, để nhất quán hình ảnh với các thẻ item trong lưới bên
+// dưới (cùng bo góc rounded-md, object-cover, border trắng mờ). 4 chủ đề
+// ngoài chưa có ảnh đại diện cố định (dữ liệu chỉ tải khi được chọn) nên
+// dùng icon minh hoạ dataset thay thế.
+const THEME_OPTIONS = [
+  {
+    id: INTERNAL_THEME_ID,
+    name: 'Kho Y Tế (Nội bộ)',
+    license: 'medical_3d_market.json',
+    thumbnail: marketData?.[0]?.thumbnail || '',
+  },
+  ...EXTERNAL_THEMES.map((theme) => ({
+    id: theme.id,
+    name: theme.name,
+    license: theme.license,
+    thumbnail: '',
+  })),
+];
+
 
 // ============================================================================
 // CAPTION LOOKUP (chỉ dùng cho Nhóm A — Map theme) — popup item detail cần
@@ -584,6 +606,27 @@ function fetchSketchfabThumbnail(uid) {
   return sketchfabThumbCache.get(uid);
 }
 
+// Thumbnail cho từng dòng trong combobox chủ đề — item nội bộ có ảnh thật
+// (thumbnail của vật phẩm đầu tiên trong kho), item ngoài (chưa tải dữ liệu)
+// hiện icon đại diện dataset. Cùng kích thước/bo góc/viền để đồng bộ với
+// ảnh thumbnail trong thẻ item của lưới bên dưới.
+function ThemeThumb({ theme, size = 'w-8 h-8' }) {
+  if (theme.thumbnail) {
+    return (
+      <img
+        src={theme.thumbnail}
+        alt=""
+        className={`${size} rounded-md object-cover border border-white/10 shrink-0 bg-black/40`}
+      />
+    );
+  }
+  return (
+    <div className={`${size} rounded-md border border-white/10 bg-gradient-to-br from-[#1c2438] to-black flex items-center justify-center text-sm shrink-0`}>
+      🗂️
+    </div>
+  );
+}
+
 function AssetCardThumbnail3D({ asset }) {
   const containerRef = useRef(null);
   const [inView, setInView] = useState(false);
@@ -777,6 +820,12 @@ export default function MedicalAssetStorePanel() {
   // States Phân trang
   const [pageSize, setPageSize] = useState(8);
   const [currentPage, setCurrentPage] = useState(1);
+
+  // Combobox chủ đề tuỳ biến (thay cho <select> gốc) — cần state đóng/mở
+  // + ref để bắt click ra ngoài, vì <select> gốc không hiện được thumbnail
+  // trong từng option.
+  const [themeMenuOpen, setThemeMenuOpen] = useState(false);
+  const themeMenuRef = useRef(null);
   
   // Quản lý dữ liệu người dùng
   const [isDbLoaded, setIsDbLoaded] = useState(false);
@@ -826,6 +875,18 @@ export default function MedicalAssetStorePanel() {
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, selectedTag, sortBy, viewMode, pageSize, selectedTheme]);
+
+  // 3b. Đóng dropdown chủ đề khi click ra ngoài
+  useEffect(() => {
+    if (!themeMenuOpen) return;
+    const handleClickOutside = (e) => {
+      if (themeMenuRef.current && !themeMenuRef.current.contains(e.target)) {
+        setThemeMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [themeMenuOpen]);
 
   // 4. Tải dữ liệu chủ đề (theme) đang chọn trong combobox — nếu là chủ đề
   // ngoài (1 trong 4 link .json của gobjaverse) thì fetch (có cache), sau đó
@@ -1055,6 +1116,22 @@ export default function MedicalAssetStorePanel() {
   // đang chờ 1 nhịp render để normalize thêm từ entries đã cache sẵn.
   const isWindowCatchingUp = !isInternalTheme && !isFiltering && pagedAssets.length === 0 && totalCount > 0;
 
+  // Số trang đã "chuẩn hoá" sẵn trong RAM (xem PREFETCH_PAGES phía trên) —
+  // dùng để hiện các nút số trang mà bấm vào là có ngay, không phải chờ
+  // "Đang tải thêm dữ liệu cho trang này...". Với theme nội bộ hoặc đang
+  // lọc/tìm kiếm thì toàn bộ filteredAssets đã có sẵn, nên coi như đã tải
+  // hết (loadedPageCount = totalPages).
+  const loadedItemCount = (isInternalTheme || isFiltering) ? totalCount : externalAssets.length;
+  const loadedPageCount = Math.min(totalPages, Math.max(safePage, Math.ceil(loadedItemCount / pageSize)));
+
+  // Danh sách số trang sẽ hiện dưới dạng nút bấm: dải trang đã tải quanh
+  // trang hiện tại (safePage .. loadedPageCount) — bấm vào có dữ liệu
+  // ngay, không phải chờ "Đang tải thêm dữ liệu...". Trang 1 (đầu) và
+  // trang cuối (totalPages) luôn có nút riêng (ChevronsLeft/Right) để
+  // nhảy nhanh dù chưa nằm trong cửa sổ đã tải.
+  const loadedPageNumbers = [];
+  for (let p = safePage; p <= loadedPageCount; p++) loadedPageNumbers.push(p);
+
   if (!isDbLoaded) {
     return <div className="p-6 text-center text-white h-full flex items-center justify-center font-mono tracking-widest">ĐANG TẢI DỮ LIỆU Y TẾ AN TOÀN...</div>;
   }
@@ -1135,16 +1212,58 @@ export default function MedicalAssetStorePanel() {
             4 link .json trong README của modelscope/richdreamer (gobjaverse) */}
         <div className="flex flex-col md:flex-row md:items-center gap-2">
           <span className="text-xs text-gray-400 font-medium whitespace-nowrap">Chủ đề (projects.json):</span>
-          <select
-            className="bg-black/50 border border-white/10 text-white px-3 py-1.5 rounded-lg text-sm focus:ring-1 focus:ring-[#00e5ff] focus:outline-none cursor-pointer w-full md:w-auto"
-            value={selectedTheme}
-            onChange={(e) => setSelectedTheme(e.target.value)}
-          >
-            <option value={INTERNAL_THEME_ID}>Kho Y Tế (Nội bộ) · medical_3d_market.json</option>
-            {EXTERNAL_THEMES.map((theme) => (
-              <option key={theme.id} value={theme.id}>{theme.name} · {theme.license}</option>
-            ))}
-          </select>
+
+          {/* Combobox tuỳ biến — thay cho <select> gốc để hiện được thumbnail
+              thật cho item nội bộ (đầu tiên), nhất quán với ảnh thumbnail
+              của các thẻ item trong lưới bên dưới. */}
+          <div className="relative w-full md:w-[26rem]" ref={themeMenuRef}>
+            <button
+              type="button"
+              onClick={() => setThemeMenuOpen((v) => !v)}
+              aria-haspopup="listbox"
+              aria-expanded={themeMenuOpen}
+              className="w-full flex items-center gap-2.5 bg-black/50 border border-white/10 text-white pl-2 pr-3 py-1.5 rounded-lg text-sm focus:ring-1 focus:ring-[#00e5ff] focus:outline-none cursor-pointer hover:border-[#00e5ff]/40 transition-colors"
+            >
+              <ThemeThumb theme={THEME_OPTIONS.find((t) => t.id === selectedTheme) || THEME_OPTIONS[0]} />
+              <span className="flex-1 text-left truncate">
+                {(THEME_OPTIONS.find((t) => t.id === selectedTheme) || THEME_OPTIONS[0]).name}
+                <span className="text-gray-500"> · {(THEME_OPTIONS.find((t) => t.id === selectedTheme) || THEME_OPTIONS[0]).license}</span>
+              </span>
+              <ChevronRight size={14} className={`shrink-0 text-gray-500 transition-transform ${themeMenuOpen ? '-rotate-90' : 'rotate-90'}`} />
+            </button>
+
+            {themeMenuOpen && (
+              <div
+                role="listbox"
+                className="absolute z-20 mt-1.5 w-full bg-[#0a0e1a] border border-white/10 rounded-xl shadow-2xl shadow-black/50 overflow-hidden"
+              >
+                {THEME_OPTIONS.map((theme) => (
+                  <button
+                    key={theme.id}
+                    type="button"
+                    role="option"
+                    aria-selected={theme.id === selectedTheme}
+                    onClick={() => {
+                      setSelectedTheme(theme.id);
+                      setThemeMenuOpen(false);
+                    }}
+                    className={`w-full flex items-center gap-2.5 px-2.5 py-2 text-sm text-left transition-colors ${
+                      theme.id === selectedTheme
+                        ? 'bg-[#00e5ff]/10 text-[#00e5ff]'
+                        : 'text-gray-300 hover:bg-white/5 hover:text-white'
+                    }`}
+                  >
+                    <ThemeThumb theme={theme} />
+                    <span className="flex-1 truncate">
+                      {theme.name}
+                      <span className="block text-[11px] text-gray-500 truncate">{theme.license}</span>
+                    </span>
+                    {theme.id === selectedTheme && <span className="text-[#00e5ff] text-xs">✓</span>}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
 
           {!isInternalTheme && themeStatus === 'loading' && (
             <span className="text-[11px] text-amber-400 font-mono">⏳ Đang tải {activeThemeMeta?.name}...</span>
@@ -1353,23 +1472,67 @@ export default function MedicalAssetStorePanel() {
             </select>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            {/* Trang đầu */}
+            <button
+              onClick={() => setCurrentPage(1)}
+              disabled={safePage <= 1}
+              title="Trang đầu"
+              className="w-10 h-10 flex items-center justify-center rounded-xl border border-white/10 bg-black/40 text-gray-400 hover:text-[#00e5ff] hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+            >
+              <ChevronsLeft size={18} />
+            </button>
             <button
               onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
               disabled={safePage <= 1}
+              title="Trang trước"
               className="w-10 h-10 flex items-center justify-center rounded-xl border border-white/10 bg-black/40 text-gray-400 hover:text-[#00e5ff] hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
             >
               <ChevronLeft size={18} />
             </button>
-            <span className="text-sm font-mono text-gray-400 tracking-widest">
-              <strong className="text-white text-base">{safePage}</strong> / {totalPages}
+
+            {/* Các số trang ĐÃ TẢI SẴN (safePage..loadedPageCount) — bấm vào
+                là có dữ liệu ngay, không phải chờ "Đang tải thêm..." */}
+            <div className="flex items-center gap-1.5 px-1">
+              {loadedPageNumbers.map((p) => (
+                <button
+                  key={p}
+                  onClick={() => setCurrentPage(p)}
+                  title={p === safePage ? undefined : `Đã tải sẵn — đi tới trang ${p}`}
+                  className={`min-w-[2.25rem] h-10 px-2 flex items-center justify-center rounded-xl border text-sm font-mono transition-all ${
+                    p === safePage
+                      ? 'border-[#00e5ff] bg-[#00e5ff]/10 text-[#00e5ff]'
+                      : 'border-white/10 bg-black/40 text-gray-400 hover:text-[#00e5ff] hover:bg-white/10'
+                  }`}
+                >
+                  {p}
+                </button>
+              ))}
+              {loadedPageCount < totalPages && (
+                <span className="text-gray-600 text-sm px-1 select-none">…</span>
+              )}
+            </div>
+
+            <span className="text-xs font-mono text-gray-500 tracking-widest whitespace-nowrap">
+              / {totalPages} trang
             </span>
+
             <button
               onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
               disabled={safePage >= totalPages}
+              title="Trang sau"
               className="w-10 h-10 flex items-center justify-center rounded-xl border border-white/10 bg-black/40 text-gray-400 hover:text-[#00e5ff] hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
             >
               <ChevronRight size={18} />
+            </button>
+            {/* Trang cuối */}
+            <button
+              onClick={() => setCurrentPage(totalPages)}
+              disabled={safePage >= totalPages}
+              title="Trang cuối"
+              className="w-10 h-10 flex items-center justify-center rounded-xl border border-white/10 bg-black/40 text-gray-400 hover:text-[#00e5ff] hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+            >
+              <ChevronsRight size={18} />
             </button>
           </div>
         </div>
