@@ -59,9 +59,11 @@ const ORGANS = [
   { id: 'ruot', label: 'Ruột', emoji: '🌀' },
 ];
 
-export default function ChooseUserRolePanel({ onSelectRole, onEnterAction, onMicPress }) {
+export default function ChooseUserRolePanel({ mode = 'guest', onSelectRole, onEnterAction, onCreateAccount, onMicPress }) {
   const [selectedRole, setSelectedRole] = useState(null);
   const [selectedOrgan, setSelectedOrgan] = useState('gan');
+  const isGuest = mode === 'guest';
+  const handleCreateAccount = onCreateAccount || onEnterAction;
 
   const handlePickRole = (roleId) => {
     setSelectedRole(roleId);
@@ -72,21 +74,23 @@ export default function ChooseUserRolePanel({ onSelectRole, onEnterAction, onMic
     <div className="min-h-full w-full bg-gradient-to-b from-[#f6faf7] to-[#eef7f1] text-[#16241c] px-5 py-8 md:px-10 md:py-10">
       <div className="max-w-4xl mx-auto">
 
-        {/* Tạo tài khoản */}
-        <div className="flex justify-end mb-6">
-          <div className="text-right">
-            <button
-              onClick={onEnterAction}
-              className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white px-4 py-2 text-sm font-semibold text-emerald-700 shadow-sm hover:shadow-md hover:border-emerald-300 transition-all"
-            >
-              <ShieldCheck size={16} />
-              Tạo tài khoản
-            </button>
-            <p className="mt-2 text-xs text-gray-500 leading-snug max-w-[200px] ml-auto">
-              Lưu hành trình học tập và<br />nâng cấp siêu anh hùng
-            </p>
+        {/* Tạo tài khoản — chỉ hiện với khách chưa đăng nhập */}
+        {isGuest && (
+          <div className="flex justify-end mb-6">
+            <div className="text-right">
+              <button
+                onClick={handleCreateAccount}
+                className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white px-4 py-2 text-sm font-semibold text-emerald-700 shadow-sm hover:shadow-md hover:border-emerald-300 transition-all"
+              >
+                <ShieldCheck size={16} />
+                Tạo tài khoản
+              </button>
+              <p className="mt-2 text-xs text-gray-500 leading-snug max-w-[200px] ml-auto">
+                Lưu hành trình học tập và<br />nâng cấp siêu anh hùng
+              </p>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Tiêu đề */}
         <div className="text-center max-w-2xl mx-auto">
