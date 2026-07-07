@@ -294,6 +294,30 @@ function toGithubRawUrl(url) {
   }
 }
 
+// sketchfab_map.json không trỏ tới file .glb tải trực tiếp — nó trỏ tới
+// TRANG XEM model của Sketchfab, vd:
+//   https://sketchfab.com/3d-models/sber-69ca5719ef8f4430b0c4a587888dc608
+// (đuôi là UID 32 ký tự hex của model). Sketchfab không cho tải file gốc
+// qua link công khai (cần API key + quyền download riêng của tác giả), nên
+// <model-viewer> không thể render trực tiếp link này — thay vào đó dùng
+// IFRAME EMBED chính chủ của Sketchfab (vẫn xoay/zoom 3D được bình thường):
+//   https://sketchfab.com/models/{uid}/embed
+function extractSketchfabModelUid(url) {
+  try {
+    const parsed = new URL(url);
+    if (parsed.hostname !== 'sketchfab.com' && parsed.hostname !== 'www.sketchfab.com') return '';
+    const match = parsed.pathname.match(/([0-9a-f]{32})/i);
+    return match ? match[1] : '';
+  } catch {
+    return '';
+  }
+}
+
+function buildSketchfabEmbedUrl(uid) {
+  if (!uid) return '';
+  return `https://sketchfab.com/models/${uid}/embed?autostart=0&ui_theme=dark&transparent=1`;
+}
+
 // Chỉ trả về modelUrl khi ta chắc chắn đó là link tải file trực tiếp
 // (raw GitHub, hoặc link đã kết thúc bằng .glb/.gltf) — nếu không chắc
 // (ví dụ trang xem model của Sketchfab, không phải file tải trực tiếp) thì
