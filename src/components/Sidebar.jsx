@@ -103,6 +103,11 @@ export default function Sidebar({ active, onNavigate, openSignal = 0 }) {
         </div>
       )}
 
+      <NavItem active={active === 'donationHero'} onClick={() => handleNavigate('donationHero')} text={text} text2={text2} isDark={isDark}>
+        <span style={{ fontSize: 13 }}>🦸</span>
+        <span style={{ flex: 1 }}>Anh Hùng Hiến Tặng</span>
+        <span style={{ fontSize: 10, fontFamily: 'monospace', color: text3 }}>GAN</span>
+      </NavItem>
       <SectionLabel color={text3}>{t('profile')}</SectionLabel>
       <NavItem active={active === 'profile'} onClick={() => handleNavigate('profile')} text={text} text2={text2} isDark={isDark}>
         <span style={{ fontSize: 13 }}>👤</span>

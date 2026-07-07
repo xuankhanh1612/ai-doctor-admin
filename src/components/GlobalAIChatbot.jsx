@@ -81,7 +81,7 @@ export function CompactGlobalAIChatBar({ activePanelLabel }) {
   )
 }
 
-export default function GlobalAIChatbot({ activePanelLabel }) {
+export default function GlobalAIChatbot({ activePanelLabel, externalOpenSignal, autoStartMic }) {
   const { theme, lang } = useApp()
   const { user } = useAuth()
   // Storage key for chat history — `uuid` is the same identifier field for every
@@ -123,6 +123,16 @@ export default function GlobalAIChatbot({ activePanelLabel }) {
       scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
     }, 30)
   }, [messages, busy])
+
+  // Cho phép nơi khác (vd nút mic ở DonationHeroPanel) MỞ chatbot này từ xa và
+  // tự bật ghi âm luôn — externalOpenSignal là 1 số tăng dần, mỗi lần đổi giá
+  // trị (kể cả bấm liên tiếp khi panel đã mở sẵn) là 1 lần yêu cầu mới.
+  useEffect(() => {
+    if (!externalOpenSignal) return
+    setOpen(true)
+    if (autoStartMic && !recording) toggleMic()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [externalOpenSignal])
 
   if (!open) {
     return (
