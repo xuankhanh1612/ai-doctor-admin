@@ -4,6 +4,113 @@ import marketData from '../data/medical_3d_market.json';
 import { useAuth } from '../context/AuthContext';
 
 // ============================================================================
+// CHỦ ĐỀ (THEME) COMBOBOX — cùng ý tưởng với "Chủ đề (projects.json)" của
+// trang Tạo Avatar: một danh sách "chủ đề" để chọn, mỗi chủ đề trỏ tới một
+// nguồn dữ liệu JSON riêng. Ở đây item đầu tiên là kho nội bộ
+// (medical_3d_market.json), 4 item còn lại là 4 link .json lấy trực tiếp từ
+// README của modelscope/richdreamer (dataset gobjaverse):
+// https://github.com/modelscope/richdreamer/blob/main/dataset/gobjaverse/README.md
+// ============================================================================
+const INTERNAL_THEME_ID = 'medical_internal';
+
+const EXTERNAL_THEMES = [
+  {
+    id: 'gobjaverse_280k',
+    name: 'G-Objaverse 280K',
+    license: 'Objaverse (gobjaverse)',
+    url: 'https://virutalbuy-public.oss-cn-hangzhou.aliyuncs.com/share/aigc3d/gobjaverse_280k.json',
+  },
+  {
+    id: 'category_annotation',
+    name: 'Category Annotation (10 nhóm)',
+    license: 'Objaverse subset',
+    url: 'https://virutalbuy-public.oss-cn-hangzhou.aliyuncs.com/share/aigc3d/category_annotation.json',
+  },
+  {
+    id: 'text_captions_cap3d',
+    name: 'Cap3D Text Captions',
+    license: 'Cap3D',
+    url: 'https://virutalbuy-public.oss-cn-hangzhou.aliyuncs.com/share/aigc3d/text_captions_cap3d.json',
+  },
+  {
+    id: 'gobjaverse_alignment',
+    name: 'Objaverse-XL Alignment',
+    license: 'Objaverse-XL',
+    url: 'https://virutalbuy-public.oss-cn-hangzhou.aliyuncs.com/share/aigc3d/gobjaverse_alignment.json',
+  },
+];
+
+const MAX_EXTERNAL_PREVIEW = 100; // các file gốc có thể lên tới hàng trăm nghìn dòng -> chỉ xem trước
+
+function externalThumbnail(themeName) {
+  const initials = String(themeName || '3D').split(/\s+/).map((p) => p[0]).join('').slice(0, 2).toUpperCase();
+  return `data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512"><rect width="512" height="512" rx="0" fill="#12182b"/><text x="50%" y="54%" text-anchor="middle" dominant-baseline="middle" font-family="Arial, Helvetica, sans-serif" font-size="150" font-weight="800" fill="#00e5ff">${initials}</text></svg>`)}`;
+}
+
+function fileNameFromUrl(url) {
+  try {
+    const path = new URL(url).pathname;
+    return decodeURIComponent(path.split('/').filter(Boolean).pop() || url);
+  } catch {
+    return String(url || '').split('/').filter(Boolean).pop() || String(url || '');
+  }
+}
+
+// Các file .json gốc có nhiều hình dạng khác nhau (mảng, object dạng
+// dictionary_id -> [...], hoặc object dạng id -> caption). Hàm này quy về
+// một mảng các entry {id, value} để xử lý đồng nhất, không giả định cấu trúc.
+function toEntriesArray(data) {
+  if (Array.isArray(data)) return data.map((value, index) => ({ id: `item-${index}`, value }));
+  if (data && typeof data === 'object') return Object.entries(data).map(([id, value]) => ({ id, value }));
+  return [];
+}
+
+function normalizeExternalItem(entry, theme, index) {
+  const { id, value } = entry;
+  let rawUrl = '';
+  let titleFromValue = '';
+  let downloads = 0;
+
+  if (typeof value === 'string') {
+    if (/^https?:\/\//i.test(value)) rawUrl = value;
+    else titleFromValue = value.trim();
+  } else if (Array.isArray(value)) {
+    downloads = value.length;
+  } else if (value && typeof value === 'object') {
+    rawUrl = value.url || value.glb || value.model || value.path || '';
+    titleFromValue = value.name || value.title || value.caption || '';
+    downloads = Number(value.count || value.downloads || 0) || 0;
+  } else if (typeof value === 'number') {
+    downloads = value;
+  }
+
+  const title = titleFromValue || (rawUrl ? fileNameFromUrl(rawUrl) : String(id)).slice(0, 140);
+
+  return {
+    id: `${theme.id}-${index}-${String(id).slice(0, 40)}`,
+    title,
+    author: theme.name,
+    price: 0,
+    downloads,
+    thumbnail: externalThumbnail(theme.name),
+    modelUrl: rawUrl,
+    tags: ['Open Dataset', theme.name],
+    isExternal: true,
+    sourceUrl: theme.url,
+  };
+}
+
+async function loadExternalTheme(theme) {
+  const response = await fetch(theme.url);
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  const data = await response.json();
+  const entries = toEntriesArray(data);
+  const total = entries.length;
+  const preview = entries.slice(0, MAX_EXTERNAL_PREVIEW).map((entry, index) => normalizeExternalItem(entry, theme, index));
+  return { assets: preview, total };
+}
+
+// ============================================================================
 // 1. MODULE INDEXED-DB (Lưu trữ vĩnh viễn dữ liệu tài khoản, ví tiền, kho đồ và avatar)
 // ============================================================================
 const DB_NAME = 'AiDoctor_Store_DB';
@@ -69,6 +176,13 @@ export default function MedicalAssetStorePanel() {
   const [selectedTag, setSelectedTag] = useState("Tất cả");
   const [sortBy, setSortBy] = useState("popular");
   const [previewAsset, setPreviewAsset] = useState(null);
+
+  // --- CHỦ ĐỀ (THEME) COMBOBOX ---
+  const [selectedTheme, setSelectedTheme] = useState(INTERNAL_THEME_ID);
+  const [externalAssets, setExternalAssets] = useState([]);
+  const [externalTotal, setExternalTotal] = useState(0);
+  const [themeStatus, setThemeStatus] = useState('idle'); // idle | loading | ok | error
+  const [themeError, setThemeError] = useState('');
   
   // States Phân trang
   const [pageSize, setPageSize] = useState(8);
@@ -111,7 +225,45 @@ export default function MedicalAssetStorePanel() {
   // 3. Reset phân trang về Trang 1 khi điều kiện lọc thay đổi
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, selectedTag, sortBy, viewMode, pageSize]);
+  }, [searchTerm, selectedTag, sortBy, viewMode, pageSize, selectedTheme]);
+
+  // 4. Tải dữ liệu chủ đề (theme) đang chọn trong combobox — nếu là chủ đề
+  // ngoài (1 trong 4 link .json của gobjaverse) thì fetch trực tiếp; chủ đề
+  // nội bộ dùng luôn medical_3d_market.json đã import sẵn.
+  useEffect(() => {
+    if (selectedTheme === INTERNAL_THEME_ID) {
+      setThemeStatus('ok');
+      setThemeError('');
+      setExternalAssets([]);
+      setExternalTotal(0);
+      setSelectedTag('Tất cả');
+      return;
+    }
+    const theme = EXTERNAL_THEMES.find((t) => t.id === selectedTheme);
+    if (!theme) return;
+
+    let cancelled = false;
+    setThemeStatus('loading');
+    setThemeError('');
+    setSelectedTag('Tất cả');
+
+    loadExternalTheme(theme)
+      .then(({ assets, total }) => {
+        if (cancelled) return;
+        setExternalAssets(assets);
+        setExternalTotal(total);
+        setThemeStatus('ok');
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setExternalAssets([]);
+        setExternalTotal(0);
+        setThemeStatus('error');
+        setThemeError(err?.message || 'Không thể tải dữ liệu');
+      });
+
+    return () => { cancelled = true; };
+  }, [selectedTheme]);
 
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
@@ -181,10 +333,18 @@ export default function MedicalAssetStorePanel() {
     }
   };
 
-  const quickCategories = ["Tất cả", "3D Model", "In 3D", "Digital Twin", "Avatar VRM", "Gamification"];
+  const isInternalTheme = selectedTheme === INTERNAL_THEME_ID;
+  const activeThemeData = isInternalTheme ? marketData : externalAssets;
+  const activeThemeMeta = isInternalTheme
+    ? { id: INTERNAL_THEME_ID, name: 'Kho Y Tế (Nội bộ)', license: 'Consensus Doctor' }
+    : EXTERNAL_THEMES.find((t) => t.id === selectedTheme);
+
+  const quickCategories = isInternalTheme
+    ? ["Tất cả", "3D Model", "In 3D", "Digital Twin", "Avatar VRM", "Gamification"]
+    : ["Tất cả", "Open Dataset", activeThemeMeta?.name].filter(Boolean);
 
   // --- LỌC DỮ LIỆU ---
-  const filteredAssets = marketData
+  const filteredAssets = activeThemeData
     .filter(asset => {
       if (viewMode === "inventory" && !unlockedAssets.includes(asset.id)) {
         return false;
@@ -265,7 +425,7 @@ export default function MedicalAssetStorePanel() {
         >
           🛒 Chợ Mua Sắm 
           <span className={`px-2 py-0.5 rounded-md text-[10px] ${viewMode === "store" ? "bg-black/20 text-black" : "bg-white/20 text-gray-300"}`}>
-            {marketData.length}
+            {activeThemeData.length}
           </span>
         </button>
         <button 
@@ -285,6 +445,37 @@ export default function MedicalAssetStorePanel() {
 
       {/* SEARCH BAR & FILTER OPTIONS */}
       <div className="flex flex-col gap-4 mb-6 bg-white/5 p-4 rounded-xl border border-white/5">
+
+        {/* CHỦ ĐỀ COMBOBOX — item đầu tiên là kho nội bộ, 4 item sau lấy từ
+            4 link .json trong README của modelscope/richdreamer (gobjaverse) */}
+        <div className="flex flex-col md:flex-row md:items-center gap-2">
+          <span className="text-xs text-gray-400 font-medium whitespace-nowrap">Chủ đề (projects.json):</span>
+          <select
+            className="bg-black/50 border border-white/10 text-white px-3 py-1.5 rounded-lg text-sm focus:ring-1 focus:ring-[#00e5ff] focus:outline-none cursor-pointer w-full md:w-auto"
+            value={selectedTheme}
+            onChange={(e) => setSelectedTheme(e.target.value)}
+          >
+            <option value={INTERNAL_THEME_ID}>Kho Y Tế (Nội bộ) · medical_3d_market.json</option>
+            {EXTERNAL_THEMES.map((theme) => (
+              <option key={theme.id} value={theme.id}>{theme.name} · {theme.license}</option>
+            ))}
+          </select>
+
+          {!isInternalTheme && themeStatus === 'loading' && (
+            <span className="text-[11px] text-amber-400 font-mono">⏳ Đang tải {activeThemeMeta?.name}...</span>
+          )}
+          {!isInternalTheme && themeStatus === 'ok' && (
+            <span className="text-[11px] text-emerald-400 font-mono">
+              ✓ Xem trước {externalAssets.length}/{externalTotal.toLocaleString()} mục (giới hạn bản xem trước)
+            </span>
+          )}
+          {!isInternalTheme && themeStatus === 'error' && (
+            <span className="text-[11px] text-rose-400 font-mono" title={activeThemeMeta?.url}>
+              ⚠️ Không tải được: {themeError}
+            </span>
+          )}
+        </div>
+
         <div className="flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="relative w-full md:w-96">
             <span className="absolute inset-y-0 left-3 flex items-center text-gray-400 pointer-events-none">🔍</span>
@@ -511,11 +702,20 @@ export default function MedicalAssetStorePanel() {
                 ></model-viewer>
               ) : (
                 <div className="text-center p-6 max-w-sm">
-                  <span className="text-5xl mb-3 block">📜</span>
-                  <h4 className="font-bold text-sm text-gray-200 mb-1">Gói Logic Sức Khỏe</h4>
+                  <span className="text-5xl mb-3 block">{previewAsset.isExternal ? '🗂️' : '📜'}</span>
+                  <h4 className="font-bold text-sm text-gray-200 mb-1">
+                    {previewAsset.isExternal ? 'Bản ghi dữ liệu mở (Open Dataset)' : 'Gói Logic Sức Khỏe'}
+                  </h4>
                   <p className="text-xs text-gray-400 leading-relaxed">
-                    Tài nguyên là hệ thống trò chơi và danh sách nhiệm vụ, không bao gồm cấu trúc hình học tĩnh.
+                    {previewAsset.isExternal
+                      ? 'Mục này đến từ tập dữ liệu JSON mở (gobjaverse/Objaverse), không có model 3D xem trực tiếp được.'
+                      : 'Tài nguyên là hệ thống trò chơi và danh sách nhiệm vụ, không bao gồm cấu trúc hình học tĩnh.'}
                   </p>
+                  {previewAsset.isExternal && previewAsset.sourceUrl && (
+                    <a href={previewAsset.sourceUrl} target="_blank" rel="noreferrer" className="inline-block mt-3 text-[11px] font-bold text-[#00e5ff] hover:underline">
+                      Xem nguồn JSON gốc ↗
+                    </a>
+                  )}
                 </div>
               )}
             </div>
