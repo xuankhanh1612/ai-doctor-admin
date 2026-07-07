@@ -34,6 +34,25 @@ python src/demo.py --config config/chat_with_openai_compatible_edge_tts.yaml
 # -> dán địa chỉ đó vào ô "Video avatar thật" bên dưới.
 # Nếu client và server không cùng mạng, WebRTC cần thêm TURN server (xem ghi chú notebook Colab).`
 
+const LHM_SETUP_CMD = `# Yêu cầu: Linux + GPU NVIDIA (khuyến nghị >=16GB VRAM cho bản LHM-MINI), CUDA 11.8 hoặc 12.1
+git clone https://github.com/aigc3d/LHM.git
+cd LHM
+
+# Cách nhanh nhất: dùng Docker image dựng sẵn (khỏi tự cài CUDA/torch)
+wget -P ./lhm_cuda_dockers https://virutalbuy-public.oss-cn-hangzhou.aliyuncs.com/share/aigc3d/data/for_lingteng/LHM/LHM_Docker/lhm_cuda121.tar
+docker load -i ./lhm_cuda_dockers/lhm_cuda121.tar
+docker run -p 7860:7860 -v $(pwd):/workspace -it lhm:cuda_121 /bin/bash
+
+# Trong container: tải bản nhẹ nhất (chạy được trên GPU 16GB)
+python -c "from huggingface_hub import snapshot_download; \\
+snapshot_download(repo_id='3DAIGC/LHM-MINI', cache_dir='./pretrained_models/huggingface')"
+
+python app.py   # mặc định mở ở http://<host>:7860 (giao diện Gradio)
+# -> Trỏ LHM_GRADIO_URL trong .env Vercel về http://<host-cong-khai>:7860
+#    (cần expose ra Internet qua ngrok/Cloudflare Tunnel nếu chạy tại nhà,
+#    hoặc deploy thẳng container này lên máy chủ GPU có IP public như
+#    RunPod/Lambda/AWS/GCP.)`
+
 const CITATION = `@inproceedings{he2025lam,
   title={LAM: Large Avatar Model for One-shot Animatable Gaussian Head},
   author={He, Yisheng and Gu, Xiaodong and Ye, Xiaodan and Xu, Chao and Zhao, Zhengyi and Dong, Yuan and Yuan, Weihao and Dong, Zilong and Bo, Liefeng},
@@ -88,6 +107,7 @@ export default function MyAIAvatarPanel() {
   const [iframeLoaded, setIframeLoaded] = useState(false)
   const [copied, setCopied] = useState(false)
   const [copiedSetup, setCopiedSetup] = useState(false)
+  const [copiedLhmSetup, setCopiedLhmSetup] = useState(false)
 
   const border   = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'
   const surface  = isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)'
@@ -108,6 +128,14 @@ export default function MyAIAvatarPanel() {
       await navigator.clipboard.writeText(OAC_SETUP_CMD)
       setCopiedSetup(true)
       setTimeout(() => setCopiedSetup(false), 1800)
+    } catch { /* clipboard unavailable, ignore */ }
+  }
+
+  const copyLhmSetupCmd = async () => {
+    try {
+      await navigator.clipboard.writeText(LHM_SETUP_CMD)
+      setCopiedLhmSetup(true)
+      setTimeout(() => setCopiedLhmSetup(false), 1800)
     } catch { /* clipboard unavailable, ignore */ }
   }
 
@@ -215,6 +243,31 @@ export default function MyAIAvatarPanel() {
             : 'If the LAM Space on Hugging Face is erroring or out of ZeroGPU quota, this calls LHM (github.com/aigc3d/LHM) — LAM\'s sister project from the same authors, running on its own "3DAIGC/LHM" Space. (The ModelScope mirror was tried first but turned out to be geo-blocked to mainland China phone numbers only, so that route was dropped.)'}
         </p>
         <LhmGeneratePanel isDark={isDark} vi={vi} border={border} surface={surface} text={text} text2={text2} text3={text3} />
+
+        <div style={{ background: surface, border: `1px solid ${border}`, borderRadius: 14, padding: 16, marginTop: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, color: text }}>
+              <Terminal size={14} /> {vi ? 'Tự host LHM (không phụ thuộc Space công khai)' : 'Self-host LHM (no dependence on the public Space)'}
+            </div>
+            <button onClick={copyLhmSetupCmd} style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11.5, fontWeight: 600,
+              padding: '6px 10px', borderRadius: 8, cursor: 'pointer',
+              border: `1px solid ${border}`, background: 'transparent', color: text2,
+            }}>
+              {copiedLhmSetup ? <Check size={13} color="#00e676" /> : <Copy size={13} />}
+              {copiedLhmSetup ? (vi ? 'Đã sao chép' : 'Copied') : (vi ? 'Sao chép lệnh' : 'Copy commands')}
+            </button>
+          </div>
+          <pre style={{
+            margin: 0, fontSize: 11, lineHeight: 1.65, color: text2, overflowX: 'auto',
+            fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', whiteSpace: 'pre',
+          }}>{LHM_SETUP_CMD}</pre>
+          <div style={{ marginTop: 10, fontSize: 11.5, color: text3 }}>
+            {vi
+              ? 'Vì Space công khai 3DAIGC/LAM và 3DAIGC/LHM đang lỗi (build/runtime) và mirror ModelScope bị chặn khu vực, đây là cách duy nhất bảo đảm chạy được ngay: tự host trên máy/VPS có GPU riêng của bạn, rồi khai báo LHM_GRADIO_URL trỏ tới đó (xem .env.example). Sau khi 3DAIGC sửa Space công khai, bạn có thể bỏ biến này để quay lại dùng Space miễn phí của họ.'
+              : 'Since the public Spaces 3DAIGC/LAM and 3DAIGC/LHM are currently erroring (build/runtime) and the ModelScope mirror is geo-blocked, this is the one path guaranteed to work right now: self-host on your own GPU machine/VPS, then set LHM_GRADIO_URL to point at it (see .env.example). Once 3DAIGC fixes the public Space, you can drop this env var to go back to their free one.'}
+          </div>
+        </div>
       </div>
 
       {/* Embedded live demo */}

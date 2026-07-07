@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react'
 import { UploadCloud, Wand2, AlertTriangle, Download, RotateCcw, Image as ImageIcon } from 'lucide-react'
+import SpaceStatusBadge from './SpaceStatusBadge'
 
 // Real client for /api/lam-generate. The call to the LAM Hugging Face
 // Space (github.com/aigc3d/LAM) happens SERVER-SIDE (see api/lam-generate.js):
@@ -122,6 +123,9 @@ export default function LamGeneratePanel({ isDark, vi, border, surface, text, te
         <div style={{ fontSize: 13.5, fontWeight: 800, color: text }}>
           {vi ? 'Tạo avatar 3D thật từ ảnh của bạn' : 'Generate a real 3D avatar from your photo'}
         </div>
+      </div>
+      <div style={{ marginBottom: 8 }}>
+        <SpaceStatusBadge space="3DAIGC/LAM" vi={vi} text3={text3} />
       </div>
       <p style={{ margin: '0 0 12px', fontSize: 12, color: text3, lineHeight: 1.6 }}>
         {vi

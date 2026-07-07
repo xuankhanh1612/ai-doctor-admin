@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react'
 import { UploadCloud, Wand2, AlertTriangle, Download, RotateCcw, Image as ImageIcon, Video as VideoIcon } from 'lucide-react'
+import SpaceStatusBadge from './SpaceStatusBadge'
 
 // Client thật cho /api/lhm-generate. Cũng như LamGeneratePanel: cuộc gọi
 // tới Studio ModelScope diễn ra Ở SERVER (xem api/lhm-generate.js), ảnh và
@@ -160,6 +161,9 @@ export default function LhmGeneratePanel({ isDark, vi, border, surface, text, te
         <div style={{ fontSize: 13.5, fontWeight: 800, color: text }}>
           {vi ? 'Tạo avatar 3D bằng LHM (Hugging Face Space)' : 'Generate a 3D avatar via LHM (Hugging Face Space)'}
         </div>
+      </div>
+      <div style={{ marginBottom: 8 }}>
+        <SpaceStatusBadge space="3DAIGC/LHM" vi={vi} text3={text3} />
       </div>
       <p style={{ margin: '0 0 12px', fontSize: 12, color: text3, lineHeight: 1.6 }}>
         {vi
