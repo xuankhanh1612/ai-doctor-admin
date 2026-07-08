@@ -21,9 +21,9 @@ const TEXT = {
     subtitleTop: 'Lựa chọn hành trình chăm sóc sức khỏe',
     titleDonate: 'Hiến tặng',
     titleOr: 'hoặc',
-    titleReceive: 'nhận',
+    titleReceive: 'Nhận',
     titleOrgan: 'nội tạng',
-    titleTrain: 'hoặc rèn luyện sức khỏe bền vững?',
+    titleTrain: 'Hoặc rèn luyện sức khỏe bền vững?',
     subtitleChoose: 'Hãy chọn bên dưới nhé..',
     roleEyebrowDonate: 'TÔI MUỐN',
     roleTitleDonate: 'Hiến tặng',
@@ -46,9 +46,9 @@ const TEXT = {
     subtitleTop: 'Choose your health journey',
     titleDonate: 'Donate',
     titleOr: 'or',
-    titleReceive: 'receive',
+    titleReceive: 'Receive',
     titleOrgan: 'organs',
-    titleTrain: 'or simply improving your health?',
+    titleTrain: 'Or simply improving your health?',
     subtitleChoose: 'Please choose below..',
     roleEyebrowDonate: 'I WANT TO',
     roleTitleDonate: 'Donate',
@@ -150,7 +150,8 @@ export default function ChooseUserRolePanel({ mode = 'guest', onSelectRole, onEn
             <span className={`bg-clip-text text-transparent bg-gradient-to-r ${isDark ? 'from-emerald-300 to-emerald-500' : 'from-emerald-600 to-emerald-700'}`}>
               {t.titleDonate}
             </span>{' '}
-            <span className={isDark ? 'text-gray-400' : 'text-gray-500'}>{t.titleOr}</span>{' '}
+            <span className={isDark ? 'text-gray-400' : 'text-gray-500'}>{t.titleOr}</span>
+            <br />
             <span className={`bg-clip-text text-transparent bg-gradient-to-r ${isDark ? 'from-sky-300 to-sky-500' : 'from-sky-600 to-sky-700'}`}>
               {t.titleReceive}
             </span> {t.titleOrgan}
