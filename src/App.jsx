@@ -438,6 +438,7 @@ function getReadablePageText(root) {
 function GlobalPageReader({ readRootRef, activeKey }) {
   const { theme, lang } = useApp()
   const isVi = lang !== 'en'
+  const [showPlaybackControls, setShowPlaybackControls] = useState(true)
   const {
     speaking,
     speak,
@@ -445,27 +446,41 @@ function GlobalPageReader({ readRootRef, activeKey }) {
     paused,
     pause,
     resume,
+    replay,
     volume,
     setVolume,
     rate,
     setRate,
+    hasReplay,
   } = useTTS(isVi ? 'vi' : 'en')
 
   useEffect(() => {
     stop()
+    setShowPlaybackControls(true)
   }, [activeKey, stop])
 
-  const handleToggleRead = () => {
-    if (speaking) {
-      stop()
-      return
-    }
+  const speakCurrentPage = () => {
     const text = getReadablePageText(readRootRef?.current)
     if (!text) {
       window.alert(isVi ? 'Không tìm thấy chữ để đọc trên màn hình.' : 'No readable text was found on this screen.')
       return
     }
     speak(text, { restart: true })
+  }
+
+  const handleToggleRead = () => {
+    if (speaking) {
+      stop()
+      return
+    }
+    setShowPlaybackControls(true)
+    speakCurrentPage()
+  }
+
+  const handleReplay = () => {
+    setShowPlaybackControls(true)
+    if (hasReplay) replay()
+    else speakCurrentPage()
   }
 
   const isDark = theme === 'dark'
@@ -514,7 +529,29 @@ function GlobalPageReader({ readRootRef, activeKey }) {
       >
         {speaking ? '■' : '🔊'}
       </button>
-      {speaking && (
+      {(speaking || hasReplay) && (
+        <button
+          type="button"
+          onClick={() => setShowPlaybackControls(value => !value)}
+          aria-expanded={showPlaybackControls}
+          aria-label={showPlaybackControls ? (isVi ? 'Ẩn vùng điều khiển loa' : 'Hide speaker controls') : (isVi ? 'Hiện vùng điều khiển loa' : 'Show speaker controls')}
+          style={{
+            pointerEvents: 'auto',
+            border: isDark ? '1px solid rgba(255,255,255,0.16)' : '1px solid rgba(16,185,129,0.24)',
+            borderRadius: 999,
+            background: isDark ? 'rgba(2,6,23,0.88)' : 'rgba(255,255,255,0.96)',
+            color: isDark ? '#e5e7eb' : '#064e3b',
+            boxShadow: '0 10px 26px rgba(0,0,0,0.16)',
+            cursor: 'pointer',
+            fontSize: 12,
+            fontWeight: 900,
+            padding: '7px 12px',
+          }}
+        >
+          🔊 {showPlaybackControls ? (isVi ? 'Ẩn điều khiển' : 'Hide controls') : (isVi ? 'Hiện điều khiển' : 'Show controls')}
+        </button>
+      )}
+      {(speaking || hasReplay) && showPlaybackControls && (
         <div
           style={{
             pointerEvents: 'auto',
@@ -532,14 +569,44 @@ function GlobalPageReader({ readRootRef, activeKey }) {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-            <span>{isVi ? 'Đang đọc màn hình' : 'Reading screen'}</span>
-            <button
-              type="button"
-              onClick={paused ? resume : pause}
-              style={{ border: 0, borderRadius: 999, padding: '5px 9px', cursor: 'pointer', fontWeight: 900 }}
-            >
-              {paused ? (isVi ? 'Nghe tiếp' : 'Resume') : (isVi ? 'Tạm dừng' : 'Pause')}
-            </button>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 13 }}>{speaking ? (isVi ? 'Đang đọc màn hình' : 'Reading screen') : (isVi ? 'Sẵn sàng nghe lại' : 'Ready to replay')}</div>
+              <div style={{ marginTop: 2, opacity: 0.72, fontSize: 10, fontWeight: 700 }}>
+                {speaking
+                  ? (paused ? (isVi ? 'Đã tạm dừng' : 'Paused') : (isVi ? 'Đang phát âm thanh chung' : 'Global audio is playing'))
+                  : (isVi ? 'Bấm nghe lại để đọc trang hiện tại' : 'Tap replay to read the current page')}
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              {speaking && (
+                <button
+                  type="button"
+                  onClick={paused ? resume : pause}
+                  aria-label={paused ? (isVi ? 'Nghe tiếp' : 'Resume') : (isVi ? 'Tạm dừng nghe' : 'Pause')}
+                  style={{ border: 0, borderRadius: 999, padding: '6px 9px', cursor: 'pointer', fontWeight: 900 }}
+                >
+                  {paused ? '▶' : '⏸'}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={handleReplay}
+                aria-label={isVi ? 'Nghe lại' : 'Replay'}
+                style={{ border: 0, borderRadius: 999, padding: '6px 9px', cursor: 'pointer', fontWeight: 900 }}
+              >
+                ↻
+              </button>
+              {speaking && (
+                <button
+                  type="button"
+                  onClick={stop}
+                  aria-label={isVi ? 'Dừng hẳn việc nghe' : 'Stop playback'}
+                  style={{ border: 0, borderRadius: 999, padding: '6px 9px', cursor: 'pointer', fontWeight: 900, background: '#ef4444', color: '#fff' }}
+                >
+                  ■
+                </button>
+              )}
+            </div>
           </div>
           <label style={{ display: 'grid', gridTemplateColumns: '66px 1fr 34px', gap: 6, alignItems: 'center' }}>
             <span>{isVi ? 'Âm lượng' : 'Volume'}</span>
