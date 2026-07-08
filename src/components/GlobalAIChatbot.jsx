@@ -139,24 +139,39 @@ export default function GlobalAIChatbot({ activePanelLabel }) {
     )
   }
 
+  const toggleFullscreenLabel = fullscreen ? (isVi ? 'Thu nhỏ' : 'Exit fullscreen') : (isVi ? 'Phóng to toàn màn hình' : 'Expand to fullscreen')
+  const resizeIcon = fullscreen ? '⤡' : '⤢'
+
   return (
     <section className="global-ai-chatbot-panel" style={styles.panel} aria-label="Chatbot AI chung">
       <audio ref={audioElementRef} preload="none" style={{ display: 'none' }} />
+      <button
+        type="button"
+        onClick={() => setFullscreen(v => !v)}
+        style={styles.resizeBtnTop}
+        title={toggleFullscreenLabel}
+        aria-label={fullscreen ? 'Thu nhỏ chatbot' : 'Phóng to chatbot'}
+      >
+        {resizeIcon}
+      </button>
+      <button
+        type="button"
+        onClick={() => setFullscreen(v => !v)}
+        style={styles.resizeBtnBottom}
+        title={toggleFullscreenLabel}
+        aria-label={fullscreen ? 'Thu nhỏ chatbot ở cạnh dưới' : 'Phóng to chatbot ở cạnh dưới'}
+      >
+        {resizeIcon}
+      </button>
+      <button type="button" onClick={() => setOpen(false)} style={{ ...styles.closeBtn, ...styles.closeTopLeft }} aria-label="Đóng chatbot ở góc trên trái">×</button>
+      <button type="button" onClick={() => setOpen(false)} style={{ ...styles.closeBtn, ...styles.closeBottomLeft }} aria-label="Đóng chatbot ở góc dưới trái">×</button>
+      <button type="button" onClick={() => setOpen(false)} style={{ ...styles.closeBtn, ...styles.closeBottomRight }} aria-label="Đóng chatbot ở góc dưới phải">×</button>
       <header style={styles.header}>
-        <button
-          type="button"
-          onClick={() => setFullscreen(v => !v)}
-          style={styles.resizeBtn}
-          title={fullscreen ? (isVi ? 'Thu nhỏ' : 'Exit fullscreen') : (isVi ? 'Phóng to toàn màn hình' : 'Expand to fullscreen')}
-          aria-label={fullscreen ? 'Thu nhỏ chatbot' : 'Phóng to chatbot'}
-        >
-          {fullscreen ? '⤡' : '⤢'}
-        </button>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={styles.title}>🤗 Chatbot AI chung</div>
           <div style={styles.subtitle}>{status}</div>
         </div>
-        <button type="button" onClick={() => setOpen(false)} style={styles.closeBtn} aria-label="Đóng chatbot">×</button>
+        <button type="button" onClick={() => setOpen(false)} style={{ ...styles.closeBtn, ...styles.closeTopRight }} aria-label="Đóng chatbot">×</button>
       </header>
 
       <div style={styles.metaRow}>
@@ -418,11 +433,16 @@ function createStyles(isDark, fullscreen) {
       backdropFilter: 'blur(18px)',
       transition: 'all 0.22s ease',
     },
-    header: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, padding: '16px 18px', color: '#fff', background: 'linear-gradient(135deg, #0f4c81, #14b8a6)' },
-    title: { fontSize: 16, fontWeight: 900 },
-    subtitle: { marginTop: 4, fontSize: 11, opacity: 0.82, lineHeight: 1.35 },
-    closeBtn: { border: 'none', background: 'rgba(255,255,255,0.16)', color: '#fff', borderRadius: 10, width: 30, height: 30, cursor: 'pointer', fontSize: 22, lineHeight: '28px' },
-    resizeBtn: { border: 'none', background: 'rgba(255,255,255,0.16)', color: '#fff', borderRadius: 10, width: 30, height: 30, cursor: 'pointer', fontSize: 14, lineHeight: '30px', flexShrink: 0 },
+    header: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, padding: '16px 54px', color: '#fff', background: 'linear-gradient(135deg, #0f4c81, #14b8a6)' },
+    title: { fontSize: 16, fontWeight: 900, textAlign: 'center' },
+    subtitle: { marginTop: 4, fontSize: 11, opacity: 0.82, lineHeight: 1.35, textAlign: 'center' },
+    closeBtn: { border: 'none', background: 'rgba(255,255,255,0.18)', color: '#fff', borderRadius: 10, width: 34, height: 34, cursor: 'pointer', fontSize: 23, lineHeight: '32px', fontWeight: 900, boxShadow: '0 8px 22px rgba(0,0,0,0.22)', zIndex: 3 },
+    closeTopRight: { position: 'absolute', top: 12, right: 12 },
+    closeTopLeft: { position: 'absolute', top: 12, left: 12 },
+    closeBottomLeft: { position: 'absolute', bottom: 12, left: 12, background: 'rgba(15,76,129,0.9)' },
+    closeBottomRight: { position: 'absolute', bottom: 12, right: 12, background: 'rgba(15,76,129,0.9)' },
+    resizeBtnTop: { position: 'absolute', top: 10, left: '50%', transform: 'translateX(-50%)', border: 'none', background: 'rgba(255,255,255,0.24)', color: '#fff', borderRadius: 12, width: 42, height: 34, cursor: 'pointer', fontSize: 18, lineHeight: '34px', fontWeight: 900, boxShadow: '0 8px 22px rgba(0,0,0,0.22)', zIndex: 4 },
+    resizeBtnBottom: { position: 'absolute', bottom: 12, left: '50%', transform: 'translateX(-50%)', border: 'none', background: 'rgba(15,76,129,0.92)', color: '#fff', borderRadius: 12, width: 42, height: 34, cursor: 'pointer', fontSize: 18, lineHeight: '34px', fontWeight: 900, boxShadow: '0 8px 22px rgba(0,0,0,0.28)', zIndex: 4 },
     metaRow: { flex: '0 0 auto', display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderBottom: `1px solid ${border}`, color: muted, fontSize: 11, flexWrap: 'wrap' },
     badge: { color: '#0f766e', background: isDark ? 'rgba(45, 212, 191, 0.16)' : '#ccfbf1', borderRadius: 999, padding: '4px 8px', fontWeight: 900 },
     current: { minWidth: 0, maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
@@ -451,6 +471,6 @@ function createStyles(isDark, fullscreen) {
       background: 'linear-gradient(135deg,#14b8a6,#0f766e)', color: '#fff', border: '1px solid rgba(20,184,166,0.6)',
     },
     sendBtn: { border: 'none', borderRadius: 14, padding: '0 16px', color: '#fff', background: 'linear-gradient(135deg, #14b8a6, #0f4c81)', fontWeight: 900, cursor: 'pointer' },
-    disclaimer: { flex: '0 0 auto', padding: '0 14px 14px', color: muted, fontSize: 10.5, lineHeight: 1.4 },
+    disclaimer: { flex: '0 0 auto', padding: '0 64px 54px', color: muted, fontSize: 10.5, lineHeight: 1.4, textAlign: 'center' },
   }
 }
