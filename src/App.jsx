@@ -50,6 +50,7 @@ import OrganConnectionPanel from './components/OrganConnectionPanel.jsx'
 import ChatHistoryPanel from './components/ChatHistoryPanel.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 import { addNotification } from './lib/notifications.js'
+import { useTTS } from './lib/groqAiClient.js'
 
 // THÊM 'medicalAssetStore' NGAY SAU 'healthJourneyGame'
 const PANELS = ['healthJourneyGame', 'medicalAssetStore', 'myRewardHealth', 'rssPortal', 'waterDrinkChatBot', 'wikiMedVision', 'fullDocSummarization', 'documentOCR', 'twoDTo3DAsset', 'organConnection', 'healthJourney', 'lunchJourney', 'dinnerJourney', 'upload', 'imaging', 'checkin', 'family', 'record', 'familyRelationship', 'matrix3dBody', 'omnidirectional3dBody', 'twin', 'telemedicine', 'statAnalysis', 'swarm', 'consensus', 'protein3d', 'aiHealthcareVision', 'aiHealthcareVisionControl', 'stressRelief', 'aiInbodyPortal', 'printPortal', 'chatHistory']
@@ -280,6 +281,7 @@ export default function App() {
             onEnterAction={() => setPreLoginView('hero')}
             onCreateAccount={() => setPreLoginView('login')}
           />
+          <GlobalPageReader readRootRef={mainRef} activeKey={preLoginView} />
           {/* Mount GlobalAIChatbot NGAY TẠI ĐÂY để popup chat vẫn truy cập
           được từ trang guest này (nút 🤗 góc màn hình) — nhưng KHÔNG có
           tín hiệu ngoài nào điều khiển nó nữa: nút mic của ChooseUserRolePanel
@@ -299,6 +301,7 @@ export default function App() {
             onBack={() => setPreLoginView('chooseRole')}
             onLogin={() => setPreLoginView('login')}
           />
+          <GlobalPageReader readRootRef={mainRef} activeKey={preLoginView} />
           {/* Mount GlobalAIChatbot NGAY TẠI ĐÂY — lý do xem chú thích tương
           tự ở nhánh 'chooseRole' phía trên. */}
           <GlobalAIChatbot activePanelLabel={panelLabels.donationHero} />
@@ -396,6 +399,7 @@ export default function App() {
             onGoTop={() => scrollMainTo('top')}
             onGoEnd={() => scrollMainTo('end')}
           />
+          <GlobalPageReader readRootRef={mainRef} activeKey={active} />
         </main>
         <GlobalBottomNav
           active={active}
@@ -404,6 +408,151 @@ export default function App() {
         />
         <GlobalAIChatbot activePanelLabel={panelLabels[active] || active} />
       </div>
+    </div>
+  )
+}
+
+function getReadablePageText(root) {
+  if (typeof document === 'undefined') return ''
+  const sourceRoot = root || document.body
+  const clone = sourceRoot.cloneNode(true)
+  clone.querySelectorAll?.([
+    'script',
+    'style',
+    'noscript',
+    'svg',
+    'canvas',
+    'audio',
+    'video',
+    'iframe',
+    '[aria-hidden="true"]',
+    '[data-page-reader-ignore]',
+  ].join(',')).forEach(node => node.remove())
+
+  return (clone.innerText || clone.textContent || '')
+    .replace(/\s+/g, ' ')
+    .replace(/([.!?。！？])\s+/g, '$1\n')
+    .trim()
+}
+
+function GlobalPageReader({ readRootRef, activeKey }) {
+  const { theme, lang } = useApp()
+  const isVi = lang !== 'en'
+  const {
+    speaking,
+    speak,
+    stop,
+    paused,
+    pause,
+    resume,
+    volume,
+    setVolume,
+    rate,
+    setRate,
+  } = useTTS(isVi ? 'vi' : 'en')
+
+  useEffect(() => {
+    stop()
+  }, [activeKey, stop])
+
+  const handleToggleRead = () => {
+    if (speaking) {
+      stop()
+      return
+    }
+    const text = getReadablePageText(readRootRef?.current)
+    if (!text) {
+      window.alert(isVi ? 'Không tìm thấy chữ để đọc trên màn hình.' : 'No readable text was found on this screen.')
+      return
+    }
+    speak(text, { restart: true })
+  }
+
+  const isDark = theme === 'dark'
+  const title = speaking
+    ? (isVi ? 'Dừng đọc màn hình' : 'Stop reading the screen')
+    : (isVi ? 'Đọc tất cả chữ trên màn hình từ trên xuống dưới' : 'Read all visible screen text from top to bottom')
+
+  return (
+    <div
+      data-page-reader-ignore
+      style={{
+        position: 'fixed',
+        top: 'calc(10px + env(safe-area-inset-top))',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        zIndex: 260,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: 6,
+        pointerEvents: 'none',
+      }}
+    >
+      <button
+        type="button"
+        onClick={handleToggleRead}
+        aria-pressed={speaking}
+        aria-label={title}
+        title={title}
+        style={{
+          pointerEvents: 'auto',
+          width: 54,
+          height: 54,
+          borderRadius: '50%',
+          border: speaking ? '2px solid #ef4444' : '2px solid #10b981',
+          background: speaking
+            ? 'linear-gradient(135deg, #ef4444, #f97316)'
+            : (isDark ? 'rgba(2,6,23,0.88)' : 'rgba(255,255,255,0.94)'),
+          color: speaking ? '#fff' : (isDark ? '#34d399' : '#047857'),
+          boxShadow: '0 14px 38px rgba(0,0,0,0.24)',
+          cursor: 'pointer',
+          fontSize: 24,
+          display: 'grid',
+          placeItems: 'center',
+        }}
+      >
+        {speaking ? '■' : '🔊'}
+      </button>
+      {speaking && (
+        <div
+          style={{
+            pointerEvents: 'auto',
+            display: 'grid',
+            gap: 6,
+            minWidth: 250,
+            padding: '10px 12px',
+            borderRadius: 18,
+            border: isDark ? '1px solid rgba(255,255,255,0.16)' : '1px solid rgba(16,185,129,0.24)',
+            background: isDark ? 'rgba(2,6,23,0.92)' : 'rgba(255,255,255,0.96)',
+            color: isDark ? '#e5e7eb' : '#064e3b',
+            boxShadow: '0 16px 42px rgba(0,0,0,0.22)',
+            fontSize: 11,
+            fontWeight: 800,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+            <span>{isVi ? 'Đang đọc màn hình' : 'Reading screen'}</span>
+            <button
+              type="button"
+              onClick={paused ? resume : pause}
+              style={{ border: 0, borderRadius: 999, padding: '5px 9px', cursor: 'pointer', fontWeight: 900 }}
+            >
+              {paused ? (isVi ? 'Nghe tiếp' : 'Resume') : (isVi ? 'Tạm dừng' : 'Pause')}
+            </button>
+          </div>
+          <label style={{ display: 'grid', gridTemplateColumns: '66px 1fr 34px', gap: 6, alignItems: 'center' }}>
+            <span>{isVi ? 'Âm lượng' : 'Volume'}</span>
+            <input type="range" min="0" max="1" step="0.05" value={volume} onChange={event => setVolume(event.target.value)} />
+            <span style={{ textAlign: 'right' }}>{Math.round(volume * 100)}%</span>
+          </label>
+          <label style={{ display: 'grid', gridTemplateColumns: '66px 1fr 34px', gap: 6, alignItems: 'center' }}>
+            <span>{isVi ? 'Tốc độ' : 'Speed'}</span>
+            <input type="range" min="0.5" max="2" step="0.05" value={rate} onChange={event => setRate(event.target.value)} />
+            <span style={{ textAlign: 'right' }}>{rate.toFixed(2)}×</span>
+          </label>
+        </div>
+      )}
     </div>
   )
 }
