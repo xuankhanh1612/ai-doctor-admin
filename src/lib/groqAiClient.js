@@ -13,6 +13,27 @@ import { useCallback, useRef, useState, useEffect } from 'react'
 
 export const GROQ_MODEL = 'llama-3.3-70b-versatile'
 
+const MIN_VOICE_RECORDING_MS = 700
+const MIN_VOICE_RMS = 0.012
+const MIN_VOICE_ACTIVE_FRAMES = 4
+const WHISPER_SILENCE_HALLUCINATION_PATTERNS = [
+  /hãy\s+subscribe\s+cho\s+kênh\s+ghiền\s+mì\s+gõ/i,
+  /để\s+không\s+bỏ\s+lỡ\s+những\s+video\s+hấp\s+dẫn/i,
+]
+
+function isLikelySilentRecording({ startedAt, voiceStats }) {
+  const durationMs = Date.now() - startedAt
+  if (durationMs < MIN_VOICE_RECORDING_MS) return true
+  if (!voiceStats?.sampledFrames) return false
+  return (voiceStats.activeFrames || 0) < MIN_VOICE_ACTIVE_FRAMES && (voiceStats.peakRms || 0) < MIN_VOICE_RMS
+}
+
+function isKnownWhisperSilenceHallucination(text) {
+  const normalized = String(text || '').normalize('NFC').trim()
+  if (!normalized) return true
+  return WHISPER_SILENCE_HALLUCINATION_PATTERNS.some(pattern => pattern.test(normalized))
+}
+
 // ─── Groq LLM (chat) ──────────────────────────────────────────────────────────
 // messages: [{ role: 'user' | 'assistant', content: string }, ...]
 export async function callGroqChat(messages, systemPrompt, { maxTokens = 1024, temperature = 0.7 } = {}) {
@@ -49,6 +70,9 @@ export function useVoiceInput(onTranscript, lang = 'vi') {
   const [transcribing, setTranscribing] = useState(false)
   const mediaRecorderRef = useRef(null)
   const chunksRef = useRef([])
+  const recordingStartedAtRef = useRef(0)
+  const voiceStatsRef = useRef({ activeFrames: 0, peakRms: 0, sampledFrames: 0 })
+  const silenceMonitorRef = useRef(null)
 
   const start = useCallback(async () => {
     if (recording || transcribing) return
@@ -61,10 +85,50 @@ export function useVoiceInput(onTranscript, lang = 'vi') {
           : 'audio/mp4'
       const recorder = new MediaRecorder(stream, { mimeType })
       chunksRef.current = []
+      recordingStartedAtRef.current = Date.now()
+      voiceStatsRef.current = { activeFrames: 0, peakRms: 0, sampledFrames: 0 }
+
+      const AudioContextCtor = window.AudioContext || window.webkitAudioContext
+      if (AudioContextCtor) {
+        const audioContext = new AudioContextCtor()
+        const analyser = audioContext.createAnalyser()
+        analyser.fftSize = 1024
+        const source = audioContext.createMediaStreamSource(stream)
+        source.connect(analyser)
+        const samples = new Float32Array(analyser.fftSize)
+        let frameId = 0
+        const sampleVoiceLevel = () => {
+          analyser.getFloatTimeDomainData(samples)
+          let sumSquares = 0
+          for (let i = 0; i < samples.length; i += 1) sumSquares += samples[i] * samples[i]
+          const rms = Math.sqrt(sumSquares / samples.length)
+          voiceStatsRef.current.sampledFrames += 1
+          voiceStatsRef.current.peakRms = Math.max(voiceStatsRef.current.peakRms, rms)
+          if (rms >= MIN_VOICE_RMS) voiceStatsRef.current.activeFrames += 1
+          frameId = window.requestAnimationFrame(sampleVoiceLevel)
+        }
+        frameId = window.requestAnimationFrame(sampleVoiceLevel)
+        silenceMonitorRef.current = () => {
+          window.cancelAnimationFrame(frameId)
+          source.disconnect()
+          audioContext.close().catch(() => {})
+        }
+      }
+
       recorder.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data) }
       recorder.onstop = async () => {
+        silenceMonitorRef.current?.()
+        silenceMonitorRef.current = null
         stream.getTracks().forEach(t => t.stop())
         const blob = new Blob(chunksRef.current, { type: mimeType })
+        const silenceRecording = isLikelySilentRecording({
+          startedAt: recordingStartedAtRef.current,
+          voiceStats: voiceStatsRef.current,
+        })
+        if (!blob.size || silenceRecording) {
+          setTranscribing(false)
+          return
+        }
         setTranscribing(true)
         try {
           const ext = mimeType.includes('mp4') ? 'mp4' : 'webm'
@@ -73,7 +137,8 @@ export function useVoiceInput(onTranscript, lang = 'vi') {
           formData.append('language', lang === 'vi' ? 'vi' : 'en')
           const res = await fetch('/api/groq-whisper', { method: 'POST', body: formData })
           const data = await res.json()
-          if (data?.text?.trim()) onTranscript(data.text.trim())
+          const transcript = data?.text?.trim()
+          if (transcript && !isKnownWhisperSilenceHallucination(transcript)) onTranscript(transcript)
         } catch (err) {
           console.error('[Whisper STT] error:', err)
         } finally {
