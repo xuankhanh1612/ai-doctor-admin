@@ -44,6 +44,7 @@ import AvatarCreatorPanel from './components/AvatarCreatorPanel.jsx'
 import Make3DModelPanel from './components/Make3DModelPanel.jsx'
 import My3DAssetPanel from './components/My3DAssetPanel.jsx'
 import TwoDTo3DAssetPanel from './components/TwoDTo3DAssetPanel.jsx'
+import CameraAngle3DStudioPanel from './components/CameraAngle3DStudioPanel.jsx'
 import MyAIAvatarPanel from './components/MyAIAvatarPanel.jsx'
 import Create3DVideoFrom2DPanel from './components/Create3DVideoFrom2DPanel.jsx'
 import MyAIAvatarLAMPanel from './components/MyAIAvatarLAMPanel.jsx'
@@ -55,7 +56,7 @@ import { addNotification } from './lib/notifications.js'
 import { useTTS } from './lib/groqAiClient.js'
 
 // THÊM 'medicalAssetStore' NGAY SAU 'healthJourneyGame'
-const PANELS = ['healthJourneyGame', 'medicalAssetStore', 'medicalVisualPlayground', 'myRewardHealth', 'rssPortal', 'waterDrinkChatBot', 'wikiMedVision', 'fullDocSummarization', 'documentOCR', 'twoDTo3DAsset', 'organConnection', 'healthJourney', 'lunchJourney', 'dinnerJourney', 'upload', 'imaging', 'checkin', 'family', 'record', 'familyRelationship', 'matrix3dBody', 'omnidirectional3dBody', 'twin', 'telemedicine', 'statAnalysis', 'swarm', 'consensus', 'protein3d', 'aiHealthcareVision', 'aiHealthcareVisionControl', 'stressRelief', 'aiInbodyPortal', 'printPortal', 'chatHistory', 'myImageToVideo']
+const PANELS = ['healthJourneyGame', 'medicalAssetStore', 'medicalVisualPlayground', 'myRewardHealth', 'rssPortal', 'waterDrinkChatBot', 'wikiMedVision', 'fullDocSummarization', 'documentOCR', 'twoDTo3DAsset', 'cameraAngle3DStudio', 'organConnection', 'healthJourney', 'lunchJourney', 'dinnerJourney', 'upload', 'imaging', 'checkin', 'family', 'record', 'familyRelationship', 'matrix3dBody', 'omnidirectional3dBody', 'twin', 'telemedicine', 'statAnalysis', 'swarm', 'consensus', 'protein3d', 'aiHealthcareVision', 'aiHealthcareVisionControl', 'stressRelief', 'aiInbodyPortal', 'printPortal', 'chatHistory', 'myImageToVideo']
 
 export default function App() {
   const { user, loading } = useAuth()
@@ -138,6 +139,7 @@ export default function App() {
     fullDocSummarization: 'Full-Document Summarization',
     documentOCR: 'Document OCR',
     twoDTo3DAsset: '2D to 3D Asset',
+    cameraAngle3DStudio: '3D Camera Angle (Qwen)',
     organConnection: 'Ăn gì tốt hôm nay',
     printPortal: 'Print Portal',
     chatHistory: 'Lịch sử Chat với AI',
@@ -373,6 +375,7 @@ export default function App() {
             {active === 'fullDocSummarization' && <FullDocumentSummarizationPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'documentOCR' && <DocumentOCRPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'twoDTo3DAsset' && <TwoDTo3DAssetPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} />}
+            {active === 'cameraAngle3DStudio' && <CameraAngle3DStudioPanel />}
             {active === 'organConnection' && <OrganConnectionPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'printPortal' && <PrintCenter onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'chatHistory' && <ChatHistoryPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} activePanelLabel={panelLabels[active] || active} />}
