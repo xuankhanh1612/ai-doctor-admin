@@ -33,7 +33,7 @@ const TEXT = {
     roleTitleReceive: 'Nhận tạng',
     roleNote: 'Tôi cũng có thể Hiến / Nhận Tạng trong tương lai.',
     quickOrganTitle: 'Chọn nhanh cơ quan có thể hiến / nhận',
-    viewAll: 'Xem tất cả',
+    viewAll: 'Tôi chưa muốn hiến tặng',
     legalText: 'Tất cả hoạt động hiến và nhận tạng đều theo quy trình cơ quan pháp luật tại quốc gia của bạn.',
     legalTags: ['An toàn', 'Minh bạch', 'Bảo mật', 'Nhân văn'],
     micLabel: 'Nhấn để nói',
