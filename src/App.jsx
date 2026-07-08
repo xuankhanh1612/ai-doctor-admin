@@ -48,12 +48,13 @@ import Create3DVideoFrom2DPanel from './components/Create3DVideoFrom2DPanel.jsx'
 import MyAIAvatarLAMPanel from './components/MyAIAvatarLAMPanel.jsx'
 import OrganConnectionPanel from './components/OrganConnectionPanel.jsx'
 import ChatHistoryPanel from './components/ChatHistoryPanel.jsx'
+import MyImageToVideoPanel from './components/MyImageToVideoPanel.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 import { addNotification } from './lib/notifications.js'
 import { useTTS } from './lib/groqAiClient.js'
 
 // THÊM 'medicalAssetStore' NGAY SAU 'healthJourneyGame'
-const PANELS = ['healthJourneyGame', 'medicalAssetStore', 'myRewardHealth', 'rssPortal', 'waterDrinkChatBot', 'wikiMedVision', 'fullDocSummarization', 'documentOCR', 'twoDTo3DAsset', 'organConnection', 'healthJourney', 'lunchJourney', 'dinnerJourney', 'upload', 'imaging', 'checkin', 'family', 'record', 'familyRelationship', 'matrix3dBody', 'omnidirectional3dBody', 'twin', 'telemedicine', 'statAnalysis', 'swarm', 'consensus', 'protein3d', 'aiHealthcareVision', 'aiHealthcareVisionControl', 'stressRelief', 'aiInbodyPortal', 'printPortal', 'chatHistory']
+const PANELS = ['healthJourneyGame', 'medicalAssetStore', 'myRewardHealth', 'rssPortal', 'waterDrinkChatBot', 'wikiMedVision', 'fullDocSummarization', 'documentOCR', 'twoDTo3DAsset', 'organConnection', 'healthJourney', 'lunchJourney', 'dinnerJourney', 'upload', 'imaging', 'checkin', 'family', 'record', 'familyRelationship', 'matrix3dBody', 'omnidirectional3dBody', 'twin', 'telemedicine', 'statAnalysis', 'swarm', 'consensus', 'protein3d', 'aiHealthcareVision', 'aiHealthcareVisionControl', 'stressRelief', 'aiInbodyPortal', 'printPortal', 'chatHistory', 'myImageToVideo']
 
 export default function App() {
   const { user, loading } = useAuth()
@@ -138,6 +139,7 @@ export default function App() {
     organConnection: 'Ăn gì tốt hôm nay',
     printPortal: 'Print Portal',
     chatHistory: 'Lịch sử Chat với AI',
+    myImageToVideo: 'My Image to Video',
     profile: t('profile'),
     avatarCreator: 'Tạo Avatar',
     make3DModel: 'Make 3D Model',
@@ -371,6 +373,7 @@ export default function App() {
             {active === 'organConnection' && <OrganConnectionPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'printPortal' && <PrintCenter onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'chatHistory' && <ChatHistoryPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} activePanelLabel={panelLabels[active] || active} />}
+            {active === 'myImageToVideo' && <MyImageToVideoPanel onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'chooseUserRole' && (
               <ChooseUserRolePanel
                 mode="member"
