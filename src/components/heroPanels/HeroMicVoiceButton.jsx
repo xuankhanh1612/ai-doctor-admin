@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { Mic, Pause, Play, RotateCcw, Square } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useGlobalAIChatbotEngine } from '../../lib/useGlobalAIChatbotEngine.js';
@@ -29,13 +29,13 @@ export default function HeroMicVoiceButton({
   isVi,
   isDark,
   micLabel,
-  variant = 'compact', // 'compact' (chỉ icon, không có label hiện sẵn) | 'expanded' (có label dưới nút)
   buttonSize = 64,
   iconSize = 24,
 }) {
   const { user, loginAnonymous } = useAuth();
   const userKey = user?.uuid || null;
   const audioElementRef = useRef(null);
+  const [showPlaybackControls, setShowPlaybackControls] = useState(true);
 
   const {
     busy,
@@ -50,6 +50,7 @@ export default function HeroMicVoiceButton({
   // cũ nếu đã có, không tạo trùng. Không setActive/điều hướng gì thêm: người
   // dùng vẫn đứng nguyên tại trang này.
   const handlePress = async () => {
+    if (speaking) stopSpeaking();
     if (mode === 'guest') {
       try { await loginAnonymous(); } catch (e) { console.warn('Không tạo được phiên khách khi bấm mic:', e); }
     }
@@ -91,9 +92,11 @@ export default function HeroMicVoiceButton({
         <Mic className={isActive ? 'text-white' : (isDark ? 'text-emerald-400' : 'text-emerald-600')} size={iconSize} />
       </button>
 
-      {/* Label tĩnh (chỉ hiện ở variant 'expanded', và chỉ khi KHÔNG đang có hoạt động thoại nào) */}
-      {variant === 'expanded' && !isActive && (
-        <span className={`font-bold ${isDark ? 'text-gray-100' : 'text-[#16241c]'}`}>{micLabel}</span>
+      {/* Label tĩnh để 2 trang Anh Hùng cùng hiển thị lời nhắc dưới micro. */}
+      {!isActive && (
+        <span className={`font-bold ${isDark ? 'text-gray-100' : 'text-[#16241c]'}`}>
+          {isVi ? 'Nhấn để nói' : (micLabel || 'Tap to speak')}
+        </span>
       )}
 
       {/* Bong bóng trạng thái — ngay dưới nút mic của TRANG NÀY, không phải góc màn hình popup chat */}
@@ -105,7 +108,18 @@ export default function HeroMicVoiceButton({
       )}
 
       {(speaking || hasSpeechReplay) && (
-        <div className={`w-full max-w-[360px] rounded-2xl border p-3 shadow-sm ${isDark ? 'border-white/10 bg-slate-950/70 text-gray-100' : 'border-emerald-100 bg-white text-gray-700'}`}>
+        <>
+          <button
+            type="button"
+            onClick={() => setShowPlaybackControls(value => !value)}
+            className={`text-xs font-extrabold rounded-full px-3 py-1.5 shadow-sm ${isDark ? 'border border-white/10 bg-slate-950/70 text-gray-100' : 'border border-emerald-100 bg-white text-gray-700'}`}
+            aria-expanded={showPlaybackControls}
+            aria-label={showPlaybackControls ? (isVi ? 'Ẩn vùng loa AI' : 'Hide AI speaker controls') : (isVi ? 'Hiện vùng loa AI' : 'Show AI speaker controls')}
+          >
+            🔊 {showPlaybackControls ? (isVi ? 'Ẩn loa' : 'Hide speaker') : (isVi ? 'Hiện loa' : 'Show speaker')}
+          </button>
+          {showPlaybackControls && (
+            <div className={`w-full max-w-[360px] rounded-2xl border p-3 shadow-sm ${isDark ? 'border-white/10 bg-slate-950/70 text-gray-100' : 'border-emerald-100 bg-white text-gray-700'}`}>
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2 min-w-0">
               <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-xl text-white shadow-sm">
@@ -113,7 +127,7 @@ export default function HeroMicVoiceButton({
                 {speaking && !speechPaused && <span className="absolute inset-0 rounded-full bg-emerald-400/40 animate-ping" />}
               </span>
               <div className="min-w-0">
-                <div className="text-sm font-bold">{isVi ? 'AI đang phát âm thanh' : 'AI voice playback'}</div>
+                <div className="text-sm font-bold">{isVi ? 'AI đang nói' : 'AI is speaking'}</div>
                 <div className={`text-[11px] ${isDark ? 'text-gray-300' : 'text-gray-500'}`}>
                   {speaking
                     ? (speechPaused ? (isVi ? 'Đã tạm dừng' : 'Paused') : (isVi ? 'Đang phát câu trả lời' : 'Playing reply'))
@@ -182,7 +196,9 @@ export default function HeroMicVoiceButton({
               <span className="text-right">{speechRate.toFixed(2)}×</span>
             </label>
           </div>
-        </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

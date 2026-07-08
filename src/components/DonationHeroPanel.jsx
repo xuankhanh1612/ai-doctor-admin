@@ -241,8 +241,8 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onBac
             isDark={isDark}
             micLabel={t.micLabel}
             variant="expanded"
-            buttonSize={96}
-            iconSize={30}
+            buttonSize={128}
+            iconSize={48}
           />
 
           <button

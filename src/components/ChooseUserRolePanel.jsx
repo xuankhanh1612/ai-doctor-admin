@@ -289,8 +289,8 @@ export default function ChooseUserRolePanel({ mode = 'guest', onSelectRole, onEn
             isDark={isDark}
             micLabel={t.micLabel}
             variant="compact"
-            buttonSize={64}
-            iconSize={24}
+            buttonSize={128}
+            iconSize={48}
           />
         </div>
 
