@@ -5,6 +5,7 @@ import { useApp } from '../context/AppContext'
 const WAN_LINKS = {
   github: 'https://github.com/Wan-Video/Wan2.1',
   api: 'https://wan.video/api',
+  muleRouter: 'https://www.mulerouter.ai/models/wan2-2-i2v-flash',
   modelStudio: 'https://modelstudio.console.alibabacloud.com/ap-southeast-1?spm=a2ty_o05.31384571.0.0.54719f6bnNTc6q&tab=dashboard#/efm/model_experience_center/vision/videoGenerate?modelId=wan2.7-i2v',
 }
 
@@ -43,7 +44,9 @@ export default function MyImageToVideoPanel({ onPrev, prevLabel }) {
   const isDark = theme === 'dark'
   const vi = lang !== 'en'
   const pollTimerRef = useRef(null)
+  const [provider, setProvider] = useState('dashscope')
   const [apiKey, setApiKey] = useState('')
+  const [muleRouterApiKey, setMuleRouterApiKey] = useState('')
   const [form, setForm] = useState({
     imageUrl: DEFAULT_IMAGE,
     lastFrameUrl: '',
@@ -77,7 +80,7 @@ export default function MyImageToVideoPanel({ onPrev, prevLabel }) {
       const res = await fetch('/api/wan-image-to-video', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'status', taskId, apiKey }),
+        body: JSON.stringify({ action: 'status', taskId, apiKey, muleRouterApiKey, provider }),
       })
       const data = await res.json()
       setRaw(data)
@@ -104,7 +107,7 @@ export default function MyImageToVideoPanel({ onPrev, prevLabel }) {
       const res = await fetch('/api/wan-image-to-video', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'create', ...form, firstFrameUrl: form.imageUrl, apiKey }),
+        body: JSON.stringify({ action: 'create', ...form, firstFrameUrl: form.imageUrl, apiKey, muleRouterApiKey, provider }),
       })
       const data = await res.json()
       setRaw(data)
@@ -135,7 +138,7 @@ export default function MyImageToVideoPanel({ onPrev, prevLabel }) {
 
   const inputStyle = { width: '100%', boxSizing: 'border-box', border: `1px solid ${border}`, borderRadius: 12, background: inputBg, color: text, padding: '10px 12px', fontFamily: 'inherit', fontSize: 13 }
   const busy = ['submitting', 'PENDING', 'RUNNING'].includes(status)
-  const videoUrl = task?.video_url
+  const videoUrl = task?.video_url || task?.videos?.[0]
 
   return (
     <div style={{ maxWidth: 1120, margin: '0 auto', padding: '4px 4px 40px' }}>
@@ -144,11 +147,12 @@ export default function MyImageToVideoPanel({ onPrev, prevLabel }) {
           <div style={{ width: 54, height: 54, borderRadius: 18, background: 'linear-gradient(135deg, #06b6d4, #8b5cf6, #ec4899)', display: 'grid', placeItems: 'center' }}><Video size={26} color="#fff" /></div>
           <div style={{ flex: 1, minWidth: 250 }}>
             <h2 style={{ margin: 0, fontSize: 23, fontWeight: 950, color: text }}>My Image to Video <span style={{ fontSize: 10, fontWeight: 900, padding: '3px 9px', borderRadius: 999, color: '#fff', background: '#7c3aed' }}>Wan API thật</span></h2>
-            <p style={{ margin: '8px 0 0', fontSize: 13.5, color: text2, lineHeight: 1.7, maxWidth: 820 }}>{vi ? 'Tạo video thật từ ảnh bằng Wan image-to-video qua server proxy /api/wan-image-to-video. Bạn có thể nhập API key ngay trên màn hình hoặc cấu hình biến môi trường server.' : 'Generate real image-to-video output through the server-side /api/wan-image-to-video proxy. You can enter an API key on this screen or configure server environment variables.'}</p>
+            <p style={{ margin: '8px 0 0', fontSize: 13.5, color: text2, lineHeight: 1.7, maxWidth: 820 }}>{vi ? 'Tạo video thật từ ảnh bằng Wan image-to-video qua server proxy /api/wan-image-to-video. Bạn có thể nhập DASHSCOPE/Wan key hoặc MuleRouter key ngay trên màn hình, chọn nhà cung cấp, rồi tạo video thật.' : 'Generate real image-to-video output through the server-side /api/wan-image-to-video proxy. You can enter a DASHSCOPE/Wan key or MuleRouter key on this screen, choose a provider, and generate a real video.'}</p>
           </div>
         </div>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 18 }}>
           <LinkButton href={WAN_LINKS.api} icon={<ExternalLink size={14} />} label={vi ? 'Wan API' : 'Wan API'} isDark={isDark} primary />
+          <LinkButton href={WAN_LINKS.muleRouter} icon={<ExternalLink size={14} />} label="MuleRouter Wan 2.2 I2V Flash" isDark={isDark} />
           <LinkButton href={WAN_LINKS.modelStudio} icon={<Sparkles size={14} />} label={vi ? 'Model Studio I2V' : 'Model Studio I2V'} isDark={isDark} />
           <LinkButton href={WAN_LINKS.github} icon={<Github size={14} />} label="Wan2.1 GitHub" isDark={isDark} />
         </div>
@@ -156,6 +160,12 @@ export default function MyImageToVideoPanel({ onPrev, prevLabel }) {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.05fr) minmax(320px, 0.95fr)', gap: 16 }}>
         <form onSubmit={submit} style={{ display: 'grid', gap: 12, background: surface, border: `1px solid ${border}`, borderRadius: 20, padding: 16 }}>
+          <Field label={vi ? 'Nhà cung cấp API' : 'API provider'} text={text} text2={text2}>
+            <select value={provider} onChange={e => setProvider(e.target.value)} style={inputStyle}>
+              <option value="dashscope">Wan / DashScope / Alibaba Model Studio</option>
+              <option value="mulerouter">MuleRouter - Wan 2.2 I2V Flash</option>
+            </select>
+          </Field>
           <Field
             label="DASHSCOPE_API_KEY / WAN_API_KEY"
             hint={vi ? 'Bạn có thể nhập key trực tiếp để chạy ngay. Key chỉ được gửi tới server proxy /api/wan-image-to-video cho request hiện tại; cách khuyến nghị khi deploy vẫn là cấu hình biến môi trường trên server.' : 'Enter a key to run immediately. The key is sent only to the /api/wan-image-to-video server proxy for this request; server environment variables are still recommended for deployment.'}
@@ -171,6 +181,26 @@ export default function MyImageToVideoPanel({ onPrev, prevLabel }) {
               style={inputStyle}
             />
           </Field>
+          <Field
+            label="MuleRouter API key"
+            hint={vi ? 'Nhập API key tài khoản MuleRouter của bạn để gọi model wan2.2-i2v-flash. Vì lý do bảo mật, key không được hard-code trong source code.' : 'Enter your MuleRouter account API key to call wan2.2-i2v-flash. For security, the key is not hard-coded in source code.'}
+            text={text}
+            text2={text2}
+          >
+            <input
+              type="password"
+              autoComplete="off"
+              value={muleRouterApiKey}
+              onChange={e => setMuleRouterApiKey(e.target.value)}
+              placeholder={vi ? 'Nhập MuleRouter API key...' : 'Enter MuleRouter API key...'}
+              style={inputStyle}
+            />
+          </Field>
+          {provider === 'mulerouter' && (
+            <div style={{ border: `1px solid ${border}`, borderRadius: 14, padding: 10, color: text2, fontSize: 11.5, lineHeight: 1.55 }}>
+              {vi ? 'MuleRouter Wan 2.2 I2V Flash dùng ảnh URL/base64 tối đa 10MB, prompt tối đa 800 ký tự, resolution 480P/720P và duration cố định 5 giây.' : 'MuleRouter Wan 2.2 I2V Flash supports URL/base64 images up to 10MB, prompt up to 800 characters, 480P/720P resolution, and fixed 5-second duration.'}
+            </div>
+          )}
           <Field label={vi ? 'Ảnh đầu vào (URL hoặc upload)' : 'Input image (URL or upload)'} hint={vi ? 'Wan hỗ trợ URL công khai hoặc data URL base64; ảnh tối đa 20 MB.' : 'Wan supports public URLs or base64 data URLs; max 20 MB.'} text={text} text2={text2}>
             <div style={{ display: 'grid', gap: 8 }}>
               <input value={form.imageUrl.startsWith('data:') ? '(base64 image uploaded)' : form.imageUrl} onChange={e => { updateForm('imageUrl', e.target.value); setPreviewImage(e.target.value) }} style={inputStyle} />
@@ -184,7 +214,7 @@ export default function MyImageToVideoPanel({ onPrev, prevLabel }) {
             <input value={form.negativePrompt} onChange={e => updateForm('negativePrompt', e.target.value)} style={inputStyle} />
           </Field>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10 }}>
-            <Field label="Resolution" text={text}><select value={form.resolution} onChange={e => updateForm('resolution', e.target.value)} style={inputStyle}><option>720P</option><option>1080P</option></select></Field>
+            <Field label="Resolution" text={text}><select value={form.resolution} onChange={e => updateForm('resolution', e.target.value)} style={inputStyle}><option>720P</option><option>480P</option><option disabled={provider === 'mulerouter'}>1080P</option></select></Field>
             <Field label={vi ? 'Thời lượng (2-15s)' : 'Duration (2-15s)'} text={text}><input type="number" min="2" max="15" value={form.duration} onChange={e => updateForm('duration', e.target.value)} style={inputStyle} /></Field>
           </div>
           <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', color: text, fontSize: 12, fontWeight: 800 }}>
