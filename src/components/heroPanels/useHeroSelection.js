@@ -3,12 +3,14 @@ import { getSetting, setSetting } from '../../lib/anonDB.js';
 import { DEFAULT_ORGAN_ID } from '../../data/organs.js';
 
 // ============================================================================
-// useHeroSelection — đọc/ghi lựa chọn "Vai trò" (donate / train / receive)
+// useHeroSelection — đọc/ghi lựa chọn "Vai trò" (donate / train / receive / notDonate)
 // và "Cơ quan quan tâm" của người dùng vào IndexedDB (DB "cdoc_guest" ›
 // store "settings", dùng lại getSetting/setSetting có sẵn trong
 // lib/anonDB.js) để dùng lại sau này:
 //   - ChooseUserRolePanel: ghi lựa chọn mỗi khi người dùng bấm chọn Vai trò
 //     hoặc Cơ quan, và tự khôi phục lựa chọn cũ khi quay lại màn hình.
+//     Nút "Tôi chưa muốn hiến tặng" lưu role = 'notDonate' để đồng bộ
+//     lựa chọn không hiến tạng sang các màn hình tiếp theo.
 //   - DonationHeroPanel ("trang sau"): đọc lại đúng Cơ quan đã chọn để hiển
 //     thị đúng tên + hình (emoji) — mặc định 'gan' nếu chưa từng chọn.
 // IndexedDB là bất đồng bộ nên lần render đầu tiên sẽ tạm dùng giá trị mặc

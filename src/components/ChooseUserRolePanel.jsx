@@ -58,7 +58,7 @@ const TEXT = {
     roleTitleReceive: 'Receive an organ',
     roleNote: 'I may also Donate / Receive an organ in the future.',
     quickOrganTitle: 'Quickly choose an organ to donate / receive',
-    viewAll: 'View all',
+    viewAll: "I don't want to donate yet",
     legalText: 'All organ donation and transplant activities follow the legal procedures of the authorities in your country.',
     legalTags: ['Safe', 'Transparent', 'Secure', 'Humane'],
     micLabel: 'Tap to speak',
@@ -106,6 +106,8 @@ function buildRoleCards(t) {
     },
   ];
 }
+
+const NO_DONATION_ROLE_ID = 'notDonate';
 
 export default function ChooseUserRolePanel({ mode = 'guest', onSelectRole, onEnterAction, onMicPress }) {
   // selectedRole / selectedOrgan được đọc + ghi vào IndexedDB (thay vì chỉ
@@ -236,10 +238,13 @@ export default function ChooseUserRolePanel({ mode = 'guest', onSelectRole, onEn
               );
             })}
             <button
-              onClick={() => typeof onSelectRole === 'function' && onSelectRole('viewAll')}
+              onClick={() => handlePickRole(NO_DONATION_ROLE_ID)}
               className="flex flex-col items-center gap-1.5 w-[76px] sm:w-[84px]"
             >
-              <span className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-sm ${isDark ? 'bg-white/10' : 'bg-white'}`}>
+              <span
+                className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-sm ${isDark ? 'bg-white/10' : 'bg-white'}`}
+                style={{ border: `2px solid ${selectedRole === NO_DONATION_ROLE_ID ? '#16a34a' : 'transparent'}` }}
+              >
                 <span className="grid grid-cols-2 gap-1">
                   {Array.from({ length: 4 }).map((_, i) => (
                     <span key={i} className="w-2 h-2 rounded-full bg-emerald-500" />
