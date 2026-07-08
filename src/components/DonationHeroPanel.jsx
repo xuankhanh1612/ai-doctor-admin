@@ -25,15 +25,19 @@ const TEXT = {
     greeting: 'Xin chào! Tôi ở đây để',
     titlePre: 'đồng hành cùng bạn tìm hiểu',
     titleHighlight: (organLabel) => `hiến tặng ${lowerFirst(organLabel)}`,
+    titleHighlightGeneral: 'chăm sóc sức khỏe bền vững',
     titlePost: '.',
     levelBadge: (level) => (
       <>Bạn đang là <span className="font-bold">siêu anh hùng cấp độ {level}</span> 💚</>
     ),
     donateTitle: 'Tìm hiểu hiến tặng',
+    donateTitleGeneral: 'Khám phá lối sống khoẻ',
     donateSub: (organLabel) => `Tôi muốn đăng ký hiến tặng ${lowerFirst(organLabel)}`,
+    donateSubGeneral: 'Tôi muốn tìm hiểu cách chăm sóc sức khỏe mỗi ngày',
     micLabel: 'Nhấn để nói',
     knowledgeTitle: 'Kiến thức y khoa',
     knowledgeSub: (organLabel) => `Tôi muốn tìm hiểu về hiến tặng ${lowerFirst(organLabel)}`,
+    knowledgeSubGeneral: 'Tôi muốn tìm hiểu kiến thức y khoa tổng quát',
     organBadgePrefix: 'Đang tìm hiểu về',
     journeyTitle: 'Hành trình Siêu Anh Hùng',
     levelLabel: 'Cấp',
@@ -59,15 +63,19 @@ const TEXT = {
     greeting: "Hi! I'm here to",
     titlePre: 'guide you through',
     titleHighlight: (organLabel) => `${lowerFirst(organLabel)} donation`,
+    titleHighlightGeneral: 'sustainable health & wellness',
     titlePost: '.',
     levelBadge: (level) => (
       <>You're a <span className="font-bold">level {level} superhero</span> 💚</>
     ),
     donateTitle: 'Explore donation',
+    donateTitleGeneral: 'Explore healthy living',
     donateSub: (organLabel) => `I want to register to donate my ${lowerFirst(organLabel)}`,
+    donateSubGeneral: 'I want to learn how to take care of my health',
     micLabel: 'Tap to speak',
     knowledgeTitle: 'Medical knowledge',
     knowledgeSub: (organLabel) => `I want to learn about ${lowerFirst(organLabel)} donation`,
+    knowledgeSubGeneral: 'I want to learn general medical knowledge',
     organBadgePrefix: 'Currently exploring',
     journeyTitle: 'Superhero Journey',
     levelLabel: 'Level',
@@ -96,11 +104,20 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onMic
   // "Trang sau" của ChooseUserRolePanel: đọc lại đúng Cơ quan người dùng đã
   // chọn (lưu trong IndexedDB) để hiển thị đúng tên + hình (emoji) — mặc
   // định 'gan' (Liver) nếu chưa từng chọn.
-  const { organId } = useHeroSelection();
+  const { organId, role } = useHeroSelection();
   const organ = getOrganById(organId);
   const t = isEn ? TEXT.en : TEXT.vi;
   const JOURNEY_LEVELS = t.levels;
   const organLabel = isEn ? organ.en : organ.vi;
+  // Nếu ở màn hình trước người dùng chọn "Tôi chưa muốn hiến tặng"
+  // (role === 'notDonate'), trang này không nên nói "tìm hiểu hiến tặng
+  // <cơ quan>" nữa (cơ quan lúc đó chỉ là giá trị mặc định/cũ, không phải
+  // lựa chọn thật) — thay bằng nội dung tổng quát về chăm sóc sức khỏe.
+  const isNotDonate = role === 'notDonate';
+  const titleHighlight = isNotDonate ? t.titleHighlightGeneral : t.titleHighlight(organLabel);
+  const donateTitleText = isNotDonate ? t.donateTitleGeneral : t.donateTitle;
+  const donateSubText = isNotDonate ? t.donateSubGeneral : t.donateSub(organLabel);
+  const knowledgeSubText = isNotDonate ? t.knowledgeSubGeneral : t.knowledgeSub(organLabel);
   // guest (chưa đăng nhập): bấm Tạo tài khoản / Hiến tặng ngay / Nâng cao
   // kiến thức đều dẫn sang trang Login (onEnterAction do App.jsx truyền
   // xuống). member (đã đăng nhập, vào từ menu Sidebar): ẩn nút Tạo tài
@@ -167,7 +184,7 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onMic
           <h1 className={`mt-3 text-2xl sm:text-[28px] md:text-[32px] font-extrabold leading-[1.25] tracking-[-0.01em] mb-5 ${isDark ? 'text-gray-100' : 'text-[#16241c]'}`}>
             {t.titlePre}{' '}
             <span className={`bg-clip-text text-transparent bg-gradient-to-r ${isDark ? 'from-emerald-300 to-sky-300' : 'from-emerald-600 to-sky-600'}`}>
-              {t.titleHighlight(organLabel)}
+              {titleHighlight}
             </span>
             {t.titlePost}
           </h1>
@@ -178,11 +195,15 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onMic
               {t.levelBadge(currentLevel)}
             </div>
 
-            {/* Cơ quan đang chọn — tên + hình (emoji), load từ IndexedDB, đồng bộ với ChooseUserRolePanel */}
-            <div className={`inline-flex items-center gap-2 rounded-full border shadow-sm px-4 py-2 text-sm ${isDark ? 'bg-white/5 border-white/10 text-gray-200' : 'bg-white border-emerald-100 text-gray-600'}`}>
-              <span className="text-lg leading-none">{organ.emoji}</span>
-              <span>{t.organBadgePrefix}: <span className="font-bold">{organLabel}</span></span>
-            </div>
+            {/* Cơ quan đang chọn — tên + hình (emoji), load từ IndexedDB, đồng bộ với
+            ChooseUserRolePanel. Ẩn khi người dùng đã chọn "Tôi chưa muốn hiến tặng"
+            vì lúc đó cơ quan không còn liên quan đến lựa chọn của họ. */}
+            {!isNotDonate && (
+              <div className={`inline-flex items-center gap-2 rounded-full border shadow-sm px-4 py-2 text-sm ${isDark ? 'bg-white/5 border-white/10 text-gray-200' : 'bg-white border-emerald-100 text-gray-600'}`}>
+                <span className="text-lg leading-none">{organ.emoji}</span>
+                <span>{t.organBadgePrefix}: <span className="font-bold">{organLabel}</span></span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -198,10 +219,10 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onMic
               <HeartHandshake className={isDark ? 'text-emerald-400' : 'text-emerald-600'} size={26} />
             </div>
             <div className={`font-bold inline-flex items-center gap-1.5 ${isDark ? 'text-emerald-300' : 'text-emerald-700'}`}>
-              {t.donateTitle}
+              {donateTitleText}
               <Zap size={16} className={isDark ? 'text-emerald-300' : 'text-emerald-600'} fill="currentColor" />
             </div>
-            <div className={`text-sm mt-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{t.donateSub(organLabel)}</div>
+            <div className={`text-sm mt-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{donateSubText}</div>
           </button>
 
           {/* Mic: nói chuyện ngay với Global Chatbot (mở widget chat chung ở
@@ -231,7 +252,7 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onMic
               {t.knowledgeTitle}
               <ArrowRight size={16} className={isDark ? 'text-sky-300' : 'text-sky-600'} />
             </div>
-            <div className={`text-sm mt-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{t.knowledgeSub(organLabel)}</div>
+            <div className={`text-sm mt-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{knowledgeSubText}</div>
           </button>
         </div>
 
