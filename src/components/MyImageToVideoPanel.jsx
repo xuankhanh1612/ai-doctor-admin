@@ -1,0 +1,215 @@
+import React, { useEffect, useRef, useState } from 'react'
+import { ExternalLink, Github, Image, Loader2, Sparkles, Video } from 'lucide-react'
+import { useApp } from '../context/AppContext'
+
+const WAN_LINKS = {
+  github: 'https://github.com/Wan-Video/Wan2.1',
+  api: 'https://wan.video/api',
+  modelStudio: 'https://modelstudio.console.alibabacloud.com/ap-southeast-1?spm=a2ty_o05.31384571.0.0.54719f6bnNTc6q&tab=dashboard#/efm/model_experience_center/vision/videoGenerate?modelId=wan2.7-i2v',
+}
+
+const POLL_INTERVAL_MS = 15000
+const DEFAULT_IMAGE = 'https://wanx.alicdn.com/material/20250318/first_frame.png'
+
+function LinkButton({ href, icon, label, primary, isDark }) {
+  return (
+    <a href={href} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 999, fontSize: 12.5, fontWeight: 800, textDecoration: 'none', border: primary ? '1px solid transparent' : `1px solid ${isDark ? 'rgba(255,255,255,0.16)' : 'rgba(0,0,0,0.12)'}`, background: primary ? 'linear-gradient(135deg, #06b6d4, #8b5cf6, #ec4899)' : 'transparent', color: primary ? '#fff' : (isDark ? '#e8f0f8' : '#172033') }}>
+      {icon}{label}
+    </a>
+  )
+}
+
+function Field({ label, children, hint, text, text2 }) {
+  return (
+    <label style={{ display: 'grid', gap: 6 }}>
+      <span style={{ fontSize: 12, fontWeight: 900, color: text }}>{label}</span>
+      {children}
+      {hint && <span style={{ fontSize: 11, color: text2, lineHeight: 1.45 }}>{hint}</span>}
+    </label>
+  )
+}
+
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result)
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
+}
+
+export default function MyImageToVideoPanel({ onPrev, prevLabel }) {
+  const { theme, lang } = useApp()
+  const isDark = theme === 'dark'
+  const vi = lang !== 'en'
+  const pollTimerRef = useRef(null)
+  const [apiKey, setApiKey] = useState('')
+  const [form, setForm] = useState({
+    imageUrl: DEFAULT_IMAGE,
+    lastFrameUrl: '',
+    prompt: 'Realistic cinematic motion. The camera slowly pushes in, subtle natural movement, soft light, high detail.',
+    negativePrompt: 'low resolution, blurry, distorted, bad quality',
+    resolution: '720P',
+    duration: 5,
+    promptExtend: true,
+    watermark: true,
+  })
+  const [previewImage, setPreviewImage] = useState(DEFAULT_IMAGE)
+  const [task, setTask] = useState(null)
+  const [status, setStatus] = useState('idle')
+  const [error, setError] = useState('')
+  const [raw, setRaw] = useState(null)
+
+  const border = isDark ? 'rgba(255,255,255,0.09)' : 'rgba(15,23,42,0.09)'
+  const surface = isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.82)'
+  const inputBg = isDark ? 'rgba(2,6,23,0.7)' : '#fff'
+  const text = isDark ? '#e8f0f8' : '#172033'
+  const text2 = isDark ? 'rgba(232,240,248,0.66)' : '#566070'
+
+  useEffect(() => () => window.clearTimeout(pollTimerRef.current), [])
+
+  const updateForm = (key, value) => setForm(prev => ({ ...prev, [key]: value }))
+
+  const pollTask = async (taskId, immediate = false) => {
+    window.clearTimeout(pollTimerRef.current)
+    if (!immediate) await new Promise(resolve => { pollTimerRef.current = window.setTimeout(resolve, POLL_INTERVAL_MS) })
+    try {
+      const res = await fetch('/api/wan-image-to-video', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'status', taskId, apiKey }),
+      })
+      const data = await res.json()
+      setRaw(data)
+      const output = data.output || {}
+      setTask(prev => ({ ...prev, ...output, request_id: data.request_id, usage: data.usage }))
+      const nextStatus = output.task_status || 'UNKNOWN'
+      setStatus(nextStatus)
+      if (nextStatus === 'PENDING' || nextStatus === 'RUNNING') pollTask(taskId)
+      if (nextStatus === 'FAILED') setError(output.message || data.message || 'Wan task failed.')
+    } catch (err) {
+      setError(err?.message || 'Không thể kiểm tra trạng thái task Wan.')
+      setStatus('error')
+    }
+  }
+
+  const submit = async (event) => {
+    event.preventDefault()
+    window.clearTimeout(pollTimerRef.current)
+    setError('')
+    setRaw(null)
+    setTask(null)
+    setStatus('submitting')
+    try {
+      const res = await fetch('/api/wan-image-to-video', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'create', ...form, firstFrameUrl: form.imageUrl, apiKey }),
+      })
+      const data = await res.json()
+      setRaw(data)
+      if (!res.ok) throw new Error(data.error || data.message || 'Wan API request failed.')
+      const output = data.output || {}
+      const taskId = output.task_id
+      if (!taskId) throw new Error('Wan API không trả về task_id.')
+      setTask({ ...output, request_id: data.request_id })
+      setStatus(output.task_status || 'PENDING')
+      pollTask(taskId, true)
+    } catch (err) {
+      setError(err?.message || 'Không thể tạo video Wan.')
+      setStatus('error')
+    }
+  }
+
+  const onFile = async (event) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+    if (file.size > 20 * 1024 * 1024) {
+      setError(vi ? 'Ảnh tối đa 20 MB theo giới hạn Wan API.' : 'Wan API image limit is 20 MB.')
+      return
+    }
+    const dataUrl = await readFileAsDataUrl(file)
+    updateForm('imageUrl', dataUrl)
+    setPreviewImage(dataUrl)
+  }
+
+  const inputStyle = { width: '100%', boxSizing: 'border-box', border: `1px solid ${border}`, borderRadius: 12, background: inputBg, color: text, padding: '10px 12px', fontFamily: 'inherit', fontSize: 13 }
+  const busy = ['submitting', 'PENDING', 'RUNNING'].includes(status)
+  const videoUrl = task?.video_url
+
+  return (
+    <div style={{ maxWidth: 1120, margin: '0 auto', padding: '4px 4px 40px' }}>
+      <div style={{ borderRadius: 24, padding: 24, marginBottom: 18, border: `1px solid ${border}`, background: isDark ? 'radial-gradient(circle at 18% 8%, rgba(6,182,212,0.24), transparent 32%), linear-gradient(135deg, rgba(15,23,42,0.96), rgba(30,27,75,0.92))' : 'radial-gradient(circle at 18% 8%, rgba(6,182,212,0.18), transparent 32%), linear-gradient(135deg, #ffffff, #eef6ff)' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
+          <div style={{ width: 54, height: 54, borderRadius: 18, background: 'linear-gradient(135deg, #06b6d4, #8b5cf6, #ec4899)', display: 'grid', placeItems: 'center' }}><Video size={26} color="#fff" /></div>
+          <div style={{ flex: 1, minWidth: 250 }}>
+            <h2 style={{ margin: 0, fontSize: 23, fontWeight: 950, color: text }}>My Image to Video <span style={{ fontSize: 10, fontWeight: 900, padding: '3px 9px', borderRadius: 999, color: '#fff', background: '#7c3aed' }}>Wan API thật</span></h2>
+            <p style={{ margin: '8px 0 0', fontSize: 13.5, color: text2, lineHeight: 1.7, maxWidth: 820 }}>{vi ? 'Tạo video thật từ ảnh bằng Wan image-to-video qua server proxy /api/wan-image-to-video. Bạn có thể nhập API key ngay trên màn hình hoặc cấu hình biến môi trường server.' : 'Generate real image-to-video output through the server-side /api/wan-image-to-video proxy. You can enter an API key on this screen or configure server environment variables.'}</p>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 18 }}>
+          <LinkButton href={WAN_LINKS.api} icon={<ExternalLink size={14} />} label={vi ? 'Wan API' : 'Wan API'} isDark={isDark} primary />
+          <LinkButton href={WAN_LINKS.modelStudio} icon={<Sparkles size={14} />} label={vi ? 'Model Studio I2V' : 'Model Studio I2V'} isDark={isDark} />
+          <LinkButton href={WAN_LINKS.github} icon={<Github size={14} />} label="Wan2.1 GitHub" isDark={isDark} />
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.05fr) minmax(320px, 0.95fr)', gap: 16 }}>
+        <form onSubmit={submit} style={{ display: 'grid', gap: 12, background: surface, border: `1px solid ${border}`, borderRadius: 20, padding: 16 }}>
+          <Field
+            label="DASHSCOPE_API_KEY / WAN_API_KEY"
+            hint={vi ? 'Bạn có thể nhập key trực tiếp để chạy ngay. Key chỉ được gửi tới server proxy /api/wan-image-to-video cho request hiện tại; cách khuyến nghị khi deploy vẫn là cấu hình biến môi trường trên server.' : 'Enter a key to run immediately. The key is sent only to the /api/wan-image-to-video server proxy for this request; server environment variables are still recommended for deployment.'}
+            text={text}
+            text2={text2}
+          >
+            <input
+              type="password"
+              autoComplete="off"
+              value={apiKey}
+              onChange={e => setApiKey(e.target.value)}
+              placeholder={vi ? 'Nhập DASHSCOPE_API_KEY hoặc WAN_API_KEY...' : 'Enter DASHSCOPE_API_KEY or WAN_API_KEY...'}
+              style={inputStyle}
+            />
+          </Field>
+          <Field label={vi ? 'Ảnh đầu vào (URL hoặc upload)' : 'Input image (URL or upload)'} hint={vi ? 'Wan hỗ trợ URL công khai hoặc data URL base64; ảnh tối đa 20 MB.' : 'Wan supports public URLs or base64 data URLs; max 20 MB.'} text={text} text2={text2}>
+            <div style={{ display: 'grid', gap: 8 }}>
+              <input value={form.imageUrl.startsWith('data:') ? '(base64 image uploaded)' : form.imageUrl} onChange={e => { updateForm('imageUrl', e.target.value); setPreviewImage(e.target.value) }} style={inputStyle} />
+              <input type="file" accept="image/png,image/jpeg,image/webp,image/bmp" onChange={onFile} style={{ color: text }} />
+            </div>
+          </Field>
+          <Field label={vi ? 'Prompt chuyển động' : 'Motion prompt'} text={text} text2={text2}>
+            <textarea value={form.prompt} onChange={e => updateForm('prompt', e.target.value)} rows={4} style={inputStyle} />
+          </Field>
+          <Field label={vi ? 'Negative prompt' : 'Negative prompt'} text={text} text2={text2}>
+            <input value={form.negativePrompt} onChange={e => updateForm('negativePrompt', e.target.value)} style={inputStyle} />
+          </Field>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10 }}>
+            <Field label="Resolution" text={text}><select value={form.resolution} onChange={e => updateForm('resolution', e.target.value)} style={inputStyle}><option>720P</option><option>1080P</option></select></Field>
+            <Field label={vi ? 'Thời lượng (2-15s)' : 'Duration (2-15s)'} text={text}><input type="number" min="2" max="15" value={form.duration} onChange={e => updateForm('duration', e.target.value)} style={inputStyle} /></Field>
+          </div>
+          <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', color: text, fontSize: 12, fontWeight: 800 }}>
+            <label><input type="checkbox" checked={form.promptExtend} onChange={e => updateForm('promptExtend', e.target.checked)} /> Prompt extend</label>
+            <label><input type="checkbox" checked={form.watermark} onChange={e => updateForm('watermark', e.target.checked)} /> Watermark</label>
+          </div>
+          <button type="submit" disabled={busy} style={{ border: 0, borderRadius: 14, padding: '13px 16px', cursor: busy ? 'wait' : 'pointer', color: '#fff', fontWeight: 950, background: busy ? '#64748b' : 'linear-gradient(135deg, #06b6d4, #8b5cf6, #ec4899)' }}>
+            {busy ? <><Loader2 size={14} className="spin" /> {vi ? 'Đang chạy Wan...' : 'Running Wan...'}</> : (vi ? 'Tạo video thật bằng Wan API' : 'Generate real video with Wan API')}
+          </button>
+          {prevLabel && <button type="button" onClick={onPrev} style={{ border: `1px solid ${border}`, borderRadius: 999, background: 'transparent', color: text, padding: '9px 13px', cursor: 'pointer', fontWeight: 800 }}>← {prevLabel}</button>}
+        </form>
+
+        <section style={{ display: 'grid', gap: 12, alignContent: 'start' }}>
+          <div style={{ background: surface, border: `1px solid ${border}`, borderRadius: 20, padding: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: text, fontWeight: 950, marginBottom: 10 }}><Image size={16} /> Preview / Result</div>
+            {videoUrl ? <video src={videoUrl} controls style={{ width: '100%', borderRadius: 14, background: '#000' }} /> : <img src={previewImage} alt="Wan input preview" style={{ width: '100%', maxHeight: 360, objectFit: 'contain', borderRadius: 14, background: isDark ? '#020617' : '#f8fafc' }} />}
+            <div style={{ marginTop: 10, color: text2, fontSize: 12, lineHeight: 1.6 }}>
+              Status: <b style={{ color: text }}>{status}</b>{task?.task_id ? ` · task_id: ${task.task_id}` : ''}
+              {videoUrl && <div><a href={videoUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#06b6d4', fontWeight: 900 }}>{vi ? 'Mở / tải video MP4' : 'Open / download MP4'}</a></div>}
+            </div>
+          </div>
+          {error && <div style={{ border: '1px solid rgba(239,68,68,0.35)', background: 'rgba(239,68,68,0.1)', color: '#ef4444', borderRadius: 16, padding: 12, fontSize: 13, fontWeight: 800 }}>{error}</div>}
+          {raw && <pre style={{ margin: 0, maxHeight: 260, overflow: 'auto', whiteSpace: 'pre-wrap', background: isDark ? '#020617' : '#f8fafc', color: text2, border: `1px solid ${border}`, borderRadius: 16, padding: 12, fontSize: 11 }}>{JSON.stringify(raw, null, 2)}</pre>}
+        </section>
+      </div>
+    </div>
+  )
+}
