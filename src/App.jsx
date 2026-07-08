@@ -149,11 +149,20 @@ export default function App() {
 
   const navigateToRecord = (member) => { setSelectedMember(member); setActive('record') }
   const navigateToUpload = useCallback(() => setActive('upload'), [])
+  const navigateToChatHistory = useCallback(() => {
+    setActive('chatHistory')
+    setPreLoginView('login')
+  }, [])
 
   useEffect(() => {
     window.addEventListener('navigate-to-upload', navigateToUpload)
     return () => window.removeEventListener('navigate-to-upload', navigateToUpload)
   }, [navigateToUpload])
+
+  useEffect(() => {
+    window.addEventListener('navigate-to-chat-history', navigateToChatHistory)
+    return () => window.removeEventListener('navigate-to-chat-history', navigateToChatHistory)
+  }, [navigateToChatHistory])
   const openMainMenu = useCallback(() => {
     setActive('healthJourneyGame')
     window.setTimeout(() => setSidebarOpenSignal(signal => signal + 1), 0)
