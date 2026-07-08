@@ -160,13 +160,18 @@ export default function GlobalAIChatbot({ activePanelLabel }) {
     toggleMic()
   }
 
+  const openChatHistory = () => {
+    setOpen(false)
+    window.dispatchEvent(new CustomEvent('navigate-to-chat-history'))
+  }
+
   if (!open) {
     return (
-      <button type="button" onClick={() => setOpen(true)} className="global-ai-chatbot-fab" style={styles.fab} aria-label="Mở chatbot AI chung">
+      <button type="button" onClick={() => setOpen(true)} className="global-ai-chatbot-fab" style={styles.fab} aria-label="Mở AI Smart Agent">
         <span style={styles.fabIcon}>🤗</span>
         <span>
-          <strong>AI Chat</strong>
-          <small>Hỏi về website</small>
+          <strong>AI Smart Agent</strong>
+          <small>AI Smart Agent</small>
         </span>
       </button>
     )
@@ -176,7 +181,7 @@ export default function GlobalAIChatbot({ activePanelLabel }) {
   const resizeIcon = fullscreen ? '⤡' : '⤢'
 
   return (
-    <section className="global-ai-chatbot-panel" style={styles.panel} aria-label="Chatbot AI chung">
+    <section className="global-ai-chatbot-panel" style={styles.panel} aria-label="AI Smart Agent">
       <audio ref={audioElementRef} preload="none" style={{ display: 'none' }} />
       <button
         type="button"
@@ -201,7 +206,7 @@ export default function GlobalAIChatbot({ activePanelLabel }) {
       <button type="button" onClick={() => setOpen(false)} style={{ ...styles.closeBtn, ...styles.closeBottomRight }} aria-label="Đóng chatbot ở góc dưới phải">×</button>
       <header style={styles.header}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={styles.title}>🤗 Chatbot AI chung</div>
+          <div style={styles.title}>🤗 AI Smart Agent</div>
           <div style={styles.subtitle}>{status}</div>
         </div>
         <button type="button" onClick={() => setOpen(false)} style={{ ...styles.closeBtn, ...styles.closeTopRight }} aria-label="Đóng chatbot">×</button>
@@ -210,6 +215,9 @@ export default function GlobalAIChatbot({ activePanelLabel }) {
       <div style={styles.metaRow}>
         <span style={styles.badge}>{getModeLabel(mode, isVi)}</span>
         <span style={styles.current}>{isVi ? 'Trợ lý website · Groq AI + giọng nói · tự động đọc trả lời' : 'Website assistant · Groq AI + voice · auto voice reply'}</span>
+        <button type="button" onClick={openChatHistory} style={styles.historyBtn}>
+          {isVi ? 'Xem lịch sử Chat' : 'View chat history'}
+        </button>
         <span style={styles.current}>{isVi ? 'Mục hiện tại: ' : 'Current section: '}{activePanelLabel || 'Website'}</span>
       </div>
 
@@ -678,8 +686,8 @@ function createStyles(isDark, fullscreen) {
       transition: 'all 0.22s ease',
     },
     header: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, padding: '16px 54px', color: '#fff', background: 'linear-gradient(135deg, #0f4c81, #14b8a6)' },
-    title: { fontSize: 16, fontWeight: 900, textAlign: 'center' },
-    subtitle: { marginTop: 4, fontSize: 11, opacity: 0.82, lineHeight: 1.35, textAlign: 'center' },
+    title: { fontSize: 16, fontWeight: 900, textAlign: 'left' },
+    subtitle: { marginTop: 4, fontSize: 11, opacity: 0.82, lineHeight: 1.35, textAlign: 'left' },
     closeBtn: { border: 'none', background: 'rgba(255,255,255,0.18)', color: '#fff', borderRadius: 10, width: 34, height: 34, cursor: 'pointer', fontSize: 23, lineHeight: '32px', fontWeight: 900, boxShadow: '0 8px 22px rgba(0,0,0,0.22)', zIndex: 3 },
     closeTopRight: { position: 'absolute', top: 12, right: 12 },
     closeTopLeft: { position: 'absolute', top: 12, left: 12 },
@@ -690,6 +698,7 @@ function createStyles(isDark, fullscreen) {
     metaRow: { flex: '0 0 auto', display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderBottom: `1px solid ${border}`, color: muted, fontSize: 11, flexWrap: 'wrap' },
     badge: { color: '#0f766e', background: isDark ? 'rgba(45, 212, 191, 0.16)' : '#ccfbf1', borderRadius: 999, padding: '4px 8px', fontWeight: 900 },
     current: { minWidth: 0, maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+    historyBtn: { border: `1px solid ${isDark ? 'rgba(45, 212, 191, 0.35)' : 'rgba(15,118,110,0.22)'}`, borderRadius: 999, background: isDark ? 'rgba(45, 212, 191, 0.16)' : '#ccfbf1', color: '#0f766e', cursor: 'pointer', fontSize: 11, fontWeight: 900, padding: '4px 10px' },
     messages: { flex: '1 1 auto', minHeight: 0, padding: 14, overflowY: 'auto', overscrollBehavior: 'contain', display: 'flex', flexDirection: 'column', gap: 10 },
     botMsg: { alignSelf: 'flex-start', maxWidth: '88%', padding: '11px 13px', borderRadius: '16px 16px 16px 5px', background: isDark ? 'rgba(30, 41, 59, 0.82)' : '#f1f5f9', color: text, fontSize: 13, lineHeight: 1.5, whiteSpace: 'pre-wrap' },
     userMsg: { alignSelf: 'flex-end', maxWidth: '84%', padding: '11px 13px', borderRadius: '16px 16px 5px 16px', background: 'linear-gradient(135deg, #0f4c81, #2563eb)', color: '#fff', fontSize: 13, lineHeight: 1.5, whiteSpace: 'pre-wrap' },
