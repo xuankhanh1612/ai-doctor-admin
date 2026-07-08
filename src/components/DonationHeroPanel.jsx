@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { UserPlus, ShieldCheck, Mic, HeartHandshake, BookOpen, Lock, Leaf, Sparkles, Award, Star } from 'lucide-react';
+import { UserPlus, ShieldCheck, Mic, HeartHandshake, BookOpen, Lock, Leaf, Sparkles, Award, Star, Zap, ArrowRight, LogIn } from 'lucide-react';
 import useHeroPanelPrefs from './heroPanels/useHeroPanelPrefs.js';
 import HeroPanelPrefsToggle from './heroPanels/HeroPanelPrefsToggle.jsx';
 import useHeroSelection from './heroPanels/useHeroSelection.js';
@@ -44,6 +44,7 @@ const TEXT = {
     privacyBold: 'Tất cả dữ liệu là của bạn.',
     footer: 'Anh Hùng Hiến Tặng · Cùng nhau lan toả sự sống',
     back: 'Quay lại',
+    login: 'Đăng nhập',
     levels: [
       { level: 1, title: 'Người Tìm Hiểu', icon: '🥷', ring: 'from-emerald-400 to-emerald-600', badge: 'bg-emerald-500' },
       { level: 2, title: 'Người Quan Tâm', icon: '💚', ring: 'from-emerald-300 to-emerald-500', badge: 'bg-emerald-400' },
@@ -77,6 +78,7 @@ const TEXT = {
     privacyBold: 'All your data belongs to you.',
     footer: 'Donation Hero · Spreading life together',
     back: 'Back',
+    login: 'Log in',
     levels: [
       { level: 1, title: 'Learner', icon: '🥷', ring: 'from-emerald-400 to-emerald-600', badge: 'bg-emerald-500' },
       { level: 2, title: 'Interested Person', icon: '💚', ring: 'from-emerald-300 to-emerald-500', badge: 'bg-emerald-400' },
@@ -87,7 +89,7 @@ const TEXT = {
   },
 };
 
-export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onMicPress, onBack }) {
+export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onMicPress, onBack, onLogin }) {
   const [currentLevel] = useState(1);
   const isGuest = mode === 'guest';
   const { isDark, isEn, toggleTheme, toggleLang } = useHeroPanelPrefs();
@@ -161,9 +163,13 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onMic
             </div>
           </div>
 
-          <p className={isDark ? 'text-lg text-gray-300' : 'text-lg text-gray-600'}>{t.greeting}</p>
-          <h1 className={`text-2xl md:text-[28px] font-extrabold leading-snug mb-5 ${isDark ? 'text-gray-100' : 'text-[#16241c]'}`}>
-            {t.titlePre} <span className={isDark ? 'text-emerald-400' : 'text-emerald-600'}>{t.titleHighlight(organLabel)}</span>{t.titlePost}
+          <p className={`text-xs font-bold uppercase tracking-[0.2em] ${isDark ? 'text-emerald-400/80' : 'text-emerald-600/80'}`}>{t.greeting}</p>
+          <h1 className={`mt-3 text-[28px] sm:text-3xl md:text-[36px] font-black leading-[1.15] tracking-tight mb-5 ${isDark ? 'text-gray-100' : 'text-[#16241c]'}`}>
+            {t.titlePre}{' '}
+            <span className={`bg-clip-text text-transparent bg-gradient-to-r ${isDark ? 'from-emerald-300 to-sky-300' : 'from-emerald-600 to-sky-600'}`}>
+              {t.titleHighlight(organLabel)}
+            </span>
+            {t.titlePost}
           </h1>
 
           <div className="flex flex-wrap items-center justify-center gap-2">
@@ -191,7 +197,10 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onMic
             <div className={`w-14 h-14 rounded-xl flex items-center justify-center mb-4 group-hover:scale-105 transition-transform ${isDark ? 'bg-emerald-500/15' : 'bg-emerald-100'}`}>
               <HeartHandshake className={isDark ? 'text-emerald-400' : 'text-emerald-600'} size={26} />
             </div>
-            <div className={`font-bold ${isDark ? 'text-emerald-300' : 'text-emerald-700'}`}>{t.donateTitle}</div>
+            <div className={`font-bold inline-flex items-center gap-1.5 ${isDark ? 'text-emerald-300' : 'text-emerald-700'}`}>
+              {t.donateTitle}
+              <Zap size={16} className={isDark ? 'text-emerald-300' : 'text-emerald-600'} fill="currentColor" />
+            </div>
             <div className={`text-sm mt-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{t.donateSub(organLabel)}</div>
           </button>
 
@@ -218,7 +227,10 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onMic
             <div className={`w-14 h-14 rounded-xl flex items-center justify-center mb-4 group-hover:scale-105 transition-transform ${isDark ? 'bg-sky-500/15' : 'bg-sky-100'}`}>
               <BookOpen className={isDark ? 'text-sky-400' : 'text-sky-600'} size={26} />
             </div>
-            <div className={`font-bold ${isDark ? 'text-sky-300' : 'text-sky-700'}`}>{t.knowledgeTitle}</div>
+            <div className={`font-bold inline-flex items-center gap-1.5 ${isDark ? 'text-sky-300' : 'text-sky-700'}`}>
+              {t.knowledgeTitle}
+              <ArrowRight size={16} className={isDark ? 'text-sky-300' : 'text-sky-600'} />
+            </div>
             <div className={`text-sm mt-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{t.knowledgeSub(organLabel)}</div>
           </button>
         </div>
@@ -281,11 +293,27 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onMic
           <Leaf className="text-emerald-500 ml-auto flex-shrink-0 hidden sm:block" size={22} />
         </div>
 
-        {/* Quay lại — đồng bộ vị trí/hình dạng với các nút điều hướng khác
-        trong toàn dự án, luôn đặt ở dưới cùng màn hình. */}
-        {onBack && (
-          <div className="mt-8 flex justify-center sm:justify-start">
-            <BackButton isDark={isDark} label={t.back} onClick={onBack} />
+        {/* Quay lại (trái) — đồng bộ vị trí/hình dạng với các nút điều hướng
+        khác trong toàn dự án, luôn đặt ở dưới cùng màn hình. Đăng nhập
+        (phải, chỉ hiển thị với khách) — cùng hàng với nút Quay lại. */}
+        {(onBack || (isGuest && onLogin)) && (
+          <div className="mt-8 flex flex-col sm:flex-row justify-center sm:justify-between items-center gap-3">
+            {onBack ? <BackButton isDark={isDark} label={t.back} onClick={onBack} /> : <span />}
+
+            {isGuest && onLogin && (
+              <button
+                type="button"
+                onClick={onLogin}
+                className={`w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-2xl border px-5 py-3 text-sm font-semibold shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md ${
+                  isDark
+                    ? 'border-emerald-400/30 bg-emerald-500/10 text-emerald-300 hover:border-emerald-400/60'
+                    : 'border-emerald-200 bg-white text-emerald-700 hover:border-emerald-300'
+                }`}
+              >
+                <LogIn size={16} />
+                {t.login}
+              </button>
+            )}
           </div>
         )}
 

@@ -10,22 +10,32 @@ import { useState, useEffect, useCallback } from 'react';
 
 const THEME_KEY = 'heroPanel:theme';
 const LANG_KEY = 'heroPanel:lang';
+// Khoá theme/ngôn ngữ dùng CHUNG cho toàn bộ ứng dụng (đọc bởi AppContext.jsx
+// sau khi đăng nhập). Ghi thêm vào đây khi người dùng đổi theme/ngôn ngữ ở
+// các màn hình Anh Hùng Hiến Tặng để lựa chọn được giữ nguyên xuyên suốt cả
+// dự án, kể cả sau khi đăng nhập vào ứng dụng chính.
+const GLOBAL_THEME_KEY = 'cdoc_theme';
+const GLOBAL_LANG_KEY = 'cdoc_lang';
 const EVENT_NAME = 'heroPanelPrefsChange';
 
 function readTheme() {
   try {
-    return localStorage.getItem(THEME_KEY) === 'dark' ? 'dark' : 'light';
+    const local = localStorage.getItem(THEME_KEY);
+    if (local === 'dark' || local === 'light') return local;
   } catch {
-    return 'light';
+    // ignore
   }
+  return 'light';
 }
 
 function readLang() {
   try {
-    return localStorage.getItem(LANG_KEY) === 'en' ? 'en' : 'vi';
+    const local = localStorage.getItem(LANG_KEY);
+    if (local === 'en' || local === 'vi') return local;
   } catch {
-    return 'vi';
+    // ignore
   }
+  return 'vi';
 }
 
 export default function useHeroPanelPrefs() {
@@ -48,7 +58,13 @@ export default function useHeroPanelPrefs() {
   const toggleTheme = useCallback(() => {
     setTheme((prev) => {
       const next = prev === 'dark' ? 'light' : 'dark';
-      try { localStorage.setItem(THEME_KEY, next); } catch {}
+      try {
+        localStorage.setItem(THEME_KEY, next);
+        // Đồng bộ toàn dự án: ứng dụng chính (AppContext.jsx) đọc 'cdoc_theme'
+        // khi khởi động, nên ghi luôn vào đây để giữ đúng lựa chọn sau đăng nhập.
+        localStorage.setItem(GLOBAL_THEME_KEY, next);
+        document.documentElement.setAttribute('data-theme', next);
+      } catch {}
       window.dispatchEvent(new Event(EVENT_NAME));
       return next;
     });
@@ -57,7 +73,12 @@ export default function useHeroPanelPrefs() {
   const toggleLang = useCallback(() => {
     setLang((prev) => {
       const next = prev === 'en' ? 'vi' : 'en';
-      try { localStorage.setItem(LANG_KEY, next); } catch {}
+      try {
+        localStorage.setItem(LANG_KEY, next);
+        // Đồng bộ toàn dự án: ứng dụng chính (AppContext.jsx) đọc 'cdoc_lang'
+        // khi khởi động, nên ghi luôn vào đây để giữ đúng lựa chọn sau đăng nhập.
+        localStorage.setItem(GLOBAL_LANG_KEY, next);
+      } catch {}
       window.dispatchEvent(new Event(EVENT_NAME));
       return next;
     });

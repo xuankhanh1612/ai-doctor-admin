@@ -145,11 +145,15 @@ export default function ChooseUserRolePanel({ mode = 'guest', onSelectRole, onEn
 
         {/* Tiêu đề */}
         <div className="text-center max-w-2xl mx-auto">
-          <p className={isDark ? 'text-lg text-gray-300' : 'text-lg text-gray-600'}>{t.subtitleTop}</p>
-          <h1 className="text-2xl md:text-[28px] font-extrabold leading-snug mb-2">
-            <span className={isDark ? 'text-emerald-400' : 'text-emerald-600'}>{t.titleDonate}</span>{' '}
-            {t.titleOr}{' '}
-            <span className={isDark ? 'text-sky-400' : 'text-sky-600'}>{t.titleReceive}</span> {t.titleOrgan}
+          <p className={`text-xs font-bold uppercase tracking-[0.2em] ${isDark ? 'text-emerald-400/80' : 'text-emerald-600/80'}`}>{t.subtitleTop}</p>
+          <h1 className={`mt-3 text-[26px] sm:text-3xl md:text-[36px] font-black leading-[1.2] tracking-tight mb-2 ${isDark ? 'text-gray-100' : 'text-[#16241c]'}`}>
+            <span className={`bg-clip-text text-transparent bg-gradient-to-r ${isDark ? 'from-emerald-300 to-emerald-500' : 'from-emerald-600 to-emerald-700'}`}>
+              {t.titleDonate}
+            </span>{' '}
+            <span className={isDark ? 'text-gray-400' : 'text-gray-500'}>{t.titleOr}</span>{' '}
+            <span className={`bg-clip-text text-transparent bg-gradient-to-r ${isDark ? 'from-sky-300 to-sky-500' : 'from-sky-600 to-sky-700'}`}>
+              {t.titleReceive}
+            </span> {t.titleOrgan}
             <br />
             {t.titleTrain}
           </h1>
@@ -171,8 +175,8 @@ export default function ChooseUserRolePanel({ mode = 'guest', onSelectRole, onEn
                   boxShadow: isSelected ? `0 0 0 3px ${isDark ? card.accentSoftDark : card.accentSoft}, 0 8px 24px rgba(0,0,0,0.08)` : undefined,
                 }}
               >
-                <div className="text-xs font-bold tracking-wide" style={{ color: card.accent }}>{card.eyebrow}</div>
-                <div className="text-lg font-extrabold mb-3" style={{ color: card.accent }}>{card.title}</div>
+                <div className="text-[11px] font-bold tracking-[0.15em] uppercase" style={{ color: card.accent }}>{card.eyebrow}</div>
+                <div className="text-xl font-black tracking-tight mb-3" style={{ color: card.accent }}>{card.title}</div>
 
                 <div className={`w-20 h-20 rounded-full flex items-center justify-center text-4xl mb-3 group-hover:scale-105 transition-transform ${isDark ? 'bg-white/10' : 'bg-white/70'}`}>
                   {card.emoji}
