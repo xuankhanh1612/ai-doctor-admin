@@ -46,6 +46,7 @@ export default function Sidebar({ active, onNavigate, openSignal = 0 }) {
     { id: 'fullDocSummarization',   label: 'Full-Document Summarization', step: '04' },
     { id: 'documentOCR',            label: 'Document OCR',               step: '05' },
     { id: 'twoDTo3DAsset',          label: '2D to 3D Asset',           step: '05b' },
+    { id: 'cameraAngle3DStudio',    label: '3D Camera Angle (Qwen)',   step: '05c' },
     { id: 'organConnection',   label: 'Ăn gì tốt hôm nay',   step: '06' },
     { id: 'healthJourney', label: t('healthJourney'), step: '07' },
     { id: 'lunchJourney', label: t('lunchJourney'), step: '08' },
