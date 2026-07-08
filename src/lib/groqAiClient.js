@@ -309,10 +309,25 @@ export function useTTS(lang = 'vi', externalAudioRef = null) {
         || voices.find(v => v.lang.startsWith('en'))
       if (preferred) utter.voice = preferred
       utter.onstart = () => { setSpeaking(true); setPaused(false) }
-      utter.onend   = () => { setSpeaking(false); setPaused(false); utteranceRef.current = null }
-      utter.onerror = () => { setSpeaking(false); setPaused(false); utteranceRef.current = null }
-      utteranceRef.current = utter
-      window.speechSynthesis.speak(utter)
+      await new Promise((resolve) => {
+        currentResolveRef.current = resolve
+        utter.onend = () => {
+          setSpeaking(false)
+          setPaused(false)
+          utteranceRef.current = null
+          currentResolveRef.current = null
+          resolve()
+        }
+        utter.onerror = () => {
+          setSpeaking(false)
+          setPaused(false)
+          utteranceRef.current = null
+          currentResolveRef.current = null
+          resolve()
+        }
+        utteranceRef.current = utter
+        window.speechSynthesis.speak(utter)
+      })
     }
   }, [speaking, lang, stop, externalAudioRef])
 

@@ -435,10 +435,88 @@ function getReadablePageText(root) {
     .trim()
 }
 
+const PAGE_READER_HIGHLIGHT_NAME = 'ai-doctor-page-reader-active'
+let pageReaderHighlightStyleInjected = false
+
+function ensurePageReaderHighlightStyle() {
+  if (typeof document === 'undefined' || pageReaderHighlightStyleInjected) return
+  const style = document.createElement('style')
+  style.textContent = `
+    ::highlight(${PAGE_READER_HIGHLIGHT_NAME}) {
+      background: rgba(250, 204, 21, 0.62);
+      color: inherit;
+    }
+  `
+  document.head.appendChild(style)
+  pageReaderHighlightStyleInjected = true
+}
+
+function clearPageReaderHighlight() {
+  if (typeof CSS === 'undefined' || !CSS.highlights) return
+  CSS.highlights.delete(PAGE_READER_HIGHLIGHT_NAME)
+}
+
+function showPageReaderHighlight(range) {
+  if (typeof Highlight === 'undefined' || typeof CSS === 'undefined' || !CSS.highlights || !range) return
+  ensurePageReaderHighlightStyle()
+  CSS.highlights.set(PAGE_READER_HIGHLIGHT_NAME, new Highlight(range))
+}
+
+function shouldSkipReaderNode(node) {
+  const parent = node?.parentElement
+  if (!parent) return true
+  return Boolean(parent.closest([
+    'script',
+    'style',
+    'noscript',
+    'svg',
+    'canvas',
+    'audio',
+    'video',
+    'iframe',
+    '[aria-hidden="true"]',
+    '[data-page-reader-ignore]',
+  ].join(',')))
+}
+
+function getReadablePageSegments(root) {
+  if (typeof document === 'undefined') return []
+  const sourceRoot = root || document.body
+  const walker = document.createTreeWalker(
+    sourceRoot,
+    NodeFilter.SHOW_TEXT,
+    {
+      acceptNode(node) {
+        if (shouldSkipReaderNode(node)) return NodeFilter.FILTER_REJECT
+        return node.nodeValue?.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT
+      },
+    },
+  )
+  const segments = []
+  const sentencePattern = /[^.!?。！？\n]+[.!?。！？]?/g
+  let node = walker.nextNode()
+  while (node) {
+    const text = node.nodeValue || ''
+    for (const match of text.matchAll(sentencePattern)) {
+      const sentence = match[0].replace(/\s+/g, ' ').trim()
+      if (!sentence) continue
+      const start = match.index || 0
+      const end = start + match[0].length
+      const range = document.createRange()
+      range.setStart(node, start)
+      range.setEnd(node, end)
+      segments.push({ text: sentence, range })
+    }
+    node = walker.nextNode()
+  }
+  return segments
+}
+
 function GlobalPageReader({ readRootRef, activeKey }) {
   const { theme, lang } = useApp()
   const isVi = lang !== 'en'
   const [showPlaybackControls, setShowPlaybackControls] = useState(true)
+  const readSessionRef = useRef(0)
   const {
     speaking,
     speak,
@@ -446,7 +524,6 @@ function GlobalPageReader({ readRootRef, activeKey }) {
     paused,
     pause,
     resume,
-    replay,
     volume,
     setVolume,
     rate,
@@ -455,32 +532,56 @@ function GlobalPageReader({ readRootRef, activeKey }) {
   } = useTTS(isVi ? 'vi' : 'en')
 
   useEffect(() => {
+    readSessionRef.current += 1
+    clearPageReaderHighlight()
     stop()
     setShowPlaybackControls(true)
   }, [activeKey, stop])
 
-  const speakCurrentPage = () => {
-    const text = getReadablePageText(readRootRef?.current)
-    if (!text) {
+  const speakCurrentPage = async () => {
+    const sessionId = readSessionRef.current + 1
+    readSessionRef.current = sessionId
+    const segments = getReadablePageSegments(readRootRef?.current)
+    const fallbackText = segments.length ? '' : getReadablePageText(readRootRef?.current)
+    if (!segments.length && !fallbackText) {
       window.alert(isVi ? 'Không tìm thấy chữ để đọc trên màn hình.' : 'No readable text was found on this screen.')
       return
     }
-    speak(text, { restart: true })
+
+    if (!segments.length) {
+      clearPageReaderHighlight()
+      await speak(fallbackText, { restart: true })
+      return
+    }
+
+    for (const segment of segments) {
+      if (readSessionRef.current !== sessionId) break
+      showPageReaderHighlight(segment.range)
+      segment.range.startContainer.parentElement?.scrollIntoView?.({ block: 'center', behavior: 'smooth' })
+      await speak(segment.text, { restart: true })
+    }
+
+    if (readSessionRef.current === sessionId) clearPageReaderHighlight()
   }
 
   const handleToggleRead = () => {
     if (speaking) {
-      stop()
+      handleStopReading()
       return
     }
     setShowPlaybackControls(true)
     speakCurrentPage()
   }
 
+  const handleStopReading = () => {
+    readSessionRef.current += 1
+    clearPageReaderHighlight()
+    stop()
+  }
+
   const handleReplay = () => {
     setShowPlaybackControls(true)
-    if (hasReplay) replay()
-    else speakCurrentPage()
+    speakCurrentPage()
   }
 
   const isDark = theme === 'dark'
@@ -599,7 +700,7 @@ function GlobalPageReader({ readRootRef, activeKey }) {
               {speaking && (
                 <button
                   type="button"
-                  onClick={stop}
+                  onClick={handleStopReading}
                   aria-label={isVi ? 'Dừng hẳn việc nghe' : 'Stop playback'}
                   style={{ border: 0, borderRadius: 999, padding: '6px 9px', cursor: 'pointer', fontWeight: 900, background: '#ef4444', color: '#fff' }}
                 >
