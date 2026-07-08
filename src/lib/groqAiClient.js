@@ -12,6 +12,12 @@
 import { useCallback, useRef, useState, useEffect } from 'react'
 
 export const GROQ_MODEL = 'llama-3.3-70b-versatile'
+export const GLOBAL_AUDIO_STOP_EVENT = 'ai-doctor-stop-audio'
+
+export function stopAllAudioSources(source = 'unknown') {
+  if (typeof window === 'undefined') return
+  window.dispatchEvent(new CustomEvent(GLOBAL_AUDIO_STOP_EVENT, { detail: { source } }))
+}
 
 const MIN_VOICE_RECORDING_MS = 700
 const MIN_VOICE_RMS = 0.012
@@ -161,8 +167,15 @@ export function useVoiceInput(onTranscript, lang = 'vi') {
   }, [])
 
   const toggle = useCallback(() => {
+    stopAllAudioSources('voice-input')
     if (recording) stop(); else start()
   }, [recording, start, stop])
+
+  useEffect(() => {
+    const handleGlobalStop = () => stop()
+    window.addEventListener(GLOBAL_AUDIO_STOP_EVENT, handleGlobalStop)
+    return () => window.removeEventListener(GLOBAL_AUDIO_STOP_EVENT, handleGlobalStop)
+  }, [stop])
 
   return { recording, transcribing, toggle }
 }
@@ -248,6 +261,7 @@ export function useTTS(lang = 'vi', externalAudioRef = null) {
   }, [externalAudioRef])
 
   const speak = useCallback(async (text, { restart = false } = {}) => {
+    stopAllAudioSources('tts')
     if (speaking) {
       if (!restart) { stop(); return }
       stop()
@@ -322,6 +336,11 @@ export function useTTS(lang = 'vi', externalAudioRef = null) {
   }, [speak])
 
   useEffect(() => () => stop(), [stop])
+  useEffect(() => {
+    const handleGlobalStop = () => stop()
+    window.addEventListener(GLOBAL_AUDIO_STOP_EVENT, handleGlobalStop)
+    return () => window.removeEventListener(GLOBAL_AUDIO_STOP_EVENT, handleGlobalStop)
+  }, [stop])
 
   return { speaking, speak, stop, paused, pause, resume, replay, volume, setVolume, rate, setRate, hasReplay: Boolean(lastTextRef.current) }
 }
