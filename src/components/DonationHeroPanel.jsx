@@ -110,10 +110,12 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onMic
   const JOURNEY_LEVELS = t.levels;
   const organLabel = isEn ? organ.en : organ.vi;
   // Nếu ở màn hình trước người dùng chọn "Tôi chưa muốn hiến tặng"
-  // (role === 'notDonate'), trang này không nên nói "tìm hiểu hiến tặng
-  // <cơ quan>" nữa (cơ quan lúc đó chỉ là giá trị mặc định/cũ, không phải
-  // lựa chọn thật) — thay bằng nội dung tổng quát về chăm sóc sức khỏe.
-  const isNotDonate = role === 'notDonate';
+  // (role === 'notDonate') HOẶC chọn thẻ "Rèn luyện sức khỏe"
+  // (role === 'train'), trang này không nên nói "tìm hiểu hiến tặng
+  // <cơ quan>" nữa (cơ quan lúc đó chỉ là giá trị mặc định/cũ từ lần chọn
+  // trước, không còn là ý định thật của người dùng) — thay bằng nội dung
+  // tổng quát về chăm sóc sức khỏe, đồng bộ hành vi giữa 2 lựa chọn này.
+  const isNotDonate = role === 'notDonate' || role === 'train';
   const titleHighlight = isNotDonate ? t.titleHighlightGeneral : t.titleHighlight(organLabel);
   const donateTitleText = isNotDonate ? t.donateTitleGeneral : t.donateTitle;
   const donateSubText = isNotDonate ? t.donateSubGeneral : t.donateSub(organLabel);

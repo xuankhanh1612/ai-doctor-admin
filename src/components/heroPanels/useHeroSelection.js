@@ -10,7 +10,11 @@ import { DEFAULT_ORGAN_ID } from '../../data/organs.js';
 //   - ChooseUserRolePanel: ghi lựa chọn mỗi khi người dùng bấm chọn Vai trò
 //     hoặc Cơ quan, và tự khôi phục lựa chọn cũ khi quay lại màn hình.
 //     Nút "Tôi chưa muốn hiến tặng" lưu role = 'notDonate' để đồng bộ
-//     lựa chọn không hiến tạng sang các màn hình tiếp theo.
+//     lựa chọn không hiến tạng sang các màn hình tiếp theo. Thẻ "Rèn
+//     luyện sức khỏe" lưu role = 'train'; DonationHeroPanel coi 'train'
+//     tương đương 'notDonate' (không nhắc hiến tặng / không hiển thị cơ
+//     quan đã chọn trước đó) vì chọn "Rèn luyện sức khỏe" cũng có nghĩa
+//     là chưa muốn hiến tặng, bất kể trước đó đã chọn cơ quan nào.
 //   - DonationHeroPanel ("trang sau"): đọc lại đúng Cơ quan đã chọn để hiển
 //     thị đúng tên + hình (emoji) — mặc định 'gan' nếu chưa từng chọn.
 // IndexedDB là bất đồng bộ nên lần render đầu tiên sẽ tạm dùng giá trị mặc
