@@ -304,6 +304,7 @@ export default function App() {
             onEnterAction={() => setPreLoginView('login')}
             onMicPress={() => handleGuestMicPress('donationHero')}
             onBack={() => setPreLoginView('chooseRole')}
+            onLogin={() => setPreLoginView('login')}
           />
           {/* Không mount GlobalAIChatbot riêng ở đây: bấm mic đã tự tạo
           phiên anonymous (handleGuestMicPress) rồi chuyển thẳng sang màn
