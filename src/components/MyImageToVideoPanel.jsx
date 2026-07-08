@@ -1,9 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react'
+import { Client } from '@gradio/client'
 import { ExternalLink, Github, Image, Loader2, Sparkles, Video } from 'lucide-react'
 import { useApp } from '../context/AppContext'
 
 const WAN_LINKS = {
   github: 'https://github.com/Wan-Video/Wan2.1',
+  longCatSpace: 'https://huggingface.co/spaces/victor/LongCat-Video-Avatar-1.5',
+  longCatBlog: 'https://huggingface.co/blog/victor/building-zerogpu-spaces-autonomously',
   api: 'https://wan.video/api',
   muleRouter: 'https://www.mulerouter.ai/models/wan2-2-i2v-flash',
   modelStudio: 'https://modelstudio.console.alibabacloud.com/ap-southeast-1?spm=a2ty_o05.31384571.0.0.54719f6bnNTc6q&tab=dashboard#/efm/model_experience_center/vision/videoGenerate?modelId=wan2.7-i2v',
@@ -56,12 +59,19 @@ export default function MyImageToVideoPanel({ onPrev, prevLabel }) {
     duration: 5,
     promptExtend: true,
     watermark: true,
+    longCatAudio: null,
+    longCatPrompt: 'A person is speaking expressively, looking at the camera.',
+    longCatResolution: '480p',
+    longCatSeed: 42,
+    longCatVocalMode: 'Clean speech (fast)',
+    longCatAcceleration: 'DBCache faster',
   })
   const [previewImage, setPreviewImage] = useState(DEFAULT_IMAGE)
   const [task, setTask] = useState(null)
   const [status, setStatus] = useState('idle')
   const [error, setError] = useState('')
   const [raw, setRaw] = useState(null)
+  const [longCatVideoUrl, setLongCatVideoUrl] = useState('')
 
   const border = isDark ? 'rgba(255,255,255,0.09)' : 'rgba(15,23,42,0.09)'
   const surface = isDark ? 'rgba(255,255,255,0.035)' : 'rgba(255,255,255,0.82)'
@@ -98,10 +108,15 @@ export default function MyImageToVideoPanel({ onPrev, prevLabel }) {
 
   const submit = async (event) => {
     event.preventDefault()
+    if (provider === 'longcat') {
+      await submitLongCat()
+      return
+    }
     window.clearTimeout(pollTimerRef.current)
     setError('')
     setRaw(null)
     setTask(null)
+    setLongCatVideoUrl('')
     setStatus('submitting')
     try {
       const res = await fetch('/api/wan-image-to-video', {
@@ -124,6 +139,44 @@ export default function MyImageToVideoPanel({ onPrev, prevLabel }) {
     }
   }
 
+
+  const submitLongCat = async () => {
+    window.clearTimeout(pollTimerRef.current)
+    setError('')
+    setRaw(null)
+    setTask(null)
+    setLongCatVideoUrl('')
+    if (!form.longCatAudio) {
+      setError(vi ? 'Vui lòng upload audio điều khiển cho LongCat.' : 'Please upload driving audio for LongCat.')
+      setStatus('error')
+      return
+    }
+    setStatus('submitting')
+    try {
+      const imageInput = form.imageUrl?.startsWith('data:') ? await (await fetch(form.imageUrl)).blob() : form.imageUrl
+      const client = await Client.connect('victor/LongCat-Video-Avatar-1.5')
+      const result = await client.predict('/generate', {
+        image_path: imageInput,
+        audio_path: form.longCatAudio,
+        prompt: form.longCatPrompt,
+        resolution: form.longCatResolution,
+        seed: Number(form.longCatSeed) || 42,
+        vocal_mode: form.longCatVocalMode,
+        acceleration: form.longCatAcceleration,
+      })
+      const output = result?.data?.[0]
+      const outputUrl = typeof output === 'string' ? output : (output?.url || output?.path || '')
+      setRaw(result)
+      setTask({ provider: 'longcat', output })
+      setLongCatVideoUrl(outputUrl)
+      setStatus('COMPLETED')
+      if (!outputUrl) setError(vi ? 'LongCat đã trả kết quả nhưng không tìm thấy URL video trong response.' : 'LongCat returned a result, but no video URL was found in the response.')
+    } catch (err) {
+      setError(err?.message || (vi ? 'Không thể tạo video avatar LongCat.' : 'Unable to generate LongCat avatar video.'))
+      setStatus('error')
+    }
+  }
+
   const onFile = async (event) => {
     const file = event.target.files?.[0]
     if (!file) return
@@ -138,7 +191,7 @@ export default function MyImageToVideoPanel({ onPrev, prevLabel }) {
 
   const inputStyle = { width: '100%', boxSizing: 'border-box', border: `1px solid ${border}`, borderRadius: 12, background: inputBg, color: text, padding: '10px 12px', fontFamily: 'inherit', fontSize: 13 }
   const busy = ['submitting', 'PENDING', 'RUNNING'].includes(status)
-  const videoUrl = task?.video_url || task?.videos?.[0]
+  const videoUrl = longCatVideoUrl || task?.video_url || task?.videos?.[0]
 
   return (
     <div style={{ maxWidth: 1120, margin: '0 auto', padding: '4px 4px 40px' }}>
@@ -146,12 +199,14 @@ export default function MyImageToVideoPanel({ onPrev, prevLabel }) {
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
           <div style={{ width: 54, height: 54, borderRadius: 18, background: 'linear-gradient(135deg, #06b6d4, #8b5cf6, #ec4899)', display: 'grid', placeItems: 'center' }}><Video size={26} color="#fff" /></div>
           <div style={{ flex: 1, minWidth: 250 }}>
-            <h2 style={{ margin: 0, fontSize: 23, fontWeight: 950, color: text }}>My Image to Video <span style={{ fontSize: 10, fontWeight: 900, padding: '3px 9px', borderRadius: 999, color: '#fff', background: '#7c3aed' }}>Wan API thật</span></h2>
+            <h2 style={{ margin: 0, fontSize: 23, fontWeight: 950, color: text }}>My Image to Video <span style={{ fontSize: 10, fontWeight: 900, padding: '3px 9px', borderRadius: 999, color: '#fff', background: '#7c3aed' }}>{provider === 'longcat' ? 'LongCat Avatar' : 'Wan API thật'}</span></h2>
             <p style={{ margin: '8px 0 0', fontSize: 13.5, color: text2, lineHeight: 1.7, maxWidth: 820 }}>{vi ? 'Tạo video thật từ ảnh bằng Wan image-to-video qua server proxy /api/wan-image-to-video. Bạn có thể nhập DASHSCOPE/Wan key hoặc MuleRouter key ngay trên màn hình, chọn nhà cung cấp, rồi tạo video thật.' : 'Generate real image-to-video output through the server-side /api/wan-image-to-video proxy. You can enter a DASHSCOPE/Wan key or MuleRouter key on this screen, choose a provider, and generate a real video.'}</p>
           </div>
         </div>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 18 }}>
           <LinkButton href={WAN_LINKS.api} icon={<ExternalLink size={14} />} label={vi ? 'Wan API' : 'Wan API'} isDark={isDark} primary />
+          <LinkButton href={WAN_LINKS.longCatSpace} icon={<ExternalLink size={14} />} label="LongCat Video Avatar 1.5" isDark={isDark} />
+          <LinkButton href={WAN_LINKS.longCatBlog} icon={<Sparkles size={14} />} label="ZeroGPU guide" isDark={isDark} />
           <LinkButton href={WAN_LINKS.muleRouter} icon={<ExternalLink size={14} />} label="MuleRouter Wan 2.2 I2V Flash" isDark={isDark} />
           <LinkButton href={WAN_LINKS.modelStudio} icon={<Sparkles size={14} />} label={vi ? 'Model Studio I2V' : 'Model Studio I2V'} isDark={isDark} />
           <LinkButton href={WAN_LINKS.github} icon={<Github size={14} />} label="Wan2.1 GitHub" isDark={isDark} />
@@ -164,8 +219,15 @@ export default function MyImageToVideoPanel({ onPrev, prevLabel }) {
             <select value={provider} onChange={e => setProvider(e.target.value)} style={inputStyle}>
               <option value="dashscope">Wan / DashScope / Alibaba Model Studio</option>
               <option value="mulerouter">MuleRouter - Wan 2.2 I2V Flash</option>
+              <option value="longcat">Hugging Face - LongCat Video Avatar 1.5</option>
             </select>
           </Field>
+          {provider === 'longcat' && (
+            <div style={{ border: `1px solid ${border}`, borderRadius: 14, padding: 10, color: text2, fontSize: 11.5, lineHeight: 1.55 }}>
+              {vi ? 'LongCat tạo video avatar nói theo audio bằng Hugging Face Space victor/LongCat-Video-Avatar-1.5 qua @gradio/client. Upload ảnh chân dung và file audio, sau đó gọi API /generate trực tiếp từ trình duyệt.' : 'LongCat creates a talking avatar video from a reference image and driving audio through the Hugging Face Space victor/LongCat-Video-Avatar-1.5 using @gradio/client. Upload a portrait image and audio file, then call the /generate API directly from the browser.'}
+            </div>
+          )}
+          {provider !== 'longcat' && (<>
           <Field
             label="DASHSCOPE_API_KEY / WAN_API_KEY"
             hint={vi ? 'Bạn có thể nhập key trực tiếp để chạy ngay. Key chỉ được gửi tới server proxy /api/wan-image-to-video cho request hiện tại; cách khuyến nghị khi deploy vẫn là cấu hình biến môi trường trên server.' : 'Enter a key to run immediately. The key is sent only to the /api/wan-image-to-video server proxy for this request; server environment variables are still recommended for deployment.'}
@@ -196,6 +258,7 @@ export default function MyImageToVideoPanel({ onPrev, prevLabel }) {
               style={inputStyle}
             />
           </Field>
+          </>)}
           {provider === 'mulerouter' && (
             <div style={{ border: `1px solid ${border}`, borderRadius: 14, padding: 10, color: text2, fontSize: 11.5, lineHeight: 1.55 }}>
               {vi ? 'MuleRouter Wan 2.2 I2V Flash dùng ảnh URL/base64 tối đa 10MB, prompt tối đa 800 ký tự, resolution 480P/720P và duration cố định 5 giây.' : 'MuleRouter Wan 2.2 I2V Flash supports URL/base64 images up to 10MB, prompt up to 800 characters, 480P/720P resolution, and fixed 5-second duration.'}
@@ -207,6 +270,21 @@ export default function MyImageToVideoPanel({ onPrev, prevLabel }) {
               <input type="file" accept="image/png,image/jpeg,image/webp,image/bmp" onChange={onFile} style={{ color: text }} />
             </div>
           </Field>
+          {provider === 'longcat' && (<>
+            <Field label={vi ? 'Audio điều khiển' : 'Driving audio'} hint={vi ? 'Upload WAV/MP3/M4A chứa giọng nói để điều khiển avatar.' : 'Upload WAV/MP3/M4A speech audio to drive the avatar.'} text={text} text2={text2}>
+              <input type="file" accept="audio/*" onChange={e => updateForm('longCatAudio', e.target.files?.[0] || null)} style={{ color: text }} />
+            </Field>
+            <Field label="LongCat prompt" text={text} text2={text2}>
+              <textarea value={form.longCatPrompt} onChange={e => updateForm('longCatPrompt', e.target.value)} rows={3} style={inputStyle} />
+            </Field>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10 }}>
+              <Field label="Resolution" text={text}><select value={form.longCatResolution} onChange={e => updateForm('longCatResolution', e.target.value)} style={inputStyle}><option>480p</option><option>720p</option></select></Field>
+              <Field label="Seed" text={text}><input type="number" value={form.longCatSeed} onChange={e => updateForm('longCatSeed', e.target.value)} style={inputStyle} /></Field>
+              <Field label={vi ? 'Xử lý audio' : 'Audio preprocessing'} text={text}><select value={form.longCatVocalMode} onChange={e => updateForm('longCatVocalMode', e.target.value)} style={inputStyle}><option>Clean speech (fast)</option><option>Noisy speech (slower)</option></select></Field>
+              <Field label="Acceleration" text={text}><select value={form.longCatAcceleration} onChange={e => updateForm('longCatAcceleration', e.target.value)} style={inputStyle}><option>DBCache faster</option><option>None</option></select></Field>
+            </div>
+          </>)}
+          {provider !== 'longcat' && (<>
           <Field label={vi ? 'Prompt chuyển động' : 'Motion prompt'} text={text} text2={text2}>
             <textarea value={form.prompt} onChange={e => updateForm('prompt', e.target.value)} rows={4} style={inputStyle} />
           </Field>
@@ -221,8 +299,9 @@ export default function MyImageToVideoPanel({ onPrev, prevLabel }) {
             <label><input type="checkbox" checked={form.promptExtend} onChange={e => updateForm('promptExtend', e.target.checked)} /> Prompt extend</label>
             <label><input type="checkbox" checked={form.watermark} onChange={e => updateForm('watermark', e.target.checked)} /> Watermark</label>
           </div>
+          </>)}
           <button type="submit" disabled={busy} style={{ border: 0, borderRadius: 14, padding: '13px 16px', cursor: busy ? 'wait' : 'pointer', color: '#fff', fontWeight: 950, background: busy ? '#64748b' : 'linear-gradient(135deg, #06b6d4, #8b5cf6, #ec4899)' }}>
-            {busy ? <><Loader2 size={14} className="spin" /> {vi ? 'Đang chạy Wan...' : 'Running Wan...'}</> : (vi ? 'Tạo video thật bằng Wan API' : 'Generate real video with Wan API')}
+            {busy ? <><Loader2 size={14} className="spin" /> {provider === 'longcat' ? (vi ? 'Đang chạy LongCat...' : 'Running LongCat...') : (vi ? 'Đang chạy Wan...' : 'Running Wan...')}</> : (provider === 'longcat' ? (vi ? 'Tạo video avatar bằng LongCat' : 'Generate avatar video with LongCat') : (vi ? 'Tạo video thật bằng Wan API' : 'Generate real video with Wan API'))}
           </button>
           {prevLabel && <button type="button" onClick={onPrev} style={{ border: `1px solid ${border}`, borderRadius: 999, background: 'transparent', color: text, padding: '9px 13px', cursor: 'pointer', fontWeight: 800 }}>← {prevLabel}</button>}
         </form>
