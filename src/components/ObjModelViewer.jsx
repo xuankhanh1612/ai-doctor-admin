@@ -15,9 +15,29 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 // vật liệu/màu thật trước khi OBJLoader dựng mesh; nếu không có, mesh vẫn
 // hiển thị bằng vật liệu mặc định của three.js (không phải lỗi, chỉ là OBJ
 // không có material đi kèm).
-export default function ObjModelViewer({ modelUrl, mtlUrl, isDark = true, autoRotate = true, showGrid = false }) {
+//
+// Props mở rộng cho Medical Visual Playground (Touchless Control):
+// - wireframe / transparent / opacity / color: áp dụng trực tiếp lên material
+//   của mesh đã tải (dùng cho 3 chế độ xem Solid / Wireframe / X-Ray).
+// - customRotation [x, y] / customScale (number): khi khác null, viewer
+//   chuyển sang "chế độ điều khiển tay" — tắt auto-rotate của OrbitControls
+//   và tự nội suy (lerp) góc xoay/scale của mesh về phía giá trị do
+//   MediaPipe Hand Landmarker tính ra mỗi khung hình, thay vì chờ người
+//   dùng kéo chuột.
+export default function ObjModelViewer({
+  modelUrl, mtlUrl, isDark = true, autoRotate = true, showGrid = false,
+  wireframe = false, transparent = false, opacity = 1, color = null,
+  customRotation = null, customScale = null,
+}) {
   const containerRef = useRef(null)
   const stateRef = useRef({})
+  const modelRef = useRef(null) // Object3D gốc của mesh đã tải + baseScale để cộng dồn với customScale
+  // Ref (không phải state) để animate() luôn đọc được giá trị mới nhất của
+  // customRotation/customScale mỗi khung hình mà không phải huỷ/tạo lại
+  // toàn bộ scene Three.js (scene chỉ khởi tạo lại khi modelUrl/mtlUrl đổi).
+  const handControlRef = useRef({ rotation: null, scale: null })
+  handControlRef.current.rotation = customRotation
+  handControlRef.current.scale = customScale
 
   useEffect(() => {
     const container = containerRef.current
@@ -56,6 +76,28 @@ export default function ObjModelViewer({ modelUrl, mtlUrl, isDark = true, autoRo
 
     function animate() {
       raf = requestAnimationFrame(animate)
+      const hand = handControlRef.current
+      const model = modelRef.current
+      const handActive = model && (hand.rotation != null || hand.scale != null)
+
+      if (handActive) {
+        // Chế độ Touchless Control: tắt auto-rotate, nội suy (Lerp) mượt về
+        // phía góc xoay/scale do bàn tay điều khiển thay vì gán cứng, để
+        // tránh giật khi tracking bị rung.
+        controls.autoRotate = false
+        if (hand.rotation) {
+          model.object.rotation.x += (hand.rotation[0] - model.object.rotation.x) * 0.12
+          model.object.rotation.y += (hand.rotation[1] - model.object.rotation.y) * 0.12
+        }
+        if (hand.scale != null) {
+          const targetScale = model.baseScale * hand.scale
+          const current = model.object.scale.x
+          model.object.scale.setScalar(current + (targetScale - current) * 0.12)
+        }
+      } else {
+        controls.autoRotate = !!autoRotate
+      }
+
       controls.update()
       renderer.render(scene, camera)
     }
@@ -79,7 +121,32 @@ export default function ObjModelViewer({ modelUrl, mtlUrl, isDark = true, autoRo
       object.scale.setScalar(scale)
       object.position.set(-center.x * scale, -box.min.y * scale, -center.z * scale)
       scene.add(object)
+      // Lưu lại object + scale gốc (baseScale) để animate() cộng dồn với
+      // customScale (Pinch-to-zoom) và applyMaterialMode() có thể traverse.
+      modelRef.current = { object, baseScale: scale }
+      applyMaterialMode()
     }
+
+    // Áp dụng chế độ xem (Solid / Wireframe / X-Ray) + màu tint lên mọi mesh
+    // của model đã tải. Gọi lại mỗi khi wireframe/transparent/opacity/color
+    // đổi (xem effect bên dưới) mà KHÔNG cần tải lại file .obj.
+    function applyMaterialMode() {
+      const model = modelRef.current
+      if (!model) return
+      model.object.traverse((obj) => {
+        if (!obj.isMesh || !obj.material) return
+        const materials = Array.isArray(obj.material) ? obj.material : [obj.material]
+        materials.forEach((m) => {
+          m.wireframe = !!wireframe
+          m.transparent = !!transparent || opacity < 1
+          m.opacity = transparent ? Math.min(opacity, 0.35) : opacity
+          m.depthWrite = !(m.transparent)
+          if (color) m.color?.set(color)
+          m.needsUpdate = true
+        })
+      })
+    }
+    stateRef.current.applyMaterialMode = applyMaterialMode
 
     function loadObjWithLoader(materials) {
       const objLoader = new OBJLoader()
@@ -124,6 +191,7 @@ export default function ObjModelViewer({ modelUrl, mtlUrl, isDark = true, autoRo
         }
       })
       if (container) container.innerHTML = ''
+      modelRef.current = null
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [modelUrl, mtlUrl])
@@ -131,6 +199,12 @@ export default function ObjModelViewer({ modelUrl, mtlUrl, isDark = true, autoRo
   useEffect(() => {
     if (stateRef.current.controls) stateRef.current.controls.autoRotate = !!autoRotate
   }, [autoRotate])
+
+  // Solid / Wireframe / X-Ray đổi hoặc màu tint đổi -> áp lại material ngay
+  // trên mesh đang có sẵn, không cần tải lại .obj.
+  useEffect(() => {
+    stateRef.current.applyMaterialMode?.()
+  }, [wireframe, transparent, opacity, color])
 
   return <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
 }

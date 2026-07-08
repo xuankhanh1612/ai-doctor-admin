@@ -38,6 +38,7 @@ export default function Sidebar({ active, onNavigate, openSignal = 0 }) {
   const STEPS = [
     { id: 'healthJourneyGame', label: 'Health Journey Game', step: '01' },
     { id: 'medicalAssetStore', label: 'Chợ Tài nguyên 3D', step: '01a' },
+    { id: 'medicalVisualPlayground', label: 'Medical 3D Lab (Touchless)', step: '01a2' },
     { id: 'myRewardHealth', label: 'My Reward Health', step: '01b' },
     { id: 'rssPortal', label: 'Healthy RSS Portal', step: '01c' },
     { id: 'waterDrinkChatBot', label: t('waterDrinkChatBot'), step: '02' },
@@ -45,7 +46,6 @@ export default function Sidebar({ active, onNavigate, openSignal = 0 }) {
     { id: 'fullDocSummarization',   label: 'Full-Document Summarization', step: '04' },
     { id: 'documentOCR',            label: 'Document OCR',               step: '05' },
     { id: 'twoDTo3DAsset',          label: '2D to 3D Asset',           step: '05b' },
-    { id: 'xyzCameraAngle',        label: t('xyzCameraAngle'),        step: '05c' },
     { id: 'organConnection',   label: 'Ăn gì tốt hôm nay',   step: '06' },
     { id: 'healthJourney', label: t('healthJourney'), step: '07' },
     { id: 'lunchJourney', label: t('lunchJourney'), step: '08' },
