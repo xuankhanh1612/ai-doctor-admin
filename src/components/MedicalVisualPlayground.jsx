@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import ObjModelViewer from './ObjModelViewer'
 import TouchlessHandCam from './webcam/TouchlessHandCam'
+import Camera3DAngleGizmo, { buildCameraPrompt } from './CameraAngle3DGizmo'
 
 // Medical Visual Playground 🧬 — Sandbox Y khoa 3D: chọn nội tạng, đổi chế độ
 // xem (Solid/Wireframe/X-Ray), và điều khiển mô hình KHÔNG CHẠM bằng tay qua
@@ -36,6 +37,18 @@ const organData = {
     info: '> Kích thước: Bình thường.\n> Men gan: AST 25 U/L, ALT 22 U/L.\n> Không có dấu hiệu nhiễm mỡ.',
     color: '#84cc16',
   },
+  // Model demo dùng để KIỂM CHỨNG pipeline OBJ/MTL đang hoạt động thật (khác
+  // với các entry nội tạng ở trên vốn là placeholder path chưa có file thật).
+  // File .obj/.mtl đã được tải về và đặt tương đối trong
+  // public/assets/models/ nên objUrl/mtlUrl trỏ đường dẫn tương đối, không
+  // phải link tuyệt đối tới GitHub.
+  krabbyPattie: {
+    id: 'krabbyPattie', name: 'Krabby Patty (Demo)', emoji: '🍔',
+    objUrl: '/assets/models/krabbypattie01.obj',
+    mtlUrl: '/assets/models/krabbypattie01.mtl',
+    info: '> Model demo kiểm tra pipeline OBJ/MTL.\n> Nguồn: grubtub19/GameEngine (Project3/Models/Krabby Patty).\n> Dùng để xác nhận ObjModelViewer tải đúng vật liệu (.mtl) trước khi thay bằng asset nội tạng thật.',
+    color: '#f59e0b',
+  },
 }
 
 export default function MedicalVisualPlayground() {
@@ -45,6 +58,13 @@ export default function MedicalVisualPlayground() {
   const [isTouchlessOn, setIsTouchlessOn] = useState(false)
   const [accuracy, setAccuracy] = useState(98)
   const [showRoadmap, setShowRoadmap] = useState(false)
+
+  // --- Camera Angle Gizmo: tái sử dụng công nghệ điều khiển góc máy ảnh của
+  // CameraAngle3DGizmo.jsx (3 tay cầm kéo Azimuth/Elevation/Distance, snap
+  // 8×4×3 vị trí) ngay trong Medical 3D Lab, thay cho OrbitControls tự do
+  // khi bật, để bác sĩ chọn đúng góc chụp chuẩn hoá cho từng cơ quan.
+  const [isCameraGizmoOn, setIsCameraGizmoOn] = useState(false)
+  const [cameraAngle, setCameraAngle] = useState({ azimuth: 0, elevation: 0, distance: 1.0 })
 
   // --- Touchless Control: tọa độ do TouchlessHandCam bắn ra mỗi khung hình ---
   const [handRotation, setHandRotation] = useState(null) // [x, y] radian | null
@@ -61,6 +81,23 @@ export default function MedicalVisualPlayground() {
   useEffect(() => {
     if (!isTouchlessOn) { setHandRotation(null); setHandScale(null) }
   }, [isTouchlessOn])
+
+  // Touchless Control và Camera Angle Gizmo cùng chiếm khu vực canvas chính
+  // -> loại trừ lẫn nhau, bật cái này thì tắt cái kia.
+  const toggleTouchless = useCallback(() => {
+    setIsTouchlessOn((v) => {
+      const next = !v
+      if (next) setIsCameraGizmoOn(false)
+      return next
+    })
+  }, [])
+  const toggleCameraGizmo = useCallback(() => {
+    setIsCameraGizmoOn((v) => {
+      const next = !v
+      if (next) setIsTouchlessOn(false)
+      return next
+    })
+  }, [])
 
   // --- HAND TRACKING MAPPER (map tọa độ MediaPipe -> rotation/scale 3D) ---
   // wrist (landmark 0): x,y trong khoảng 0..1 -> trừ 0.5 để lấy tâm khung
@@ -235,18 +272,29 @@ export default function MedicalVisualPlayground() {
         </div>
 
         <div className="absolute inset-0 flex items-center justify-center cursor-move">
-          <ObjModelViewer
-            modelUrl={currentOrgan.objUrl}
-            isDark
-            autoRotate={autoRotate}
-            showGrid={false}
-            wireframe={viewMode === 'wireframe'}
-            transparent={viewMode === 'xray'}
-            opacity={viewMode === 'xray' ? 0.3 : 1}
-            color={currentOrgan.color}
-            customRotation={isTouchlessOn ? handRotation : null}
-            customScale={isTouchlessOn ? handScale : null}
-          />
+          {isCameraGizmoOn ? (
+            <div className="w-full h-full max-w-3xl max-h-[560px] p-6">
+              <Camera3DAngleGizmo
+                objUrl={currentOrgan.objUrl}
+                value={cameraAngle}
+                onChange={setCameraAngle}
+              />
+            </div>
+          ) : (
+            <ObjModelViewer
+              modelUrl={currentOrgan.objUrl}
+              mtlUrl={currentOrgan.mtlUrl}
+              isDark
+              autoRotate={autoRotate}
+              showGrid={false}
+              wireframe={viewMode === 'wireframe'}
+              transparent={viewMode === 'xray'}
+              opacity={viewMode === 'xray' ? 0.3 : 1}
+              color={currentOrgan.color}
+              customRotation={isTouchlessOn ? handRotation : null}
+              customScale={isTouchlessOn ? handScale : null}
+            />
+          )}
         </div>
 
         <div className="absolute top-6 right-6 flex flex-col gap-3 pointer-events-none z-20">
@@ -259,6 +307,7 @@ export default function MedicalVisualPlayground() {
           <div className="bg-black/40 backdrop-blur-md border border-white/10 p-4 rounded-xl text-right shadow-lg">
             <div className="text-xs text-slate-300 mb-1">
               Asset: <span className="font-mono text-white">{currentOrgan.objUrl.split('/').pop()}</span>
+              {currentOrgan.mtlUrl && <span className="font-mono text-slate-400"> + {currentOrgan.mtlUrl.split('/').pop()}</span>}
             </div>
             <div className="text-xs text-slate-300">
               Render: <span className="text-green-400">Three.js / WebGL</span>
@@ -266,13 +315,35 @@ export default function MedicalVisualPlayground() {
             {isTouchlessOn && (handRotation || handScale) && (
               <div className="text-[10px] text-cyan-300 mt-1">🖐 Touchless đang điều khiển</div>
             )}
+            {isCameraGizmoOn && (
+              <div className="text-[10px] text-emerald-300 mt-1 font-mono">
+                {buildCameraPrompt(cameraAngle.azimuth, cameraAngle.elevation, cameraAngle.distance)}
+              </div>
+            )}
           </div>
         </div>
 
-        {/* --- TOUCHLESS CONTROL --- */}
+        {/* --- TOUCHLESS CONTROL + CAMERA ANGLE GIZMO --- */}
         <div className="absolute bottom-6 right-6 z-20 flex flex-col items-end gap-2">
           <button
-            onClick={() => setIsTouchlessOn((v) => !v)}
+            onClick={toggleCameraGizmo}
+            className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider flex items-center gap-2 shadow-lg transition-all ${
+              isCameraGizmoOn
+                ? 'bg-red-500/80 hover:bg-red-500 text-white border border-red-400'
+                : 'bg-emerald-600/80 hover:bg-emerald-600 text-white border border-emerald-400'
+            }`}
+          >
+            {isCameraGizmoOn ? '🔴 Tắt Camera Angle Gizmo' : '🎥 Bật Camera Angle Gizmo'}
+          </button>
+
+          {isCameraGizmoOn && (
+            <div className="bg-black/60 backdrop-blur-md border border-white/10 px-3 py-2 rounded-lg text-[10px] font-mono text-emerald-300 max-w-[260px] text-right">
+              Kéo 🟢 Azimuth / 🩷 Elevation / 🟠 Distance quanh {currentOrgan.name} để chọn góc chụp chuẩn.
+            </div>
+          )}
+
+          <button
+            onClick={toggleTouchless}
             className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider flex items-center gap-2 shadow-lg transition-all ${
               isTouchlessOn
                 ? 'bg-red-500/80 hover:bg-red-500 text-white border border-red-400'
