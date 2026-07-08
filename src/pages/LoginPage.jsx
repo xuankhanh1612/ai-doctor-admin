@@ -4,6 +4,8 @@ import { useApp } from '../context/AppContext'
 import anonymousProfileImg from './AnonymousProfileUUID-Avatar-1080x720.png'
 import BackButton from '../components/common/BackButton.jsx'
 
+const SHOW_APPLE_LOGIN_BUTTON = false
+
 export default function LoginPage({ onSuccess, onBack }) {
   const { loginWithGoogle, loginWithApple, loginWithEmail, loginAnonymous } = useAuth()
   const { t, theme, toggleTheme, lang, setLang } = useApp()
@@ -126,7 +128,7 @@ export default function LoginPage({ onSuccess, onBack }) {
           onClick={() => handle(loginAnonymous)}
           disabled={loading}
         >
-          🌿 {lang === 'vi' ? 'Bắt đầu ngay' : 'Start Now'}
+          🌿 {lang === 'vi' ? 'Bắt đầu với ẩn danh' : 'Start anonymously'}
         </button>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 18 }}>
           <span style={{ fontSize: 11, color: isDark ? 'rgba(232,240,248,0.4)' : '#999' }}>
@@ -259,10 +261,13 @@ export default function LoginPage({ onSuccess, onBack }) {
           </span>
         </button>
 
-        <button style={s.socialBtn()} onClick={() => handle(loginWithApple)}>
-          <AppleIcon isDark={isDark} />
-          {t('continueApple')}
-        </button>
+        {/* Tạm ẩn Apple login, giữ nguyên code để bật lại sau. */}
+        {SHOW_APPLE_LOGIN_BUTTON && (
+          <button style={s.socialBtn()} onClick={() => handle(loginWithApple)}>
+            <AppleIcon isDark={isDark} />
+            {t('continueApple')}
+          </button>
+        )}
 
         <div style={s.divider}><div style={s.line}/>{t('orEmail')}<div style={s.line}/></div>
 

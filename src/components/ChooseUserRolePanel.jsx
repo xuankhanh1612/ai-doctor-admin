@@ -18,19 +18,19 @@ import { buildOrganLabels } from '../data/organs.js';
 
 const TEXT = {
   vi: {
-    subtitleTop: 'Bạn đang muốn trong tương lai',
-    titleDonate: 'HIẾN TẶNG',
+    subtitleTop: 'Lựa chọn hành trình chăm sóc sức khỏe',
+    titleDonate: 'Hiến tặng',
     titleOr: 'hoặc',
-    titleReceive: 'NHẬN',
+    titleReceive: 'Nhận',
     titleOrgan: 'nội tạng',
-    titleTrain: 'hay chỉ đơn giản là rèn luyện sức khỏe?',
+    titleTrain: 'Hoặc rèn luyện sức khỏe bền vững?',
     subtitleChoose: 'Hãy chọn bên dưới nhé..',
     roleEyebrowDonate: 'TÔI MUỐN',
-    roleTitleDonate: 'HIẾN TẶNG',
+    roleTitleDonate: 'Hiến tặng',
     roleEyebrowTrain: 'TÔI CHỈ MUỐN',
-    roleTitleTrain: 'RÈN LUYỆN SỨC KHỎE',
+    roleTitleTrain: 'Rèn luyện sức khỏe',
     roleEyebrowReceive: 'TÔI MUỐN',
-    roleTitleReceive: 'NHẬN TẠNG',
+    roleTitleReceive: 'Nhận tạng',
     roleNote: 'Tôi cũng có thể Hiến / Nhận Tạng trong tương lai.',
     quickOrganTitle: 'Chọn nhanh cơ quan có thể hiến / nhận',
     viewAll: 'Xem tất cả',
@@ -43,19 +43,19 @@ const TEXT = {
     privacyBold: 'Tất cả dữ liệu là của bạn.',
   },
   en: {
-    subtitleTop: "You're thinking about the future—",
-    titleDonate: 'DONATE',
+    subtitleTop: 'Choose your health journey',
+    titleDonate: 'Donate',
     titleOr: 'or',
-    titleReceive: 'RECEIVE',
+    titleReceive: 'Receive',
     titleOrgan: 'organs',
-    titleTrain: 'or simply improving your health?',
+    titleTrain: 'Or simply improving your health?',
     subtitleChoose: 'Please choose below..',
     roleEyebrowDonate: 'I WANT TO',
-    roleTitleDonate: 'DONATE',
+    roleTitleDonate: 'Donate',
     roleEyebrowTrain: 'I JUST WANT TO',
-    roleTitleTrain: 'IMPROVE MY HEALTH',
+    roleTitleTrain: 'Improve my health',
     roleEyebrowReceive: 'I WANT TO',
-    roleTitleReceive: 'RECEIVE AN ORGAN',
+    roleTitleReceive: 'Receive an organ',
     roleNote: 'I may also Donate / Receive an organ in the future.',
     quickOrganTitle: 'Quickly choose an organ to donate / receive',
     viewAll: 'View all',
@@ -145,12 +145,13 @@ export default function ChooseUserRolePanel({ mode = 'guest', onSelectRole, onEn
 
         {/* Tiêu đề */}
         <div className="text-center max-w-2xl mx-auto">
-          <p className={`text-xs font-bold uppercase tracking-[0.2em] ${isDark ? 'text-emerald-400/80' : 'text-emerald-600/80'}`}>{t.subtitleTop}</p>
-          <h1 className={`mt-3 text-[26px] sm:text-3xl md:text-[36px] font-black leading-[1.2] tracking-tight mb-2 ${isDark ? 'text-gray-100' : 'text-[#16241c]'}`}>
+          <p className={`text-[11px] sm:text-xs font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-emerald-400/80' : 'text-emerald-600/80'}`}>{t.subtitleTop}</p>
+          <h1 className={`mt-3 text-2xl sm:text-[28px] md:text-[32px] font-extrabold leading-[1.28] tracking-[-0.01em] mb-3 ${isDark ? 'text-gray-100' : 'text-[#16241c]'}`}>
             <span className={`bg-clip-text text-transparent bg-gradient-to-r ${isDark ? 'from-emerald-300 to-emerald-500' : 'from-emerald-600 to-emerald-700'}`}>
               {t.titleDonate}
             </span>{' '}
-            <span className={isDark ? 'text-gray-400' : 'text-gray-500'}>{t.titleOr}</span>{' '}
+            <span className={isDark ? 'text-gray-400' : 'text-gray-500'}>{t.titleOr}</span>
+            <br />
             <span className={`bg-clip-text text-transparent bg-gradient-to-r ${isDark ? 'from-sky-300 to-sky-500' : 'from-sky-600 to-sky-700'}`}>
               {t.titleReceive}
             </span> {t.titleOrgan}
@@ -176,7 +177,7 @@ export default function ChooseUserRolePanel({ mode = 'guest', onSelectRole, onEn
                 }}
               >
                 <div className="text-[11px] font-bold tracking-[0.15em] uppercase" style={{ color: card.accent }}>{card.eyebrow}</div>
-                <div className="text-xl font-black tracking-tight mb-3" style={{ color: card.accent }}>{card.title}</div>
+                <div className="text-lg sm:text-xl font-extrabold tracking-[-0.01em] mb-3 normal-case leading-snug" style={{ color: card.accent }}>{card.title}</div>
 
                 <div className={`w-20 h-20 rounded-full flex items-center justify-center text-4xl mb-3 group-hover:scale-105 transition-transform ${isDark ? 'bg-white/10' : 'bg-white/70'}`}>
                   {card.emoji}

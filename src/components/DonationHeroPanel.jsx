@@ -23,16 +23,16 @@ const TEXT = {
     createAccountBtn: 'Tạo tài khoản',
     createAccountNote: 'Để lưu hành trình học tập\nvà nâng cấp siêu anh hùng',
     greeting: 'Xin chào! Tôi ở đây để',
-    titlePre: 'hỗ trợ bạn về',
+    titlePre: 'đồng hành cùng bạn tìm hiểu',
     titleHighlight: (organLabel) => `hiến tặng ${lowerFirst(organLabel)}`,
     titlePost: '.',
     levelBadge: (level) => (
       <>Bạn đang là <span className="font-bold">siêu anh hùng cấp độ {level}</span> 💚</>
     ),
-    donateTitle: 'Hiến tặng ngay',
+    donateTitle: 'Tìm hiểu hiến tặng',
     donateSub: (organLabel) => `Tôi muốn đăng ký hiến tặng ${lowerFirst(organLabel)}`,
     micLabel: 'Nhấn để nói',
-    knowledgeTitle: 'Nâng cao kiến thức',
+    knowledgeTitle: 'Kiến thức y khoa',
     knowledgeSub: (organLabel) => `Tôi muốn tìm hiểu về hiến tặng ${lowerFirst(organLabel)}`,
     organBadgePrefix: 'Đang tìm hiểu về',
     journeyTitle: 'Hành trình Siêu Anh Hùng',
@@ -57,16 +57,16 @@ const TEXT = {
     createAccountBtn: 'Create account',
     createAccountNote: 'To save your learning journey\nand level up your superhero',
     greeting: "Hi! I'm here to",
-    titlePre: 'support you with',
+    titlePre: 'guide you through',
     titleHighlight: (organLabel) => `${lowerFirst(organLabel)} donation`,
     titlePost: '.',
     levelBadge: (level) => (
       <>You're a <span className="font-bold">level {level} superhero</span> 💚</>
     ),
-    donateTitle: 'Donate now',
+    donateTitle: 'Explore donation',
     donateSub: (organLabel) => `I want to register to donate my ${lowerFirst(organLabel)}`,
     micLabel: 'Tap to speak',
-    knowledgeTitle: 'Learn more',
+    knowledgeTitle: 'Medical knowledge',
     knowledgeSub: (organLabel) => `I want to learn about ${lowerFirst(organLabel)} donation`,
     organBadgePrefix: 'Currently exploring',
     journeyTitle: 'Superhero Journey',
@@ -163,8 +163,8 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onMic
             </div>
           </div>
 
-          <p className={`text-xs font-bold uppercase tracking-[0.2em] ${isDark ? 'text-emerald-400/80' : 'text-emerald-600/80'}`}>{t.greeting}</p>
-          <h1 className={`mt-3 text-[28px] sm:text-3xl md:text-[36px] font-black leading-[1.15] tracking-tight mb-5 ${isDark ? 'text-gray-100' : 'text-[#16241c]'}`}>
+          <p className={`text-[11px] sm:text-xs font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-emerald-400/80' : 'text-emerald-600/80'}`}>{t.greeting}</p>
+          <h1 className={`mt-3 text-2xl sm:text-[28px] md:text-[32px] font-extrabold leading-[1.25] tracking-[-0.01em] mb-5 ${isDark ? 'text-gray-100' : 'text-[#16241c]'}`}>
             {t.titlePre}{' '}
             <span className={`bg-clip-text text-transparent bg-gradient-to-r ${isDark ? 'from-emerald-300 to-sky-300' : 'from-emerald-600 to-sky-600'}`}>
               {t.titleHighlight(organLabel)}
