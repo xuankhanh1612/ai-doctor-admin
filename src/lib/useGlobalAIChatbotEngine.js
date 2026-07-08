@@ -84,7 +84,12 @@ export function useGlobalAIChatbotEngine({ userKey, activePanelLabel, isVi, onMe
       : "Hi! I'm Consensus Doctor's general AI assistant. I can chat, answer health and general questions, and guide you through uploading records, image analysis, InBody, family medical tree, or Print Portal. You can also talk to me with voice 🎙️ or have replies read aloud 🔊.",
   }])
 
-  const { speaking, speak, stop: stopSpeaking } = useTTS(isVi ? 'vi' : 'en', audioElementRef)
+  const {
+    speaking, speak, stop: stopSpeaking,
+    paused: speechPaused, pause: pauseSpeaking, resume: resumeSpeaking, replay: replaySpeaking,
+    volume: speechVolume, setVolume: setSpeechVolume,
+    rate: speechRate, setRate: setSpeechRate, hasReplay: hasSpeechReplay,
+  } = useTTS(isVi ? 'vi' : 'en', audioElementRef)
 
   // Tự động đọc to câu trả lời của AI ngay sau khi gửi tin (không cần bấm nút 🔊) —
   // chỉ áp dụng cho tin nhắn do CHÍNH mình vừa gửi (không tự đọc khi nhận sync từ nơi khác).
@@ -392,6 +397,8 @@ export function useGlobalAIChatbotEngine({ userKey, activePanelLabel, isVi, onMe
     handleFilesSelect, removeAttachedFile,
     submitQuestion, pushMessage,
     speaking, speak, stop: stopSpeaking,
+    speechPaused, pauseSpeaking, resumeSpeaking, replaySpeaking,
+    speechVolume, setSpeechVolume, speechRate, setSpeechRate, hasSpeechReplay,
     recording, transcribing, toggleMic,
   }
 }

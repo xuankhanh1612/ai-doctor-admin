@@ -13,6 +13,7 @@ export function CompactGlobalAIChatBar({ activePanelLabel }) {
   const docInputRef = useRef(null)
   const imageInputRef = useRef(null)
   const audioElementRef = useRef(null)
+  const [showPlaybackControls, setShowPlaybackControls] = useState(true)
 
   const {
     input, setInput,
@@ -21,12 +22,18 @@ export function CompactGlobalAIChatBar({ activePanelLabel }) {
     handleFilesSelect,
     submitQuestion,
     recording, transcribing, toggleMic,
-    speaking, stop,
+    speaking, stop, speechPaused, pauseSpeaking, resumeSpeaking, replaySpeaking,
+    speechVolume, setSpeechVolume, speechRate, setSpeechRate, hasSpeechReplay,
   } = useGlobalAIChatbotEngine({ userKey, activePanelLabel, isVi, audioElementRef })
 
   const submitFromBar = () => {
     if (!input.trim() && attachedFiles.length === 0) return
     submitQuestion()
+  }
+
+  const handleMicPress = () => {
+    if (speaking) stop()
+    toggleMic()
   }
 
   const shell = isDark ? '#070d20' : '#eef6ff'
@@ -72,10 +79,29 @@ export function CompactGlobalAIChatBar({ activePanelLabel }) {
         }}
         style={{ resize: 'none', minHeight: 92, border: `2px solid ${border}`, borderRadius: 24, padding: '22px 24px', outline: 'none', font: 'inherit', fontSize: 24, lineHeight: 1.45, color: text, background: control }}
       />
-      <button type="button" onClick={toggleMic} disabled={busy && !recording} title={recording ? (isVi ? 'Dừng ghi âm' : 'Stop recording') : (isVi ? 'Nói để hỏi' : 'Speak to ask')} style={{ border: `2px solid ${recording ? '#ef4444' : border}`, borderRadius: 26, background: recording ? 'linear-gradient(135deg,#ef4444,#dc2626)' : control, color: recording ? '#fff' : text, fontSize: 30, cursor: transcribing ? 'wait' : 'pointer' }}>{transcribing ? '⏳' : recording ? '⏹️' : '🎙️'}</button>
+      <button type="button" onClick={handleMicPress} disabled={busy && !recording} title={recording ? (isVi ? 'Dừng ghi âm' : 'Stop recording') : (isVi ? 'Nói để hỏi' : 'Speak to ask')} style={{ border: `2px solid ${recording ? '#ef4444' : border}`, borderRadius: 26, background: recording ? 'linear-gradient(135deg,#ef4444,#dc2626)' : control, color: recording ? '#fff' : text, fontSize: 30, cursor: transcribing ? 'wait' : 'pointer' }}>{transcribing ? '⏳' : recording ? '⏹️' : '🎙️'}</button>
       <button type="button" onClick={() => imageInputRef.current?.click()} disabled={busy} title={isVi ? 'Tải hình ảnh cho AI phân tích' : 'Upload image for AI analysis'} style={{ border: `2px solid ${attachedFiles.length ? '#14b8a6' : border}`, borderRadius: 26, background: control, color: text, fontSize: 30, cursor: busy ? 'not-allowed' : 'pointer' }}>🖼️</button>
       <button type="submit" disabled={busy || (!input.trim() && attachedFiles.length === 0)} style={{ border: 'none', borderRadius: 26, color: '#d8e7ea', background: 'linear-gradient(135deg,#187c86,#0f6674)', fontWeight: 900, fontSize: 24, cursor: busy ? 'wait' : 'pointer', opacity: busy || (!input.trim() && attachedFiles.length === 0) ? 0.65 : 1 }}>{busy ? '...' : speaking ? (isVi ? 'Đọc' : 'Play') : (isVi ? 'Gửi' : 'Send')}</button>
-      {speaking && <button type="button" onClick={stop} style={{ gridColumn: '1 / -1', justifySelf: 'start', border: 'none', borderRadius: 999, padding: '6px 10px', background: 'rgba(239,68,68,0.14)', color: '#ef4444', fontWeight: 900, cursor: 'pointer' }}>{isVi ? 'Dừng giọng đọc' : 'Stop voice'}</button>}
+      {(speaking || hasSpeechReplay) && (
+        <PlaybackControlsRegion
+          isVi={isVi}
+          isDark={isDark}
+          compact
+          visible={showPlaybackControls}
+          onToggleVisible={() => setShowPlaybackControls(v => !v)}
+          speaking={speaking}
+          paused={speechPaused}
+          onPause={pauseSpeaking}
+          onResume={resumeSpeaking}
+          onStop={stop}
+          onReplay={replaySpeaking}
+          volume={speechVolume}
+          onVolumeChange={setSpeechVolume}
+          rate={speechRate}
+          onRateChange={setSpeechRate}
+          style={{ gridColumn: '1 / -1' }}
+        />
+      )}
       {attachedFiles.length > 0 && <div style={{ gridColumn: '1 / -1', color: muted, fontSize: 12, fontWeight: 800 }}>{isVi ? `Đã đính kèm ${attachedFiles.length} file` : `${attachedFiles.length} file(s) attached`}</div>}
     </form>
   )
@@ -97,6 +123,7 @@ export default function GlobalAIChatbot({ activePanelLabel }) {
   const cameraInputRef = useRef(null)
   const scrollRef = useRef(null)
   const audioElementRef = useRef(null)
+  const [showPlaybackControls, setShowPlaybackControls] = useState(true)
 
   // Toàn bộ state + logic gửi tin/đính kèm file/giọng nói/lưu lịch sử dùng CHUNG 1 hook
   // với trang "Lịch sử Chat với AI" (src/components/ChatHistoryPanel.jsx) VÀ với nút mic
@@ -115,7 +142,8 @@ export default function GlobalAIChatbot({ activePanelLabel }) {
     attachedFiles,
     handleFilesSelect, removeAttachedFile,
     submitQuestion,
-    speaking, speak,
+    speaking, speak, stop, speechPaused, pauseSpeaking, resumeSpeaking, replaySpeaking,
+    speechVolume, setSpeechVolume, speechRate, setSpeechRate, hasSpeechReplay,
     recording, transcribing, toggleMic,
   } = useGlobalAIChatbotEngine({ userKey, activePanelLabel, isVi, audioElementRef })
 
@@ -126,6 +154,11 @@ export default function GlobalAIChatbot({ activePanelLabel }) {
       scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
     }, 30)
   }, [messages, busy])
+
+  const handleMicPress = () => {
+    if (speaking) stop()
+    toggleMic()
+  }
 
   if (!open) {
     return (
@@ -210,11 +243,11 @@ export default function GlobalAIChatbot({ activePanelLabel }) {
             {message.role === 'assistant' && (
               <button
                 type="button"
-                onClick={() => speak(message.text)}
-                title={isVi ? (speaking ? 'Dừng đọc' : 'Đọc to') : (speaking ? 'Stop' : 'Read aloud')}
+                onClick={() => speak(message.text, { restart: true })}
+                title={isVi ? 'Đọc to / nghe lại bằng giọng nói' : 'Read aloud / replay with voice'}
                 style={styles.speakBtn}
               >
-                {speaking ? '⏸' : '🔊'}
+                🔊
               </button>
             )}
           </div>
@@ -227,6 +260,25 @@ export default function GlobalAIChatbot({ activePanelLabel }) {
           </div>
         )}
       </div>
+
+      {(speaking || hasSpeechReplay) && (
+        <PlaybackControlsRegion
+          isVi={isVi}
+          isDark={isDark}
+          visible={showPlaybackControls}
+          onToggleVisible={() => setShowPlaybackControls(v => !v)}
+          speaking={speaking}
+          paused={speechPaused}
+          onPause={pauseSpeaking}
+          onResume={resumeSpeaking}
+          onStop={stop}
+          onReplay={replaySpeaking}
+          volume={speechVolume}
+          onVolumeChange={setSpeechVolume}
+          rate={speechRate}
+          onRateChange={setSpeechRate}
+        />
+      )}
 
       {attachedFiles.length > 0 && (
         <div style={{ flex: '0 0 auto', display: 'flex', gap: 8, padding: '10px 14px 0', overflowX: 'auto', scrollbarWidth: 'thin' }}>
@@ -330,7 +382,7 @@ export default function GlobalAIChatbot({ activePanelLabel }) {
         />
         <button
           type="button"
-          onClick={toggleMic}
+          onClick={handleMicPress}
           disabled={busy && !recording}
           title={recording ? (isVi ? 'Dừng ghi âm' : 'Stop recording') : (isVi ? 'Nói để hỏi' : 'Speak to ask')}
           style={{
@@ -366,8 +418,200 @@ export default function GlobalAIChatbot({ activePanelLabel }) {
       <style>{`
         @keyframes globalChatbotDotBounce { 0%,80%,100%{transform:scale(0.6);opacity:0.4} 40%{transform:scale(1);opacity:1} }
         @keyframes globalChatbotMicPulse { 0%,100%{box-shadow:0 0 0 3px rgba(239,68,68,0.25)} 50%{box-shadow:0 0 0 7px rgba(239,68,68,0.1)} }
+        @keyframes globalChatbotSpeakerPulse { 0%,100%{transform:scale(1);opacity:0.7} 50%{transform:scale(1.2);opacity:0.18} }
       `}</style>
     </section>
+  )
+}
+
+function VoicePlaybackControls({
+  isVi,
+  isDark,
+  compact = false,
+  speaking,
+  paused,
+  onPause,
+  onResume,
+  onStop,
+  onReplay,
+  volume,
+  onVolumeChange,
+  rate,
+  onRateChange,
+  style,
+}) {
+  const panelBg = isDark ? 'rgba(15,23,42,0.92)' : '#ffffff'
+  const border = isDark ? 'rgba(148,163,184,0.22)' : 'rgba(20,184,166,0.20)'
+  const text = isDark ? '#e5edf8' : '#102033'
+  const muted = isDark ? 'rgba(226,232,240,0.68)' : '#64748b'
+  const controlBg = isDark ? 'rgba(255,255,255,0.08)' : '#ecfdf5'
+
+  return (
+    <div
+      style={{
+        flex: '0 0 auto',
+        margin: compact ? 0 : '0 14px 10px',
+        padding: compact ? 10 : 12,
+        borderRadius: compact ? 18 : 20,
+        border: `1px solid ${border}`,
+        background: panelBg,
+        color: text,
+        boxShadow: isDark ? '0 16px 36px rgba(0,0,0,0.24)' : '0 12px 28px rgba(15,76,129,0.10)',
+        ...style,
+      }}
+      aria-label={isVi ? 'Điều khiển âm thanh AI đang phát' : 'AI voice playback controls'}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+          <span
+            style={{
+              position: 'relative',
+              width: compact ? 36 : 42,
+              height: compact ? 36 : 42,
+              borderRadius: '50%',
+              display: 'grid',
+              placeItems: 'center',
+              background: 'linear-gradient(135deg,#10b981,#0f766e)',
+              color: '#fff',
+              fontSize: compact ? 19 : 22,
+              boxShadow: '0 10px 24px rgba(16,185,129,0.28)',
+              flexShrink: 0,
+            }}
+          >
+            🔊
+            {speaking && !paused && (
+              <span
+                style={{
+                  position: 'absolute',
+                  inset: -3,
+                  borderRadius: '50%',
+                  border: '2px solid rgba(16,185,129,0.38)',
+                  animation: 'globalChatbotSpeakerPulse 1.25s ease-in-out infinite',
+                }}
+              />
+            )}
+          </span>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontWeight: 950, fontSize: compact ? 12 : 13 }}>
+              {isVi ? 'AI đang nói' : 'AI is speaking'}
+            </div>
+            <div style={{ color: muted, fontSize: compact ? 10.5 : 11, marginTop: 2 }}>
+              {speaking
+                ? (paused ? (isVi ? 'Đã tạm dừng' : 'Paused') : (isVi ? 'Đang phát câu trả lời' : 'Playing reply'))
+                : (isVi ? 'Sẵn sàng nghe lại' : 'Ready to replay')}
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+          {speaking && (
+            <button
+              type="button"
+              onClick={paused ? onResume : onPause}
+              title={paused ? (isVi ? 'Nghe tiếp' : 'Resume') : (isVi ? 'Tạm dừng nghe' : 'Pause')}
+              style={{ border: 'none', borderRadius: 999, width: 32, height: 32, background: controlBg, color: text, cursor: 'pointer', fontWeight: 950 }}
+            >
+              {paused ? '▶' : '⏸'}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onReplay}
+            title={isVi ? 'Nghe lại' : 'Replay'}
+            style={{ border: 'none', borderRadius: 999, width: 32, height: 32, background: controlBg, color: text, cursor: 'pointer', fontWeight: 950 }}
+          >
+            ↻
+          </button>
+          {speaking && (
+            <button
+              type="button"
+              onClick={onStop}
+              title={isVi ? 'Dừng hẳn việc nghe' : 'Stop playback'}
+              style={{ border: 'none', borderRadius: 999, width: 32, height: 32, background: 'rgba(239,68,68,0.16)', color: '#ef4444', cursor: 'pointer', fontWeight: 950 }}
+            >
+              ■
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gap: 8, marginTop: 10, fontSize: compact ? 10.5 : 11, fontWeight: 850 }}>
+        <label style={{ display: 'grid', gridTemplateColumns: '70px minmax(0,1fr) 38px', alignItems: 'center', gap: 8 }}>
+          <span>{isVi ? 'Âm lượng' : 'Volume'}</span>
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.05"
+            value={volume}
+            onChange={(event) => onVolumeChange(event.target.value)}
+            aria-label={isVi ? 'Điều chỉnh nghe to nhỏ' : 'Adjust volume'}
+          />
+          <span style={{ textAlign: 'right', color: muted }}>{Math.round(volume * 100)}%</span>
+        </label>
+        <label style={{ display: 'grid', gridTemplateColumns: '70px minmax(0,1fr) 38px', alignItems: 'center', gap: 8 }}>
+          <span>{isVi ? 'Tốc độ' : 'Speed'}</span>
+          <input
+            type="range"
+            min="0.5"
+            max="2"
+            step="0.05"
+            value={rate}
+            onChange={(event) => onRateChange(event.target.value)}
+            aria-label={isVi ? 'Điều chỉnh nghe nhanh chậm' : 'Adjust playback speed'}
+          />
+          <span style={{ textAlign: 'right', color: muted }}>{rate.toFixed(2)}×</span>
+        </label>
+      </div>
+    </div>
+  )
+}
+
+function PlaybackControlsRegion({
+  isVi,
+  isDark,
+  compact = false,
+  visible,
+  onToggleVisible,
+  style,
+  ...controlProps
+}) {
+  const toggleStyle = {
+    flex: '0 0 auto',
+    margin: compact ? 0 : '0 14px 10px',
+    border: `1px solid ${isDark ? 'rgba(148,163,184,0.22)' : 'rgba(20,184,166,0.20)'}`,
+    borderRadius: 999,
+    padding: compact ? '7px 10px' : '8px 12px',
+    background: isDark ? 'rgba(15,23,42,0.92)' : '#ffffff',
+    color: isDark ? '#e5edf8' : '#102033',
+    cursor: 'pointer',
+    fontSize: compact ? 11 : 12,
+    fontWeight: 900,
+    boxShadow: isDark ? '0 12px 28px rgba(0,0,0,0.18)' : '0 10px 22px rgba(15,76,129,0.08)',
+    ...style,
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={onToggleVisible}
+        style={toggleStyle}
+        aria-expanded={visible}
+        aria-label={visible ? (isVi ? 'Ẩn vùng loa AI' : 'Hide AI speaker controls') : (isVi ? 'Hiện vùng loa AI' : 'Show AI speaker controls')}
+      >
+        🔊 {visible ? (isVi ? 'Ẩn loa' : 'Hide speaker') : (isVi ? 'Hiện loa' : 'Show speaker')}
+      </button>
+      {visible && (
+        <VoicePlaybackControls
+          isVi={isVi}
+          isDark={isDark}
+          compact={compact}
+          style={style}
+          {...controlProps}
+        />
+      )}
+    </>
   )
 }
 

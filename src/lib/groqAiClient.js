@@ -199,28 +199,65 @@ function splitChunks(text, maxLen = 180) {
 
 export function useTTS(lang = 'vi', externalAudioRef = null) {
   const [speaking, setSpeaking] = useState(false)
+  const [paused, setPaused] = useState(false)
+  const [volume, setVolumeState] = useState(1)
+  const [rate, setRateState] = useState(lang === 'vi' ? 1 : 0.95)
   const stopRef = useRef(false)
   const audioRef = useRef(null)
+  const utteranceRef = useRef(null)
+  const lastTextRef = useRef('')
+  const currentResolveRef = useRef(null)
+  const volumeRef = useRef(1)
+  const rateRef = useRef(lang === 'vi' ? 1 : 0.95)
+
+  const setVolume = useCallback((nextVolume) => {
+    const safeVolume = Math.min(1, Math.max(0, Number(nextVolume) || 0))
+    volumeRef.current = safeVolume
+    setVolumeState(safeVolume)
+    if (audioRef.current) audioRef.current.volume = safeVolume
+    if (utteranceRef.current) utteranceRef.current.volume = safeVolume
+  }, [])
+
+  const setRate = useCallback((nextRate) => {
+    const safeRate = Math.min(2, Math.max(0.5, Number(nextRate) || 1))
+    rateRef.current = safeRate
+    setRateState(safeRate)
+    if (audioRef.current) audioRef.current.playbackRate = safeRate
+    if (utteranceRef.current) utteranceRef.current.rate = safeRate
+  }, [])
 
   const stop = useCallback(() => {
     stopRef.current = true
     setSpeaking(false)
+    setPaused(false)
+    if (currentResolveRef.current) {
+      currentResolveRef.current()
+      currentResolveRef.current = null
+    }
     if (audioRef.current) {
       audioRef.current.pause()
+      audioRef.current.currentTime = 0
       if (externalAudioRef?.current && audioRef.current === externalAudioRef.current) {
         audioRef.current.removeAttribute('src')
         audioRef.current.load?.()
       }
       audioRef.current = null
     }
+    utteranceRef.current = null
     if (window.speechSynthesis) window.speechSynthesis.cancel()
   }, [externalAudioRef])
 
-  const speak = useCallback(async (text) => {
-    if (speaking) { stop(); return }
+  const speak = useCallback(async (text, { restart = false } = {}) => {
+    if (speaking) {
+      if (!restart) { stop(); return }
+      stop()
+      await new Promise(resolve => setTimeout(resolve, 0))
+    }
     const clean = stripMarkdown(text)
     if (!clean) return
+    lastTextRef.current = clean
     stopRef.current = false
+    setPaused(false)
 
     if (lang === 'vi') {
       // ── Google Translate TTS qua proxy (tránh CORS) ──
@@ -231,34 +268,60 @@ export function useTTS(lang = 'vi', externalAudioRef = null) {
         const url = `/api/google-tts?tl=vi&q=${encodeURIComponent(chunk)}`
         const audio = externalAudioRef?.current || new Audio()
         audio.src = url
+        audio.volume = volumeRef.current
+        audio.playbackRate = rateRef.current
         audioRef.current = audio
         await new Promise((res) => {
+          currentResolveRef.current = res
           audio.onended = res
           audio.onerror = res
           audio.play().catch(res)
         })
+        currentResolveRef.current = null
         audioRef.current = null
       }
       if (!stopRef.current) setSpeaking(false)
+      if (!stopRef.current) setPaused(false)
     } else {
       // ── Web Speech API cho tiếng Anh ──
       if (!window.speechSynthesis) return
       window.speechSynthesis.cancel()
       const utter = new SpeechSynthesisUtterance(clean)
       utter.lang = 'en-US'
-      utter.rate = 0.95
+      utter.rate = rateRef.current
+      utter.volume = volumeRef.current
       const voices = window.speechSynthesis.getVoices()
       const preferred = voices.find(v => v.lang.startsWith('en') && v.localService)
         || voices.find(v => v.lang.startsWith('en'))
       if (preferred) utter.voice = preferred
-      utter.onstart = () => setSpeaking(true)
-      utter.onend   = () => setSpeaking(false)
-      utter.onerror = () => setSpeaking(false)
+      utter.onstart = () => { setSpeaking(true); setPaused(false) }
+      utter.onend   = () => { setSpeaking(false); setPaused(false); utteranceRef.current = null }
+      utter.onerror = () => { setSpeaking(false); setPaused(false); utteranceRef.current = null }
+      utteranceRef.current = utter
       window.speechSynthesis.speak(utter)
     }
   }, [speaking, lang, stop, externalAudioRef])
 
+  const pause = useCallback(() => {
+    if (!speaking || paused) return
+    if (audioRef.current) audioRef.current.pause()
+    if (window.speechSynthesis) window.speechSynthesis.pause()
+    setPaused(true)
+  }, [speaking, paused])
+
+  const resume = useCallback(() => {
+    if (!speaking || !paused) return
+    if (audioRef.current) audioRef.current.play().catch(() => {})
+    if (window.speechSynthesis) window.speechSynthesis.resume()
+    setPaused(false)
+  }, [speaking, paused])
+
+  const replay = useCallback(() => {
+    if (!lastTextRef.current) return
+    speak(lastTextRef.current, { restart: true })
+  }, [speak])
+
   useEffect(() => () => stop(), [stop])
 
-  return { speaking, speak, stop }
+  return { speaking, speak, stop, paused, pause, resume, replay, volume, setVolume, rate, setRate, hasReplay: Boolean(lastTextRef.current) }
 }

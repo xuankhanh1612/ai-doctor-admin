@@ -1,5 +1,5 @@
-import React, { useRef } from 'react';
-import { Mic } from 'lucide-react';
+import React, { useRef, useState } from 'react';
+import { Mic, Pause, Play, RotateCcw, Square } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useGlobalAIChatbotEngine } from '../../lib/useGlobalAIChatbotEngine.js';
 
@@ -29,17 +29,18 @@ export default function HeroMicVoiceButton({
   isVi,
   isDark,
   micLabel,
-  variant = 'compact', // 'compact' (chỉ icon, không có label hiện sẵn) | 'expanded' (có label dưới nút)
   buttonSize = 64,
   iconSize = 24,
 }) {
   const { user, loginAnonymous } = useAuth();
   const userKey = user?.uuid || null;
   const audioElementRef = useRef(null);
+  const [showPlaybackControls, setShowPlaybackControls] = useState(true);
 
   const {
     busy,
-    speaking, stop: stopSpeaking,
+    speaking, stop: stopSpeaking, speechPaused, pauseSpeaking, resumeSpeaking, replaySpeaking,
+    speechVolume, setSpeechVolume, speechRate, setSpeechRate, hasSpeechReplay,
     recording, transcribing, toggleMic,
   } = useGlobalAIChatbotEngine({ userKey, activePanelLabel, isVi, audioElementRef, autoSubmitVoice: true });
 
@@ -49,6 +50,7 @@ export default function HeroMicVoiceButton({
   // cũ nếu đã có, không tạo trùng. Không setActive/điều hướng gì thêm: người
   // dùng vẫn đứng nguyên tại trang này.
   const handlePress = async () => {
+    if (speaking) stopSpeaking();
     if (mode === 'guest') {
       try { await loginAnonymous(); } catch (e) { console.warn('Không tạo được phiên khách khi bấm mic:', e); }
     }
@@ -90,9 +92,11 @@ export default function HeroMicVoiceButton({
         <Mic className={isActive ? 'text-white' : (isDark ? 'text-emerald-400' : 'text-emerald-600')} size={iconSize} />
       </button>
 
-      {/* Label tĩnh (chỉ hiện ở variant 'expanded', và chỉ khi KHÔNG đang có hoạt động thoại nào) */}
-      {variant === 'expanded' && !isActive && (
-        <span className={`font-bold ${isDark ? 'text-gray-100' : 'text-[#16241c]'}`}>{micLabel}</span>
+      {/* Label tĩnh để 2 trang Anh Hùng cùng hiển thị lời nhắc dưới micro. */}
+      {!isActive && (
+        <span className={`font-bold ${isDark ? 'text-gray-100' : 'text-[#16241c]'}`}>
+          {isVi ? 'Nhấn để nói' : (micLabel || 'Tap to speak')}
+        </span>
       )}
 
       {/* Bong bóng trạng thái — ngay dưới nút mic của TRANG NÀY, không phải góc màn hình popup chat */}
@@ -103,14 +107,98 @@ export default function HeroMicVoiceButton({
         </span>
       )}
 
-      {speaking && (
-        <button
-          type="button"
-          onClick={stopSpeaking}
-          className="text-xs font-semibold text-red-500 hover:text-red-600 underline underline-offset-2"
-        >
-          {isVi ? 'Dừng giọng đọc' : 'Stop voice'}
-        </button>
+      {(speaking || hasSpeechReplay) && (
+        <>
+          <button
+            type="button"
+            onClick={() => setShowPlaybackControls(value => !value)}
+            className={`text-xs font-extrabold rounded-full px-3 py-1.5 shadow-sm ${isDark ? 'border border-white/10 bg-slate-950/70 text-gray-100' : 'border border-emerald-100 bg-white text-gray-700'}`}
+            aria-expanded={showPlaybackControls}
+            aria-label={showPlaybackControls ? (isVi ? 'Ẩn vùng loa AI' : 'Hide AI speaker controls') : (isVi ? 'Hiện vùng loa AI' : 'Show AI speaker controls')}
+          >
+            🔊 {showPlaybackControls ? (isVi ? 'Ẩn loa' : 'Hide speaker') : (isVi ? 'Hiện loa' : 'Show speaker')}
+          </button>
+          {showPlaybackControls && (
+            <div className={`w-full max-w-[360px] rounded-2xl border p-3 shadow-sm ${isDark ? 'border-white/10 bg-slate-950/70 text-gray-100' : 'border-emerald-100 bg-white text-gray-700'}`}>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-xl text-white shadow-sm">
+                🔊
+                {speaking && !speechPaused && <span className="absolute inset-0 rounded-full bg-emerald-400/40 animate-ping" />}
+              </span>
+              <div className="min-w-0">
+                <div className="text-sm font-bold">{isVi ? 'AI đang nói' : 'AI is speaking'}</div>
+                <div className={`text-[11px] ${isDark ? 'text-gray-300' : 'text-gray-500'}`}>
+                  {speaking
+                    ? (speechPaused ? (isVi ? 'Đã tạm dừng' : 'Paused') : (isVi ? 'Đang phát câu trả lời' : 'Playing reply'))
+                    : (isVi ? 'Sẵn sàng nghe lại' : 'Ready to replay')}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              {speaking && (
+                <button
+                  type="button"
+                  onClick={speechPaused ? resumeSpeaking : pauseSpeaking}
+                  className={`rounded-full p-2 transition ${isDark ? 'bg-white/10 hover:bg-white/15' : 'bg-emerald-50 hover:bg-emerald-100'}`}
+                  aria-label={speechPaused ? (isVi ? 'Nghe tiếp' : 'Resume') : (isVi ? 'Tạm dừng nghe' : 'Pause')}
+                >
+                  {speechPaused ? <Play size={16} /> : <Pause size={16} />}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={replaySpeaking}
+                className={`rounded-full p-2 transition ${isDark ? 'bg-white/10 hover:bg-white/15' : 'bg-emerald-50 hover:bg-emerald-100'}`}
+                aria-label={isVi ? 'Nghe lại' : 'Replay'}
+              >
+                <RotateCcw size={16} />
+              </button>
+              {speaking && (
+                <button
+                  type="button"
+                  onClick={stopSpeaking}
+                  className="rounded-full bg-red-500 p-2 text-white transition hover:bg-red-600"
+                  aria-label={isVi ? 'Dừng hẳn việc nghe' : 'Stop playback'}
+                >
+                  <Square size={15} fill="currentColor" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="mt-3 grid gap-2 text-[11px] font-semibold">
+            <label className="grid grid-cols-[74px_1fr_38px] items-center gap-2">
+              <span>{isVi ? 'Âm lượng' : 'Volume'}</span>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value={speechVolume}
+                onChange={(event) => setSpeechVolume(event.target.value)}
+                aria-label={isVi ? 'Điều chỉnh nghe to nhỏ' : 'Adjust volume'}
+              />
+              <span className="text-right">{Math.round(speechVolume * 100)}%</span>
+            </label>
+            <label className="grid grid-cols-[74px_1fr_38px] items-center gap-2">
+              <span>{isVi ? 'Tốc độ' : 'Speed'}</span>
+              <input
+                type="range"
+                min="0.5"
+                max="2"
+                step="0.05"
+                value={speechRate}
+                onChange={(event) => setSpeechRate(event.target.value)}
+                aria-label={isVi ? 'Điều chỉnh nghe nhanh chậm' : 'Adjust playback speed'}
+              />
+              <span className="text-right">{speechRate.toFixed(2)}×</span>
+            </label>
+          </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
