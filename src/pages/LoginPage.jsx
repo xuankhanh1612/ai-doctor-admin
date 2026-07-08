@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext'
 import { useApp } from '../context/AppContext'
 import anonymousProfileImg from './AnonymousProfileUUID-Avatar-1080x720.png'
 import BackButton from '../components/common/BackButton.jsx'
+import UserUuid3DAvatar from '../components/UserUuid3DAvatar.jsx'
 
 const SHOW_APPLE_LOGIN_BUTTON = false
 
@@ -130,10 +131,25 @@ export default function LoginPage({ onSuccess, onBack }) {
         >
           🌿 {lang === 'vi' ? 'Bắt đầu với ẩn danh' : 'Start anonymously'}
         </button>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 18 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 18, flexWrap: 'wrap' }}>
           <span style={{ fontSize: 11, color: isDark ? 'rgba(232,240,248,0.4)' : '#999' }}>
             {lang === 'vi' ? 'Không cần tài khoản · Tiến trình lưu trên thiết bị này' : 'No account required · Progress saved on this device'}
           </span>
+          <button
+            onClick={() => setShowHelp(true)}
+            title={lang === 'vi' ? 'Mở hướng dẫn Avatar 3D' : 'Open 3D Avatar guide'}
+            style={{
+              flexShrink: 0,
+              border: `1px solid ${isDark ? 'rgba(0,229,255,0.45)' : 'rgba(0,184,204,0.5)'}`,
+              background: isDark ? 'rgba(0,229,255,0.10)' : 'rgba(0,184,204,0.08)',
+              color: isDark ? '#00e5ff' : '#00b8cc',
+              borderRadius: 999, padding: '6px 12px', fontSize: 12, fontWeight: 900, cursor: 'pointer',
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              lineHeight: 1, transition: 'all 0.18s',
+            }}
+          >
+            🧊 Avatar 3D
+          </button>
           <button
             onClick={() => setShowHelp(true)}
             title={lang === 'vi' ? 'Trợ giúp về hồ sơ ẩn danh' : 'Help: Anonymous Profile'}
@@ -219,19 +235,27 @@ export default function LoginPage({ onSuccess, onBack }) {
                   }}>
                     🎬 {lang === 'vi' ? 'Video hướng dẫn' : 'Tutorial Video'}
                   </div>
-                  <div style={{
-                    borderRadius: 14, overflow: 'hidden',
-                    border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
-                    background: '#000', aspectRatio: '9/16', maxHeight: 500,
-                  }}>
-                    <iframe
-                      src="https://www.youtube.com/embed/dw_8mIuH9DY?autoplay=0&rel=0&modestbranding=1"
-                      title="Anonymous Profile UUID"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                      style={{ width: '100%', height: '100%', display: 'block', border: 'none' }}
-                    />
+                  <div className="login-help-video-avatar-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 0.85fr) minmax(180px, 1fr)', gap: 14, alignItems: 'stretch' }}>
+                    <div style={{
+                      borderRadius: 14, overflow: 'hidden',
+                      border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
+                      background: '#000', aspectRatio: '9/16', maxHeight: 500,
+                    }}>
+                      <iframe
+                        src="https://www.youtube.com/embed/dw_8mIuH9DY?autoplay=0&rel=0&modestbranding=1"
+                        title="Anonymous Profile UUID"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                        style={{ width: '100%', height: '100%', display: 'block', border: 'none' }}
+                      />
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateRows: '1fr 1fr', gap: 12, minHeight: 320 }}>
+                      <UserUuid3DAvatar uuid="anonymous-profile-demo-uuid" isDark={isDark} vi={lang === 'vi'} accent="#2d8a5e" label={lang === 'vi' ? 'Guest UUID' : 'Guest UUID'} height="100%" minWidth={160} />
+                      <UserUuid3DAvatar uuid="real-account-profile-demo-uuid" isDark={isDark} vi={lang === 'vi'} accent="#00b8cc" label={lang === 'vi' ? 'User UUID' : 'User UUID'} height="100%" minWidth={160} />
+                    </div>
                   </div>
+
+                  <style>{`@media (max-width: 720px) { .login-help-video-avatar-grid { grid-template-columns: 1fr !important; } }`}</style>
 
                   {/* Short description */}
                   <div style={{

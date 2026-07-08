@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useApp } from '../context/AppContext'
 import profileBannerImg from '../pages/AnonymousProfileUUID-Avatar-1080x720.png'
+import UserUuid3DAvatar from './UserUuid3DAvatar.jsx'
 
 const PROVIDER_META = {
   google: {
@@ -112,6 +113,7 @@ function ProviderBadge({ provider }) {
   if (provider === 'apple') return <span style={{ fontSize: 17, lineHeight: 1 }}></span>
   return <span style={{ fontSize: 13 }}>✉</span>
 }
+
 
 function ProfileActionButton({ active, children, onClick, disabled, accent = '#00b8cc' }) {
   return (
@@ -269,11 +271,14 @@ export default function UserProfilePanel() {
           {/* Avatar column */}
           <div style={{ border: `1px solid ${border}`, borderRadius: 20, padding: 20, background: surface2 }}>
             <div style={{ textAlign: 'center' }}>
-              <div style={{ position: 'relative', width: 154, height: 154, margin: '0 auto 14px' }}>
-                <img src={avatarPreview || initialsAvatar(name)} alt={vi ? 'Ảnh đại diện' : 'Avatar'} style={{ width: 154, height: 154, borderRadius: '50%', objectFit: 'cover', border: `4px solid ${providerMeta.border}`, boxShadow: `0 16px 45px ${providerMeta.border}` }} />
-                <div style={{ position: 'absolute', right: 8, bottom: 8, width: 38, height: 38, borderRadius: '50%', background: provider === 'apple' ? '#111' : '#fff', border: `3px solid ${surface2}`, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 24px rgba(0,0,0,0.25)' }}>
-                  <ProviderBadge provider={provider} />
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14, flexWrap: 'wrap', marginBottom: 14 }}>
+                <div style={{ position: 'relative', width: 154, height: 154, flex: '0 0 154px' }}>
+                  <img src={avatarPreview || initialsAvatar(name)} alt={vi ? 'Ảnh đại diện' : 'Avatar'} style={{ width: 154, height: 154, borderRadius: '50%', objectFit: 'cover', border: `4px solid ${providerMeta.border}`, boxShadow: `0 16px 45px ${providerMeta.border}` }} />
+                  <div style={{ position: 'absolute', right: 8, bottom: 8, width: 38, height: 38, borderRadius: '50%', background: provider === 'apple' ? '#111' : '#fff', border: `3px solid ${surface2}`, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 24px rgba(0,0,0,0.25)' }}>
+                    <ProviderBadge provider={provider} />
+                  </div>
                 </div>
+                <UserUuid3DAvatar uuid={user?.uuid} isDark={isDark} vi={vi} accent={providerMeta.color} />
               </div>
               <div style={{ fontSize: 18, fontWeight: 900, marginBottom: 4 }}>{name || user?.name}</div>
               <div style={{ fontSize: 12, color: text3, marginBottom: 16 }}>{user?.email}</div>
@@ -632,11 +637,14 @@ function AnonymousProfilePanel({ user, isDark, vi, lang, t, loginWithGoogle, log
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div style={{ border: `1px solid ${border}`, borderRadius: 20, padding: 20, background: surface2 }}>
               <div style={{ textAlign: 'center' }}>
-                <div style={{ position: 'relative', width: 140, height: 140, margin: '0 auto 14px' }}>
-                  <img src={avatarPreview || initialsAvatar(name || user.name)} alt={vi ? 'Ảnh đại diện' : 'Avatar'} style={{ width: 140, height: 140, borderRadius: '50%', objectFit: 'cover', border: '4px solid rgba(45,138,94,0.5)', boxShadow: '0 16px 45px rgba(45,138,94,0.35)' }} />
-                  <div style={{ position: 'absolute', right: 6, bottom: 6, width: 34, height: 34, borderRadius: '50%', background: '#fff', border: `3px solid ${surface2}`, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 24px rgba(0,0,0,0.25)', fontSize: 15 }}>
-                    🌿
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14, flexWrap: 'wrap', marginBottom: 14 }}>
+                  <div style={{ position: 'relative', width: 140, height: 140, flex: '0 0 140px' }}>
+                    <img src={avatarPreview || initialsAvatar(name || user.name)} alt={vi ? 'Ảnh đại diện' : 'Avatar'} style={{ width: 140, height: 140, borderRadius: '50%', objectFit: 'cover', border: '4px solid rgba(45,138,94,0.5)', boxShadow: '0 16px 45px rgba(45,138,94,0.35)' }} />
+                    <div style={{ position: 'absolute', right: 6, bottom: 6, width: 34, height: 34, borderRadius: '50%', background: '#fff', border: `3px solid ${surface2}`, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 24px rgba(0,0,0,0.25)', fontSize: 15 }}>
+                      🌿
+                    </div>
                   </div>
+                  <UserUuid3DAvatar uuid={user?.uuid} isDark={isDark} vi={vi} accent="#2d8a5e" />
                 </div>
                 <div style={{ fontSize: 16, fontWeight: 900, marginBottom: 4 }}>{name || user.name}</div>
                 <div style={{ fontSize: 11, color: text3, marginBottom: 16 }}>{vi ? 'Khách (chưa đăng nhập)' : 'Guest (not signed in)'}</div>

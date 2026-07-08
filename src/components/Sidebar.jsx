@@ -91,16 +91,22 @@ export default function Sidebar({ active, onNavigate, openSignal = 0 }) {
     <>
       {/* User card */}
       {user && (
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 10, padding: '10px 10px',
-          background: surface, border: `1px solid ${border}`, borderRadius: 10, marginBottom: 12,
-        }}>
+        <button
+          type="button"
+          onClick={() => handleNavigate('profile')}
+          aria-label={t('profile')}
+          style={{
+            width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 10px',
+            background: active === 'profile' ? 'rgba(0,229,255,0.12)' : surface, border: `1px solid ${active === 'profile' ? '#00e5ff' : border}`, borderRadius: 10, marginBottom: 12,
+            cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+          }}
+        >
           <img src={user.avatar} alt="" style={{ width: 32, height: 32, borderRadius: '50%', border: `2px solid ${user.isAdmin ? '#ff5252' : '#00b8cc'}` }} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 12, fontWeight: 700, color: text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user.name}</div>
             <div style={{ fontSize: 9, color: user.isAdmin ? '#ff5252' : '#00b8cc', fontWeight: 600 }}>{user.isAdmin ? '★ ADMIN' : '● USER'}</div>
           </div>
-        </div>
+        </button>
       )}
 
       <NavItem active={active === 'chooseUserRole'} onClick={() => handleNavigate('chooseUserRole')} text={text} text2={text2} isDark={isDark}>
