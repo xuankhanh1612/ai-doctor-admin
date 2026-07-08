@@ -1,8 +1,9 @@
 import React from 'react';
-import { ArrowRight, Mic, ShieldCheck, Lock, BookOpen, CheckCircle2 } from 'lucide-react';
+import { ArrowRight, ShieldCheck, Lock, BookOpen, CheckCircle2 } from 'lucide-react';
 import useHeroPanelPrefs from './heroPanels/useHeroPanelPrefs.js';
 import HeroPanelPrefsToggle from './heroPanels/HeroPanelPrefsToggle.jsx';
 import useHeroSelection from './heroPanels/useHeroSelection.js';
+import HeroMicVoiceButton from './heroPanels/HeroMicVoiceButton.jsx';
 import { buildOrganLabels } from '../data/organs.js';
 
 // ============================================================================
@@ -109,7 +110,7 @@ function buildRoleCards(t) {
 
 const NO_DONATION_ROLE_ID = 'notDonate';
 
-export default function ChooseUserRolePanel({ mode = 'guest', onSelectRole, onEnterAction, onMicPress }) {
+export default function ChooseUserRolePanel({ mode = 'guest', onSelectRole, onEnterAction }) {
   // selectedRole / selectedOrgan được đọc + ghi vào IndexedDB (thay vì chỉ
   // useState nội bộ) để trang sau (DonationHeroPanel) load lại đúng lựa
   // chọn, và để quay lại màn hình này sau cũng thấy đúng lựa chọn cũ.
@@ -276,15 +277,21 @@ export default function ChooseUserRolePanel({ mode = 'guest', onSelectRole, onEn
           </div>
         </div>
 
-        {/* Mic */}
+        {/* Mic: trao đổi thoại trực tiếp NGAY TẠI TRANG NÀY — không mở popup
+        chat. Nội dung vẫn tự đồng bộ ngầm vào popup chat (kho lưu trữ +
+        sự kiện đồng bộ dùng chung với GlobalAIChatbot), popup chỉ xử lý
+        khi người dùng chủ động mở nó ra. */}
         <div className="flex items-center justify-center mt-8">
-          <button
-            onClick={onMicPress}
-            className={`w-16 h-16 rounded-full border-2 border-emerald-500 flex items-center justify-center transition-colors shadow-sm ${isDark ? 'bg-white/5 hover:bg-white/10' : 'bg-white hover:bg-emerald-50'}`}
-            aria-label={t.micLabel}
-          >
-            <Mic className={isDark ? 'text-emerald-400' : 'text-emerald-600'} size={24} />
-          </button>
+          <HeroMicVoiceButton
+            mode={mode}
+            activePanelLabel="Chọn Vai Trò Anh Hùng"
+            isVi={!isEn}
+            isDark={isDark}
+            micLabel={t.micLabel}
+            variant="compact"
+            buttonSize={64}
+            iconSize={24}
+          />
         </div>
 
         {/* Tiếp tục tìm hiểu */}

@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { UserPlus, ShieldCheck, Mic, HeartHandshake, BookOpen, Lock, Leaf, Sparkles, Award, Star, Zap, ArrowRight, LogIn } from 'lucide-react';
+import { UserPlus, ShieldCheck, HeartHandshake, BookOpen, Lock, Leaf, Sparkles, Award, Star, Zap, ArrowRight, LogIn } from 'lucide-react';
 import useHeroPanelPrefs from './heroPanels/useHeroPanelPrefs.js';
 import HeroPanelPrefsToggle from './heroPanels/HeroPanelPrefsToggle.jsx';
 import useHeroSelection from './heroPanels/useHeroSelection.js';
+import HeroMicVoiceButton from './heroPanels/HeroMicVoiceButton.jsx';
 import { getOrganById, lowerFirst } from '../data/organs.js';
 import BackButton from './common/BackButton.jsx';
 
@@ -97,7 +98,7 @@ const TEXT = {
   },
 };
 
-export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onMicPress, onBack, onLogin }) {
+export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onBack, onLogin }) {
   const [currentLevel] = useState(1);
   const isGuest = mode === 'guest';
   const { isDark, isEn, toggleTheme, toggleLang } = useHeroPanelPrefs();
@@ -227,19 +228,22 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onMic
             <div className={`text-sm mt-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{donateSubText}</div>
           </button>
 
-          {/* Mic: nói chuyện ngay với Global Chatbot (mở widget chat chung ở
-          góc màn hình + tự bật ghi âm) — lịch sử hội thoại tự đồng bộ với
-          menu "Lịch sử Chat với AI" vì cả 2 dùng chung 1 kho lưu trữ
-          (globalChatbotStorage.js), không cần xử lý gì thêm ở đây. */}
-          <button
-            onClick={onMicPress}
-            className="flex flex-col items-center justify-center gap-3 py-4"
-          >
-            <span className={`relative w-24 h-24 rounded-full border-2 border-emerald-500 flex items-center justify-center transition-colors ${isDark ? 'bg-white/5 hover:bg-white/10' : 'bg-white hover:bg-emerald-50'}`}>
-              <Mic className={isDark ? 'text-emerald-400' : 'text-emerald-600'} size={30} />
-            </span>
-            <span className={`font-bold ${isDark ? 'text-gray-100' : 'text-[#16241c]'}`}>{t.micLabel}</span>
-          </button>
+          {/* Mic: trao đổi thoại trực tiếp NGAY TẠI TRANG NÀY — không mở popup
+          chat. Nội dung vẫn tự đồng bộ ngầm vào popup chat (kho lưu trữ +
+          sự kiện đồng bộ dùng chung với GlobalAIChatbot); lịch sử hội thoại
+          tự đồng bộ với menu "Lịch sử Chat với AI" vì cả 2 dùng chung 1 kho
+          lưu trữ (globalChatbotStorage.js). Popup chỉ xử lý khi người dùng
+          chủ động mở nó ra. */}
+          <HeroMicVoiceButton
+            mode={mode}
+            activePanelLabel="Anh Hùng Hiến Tặng"
+            isVi={!isEn}
+            isDark={isDark}
+            micLabel={t.micLabel}
+            variant="expanded"
+            buttonSize={96}
+            iconSize={30}
+          />
 
           <button
             onClick={handleEnterAction}

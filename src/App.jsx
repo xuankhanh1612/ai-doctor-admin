@@ -55,7 +55,7 @@ import { addNotification } from './lib/notifications.js'
 const PANELS = ['healthJourneyGame', 'medicalAssetStore', 'myRewardHealth', 'rssPortal', 'waterDrinkChatBot', 'wikiMedVision', 'fullDocSummarization', 'documentOCR', 'twoDTo3DAsset', 'organConnection', 'healthJourney', 'lunchJourney', 'dinnerJourney', 'upload', 'imaging', 'checkin', 'family', 'record', 'familyRelationship', 'matrix3dBody', 'omnidirectional3dBody', 'twin', 'telemedicine', 'statAnalysis', 'swarm', 'consensus', 'protein3d', 'aiHealthcareVision', 'aiHealthcareVisionControl', 'stressRelief', 'aiInbodyPortal', 'printPortal', 'chatHistory']
 
 export default function App() {
-  const { user, loading, loginAnonymous } = useAuth()
+  const { user, loading } = useAuth()
   const { theme, t } = useApp()
   const [active, setActive]               = useState('healthJourneyGame')
   const [selectedMember, setSelectedMember] = useState(null)
@@ -77,13 +77,7 @@ export default function App() {
   //    khi bấm chọn 1 vai trò hoặc "Tiếp tục tìm hiểu" ở bước 1.
   // 3) 'login'        -> LoginPage thật — vào khi bấm "Tạo tài khoản" ở bước
   //    1 hoặc 2, hoặc bấm nút hành động ở bước 2.
-  // micVoiceSignal: mỗi lần đổi số là 1 yêu cầu "bấm mic ngay tại trang" từ
-  // nút mic trên ChooseUserRolePanel / DonationHeroPanel. Tín hiệu này KHÔNG
-  // mở popup chat — GlobalAIChatbot chỉ bật ghi âm + hiện bong bóng trạng
-  // thái thoại nhỏ (voice-only), còn nội dung vẫn lưu + đồng bộ ngầm vào
-  // popup chat như bình thường (xem GlobalAIChatbot.jsx / useGlobalAIChatbotEngine.js).
   const [preLoginView, setPreLoginView] = useState('chooseRole')
-  const [micVoiceSignal, setMicVoiceSignal] = useState(0)
   const prevUserRef = useRef(null)
 
   useEffect(() => {
@@ -93,30 +87,13 @@ export default function App() {
     prevUserRef.current = user
   }, [user])
 
-  // Bấm mic khi CÒN LÀ KHÁCH (chưa có user) -> tạo NGAY 1 phiên "anonymous"
-  // (uuid thật, lưu bền trong IndexedDB qua loginAnonymous() — cùng cơ chế
-  // nút "Tiếp tục với tư cách khách" trên LoginPage đã dùng) TRƯỚC khi mở
-  // chat, thay vì để userKey = null. Nhờ vậy lịch sử chat được gắn với 1
-  // danh tính thật ngay từ tin nhắn đầu tiên (đồng bộ luôn với menu "Lịch
-  // sử Chat với AI"): nếu người này quay lại cùng thiết bị, hoặc sau này
-  // hoàn tất "Tạo tài khoản" bằng cùng phiên anon này, lịch sử chat vẫn còn
-  // nguyên — không bị mất/tách rời như khi lưu dưới khoá guest "null" chung
-  // chung.
-  // KHÔNG chuyển màn hình (setActive) sau khi có phiên anonymous: người
-  // dùng bấm mic ngay tại "Chọn Vai Trò Anh Hùng" / "Anh Hùng Hiến Tặng"
-  // muốn AI mở chat + nói chuyện NGAY TẠI ĐÂY, không phải bị "chạy vào bên
-  // trong" (sang layout đầy đủ có Sidebar/Topbar) rồi mới thấy popup chat.
-  // GlobalAIChatbot được mount thẳng trong 2 màn hình guest này (xem bên
-  // dưới) nên chỉ cần tăng micVoiceSignal là đủ để bật ghi âm + hiện bong
-  // bóng trạng thái thoại — không mở popup chat.
-  const handleGuestMicPress = async () => {
-    try {
-      await loginAnonymous()
-    } catch (e) {
-      console.warn('Không tạo được phiên khách (anonymous) khi bấm mic:', e)
-    }
-    setMicVoiceSignal(s => s + 1)
-  }
+  // Ghi chú: nút mic trên ChooseUserRolePanel / DonationHeroPanel giờ tự xử
+  // lý hoàn toàn cục bộ (xem src/components/heroPanels/HeroMicVoiceButton.jsx)
+  // — bấm mic sẽ tự tạo phiên "anonymous" (nếu đang là khách) rồi ghi âm +
+  // trao đổi thoại trực tiếp NGAY TẠI TRANG đó (không mở popup chat, không
+  // điều hướng đi đâu). App.jsx không cần biết/điều phối việc này nữa; chỉ
+  // cần đảm bảo (xem showGuestPreLoginScreens bên dưới) rằng việc tạo phiên
+  // anonymous đó không vô tình làm app nhảy sang layout đầy đủ.
 
   useEffect(() => {
     setCompareImage(null)
@@ -283,12 +260,12 @@ export default function App() {
 
   // Vẫn hiển thị 2 màn hình "guest" (chooseRole / hero) kể cả khi đã có
   // user — MIỄN LÀ đó là phiên "anonymous" tạo ra bởi bấm mic (xem
-  // handleGuestMicPress) và preLoginView chưa được chuyển sang 'login'.
-  // Nếu không, loginAnonymous() bên trong handleGuestMicPress sẽ khiến
-  // `user` có giá trị ngay lập tức và làm app nhảy thẳng sang layout đầy
-  // đủ (Sidebar/Topbar) — đúng thứ người dùng KHÔNG muốn khi chỉ mới bấm
-  // mic để hỏi AI ngay tại trang này. Khi người dùng chủ động bấm "Tạo tài
-  // khoản" / nút hành động khác, preLoginView chuyển sang 'login', điều
+  // heroPanels/HeroMicVoiceButton.jsx) và preLoginView chưa được chuyển
+  // sang 'login'. Nếu không, loginAnonymous() gọi từ bên trong nút mic sẽ
+  // khiến `user` có giá trị ngay lập tức và làm app nhảy thẳng sang layout
+  // đầy đủ (Sidebar/Topbar) — đúng thứ người dùng KHÔNG muốn khi chỉ mới
+  // bấm mic để hỏi AI ngay tại trang này. Khi người dùng chủ động bấm "Tạo
+  // tài khoản" / nút hành động khác, preLoginView chuyển sang 'login', điều
   // kiện dưới đây sẽ false và app chuyển sang layout đầy đủ như bình
   // thường (kể cả khi bấm "Tiếp tục với tư cách khách" trên LoginPage).
   const showGuestPreLoginScreens = !user || (user.isAnonymous && preLoginView !== 'login')
@@ -302,16 +279,14 @@ export default function App() {
             onSelectRole={() => setPreLoginView('hero')}
             onEnterAction={() => setPreLoginView('hero')}
             onCreateAccount={() => setPreLoginView('login')}
-            onMicPress={handleGuestMicPress}
           />
-          {/* Mount GlobalAIChatbot NGAY TẠI ĐÂY (không phải ở layout đầy đủ):
-          bấm mic chỉ cần tạo phiên anonymous (handleGuestMicPress, không đổi
-          màn hình) rồi tăng micVoiceSignal — AI bật ghi âm + trao đổi thoại
-          NGAY TẠI TRANG này (không mở popup chat), chỉ hiện 1 bong bóng
-          trạng thái nhỏ; nội dung vẫn lưu + đồng bộ ngầm vào popup chat để
-          xem/sửa lại sau nếu muốn (bấm 💬 trên bong bóng, hoặc mở popup từ
-          nút 🤗 góc màn hình). */}
-          <GlobalAIChatbot activePanelLabel={panelLabels.chooseUserRole} externalVoiceSignal={micVoiceSignal} />
+          {/* Mount GlobalAIChatbot NGAY TẠI ĐÂY để popup chat vẫn truy cập
+          được từ trang guest này (nút 🤗 góc màn hình) — nhưng KHÔNG có
+          tín hiệu ngoài nào điều khiển nó nữa: nút mic của ChooseUserRolePanel
+          giờ tự trao đổi thoại trực tiếp (xem HeroMicVoiceButton.jsx), popup
+          này chỉ mở/đóng khi người dùng tự bấm vào nó. Nội dung 2 bên vẫn
+          đồng bộ vì dùng chung 1 kho lưu trữ. */}
+          <GlobalAIChatbot activePanelLabel={panelLabels.chooseUserRole} />
         </div>
       )
     }
@@ -321,13 +296,12 @@ export default function App() {
           <DonationHeroPanel
             mode="guest"
             onEnterAction={() => setPreLoginView('login')}
-            onMicPress={handleGuestMicPress}
             onBack={() => setPreLoginView('chooseRole')}
             onLogin={() => setPreLoginView('login')}
           />
           {/* Mount GlobalAIChatbot NGAY TẠI ĐÂY — lý do xem chú thích tương
           tự ở nhánh 'chooseRole' phía trên. */}
-          <GlobalAIChatbot activePanelLabel={panelLabels.donationHero} externalVoiceSignal={micVoiceSignal} />
+          <GlobalAIChatbot activePanelLabel={panelLabels.donationHero} />
         </div>
       )
     }
@@ -390,11 +364,10 @@ export default function App() {
                 mode="member"
                 onSelectRole={() => setActive('donationHero')}
                 onEnterAction={() => setActive('donationHero')}
-                onMicPress={() => setMicVoiceSignal(s => s + 1)}
               />
             )}
             {active === 'donationHero' && (
-              <DonationHeroPanel mode="member" onMicPress={() => setMicVoiceSignal(s => s + 1)} onBack={() => setActive('chooseUserRole')} />
+              <DonationHeroPanel mode="member" onBack={() => setActive('chooseUserRole')} />
             )}
             {active === 'profile'   && <UserProfilePanel />}
             {active === 'myAiAvatar' && user?.isAdmin && <MyAIAvatarPanel />}
@@ -429,7 +402,7 @@ export default function App() {
           onOpenMainMenu={openMainMenu}
           onNavigate={(id) => setActive(id)}
         />
-        <GlobalAIChatbot activePanelLabel={panelLabels[active] || active} externalVoiceSignal={micVoiceSignal} />
+        <GlobalAIChatbot activePanelLabel={panelLabels[active] || active} />
       </div>
     </div>
   )

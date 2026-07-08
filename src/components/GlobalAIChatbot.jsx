@@ -81,7 +81,7 @@ export function CompactGlobalAIChatBar({ activePanelLabel }) {
   )
 }
 
-export default function GlobalAIChatbot({ activePanelLabel, externalOpenSignal, externalVoiceSignal, autoStartMic }) {
+export default function GlobalAIChatbot({ activePanelLabel }) {
   const { theme, lang } = useApp()
   const { user } = useAuth()
   // Storage key for chat history — `uuid` is the same identifier field for every
@@ -92,12 +92,6 @@ export default function GlobalAIChatbot({ activePanelLabel, externalOpenSignal, 
 
   const [open, setOpen] = useState(false)
   const [fullscreen, setFullscreen] = useState(false)
-  // voiceOnlyActive: true khi đang ở chế độ "chỉ trao đổi thoại" — bấm mic
-  // ngay tại trang (vd 2 trang "Anh Hùng") mà KHÔNG mở popup chat đầy đủ.
-  // Lúc này chỉ hiện 1 bong bóng trạng thái nhỏ (đang nghe/đang xử lý/đang
-  // trả lời), AI vẫn nói chuyện bằng giọng nói, và nội dung vẫn lưu + đồng
-  // bộ ngầm vào popup chat như bình thường (xem useGlobalAIChatbotEngine).
-  const [voiceOnlyActive, setVoiceOnlyActive] = useState(false)
   const fileInputRef = useRef(null)
   const docInputRef = useRef(null)
   const cameraInputRef = useRef(null)
@@ -105,8 +99,11 @@ export default function GlobalAIChatbot({ activePanelLabel, externalOpenSignal, 
   const audioElementRef = useRef(null)
 
   // Toàn bộ state + logic gửi tin/đính kèm file/giọng nói/lưu lịch sử dùng CHUNG 1 hook
-  // với trang "Lịch sử Chat với AI" (src/components/ChatHistoryPanel.jsx) — cùng đọc/ghi
-  // vào src/lib/globalChatbotStorage.js, nên 2 nơi luôn đồng bộ song song với nhau.
+  // với trang "Lịch sử Chat với AI" (src/components/ChatHistoryPanel.jsx) VÀ với nút mic
+  // trao đổi thoại trực tiếp trên 2 trang "Anh Hùng" (heroPanels/HeroMicVoiceButton.jsx)
+  // — tất cả cùng đọc/ghi vào src/lib/globalChatbotStorage.js, nên luôn đồng bộ song song
+  // với nhau: nói/gửi ở bất kỳ đâu trong số này, popup này (nếu đang mở) sẽ tự cập nhật
+  // theo ngay, và khi mở lại popup sau đó cũng thấy đủ lịch sử.
   // Hook tự động đọc to (TTS) câu trả lời mới nhất ngay sau khi AI trả lời xong.
   const {
     messages,
@@ -118,9 +115,9 @@ export default function GlobalAIChatbot({ activePanelLabel, externalOpenSignal, 
     attachedFiles,
     handleFilesSelect, removeAttachedFile,
     submitQuestion,
-    speaking, speak, stop,
+    speaking, speak,
     recording, transcribing, toggleMic,
-  } = useGlobalAIChatbotEngine({ userKey, activePanelLabel, isVi, audioElementRef, autoSubmitVoice: voiceOnlyActive })
+  } = useGlobalAIChatbotEngine({ userKey, activePanelLabel, isVi, audioElementRef })
 
   const styles = useMemo(() => createStyles(isDark, fullscreen), [isDark, fullscreen])
 
@@ -130,63 +127,9 @@ export default function GlobalAIChatbot({ activePanelLabel, externalOpenSignal, 
     }, 30)
   }, [messages, busy])
 
-  // Cho phép nơi khác (vd nút mic ở DonationHeroPanel/ChooseUserRolePanel) MỞ
-  // chatbot NÀY từ xa và tự bật ghi âm luôn — dùng khi thật sự muốn mở panel
-  // chat đầy đủ (có ô nhập để sửa chữ trước khi gửi). externalOpenSignal là 1
-  // số tăng dần, mỗi lần đổi giá trị (kể cả bấm liên tiếp khi panel đã mở
-  // sẵn) là 1 lần yêu cầu mới.
-  useEffect(() => {
-    if (!externalOpenSignal) return
-    setVoiceOnlyActive(false)
-    setOpen(true)
-    if (autoStartMic && !recording) toggleMic()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [externalOpenSignal])
-
-  // Cho phép nơi khác yêu cầu chế độ "CHỈ trao đổi thoại" — KHÔNG mở popup
-  // chat, chỉ bật ghi âm + hiện bong bóng trạng thái nhỏ. Nếu popup đang mở
-  // sẵn (người dùng đã chủ động mở), bỏ qua yêu cầu này để không phá luồng
-  // sửa-chữ-trước-khi-gửi họ đang dùng trong popup.
-  useEffect(() => {
-    if (!externalVoiceSignal) return
-    if (open) return
-    setVoiceOnlyActive(true)
-    if (!recording) toggleMic()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [externalVoiceSignal])
-
   if (!open) {
-    if (voiceOnlyActive) {
-      return (
-        <VoiceOnlyBubble
-          isVi={isVi}
-          isDark={isDark}
-          recording={recording}
-          transcribing={transcribing}
-          busy={busy}
-          speaking={speaking}
-          status={status}
-          onToggleMic={toggleMic}
-          onStopSpeaking={stop}
-          onClose={() => {
-            if (recording) toggleMic()
-            setVoiceOnlyActive(false)
-          }}
-          onExpand={() => {
-            setVoiceOnlyActive(false)
-            setOpen(true)
-          }}
-        />
-      )
-    }
     return (
-      <button
-        type="button"
-        onClick={() => { setVoiceOnlyActive(false); setOpen(true) }}
-        className="global-ai-chatbot-fab"
-        style={styles.fab}
-        aria-label="Mở chatbot AI chung"
-      >
+      <button type="button" onClick={() => setOpen(true)} className="global-ai-chatbot-fab" style={styles.fab} aria-label="Mở chatbot AI chung">
         <span style={styles.fabIcon}>🤗</span>
         <span>
           <strong>AI Chat</strong>
@@ -410,71 +353,6 @@ export default function GlobalAIChatbot({ activePanelLabel, externalOpenSignal, 
         @keyframes globalChatbotMicPulse { 0%,100%{box-shadow:0 0 0 3px rgba(239,68,68,0.25)} 50%{box-shadow:0 0 0 7px rgba(239,68,68,0.1)} }
       `}</style>
     </section>
-  )
-}
-
-// Bong bóng trạng thái nhỏ dùng cho chế độ "chỉ trao đổi thoại" — không có
-// khung tin nhắn/ô nhập, chỉ hiện đúng trạng thái hiện tại (đang nghe / đang
-// xử lý / đang suy nghĩ / đang trả lời) + nút mic để nói tiếp, nút thu nhỏ
-// (đóng) và nút "Xem trong chat" để mở popup đầy đủ bất cứ lúc nào (toàn bộ
-// nội dung đã được lưu + đồng bộ ngầm sẵn trong đó rồi).
-function VoiceOnlyBubble({ isVi, isDark, recording, transcribing, busy, speaking, status, onToggleMic, onStopSpeaking, onClose, onExpand }) {
-  const icon = recording ? '🎙️' : transcribing ? '⏳' : busy ? '💭' : speaking ? '🔊' : '🎙️'
-  const label = recording
-    ? (isVi ? 'Đang nghe...' : 'Listening...')
-    : transcribing
-      ? (isVi ? 'Đang nhận diện giọng nói...' : 'Transcribing...')
-      : busy
-        ? (isVi ? 'Đang suy nghĩ...' : 'Thinking...')
-        : speaking
-          ? (isVi ? 'Đang trả lời...' : 'Speaking...')
-          : (isVi ? 'Nhấn mic để nói tiếp' : 'Tap mic to talk again')
-  const isDoingSomething = recording || transcribing || busy || speaking
-  const shell = isDark ? 'rgba(7, 12, 27, 0.96)' : 'rgba(255, 255, 255, 0.97)'
-  const border = isDark ? 'rgba(148, 163, 184, 0.24)' : 'rgba(15, 76, 129, 0.16)'
-  const text = isDark ? '#e8f0f8' : '#102033'
-  const muted = isDark ? 'rgba(226, 232, 240, 0.64)' : '#64748b'
-  return (
-    <div
-      role="status"
-      aria-live="polite"
-      style={{
-        position: 'fixed', right: 18, bottom: 104, zIndex: 240,
-        display: 'flex', alignItems: 'center', gap: 10,
-        maxWidth: 'min(340px, calc(100vw - 28px))',
-        padding: '12px 14px', borderRadius: 20,
-        background: shell, border: `1px solid ${border}`,
-        boxShadow: '0 18px 48px rgba(15, 76, 129, 0.28)',
-        backdropFilter: 'blur(18px)', color: text, fontFamily: 'inherit',
-      }}
-    >
-      <button
-        type="button"
-        onClick={onToggleMic}
-        disabled={transcribing || busy}
-        title={recording ? (isVi ? 'Dừng ghi âm' : 'Stop recording') : (isVi ? 'Nói để hỏi' : 'Speak to ask')}
-        style={{
-          flexShrink: 0, width: 44, height: 44, borderRadius: '50%', fontSize: 20,
-          border: `2px solid ${recording ? '#ef4444' : border}`,
-          background: recording ? 'linear-gradient(135deg,#ef4444,#dc2626)' : (isDark ? 'rgba(99,102,241,0.14)' : 'rgba(99,102,241,0.08)'),
-          color: recording ? '#fff' : (isDark ? '#a5b4fc' : '#6366f1'),
-          cursor: (transcribing || busy) ? 'wait' : 'pointer',
-          animation: recording ? 'globalChatbotMicPulse 1.2s ease-in-out infinite' : 'none',
-        }}
-      >
-        {icon}
-      </button>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 13, fontWeight: 800, color: isDoingSomething ? text : muted }}>{label}</div>
-        <div style={{ marginTop: 2, fontSize: 11, color: muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{status}</div>
-      </div>
-      {speaking && (
-        <button type="button" onClick={onStopSpeaking} title={isVi ? 'Dừng giọng đọc' : 'Stop voice'} style={{ flexShrink: 0, border: 'none', borderRadius: 10, padding: '6px 8px', background: 'rgba(239,68,68,0.14)', color: '#ef4444', fontWeight: 900, cursor: 'pointer', fontSize: 12 }}>⏹</button>
-      )}
-      <button type="button" onClick={onExpand} title={isVi ? 'Xem trong chat' : 'View in chat'} style={{ flexShrink: 0, border: `1px solid ${border}`, borderRadius: 10, padding: '6px 8px', background: 'transparent', color: muted, cursor: 'pointer', fontSize: 14 }}>💬</button>
-      <button type="button" onClick={onClose} title={isVi ? 'Đóng' : 'Close'} aria-label={isVi ? 'Đóng' : 'Close'} style={{ flexShrink: 0, border: 'none', borderRadius: 10, width: 26, height: 26, background: 'transparent', color: muted, cursor: 'pointer', fontSize: 18, lineHeight: 1 }}>×</button>
-      <style>{`@keyframes globalChatbotMicPulse { 0%,100%{box-shadow:0 0 0 3px rgba(239,68,68,0.25)} 50%{box-shadow:0 0 0 7px rgba(239,68,68,0.1)} }`}</style>
-    </div>
   )
 }
 
