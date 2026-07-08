@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import { UserPlus, ShieldCheck, Mic, HeartHandshake, BookOpen, Lock, Leaf, Sparkles, Award, Star } from 'lucide-react';
 import useHeroPanelPrefs from './heroPanels/useHeroPanelPrefs.js';
 import HeroPanelPrefsToggle from './heroPanels/HeroPanelPrefsToggle.jsx';
+import useHeroSelection from './heroPanels/useHeroSelection.js';
+import { getOrganById, lowerFirst } from '../data/organs.js';
+import BackButton from './common/BackButton.jsx';
 
 // ============================================================================
 // DonationHeroPanel — màn hình chào mừng cho tính năng "Anh Hùng Hiến Tặng"
@@ -21,16 +24,17 @@ const TEXT = {
     createAccountNote: 'Để lưu hành trình học tập\nvà nâng cấp siêu anh hùng',
     greeting: 'Xin chào! Tôi ở đây để',
     titlePre: 'hỗ trợ bạn về',
-    titleHighlight: 'hiến tặng gan',
+    titleHighlight: (organLabel) => `hiến tặng ${lowerFirst(organLabel)}`,
     titlePost: '.',
     levelBadge: (level) => (
       <>Bạn đang là <span className="font-bold">siêu anh hùng cấp độ {level}</span> 💚</>
     ),
     donateTitle: 'Hiến tặng ngay',
-    donateSub: 'Tôi muốn đăng ký hiến tặng gan',
+    donateSub: (organLabel) => `Tôi muốn đăng ký hiến tặng ${lowerFirst(organLabel)}`,
     micLabel: 'Nhấn để nói',
     knowledgeTitle: 'Nâng cao kiến thức',
-    knowledgeSub: 'Tôi muốn tìm hiểu về hiến tặng gan',
+    knowledgeSub: (organLabel) => `Tôi muốn tìm hiểu về hiến tặng ${lowerFirst(organLabel)}`,
+    organBadgePrefix: 'Đang tìm hiểu về',
     journeyTitle: 'Hành trình Siêu Anh Hùng',
     levelLabel: 'Cấp',
     current: 'Đang ở đây',
@@ -39,6 +43,7 @@ const TEXT = {
     privacy: 'Dữ liệu bạn cung cấp đều nằm ở máy của bạn, không bao giờ lưu vào server của chúng tôi. ',
     privacyBold: 'Tất cả dữ liệu là của bạn.',
     footer: 'Anh Hùng Hiến Tặng · Cùng nhau lan toả sự sống',
+    back: 'Quay lại',
     levels: [
       { level: 1, title: 'Người Tìm Hiểu', icon: '🥷', ring: 'from-emerald-400 to-emerald-600', badge: 'bg-emerald-500' },
       { level: 2, title: 'Người Quan Tâm', icon: '💚', ring: 'from-emerald-300 to-emerald-500', badge: 'bg-emerald-400' },
@@ -52,16 +57,17 @@ const TEXT = {
     createAccountNote: 'To save your learning journey\nand level up your superhero',
     greeting: "Hi! I'm here to",
     titlePre: 'support you with',
-    titleHighlight: 'liver donation',
+    titleHighlight: (organLabel) => `${lowerFirst(organLabel)} donation`,
     titlePost: '.',
     levelBadge: (level) => (
       <>You're a <span className="font-bold">level {level} superhero</span> 💚</>
     ),
     donateTitle: 'Donate now',
-    donateSub: 'I want to register to donate my liver',
+    donateSub: (organLabel) => `I want to register to donate my ${lowerFirst(organLabel)}`,
     micLabel: 'Tap to speak',
     knowledgeTitle: 'Learn more',
-    knowledgeSub: 'I want to learn about liver donation',
+    knowledgeSub: (organLabel) => `I want to learn about ${lowerFirst(organLabel)} donation`,
+    organBadgePrefix: 'Currently exploring',
     journeyTitle: 'Superhero Journey',
     levelLabel: 'Level',
     current: 'You are here',
@@ -70,6 +76,7 @@ const TEXT = {
     privacy: 'The data you provide stays on your device and is never stored on our servers. ',
     privacyBold: 'All your data belongs to you.',
     footer: 'Donation Hero · Spreading life together',
+    back: 'Back',
     levels: [
       { level: 1, title: 'Learner', icon: '🥷', ring: 'from-emerald-400 to-emerald-600', badge: 'bg-emerald-500' },
       { level: 2, title: 'Interested Person', icon: '💚', ring: 'from-emerald-300 to-emerald-500', badge: 'bg-emerald-400' },
@@ -80,12 +87,18 @@ const TEXT = {
   },
 };
 
-export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onMicPress }) {
+export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onMicPress, onBack }) {
   const [currentLevel] = useState(1);
   const isGuest = mode === 'guest';
   const { isDark, isEn, toggleTheme, toggleLang } = useHeroPanelPrefs();
+  // "Trang sau" của ChooseUserRolePanel: đọc lại đúng Cơ quan người dùng đã
+  // chọn (lưu trong IndexedDB) để hiển thị đúng tên + hình (emoji) — mặc
+  // định 'gan' (Liver) nếu chưa từng chọn.
+  const { organId } = useHeroSelection();
+  const organ = getOrganById(organId);
   const t = isEn ? TEXT.en : TEXT.vi;
   const JOURNEY_LEVELS = t.levels;
+  const organLabel = isEn ? organ.en : organ.vi;
   // guest (chưa đăng nhập): bấm Tạo tài khoản / Hiến tặng ngay / Nâng cao
   // kiến thức đều dẫn sang trang Login (onEnterAction do App.jsx truyền
   // xuống). member (đã đăng nhập, vào từ menu Sidebar): ẩn nút Tạo tài
@@ -96,16 +109,17 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onMic
 
   return (
     <div
-      className={`min-h-full w-full px-5 py-8 md:px-10 md:py-10 transition-colors ${
+      className={`min-h-full w-full px-4 py-6 sm:px-5 sm:py-8 md:px-10 md:py-10 transition-colors ${
         isDark
           ? 'bg-gradient-to-b from-[#0b1220] to-[#0f172a] text-gray-100'
           : 'bg-gradient-to-b from-[#f6faf7] to-[#eef7f1] text-[#16241c]'
       }`}
+      style={{ paddingBottom: 'max(24px, env(safe-area-inset-bottom))' }}
     >
-      <div className="max-w-2xl mx-auto">
+      <div className="max-w-2xl lg:max-w-3xl mx-auto">
 
         {/* Đổi giao diện sáng/tối + ngôn ngữ, và Tạo tài khoản (chỉ khách) */}
-        <div className="flex justify-between items-start gap-4 mb-8">
+        <div className="flex flex-wrap justify-between items-start gap-4 mb-8">
           <HeroPanelPrefsToggle
             isDark={isDark}
             isEn={isEn}
@@ -149,12 +163,20 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onMic
 
           <p className={isDark ? 'text-lg text-gray-300' : 'text-lg text-gray-600'}>{t.greeting}</p>
           <h1 className={`text-2xl md:text-[28px] font-extrabold leading-snug mb-5 ${isDark ? 'text-gray-100' : 'text-[#16241c]'}`}>
-            {t.titlePre} <span className={isDark ? 'text-emerald-400' : 'text-emerald-600'}>{t.titleHighlight}</span>{t.titlePost}
+            {t.titlePre} <span className={isDark ? 'text-emerald-400' : 'text-emerald-600'}>{t.titleHighlight(organLabel)}</span>{t.titlePost}
           </h1>
 
-          <div className={`inline-flex items-center gap-2 rounded-full border shadow-sm px-4 py-2 text-sm ${isDark ? 'bg-white/5 border-white/10 text-gray-200' : 'bg-white border-emerald-100 text-gray-600'}`}>
-            <ShieldCheck size={16} className={isDark ? 'text-emerald-400' : 'text-emerald-600'} />
-            {t.levelBadge(currentLevel)}
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <div className={`inline-flex items-center gap-2 rounded-full border shadow-sm px-4 py-2 text-sm ${isDark ? 'bg-white/5 border-white/10 text-gray-200' : 'bg-white border-emerald-100 text-gray-600'}`}>
+              <ShieldCheck size={16} className={isDark ? 'text-emerald-400' : 'text-emerald-600'} />
+              {t.levelBadge(currentLevel)}
+            </div>
+
+            {/* Cơ quan đang chọn — tên + hình (emoji), load từ IndexedDB, đồng bộ với ChooseUserRolePanel */}
+            <div className={`inline-flex items-center gap-2 rounded-full border shadow-sm px-4 py-2 text-sm ${isDark ? 'bg-white/5 border-white/10 text-gray-200' : 'bg-white border-emerald-100 text-gray-600'}`}>
+              <span className="text-lg leading-none">{organ.emoji}</span>
+              <span>{t.organBadgePrefix}: <span className="font-bold">{organLabel}</span></span>
+            </div>
           </div>
         </div>
 
@@ -170,7 +192,7 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onMic
               <HeartHandshake className={isDark ? 'text-emerald-400' : 'text-emerald-600'} size={26} />
             </div>
             <div className={`font-bold ${isDark ? 'text-emerald-300' : 'text-emerald-700'}`}>{t.donateTitle}</div>
-            <div className={`text-sm mt-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{t.donateSub}</div>
+            <div className={`text-sm mt-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{t.donateSub(organLabel)}</div>
           </button>
 
           {/* Mic: nói chuyện ngay với Global Chatbot (mở widget chat chung ở
@@ -197,7 +219,7 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onMic
               <BookOpen className={isDark ? 'text-sky-400' : 'text-sky-600'} size={26} />
             </div>
             <div className={`font-bold ${isDark ? 'text-sky-300' : 'text-sky-700'}`}>{t.knowledgeTitle}</div>
-            <div className={`text-sm mt-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{t.knowledgeSub}</div>
+            <div className={`text-sm mt-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{t.knowledgeSub(organLabel)}</div>
           </button>
         </div>
 
@@ -258,6 +280,14 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onMic
           </p>
           <Leaf className="text-emerald-500 ml-auto flex-shrink-0 hidden sm:block" size={22} />
         </div>
+
+        {/* Quay lại — đồng bộ vị trí/hình dạng với các nút điều hướng khác
+        trong toàn dự án, luôn đặt ở dưới cùng màn hình. */}
+        {onBack && (
+          <div className="mt-8 flex justify-center sm:justify-start">
+            <BackButton isDark={isDark} label={t.back} onClick={onBack} />
+          </div>
+        )}
 
         <div className={`flex items-center gap-1.5 justify-center mt-6 text-[11px] ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
           <Award size={12} />

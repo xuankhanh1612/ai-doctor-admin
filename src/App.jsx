@@ -303,6 +303,7 @@ export default function App() {
             mode="guest"
             onEnterAction={() => setPreLoginView('login')}
             onMicPress={() => handleGuestMicPress('donationHero')}
+            onBack={() => setPreLoginView('chooseRole')}
           />
           {/* Không mount GlobalAIChatbot riêng ở đây: bấm mic đã tự tạo
           phiên anonymous (handleGuestMicPress) rồi chuyển thẳng sang màn
@@ -312,7 +313,7 @@ export default function App() {
         </div>
       )
     }
-    return <LoginPage onSuccess={() => {}} />
+    return <LoginPage onSuccess={() => {}} onBack={() => setPreLoginView('hero')} />
   }
 
   const isDark = theme === 'dark'
@@ -375,7 +376,7 @@ export default function App() {
               />
             )}
             {active === 'donationHero' && (
-              <DonationHeroPanel mode="member" onMicPress={() => setChatOpenSignal(s => s + 1)} />
+              <DonationHeroPanel mode="member" onMicPress={() => setChatOpenSignal(s => s + 1)} onBack={() => setActive('chooseUserRole')} />
             )}
             {active === 'profile'   && <UserProfilePanel />}
             {active === 'myAiAvatar' && user?.isAdmin && <MyAIAvatarPanel />}

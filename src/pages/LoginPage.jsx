@@ -2,8 +2,9 @@ import React, { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useApp } from '../context/AppContext'
 import anonymousProfileImg from './AnonymousProfileUUID-Avatar-1080x720.png'
+import BackButton from '../components/common/BackButton.jsx'
 
-export default function LoginPage({ onSuccess }) {
+export default function LoginPage({ onSuccess, onBack }) {
   const { loginWithGoogle, loginWithApple, loginWithEmail, loginAnonymous } = useAuth()
   const { t, theme, toggleTheme, lang, setLang } = useApp()
   const [mode, setMode] = useState('login') // 'login' | 'register'
@@ -30,13 +31,15 @@ export default function LoginPage({ onSuccess }) {
       background: isDark
         ? 'radial-gradient(ellipse 80% 60% at 50% 0%, rgba(0,180,200,0.08) 0%, transparent 60%), #04060f'
         : 'radial-gradient(ellipse 80% 60% at 50% 0%, rgba(0,180,200,0.06) 0%, transparent 60%), #f0f4f8',
-      padding: 24, position: 'relative',
+      padding: 'clamp(14px, 4vw, 24px)',
+      paddingBottom: 'max(24px, env(safe-area-inset-bottom))',
+      position: 'relative',
     },
     card: {
       width: '100%', maxWidth: 420,
       background: isDark ? 'rgba(8,12,26,0.95)' : 'rgba(255,255,255,0.98)',
       border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.1)'}`,
-      borderRadius: 20, padding: '36px 32px',
+      borderRadius: 20, padding: 'clamp(22px, 6vw, 36px) clamp(18px, 6vw, 32px)',
       boxShadow: isDark ? '0 24px 80px rgba(0,0,0,0.6)' : '0 24px 80px rgba(0,0,0,0.12)',
     },
     logo: { display: 'flex', alignItems: 'center', gap: 12, marginBottom: 28, justifyContent: 'center' },
@@ -300,6 +303,14 @@ export default function LoginPage({ onSuccess }) {
             {mode === 'login' ? t('register') : t('login')}
           </button>
         </div>
+
+        {/* Quay lại — đồng bộ vị trí/hình dạng với các nút điều hướng khác
+        trong toàn dự án, luôn đặt ở dưới cùng màn hình. */}
+        {onBack && (
+          <div style={{ marginTop: 20, display: 'flex', justifyContent: 'center' }}>
+            <BackButton isDark={isDark} label={lang === 'vi' ? 'Quay lại' : 'Back'} onClick={onBack} />
+          </div>
+        )}
       </div>
     </div>
   )

@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { ArrowRight, Mic, ShieldCheck, Lock, BookOpen, CheckCircle2 } from 'lucide-react';
 import useHeroPanelPrefs from './heroPanels/useHeroPanelPrefs.js';
 import HeroPanelPrefsToggle from './heroPanels/HeroPanelPrefsToggle.jsx';
+import useHeroSelection from './heroPanels/useHeroSelection.js';
+import { buildOrganLabels } from '../data/organs.js';
 
 // ============================================================================
 // ChooseUserRolePanel — màn hình "Chọn Vai Trò Anh Hùng", đứng TRƯỚC
@@ -39,18 +41,6 @@ const TEXT = {
     continueSub: 'Học kiến thức · Hiểu quy trình · Chuẩn bị cho tương lai',
     privacy: 'Dữ liệu bạn cung cấp đều nằm ở máy của bạn, không bao giờ lưu vào server của chúng tôi. ',
     privacyBold: 'Tất cả dữ liệu là của bạn.',
-    organs: [
-      { id: 'gan', label: 'Gan', emoji: '🫘' },
-      { id: 'mauhiem', label: 'Máu Hiếm/Hiến máu nhân đạo', emoji: '🩸' },
-      { id: 'tim', label: 'Tim', emoji: '❤️' },
-      { id: 'phoi', label: 'Phổi', emoji: '🫁' },
-      { id: 'than', label: 'Thận', emoji: '🟤' },
-      { id: 'giacmac', label: 'Giác mạc', emoji: '👁️' },
-      { id: 'xuong', label: 'Xương', emoji: '🦴' },
-      { id: 'da', label: 'Da', emoji: '🧴' },
-      { id: 'tuy', label: 'Tụy', emoji: '🟠' },
-      { id: 'ruot', label: 'Ruột', emoji: '🌀' },
-    ],
   },
   en: {
     subtitleTop: "You're thinking about the future—",
@@ -76,18 +66,6 @@ const TEXT = {
     continueSub: 'Learn · Understand the process · Prepare for the future',
     privacy: 'The data you provide stays on your device and is never stored on our servers. ',
     privacyBold: 'All your data belongs to you.',
-    organs: [
-      { id: 'gan', label: 'Liver', emoji: '🫘' },
-      { id: 'mauhiem', label: 'Rare Blood / Blood Donation', emoji: '🩸' },
-      { id: 'tim', label: 'Heart', emoji: '❤️' },
-      { id: 'phoi', label: 'Lungs', emoji: '🫁' },
-      { id: 'than', label: 'Kidney', emoji: '🟤' },
-      { id: 'giacmac', label: 'Cornea', emoji: '👁️' },
-      { id: 'xuong', label: 'Bone', emoji: '🦴' },
-      { id: 'da', label: 'Skin', emoji: '🧴' },
-      { id: 'tuy', label: 'Pancreas', emoji: '🟠' },
-      { id: 'ruot', label: 'Intestine', emoji: '🌀' },
-    ],
   },
 };
 
@@ -130,12 +108,14 @@ function buildRoleCards(t) {
 }
 
 export default function ChooseUserRolePanel({ mode = 'guest', onSelectRole, onEnterAction, onMicPress }) {
-  const [selectedRole, setSelectedRole] = useState(null);
-  const [selectedOrgan, setSelectedOrgan] = useState('gan');
+  // selectedRole / selectedOrgan được đọc + ghi vào IndexedDB (thay vì chỉ
+  // useState nội bộ) để trang sau (DonationHeroPanel) load lại đúng lựa
+  // chọn, và để quay lại màn hình này sau cũng thấy đúng lựa chọn cũ.
+  const { role: selectedRole, organId: selectedOrgan, setRole: setSelectedRole, setOrgan: setSelectedOrgan } = useHeroSelection();
   const { isDark, isEn, toggleTheme, toggleLang } = useHeroPanelPrefs();
   const t = isEn ? TEXT.en : TEXT.vi;
   const ROLE_CARDS = buildRoleCards(t);
-  const ORGANS = t.organs;
+  const ORGANS = buildOrganLabels(isEn);
 
   const handlePickRole = (roleId) => {
     setSelectedRole(roleId);
@@ -144,16 +124,17 @@ export default function ChooseUserRolePanel({ mode = 'guest', onSelectRole, onEn
 
   return (
     <div
-      className={`min-h-full w-full px-5 py-8 md:px-10 md:py-10 transition-colors ${
+      className={`min-h-full w-full px-4 py-6 sm:px-5 sm:py-8 md:px-10 md:py-10 transition-colors ${
         isDark
           ? 'bg-gradient-to-b from-[#0b1220] to-[#0f172a] text-gray-100'
           : 'bg-gradient-to-b from-[#f6faf7] to-[#eef7f1] text-[#16241c]'
       }`}
+      style={{ paddingBottom: 'max(24px, env(safe-area-inset-bottom))' }}
     >
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-4xl lg:max-w-5xl mx-auto">
 
         {/* Đổi giao diện sáng/tối + ngôn ngữ */}
-        <div className="flex justify-end mb-6">
+        <div className="flex flex-wrap justify-end gap-2 mb-6">
           <HeroPanelPrefsToggle
             isDark={isDark}
             isEn={isEn}
@@ -232,7 +213,7 @@ export default function ChooseUserRolePanel({ mode = 'guest', onSelectRole, onEn
                 <button
                   key={organ.id}
                   onClick={() => setSelectedOrgan(organ.id)}
-                  className="flex flex-col items-center gap-1.5 w-[84px]"
+                  className="flex flex-col items-center gap-1.5 w-[76px] sm:w-[84px]"
                 >
                   <span
                     className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shadow-sm transition-all ${isDark ? 'bg-white/10' : 'bg-white'}`}
@@ -251,7 +232,7 @@ export default function ChooseUserRolePanel({ mode = 'guest', onSelectRole, onEn
             })}
             <button
               onClick={() => typeof onSelectRole === 'function' && onSelectRole('viewAll')}
-              className="flex flex-col items-center gap-1.5 w-[84px]"
+              className="flex flex-col items-center gap-1.5 w-[76px] sm:w-[84px]"
             >
               <span className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-sm ${isDark ? 'bg-white/10' : 'bg-white'}`}>
                 <span className="grid grid-cols-2 gap-1">
