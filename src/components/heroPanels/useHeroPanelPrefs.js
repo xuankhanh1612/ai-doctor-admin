@@ -25,13 +25,21 @@ function readTheme() {
   } catch {
     // ignore
   }
-  return 'light';
+  try {
+    const global = localStorage.getItem(GLOBAL_THEME_KEY);
+    if (global === 'dark' || global === 'light') return global;
+  } catch {
+    // ignore
+  }
+  return 'dark';
 }
 
 function readLang() {
   try {
     const local = localStorage.getItem(LANG_KEY);
     if (local === 'en' || local === 'vi') return local;
+    const global = localStorage.getItem(GLOBAL_LANG_KEY);
+    if (global === 'en' || global === 'vi') return global;
   } catch {
     // ignore
   }

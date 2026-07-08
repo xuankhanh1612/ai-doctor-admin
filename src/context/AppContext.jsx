@@ -381,18 +381,51 @@ export const TRANSLATIONS = {
   }
 }
 
+const HERO_THEME_KEY = 'heroPanel:theme'
+const HERO_LANG_KEY = 'heroPanel:lang'
+const HERO_PREFS_EVENT = 'heroPanelPrefsChange'
+
+const readStoredTheme = () => {
+  const stored = localStorage.getItem('cdoc_theme') || localStorage.getItem(HERO_THEME_KEY)
+  return stored === 'light' ? 'light' : 'dark'
+}
+
+const readStoredLang = () => {
+  const stored = localStorage.getItem('cdoc_lang') || localStorage.getItem(HERO_LANG_KEY)
+  return stored === 'en' ? 'en' : 'vi'
+}
+
 export function AppProvider({ children }) {
-  const [theme, setTheme] = useState(() => localStorage.getItem('cdoc_theme') || 'dark')
-  const [lang, setLang] = useState(() => localStorage.getItem('cdoc_lang') || 'vi')
+  const [theme, setTheme] = useState(readStoredTheme)
+  const [lang, setLang] = useState(readStoredLang)
 
   useEffect(() => {
     localStorage.setItem('cdoc_theme', theme)
+    localStorage.setItem(HERO_THEME_KEY, theme)
     document.documentElement.setAttribute('data-theme', theme)
+    window.dispatchEvent(new Event(HERO_PREFS_EVENT))
   }, [theme])
 
   useEffect(() => {
     localStorage.setItem('cdoc_lang', lang)
+    localStorage.setItem(HERO_LANG_KEY, lang)
+    window.dispatchEvent(new Event(HERO_PREFS_EVENT))
   }, [lang])
+
+  useEffect(() => {
+    const syncPrefs = () => {
+      const nextTheme = readStoredTheme()
+      const nextLang = readStoredLang()
+      setTheme((current) => (current === nextTheme ? current : nextTheme))
+      setLang((current) => (current === nextLang ? current : nextLang))
+    }
+    window.addEventListener(HERO_PREFS_EVENT, syncPrefs)
+    window.addEventListener('storage', syncPrefs)
+    return () => {
+      window.removeEventListener(HERO_PREFS_EVENT, syncPrefs)
+      window.removeEventListener('storage', syncPrefs)
+    }
+  }, [])
 
   const t = (key) => TRANSLATIONS[lang]?.[key] || TRANSLATIONS['vi'][key] || key
 
