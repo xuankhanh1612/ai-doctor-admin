@@ -515,7 +515,7 @@ function getReadablePageSegments(root) {
 function GlobalPageReader({ readRootRef, activeKey }) {
   const { theme, lang } = useApp()
   const isVi = lang !== 'en'
-  const [showPlaybackControls, setShowPlaybackControls] = useState(true)
+  const [showPlaybackControls, setShowPlaybackControls] = useState(false)
   const readSessionRef = useRef(0)
   const {
     speaking,
@@ -535,7 +535,7 @@ function GlobalPageReader({ readRootRef, activeKey }) {
     readSessionRef.current += 1
     clearPageReaderHighlight()
     stop()
-    setShowPlaybackControls(true)
+    setShowPlaybackControls(false)
   }, [activeKey, stop])
 
   const speakCurrentPage = async () => {
