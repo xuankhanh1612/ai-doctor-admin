@@ -100,18 +100,18 @@ export default function App() {
   // hoàn tất "Tạo tài khoản" bằng cùng phiên anon này, lịch sử chat vẫn còn
   // nguyên — không bị mất/tách rời như khi lưu dưới khoá guest "null" chung
   // chung.
-  // Vì loginAnonymous() gọi setUser(...), sau khi resolve app sẽ tự chuyển
-  // từ màn hình guest sang "app đã đăng nhập" (do điều kiện `if (!user)`
-  // bên dưới) — nên chủ động set active = targetActive để người dùng vẫn
-  // thấy đúng màn hình đang xem lúc bấm mic (chooseUserRole hoặc
-  // donationHero), không bị nhảy sang panel mặc định khác.
-  const handleGuestMicPress = async (targetActive = 'donationHero') => {
+  // KHÔNG chuyển màn hình (setActive) sau khi có phiên anonymous: người
+  // dùng bấm mic ngay tại "Chọn Vai Trò Anh Hùng" / "Anh Hùng Hiến Tặng"
+  // muốn AI mở chat + nói chuyện NGAY TẠI ĐÂY, không phải bị "chạy vào bên
+  // trong" (sang layout đầy đủ có Sidebar/Topbar) rồi mới thấy popup chat.
+  // GlobalAIChatbot được mount thẳng trong 2 màn hình guest này (xem bên
+  // dưới) nên chỉ cần tăng chatOpenSignal là đủ để mở panel + tự bật mic.
+  const handleGuestMicPress = async () => {
     try {
       await loginAnonymous()
     } catch (e) {
       console.warn('Không tạo được phiên khách (anonymous) khi bấm mic:', e)
     }
-    setActive(targetActive)
     setChatOpenSignal(s => s + 1)
   }
 
@@ -123,6 +123,7 @@ export default function App() {
 
   const panelLabels = {
     chooseUserRole: 'Chọn Vai Trò Anh Hùng',
+    donationHero: 'Anh Hùng Hiến Tặng',
     healthJourneyGame: 'Health Journey Game',
     medicalAssetStore: 'Chợ Tài nguyên 3D', // <--- THÊM NHÃN TẠI ĐÂY
     myRewardHealth: 'My Reward Health',
@@ -277,7 +278,19 @@ export default function App() {
     )
   }
 
-  if (!user) {
+  // Vẫn hiển thị 2 màn hình "guest" (chooseRole / hero) kể cả khi đã có
+  // user — MIỄN LÀ đó là phiên "anonymous" tạo ra bởi bấm mic (xem
+  // handleGuestMicPress) và preLoginView chưa được chuyển sang 'login'.
+  // Nếu không, loginAnonymous() bên trong handleGuestMicPress sẽ khiến
+  // `user` có giá trị ngay lập tức và làm app nhảy thẳng sang layout đầy
+  // đủ (Sidebar/Topbar) — đúng thứ người dùng KHÔNG muốn khi chỉ mới bấm
+  // mic để hỏi AI ngay tại trang này. Khi người dùng chủ động bấm "Tạo tài
+  // khoản" / nút hành động khác, preLoginView chuyển sang 'login', điều
+  // kiện dưới đây sẽ false và app chuyển sang layout đầy đủ như bình
+  // thường (kể cả khi bấm "Tiếp tục với tư cách khách" trên LoginPage).
+  const showGuestPreLoginScreens = !user || (user.isAnonymous && preLoginView !== 'login')
+
+  if (showGuestPreLoginScreens) {
     if (preLoginView === 'chooseRole') {
       return (
         <div style={{ minHeight: '100vh', background: '#eef7f1' }}>
@@ -286,13 +299,15 @@ export default function App() {
             onSelectRole={() => setPreLoginView('hero')}
             onEnterAction={() => setPreLoginView('hero')}
             onCreateAccount={() => setPreLoginView('login')}
-            onMicPress={() => handleGuestMicPress('chooseUserRole')}
+            onMicPress={handleGuestMicPress}
           />
-          {/* Không mount GlobalAIChatbot riêng ở đây: bấm mic đã tự tạo
-          phiên anonymous (handleGuestMicPress) rồi chuyển thẳng sang màn
-          hình "đã đăng nhập" (chooseUserRole, mode="member") trước khi mở
-          chat — nơi GlobalAIChatbot thật (dưới cùng layout chính) xử lý
-          việc mở + bật mic thông qua chatOpenSignal dùng chung. */}
+          {/* Mount GlobalAIChatbot NGAY TẠI ĐÂY (không phải ở layout đầy đủ):
+          bấm mic chỉ cần tạo phiên anonymous (handleGuestMicPress, không đổi
+          màn hình) rồi tăng chatOpenSignal — panel chat mở nổi (fixed) ngay
+          trên trang này, có ô nhập để sửa lại chữ ghi âm trước khi gửi, và
+          AI đọc to câu trả lời (TTS) để cảm giác mượt mà, không phải "chạy
+          vào bên trong" mới thấy popup chat. */}
+          <GlobalAIChatbot activePanelLabel={panelLabels.chooseUserRole} externalOpenSignal={chatOpenSignal} autoStartMic />
         </div>
       )
     }
@@ -302,15 +317,13 @@ export default function App() {
           <DonationHeroPanel
             mode="guest"
             onEnterAction={() => setPreLoginView('login')}
-            onMicPress={() => handleGuestMicPress('donationHero')}
+            onMicPress={handleGuestMicPress}
             onBack={() => setPreLoginView('chooseRole')}
             onLogin={() => setPreLoginView('login')}
           />
-          {/* Không mount GlobalAIChatbot riêng ở đây: bấm mic đã tự tạo
-          phiên anonymous (handleGuestMicPress) rồi chuyển thẳng sang màn
-          hình "đã đăng nhập" (donationHero, mode="member") trước khi mở
-          chat — nơi GlobalAIChatbot thật (dưới cùng layout chính) xử lý
-          việc mở + bật mic thông qua chatOpenSignal dùng chung. */}
+          {/* Mount GlobalAIChatbot NGAY TẠI ĐÂY — lý do xem chú thích tương
+          tự ở nhánh 'chooseRole' phía trên. */}
+          <GlobalAIChatbot activePanelLabel={panelLabels.donationHero} externalOpenSignal={chatOpenSignal} autoStartMic />
         </div>
       )
     }
