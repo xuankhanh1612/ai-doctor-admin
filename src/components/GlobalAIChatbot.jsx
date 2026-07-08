@@ -166,7 +166,7 @@ export default function GlobalAIChatbot({ activePanelLabel }) {
         <span style={styles.fabIcon}>🤗</span>
         <span>
           <strong>AI Smart Agent</strong>
-          <small>AI Smart Agent</small>
+          <small></small>
         </span>
       </button>
     )
