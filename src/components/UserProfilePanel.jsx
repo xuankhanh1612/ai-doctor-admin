@@ -461,7 +461,7 @@ export default function UserProfilePanel() {
           }}
         />
       )}
-      <style>{`@media (max-width: 900px) { .animate-fade > div > div:nth-child(2) { grid-template-columns: 1fr !important; } }`}</style>
+      <style>{`@keyframes profile-uuid-avatar-float { 0%, 100% { transform: rotateY(-18deg) translateY(0); } 50% { transform: rotateY(18deg) translateY(-8px); } } @media (max-width: 900px) { .animate-fade > div > div:nth-child(2) { grid-template-columns: 1fr !important; } }`}</style>
       {/* Profile banner image */}
       <div style={{ borderRadius: 20, overflow: 'hidden', border: `1px solid ${border}` }}>
         <img
