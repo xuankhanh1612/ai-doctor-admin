@@ -61,7 +61,13 @@ Rules:
 // audioElementRef: <audio> element (tuỳ chọn) — dùng để phát TTS ổn định hơn trên
 //   mobile/Safari (unlock âm thanh qua đúng 1 element cố định thay vì tạo Audio() mới
 //   mỗi lần). Nơi gọi có thể render <audio ref={audioElementRef} /> và truyền vào đây.
-export function useGlobalAIChatbotEngine({ userKey, activePanelLabel, isVi, onMessagesChange, audioElementRef }) {
+// autoSubmitVoice: khi true, kết quả ghi âm (transcript) được GỬI THẲNG luôn
+//   (gọi submitQuestion ngay) thay vì chỉ điền vào ô nhập để người dùng sửa lại
+//   trước — dùng cho chế độ "chỉ trao đổi thoại" (voice-only), nơi không có ô
+//   chatbox hiển thị để sửa chữ. Nội dung vẫn được lưu vào CÙNG kho lưu trữ +
+//   phát CÙNG sự kiện đồng bộ (SYNC_EVENT) như chế độ thường, nên nếu người
+//   dùng mở popup chat đầy đủ sau đó, toàn bộ đoạn hội thoại thoại đã có sẵn.
+export function useGlobalAIChatbotEngine({ userKey, activePanelLabel, isVi, onMessagesChange, audioElementRef, autoSubmitVoice = false }) {
   const systemPrompt = isVi ? SYSTEM_PROMPT_VI : SYSTEM_PROMPT_EN
 
   const [input, setInput] = useState('')
@@ -93,7 +99,16 @@ export function useGlobalAIChatbotEngine({ userKey, activePanelLabel, isVi, onMe
     speak(lastAssistant.text)
   }, [busy, historyLoaded, messages, speak])
 
+  // Giữ tham chiếu tới bản `submitQuestion` mới nhất (được định nghĩa bên dưới,
+  // sau `handleTranscript`) để `handleTranscript` có thể gọi thẳng trong chế độ
+  // autoSubmitVoice mà không cần khai báo lại thứ tự hàm trong file.
+  const submitQuestionRef = useRef(null)
+
   const handleTranscript = (text) => {
+    if (autoSubmitVoice) {
+      submitQuestionRef.current?.(text)
+      return
+    }
     setInput(prev => (prev ? `${prev} ${text}` : text))
   }
   const { recording, transcribing, toggle: toggleMic } = useVoiceInput(handleTranscript, isVi ? 'vi' : 'en')
@@ -362,6 +377,8 @@ export function useGlobalAIChatbotEngine({ userKey, activePanelLabel, isVi, onMe
       setBusy(false)
     }
   }
+
+  submitQuestionRef.current = submitQuestion
 
   return {
     systemPrompt,
