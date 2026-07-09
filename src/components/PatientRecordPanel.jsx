@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useApp } from '../context/AppContext'
 import { useAuth } from '../context/AuthContext'
 import NavButtons from './NavButtons.jsx'
+import AnatomyHoverOverlayRightPanel from './AnatomyHoverOverlayRightPanel.jsx'
 import { useMedicalData } from '../hooks/useMedicalData.js'
 import { LXK_PATIENT_RECORD } from '../data/lxkPatientRecord.js'
 import { DEFAULT_FAMILY_MEMBERS, RELATION_META, buildFamilyMemberPatientRecord, loadFamilyMembers, saveFamilyMembers } from './family/familyData.js'
@@ -1345,6 +1346,20 @@ export default function PatientRecordPanel({ onNext, nextLabel, onPrev, prevLabe
         </div>
         {renderSection(activeSection, sectionData)}
       </div>
+
+      {/* Bản đồ giải phẫu cơ thể — full chiều ngang, đặt ở cuối trang (trang này
+          chưa có khối video nên đặt ngay trước thanh điều hướng, cùng vị trí
+          tương ứng với trang "Ăn gì tốt hôm nay"). Trỏ chuột / chạm vào từng
+          chấm sáng trên ảnh để xem phân tích chi tiết ở panel bên phải. */}
+      <div style={{ margin: '4px 0' }}>
+        <h3 style={{ margin: '0 0 12px', fontSize: 15, fontWeight: 800, color: isDark ? '#e2e8f0' : '#0f172a' }}>
+          🧬 Bản đồ giải phẫu cơ thể
+        </h3>
+        <div style={{ height: 560 }}>
+          <AnatomyHoverOverlayRightPanel />
+        </div>
+      </div>
+
       {onNext && (
         <NavButtons onNext={onNext} nextLabel={nextLabel || t('familyRelationship')} onPrev={onPrev} prevLabel={prevLabel} style={{ marginTop: 4 }} />
       )}
