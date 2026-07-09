@@ -127,7 +127,9 @@ export default function MedicalVisualPlayground() {
 
     const wrist = hand[0]
     const rotationX = (wrist.y - 0.5) * Math.PI * 2
-    const rotationY = (wrist.x - 0.5) * Math.PI * 2
+    // TouchlessHandCam hiển thị camera trước dạng gương, nên đảo trục X để
+    // chuyển động tay sang trái/phải điều khiển mô hình theo đúng hướng nhìn.
+    const rotationY = (0.5 - wrist.x) * Math.PI * 2
     setHandRotation([rotationX, rotationY])
 
     const thumbTip = hand[4]
