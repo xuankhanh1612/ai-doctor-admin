@@ -52,13 +52,14 @@ import Create3DVideoFrom2DPanel from './components/Create3DVideoFrom2DPanel.jsx'
 import MyAIAvatarLAMPanel from './components/MyAIAvatarLAMPanel.jsx'
 import OrganConnectionPanel from './components/OrganConnectionPanel.jsx'
 import ChatHistoryPanel from './components/ChatHistoryPanel.jsx'
+import PatientReflectPanel from './components/PatientReflectPanel.jsx'
 import MyImageToVideoPanel from './components/MyImageToVideoPanel.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 import { addNotification } from './lib/notifications.js'
 import { useTTS } from './lib/groqAiClient.js'
 
 // THÊM 'medicalAssetStore' NGAY SAU 'healthJourneyGame'
-const PANELS = ['healthJourneyGame', 'medicalAssetStore', 'medicalVisualPlayground', 'myRewardHealth', 'rssPortal', 'waterDrinkChatBot', 'wikiMedVision', 'fullDocSummarization', 'documentOCR', 'twoDTo3DAsset', 'xyzCameraAngle', 'cameraAngle3DStudio', 'organConnection', 'healthJourney', 'lunchJourney', 'dinnerJourney', 'upload', 'imaging', 'checkin', 'family', 'record', 'familyRelationship', 'matrix3dBody', 'omnidirectional3dBody', 'twin', 'telemedicine', 'statAnalysis', 'swarm', 'consensus', 'varCheck', 'protein3d', 'aiHealthcareVision', 'aiHealthcareVisionControl', 'stressRelief', 'aiInbodyPortal', 'printPortal', 'chatHistory', 'myImageToVideo']
+const PANELS = ['healthJourneyGame', 'medicalAssetStore', 'medicalVisualPlayground', 'myRewardHealth', 'rssPortal', 'waterDrinkChatBot', 'wikiMedVision', 'fullDocSummarization', 'documentOCR', 'twoDTo3DAsset', 'xyzCameraAngle', 'cameraAngle3DStudio', 'organConnection', 'healthJourney', 'lunchJourney', 'dinnerJourney', 'upload', 'imaging', 'checkin', 'family', 'record', 'familyRelationship', 'matrix3dBody', 'omnidirectional3dBody', 'twin', 'telemedicine', 'statAnalysis', 'swarm', 'consensus', 'varCheck', 'protein3d', 'aiHealthcareVision', 'aiHealthcareVisionControl', 'stressRelief', 'aiInbodyPortal', 'printPortal', 'patientReflect', 'chatHistory', 'myImageToVideo']
 
 export default function App() {
   const { user, loading } = useAuth()
@@ -162,6 +163,7 @@ export default function App() {
     cameraAngle3DStudio: '3D Camera Angle (Qwen)',
     organConnection: 'Ăn gì tốt hôm nay',
     printPortal: 'Print Portal',
+    patientReflect: 'Patient Reflection',
     chatHistory: 'Lịch sử Chat với AI',
     myImageToVideo: 'My Image to Video',
     profile: t('profile'),
@@ -403,6 +405,7 @@ export default function App() {
             {active === 'cameraAngle3DStudio' && <CameraAngle3DStudioPanel />}
             {active === 'organConnection' && <OrganConnectionPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'printPortal' && <PrintCenter onPrev={goPrev} prevLabel={prevLabel} />}
+            {active === 'patientReflect' && <PatientReflectPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'chatHistory' && <ChatHistoryPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} activePanelLabel={panelLabels[active] || active} />}
             {active === 'myImageToVideo' && <MyImageToVideoPanel onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'chooseUserRole' && (
