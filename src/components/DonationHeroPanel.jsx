@@ -21,6 +21,12 @@ import AnatomyHoverOverlay from './AnatomyHoverOverlay.jsx';
 // qua useHeroPanelPrefs (localStorage).
 // ============================================================================
 
+
+const HOLOGRAM_CARD_CLASS = 'relative group overflow-hidden rounded-2xl border border-white/10 bg-slate-900/80 p-5 text-left shadow-sm backdrop-blur-sm transition-all duration-300 hover:-translate-y-0.5 hover:bg-slate-900 hover:shadow-lg';
+const HOLOGRAM_GLOW_CLASS = 'pointer-events-none absolute -inset-1 rounded-2xl bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 opacity-40 blur-md transition duration-500 group-hover:opacity-100 group-hover:duration-200 group-hover:animate-none animate-pulse';
+const HOLOGRAM_SHINE_CLASS = 'pointer-events-none absolute inset-0 rounded-2xl overflow-hidden';
+const HOLOGRAM_SHINE_BEAM_CLASS = 'absolute top-0 left-[-100%] h-full w-1/2 bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-[-45deg] group-hover:animate-shine';
+
 const TEXT = {
   vi: {
     createAccountBtn: 'Tạo tài khoản',
@@ -251,18 +257,20 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onBac
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-10 items-stretch">
           <button
             onClick={handleEnterAction}
-            className={`group text-left rounded-2xl border p-5 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all ${
-              isDark ? 'border-emerald-400/20 bg-gradient-to-b from-emerald-500/10 to-transparent' : 'border-emerald-100 bg-gradient-to-b from-emerald-50 to-white'
-            }`}
+            className={HOLOGRAM_CARD_CLASS}
           >
-            <div className={`w-14 h-14 rounded-xl flex items-center justify-center mb-4 group-hover:scale-105 transition-transform ${isDark ? 'bg-emerald-500/15' : 'bg-emerald-100'}`}>
-              <HeartHandshake className={isDark ? 'text-emerald-400' : 'text-emerald-600'} size={26} />
+            <div className={HOLOGRAM_GLOW_CLASS} />
+            <div className={HOLOGRAM_SHINE_CLASS}><div className={HOLOGRAM_SHINE_BEAM_CLASS} /></div>
+            <div className="relative">
+              <div className={`w-14 h-14 rounded-xl flex items-center justify-center mb-4 group-hover:scale-105 transition-transform ${isDark ? 'bg-emerald-500/15' : 'bg-emerald-100'}`}>
+                <HeartHandshake className={isDark ? 'text-emerald-400' : 'text-emerald-600'} size={26} />
+              </div>
+              <div className={`font-bold inline-flex items-center gap-1.5 ${isDark ? 'text-emerald-300' : 'text-emerald-700'}`}>
+                {donateTitleText}
+                <Zap size={16} className={isDark ? 'text-emerald-300' : 'text-emerald-600'} fill="currentColor" />
+              </div>
+              <div className="mt-1 text-sm text-slate-300">{donateSubText}</div>
             </div>
-            <div className={`font-bold inline-flex items-center gap-1.5 ${isDark ? 'text-emerald-300' : 'text-emerald-700'}`}>
-              {donateTitleText}
-              <Zap size={16} className={isDark ? 'text-emerald-300' : 'text-emerald-600'} fill="currentColor" />
-            </div>
-            <div className={`text-sm mt-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{donateSubText}</div>
           </button>
 
           {/* Mic: trao đổi thoại trực tiếp NGAY TẠI TRANG NÀY — không mở popup
@@ -278,24 +286,27 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onBac
             isDark={isDark}
             micLabel={t.micLabel}
             variant="expanded"
-            buttonSize={128}
-            iconSize={48}
+            buttonSize={144}
+            iconSize={58}
+            holoEffect
           />
 
           <button
             onClick={handleEnterAction}
-            className={`group text-left rounded-2xl border p-5 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all ${
-              isDark ? 'border-sky-400/20 bg-gradient-to-b from-sky-500/10 to-transparent' : 'border-sky-100 bg-gradient-to-b from-sky-50 to-white'
-            }`}
+            className={HOLOGRAM_CARD_CLASS}
           >
-            <div className={`w-14 h-14 rounded-xl flex items-center justify-center mb-4 group-hover:scale-105 transition-transform ${isDark ? 'bg-sky-500/15' : 'bg-sky-100'}`}>
-              <BookOpen className={isDark ? 'text-sky-400' : 'text-sky-600'} size={26} />
+            <div className={HOLOGRAM_GLOW_CLASS} />
+            <div className={HOLOGRAM_SHINE_CLASS}><div className={HOLOGRAM_SHINE_BEAM_CLASS} /></div>
+            <div className="relative">
+              <div className={`w-14 h-14 rounded-xl flex items-center justify-center mb-4 group-hover:scale-105 transition-transform ${isDark ? 'bg-sky-500/15' : 'bg-sky-100'}`}>
+                <BookOpen className={isDark ? 'text-sky-400' : 'text-sky-600'} size={26} />
+              </div>
+              <div className={`font-bold inline-flex items-center gap-1.5 ${isDark ? 'text-sky-300' : 'text-sky-700'}`}>
+                {t.knowledgeTitle}
+                <ArrowRight size={16} className={isDark ? 'text-sky-300' : 'text-sky-600'} />
+              </div>
+              <div className="mt-1 text-sm text-slate-300">{knowledgeSubText}</div>
             </div>
-            <div className={`font-bold inline-flex items-center gap-1.5 ${isDark ? 'text-sky-300' : 'text-sky-700'}`}>
-              {t.knowledgeTitle}
-              <ArrowRight size={16} className={isDark ? 'text-sky-300' : 'text-sky-600'} />
-            </div>
-            <div className={`text-sm mt-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{knowledgeSubText}</div>
           </button>
         </div>
 
@@ -326,8 +337,14 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onBac
                     : {})}
                 >
                   <div className="relative mb-3">
+                    {isLevelOne && unlocked && (
+                      <div
+                        className="absolute -inset-1 bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 opacity-40 blur-md transition duration-500 animate-pulse group-hover:opacity-100 group-hover:duration-200 group-hover:animate-none"
+                        style={{ clipPath: 'polygon(50% 0%, 95% 25%, 95% 75%, 50% 100%, 5% 75%, 5% 25%)' }}
+                      />
+                    )}
                     <div
-                      className={`w-16 h-16 flex items-center justify-center text-2xl bg-gradient-to-br ${unlocked ? lvl.ring : (isDark ? 'from-white/10 to-white/5' : 'from-gray-200 to-gray-300')} shadow-sm ${isLevelOne ? 'cursor-pointer' : ''}`}
+                      className={`relative overflow-hidden w-16 h-16 flex items-center justify-center text-2xl bg-gradient-to-br ${isLevelOne && unlocked ? 'from-slate-900/80 to-slate-950' : unlocked ? lvl.ring : (isDark ? 'from-white/10 to-white/5' : 'from-gray-200 to-gray-300')} shadow-sm transition-all duration-300 ${isLevelOne ? 'cursor-pointer group-hover:scale-[0.98]' : ''}`}
                       style={{ clipPath: 'polygon(50% 0%, 95% 25%, 95% 75%, 50% 100%, 5% 75%, 5% 25%)' }}
                       {...(isLevelOne
                         ? {
@@ -346,6 +363,9 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onBac
                           }
                         : {})}
                     >
+                      {isLevelOne && unlocked && (
+                        <span className="absolute top-0 left-[-100%] h-full w-1/2 bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-[-45deg] group-hover:animate-shine" />
+                      )}
                       <span className={unlocked ? '' : 'opacity-40 grayscale'}>{lvl.icon}</span>
                     </div>
                     <span className={`absolute -bottom-1 -right-1 w-6 h-6 rounded-full text-[11px] font-bold text-white flex items-center justify-center border-2 ${isDark ? 'border-[#0f172a]' : 'border-white'} ${unlocked ? lvl.badge : 'bg-gray-400'}`}>
