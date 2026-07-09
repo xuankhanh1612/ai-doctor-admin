@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import NavButtons from './NavButtons.jsx'
+import AnatomyHoverOverlay from './AnatomyHoverOverlay.jsx'
 import { useApp } from '../context/AppContext'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useGlobalAIChatbotEngine, quickPrompts, MAX_FILES, getModeLabel } from '../lib/useGlobalAIChatbotEngine.js'
@@ -20,6 +21,48 @@ import organLungsProUrl   from '../organ-connection/assets/lungspro.png'
 import organStomachUrl    from '../organ-connection/assets/stomach.png'
 import organStomachProUrl from '../organ-connection/assets/stomachpro.png'
 import organVegetablesUrl from '../organ-connection/assets/vegetables.png'
+
+
+const ORGAN_ANATOMY_ANNOTATION = {
+  brain: 'brain',
+  heart: 'heart',
+  liver: 'liver',
+  kidney: 'kidneys',
+  stomach: 'stomach',
+  lungs: 'lungs',
+}
+
+function OrganAnatomyHoverWrap({ organKey, children, placement = 'left', previewTitle = 'Bản đồ giải phẫu cơ thể', previewHint = 'Đang highlight đúng cơ quan bạn đang trỏ chuột' }) {
+  const annotationId = ORGAN_ANATOMY_ANNOTATION[organKey]
+  const [open, setOpen] = useState(false)
+
+  if (!annotationId) return children
+
+  const panelSide = placement === 'right' ? { left:'calc(100% + 12px)' } : { right:'calc(100% + 12px)' }
+  const arrowSide = placement === 'right' ? { left:-6, borderLeft:'1px solid rgba(16,185,129,0.25)', borderBottom:'1px solid rgba(16,185,129,0.25)' } : { right:-6, borderTop:'1px solid rgba(16,185,129,0.25)', borderRight:'1px solid rgba(16,185,129,0.25)' }
+
+  return (
+    <div
+      style={{ position:'relative', width:'100%' }}
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+      onFocusCapture={() => setOpen(true)}
+      onBlurCapture={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setOpen(false) }}
+    >
+      {children}
+      {open && (
+        <div style={{ position:'absolute', zIndex:80, top:'50%', transform:'translateY(-50%)', width:'min(520px, calc(100vw - 32px))', pointerEvents:'none', ...panelSide }}>
+          <div style={{ border:'1px solid rgba(16,185,129,0.25)', background:'#0f172a', borderRadius:18, padding:12, boxShadow:'0 24px 80px rgba(2,6,23,0.42)' }}>
+            <div style={{ color:'#6ee7b7', fontSize:12, fontWeight:900, marginBottom:8 }}>{previewTitle}</div>
+            <AnatomyHoverOverlay focusAnnotationId={annotationId} showOnlyFocus />
+            <div style={{ color:'#94a3b8', fontSize:10, marginTop:8 }}>{previewHint}</div>
+          </div>
+          <div style={{ position:'absolute', top:'50%', width:12, height:12, transform:'translateY(-50%) rotate(45deg)', background:'#0f172a', ...arrowSide }} />
+        </div>
+      )}
+    </div>
+  )
+}
 
 // ─── Organ focus guidance videos ("X thích ăn gì?") ─────────────────────────
 const ORGAN_VIDEOS = {
@@ -536,15 +579,17 @@ function OrganMapModal({ open, onClose, selection }) {
               const badgeColor = (isDamaged && net < 0) ? '#dc2626' : (isDamaged && net >= 0) ? (net > 3 ? ORGAN_COLOR[o] : '#f59e0b') : ORGAN_COLOR[o]
               const badgeText = allItems.length > 0 && (isBoosted || isDamaged) ? (net > 0 ? `+${net}` : `${net}`) : ''
               return (
-                <div key={o} className={cls} data-organ={o} style={{ width:'100%', display:'flex', flexDirection:'row', alignItems:'center', gap:8, padding:'8px', borderRadius:12, color: ORGAN_COLOR[o] }}>
-                  <div style={{ position:'relative', flexShrink:0 }}>
-                    <img src={organImgMap[o]} className="oc-organ-img" style={{ width:44, height:44, objectFit:'contain' }} alt="" />
-                    {badgeText && (
-                      <span className="oc-badge visible" style={{ position:'absolute', top:-8, right:-8, fontSize:9, fontWeight:900, color:'#fff', background:badgeColor, padding:'2px 4px', borderRadius:999, whiteSpace:'nowrap' }}>{badgeText}</span>
-                    )}
+                <OrganAnatomyHoverWrap key={o} organKey={o}>
+                  <div className={cls} data-organ={o} style={{ width:'100%', display:'flex', flexDirection:'row', alignItems:'center', gap:8, padding:'8px', borderRadius:12, color: ORGAN_COLOR[o] }}>
+                    <div style={{ position:'relative', flexShrink:0 }}>
+                      <img src={organImgMap[o]} className="oc-organ-img" style={{ width:44, height:44, objectFit:'contain' }} alt="" />
+                      {badgeText && (
+                        <span className="oc-badge visible" style={{ position:'absolute', top:-8, right:-8, fontSize:9, fontWeight:900, color:'#fff', background:badgeColor, padding:'2px 4px', borderRadius:999, whiteSpace:'nowrap' }}>{badgeText}</span>
+                      )}
+                    </div>
+                    <div style={{ color:'#fff', fontSize:13, fontWeight:700 }}>{organLabels[o]}</div>
                   </div>
-                  <div style={{ color:'#fff', fontSize:13, fontWeight:700 }}>{organLabels[o]}</div>
-                </div>
+                </OrganAnatomyHoverWrap>
               )
             })}
           </div>
@@ -587,7 +632,8 @@ function OrganMapModal({ open, onClose, selection }) {
                         const isNeg = val < 0
                         const barW = Math.abs(val) / 10 * 100
                         return (
-                          <div key={o} style={{ flex:'1 1 130px', background:'rgba(255,255,255,0.05)', border:`1px solid ${isNeg ? 'rgba(239,68,68,0.3)' : color+'44'}`, borderRadius:12, padding:'8px 10px' }}>
+                          <OrganAnatomyHoverWrap key={o} organKey={o}>
+                          <div style={{ flex:'1 1 130px', background:'rgba(255,255,255,0.05)', border:`1px solid ${isNeg ? 'rgba(239,68,68,0.3)' : color+'44'}`, borderRadius:12, padding:'8px 10px' }}>
                             <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:6 }}>
                               <img src={organImgMap[o]} style={{ width:28, height:28, objectFit:'contain', flexShrink:0 }} alt="" />
                               <div style={{ flex:1 }}>
@@ -599,6 +645,7 @@ function OrganMapModal({ open, onClose, selection }) {
                               <div style={{ height:'100%', width:`${barW}%`, background: isNeg ? '#dc2626' : color, borderRadius:999, transition:'width 0.6s ease' }} />
                             </div>
                           </div>
+                        </OrganAnatomyHoverWrap>
                         )
                       })}
                     </div>
@@ -616,13 +663,15 @@ function OrganMapModal({ open, onClose, selection }) {
                     const color = ORGAN_COLOR[o]
                     const isNeg = net < 0
                     return (
-                      <div key={o} style={{ flex:'1 1 130px', display:'flex', alignItems:'center', gap:8, background:'rgba(255,255,255,0.04)', border:`1px solid ${isNeg ? 'rgba(239,68,68,0.3)' : color+'33'}`, borderRadius:12, padding:'8px 10px' }}>
+                      <OrganAnatomyHoverWrap key={o} organKey={o}>
+                        <div style={{ flex:'1 1 130px', display:'flex', alignItems:'center', gap:8, background:'rgba(255,255,255,0.04)', border:`1px solid ${isNeg ? 'rgba(239,68,68,0.3)' : color+'33'}`, borderRadius:12, padding:'8px 10px' }}>
                         <img src={organImgMap[o]} style={{ width:32, height:32, objectFit:'contain', flexShrink:0, ...(isDamaged && isNeg ? { filter:'drop-shadow(0 0 8px #dc2626) brightness(0.85)' } : net > 0 ? { filter:`drop-shadow(0 0 6px ${color})` } : {}) }} alt="" />
                         <div>
                           <div style={{ fontSize:11, color:'rgba(255,255,255,0.7)', fontWeight:600 }}>{organLabels[o]}</div>
                           <div style={{ fontSize:14, fontWeight:900, color: isNeg ? '#f87171' : net > 0 ? color : 'rgba(255,255,255,0.3)' }}>{net > 0 ? '+' : ''}{net}</div>
                         </div>
                       </div>
+                      </OrganAnatomyHoverWrap>
                     )
                   })}
                 </div>
@@ -687,7 +736,8 @@ function ResultModal({ open, onClose, scores, hasItem, selection }) {
                 const v = scores[m.key] || 0
                 const lbl = resultScoreLabel(v)
                 return (
-                  <div key={m.key} style={{ display:'flex', alignItems:'center', gap:10, background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:12, padding:'8px 10px' }}>
+                  <OrganAnatomyHoverWrap key={m.key} organKey={m.key}>
+                  <div style={{ display:'flex', alignItems:'center', gap:10, background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:12, padding:'8px 10px' }}>
                     <img src={m.img} style={{ width:32, height:32, objectFit:'contain', flexShrink:0 }} alt={m.label} />
                     <div style={{ flex:1, minWidth:0 }}>
                       <div style={{ color:'#fff', fontSize:13, fontWeight:700 }}>{m.label}</div>
@@ -695,6 +745,7 @@ function ResultModal({ open, onClose, scores, hasItem, selection }) {
                     </div>
                     <div style={{ fontSize:15, fontFamily:'monospace', fontWeight:900, color:lbl.color }}>{v}/10</div>
                   </div>
+                  </OrganAnatomyHoverWrap>
                 )
               })}
             </div>
@@ -808,7 +859,8 @@ function HealthCardModal({ open, onClose, scores, hasItem, selection }) {
                     const dash = Math.max(0, v) / 10 * circ
                     const ringColor = isDanger ? '#f87171' : o.color
                     return (
-                      <div key={o.key} style={{ display:'flex', alignItems:'center', gap:7, background:'rgba(255,255,255,.13)', borderRadius:14, padding:'5px 7px' }}>
+                      <OrganAnatomyHoverWrap key={o.key} organKey={o.key}>
+                      <div style={{ display:'flex', alignItems:'center', gap:7, background:'rgba(255,255,255,.13)', borderRadius:14, padding:'5px 7px' }}>
                         <img src={img} alt={o.label} style={{ width:40, height:40, objectFit:'contain', ...(isPro ? { filter:`drop-shadow(0 0 8px ${o.color})` } : {}) }} />
                         <div style={{ flex:1 }}>
                           <div style={{ background: isDanger ? '#c0392b' : '#1d964d', color:'#fff', borderRadius:9, padding:'4px 7px', fontWeight:900, fontSize:10, textAlign:'center', marginBottom:3 }}>{o.label}{isPro ? ' ✦' : ''}</div>
@@ -824,6 +876,7 @@ function HealthCardModal({ open, onClose, scores, hasItem, selection }) {
                           </div>
                         </div>
                       </div>
+                      </OrganAnatomyHoverWrap>
                     )
                   })}
                 </div>
@@ -864,7 +917,8 @@ function HealthCardModal({ open, onClose, scores, hasItem, selection }) {
                   const img = isPro ? o.pro : o.norm
                   const lbl = resultScoreLabel(v)
                   return (
-                    <div key={o.key} style={{ display:'flex', alignItems:'center', gap:12, background:'rgba(255,255,255,0.05)', borderRadius:12, padding:'8px 12px' }}>
+                    <OrganAnatomyHoverWrap key={o.key} organKey={o.key}>
+                    <div style={{ display:'flex', alignItems:'center', gap:12, background:'rgba(255,255,255,0.05)', borderRadius:12, padding:'8px 12px' }}>
                       <img src={img} style={{ width:36, height:36, objectFit:'contain', flexShrink:0, ...(isPro ? { filter:`drop-shadow(0 0 6px ${o.color})` } : {}) }} alt={o.label}/>
                       <div style={{ flex:1 }}>
                         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:4 }}>
@@ -877,6 +931,7 @@ function HealthCardModal({ open, onClose, scores, hasItem, selection }) {
                         <div style={{ fontSize:10, fontWeight:700, color:lbl.color, marginTop:2 }}>{lbl.txt}</div>
                       </div>
                     </div>
+                    </OrganAnatomyHoverWrap>
                   )
                 })}
               </div>
@@ -1551,19 +1606,21 @@ export default function OrganConnectionPanel({ onNext, onPrev, prevLabel, nextLa
                 const isNeg = v < 0
                 const isTarget = targetOrgan === key
                 return (
-                  <div key={key}>
-                    <div style={{ display:'flex', justifyContent:'space-between', fontSize:13, fontWeight:700, marginBottom:4, color:'#334155' }}>
-                      <span style={{ display:'flex', alignItems:'center', gap:6, ...(isTarget ? { padding:'0 4px', borderRadius:4, background:'#fef3c7' } : {}) }}>
-                        {typeof icon === 'string' ? icon : icon} {label}{isTarget ? ' ⭐' : ''}
-                      </span>
-                      <span style={{ fontFamily:'monospace', color: isNeg ? '#dc2626' : '#94a3b8', fontWeight:600, ...(isNeg ? { animation:'pulse 1s infinite' } : {}) }}>
-                        {v}/10{isNeg ? ' ⚠️' : ''}
-                      </span>
+                  <OrganAnatomyHoverWrap key={key} organKey={key}>
+                    <div>
+                      <div style={{ display:'flex', justifyContent:'space-between', fontSize:13, fontWeight:700, marginBottom:4, color:'#334155' }}>
+                        <span style={{ display:'flex', alignItems:'center', gap:6, ...(isTarget ? { padding:'0 4px', borderRadius:4, background:'#fef3c7' } : {}) }}>
+                          {typeof icon === 'string' ? icon : icon} {label}{isTarget ? ' ⭐' : ''}
+                        </span>
+                        <span style={{ fontFamily:'monospace', color: isNeg ? '#dc2626' : '#94a3b8', fontWeight:600, ...(isNeg ? { animation:'pulse 1s infinite' } : {}) }}>
+                          {v}/10{isNeg ? ' ⚠️' : ''}
+                        </span>
+                      </div>
+                      <div style={{ height:8, width:'100%', background:'#e2e8f0', borderRadius:999, overflow:'hidden', padding:2, ...(isTarget ? { ring:'2px solid #fbbf24' } : {}) }}>
+                        <div className="oc-progress" style={{ height:'100%', borderRadius:999, background: isNeg ? '#b91c1c' : color, width: isNeg ? '100%' : `${v * 10}%` }} />
+                      </div>
                     </div>
-                    <div style={{ height:8, width:'100%', background:'#e2e8f0', borderRadius:999, overflow:'hidden', padding:2, ...(isTarget ? { ring:'2px solid #fbbf24' } : {}) }}>
-                      <div className="oc-progress" style={{ height:'100%', borderRadius:999, background: isNeg ? '#b91c1c' : color, width: isNeg ? '100%' : `${v * 10}%` }} />
-                    </div>
-                  </div>
+                  </OrganAnatomyHoverWrap>
                 )
               })}
             </div>
@@ -1681,7 +1738,7 @@ function ItemButton({ cat, item, selection, onSelect }) {
     else           { borderColor = '#10b981'; bg = '#f0fdf4' }
   }
 
-  return (
+  const button = (
     <button
       onClick={() => onSelect(cat, item.id)}
       style={{ width:'100%', textAlign:'left', padding:6, border:`2px solid ${borderColor}`, borderRadius:12, transition:'all 0.15s', display:'flex', alignItems:'center', justifyContent:'space-between', background:bg, cursor:'pointer' }}
@@ -1702,4 +1759,6 @@ function ItemButton({ cat, item, selection, onSelect }) {
       )}
     </button>
   )
+
+  return isTarget ? <OrganAnatomyHoverWrap organKey={item.organKey} placement="right">{button}</OrganAnatomyHoverWrap> : button
 }
