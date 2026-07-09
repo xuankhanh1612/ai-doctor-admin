@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { createPortal } from 'react-dom';
 import { ArrowRight, ShieldCheck, Lock, BookOpen, CheckCircle2 } from 'lucide-react';
 import useHeroPanelPrefs from './heroPanels/useHeroPanelPrefs.js';
 import HeroPanelPrefsToggle from './heroPanels/HeroPanelPrefsToggle.jsx';
@@ -127,25 +126,28 @@ export default function ChooseUserRolePanel({ mode = 'guest', onSelectRole, onEn
   const ROLE_CARDS = buildRoleCards(t);
   const ORGANS = buildOrganLabels(isEn);
   const previewAnnotationId = previewOrganId ? getOrganAnatomyAnnotationId(previewOrganId) : null;
-  const organPreviewPopup = previewAnnotationId && typeof document !== 'undefined' ? createPortal(
+  const organPreviewPopup = previewAnnotationId ? (
     <div
-      className="fixed inset-0 z-[10050] flex items-center justify-center p-4 pointer-events-none"
+      className={`
+        absolute left-1/2 bottom-full z-30 mb-4 w-[min(580px,calc(100vw-2rem))] -translate-x-1/2
+        transition-all duration-200 ease-out origin-bottom pointer-events-none
+      `}
       aria-hidden="true"
     >
-      <div className="w-[min(580px,calc(100vw-2rem))] max-h-[calc(100vh-2rem)]">
-        <div className={`rounded-2xl border p-3 shadow-2xl ${isDark ? 'border-emerald-400/20 bg-[#0f172a]' : 'border-emerald-100 bg-white'}`}>
-          <div className="flex items-center justify-between mb-2 px-1">
-            <span className={`text-xs font-bold ${isDark ? 'text-emerald-300' : 'text-emerald-700'}`}>{t.organPreviewTitle}</span>
-          </div>
-          <AnatomyHoverOverlay
-            focusAnnotationId={previewAnnotationId}
-            showOnlyFocus
-          />
-          <p className={`mt-2 px-1 text-[10px] ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{t.organPreviewHint}</p>
+      <div className={`rounded-2xl border p-3 shadow-2xl ${isDark ? 'border-emerald-400/20 bg-[#0f172a]' : 'border-emerald-100 bg-white'}`}>
+        <div className="flex items-center justify-between mb-2 px-1">
+          <span className={`text-xs font-bold ${isDark ? 'text-emerald-300' : 'text-emerald-700'}`}>{t.organPreviewTitle}</span>
         </div>
+        <AnatomyHoverOverlay
+          focusAnnotationId={previewAnnotationId}
+          showOnlyFocus
+        />
+        <p className={`mt-2 px-1 text-[10px] ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{t.organPreviewHint}</p>
       </div>
-    </div>,
-    document.body
+      <div
+        className={`mx-auto -mt-1.5 h-3 w-3 rotate-45 border-r border-b ${isDark ? 'border-emerald-400/20 bg-[#0f172a]' : 'border-emerald-100 bg-white'}`}
+      />
+    </div>
   ) : null;
 
   const handlePickRole = (roleId) => {
