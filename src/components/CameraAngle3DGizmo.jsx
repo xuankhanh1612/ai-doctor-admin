@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react'
 import * as THREE from 'three'
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js'
+import { MTLLoader } from 'three/examples/jsm/loaders/MTLLoader.js'
 
 // Camera3DAngleGizmo — tái tạo lại đúng cơ chế điều khiển "3D Camera Control"
 // của HF Space multimodalart/qwen-image-multiple-angles-3d-camera (dùng cho
@@ -11,16 +12,19 @@ import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js'
 // "<sks> ... view ... shot ... shot".
 //
 // KHÁC BIỆT so với bản gốc: thay vì chiếu ảnh 2D lên một mặt phẳng phẳng để
-// xem trước góc máy, component này tải THẬT một model .obj (objUrl) làm vật
-// thể trung tâm — xoay quanh mô hình 3D thật trực quan hơn nhiều so với ảnh
-// phẳng khi chọn góc chụp.
+// xem trước góc máy, component này có thể tải THẬT một model .obj (objUrl)
+// làm vật thể trung tâm — xoay quanh mô hình 3D thật trực quan hơn nhiều so
+// với ảnh phẳng khi chọn góc chụp.
 //
 // Props:
-// - mode: 'obj' (mặc định) tải model .obj làm tâm điều khiển, hoặc 'image'
-//   để chiếu 1 ảnh 2D (imageUrl) lên mặt phẳng làm tâm điều khiển — đúng cơ
-//   chế gốc của HF Space (dùng cho khung "🎮 3D Camera Control 2D Object").
-// - objUrl: model .obj để hiển thị làm tâm điều khiển khi mode='obj'
-// - imageUrl: ảnh 2D để hiển thị làm tâm điều khiển khi mode='image'
+// - mode: 'obj' (mặc định) tải model .obj làm tâm điều khiển; 'image' để
+//   chiếu 1 ảnh 2D (imageUrl) lên mặt phẳng làm tâm điều khiển — đúng cơ
+//   chế gốc của HF Space (dùng cho khung "🎮 3D Camera Control 2D Object");
+//   'both' để hiển thị CẢ 2 — ảnh 2D (trái) + model .obj (phải) cùng lúc
+//   trong 1 gizmo (dùng cho khung "🎮 3D Camera Control 2D + 3D Object").
+// - objUrl: model .obj để hiển thị làm tâm điều khiển khi mode='obj'/'both'
+// - mtlUrl: file .mtl (tuỳ chọn) áp material thật cho model .obj ở trên
+// - imageUrl: ảnh 2D để hiển thị làm tâm điều khiển khi mode='image'/'both'
 // - value: { azimuth, elevation, distance } điều khiển từ bên ngoài (vd slider)
 // - onChange({ azimuth, elevation, distance, prompt }): bắn ra sau khi snap xong
 
@@ -48,7 +52,7 @@ export function buildCameraPrompt(azimuth, elevation, distance) {
   return `<sks> ${AZIMUTH_NAMES[az]} ${ELEVATION_NAMES[String(el)]} ${DISTANCE_NAMES[distKey]}`
 }
 
-export default function Camera3DAngleGizmo({ mode = 'obj', objUrl, imageUrl, value, onChange, onLoadError, onLoadSuccess }) {
+export default function Camera3DAngleGizmo({ mode = 'obj', objUrl, mtlUrl, imageUrl, value, onChange, onLoadError, onLoadSuccess }) {
   const wrapperRef = useRef(null)
   const promptRef = useRef(null)
   const liveRef = useRef({ azimuth: value?.azimuth ?? 0, elevation: value?.elevation ?? 0, distance: value?.distance ?? 1.0 })
@@ -97,40 +101,55 @@ export default function Camera3DAngleGizmo({ mode = 'obj', objUrl, imageUrl, val
     targetGroup.position.copy(CENTER)
     scene.add(targetGroup)
 
-    function loadTargetModel(url) {
+    function loadTargetModel(url, mtlUrlParam, offsetX = 0) {
       while (targetGroup.children.length) targetGroup.remove(targetGroup.children[0])
       if (!url) return
-      new OBJLoader().load(
-        url,
-        (object) => {
-          if (disposed) return
-          const box = new THREE.Box3().setFromObject(object)
-          const size = box.getSize(new THREE.Vector3())
-          const center = box.getCenter(new THREE.Vector3())
-          const maxDim = Math.max(size.x, size.y, size.z) || 1
-          const scale = 1.6 / maxDim
-          object.scale.setScalar(scale)
-          object.position.set(-center.x * scale, -center.y * scale, -center.z * scale)
-          object.traverse((o) => {
-            if (o.isMesh && !o.material?.map) {
-              o.material = new THREE.MeshStandardMaterial({ color: 0x6fd3ff, roughness: 0.55, metalness: 0.1 })
-            }
-          })
-          targetGroup.add(object)
-          onLoadSuccessRef.current?.(url)
-        },
-        undefined,
-        (err) => {
-          console.warn('Camera3DAngleGizmo: không tải được .obj', err)
-          onLoadErrorRef.current?.(err, url)
-        }
-      )
+
+      const attachObject = (object) => {
+        if (disposed) return
+        const box = new THREE.Box3().setFromObject(object)
+        const size = box.getSize(new THREE.Vector3())
+        const center = box.getCenter(new THREE.Vector3())
+        const maxDim = Math.max(size.x, size.y, size.z) || 1
+        const scale = 1.6 / maxDim
+        object.scale.setScalar(scale)
+        object.position.set(offsetX - center.x * scale, -center.y * scale, -center.z * scale)
+        object.traverse((o) => {
+          if (o.isMesh && !o.material?.map) {
+            o.material = new THREE.MeshStandardMaterial({ color: 0x6fd3ff, roughness: 0.55, metalness: 0.1 })
+          }
+        })
+        targetGroup.add(object)
+        onLoadSuccessRef.current?.(url)
+      }
+      const handleFailure = (err) => {
+        console.warn('Camera3DAngleGizmo: không tải được .obj', err)
+        onLoadErrorRef.current?.(err, url)
+      }
+
+      if (mtlUrlParam) {
+        // Có link .mtl -> áp material thật trước khi tải .obj. Nếu .mtl lỗi,
+        // coi như cả cặp obj+mtl lỗi để dùng đúng fallback đã quy định.
+        new MTLLoader().load(
+          mtlUrlParam,
+          (materials) => {
+            if (disposed) return
+            materials.preload()
+            const objLoader = new OBJLoader()
+            objLoader.setMaterials(materials)
+            objLoader.load(url, attachObject, undefined, handleFailure)
+          },
+          undefined,
+          handleFailure
+        )
+      } else {
+        new OBJLoader().load(url, attachObject, undefined, handleFailure)
+      }
     }
 
     // --- Target (chế độ 'image'): chiếu ảnh 2D lên 1 mặt phẳng làm tâm
     // điều khiển thay vì tải .obj — đúng cơ chế gốc của HF Space.
-    function loadTargetImage(url) {
-      while (targetGroup.children.length) targetGroup.remove(targetGroup.children[0])
+    function loadTargetImage(url, offsetX = 0) {
       if (!url) return
       new THREE.TextureLoader().load(
         url,
@@ -147,7 +166,7 @@ export default function Camera3DAngleGizmo({ mode = 'obj', objUrl, imageUrl, val
             new THREE.PlaneGeometry(planeW, planeH),
             new THREE.MeshStandardMaterial({ map: texture, side: THREE.DoubleSide, roughness: 0.75, metalness: 0 })
           )
-          mesh.position.y = planeH / 2
+          mesh.position.set(offsetX, planeH / 2, 0)
           targetGroup.add(mesh)
           onLoadSuccessRef.current?.(url)
         },
@@ -159,8 +178,15 @@ export default function Camera3DAngleGizmo({ mode = 'obj', objUrl, imageUrl, val
       )
     }
 
-    if (mode === 'image') loadTargetImage(imageUrl)
-    else loadTargetModel(objUrl)
+    if (mode === 'image') {
+      loadTargetImage(imageUrl)
+    } else if (mode === 'both') {
+      // Cả 2 vật thể cùng lúc: ảnh 2D bên trái, model .obj bên phải.
+      loadTargetImage(imageUrl, -0.95)
+      loadTargetModel(objUrl, mtlUrl, 0.95)
+    } else {
+      loadTargetModel(objUrl)
+    }
 
     // --- Camera model (khối xanh nhỏ đại diện máy ảnh) ---
     const cameraGroup = new THREE.Group()
@@ -416,7 +442,7 @@ export default function Camera3DAngleGizmo({ mode = 'obj', objUrl, imageUrl, val
       applyExternalRef.current = null
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, objUrl, imageUrl])
+  }, [mode, objUrl, mtlUrl, imageUrl])
 
   // value điều khiển từ ngoài (sliders) -> áp vào scene đang chạy.
   useEffect(() => {

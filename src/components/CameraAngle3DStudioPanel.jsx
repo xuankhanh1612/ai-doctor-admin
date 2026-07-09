@@ -33,6 +33,16 @@ const DEFAULT_IMAGE_2D_URL = 'https://png.pngtree.com/png-clipart/20230812/origi
 // hotlink bị chặn...) — ảnh có sẵn thật trong public/src/mediapipe-khanh/.
 const FALLBACK_IMAGE_2D_URL = '/src/mediapipe-khanh/thumbs_up.png'
 
+// Khung "🎮 3D Camera Control 2D + 3D Object" — bản sao khung 3D Object,
+// hiển thị CẢ ảnh 2D lẫn model .obj cùng lúc trong 1 gizmo (2 textbox link
+// riêng: textbox 1 = ảnh 2D, textbox 2 = model .obj + .mtl).
+const DEFAULT_COMBO_IMAGE_URL = DEFAULT_IMAGE_2D_URL
+const FALLBACK_COMBO_IMAGE_URL = FALLBACK_IMAGE_2D_URL
+const DEFAULT_COMBO_OBJ_URL = DEFAULT_OBJ_URL
+const DEFAULT_COMBO_MTL_URL = 'https://raw.githubusercontent.com/godekd3133/DX9_WorldSkill_Practice_Gyeonggi_01/81ed0a14c63d309bbfc0fc98c8a40a43325336e6/Resource/Player/Animation/Attack05/Attack05%20(45).mtl'
+const FALLBACK_COMBO_OBJ_URL = FALLBACK_OBJ_URL
+const FALLBACK_COMBO_MTL_URL = 'https://github.com/xuankhanh1612/ai-doctor-admin/blob/main/public/assets/models/krabbypattie01.mtl'
+
 const loadGradioClient = () => import(/* @vite-ignore */ GRADIO_CLIENT_CDN).then((m) => m.Client)
 
 function replaceImageToken(value, imageFile) {
@@ -48,6 +58,7 @@ export default function CameraAngle3DStudioPanel() {
   const isDark = theme === 'dark'
   const gizmoWrapperRef = useRef(null) // khung "🎮 3D Camera Control 2D Object" (ảnh 2D)
   const gizmo3dWrapperRef = useRef(null) // khung "🎮 3D Camera Control 3D Object" (model .obj)
+  const gizmoComboWrapperRef = useRef(null) // khung "🎮 3D Camera Control 2D + 3D Object" (ảnh 2D + model .obj)
 
   // --- Khung "🎮 3D Camera Control 2D Object" — ảnh 2D làm tâm gizmo, camera
   // này cũng là camera dùng để sinh prompt gửi cho "Realtime Hugging Face API". ---
@@ -62,6 +73,18 @@ export default function CameraAngle3DStudioPanel() {
   const [effectiveObj3dUrl, setEffectiveObj3dUrl] = useState(DEFAULT_OBJ_URL)
   const [obj3dLoadError, setObj3dLoadError] = useState('')
   const [camera3d, setCamera3d] = useState({ azimuth: 0, elevation: 0, distance: 1.0 })
+
+  // --- Khung "🎮 3D Camera Control 2D + 3D Object" — bản sao khung 3D Object,
+  // hiển thị ảnh 2D (textbox 1) + model .obj/.mtl (textbox 2) cùng lúc. ---
+  const [comboImageUrl, setComboImageUrl] = useState(DEFAULT_COMBO_IMAGE_URL)
+  const [effectiveComboImageUrl, setEffectiveComboImageUrl] = useState(DEFAULT_COMBO_IMAGE_URL)
+  const [comboImageLoadError, setComboImageLoadError] = useState('')
+  const [comboObjUrl, setComboObjUrl] = useState(DEFAULT_COMBO_OBJ_URL)
+  const [comboMtlUrl, setComboMtlUrl] = useState(DEFAULT_COMBO_MTL_URL)
+  const [effectiveComboObjUrl, setEffectiveComboObjUrl] = useState(DEFAULT_COMBO_OBJ_URL)
+  const [effectiveComboMtlUrl, setEffectiveComboMtlUrl] = useState(DEFAULT_COMBO_MTL_URL)
+  const [comboObjLoadError, setComboObjLoadError] = useState('')
+  const [cameraCombo, setCameraCombo] = useState({ azimuth: 0, elevation: 0, distance: 1.0 })
 
   const [sourceImage, setSourceImage] = useState(null)
   const [sourcePreview, setSourcePreview] = useState('')
@@ -80,6 +103,12 @@ export default function CameraAngle3DStudioPanel() {
   const [obj3dDownloadState, setObj3dDownloadState] = useState('idle') // 3D Object: model .obj
   const [snapshot3dDownloadState, setSnapshot3dDownloadState] = useState('idle')
   const [clipboard3dState, setClipboard3dState] = useState('idle')
+
+  const [comboDownloadState, setComboDownloadState] = useState('idle') // 2D + 3D Object
+  const [comboSnapshotDownloadState, setComboSnapshotDownloadState] = useState('idle')
+  const [comboImageClipboardState, setComboImageClipboardState] = useState('idle') // textbox 1 (ảnh 2D)
+  const [comboObjClipboardState, setComboObjClipboardState] = useState('idle') // textbox 2 (obj)
+  const [comboMtlClipboardState, setComboMtlClipboardState] = useState('idle') // textbox 2 (mtl)
 
   const palette = useMemo(() => ({
     bg: isDark ? '#030712' : '#f3f7fb',
@@ -145,6 +174,59 @@ export default function CameraAngle3DStudioPanel() {
 
   const handleObj3dLoadSuccess = (loadedUrl) => {
     if (loadedUrl === obj3dUrl) setObj3dLoadError('')
+  }
+
+  // --- Khung "🎮 3D Camera Control 2D + 3D Object" (ảnh 2D + model .obj/.mtl) ---
+  const promptCombo = buildCameraPrompt(cameraCombo.azimuth, cameraCombo.elevation, cameraCombo.distance)
+
+  // Textbox 1 (ảnh 2D)
+  useEffect(() => {
+    setComboImageLoadError('')
+    setEffectiveComboImageUrl(comboImageUrl)
+  }, [comboImageUrl])
+
+  const handleComboImageLoadError = (err, failedUrl) => {
+    if (failedUrl === FALLBACK_COMBO_IMAGE_URL) {
+      console.warn('Camera3DAngleGizmo: cả ảnh 2D dự phòng cũng không tải được', err)
+      return
+    }
+    if (failedUrl !== comboImageUrl) return
+    setComboImageLoadError(
+      `Không tải được ảnh 2D từ link này (${err?.message || 'lỗi tải file'}). Đang dùng tạm ảnh public/src/mediapipe-khanh/thumbs_up.png cho đến khi bạn dán link ảnh mới không lỗi vào ô trên.`
+    )
+    setEffectiveComboImageUrl(FALLBACK_COMBO_IMAGE_URL)
+  }
+
+  const handleComboImageLoadSuccess = (loadedUrl) => {
+    if (loadedUrl === comboImageUrl) setComboImageLoadError('')
+  }
+
+  // Textbox 2 (model .obj + .mtl) — coi 2 link này là 1 cặp: nếu obj hoặc mtl
+  // lỗi thì cả cặp fallback về model demo krabbypattie01.obj + .mtl.
+  useEffect(() => {
+    setComboObjLoadError('')
+    setEffectiveComboObjUrl(comboObjUrl)
+    setEffectiveComboMtlUrl(comboMtlUrl)
+  }, [comboObjUrl, comboMtlUrl])
+
+  const handleComboObjLoadError = (err, failedUrl) => {
+    if (failedUrl === FALLBACK_COMBO_OBJ_URL) {
+      console.warn('Camera3DAngleGizmo: cả model demo dự phòng cũng không tải được', err)
+      return
+    }
+    if (failedUrl !== comboObjUrl) return
+    setComboObjLoadError(
+      `Không tải được model .obj/.mtl từ link này (${err?.message || 'lỗi tải file'}). Đang dùng tạm model demo public/assets/models/krabbypattie01.obj (kèm ${FALLBACK_COMBO_MTL_URL}) cho đến khi bạn dán link .obj/.mtl mới không lỗi vào ô trên.`
+    )
+    setEffectiveComboObjUrl(FALLBACK_COMBO_OBJ_URL)
+    // FALLBACK_COMBO_MTL_URL là link "xem trên GitHub" (không phải raw) nên
+    // không tải trực tiếp được — chỉ ghi trong dòng cảnh báo để tham khảo,
+    // gizmo dùng model demo với material mặc định cho đến khi có link mới.
+    setEffectiveComboMtlUrl('')
+  }
+
+  const handleComboObjLoadSuccess = (loadedUrl) => {
+    if (loadedUrl === comboObjUrl) setComboObjLoadError('')
   }
 
   const handleImageChange = (e) => {
@@ -345,6 +427,100 @@ export default function CameraAngle3DStudioPanel() {
       setClipboard3dState('error')
     }
     setTimeout(() => setClipboard3dState('idle'), 1800)
+  }
+
+  // --- Khung "🎮 3D Camera Control 2D + 3D Object" ---
+  const downloadComboAndAngle = async () => {
+    if (!effectiveComboObjUrl) return
+    setComboDownloadState('downloading')
+    const ok = await downloadGizmoFile(effectiveComboObjUrl, 'model.obj')
+    setComboDownloadState(ok ? 'done' : 'error')
+    setTimeout(() => setComboDownloadState('idle'), 2200)
+  }
+
+  const downloadComboSnapshotOnly = () => {
+    setComboSnapshotDownloadState('downloading')
+    const ok = downloadAngleSnapshot(gizmoComboWrapperRef, cameraCombo, promptCombo)
+    setComboSnapshotDownloadState(ok ? 'done' : 'error')
+    setTimeout(() => setComboSnapshotDownloadState('idle'), 2200)
+  }
+
+  // Textbox 1 (ảnh 2D)
+  const clearComboImageUrl = () => { setComboImageUrl('') }
+
+  const copyComboImageUrlToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(comboImageUrl || '')
+      setComboImageClipboardState('copied')
+    } catch (err) {
+      console.warn('Copy link failed', err)
+      setComboImageClipboardState('error')
+    }
+    setTimeout(() => setComboImageClipboardState('idle'), 1800)
+  }
+
+  const pasteComboImageUrlFromClipboard = async () => {
+    try {
+      const text = await navigator.clipboard.readText()
+      if (text) setComboImageUrl(text.trim())
+      setComboImageClipboardState('pasted')
+    } catch (err) {
+      console.warn('Paste link failed (trình duyệt có thể chưa cấp quyền clipboard)', err)
+      setComboImageClipboardState('error')
+    }
+    setTimeout(() => setComboImageClipboardState('idle'), 1800)
+  }
+
+  // Textbox 2 (model .obj)
+  const clearComboObjUrl = () => { setComboObjUrl('') }
+
+  const copyComboObjUrlToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(comboObjUrl || '')
+      setComboObjClipboardState('copied')
+    } catch (err) {
+      console.warn('Copy link failed', err)
+      setComboObjClipboardState('error')
+    }
+    setTimeout(() => setComboObjClipboardState('idle'), 1800)
+  }
+
+  const pasteComboObjUrlFromClipboard = async () => {
+    try {
+      const text = await navigator.clipboard.readText()
+      if (text) setComboObjUrl(text.trim())
+      setComboObjClipboardState('pasted')
+    } catch (err) {
+      console.warn('Paste link failed (trình duyệt có thể chưa cấp quyền clipboard)', err)
+      setComboObjClipboardState('error')
+    }
+    setTimeout(() => setComboObjClipboardState('idle'), 1800)
+  }
+
+  // Textbox 2 (model .mtl)
+  const clearComboMtlUrl = () => { setComboMtlUrl('') }
+
+  const copyComboMtlUrlToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(comboMtlUrl || '')
+      setComboMtlClipboardState('copied')
+    } catch (err) {
+      console.warn('Copy link failed', err)
+      setComboMtlClipboardState('error')
+    }
+    setTimeout(() => setComboMtlClipboardState('idle'), 1800)
+  }
+
+  const pasteComboMtlUrlFromClipboard = async () => {
+    try {
+      const text = await navigator.clipboard.readText()
+      if (text) setComboMtlUrl(text.trim())
+      setComboMtlClipboardState('pasted')
+    } catch (err) {
+      console.warn('Paste link failed (trình duyệt có thể chưa cấp quyền clipboard)', err)
+      setComboMtlClipboardState('error')
+    }
+    setTimeout(() => setComboMtlClipboardState('idle'), 1800)
   }
 
   return (
@@ -581,6 +757,192 @@ export default function CameraAngle3DStudioPanel() {
 
             <label style={labelStyle(palette)}>Prompt sinh ra</label>
             <div style={{ ...inputStyle(palette), fontFamily: 'monospace', fontSize: 12, color: palette.green }}>{prompt3d}</div>
+          </section>
+
+          {/* --- GIZMO 2D + 3D Object (ảnh 2D + model .obj thật cùng lúc) +
+               SLIDERS — bản sao của khung "3D Object" ở trên, hiển thị cả
+               ảnh 2D (textbox 1) lẫn model .obj/.mtl (textbox 2) trong cùng
+               1 gizmo, để so sánh trực quan góc chụp giữa ảnh phẳng và
+               model thật cùng lúc. --- */}
+          <section style={cardStyle(palette)}>
+            <h2 style={{ margin: '0 0 6px', fontSize: 20 }}>🎮 3D Camera Control 2D + 3D Object</h2>
+            <p style={{ margin: '0 0 12px', color: palette.text2, fontSize: 12 }}>Kéo tay cầm: 🟢 Azimuth · 🩷 Elevation · 🟠 Distance</p>
+
+            <div ref={gizmoComboWrapperRef}>
+              <Camera3DAngleGizmo
+                mode="both"
+                imageUrl={effectiveComboImageUrl}
+                objUrl={effectiveComboObjUrl}
+                mtlUrl={effectiveComboMtlUrl}
+                value={cameraCombo}
+                onChange={setCameraCombo}
+                onLoadError={(err, failedUrl) => {
+                  if (failedUrl === effectiveComboImageUrl || failedUrl === comboImageUrl) handleComboImageLoadError(err, failedUrl)
+                  else handleComboObjLoadError(err, failedUrl)
+                }}
+                onLoadSuccess={(loadedUrl) => {
+                  if (loadedUrl === comboImageUrl) handleComboImageLoadSuccess(loadedUrl)
+                  if (loadedUrl === comboObjUrl) handleComboObjLoadSuccess(loadedUrl)
+                }}
+              />
+            </div>
+
+            <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
+              <button
+                type="button"
+                onClick={downloadComboAndAngle}
+                disabled={comboDownloadState === 'downloading'}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                  padding: '9px 14px', borderRadius: 999, fontSize: 12, fontWeight: 800, flex: 1,
+                  border: `1px solid ${palette.cyan}66`, background: `${palette.cyan}1f`, color: palette.cyan,
+                  cursor: comboDownloadState === 'downloading' ? 'wait' : 'pointer', opacity: comboDownloadState === 'downloading' ? 0.7 : 1,
+                }}
+              >
+                {comboDownloadState === 'downloading' && '⏳ Đang tải...'}
+                {comboDownloadState === 'done' && '✅ Đã tải (.obj)'}
+                {comboDownloadState === 'error' && '⚠️ Lỗi'}
+                {comboDownloadState === 'idle' && '⬇️ Download 3D'}
+              </button>
+
+              <button
+                type="button"
+                onClick={downloadComboSnapshotOnly}
+                disabled={comboSnapshotDownloadState === 'downloading'}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                  padding: '9px 14px', borderRadius: 999, fontSize: 12, fontWeight: 800, flex: 1,
+                  border: `1px solid ${palette.violet}66`, background: `${palette.violet}1f`, color: palette.violet,
+                  cursor: comboSnapshotDownloadState === 'downloading' ? 'wait' : 'pointer', opacity: comboSnapshotDownloadState === 'downloading' ? 0.7 : 1,
+                }}
+              >
+                {comboSnapshotDownloadState === 'downloading' && '⏳ Đang tải...'}
+                {comboSnapshotDownloadState === 'done' && '✅ Đã tải (.png)'}
+                {comboSnapshotDownloadState === 'error' && '⚠️ Lỗi'}
+                {comboSnapshotDownloadState === 'idle' && '⬇️ Download Toàn cảnh góc chụp XYZ'}
+              </button>
+            </div>
+
+            <label style={labelStyle(palette)}>Textbox 1 · Link ảnh 2D cho gizmo</label>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <input value={comboImageUrl} onChange={(e) => setComboImageUrl(e.target.value)} style={{ ...inputStyle(palette), fontFamily: 'monospace', fontSize: 11, flex: 1 }} />
+              <button
+                type="button"
+                onClick={clearComboImageUrl}
+                title="Xoá Link đang có trong Textbox"
+                aria-label="Xoá Link đang có trong Textbox"
+                style={iconButtonStyle(palette.red)}
+              >
+                ❌
+              </button>
+              <button
+                type="button"
+                onClick={copyComboImageUrlToClipboard}
+                title="Copy Link đang có trong Textbox vào bộ nhớ"
+                aria-label="Copy Link đang có trong Textbox vào bộ nhớ"
+                style={iconButtonStyle(palette.cyan)}
+              >
+                {comboImageClipboardState === 'copied' ? '✅' : '📋'}
+              </button>
+              <button
+                type="button"
+                onClick={pasteComboImageUrlFromClipboard}
+                title="Copy Link trong bộ nhớ vào Textbox"
+                aria-label="Copy Link trong bộ nhớ vào Textbox"
+                style={iconButtonStyle(palette.green)}
+              >
+                {comboImageClipboardState === 'pasted' ? '✅' : '📥'}
+              </button>
+            </div>
+            {comboImageLoadError && (
+              <div style={{ marginTop: 6, color: palette.red, fontSize: 12, fontWeight: 700, lineHeight: 1.5 }}>
+                ⚠️ {comboImageLoadError}
+              </div>
+            )}
+
+            <label style={labelStyle(palette)}>Textbox 2 · Link model .obj cho gizmo</label>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <input value={comboObjUrl} onChange={(e) => setComboObjUrl(e.target.value)} style={{ ...inputStyle(palette), fontFamily: 'monospace', fontSize: 11, flex: 1 }} />
+              <button
+                type="button"
+                onClick={clearComboObjUrl}
+                title="Xoá Link đang có trong Textbox"
+                aria-label="Xoá Link đang có trong Textbox"
+                style={iconButtonStyle(palette.red)}
+              >
+                ❌
+              </button>
+              <button
+                type="button"
+                onClick={copyComboObjUrlToClipboard}
+                title="Copy Link đang có trong Textbox vào bộ nhớ"
+                aria-label="Copy Link đang có trong Textbox vào bộ nhớ"
+                style={iconButtonStyle(palette.cyan)}
+              >
+                {comboObjClipboardState === 'copied' ? '✅' : '📋'}
+              </button>
+              <button
+                type="button"
+                onClick={pasteComboObjUrlFromClipboard}
+                title="Copy Link trong bộ nhớ vào Textbox"
+                aria-label="Copy Link trong bộ nhớ vào Textbox"
+                style={iconButtonStyle(palette.green)}
+              >
+                {comboObjClipboardState === 'pasted' ? '✅' : '📥'}
+              </button>
+            </div>
+            <label style={{ ...labelStyle(palette), margin: '8px 0 6px' }}>Textbox 2 · Link model .mtl (material) cho gizmo</label>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <input value={comboMtlUrl} onChange={(e) => setComboMtlUrl(e.target.value)} style={{ ...inputStyle(palette), fontFamily: 'monospace', fontSize: 11, flex: 1 }} />
+              <button
+                type="button"
+                onClick={clearComboMtlUrl}
+                title="Xoá Link đang có trong Textbox"
+                aria-label="Xoá Link đang có trong Textbox"
+                style={iconButtonStyle(palette.red)}
+              >
+                ❌
+              </button>
+              <button
+                type="button"
+                onClick={copyComboMtlUrlToClipboard}
+                title="Copy Link đang có trong Textbox vào bộ nhớ"
+                aria-label="Copy Link đang có trong Textbox vào bộ nhớ"
+                style={iconButtonStyle(palette.cyan)}
+              >
+                {comboMtlClipboardState === 'copied' ? '✅' : '📋'}
+              </button>
+              <button
+                type="button"
+                onClick={pasteComboMtlUrlFromClipboard}
+                title="Copy Link trong bộ nhớ vào Textbox"
+                aria-label="Copy Link trong bộ nhớ vào Textbox"
+                style={iconButtonStyle(palette.green)}
+              >
+                {comboMtlClipboardState === 'pasted' ? '✅' : '📥'}
+              </button>
+            </div>
+            {comboObjLoadError && (
+              <div style={{ marginTop: 6, color: palette.red, fontSize: 12, fontWeight: 700, lineHeight: 1.5 }}>
+                ⚠️ {comboObjLoadError}
+              </div>
+            )}
+
+            <div className="slider-row" style={{ marginTop: 14 }}>
+              <label style={{ ...labelStyle(palette), margin: 0, minWidth: 130 }}>Azimuth {cameraCombo.azimuth}°</label>
+              <input type="range" min={0} max={315} step={45} value={cameraCombo.azimuth} onChange={(e) => setCameraCombo((prev) => ({ ...prev, azimuth: Number(e.target.value) }))} style={{ flex: 1 }} />
+            </div>
+            <div className="slider-row">
+              <label style={{ ...labelStyle(palette), margin: 0, minWidth: 130 }}>Elevation {cameraCombo.elevation}°</label>
+              <input type="range" min={-30} max={60} step={30} value={cameraCombo.elevation} onChange={(e) => setCameraCombo((prev) => ({ ...prev, elevation: Number(e.target.value) }))} style={{ flex: 1 }} />
+            </div>
+            <div className="slider-row">
+              <label style={{ ...labelStyle(palette), margin: 0, minWidth: 130 }}>Distance {cameraCombo.distance.toFixed(1)}</label>
+              <input type="range" min={0.6} max={1.4} step={0.4} value={cameraCombo.distance} onChange={(e) => setCameraCombo((prev) => ({ ...prev, distance: Number(e.target.value) }))} style={{ flex: 1 }} />
+            </div>
+
+            <label style={labelStyle(palette)}>Prompt sinh ra</label>
+            <div style={{ ...inputStyle(palette), fontFamily: 'monospace', fontSize: 12, color: palette.green }}>{promptCombo}</div>
           </section>
 
           {/* --- REALTIME HF SPACE --- */}
