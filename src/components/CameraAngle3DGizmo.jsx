@@ -63,7 +63,7 @@ export default function Camera3DAngleGizmo({ objUrl, value, onChange }) {
     camera.position.set(4.5, 3, 4.5)
     camera.lookAt(0, 0.75, 0)
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true })
+    const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true })
     renderer.setSize(wrapper.clientWidth, wrapper.clientHeight)
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2))
     wrapper.innerHTML = ''

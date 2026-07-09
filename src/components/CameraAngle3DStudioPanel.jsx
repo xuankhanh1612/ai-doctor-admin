@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useMemo, useRef, useState } from 'react'
 import { useApp } from '../context/AppContext.jsx'
 import Camera3DAngleGizmo, { buildCameraPrompt } from './CameraAngle3DGizmo.jsx'
 
@@ -30,6 +30,7 @@ function replaceImageToken(value, imageFile) {
 export default function CameraAngle3DStudioPanel() {
   const { theme } = useApp()
   const isDark = theme === 'dark'
+  const gizmoWrapperRef = useRef(null)
 
   const [objUrl, setObjUrl] = useState(DEFAULT_OBJ_URL)
   const [camera, setCamera] = useState({ azimuth: 0, elevation: 0, distance: 1.0 })
@@ -111,10 +112,8 @@ export default function CameraAngle3DStudioPanel() {
   // Tải file .obj đang dùng trong gizmo về máy — fetch thật -> Blob -> <a
   // download> để trình duyệt lưu đúng tên file, không chỉ mở link. Nếu
   // server chặn CORS (một số repo GitHub raw/CDN), rơi về mở tab mới để tự
-  // "Save As" thủ công.
-  const downloadCurrentObj = async () => {
-    if (!objUrl) return
-    setObjDownloadState('downloading')
+  // "Save As" thủ công. Trả về true nếu tải trực tiếp thành công.
+  const downloadObjFile = async () => {
     try {
       const res = await fetch(objUrl)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
@@ -133,13 +132,58 @@ export default function CameraAngle3DStudioPanel() {
       a.click()
       a.remove()
       setTimeout(() => URL.revokeObjectURL(blobUrl), 4000)
-      setObjDownloadState('done')
+      return true
     } catch (err) {
       console.warn('Download .obj failed, opening in new tab instead', err)
       window.open(objUrl, '_blank', 'noopener')
-      setObjDownloadState('error')
+      return false
     }
-    setTimeout(() => setObjDownloadState('idle'), 2200)
+  }
+
+  // Chụp lại đúng canvas WebGL của gizmo (renderer đã bật
+  // preserveDrawingBuffer trong CameraAngle3DGizmo.jsx) rồi ghép thêm dải
+  // thông tin góc XYZ + prompt hiện tại vào bên dưới ảnh, xuất ra PNG thật —
+  // đây là phần "chỉnh góc XYZ" của tên nút, khác với file .obj gốc (vốn
+  // không đổi theo góc máy).
+  const downloadAngleSnapshot = () => {
+    const srcCanvas = gizmoWrapperRef.current?.querySelector('canvas')
+    if (!srcCanvas) return false
+    const w = srcCanvas.width
+    const h = srcCanvas.height
+    const scale = w / 800
+    const bannerH = Math.round(110 * scale)
+    const out = document.createElement('canvas')
+    out.width = w
+    out.height = h + bannerH
+    const ctx = out.getContext('2d')
+    ctx.drawImage(srcCanvas, 0, 0, w, h)
+    ctx.fillStyle = '#05070d'
+    ctx.fillRect(0, h, w, bannerH)
+    ctx.fillStyle = '#22d3ee'
+    ctx.font = `900 ${Math.round(22 * scale)}px monospace`
+    ctx.fillText(`Azimuth ${camera.azimuth}° · Elevation ${camera.elevation}° · Distance ${camera.distance.toFixed(1)}`, 20 * scale, h + 40 * scale)
+    ctx.fillStyle = '#34d399'
+    ctx.font = `${Math.round(16 * scale)}px monospace`
+    ctx.fillText(prompt, 20 * scale, h + 76 * scale)
+    const pngUrl = out.toDataURL('image/png')
+    const a = document.createElement('a')
+    a.href = pngUrl
+    a.download = `camera-angle-az${camera.azimuth}-el${camera.elevation}-dist${camera.distance.toFixed(1)}.png`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    return true
+  }
+
+  const downloadObjAndAngle = async () => {
+    if (!objUrl) return
+    setObjDownloadState('downloading')
+    const objOk = await downloadObjFile()
+    // đợi 1 nhịp để trình duyệt không chặn 2 lượt download liên tiếp
+    await new Promise((r) => setTimeout(r, 400))
+    const snapshotOk = downloadAngleSnapshot()
+    setObjDownloadState(objOk && snapshotOk ? 'done' : 'error')
+    setTimeout(() => setObjDownloadState('idle'), 2400)
   }
 
   return (
@@ -168,11 +212,13 @@ export default function CameraAngle3DStudioPanel() {
             <h2 style={{ margin: '0 0 6px', fontSize: 20 }}>🎮 3D Camera Control</h2>
             <p style={{ margin: '0 0 12px', color: palette.text2, fontSize: 12 }}>Kéo tay cầm: 🟢 Azimuth · 🩷 Elevation · 🟠 Distance</p>
 
-            <Camera3DAngleGizmo objUrl={objUrl} value={camera} onChange={setCamera} />
+            <div ref={gizmoWrapperRef}>
+              <Camera3DAngleGizmo objUrl={objUrl} value={camera} onChange={setCamera} />
+            </div>
 
             <button
               type="button"
-              onClick={downloadCurrentObj}
+              onClick={downloadObjAndAngle}
               disabled={objDownloadState === 'downloading'}
               style={{
                 marginTop: 12, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
@@ -182,9 +228,9 @@ export default function CameraAngle3DStudioPanel() {
               }}
             >
               {objDownloadState === 'downloading' && '⏳ Đang tải...'}
-              {objDownloadState === 'done' && '✅ Đã tải xong (.obj)'}
-              {objDownloadState === 'error' && '↗ Đã mở tab mới'}
-              {objDownloadState === 'idle' && '⬇️ Download model .obj'}
+              {objDownloadState === 'done' && '✅ Đã tải xong (.obj + .png)'}
+              {objDownloadState === 'error' && '⚠️ Có lỗi, kiểm tra lại'}
+              {objDownloadState === 'idle' && '⬇️ Download 3D + chỉnh góc XYZ'}
             </button>
 
             <label style={labelStyle(palette)}>Model .obj demo cho gizmo (đổi thử model khác)</label>
