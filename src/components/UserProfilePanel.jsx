@@ -57,6 +57,83 @@ function ProfileAvatar3D({ source, size = 154, isDark }) {
   )
 }
 
+function guessFileName(url, fallbackBase, fallbackExt) {
+  try {
+    const path = new URL(url, window.location.href).pathname
+    const base = path.split('/').pop()
+    if (base) return decodeURIComponent(base)
+  } catch { /* ignore malformed URL, fall through to fallback below */ }
+  return `${fallbackBase}.${fallbackExt}`
+}
+
+// Tải file model thật về máy — ưu tiên fetch -> Blob -> <a download> (chạy
+// được kể cả khi URL nguồn không set Content-Disposition). Nếu server chặn
+// CORS (một số Hugging Face Space/Sketchfab mirror), fetch sẽ ném lỗi và ta
+// rơi về mở tab mới để người dùng tự "Save As" thủ công.
+async function downloadModelFile(url, fileName) {
+  try {
+    const res = await fetch(url)
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const blob = await res.blob()
+    const blobUrl = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = blobUrl
+    a.download = fileName
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 4000)
+    return true
+  } catch (err) {
+    console.warn('Download model file failed, opening in new tab instead', err)
+    window.open(url, '_blank', 'noopener')
+    return false
+  }
+}
+
+// Nút "Download" hiển thị ngay dưới avatar 3D thật — tải file model chính
+// (glb/vrm/fbx/obj); nếu là OBJ có kèm .mtl thì tải luôn cả file vật liệu.
+function AvatarDownload3DButton({ source, vi }) {
+  const [state, setState] = useState('idle') // 'idle' | 'downloading' | 'done' | 'error'
+
+  if (!source?.modelFileUrl) return null
+
+  const kind = source.modelKind || (source.format === 'obj' ? 'obj' : source.format?.toUpperCase().includes('FBX') ? 'fbx' : 'gltf')
+  const ext = kind === 'obj' ? 'obj' : kind === 'fbx' ? 'fbx' : (source.format?.toLowerCase() === 'vrm' ? 'vrm' : 'glb')
+  const baseName = (source.name || 'avatar-3d').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'avatar-3d'
+
+  const handleDownload = async () => {
+    setState('downloading')
+    const ok = await downloadModelFile(source.modelFileUrl, guessFileName(source.modelFileUrl, baseName, ext))
+    if (source.mtlUrl) {
+      // Đợi 1 nhịp ngắn để trình duyệt không chặn 2 lượt download liên tiếp.
+      await new Promise((r) => setTimeout(r, 400))
+      await downloadModelFile(source.mtlUrl, guessFileName(source.mtlUrl, baseName, 'mtl'))
+    }
+    setState(ok ? 'done' : 'error')
+    setTimeout(() => setState('idle'), 2200)
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleDownload}
+      disabled={state === 'downloading'}
+      style={{
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+        padding: '7px 14px', borderRadius: 999, fontSize: 12, fontWeight: 800,
+        border: '1px solid rgba(0,184,204,0.4)', background: 'rgba(0,184,204,0.12)', color: '#00b8cc',
+        cursor: state === 'downloading' ? 'wait' : 'pointer', opacity: state === 'downloading' ? 0.7 : 1,
+      }}
+    >
+      {state === 'downloading' && (vi ? '⏳ Đang tải...' : '⏳ Downloading...')}
+      {state === 'done' && (vi ? '✅ Đã tải xong' : '✅ Downloaded')}
+      {state === 'error' && (vi ? '↗ Đã mở tab mới' : '↗ Opened in new tab')}
+      {state === 'idle' && (<>⬇️ {vi ? `Tải avatar 3D (.${ext})` : `Download 3D avatar (.${ext})`}</>)}
+    </button>
+  )
+}
+
 
 function profileCameraTimestamp(lang, date = new Date()) {
   return date.toLocaleString(lang === 'vi' ? 'vi-VN' : 'en-US', {
@@ -314,6 +391,11 @@ export default function UserProfilePanel() {
                 </div>
                 <UserUuid3DAvatar uuid={user?.uuid} isDark={isDark} vi={vi} accent={providerMeta.color} />
               </div>
+              {avatarModelSource && (
+                <div style={{ marginBottom: 14 }}>
+                  <AvatarDownload3DButton source={avatarModelSource} vi={vi} />
+                </div>
+              )}
               <div style={{ fontSize: 18, fontWeight: 900, marginBottom: 4 }}>{name || user?.name}</div>
               <div style={{ fontSize: 12, color: text3, marginBottom: 16 }}>{user?.email}</div>
             </div>
@@ -687,6 +769,11 @@ function AnonymousProfilePanel({ user, isDark, vi, lang, t, loginWithGoogle, log
                   </div>
                   <UserUuid3DAvatar uuid={user?.uuid} isDark={isDark} vi={vi} accent="#2d8a5e" />
                 </div>
+                {avatarModelSource && (
+                  <div style={{ marginBottom: 14 }}>
+                    <AvatarDownload3DButton source={avatarModelSource} vi={vi} />
+                  </div>
+                )}
                 <div style={{ fontSize: 16, fontWeight: 900, marginBottom: 4 }}>{name || user.name}</div>
                 <div style={{ fontSize: 11, color: text3, marginBottom: 16 }}>{vi ? 'Khách (chưa đăng nhập)' : 'Guest (not signed in)'}</div>
               </div>
