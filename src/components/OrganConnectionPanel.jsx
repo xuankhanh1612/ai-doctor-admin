@@ -1730,19 +1730,7 @@ export default function OrganConnectionPanel({ onNext, onPrev, prevLabel, nextLa
       </div>
     </div>
 
-    {/* Bản đồ giải phẫu cơ thể — full chiều ngang, đặt ngay sau khối video ở trên.
-        Trỏ chuột / chạm vào từng chấm sáng trên ảnh để xem phân tích chi tiết
-        hiện ra ở panel bên phải (component AnatomyHoverOverlayRightPanel). */}
-    <div style={{ padding: '0 clamp(12px,3vw,24px) 28px', background: isDark ? '#0a0d1a' : '#f8fafc' }}>
-      <div style={{ maxWidth: 1200, margin: '0 auto' }}>
-        <h3 style={{ margin: '0 0 12px', fontSize: 15, fontWeight: 800, color: isDark ? '#e2e8f0' : '#0f172a' }}>
-          🧬 Bản đồ giải phẫu cơ thể
-        </h3>
-        <div style={{ height: 560 }}>
-          <AnatomyHoverOverlayRightPanel />
-        </div>
-      </div>
-    </div>
+    <AnatomyHoverOverlayRightPanel isDark={isDark} />
 
     {/* Nav bar — luôn ở dưới cùng của toàn trang */}
     <div className="organ-nav-bar">
