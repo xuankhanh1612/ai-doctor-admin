@@ -65,6 +65,7 @@ export default function Sidebar({ active, onNavigate, openSignal = 0 }) {
     { id: 'statAnalysis', label: t('statAnalysis'), step: '20' },
     { id: 'swarm',      label: t('swarmCouncil'),    step: '21' },
     { id: 'consensus', label: t('consensus'),       step: '22' },
+    { id: 'varCheck', label: 'VAR Y TẾ',             step: '22b' },
     { id: 'protein3d', label: t('protein3d'),       step: '23' },
     { id: 'aiHealthcareVision', label: t('aiHealthcareVision'), step: '24' },
     { id: 'stressRelief', label: t('stressRelief'), step: '25' },
