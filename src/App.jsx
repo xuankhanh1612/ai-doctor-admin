@@ -83,12 +83,28 @@ export default function App() {
   // 3) 'login'        -> LoginPage thật — vào khi bấm "Tạo tài khoản" ở bước
   //    1 hoặc 2, hoặc bấm nút hành động ở bước 2.
   const [preLoginView, setPreLoginView] = useState('chooseRole')
+  // Cờ riêng: chỉ true khi user THỰC SỰ hoàn tất 1 hành động ngay TRÊN trang
+  // Login (Google/Apple/Email hoặc "Bắt đầu ẩn danh"). Trước đây app dùng
+  // `preLoginView !== 'login'` để suy luận điều này, nhưng nếu người dùng đã
+  // có phiên anonymous từ trước (do bấm mic ở ChooseUserRolePanel /
+  // DonationHeroPanel) rồi mới bấm 1 nút hành động khác (không phải nút trên
+  // trang Login) để set preLoginView='login', suy luận đó sai — vì user đã
+  // tồn tại (anonymous) NÊN điều kiện showGuestPreLoginScreens bị tính là
+  // false ngay lập tức, khiến app bỏ qua hẳn trang Login và nhảy thẳng vào
+  // layout đầy đủ (bug: "vào thẳng trang Game"). Cờ hasCompletedLogin tách
+  // riêng 2 việc này: preLoginView chỉ quyết định ĐANG XEM màn nào trong 3
+  // màn guest, còn hasCompletedLogin mới quyết định đã THỰC SỰ đăng nhập
+  // xong (từ chính trang Login) hay chưa.
+  const [hasCompletedLogin, setHasCompletedLogin] = useState(false)
   const prevUserRef = useRef(null)
 
   useEffect(() => {
     // Vừa logout (trước đó có user, giờ không còn) -> lần vào tiếp theo lại
     // bắt đầu từ màn hình "Chọn Vai Trò Anh Hùng" thay vì thẳng vào Login.
-    if (prevUserRef.current && !user) setPreLoginView('chooseRole')
+    if (prevUserRef.current && !user) {
+      setPreLoginView('chooseRole')
+      setHasCompletedLogin(false)
+    }
     prevUserRef.current = user
   }, [user])
 
@@ -278,15 +294,18 @@ export default function App() {
 
   // Vẫn hiển thị 2 màn hình "guest" (chooseRole / hero) kể cả khi đã có
   // user — MIỄN LÀ đó là phiên "anonymous" tạo ra bởi bấm mic (xem
-  // heroPanels/HeroMicVoiceButton.jsx) và preLoginView chưa được chuyển
-  // sang 'login'. Nếu không, loginAnonymous() gọi từ bên trong nút mic sẽ
-  // khiến `user` có giá trị ngay lập tức và làm app nhảy thẳng sang layout
-  // đầy đủ (Sidebar/Topbar) — đúng thứ người dùng KHÔNG muốn khi chỉ mới
-  // bấm mic để hỏi AI ngay tại trang này. Khi người dùng chủ động bấm "Tạo
-  // tài khoản" / nút hành động khác, preLoginView chuyển sang 'login', điều
-  // kiện dưới đây sẽ false và app chuyển sang layout đầy đủ như bình
-  // thường (kể cả khi bấm "Tiếp tục với tư cách khách" trên LoginPage).
-  const showGuestPreLoginScreens = !user || (user.isAnonymous && preLoginView !== 'login')
+  // heroPanels/HeroMicVoiceButton.jsx) và người dùng CHƯA thực sự hoàn tất
+  // đăng nhập trên trang Login (hasCompletedLogin). Nếu không, loginAnonymous()
+  // gọi từ bên trong nút mic sẽ khiến `user` có giá trị ngay lập tức và làm
+  // app nhảy thẳng sang layout đầy đủ (Sidebar/Topbar) — đúng thứ người dùng
+  // KHÔNG muốn khi chỉ mới bấm mic để hỏi AI ngay tại trang này, HOẶC khi mới
+  // bấm 1 nút hành động khác (Khám phá / Hiến tặng ngay / Tạo tài khoản /
+  // Đăng nhập) để CHUYỂN SANG trang Login chứ chưa hề bấm nút nào trên chính
+  // trang đó. Khi người dùng chủ động bấm 1 trong các nút TRÊN trang Login
+  // (Google/Apple/Email hoặc "Bắt đầu ẩn danh"), hasCompletedLogin chuyển
+  // sang true, điều kiện dưới đây sẽ false và app chuyển sang layout đầy đủ
+  // như bình thường.
+  const showGuestPreLoginScreens = !user || (user.isAnonymous && !hasCompletedLogin)
 
   if (showGuestPreLoginScreens) {
     if (preLoginView === 'chooseRole') {
@@ -325,7 +344,7 @@ export default function App() {
         </div>
       )
     }
-    return <LoginPage onSuccess={() => {}} onBack={() => setPreLoginView('hero')} />
+    return <LoginPage onSuccess={() => setHasCompletedLogin(true)} onBack={() => setPreLoginView('hero')} />
   }
 
   const isDark = theme === 'dark'
