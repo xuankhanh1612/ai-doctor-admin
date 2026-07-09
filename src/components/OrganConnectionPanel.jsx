@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import NavButtons from './NavButtons.jsx'
 import AnatomyHoverOverlay from './AnatomyHoverOverlay.jsx'
+import AnatomyHoverOverlayRightPanel from './AnatomyHoverOverlayRightPanel.jsx'
 import { useApp } from '../context/AppContext'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useGlobalAIChatbotEngine, quickPrompts, MAX_FILES, getModeLabel } from '../lib/useGlobalAIChatbotEngine.js'
@@ -1728,6 +1729,8 @@ export default function OrganConnectionPanel({ onNext, onPrev, prevLabel, nextLa
         </div>
       </div>
     </div>
+
+    <AnatomyHoverOverlayRightPanel isDark={isDark} />
 
     {/* Nav bar — luôn ở dưới cùng của toàn trang */}
     <div className="organ-nav-bar">
