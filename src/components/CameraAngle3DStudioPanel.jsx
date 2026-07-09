@@ -44,6 +44,7 @@ export default function CameraAngle3DStudioPanel() {
   const [rawResponse, setRawResponse] = useState(null)
   const [outputImage, setOutputImage] = useState('')
   const [busy, setBusy] = useState(false)
+  const [objDownloadState, setObjDownloadState] = useState('idle') // 'idle' | 'downloading' | 'done' | 'error'
 
   const palette = useMemo(() => ({
     bg: isDark ? '#030712' : '#f3f7fb',
@@ -107,6 +108,40 @@ export default function CameraAngle3DStudioPanel() {
       .finally(() => setBusy(false))
   }
 
+  // Tải file .obj đang dùng trong gizmo về máy — fetch thật -> Blob -> <a
+  // download> để trình duyệt lưu đúng tên file, không chỉ mở link. Nếu
+  // server chặn CORS (một số repo GitHub raw/CDN), rơi về mở tab mới để tự
+  // "Save As" thủ công.
+  const downloadCurrentObj = async () => {
+    if (!objUrl) return
+    setObjDownloadState('downloading')
+    try {
+      const res = await fetch(objUrl)
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const blob = await res.blob()
+      const blobUrl = URL.createObjectURL(blob)
+      let fileName = 'model.obj'
+      try {
+        const path = new URL(objUrl).pathname
+        const base = path.split('/').pop()
+        if (base) fileName = decodeURIComponent(base)
+      } catch { /* giữ tên mặc định nếu URL không hợp lệ */ }
+      const a = document.createElement('a')
+      a.href = blobUrl
+      a.download = fileName
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 4000)
+      setObjDownloadState('done')
+    } catch (err) {
+      console.warn('Download .obj failed, opening in new tab instead', err)
+      window.open(objUrl, '_blank', 'noopener')
+      setObjDownloadState('error')
+    }
+    setTimeout(() => setObjDownloadState('idle'), 2200)
+  }
+
   return (
     <div style={{ minHeight: '100%', background: palette.bg, color: palette.text, padding: '28px clamp(16px, 4vw, 42px)' }}>
       <div style={{ maxWidth: 1240, margin: '0 auto' }}>
@@ -134,6 +169,23 @@ export default function CameraAngle3DStudioPanel() {
             <p style={{ margin: '0 0 12px', color: palette.text2, fontSize: 12 }}>Kéo tay cầm: 🟢 Azimuth · 🩷 Elevation · 🟠 Distance</p>
 
             <Camera3DAngleGizmo objUrl={objUrl} value={camera} onChange={setCamera} />
+
+            <button
+              type="button"
+              onClick={downloadCurrentObj}
+              disabled={objDownloadState === 'downloading'}
+              style={{
+                marginTop: 12, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                padding: '9px 16px', borderRadius: 999, fontSize: 12, fontWeight: 800, width: '100%',
+                border: `1px solid ${palette.cyan}66`, background: `${palette.cyan}1f`, color: palette.cyan,
+                cursor: objDownloadState === 'downloading' ? 'wait' : 'pointer', opacity: objDownloadState === 'downloading' ? 0.7 : 1,
+              }}
+            >
+              {objDownloadState === 'downloading' && '⏳ Đang tải...'}
+              {objDownloadState === 'done' && '✅ Đã tải xong (.obj)'}
+              {objDownloadState === 'error' && '↗ Đã mở tab mới'}
+              {objDownloadState === 'idle' && '⬇️ Download model .obj'}
+            </button>
 
             <label style={labelStyle(palette)}>Model .obj demo cho gizmo (đổi thử model khác)</label>
             <input value={objUrl} onChange={(e) => setObjUrl(e.target.value)} style={{ ...inputStyle(palette), fontFamily: 'monospace', fontSize: 11 }} />
