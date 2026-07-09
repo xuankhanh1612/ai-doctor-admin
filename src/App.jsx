@@ -13,6 +13,7 @@ import TelemedicinePanel from './components/TelemedicinePanel.jsx'
 import StatisticalAnalysisPanel from './components/StatisticalAnalysisPanel.jsx'
 import SimulationPanel from './components/SimulationPanel.jsx'
 import ConsensusPanel from './components/ConsensusPanel.jsx'
+import VarCheckPanel from './components/VarCheckPanel.jsx'
 import SwarmConsensusPanel from './components/SwarmConsensusPanel.jsx'
 import UploadPanel from './components/upload/UploadPanel.jsx'
 import HealthJourneyPanel from './components/HealthJourneyPanel.jsx'
@@ -57,7 +58,7 @@ import { addNotification } from './lib/notifications.js'
 import { useTTS } from './lib/groqAiClient.js'
 
 // THÊM 'medicalAssetStore' NGAY SAU 'healthJourneyGame'
-const PANELS = ['healthJourneyGame', 'medicalAssetStore', 'medicalVisualPlayground', 'myRewardHealth', 'rssPortal', 'waterDrinkChatBot', 'wikiMedVision', 'fullDocSummarization', 'documentOCR', 'twoDTo3DAsset', 'xyzCameraAngle', 'cameraAngle3DStudio', 'organConnection', 'healthJourney', 'lunchJourney', 'dinnerJourney', 'upload', 'imaging', 'checkin', 'family', 'record', 'familyRelationship', 'matrix3dBody', 'omnidirectional3dBody', 'twin', 'telemedicine', 'statAnalysis', 'swarm', 'consensus', 'protein3d', 'aiHealthcareVision', 'aiHealthcareVisionControl', 'stressRelief', 'aiInbodyPortal', 'printPortal', 'chatHistory', 'myImageToVideo']
+const PANELS = ['healthJourneyGame', 'medicalAssetStore', 'medicalVisualPlayground', 'myRewardHealth', 'rssPortal', 'waterDrinkChatBot', 'wikiMedVision', 'fullDocSummarization', 'documentOCR', 'twoDTo3DAsset', 'xyzCameraAngle', 'cameraAngle3DStudio', 'organConnection', 'healthJourney', 'lunchJourney', 'dinnerJourney', 'upload', 'imaging', 'checkin', 'family', 'record', 'familyRelationship', 'matrix3dBody', 'omnidirectional3dBody', 'twin', 'telemedicine', 'statAnalysis', 'swarm', 'consensus', 'varCheck', 'protein3d', 'aiHealthcareVision', 'aiHealthcareVisionControl', 'stressRelief', 'aiInbodyPortal', 'printPortal', 'chatHistory', 'myImageToVideo']
 
 export default function App() {
   const { user, loading } = useAuth()
@@ -145,6 +146,7 @@ export default function App() {
     statAnalysis: t('statAnalysis'),
     swarm: t('swarmCouncil'),
     consensus: `${t('consensus')} (Classic)`,
+    varCheck: 'VAR Y TẾ',
     protein3d: t('protein3d'),
     aiHealthcareVision: t('aiHealthcareVision'),
     aiHealthcareVisionControl: t('aiHealthcareVisionControl'),
@@ -385,6 +387,7 @@ export default function App() {
             {active === 'statAnalysis' && <StatisticalAnalysisPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'swarm'     && <SwarmConsensusPanel onReset={() => setActive('upload')} onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'consensus' && <ConsensusPanel     onReset={() => setActive('upload')} onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} />}
+            {active === 'varCheck'  && <VarCheckPanel      onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'protein3d' && <Protein3DPanel     onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'aiHealthcareVision' && <AIHealthcareVisionPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} />}
             {active === 'aiHealthcareVisionControl' && <AIHealthcareVisionControlPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} onViewMedicalRecord={() => setActive('upload')} />}
