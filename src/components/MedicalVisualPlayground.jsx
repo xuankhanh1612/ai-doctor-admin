@@ -216,6 +216,65 @@ export default function MedicalVisualPlayground() {
           </div>
 
           <div>
+            <h3 className="text-xs uppercase tracking-widest text-slate-400 font-semibold mb-4">Điều khiển 3D</h3>
+            <div className="bg-slate-900/80 border border-slate-700 p-3 rounded-xl space-y-2">
+              <button
+                onClick={toggleCameraGizmo}
+                className={`w-full px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg transition-all ${
+                  isCameraGizmoOn
+                    ? 'bg-red-500/80 hover:bg-red-500 text-white border border-red-400'
+                    : 'bg-emerald-600/80 hover:bg-emerald-600 text-white border border-emerald-400'
+                }`}
+              >
+                {isCameraGizmoOn ? '🔴 Tắt Camera Angle Gizmo' : '🎥 Bật Camera Angle Gizmo'}
+              </button>
+
+              {isCameraGizmoOn && (
+                <div className="bg-black/40 border border-white/10 px-3 py-2 rounded-lg text-[10px] font-mono text-emerald-300 text-left">
+                  Kéo 🟢 Azimuth / 🩷 Elevation / 🟠 Distance quanh {currentOrgan.name} để chọn góc chụp chuẩn.
+                </div>
+              )}
+
+              <button
+                onClick={() => {
+                  setIsSpatialHoverOn((v) => {
+                    const next = !v
+                    if (next) {
+                      setIsTouchlessOn(true)
+                      setIsCameraGizmoOn(false)
+                    }
+                    return next
+                  })
+                }}
+                className={`w-full px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg transition-all ${
+                  isSpatialHoverOn
+                    ? 'bg-fuchsia-500/80 hover:bg-fuchsia-500 text-white border border-fuchsia-300'
+                    : 'bg-cyan-600/80 hover:bg-cyan-600 text-white border border-cyan-300'
+                }`}
+              >
+                {isSpatialHoverOn ? '🧤 Tắt chạm 3D' : '🧤 Bật chạm hotspot 3D'}
+              </button>
+
+              {isSpatialHoverOn && (
+                <div className="bg-black/40 border border-cyan-300/20 px-3 py-2 rounded-lg text-[10px] font-mono text-cyan-200 text-left">
+                  Đưa ngón trỏ ảo vào chấm sáng để mở bảng chú thích 3D kiểu AnatomyHoverOverlay.
+                </div>
+              )}
+
+              <button
+                onClick={toggleTouchless}
+                className={`w-full px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg transition-all ${
+                  isTouchlessOn
+                    ? 'bg-red-500/80 hover:bg-red-500 text-white border border-red-400'
+                    : 'bg-blue-600/80 hover:bg-blue-600 text-white border border-blue-400'
+                }`}
+              >
+                {isTouchlessOn ? '🔴 Tắt Touchless Control' : '🤚 Bật Touchless Control'}
+              </button>
+            </div>
+          </div>
+
+          <div>
             <h3 className="text-xs uppercase tracking-widest text-slate-400 font-semibold mb-4 flex items-center gap-2">
               🤖 AI Phân tích (Live)
               <span className="relative flex h-3 w-3">
@@ -361,73 +420,16 @@ export default function MedicalVisualPlayground() {
           </div>
         </div>
 
-        {/* --- TOUCHLESS CONTROL + CAMERA ANGLE GIZMO --- */}
-        <div className="absolute bottom-6 right-6 z-20 flex flex-col items-end gap-2">
-          <button
-            onClick={toggleCameraGizmo}
-            className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider flex items-center gap-2 shadow-lg transition-all ${
-              isCameraGizmoOn
-                ? 'bg-red-500/80 hover:bg-red-500 text-white border border-red-400'
-                : 'bg-emerald-600/80 hover:bg-emerald-600 text-white border border-emerald-400'
-            }`}
-          >
-            {isCameraGizmoOn ? '🔴 Tắt Camera Angle Gizmo' : '🎥 Bật Camera Angle Gizmo'}
-          </button>
-
-          {isCameraGizmoOn && (
-            <div className="bg-black/60 backdrop-blur-md border border-white/10 px-3 py-2 rounded-lg text-[10px] font-mono text-emerald-300 max-w-[260px] text-right">
-              Kéo 🟢 Azimuth / 🩷 Elevation / 🟠 Distance quanh {currentOrgan.name} để chọn góc chụp chuẩn.
+        {isTouchlessOn && (
+          <div className="fixed left-6 top-28 z-40 w-72 aspect-video bg-black rounded-xl border border-white/20 overflow-hidden shadow-2xl">
+            <TouchlessHandCam onHandTrack={handleHandTrack} onHandLost={handleHandLost} />
+            <div className="absolute inset-0 border-2 border-dashed border-white/10 m-2 rounded-lg pointer-events-none"></div>
+            <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-black/60 px-2 py-1 rounded text-[10px] font-mono pointer-events-none">
+              <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
+              MediaPipe Hand Tracking
             </div>
-          )}
-
-          <button
-            onClick={() => {
-              setIsSpatialHoverOn((v) => {
-                const next = !v
-                if (next) {
-                  setIsTouchlessOn(true)
-                  setIsCameraGizmoOn(false)
-                }
-                return next
-              })
-            }}
-            className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider flex items-center gap-2 shadow-lg transition-all ${
-              isSpatialHoverOn
-                ? 'bg-fuchsia-500/80 hover:bg-fuchsia-500 text-white border border-fuchsia-300'
-                : 'bg-cyan-600/80 hover:bg-cyan-600 text-white border border-cyan-300'
-            }`}
-          >
-            {isSpatialHoverOn ? '🧤 Tắt chạm 3D' : '🧤 Bật chạm hotspot 3D'}
-          </button>
-
-          {isSpatialHoverOn && (
-            <div className="bg-black/60 backdrop-blur-md border border-cyan-300/20 px-3 py-2 rounded-lg text-[10px] font-mono text-cyan-200 max-w-[280px] text-right">
-              Đưa ngón trỏ ảo vào chấm sáng để mở bảng chú thích 3D kiểu AnatomyHoverOverlay.
-            </div>
-          )}
-
-          <button
-            onClick={toggleTouchless}
-            className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider flex items-center gap-2 shadow-lg transition-all ${
-              isTouchlessOn
-                ? 'bg-red-500/80 hover:bg-red-500 text-white border border-red-400'
-                : 'bg-blue-600/80 hover:bg-blue-600 text-white border border-blue-400'
-            }`}
-          >
-            {isTouchlessOn ? '🔴 Tắt Touchless Control' : '🤚 Bật Touchless Control'}
-          </button>
-
-          {isTouchlessOn && (
-            <div className="fixed left-6 top-28 z-40 w-72 aspect-video bg-black rounded-xl border border-white/20 overflow-hidden shadow-2xl">
-              <TouchlessHandCam onHandTrack={handleHandTrack} onHandLost={handleHandLost} />
-              <div className="absolute inset-0 border-2 border-dashed border-white/10 m-2 rounded-lg pointer-events-none"></div>
-              <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-black/60 px-2 py-1 rounded text-[10px] font-mono pointer-events-none">
-                <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
-                MediaPipe Hand Tracking
-              </div>
-            </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   )
