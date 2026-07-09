@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 
 // ============================================================================
 // AnatomyHoverOverlay — Lớp phủ chú thích tương tác (Interactive Hotspots)
@@ -24,7 +24,30 @@ import React, { useEffect, useState } from 'react';
 // 2461x2999 ~ 0.82:1, container bên dưới giữ đúng aspect-ratio này).
 const ANNOTATIONS = [
   { id: 'brain', top: '11%', left: '50%', label: 'Não bộ (Brain)', info: 'Trung tâm điều khiển hệ thần kinh trung ương, nằm trong hộp sọ.', status: 'Normal', align: 'right' },
-@@ -51,113 +51,127 @@ const STATUS_STYLES = {
+  { id: 'skull', top: '14.5%', left: '54%', label: 'Hộp sọ (Skull)', info: 'Khung xương bảo vệ não bộ, gồm nhiều xương dẹt gắn khít với nhau.', status: 'Normal', align: 'right' },
+  { id: 'oesophagus', top: '19%', left: '50%', label: 'Thực quản (Oesophagus)', info: 'Ống dẫn thức ăn từ hầu họng xuống dạ dày, dài khoảng 25cm.', status: 'Normal', align: 'left' },
+  { id: 'lymph-nodes', top: '23%', left: '41%', label: 'Hạch bạch huyết (Lymph nodes)', info: 'Cấu trúc nhỏ hình hạt đậu, lọc bạch huyết và chứa tế bào miễn dịch.', status: 'Normal', align: 'left' },
+  { id: 'lungs', top: '27%', left: '50%', label: 'Phổi (Lungs)', info: 'Cơ quan hô hấp chính, trao đổi oxy và CO2 giữa không khí và máu.', status: 'Normal', align: 'right' },
+  { id: 'lymph', top: '33%', left: '39%', label: 'Bạch huyết (Lymph)', info: 'Dịch trong suốt lưu thông trong hệ bạch huyết, hỗ trợ miễn dịch.', status: 'Normal', align: 'left' },
+  { id: 'liver', top: '37%', left: '45%', label: 'Gan (Liver)', info: 'Cơ quan lớn nhất trong ổ bụng, đảm nhiệm chuyển hoá và thải độc.', status: 'Normal', align: 'left' },
+  { id: 'stomach', top: '37%', left: '56%', label: 'Dạ dày (Stomach)', info: 'Túi cơ chứa và tiêu hoá thức ăn bằng dịch vị và enzym.', status: 'Normal', align: 'right' },
+  { id: 'kidneys', top: '43%', left: '49%', label: 'Thận (Kidneys)', info: 'Cặp cơ quan lọc máu, tạo nước tiểu và điều hoà cân bằng nội môi.', status: 'Normal', align: 'left' },
+  { id: 'blood-vessels', top: '45%', left: '58%', label: 'Mạch máu (Blood vessels)', info: 'Hệ thống động mạch, tĩnh mạch và mao mạch dẫn máu đi khắp cơ thể.', status: 'Normal', align: 'right' },
+  { id: 'large-intestine', top: '49%', left: '40%', label: 'Ruột già (Large intestine)', info: 'Hấp thu nước và muối khoáng, tạo và đào thải phân.', status: 'Normal', align: 'left' },
+  { id: 'small-intestine', top: '50%', left: '55%', label: 'Ruột non (Small intestine)', info: 'Nơi diễn ra phần lớn quá trình tiêu hoá và hấp thu dưỡng chất.', status: 'Normal', align: 'right' },
+  { id: 'nerve', top: '64%', left: '46%', label: 'Dây thần kinh (Nerve)', info: 'Dẫn truyền tín hiệu điện giữa não, tuỷ sống và các bộ phận cơ thể.', status: 'Normal', align: 'left' },
+  { id: 'bone', top: '64%', left: '56%', label: 'Xương (Bone)', info: 'Khung nâng đỡ cơ thể, bảo vệ nội tạng và là nơi sản sinh tế bào máu.', status: 'Normal', align: 'right' },
+  { id: 'muscle', top: '82%', left: '44%', label: 'Cơ (Muscle)', info: 'Mô co giãn giúp vận động, giữ tư thế và lưu thông máu.', status: 'Normal', align: 'left' },
+  { id: 'joint', top: '82%', left: '57%', label: 'Khớp (Joint)', info: 'Điểm nối giữa hai xương, cho phép cơ thể cử động linh hoạt.', status: 'Normal', align: 'right' },
+];
+
+// Class tĩnh theo trạng thái (tránh dùng template literal ghép động vì
+// Tailwind JIT chỉ nhận diện được class đã viết sẵn nguyên vẹn trong code).
+const STATUS_STYLES = {
+  Normal: {
+    card: 'text-emerald-300 border-emerald-400/30 bg-emerald-950/90 shadow-[0_0_15px_rgba(16,185,129,0.25)]',
+    dot: 'bg-emerald-500 shadow-[0_0_10px_#10b981]',
+    line: 'from-emerald-400/80 to-transparent',
     text: 'text-emerald-400',
   },
   Warning: {
@@ -50,16 +73,8 @@ const AnatomyHoverOverlay = ({
   imageSrc = '/assets/anatomy/anatomy-human.jpg',
   annotations = ANNOTATIONS,
   className = '',
-  highlightedAnnotationIds = null,
-  defaultActiveAnnotationId = null,
 }) => {
-  const [activeAnnotationId, setActiveAnnotationId] = useState(defaultActiveAnnotationId);
-  const spotlightAnnotationIds = Array.isArray(highlightedAnnotationIds) ? highlightedAnnotationIds : [];
-  const isSpotlightMode = spotlightAnnotationIds.length > 0;
-
-  useEffect(() => {
-    setActiveAnnotationId(defaultActiveAnnotationId);
-  }, [defaultActiveAnnotationId]);
+  const [activeAnnotationId, setActiveAnnotationId] = useState(null);
 
   const toggleAnnotation = (id) => {
     setActiveAnnotationId((currentId) => (currentId === id ? null : id));
@@ -84,10 +99,7 @@ const AnatomyHoverOverlay = ({
       {/* 2. CÁC ĐIỂM HOTSPOT & TEXT OVERLAY */}
       {annotations.map((ann) => {
         const style = STATUS_STYLES[ann.status] || STATUS_STYLES.Normal;
-        const isHighlighted = !isSpotlightMode || spotlightAnnotationIds.includes(ann.id);
-        const isActive = activeAnnotationId === ann.id || (isSpotlightMode && isHighlighted);
-        const hoverPanelClasses = isHighlighted ? 'group-hover/hotspot:opacity-100 group-hover/hotspot:pointer-events-auto group-hover/hotspot:translate-x-0' : '';
-        const hoverLineClasses = isHighlighted ? 'group-hover/hotspot:opacity-100' : '';
+        const isActive = activeAnnotationId === ann.id;
         const activePanelClasses = isActive
           ? 'opacity-100 pointer-events-auto translate-x-0'
           : `opacity-0 pointer-events-none ${ann.align === 'right' ? 'translate-x-3' : '-translate-x-3'}`;
@@ -96,7 +108,7 @@ const AnatomyHoverOverlay = ({
         return (
           <div
             key={ann.id}
-            className={`absolute group/hotspot z-10 ${isSpotlightMode && !isHighlighted ? 'opacity-25 grayscale' : ''}`}
+            className="absolute group/hotspot z-10"
             style={{ top: ann.top, left: ann.left }}
             onClick={(event) => event.stopPropagation()}
           >
@@ -106,12 +118,9 @@ const AnatomyHoverOverlay = ({
               className="relative flex items-center justify-center w-5 h-5 -ml-2.5 -mt-2.5 cursor-crosshair rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
               aria-label={`Hiển thị thông tin ${ann.label}`}
               aria-expanded={isActive}
-              aria-disabled={!isHighlighted}
-              onClick={() => {
-                if (isHighlighted) toggleAnnotation(ann.id);
-              }}
+              onClick={() => toggleAnnotation(ann.id)}
             >
-              <span className={`absolute inline-flex h-full w-full rounded-full opacity-50 animate-ping ${isHighlighted ? 'group-hover/hotspot:opacity-100' : ''} ${isActive ? 'opacity-100' : ''} ${style.dot.split(' ')[0]}`}></span>
+              <span className={`absolute inline-flex h-full w-full rounded-full opacity-50 animate-ping group-hover/hotspot:opacity-100 ${isActive ? 'opacity-100' : ''} ${style.dot.split(' ')[0]}`}></span>
               <span className={`relative inline-flex rounded-full h-2 w-2 ${style.dot}`}></span>
             </button>
 
@@ -120,9 +129,9 @@ const AnatomyHoverOverlay = ({
               className={`
                 absolute top-1/2 -translate-y-1/2 w-52 sm:w-60
                 backdrop-blur-md border rounded-xl p-3
-                ${hoverPanelClasses}
+                group-hover/hotspot:opacity-100 group-hover/hotspot:pointer-events-auto
                 transition-all duration-300 ease-out z-20
-                ${ann.align === 'right' ? 'left-6' : 'right-6'}
+                ${ann.align === 'right' ? 'left-6 group-hover/hotspot:translate-x-0' : 'right-6 group-hover/hotspot:translate-x-0'}
                 ${activePanelClasses}
                 ${style.card}
               `}
@@ -138,7 +147,7 @@ const AnatomyHoverOverlay = ({
             <div
               className={`
                 absolute top-1/2 -translate-y-1/2 h-[1px] w-4
-                ${hoverLineClasses} transition-all duration-300 delay-75
+                group-hover/hotspot:opacity-100 transition-all duration-300 delay-75
                 ${activeLineClasses}
                 ${ann.align === 'right' ? 'left-2.5 bg-gradient-to-r' : 'right-2.5 bg-gradient-to-l'}
                 ${style.line}
