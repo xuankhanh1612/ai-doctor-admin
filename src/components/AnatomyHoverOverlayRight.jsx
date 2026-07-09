@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 
 // ============================================================================
-// AnatomyHoverOverlayRightPanel — Lớp phủ chú thích tương tác có Panel bên phải
+// AnatomyHoverOverlayRight — Lớp phủ chú thích tương tác có Panel bên phải
 // Chuyển thể từ file AnatomyHoverOverlayRightPanel.js do người dùng cung cấp,
 // dùng chung ảnh giải phẫu thật trong public/assets/anatomy/anatomy-human.jpg
 // (đã bỏ class `animate-in` vì project chưa cài plugin tailwindcss-animate).
@@ -54,7 +54,7 @@ const STATUS_STYLES = {
   },
 };
 
-const AnatomyHoverOverlayRightPanel = ({
+const AnatomyHoverOverlayRight = ({
   imageSrc = '/assets/anatomy/anatomy-human.jpg',
   annotations = ANNOTATIONS,
   className = '',
