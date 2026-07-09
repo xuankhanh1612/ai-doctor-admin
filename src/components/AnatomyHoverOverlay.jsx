@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 // ============================================================================
 // AnatomyHoverOverlay — Lớp phủ chú thích tương tác (Interactive Hotspots)
@@ -27,16 +27,20 @@ const ANNOTATIONS = [
   { id: 'skull', top: '14.5%', left: '54%', label: 'Hộp sọ (Skull)', info: 'Khung xương bảo vệ não bộ, gồm nhiều xương dẹt gắn khít với nhau.', status: 'Normal', align: 'right' },
   { id: 'oesophagus', top: '19%', left: '50%', label: 'Thực quản (Oesophagus)', info: 'Ống dẫn thức ăn từ hầu họng xuống dạ dày, dài khoảng 25cm.', status: 'Normal', align: 'left' },
   { id: 'lymph-nodes', top: '23%', left: '41%', label: 'Hạch bạch huyết (Lymph nodes)', info: 'Cấu trúc nhỏ hình hạt đậu, lọc bạch huyết và chứa tế bào miễn dịch.', status: 'Normal', align: 'left' },
+  { id: 'cornea', top: '9.5%', left: '47%', label: 'Giác mạc (Cornea)', info: 'Lớp mô trong suốt phía trước mắt, giúp hội tụ ánh sáng để nhìn rõ.', status: 'Normal', align: 'left' },
   { id: 'lungs', top: '27%', left: '50%', label: 'Phổi (Lungs)', info: 'Cơ quan hô hấp chính, trao đổi oxy và CO2 giữa không khí và máu.', status: 'Normal', align: 'right' },
+  { id: 'heart', top: '32%', left: '52%', label: 'Tim (Heart)', info: 'Cơ quan bơm máu liên tục để đưa oxy và dưỡng chất đi khắp cơ thể.', status: 'Normal', align: 'right' },
   { id: 'lymph', top: '33%', left: '39%', label: 'Bạch huyết (Lymph)', info: 'Dịch trong suốt lưu thông trong hệ bạch huyết, hỗ trợ miễn dịch.', status: 'Normal', align: 'left' },
   { id: 'liver', top: '37%', left: '45%', label: 'Gan (Liver)', info: 'Cơ quan lớn nhất trong ổ bụng, đảm nhiệm chuyển hoá và thải độc.', status: 'Normal', align: 'left' },
   { id: 'stomach', top: '37%', left: '56%', label: 'Dạ dày (Stomach)', info: 'Túi cơ chứa và tiêu hoá thức ăn bằng dịch vị và enzym.', status: 'Normal', align: 'right' },
+  { id: 'pancreas', top: '40%', left: '54%', label: 'Tụy (Pancreas)', info: 'Tuyến tiêu hoá và nội tiết giúp tiết enzym, insulin và điều hoà đường huyết.', status: 'Normal', align: 'right' },
   { id: 'kidneys', top: '43%', left: '49%', label: 'Thận (Kidneys)', info: 'Cặp cơ quan lọc máu, tạo nước tiểu và điều hoà cân bằng nội môi.', status: 'Normal', align: 'left' },
   { id: 'blood-vessels', top: '45%', left: '58%', label: 'Mạch máu (Blood vessels)', info: 'Hệ thống động mạch, tĩnh mạch và mao mạch dẫn máu đi khắp cơ thể.', status: 'Normal', align: 'right' },
   { id: 'large-intestine', top: '49%', left: '40%', label: 'Ruột già (Large intestine)', info: 'Hấp thu nước và muối khoáng, tạo và đào thải phân.', status: 'Normal', align: 'left' },
   { id: 'small-intestine', top: '50%', left: '55%', label: 'Ruột non (Small intestine)', info: 'Nơi diễn ra phần lớn quá trình tiêu hoá và hấp thu dưỡng chất.', status: 'Normal', align: 'right' },
   { id: 'nerve', top: '64%', left: '46%', label: 'Dây thần kinh (Nerve)', info: 'Dẫn truyền tín hiệu điện giữa não, tuỷ sống và các bộ phận cơ thể.', status: 'Normal', align: 'left' },
   { id: 'bone', top: '64%', left: '56%', label: 'Xương (Bone)', info: 'Khung nâng đỡ cơ thể, bảo vệ nội tạng và là nơi sản sinh tế bào máu.', status: 'Normal', align: 'right' },
+  { id: 'skin', top: '72%', left: '59%', label: 'Da (Skin)', info: 'Hàng rào bảo vệ lớn nhất của cơ thể, giúp cảm nhận và điều hoà thân nhiệt.', status: 'Normal', align: 'right' },
   { id: 'muscle', top: '82%', left: '44%', label: 'Cơ (Muscle)', info: 'Mô co giãn giúp vận động, giữ tư thế và lưu thông máu.', status: 'Normal', align: 'left' },
   { id: 'joint', top: '82%', left: '57%', label: 'Khớp (Joint)', info: 'Điểm nối giữa hai xương, cho phép cơ thể cử động linh hoạt.', status: 'Normal', align: 'right' },
 ];
@@ -68,13 +72,25 @@ const STATUS_STYLES = {
  * @param {string} imageSrc - đường dẫn ảnh nền (mặc định ảnh giải phẫu trong public/assets)
  * @param {Array}  annotations - override danh sách hotspot nếu cần (mặc định dùng ANNOTATIONS)
  * @param {string} className - class bổ sung cho khung chứa ngoài cùng
+ * @param {string|null} focusAnnotationId - tự mở/highlight đúng 1 hotspot
+ * @param {boolean} showOnlyFocus - chỉ render hotspot đang focus (dùng cho popup chọn cơ quan)
  */
 const AnatomyHoverOverlay = ({
   imageSrc = '/assets/anatomy/anatomy-human.jpg',
   annotations = ANNOTATIONS,
   className = '',
+  focusAnnotationId = null,
+  showOnlyFocus = false,
 }) => {
-  const [activeAnnotationId, setActiveAnnotationId] = useState(null);
+  const [activeAnnotationId, setActiveAnnotationId] = useState(focusAnnotationId);
+
+  useEffect(() => {
+    setActiveAnnotationId(focusAnnotationId || null);
+  }, [focusAnnotationId]);
+
+  const visibleAnnotations = showOnlyFocus && focusAnnotationId
+    ? annotations.filter((ann) => ann.id === focusAnnotationId)
+    : annotations;
 
   const toggleAnnotation = (id) => {
     setActiveAnnotationId((currentId) => (currentId === id ? null : id));
@@ -97,7 +113,7 @@ const AnatomyHoverOverlay = ({
       />
 
       {/* 2. CÁC ĐIỂM HOTSPOT & TEXT OVERLAY */}
-      {annotations.map((ann) => {
+      {visibleAnnotations.map((ann) => {
         const style = STATUS_STYLES[ann.status] || STATUS_STYLES.Normal;
         const isActive = activeAnnotationId === ann.id;
         const activePanelClasses = isActive
