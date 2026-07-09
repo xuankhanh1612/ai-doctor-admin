@@ -76,7 +76,7 @@ const STATUS_STYLES = {
  * @param {boolean} showOnlyFocus - chỉ render hotspot đang focus (dùng cho popup chọn cơ quan)
  */
 const AnatomyHoverOverlay = ({
-  imageSrc = '/assets/anatomy/anatomy-human.jpg',
+  imageSrc = '/assets/anatomy/anatomy-human.png',
   annotations = ANNOTATIONS,
   className = '',
   focusAnnotationId = null,
