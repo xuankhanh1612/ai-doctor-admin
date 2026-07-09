@@ -44,11 +44,15 @@ export function buildCameraPrompt(azimuth, elevation, distance) {
   return `<sks> ${AZIMUTH_NAMES[az]} ${ELEVATION_NAMES[String(el)]} ${DISTANCE_NAMES[distKey]}`
 }
 
-export default function Camera3DAngleGizmo({ objUrl, value, onChange }) {
+export default function Camera3DAngleGizmo({ objUrl, value, onChange, onLoadError, onLoadSuccess }) {
   const wrapperRef = useRef(null)
   const promptRef = useRef(null)
   const liveRef = useRef({ azimuth: value?.azimuth ?? 0, elevation: value?.elevation ?? 0, distance: value?.distance ?? 1.0 })
   const applyExternalRef = useRef(null)
+  const onLoadErrorRef = useRef(onLoadError)
+  const onLoadSuccessRef = useRef(onLoadSuccess)
+  useEffect(() => { onLoadErrorRef.current = onLoadError }, [onLoadError])
+  useEffect(() => { onLoadSuccessRef.current = onLoadSuccess }, [onLoadSuccess])
 
   // Scene khởi tạo 1 lần; objUrl đổi thì tải lại model, KHÔNG huỷ toàn bộ scene.
   useEffect(() => {
@@ -109,9 +113,13 @@ export default function Camera3DAngleGizmo({ objUrl, value, onChange }) {
             }
           })
           targetGroup.add(object)
+          onLoadSuccessRef.current?.(url)
         },
         undefined,
-        (err) => console.warn('Camera3DAngleGizmo: không tải được .obj', err)
+        (err) => {
+          console.warn('Camera3DAngleGizmo: không tải được .obj', err)
+          onLoadErrorRef.current?.(err, url)
+        }
       )
     }
     loadTargetModel(objUrl)

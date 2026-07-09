@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useApp } from '../context/AppContext.jsx'
 import Camera3DAngleGizmo, { buildCameraPrompt } from './CameraAngle3DGizmo.jsx'
 
@@ -17,6 +17,15 @@ const GRADIO_CLIENT_CDN = 'https://esm.sh/@gradio/client@1.18.0'
 const IMAGE_TOKEN = '$IMAGE_FILE'
 const DEFAULT_OBJ_URL = 'https://raw.githubusercontent.com/godekd3133/DX9_WorldSkill_Practice_Gyeonggi_01/81ed0a14c63d309bbfc0fc98c8a40a43325336e6/Resource/Player/Animation/Attack05/Attack05%20(45).obj'
 
+// Dùng tạm khi link .obj người dùng nhập vào textbox bị lỗi (404, CORS,
+// parse lỗi...) — model đã có sẵn thật trong public/assets/models/ (xem
+// MedicalVisualPlayground.jsx, mục Krabby Patty demo). Chỉ để tham khảo,
+// .mtl không tải được trực tiếp trong Camera3DAngleGizmo (component này chỉ
+// nhận objUrl, không có prop mtlUrl) nên không cần dùng ở đây, nhưng vẫn ghi
+// lại link .mtl gốc trên GitHub trong dòng cảnh báo cho người dùng tham khảo.
+const FALLBACK_OBJ_URL = '/assets/models/krabbypattie01.obj'
+const FALLBACK_MTL_INFO_URL = 'https://github.com/xuankhanh1612/ai-doctor-admin/blob/main/public/assets/models/krabbypattie01.mtl'
+
 const loadGradioClient = () => import(/* @vite-ignore */ GRADIO_CLIENT_CDN).then((m) => m.Client)
 
 function replaceImageToken(value, imageFile) {
@@ -33,6 +42,8 @@ export default function CameraAngle3DStudioPanel() {
   const gizmoWrapperRef = useRef(null)
 
   const [objUrl, setObjUrl] = useState(DEFAULT_OBJ_URL)
+  const [effectiveObjUrl, setEffectiveObjUrl] = useState(DEFAULT_OBJ_URL)
+  const [objLoadError, setObjLoadError] = useState('')
   const [camera, setCamera] = useState({ azimuth: 0, elevation: 0, distance: 1.0 })
 
   const [sourceImage, setSourceImage] = useState(null)
@@ -60,6 +71,36 @@ export default function CameraAngle3DStudioPanel() {
   }), [isDark])
 
   const prompt = buildCameraPrompt(camera.azimuth, camera.elevation, camera.distance)
+
+  // Mỗi khi người dùng gõ/dán/xoá link trong textbox, thử tải lại đúng link
+  // đó — xoá cảnh báo lỗi cũ trước, để component tự báo lỗi mới (nếu có) qua
+  // handleObjLoadError bên dưới.
+  useEffect(() => {
+    setObjLoadError('')
+    setEffectiveObjUrl(objUrl)
+  }, [objUrl])
+
+  const handleObjLoadError = (err, failedUrl) => {
+    // Đang thử lại chính fallback mà vẫn lỗi (vd file demo bị xoá) -> chỉ log,
+    // không fallback tiếp để tránh vòng lặp vô hạn.
+    if (failedUrl === FALLBACK_OBJ_URL) {
+      console.warn('Camera3DAngleGizmo: cả model demo dự phòng cũng không tải được', err)
+      return
+    }
+    // Chỉ xử lý nếu đây đúng là lần thử của link người dùng đang nhập hiện tại
+    // (tránh trường hợp lỗi trả về trễ từ 1 URL đã bị thay bằng URL khác).
+    if (failedUrl !== objUrl) return
+    setObjLoadError(
+      `Không tải được model từ link này (${err?.message || 'lỗi tải file'}). Đang dùng tạm model demo public/assets/models/krabbypattie01.obj (kèm ${FALLBACK_MTL_INFO_URL}) cho đến khi bạn dán link .obj mới không lỗi vào ô trên.`
+    )
+    setEffectiveObjUrl(FALLBACK_OBJ_URL)
+  }
+
+  const handleObjLoadSuccess = (loadedUrl) => {
+    // Chỉ xoá cảnh báo khi chính link người dùng đang nhập tải thành công —
+    // nếu là fallback thì giữ nguyên cảnh báo để họ biết vẫn đang xem tạm.
+    if (loadedUrl === objUrl) setObjLoadError('')
+  }
 
   const handleImageChange = (e) => {
     const file = e.target.files?.[0]
@@ -114,16 +155,18 @@ export default function CameraAngle3DStudioPanel() {
   // Tải file .obj đang dùng trong gizmo về máy — fetch thật -> Blob -> <a
   // download> để trình duyệt lưu đúng tên file, không chỉ mở link. Nếu
   // server chặn CORS (một số repo GitHub raw/CDN), rơi về mở tab mới để tự
-  // "Save As" thủ công. Trả về true nếu tải trực tiếp thành công.
+  // "Save As" thủ công. Trả về true nếu tải trực tiếp thành công. Dùng
+  // effectiveObjUrl (model THẬT SỰ đang hiển thị trong gizmo — có thể là
+  // fallback nếu link người dùng nhập bị lỗi) thay vì objUrl thô.
   const downloadObjFile = async () => {
     try {
-      const res = await fetch(objUrl)
+      const res = await fetch(effectiveObjUrl)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const blob = await res.blob()
       const blobUrl = URL.createObjectURL(blob)
       let fileName = 'model.obj'
       try {
-        const path = new URL(objUrl).pathname
+        const path = new URL(effectiveObjUrl, window.location.href).pathname
         const base = path.split('/').pop()
         if (base) fileName = decodeURIComponent(base)
       } catch { /* giữ tên mặc định nếu URL không hợp lệ */ }
@@ -137,7 +180,7 @@ export default function CameraAngle3DStudioPanel() {
       return true
     } catch (err) {
       console.warn('Download .obj failed, opening in new tab instead', err)
-      window.open(objUrl, '_blank', 'noopener')
+      window.open(effectiveObjUrl, '_blank', 'noopener')
       return false
     }
   }
@@ -178,7 +221,7 @@ export default function CameraAngle3DStudioPanel() {
   }
 
   const downloadObjAndAngle = async () => {
-    if (!objUrl) return
+    if (!effectiveObjUrl) return
     setObjDownloadState('downloading')
     const objOk = await downloadObjFile()
     setObjDownloadState(objOk ? 'done' : 'error')
@@ -245,7 +288,13 @@ export default function CameraAngle3DStudioPanel() {
             <p style={{ margin: '0 0 12px', color: palette.text2, fontSize: 12 }}>Kéo tay cầm: 🟢 Azimuth · 🩷 Elevation · 🟠 Distance</p>
 
             <div ref={gizmoWrapperRef}>
-              <Camera3DAngleGizmo objUrl={objUrl} value={camera} onChange={setCamera} />
+              <Camera3DAngleGizmo
+                objUrl={effectiveObjUrl}
+                value={camera}
+                onChange={setCamera}
+                onLoadError={handleObjLoadError}
+                onLoadSuccess={handleObjLoadSuccess}
+              />
             </div>
 
             <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
@@ -315,6 +364,11 @@ export default function CameraAngle3DStudioPanel() {
                 {clipboardState === 'pasted' ? '✅' : '📥'}
               </button>
             </div>
+            {objLoadError && (
+              <div style={{ marginTop: 6, color: palette.red, fontSize: 12, fontWeight: 700, lineHeight: 1.5 }}>
+                ⚠️ {objLoadError}
+              </div>
+            )}
 
             <div className="slider-row" style={{ marginTop: 14 }}>
               <label style={{ ...labelStyle(palette), margin: 0, minWidth: 130 }}>Azimuth {camera.azimuth}°</label>
