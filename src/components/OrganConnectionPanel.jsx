@@ -32,14 +32,36 @@ const ORGAN_ANATOMY_ANNOTATION = {
   lungs: 'lungs',
 }
 
-function OrganAnatomyHoverWrap({ organKey, children, placement = 'left', previewTitle = 'Bản đồ giải phẫu cơ thể', previewHint = 'Đang highlight đúng cơ quan bạn đang trỏ chuột' }) {
+function OrganAnatomyHoverWrap({ organKey, children, previewTitle = 'Bản đồ giải phẫu cơ thể', previewHint = 'Đang highlight đúng cơ quan bạn đang trỏ chuột' }) {
   const annotationId = ORGAN_ANATOMY_ANNOTATION[organKey]
   const [open, setOpen] = useState(false)
 
   if (!annotationId) return children
 
-  const panelSide = placement === 'right' ? { left:'calc(100% + 12px)' } : { right:'calc(100% + 12px)' }
-  const arrowSide = placement === 'right' ? { left:-6, borderLeft:'1px solid rgba(16,185,129,0.25)', borderBottom:'1px solid rgba(16,185,129,0.25)' } : { right:-6, borderTop:'1px solid rgba(16,185,129,0.25)', borderRight:'1px solid rgba(16,185,129,0.25)' }
+  const popup = open && typeof document !== 'undefined' ? createPortal(
+    <div
+      style={{
+        position:'fixed',
+        inset:0,
+        zIndex:10050,
+        display:'flex',
+        alignItems:'center',
+        justifyContent:'center',
+        padding:16,
+        pointerEvents:'none',
+      }}
+      aria-hidden="true"
+    >
+      <div style={{ width:'min(580px, calc(100vw - 32px))', maxHeight:'calc(100vh - 32px)' }}>
+        <div style={{ border:'1px solid rgba(16,185,129,0.25)', background:'#0f172a', borderRadius:18, padding:12, boxShadow:'0 24px 80px rgba(2,6,23,0.42)' }}>
+          <div style={{ color:'#6ee7b7', fontSize:12, fontWeight:900, marginBottom:8 }}>{previewTitle}</div>
+          <AnatomyHoverOverlay focusAnnotationId={annotationId} showOnlyFocus />
+          <div style={{ color:'#94a3b8', fontSize:10, marginTop:8 }}>{previewHint}</div>
+        </div>
+      </div>
+    </div>,
+    document.body
+  ) : null
 
   return (
     <div
@@ -50,16 +72,7 @@ function OrganAnatomyHoverWrap({ organKey, children, placement = 'left', preview
       onBlurCapture={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setOpen(false) }}
     >
       {children}
-      {open && (
-        <div style={{ position:'absolute', zIndex:80, top:'50%', transform:'translateY(-50%)', width:'min(520px, calc(100vw - 32px))', pointerEvents:'none', ...panelSide }}>
-          <div style={{ border:'1px solid rgba(16,185,129,0.25)', background:'#0f172a', borderRadius:18, padding:12, boxShadow:'0 24px 80px rgba(2,6,23,0.42)' }}>
-            <div style={{ color:'#6ee7b7', fontSize:12, fontWeight:900, marginBottom:8 }}>{previewTitle}</div>
-            <AnatomyHoverOverlay focusAnnotationId={annotationId} showOnlyFocus />
-            <div style={{ color:'#94a3b8', fontSize:10, marginTop:8 }}>{previewHint}</div>
-          </div>
-          <div style={{ position:'absolute', top:'50%', width:12, height:12, transform:'translateY(-50%) rotate(45deg)', background:'#0f172a', ...arrowSide }} />
-        </div>
-      )}
+      {popup}
     </div>
   )
 }
