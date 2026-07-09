@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 
 // ============================================================================
 // AnatomyHoverOverlayRight — Lớp phủ chú thích tương tác có Panel bên phải
-// Chuyển thể từ file AnatomyHoverOverlayRightPanel.js do người dùng cung cấp,
+// Chuyển thể từ file AnatomyHoverOverlayRight.js do người dùng cung cấp,
 // dùng chung ảnh giải phẫu thật trong public/assets/anatomy/anatomy-human.jpg
 // (đã bỏ class `animate-in` vì project chưa cài plugin tailwindcss-animate).
 // ============================================================================
@@ -29,6 +29,8 @@ const ANNOTATIONS = [
   { id: 'muscle', top: '82%', left: '44%', label: 'Cơ (Muscle)', info: 'Mô co giãn giúp vận động, giữ tư thế và lưu thông máu.', status: 'Normal', align: 'left' },
   { id: 'joint', top: '82%', left: '57%', label: 'Khớp (Joint)', info: 'Điểm nối giữa hai xương, cho phép cơ thể cử động linh hoạt.', status: 'Normal', align: 'right' },
 ];
+
+export const ANATOMY_DEFAULT_ANNOTATIONS = ANNOTATIONS;
 
 const STATUS_STYLES = {
   Normal: {
@@ -60,6 +62,8 @@ const AnatomyHoverOverlayRight = ({
   className = '',
   focusAnnotationId = null,
   showOnlyFocus = false,
+  subtitle = null,
+  footerLabel = 'AI Doctor Scan System',
 }) => {
   const [activeAnnotationId, setActiveAnnotationId] = useState(focusAnnotationId);
   const [hoveredAnnotationId, setHoveredAnnotationId] = useState(null);
@@ -141,7 +145,7 @@ const AnatomyHoverOverlayRight = ({
           <h2 className="text-lg font-bold text-white uppercase tracking-wider flex items-center gap-2">
             <span className="text-emerald-400">⚡</span> Thông tin sinh tồn
           </h2>
-          <p className="text-xs text-slate-400 mt-1">Trỏ chuột vào cơ quan để xem phân tích</p>
+          <p className="text-xs text-slate-400 mt-1">{subtitle || 'Trỏ chuột vào cơ quan để xem phân tích'}</p>
         </div>
 
         {/* Nội dung chi tiết */}
@@ -174,16 +178,18 @@ const AnatomyHoverOverlayRight = ({
                   </p>
                 </div>
 
-                {/* Hiển thị thêm các dữ liệu giả lập để giao diện "ngầu" hơn */}
+                {/* Số liệu liên quan — lấy từ dữ liệu hồ sơ bệnh nhân thực tế nếu có (annotation.metrics),
+                    nếu không có (bộ phận chưa có dữ liệu riêng) thì hiển thị số liệu tham khảo mặc định. */}
                 <div className="grid grid-cols-2 gap-3 mt-6 pt-4 border-t border-white/10">
-                  <div className="bg-black/30 p-3 rounded-lg border border-white/5">
-                    <div className="text-[10px] text-slate-400 uppercase tracking-widest mb-1">Mật độ mô</div>
-                    <div className="text-white font-mono text-sm font-semibold">98.5%</div>
-                  </div>
-                  <div className="bg-black/30 p-3 rounded-lg border border-white/5">
-                    <div className="text-[10px] text-slate-400 uppercase tracking-widest mb-1">Độ chính xác</div>
-                    <div className="text-emerald-400 font-mono text-sm font-semibold">Cao</div>
-                  </div>
+                  {(currentDisplayAnnotation.metrics || [
+                    { label: 'Mật độ mô', value: '98.5%', color: 'text-white' },
+                    { label: 'Độ chính xác', value: 'Cao', color: 'text-emerald-400' },
+                  ]).slice(0, 2).map((m, i) => (
+                    <div key={i} className="bg-black/30 p-3 rounded-lg border border-white/5">
+                      <div className="text-[10px] text-slate-400 uppercase tracking-widest mb-1">{m.label}</div>
+                      <div className={`font-mono text-sm font-semibold ${m.color || 'text-white'}`}>{m.value}</div>
+                    </div>
+                  ))}
                 </div>
               </div>
 
@@ -202,7 +208,7 @@ const AnatomyHoverOverlayRight = ({
 
         {/* Footer của Panel */}
         <div className="p-4 border-t border-slate-800 bg-slate-950/80 flex justify-between items-center text-[10px] text-slate-500 font-mono uppercase tracking-widest">
-          <span>AI Doctor Scan System</span>
+          <span>{footerLabel}</span>
           <span className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
             Live

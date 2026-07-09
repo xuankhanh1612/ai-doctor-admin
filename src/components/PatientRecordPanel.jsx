@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useApp } from '../context/AppContext'
 import { useAuth } from '../context/AuthContext'
 import NavButtons from './NavButtons.jsx'
-import AnatomyHoverOverlayRight from './AnatomyHoverOverlayRight.jsx'
+import AnatomyHoverOverlayRight, { ANATOMY_DEFAULT_ANNOTATIONS } from './AnatomyHoverOverlayRight.jsx'
+import { buildPatientAnatomyAnnotations } from '../lib/patientAnatomySync.js'
 import { useMedicalData } from '../hooks/useMedicalData.js'
 import { LXK_PATIENT_RECORD } from '../data/lxkPatientRecord.js'
 import { DEFAULT_FAMILY_MEMBERS, RELATION_META, buildFamilyMemberPatientRecord, loadFamilyMembers, saveFamilyMembers } from './family/familyData.js'
@@ -788,6 +789,14 @@ export default function PatientRecordPanel({ onNext, nextLabel, onPrev, prevLabe
   const displayedPatientAvatar = patientAvatarUrl(patient, user)
   const canSaveEditedRecord = editForm.name.trim() && !isDemoRecord
 
+  // Đồng bộ "Bản đồ giải phẫu cơ thể" với bệnh nhân đang được chọn trong combobox:
+  // mỗi khi handleSelectFamilyMember đổi `patient`, annotations tính lại theo
+  // diseases/labs thật của người đó (xem src/lib/patientAnatomySync.js).
+  const anatomyAnnotations = useMemo(
+    () => buildPatientAnatomyAnnotations(ANATOMY_DEFAULT_ANNOTATIONS, patient),
+    [patient]
+  )
+
   const startEditRecord = () => {
     setEditForm(serializePatientForEdit(patient))
     setIsEditingRecord(true)
@@ -1356,7 +1365,11 @@ export default function PatientRecordPanel({ onNext, nextLabel, onPrev, prevLabe
           🧬 Bản đồ giải phẫu cơ thể
         </h3>
         <div style={{ height: 560 }}>
-          <AnatomyHoverOverlayRight />
+          <AnatomyHoverOverlayRight
+            annotations={anatomyAnnotations}
+            subtitle={`Đang đồng bộ: ${displayPatientName(patient)} · ${patient.id}`}
+            footerLabel={`AI Doctor Scan · ${displayPatientName(patient)}`}
+          />
         </div>
       </div>
 
