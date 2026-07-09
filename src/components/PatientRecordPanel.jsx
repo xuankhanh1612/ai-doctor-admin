@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useApp } from '../context/AppContext'
 import { useAuth } from '../context/AuthContext'
 import NavButtons from './NavButtons.jsx'
-import AnatomyHoverOverlayRightPanel from './AnatomyHoverOverlayRightPanel.jsx'
+import AnatomyHoverOverlayRight from './AnatomyHoverOverlayRight.jsx'
 import { useMedicalData } from '../hooks/useMedicalData.js'
 import { LXK_PATIENT_RECORD } from '../data/lxkPatientRecord.js'
 import { DEFAULT_FAMILY_MEMBERS, RELATION_META, buildFamilyMemberPatientRecord, loadFamilyMembers, saveFamilyMembers } from './family/familyData.js'
@@ -1356,7 +1356,7 @@ export default function PatientRecordPanel({ onNext, nextLabel, onPrev, prevLabe
           🧬 Bản đồ giải phẫu cơ thể
         </h3>
         <div style={{ height: 560 }}>
-          <AnatomyHoverOverlayRightPanel />
+          <AnatomyHoverOverlayRight />
         </div>
       </div>
 
