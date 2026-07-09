@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useApp } from '../context/AppContext'
 import profileBannerImg from '../pages/AnonymousProfileUUID-Avatar-1080x720.png'
-import UserUuid3DAvatar from './UserUuid3DAvatar.jsx'
+import UserUuid3DAvatar, { UuidAvatar3DDownloadButton } from './UserUuid3DAvatar.jsx'
 import AnimatedAvatarViewer from './AnimatedAvatarViewer'
 import ObjModelViewer from './ObjModelViewer'
 
@@ -389,7 +389,10 @@ export default function UserProfilePanel() {
                     <ProviderBadge provider={provider} />
                   </div>
                 </div>
-                <UserUuid3DAvatar uuid={user?.uuid} isDark={isDark} vi={vi} accent={providerMeta.color} />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: `1 1 138px`, minWidth: 138 }}>
+                  <UserUuid3DAvatar uuid={user?.uuid} isDark={isDark} vi={vi} accent={providerMeta.color} />
+                  <UuidAvatar3DDownloadButton uuid={user?.uuid} isDark={isDark} vi={vi} accent={providerMeta.color} label={vi ? 'Avatar 3D UUID' : 'UUID 3D Avatar'} />
+                </div>
               </div>
               {avatarModelSource && (
                 <div style={{ marginBottom: 14 }}>
@@ -767,7 +770,10 @@ function AnonymousProfilePanel({ user, isDark, vi, lang, t, loginWithGoogle, log
                       🌿
                     </div>
                   </div>
-                  <UserUuid3DAvatar uuid={user?.uuid} isDark={isDark} vi={vi} accent="#2d8a5e" />
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: `1 1 138px`, minWidth: 138 }}>
+                    <UserUuid3DAvatar uuid={user?.uuid} isDark={isDark} vi={vi} accent="#2d8a5e" />
+                    <UuidAvatar3DDownloadButton uuid={user?.uuid} isDark={isDark} vi={vi} accent="#2d8a5e" label={vi ? 'Avatar 3D UUID' : 'UUID 3D Avatar'} />
+                  </div>
                 </div>
                 {avatarModelSource && (
                   <div style={{ marginBottom: 14 }}>
