@@ -7,6 +7,7 @@ import HeroMicVoiceButton from './heroPanels/HeroMicVoiceButton.jsx';
 import { getOrganById, lowerFirst } from '../data/organs.js';
 import BackButton from './common/BackButton.jsx';
 import ExploreButton from './common/ExploreButton.jsx';
+import AnatomyHoverOverlay from './AnatomyHoverOverlay.jsx';
 
 // ============================================================================
 // DonationHeroPanel — màn hình chào mừng cho tính năng "Anh Hùng Hiến Tặng"
@@ -49,6 +50,8 @@ const TEXT = {
     locked: 'Chưa mở khoá',
     privacy: 'Dữ liệu bạn cung cấp đều nằm ở máy của bạn, không bao giờ lưu vào server của chúng tôi. ',
     privacyBold: 'Tất cả dữ liệu là của bạn.',
+    anatomyPreviewTitle: 'Bản đồ giải phẫu cơ thể',
+    anatomyPreviewHint: 'Di chuột vào từng điểm để xem chú thích',
     footer: 'Anh Hùng Hiến Tặng · Cùng nhau lan toả sự sống',
     back: 'Quay lại',
     login: 'Đăng nhập',
@@ -88,6 +91,8 @@ const TEXT = {
     locked: 'Locked',
     privacy: 'The data you provide stays on your device and is never stored on our servers. ',
     privacyBold: 'All your data belongs to you.',
+    anatomyPreviewTitle: 'Body anatomy atlas',
+    anatomyPreviewHint: 'Hover over each point for details',
     footer: 'Donation Hero · Spreading life together',
     back: 'Back',
     login: 'Log in',
@@ -286,11 +291,15 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onBac
             {JOURNEY_LEVELS.map((lvl) => {
               const unlocked = lvl.level <= currentLevel;
               const isCurrent = lvl.level === currentLevel;
+              const isLevelOne = lvl.level === 1;
               return (
-                <div key={lvl.level} className="flex flex-col items-center w-[150px] text-center">
+                <div
+                  key={lvl.level}
+                  className={`relative flex flex-col items-center w-[150px] text-center ${isLevelOne ? 'group' : ''}`}
+                >
                   <div className="relative mb-3">
                     <div
-                      className={`w-16 h-16 flex items-center justify-center text-2xl bg-gradient-to-br ${unlocked ? lvl.ring : (isDark ? 'from-white/10 to-white/5' : 'from-gray-200 to-gray-300')} shadow-sm`}
+                      className={`w-16 h-16 flex items-center justify-center text-2xl bg-gradient-to-br ${unlocked ? lvl.ring : (isDark ? 'from-white/10 to-white/5' : 'from-gray-200 to-gray-300')} shadow-sm ${isLevelOne ? 'cursor-pointer' : ''}`}
                       style={{ clipPath: 'polygon(50% 0%, 95% 25%, 95% 75%, 50% 100%, 5% 75%, 5% 25%)' }}
                     >
                       <span className={unlocked ? '' : 'opacity-40 grayscale'}>{lvl.icon}</span>
@@ -301,6 +310,35 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onBac
                   </div>
                   <div className={`font-bold text-sm ${isDark ? 'text-gray-100' : 'text-[#16241c]'}`}>{t.levelLabel} {lvl.level}</div>
                   <div className={`text-xs mb-2 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{lvl.title}</div>
+
+                  {/* Popup xem trước bản đồ giải phẫu — chỉ gắn vào thẻ Cấp 1
+                  "Người Tìm Hiểu", hiện ra khi hover (desktop) nhờ CSS
+                  group-hover, không cần thêm state/JS. Định vị tuyệt đối phía
+                  trên thẻ, căn giữa theo chiều ngang. */}
+                  {isLevelOne && (
+                    <div
+                      className={`
+                        absolute bottom-full left-1/2 -translate-x-1/2 mb-4
+                        w-[280px] sm:w-[320px]
+                        opacity-0 scale-95 pointer-events-none
+                        group-hover:opacity-100 group-hover:scale-100 group-hover:pointer-events-auto
+                        transition-all duration-200 ease-out origin-bottom z-30
+                      `}
+                    >
+                      <div className={`rounded-2xl border p-3 shadow-2xl ${isDark ? 'border-emerald-400/20 bg-[#0f172a]' : 'border-emerald-100 bg-white'}`}>
+                        <div className="flex items-center justify-between mb-2 px-1">
+                          <span className={`text-xs font-bold ${isDark ? 'text-emerald-300' : 'text-emerald-700'}`}>{t.anatomyPreviewTitle}</span>
+                        </div>
+                        <AnatomyHoverOverlay />
+                        <p className={`mt-2 px-1 text-[10px] ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{t.anatomyPreviewHint}</p>
+                      </div>
+                      {/* Mũi tên chỉ xuống thẻ Cấp 1 */}
+                      <div
+                        className={`w-3 h-3 rotate-45 mx-auto -mt-1.5 border-r border-b ${isDark ? 'border-emerald-400/20 bg-[#0f172a]' : 'border-emerald-100 bg-white'}`}
+                      />
+                    </div>
+                  )}
+
                   {isCurrent ? (
                     <span className={`text-[11px] font-semibold px-3 py-1 rounded-full ${isDark ? 'bg-emerald-500/15 text-emerald-300' : 'bg-emerald-100 text-emerald-700'}`}>
                       {t.current}
