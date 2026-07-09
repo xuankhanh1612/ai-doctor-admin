@@ -4,10 +4,10 @@ import NavButtons from './NavButtons.jsx'
 const DEFAULT_XRAY = 'https://www.mediplus.vn/wp-content/uploads/2021/08/e9800b6989507e0e2741.jpg'
 
 const organs = [
-  { name: 'Lungs', status: 'X-ray depth fusion', risk: 18, color: 'var(--cyan)', top: '18%', left: '50%' },
-  { name: 'Heart', status: 'Cardio mesh stable', risk: 12, color: 'var(--red)', top: '38%', left: '50%' },
-  { name: 'Liver', status: 'Texture confidence 91%', risk: 24, color: 'var(--amber)', top: '55%', left: '42%' },
-  { name: 'Kidney', status: 'Bilateral symmetry scan', risk: 15, color: 'var(--violet)', top: '62%', left: '58%' },
+  { name: 'Lungs', status: 'X-ray depth fusion', risk: 18, color: 'var(--cyan)', hex: '#00e5ff', top: '18%', left: '50%' },
+  { name: 'Heart', status: 'Cardio mesh stable', risk: 12, color: 'var(--red)', hex: '#ff4d6d', top: '38%', left: '50%' },
+  { name: 'Liver', status: 'Texture confidence 91%', risk: 24, color: 'var(--amber)', hex: '#f5a623', top: '55%', left: '42%' },
+  { name: 'Kidney', status: 'Bilateral symmetry scan', risk: 15, color: 'var(--violet)', hex: '#9c6fff', top: '62%', left: '58%' },
 ]
 
 const pipeline = [
@@ -16,6 +16,127 @@ const pipeline = [
   'Organ-aware 3D Gaussian field',
   'Digital Twin health simulation',
 ]
+
+// "3D Organ Reconstruction" trong panel này là hình minh hoạ dựng bằng
+// CSS/HTML (silhouette + node vị trí % + vòng quét xoay) — không phải file
+// model 3D thật xuất ra được (khác với avatar hồ sơ ở UserProfilePanel).
+// Vì vậy nút Download ở đây rasterize lại đúng bố cục silhouette + vị trí
+// từng organ-node (dùng lại toạ độ top/left % và màu hex ở mảng `organs`
+// bên trên) thành ảnh PNG thật qua SVG -> <canvas>, không cần thư viện chụp
+// DOM nào khác.
+function buildOrganReconstructionSVG({ organList, twinScore, size = 900 }) {
+  const stageH = size
+  const stageW = size
+  const silW = stageW * 0.22
+  const silH = stageH * 0.62
+  const silX = (stageW - silW) / 2
+  const silY = stageH * 0.16
+  const headR = silW * 0.34
+  const headCx = stageW / 2
+  const headCy = silY - headR * 0.55
+
+  const nodes = organList.map((organ) => {
+    const topPct = parseFloat(organ.top) / 100
+    const leftPct = parseFloat(organ.left) / 100
+    return {
+      ...organ,
+      cx: stageW * leftPct,
+      cy: silY + silH * ((topPct * 360 - 8) / (360 * 0.82)), // xấp xỉ lại tỉ lệ top(%) gốc (tính trên khung cao 360px, trừ margin 8%/10%) sang toạ độ silhouette thật
+    }
+  })
+
+  const nodeMarkup = nodes.map((n) => `
+    <ellipse cx="${n.cx.toFixed(1)}" cy="${n.cy.toFixed(1)}" rx="26" ry="20" fill="${n.hex}33" stroke="${n.hex}" stroke-width="2"/>
+    <text x="${(n.cx + 34).toFixed(1)}" y="${(n.cy + 4).toFixed(1)}" font-family="monospace" font-size="15" font-weight="900" fill="${n.hex}">${n.name} · ${n.risk}%</text>
+  `).join('')
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${stageW} ${stageH}">
+    <defs>
+      <linearGradient id="silGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="rgba(0,229,255,0.20)"/>
+        <stop offset="100%" stop-color="rgba(156,111,255,0.16)"/>
+      </linearGradient>
+      <pattern id="grid" width="26" height="26" patternUnits="userSpaceOnUse">
+        <path d="M 26 0 L 0 0 0 26" fill="none" stroke="rgba(0,229,255,0.08)" stroke-width="1"/>
+      </pattern>
+    </defs>
+    <rect width="${stageW}" height="${stageH}" rx="28" fill="#05070d"/>
+    <rect width="${stageW}" height="${stageH}" rx="28" fill="url(#grid)"/>
+    <ellipse cx="${stageW / 2}" cy="${stageH / 2}" rx="${stageW * 0.42}" ry="${stageH * 0.42}" fill="none" stroke="rgba(0,229,255,0.36)" stroke-dasharray="6 8"/>
+    <ellipse cx="${stageW / 2}" cy="${stageH / 2}" rx="${stageW * 0.36}" ry="${stageH * 0.22}" fill="none" stroke="rgba(0,229,255,0.28)" stroke-dasharray="6 8"/>
+    <circle cx="${headCx}" cy="${headCy}" r="${headR}" fill="rgba(0,229,255,0.08)" stroke="rgba(0,229,255,0.34)"/>
+    <rect x="${silX}" y="${silY}" width="${silW}" height="${silH}" rx="${silW * 0.36}" fill="url(#silGrad)" stroke="rgba(0,229,255,0.38)"/>
+    <line x1="${stageW / 2}" y1="${silY + silH * 0.08}" x2="${stageW / 2}" y2="${silY + silH * 0.9}" stroke="#00e5ff" stroke-opacity="0.6" stroke-width="2"/>
+    ${nodeMarkup}
+    <text x="28" y="${stageH - 56}" font-family="monospace" font-size="20" font-weight="900" fill="#00e5ff">3D ORGAN RECONSTRUCTION</text>
+    <text x="28" y="${stageH - 30}" font-family="monospace" font-size="13" fill="rgba(232,240,248,0.6)">Body Twin Fidelity: ${twinScore} · Organ Meshes: 12</text>
+    <text x="${stageW - 28}" y="${stageH - 30}" font-family="monospace" font-size="13" fill="#00e5ff" text-anchor="end">360° explorable path</text>
+  </svg>`
+}
+
+async function downloadOrganReconstructionPNG({ organList, twinScore }) {
+  const svg = buildOrganReconstructionSVG({ organList, twinScore, size: 900 })
+  const svgBlob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' })
+  const svgUrl = URL.createObjectURL(svgBlob)
+  try {
+    const img = await new Promise((resolve, reject) => {
+      const image = new Image()
+      image.onload = () => resolve(image)
+      image.onerror = reject
+      image.src = svgUrl
+    })
+    const canvas = document.createElement('canvas')
+    canvas.width = 900
+    canvas.height = 900
+    const ctx = canvas.getContext('2d')
+    ctx.drawImage(img, 0, 0, 900, 900)
+    const pngUrl = canvas.toDataURL('image/png')
+    const a = document.createElement('a')
+    a.href = pngUrl
+    a.download = `matrix3d-organ-reconstruction-${Date.now()}.png`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    return true
+  } finally {
+    URL.revokeObjectURL(svgUrl)
+  }
+}
+
+function OrganReconstructionDownloadButton({ twinScore }) {
+  const [state, setState] = useState('idle') // 'idle' | 'downloading' | 'done' | 'error'
+
+  const handleDownload = async () => {
+    setState('downloading')
+    try {
+      await downloadOrganReconstructionPNG({ organList: organs, twinScore })
+      setState('done')
+    } catch (err) {
+      console.warn('Download 3D Organ Reconstruction failed', err)
+      setState('error')
+    }
+    setTimeout(() => setState('idle'), 2200)
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleDownload}
+      disabled={state === 'downloading'}
+      style={{
+        marginTop: 12, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+        padding: '9px 16px', borderRadius: 999, fontSize: 12, fontWeight: 800,
+        border: '1px solid rgba(0,229,255,0.4)', background: 'rgba(0,229,255,0.12)', color: '#00e5ff',
+        cursor: state === 'downloading' ? 'wait' : 'pointer', opacity: state === 'downloading' ? 0.7 : 1, width: '100%',
+      }}
+    >
+      {state === 'downloading' && '⏳ Đang tải...'}
+      {state === 'done' && '✅ Đã tải xong (.png)'}
+      {state === 'error' && '⚠️ Lỗi, thử lại'}
+      {state === 'idle' && '⬇️ Download (.png)'}
+    </button>
+  )
+}
 
 function MatrixCard({ title, children, accent = 'var(--cyan)' }) {
   return (
@@ -130,6 +251,7 @@ export default function Matrix3DBodyPanel({ onNext, nextLabel, onPrev, prevLabel
             <div className="matrix3d-scan-ring ring-two" />
             <div className="matrix3d-trajectory">360° explorable path</div>
           </div>
+          <OrganReconstructionDownloadButton twinScore={twinScore} />
         </MatrixCard>
 
         <MatrixCard title="Health Body Signals" accent="var(--green)">
