@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 // ============================================================================
 // AnatomyHoverOverlay — Lớp phủ chú thích tương tác (Interactive Hotspots)
@@ -74,12 +74,19 @@ const AnatomyHoverOverlay = ({
   annotations = ANNOTATIONS,
   className = '',
 }) => {
+  const [activeAnnotationId, setActiveAnnotationId] = useState(null);
+
+  const toggleAnnotation = (id) => {
+    setActiveAnnotationId((currentId) => (currentId === id ? null : id));
+  };
+
   return (
     // Khung chứa tổng — giữ đúng tỉ lệ ảnh gốc (2461x2999) để % top/left của
     // từng hotspot luôn khớp đúng vị trí trên ảnh dù co giãn kích thước.
     <div
       className={`relative w-full bg-slate-950 rounded-2xl border border-slate-800 overflow-hidden shadow-2xl ${className}`}
       style={{ aspectRatio: '2461 / 2999' }}
+      onClick={() => setActiveAnnotationId(null)}
     >
       {/* 1. NỀN — ảnh giải phẫu thật */}
       <img
@@ -92,27 +99,40 @@ const AnatomyHoverOverlay = ({
       {/* 2. CÁC ĐIỂM HOTSPOT & TEXT OVERLAY */}
       {annotations.map((ann) => {
         const style = STATUS_STYLES[ann.status] || STATUS_STYLES.Normal;
+        const isActive = activeAnnotationId === ann.id;
+        const activePanelClasses = isActive
+          ? 'opacity-100 pointer-events-auto translate-x-0'
+          : `opacity-0 pointer-events-none ${ann.align === 'right' ? 'translate-x-3' : '-translate-x-3'}`;
+        const activeLineClasses = isActive ? 'opacity-100' : 'opacity-0';
+
         return (
           <div
             key={ann.id}
             className="absolute group/hotspot z-10"
             style={{ top: ann.top, left: ann.left }}
+            onClick={(event) => event.stopPropagation()}
           >
             {/* --- Nút tròn nhấp nháy --- */}
-            <div className="relative flex items-center justify-center w-5 h-5 -ml-2.5 -mt-2.5 cursor-crosshair">
-              <span className={`absolute inline-flex h-full w-full rounded-full opacity-50 animate-ping group-hover/hotspot:opacity-100 ${style.dot.split(' ')[0]}`}></span>
+            <button
+              type="button"
+              className="relative flex items-center justify-center w-5 h-5 -ml-2.5 -mt-2.5 cursor-crosshair rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
+              aria-label={`Hiển thị thông tin ${ann.label}`}
+              aria-expanded={isActive}
+              onClick={() => toggleAnnotation(ann.id)}
+            >
+              <span className={`absolute inline-flex h-full w-full rounded-full opacity-50 animate-ping group-hover/hotspot:opacity-100 ${isActive ? 'opacity-100' : ''} ${style.dot.split(' ')[0]}`}></span>
               <span className={`relative inline-flex rounded-full h-2 w-2 ${style.dot}`}></span>
-            </div>
+            </button>
 
             {/* --- Bảng thông tin (hiện khi hover) --- */}
             <div
               className={`
                 absolute top-1/2 -translate-y-1/2 w-52 sm:w-60
                 backdrop-blur-md border rounded-xl p-3
-                opacity-0 pointer-events-none
                 group-hover/hotspot:opacity-100 group-hover/hotspot:pointer-events-auto
                 transition-all duration-300 ease-out z-20
-                ${ann.align === 'right' ? 'left-6 translate-x-3 group-hover/hotspot:translate-x-0' : 'right-6 -translate-x-3 group-hover/hotspot:translate-x-0'}
+                ${ann.align === 'right' ? 'left-6 group-hover/hotspot:translate-x-0' : 'right-6 group-hover/hotspot:translate-x-0'}
+                ${activePanelClasses}
                 ${style.card}
               `}
             >
@@ -127,7 +147,8 @@ const AnatomyHoverOverlay = ({
             <div
               className={`
                 absolute top-1/2 -translate-y-1/2 h-[1px] w-4
-                opacity-0 group-hover/hotspot:opacity-100 transition-all duration-300 delay-75
+                group-hover/hotspot:opacity-100 transition-all duration-300 delay-75
+                ${activeLineClasses}
                 ${ann.align === 'right' ? 'left-2.5 bg-gradient-to-r' : 'right-2.5 bg-gradient-to-l'}
                 ${style.line}
               `}
