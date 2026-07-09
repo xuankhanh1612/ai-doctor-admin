@@ -31,6 +31,7 @@ export default function HeroMicVoiceButton({
   micLabel,
   buttonSize = 64,
   iconSize = 24,
+  holoEffect = false,
 }) {
   const { user, loginAnonymous } = useAuth();
   const userKey = user?.uuid || null;
@@ -72,25 +73,37 @@ export default function HeroMicVoiceButton({
   return (
     <div className="flex flex-col items-center justify-center gap-2 py-4">
       <audio ref={audioElementRef} preload="none" style={{ display: 'none' }} />
-      <button
-        type="button"
-        onClick={handlePress}
-        disabled={transcribing || busy}
-        aria-label={micLabel}
-        className={`relative rounded-full border-2 flex items-center justify-center transition-colors shadow-sm ${
-          isActive
-            ? 'border-red-500 bg-red-500'
-            : isDark
-              ? 'border-emerald-500 bg-white/5 hover:bg-white/10'
-              : 'border-emerald-500 bg-white hover:bg-emerald-50'
-        }`}
-        style={{ width: buttonSize, height: buttonSize, cursor: (transcribing || busy) ? 'wait' : 'pointer' }}
-      >
-        {isActive && recording && (
-          <span className="absolute inset-0 rounded-full bg-red-500/40 animate-ping" />
+      <div className={holoEffect ? 'relative group inline-flex items-center justify-center' : ''}>
+        {holoEffect && !isActive && (
+          <div className="absolute -inset-1 rounded-full bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 opacity-40 blur-md transition duration-500 animate-pulse group-hover:opacity-100 group-hover:duration-200 group-hover:animate-none" />
         )}
-        <Mic className={isActive ? 'text-white' : (isDark ? 'text-emerald-400' : 'text-emerald-600')} size={iconSize} />
-      </button>
+        <button
+          type="button"
+          onClick={handlePress}
+          disabled={transcribing || busy}
+          aria-label={micLabel}
+          className={`relative rounded-full border-2 flex items-center justify-center overflow-hidden transition-all duration-300 shadow-sm ${
+            isActive
+              ? 'border-red-500 bg-red-500'
+              : holoEffect
+                ? 'border-white/10 bg-slate-900/80 backdrop-blur-sm group-hover:bg-slate-900 group-hover:scale-[0.98]'
+                : isDark
+                  ? 'border-emerald-500 bg-white/5 hover:bg-white/10'
+                  : 'border-emerald-500 bg-white hover:bg-emerald-50'
+          }`}
+          style={{ width: buttonSize, height: buttonSize, cursor: (transcribing || busy) ? 'wait' : 'pointer' }}
+        >
+          {isActive && recording && (
+            <span className="absolute inset-0 rounded-full bg-red-500/40 animate-ping" />
+          )}
+          {holoEffect && !isActive && (
+            <span className="absolute inset-0 rounded-full overflow-hidden pointer-events-none">
+              <span className="absolute top-0 left-[-100%] h-full w-1/2 bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-[-45deg] group-hover:animate-shine" />
+            </span>
+          )}
+          <Mic className={`relative transition-colors duration-300 ${isActive ? 'text-white' : holoEffect ? 'text-cyan-400 group-hover:text-white' : (isDark ? 'text-emerald-400' : 'text-emerald-600')}`} size={iconSize} />
+        </button>
+      </div>
 
       {/* Label tĩnh để 2 trang Anh Hùng cùng hiển thị lời nhắc dưới micro. */}
       {!isActive && (
