@@ -73,6 +73,9 @@ export default function MedicalVisualPlayground() {
   const [handRotation, setHandRotation] = useState(null) // [x, y] radian | null
   const [handScale, setHandScale] = useState(null) // number | null
   const lostTimerRef = useRef(null)
+  const touchlessCameraRef = useRef(null)
+  const [handMapping, setHandMapping] = useState({ mirrored: true, facingMode: 'user' })
+  const handMappingRef = useRef({ mirrored: true, facingMode: 'user' })
   // Landmark thô (21 khớp/tay) cho VirtualHands — dùng useRef thay vì
   // useState vì dữ liệu này cập nhật ~60 lần/giây; nếu dùng useState sẽ bắt
   // React re-render toàn bộ MedicalVisualPlayground 60 lần/giây (rất tốn).
@@ -82,6 +85,15 @@ export default function MedicalVisualPlayground() {
   const handLandmarksRef = useRef([])
 
   const currentOrgan = organData[activeOrgan]
+
+  const handleHandMappingChange = useCallback((nextMapping) => {
+    handMappingRef.current = nextMapping
+    setHandMapping((current) => (
+      current.mirrored === nextMapping.mirrored && current.facingMode === nextMapping.facingMode
+        ? current
+        : nextMapping
+    ))
+  }, [])
 
   useEffect(() => {
     setAccuracy(Math.floor(Math.random() * 5) + 95)
@@ -127,7 +139,10 @@ export default function MedicalVisualPlayground() {
 
     const wrist = hand[0]
     const rotationX = (wrist.y - 0.5) * Math.PI * 2
-    const rotationY = (wrist.x - 0.5) * Math.PI * 2
+    // Đồng bộ theo camera đang dùng: camera trước hiển thị dạng gương,
+    // camera sau giữ tọa độ raw để bàn tay ảo và điều khiển 3D không bị ngược.
+    const normalizedX = handMappingRef.current.mirrored ? 0.5 - wrist.x : wrist.x - 0.5
+    const rotationY = normalizedX * Math.PI * 2
     setHandRotation([rotationX, rotationY])
 
     const thumbTip = hand[4]
@@ -390,7 +405,7 @@ export default function MedicalVisualPlayground() {
         hình. pointer-events-none để không chặn thao tác kéo/chuột bên dưới. */}
         {isTouchlessOn && !isCameraGizmoOn && (
           <div className="absolute inset-0 pointer-events-none z-10">
-            <VirtualHands landmarksRef={handLandmarksRef} />
+            <VirtualHands landmarksRef={handLandmarksRef} mirrored={handMapping.mirrored} />
           </div>
         )}
 
@@ -420,9 +435,46 @@ export default function MedicalVisualPlayground() {
           </div>
         </div>
 
+        {isTouchlessOn && !isCameraGizmoOn && (
+          <div className="absolute right-3 top-3 z-40 flex flex-wrap justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => touchlessCameraRef.current?.switchToFrontCamera?.()}
+              className="rounded-full border border-cyan-300/40 bg-slate-950/85 px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-cyan-100 shadow-[0_0_18px_rgba(6,182,212,0.25)] backdrop-blur-md transition hover:bg-cyan-500/20"
+              title="Chuyển về camera trước/selfie và đồng bộ mapping bàn tay"
+            >
+              🔄 Chuyển Camera Trước
+            </button>
+            <button
+              type="button"
+              onClick={() => touchlessCameraRef.current?.toggleTorch?.()}
+              className="grid h-9 w-9 place-items-center rounded-full border border-yellow-300/40 bg-slate-950/85 text-yellow-200 shadow-[0_0_18px_rgba(250,204,21,0.25)] backdrop-blur-md transition hover:bg-yellow-400/20"
+              title="Bật/tắt đèn flash nếu camera và trình duyệt hỗ trợ"
+              aria-label="Bật tắt đèn flash"
+            >
+              ⚡
+            </button>
+            <button
+              type="button"
+              onClick={() => touchlessCameraRef.current?.closeCamera?.()}
+              className="grid h-9 w-9 place-items-center rounded-full border border-red-300/40 bg-slate-950/85 text-red-200 shadow-[0_0_18px_rgba(248,113,113,0.25)] backdrop-blur-md transition hover:bg-red-500/20"
+              title="Tắt camera Touchless Control"
+              aria-label="Tắt camera"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
         {isTouchlessOn && (
           <div className="fixed left-6 top-28 z-40 w-72 aspect-video bg-black rounded-xl border border-white/20 overflow-hidden shadow-2xl">
-            <TouchlessHandCam onHandTrack={handleHandTrack} onHandLost={handleHandLost} />
+            <TouchlessHandCam
+              ref={touchlessCameraRef}
+              onHandTrack={handleHandTrack}
+              onHandLost={handleHandLost}
+              onMappingChange={handleHandMappingChange}
+              onClose={() => setIsTouchlessOn(false)}
+            />
             <div className="absolute inset-0 border-2 border-dashed border-white/10 m-2 rounded-lg pointer-events-none"></div>
             <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-black/60 px-2 py-1 rounded text-[10px] font-mono pointer-events-none">
               <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>

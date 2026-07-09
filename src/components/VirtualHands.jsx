@@ -36,7 +36,15 @@ const SPREAD_X = 15
 const SPREAD_Y = 15
 const SPREAD_Z = 15
 
-export default function VirtualHands({ landmarksRef, color = '#06b6d4', className = '' }) {
+// Camera trước trong TouchlessHandCam được hiển thị dạng gương (scaleX(-1))
+// để người dùng thấy giống selfie. MediaPipe vẫn trả landmark theo hệ tọa độ
+// raw của video, nên phải lật trục X khi dựng bàn tay ảo để cử chỉ khớp với
+// hình camera đang nhìn thấy trên màn hình.
+const mapLandmarkX = (x, mirrored = true) => (mirrored ? 0.5 - x : x - 0.5) * SPREAD_X
+const mapLandmarkY = (y) => -(y - 0.5) * SPREAD_Y
+const mapLandmarkZ = (z) => -z * SPREAD_Z
+
+export default function VirtualHands({ landmarksRef, mirrored = true, color = '#06b6d4', className = '' }) {
   const containerRef = useRef(null)
 
   useEffect(() => {
@@ -96,9 +104,9 @@ export default function VirtualHands({ landmarksRef, color = '#06b6d4', classNam
           const lm = hand[i]
           if (!lm) continue
           dummy.position.set(
-            (lm.x - 0.5) * SPREAD_X,
-            -(lm.y - 0.5) * SPREAD_Y,
-            -lm.z * SPREAD_Z,
+            mapLandmarkX(lm.x, mirrored),
+            mapLandmarkY(lm.y),
+            mapLandmarkZ(lm.z),
           )
           dummy.updateMatrix()
           joints.setMatrixAt(i, dummy.matrix)
@@ -110,9 +118,9 @@ export default function VirtualHands({ landmarksRef, color = '#06b6d4', classNam
         for (let i = 0; i < JOINT_COUNT; i++) {
           const lm = hand[i]
           if (!lm) continue
-          posAttr[i * 3] = (lm.x - 0.5) * SPREAD_X
-          posAttr[i * 3 + 1] = -(lm.y - 0.5) * SPREAD_Y
-          posAttr[i * 3 + 2] = -lm.z * SPREAD_Z
+          posAttr[i * 3] = mapLandmarkX(lm.x, mirrored)
+          posAttr[i * 3 + 1] = mapLandmarkY(lm.y)
+          posAttr[i * 3 + 2] = mapLandmarkZ(lm.z)
         }
         bonesGeometry.attributes.position.needsUpdate = true
         bonesGeometry.setDrawRange(0, BONE_INDICES.length)
@@ -143,7 +151,7 @@ export default function VirtualHands({ landmarksRef, color = '#06b6d4', classNam
       if (container) container.innerHTML = ''
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [mirrored]
 
   return (
     <div
