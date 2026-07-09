@@ -59,6 +59,8 @@ export default function MedicalVisualPlayground() {
   const [isTouchlessOn, setIsTouchlessOn] = useState(false)
   const [accuracy, setAccuracy] = useState(98)
   const [showRoadmap, setShowRoadmap] = useState(false)
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+  const [isSpatialHoverOn, setIsSpatialHoverOn] = useState(false)
 
   // --- Camera Angle Gizmo: tái sử dụng công nghệ điều khiển góc máy ảnh của
   // CameraAngle3DGizmo.jsx (3 tay cầm kéo Azimuth/Elevation/Distance, snap
@@ -96,13 +98,17 @@ export default function MedicalVisualPlayground() {
     setIsTouchlessOn((v) => {
       const next = !v
       if (next) setIsCameraGizmoOn(false)
+      if (!next) setIsSpatialHoverOn(false)
       return next
     })
   }, [])
   const toggleCameraGizmo = useCallback(() => {
     setIsCameraGizmoOn((v) => {
       const next = !v
-      if (next) setIsTouchlessOn(false)
+      if (next) {
+        setIsTouchlessOn(false)
+        setIsSpatialHoverOn(false)
+      }
       return next
     })
   }, [])
@@ -152,7 +158,7 @@ export default function MedicalVisualPlayground() {
     <div className="flex h-full min-h-[640px] bg-slate-900 text-white font-sans overflow-hidden rounded-2xl border border-slate-700">
 
       {/* --- SIDEBAR --- */}
-      <div className="w-80 bg-slate-800 border-r border-slate-700 flex flex-col shadow-2xl z-10">
+      <div className={`${isSidebarCollapsed ? 'w-0 border-r-0 -translate-x-full' : 'w-80 translate-x-0'} bg-slate-800 border-r border-slate-700 flex flex-col shadow-2xl z-10 overflow-hidden transition-all duration-300 ease-out`}>
         <div className="p-6 border-b border-slate-700">
           <h2 className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent flex items-center gap-2">
             🧬 Medical 3D Lab
@@ -278,6 +284,14 @@ export default function MedicalVisualPlayground() {
 
       {/* --- MAIN CANVAS --- */}
       <div className="flex-1 relative bg-[linear-gradient(rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:40px_40px]">
+        <button
+          onClick={() => setIsSidebarCollapsed((v) => !v)}
+          className="absolute left-3 top-3 z-30 rounded-full border border-cyan-300/30 bg-slate-950/80 px-3 py-2 text-xs font-bold uppercase tracking-wider text-cyan-100 shadow-[0_0_18px_rgba(6,182,212,0.25)] backdrop-blur-md transition hover:bg-cyan-500/20"
+          title={isSidebarCollapsed ? 'Mở bảng bên trái' : 'Đóng bảng bên trái'}
+        >
+          {isSidebarCollapsed ? '☰ Mở Lab Panel' : '⟵ Đóng Panel'}
+        </button>
+
         <div className="absolute inset-0 flex items-center justify-center opacity-[0.03] pointer-events-none">
           <h1 className="text-[10rem] font-black uppercase tracking-tighter">ANATOMY</h1>
         </div>
@@ -304,6 +318,9 @@ export default function MedicalVisualPlayground() {
               color={currentOrgan.color}
               customRotation={isTouchlessOn ? handRotation : null}
               customScale={isTouchlessOn ? handScale : null}
+              handLandmarksRef={handLandmarksRef}
+              enableSpatialHover={isSpatialHoverOn}
+              organId={currentOrgan.id}
             />
           )}
         </div>
@@ -318,14 +335,14 @@ export default function MedicalVisualPlayground() {
           </div>
         )}
 
-        <div className="absolute top-6 right-6 flex flex-col gap-3 pointer-events-none z-20">
-          <div className="bg-black/40 backdrop-blur-md border border-white/10 p-4 rounded-xl text-right shadow-lg">
+        <div className="absolute left-3 top-16 flex max-w-xs flex-col gap-3 pointer-events-none z-20">
+          <div className="bg-black/40 backdrop-blur-md border border-white/10 p-4 rounded-xl text-left shadow-lg">
             <div className="text-4xl font-light text-white tracking-tighter">
               {accuracy}<span className="text-lg text-slate-400">%</span>
             </div>
             <div className="text-[10px] text-blue-400 font-bold tracking-widest uppercase mt-1">Độ chính xác mô hình</div>
           </div>
-          <div className="bg-black/40 backdrop-blur-md border border-white/10 p-4 rounded-xl text-right shadow-lg">
+          <div className="bg-black/40 backdrop-blur-md border border-white/10 p-4 rounded-xl text-left shadow-lg">
             <div className="text-xs text-slate-300 mb-1">
               Asset: <span className="font-mono text-white">{currentOrgan.objUrl.split('/').pop()}</span>
               {currentOrgan.mtlUrl && <span className="font-mono text-slate-400"> + {currentOrgan.mtlUrl.split('/').pop()}</span>}
@@ -364,6 +381,32 @@ export default function MedicalVisualPlayground() {
           )}
 
           <button
+            onClick={() => {
+              setIsSpatialHoverOn((v) => {
+                const next = !v
+                if (next) {
+                  setIsTouchlessOn(true)
+                  setIsCameraGizmoOn(false)
+                }
+                return next
+              })
+            }}
+            className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider flex items-center gap-2 shadow-lg transition-all ${
+              isSpatialHoverOn
+                ? 'bg-fuchsia-500/80 hover:bg-fuchsia-500 text-white border border-fuchsia-300'
+                : 'bg-cyan-600/80 hover:bg-cyan-600 text-white border border-cyan-300'
+            }`}
+          >
+            {isSpatialHoverOn ? '🧤 Tắt chạm 3D' : '🧤 Bật chạm hotspot 3D'}
+          </button>
+
+          {isSpatialHoverOn && (
+            <div className="bg-black/60 backdrop-blur-md border border-cyan-300/20 px-3 py-2 rounded-lg text-[10px] font-mono text-cyan-200 max-w-[280px] text-right">
+              Đưa ngón trỏ ảo vào chấm sáng để mở bảng chú thích 3D kiểu AnatomyHoverOverlay.
+            </div>
+          )}
+
+          <button
             onClick={toggleTouchless}
             className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider flex items-center gap-2 shadow-lg transition-all ${
               isTouchlessOn
@@ -375,7 +418,7 @@ export default function MedicalVisualPlayground() {
           </button>
 
           {isTouchlessOn && (
-            <div className="w-72 aspect-video bg-black rounded-xl border border-white/20 overflow-hidden shadow-2xl relative">
+            <div className="fixed left-6 top-28 z-40 w-72 aspect-video bg-black rounded-xl border border-white/20 overflow-hidden shadow-2xl">
               <TouchlessHandCam onHandTrack={handleHandTrack} onHandLost={handleHandLost} />
               <div className="absolute inset-0 border-2 border-dashed border-white/10 m-2 rounded-lg pointer-events-none"></div>
               <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-black/60 px-2 py-1 rounded text-[10px] font-mono pointer-events-none">
