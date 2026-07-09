@@ -16,7 +16,11 @@ import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js'
 // phẳng khi chọn góc chụp.
 //
 // Props:
-// - objUrl: model .obj để hiển thị làm tâm điều khiển (mặc định model demo)
+// - mode: 'obj' (mặc định) tải model .obj làm tâm điều khiển, hoặc 'image'
+//   để chiếu 1 ảnh 2D (imageUrl) lên mặt phẳng làm tâm điều khiển — đúng cơ
+//   chế gốc của HF Space (dùng cho khung "🎮 3D Camera Control 2D Object").
+// - objUrl: model .obj để hiển thị làm tâm điều khiển khi mode='obj'
+// - imageUrl: ảnh 2D để hiển thị làm tâm điều khiển khi mode='image'
 // - value: { azimuth, elevation, distance } điều khiển từ bên ngoài (vd slider)
 // - onChange({ azimuth, elevation, distance, prompt }): bắn ra sau khi snap xong
 
@@ -44,7 +48,7 @@ export function buildCameraPrompt(azimuth, elevation, distance) {
   return `<sks> ${AZIMUTH_NAMES[az]} ${ELEVATION_NAMES[String(el)]} ${DISTANCE_NAMES[distKey]}`
 }
 
-export default function Camera3DAngleGizmo({ objUrl, value, onChange, onLoadError, onLoadSuccess }) {
+export default function Camera3DAngleGizmo({ mode = 'obj', objUrl, imageUrl, value, onChange, onLoadError, onLoadSuccess }) {
   const wrapperRef = useRef(null)
   const promptRef = useRef(null)
   const liveRef = useRef({ azimuth: value?.azimuth ?? 0, elevation: value?.elevation ?? 0, distance: value?.distance ?? 1.0 })
@@ -122,7 +126,41 @@ export default function Camera3DAngleGizmo({ objUrl, value, onChange, onLoadErro
         }
       )
     }
-    loadTargetModel(objUrl)
+
+    // --- Target (chế độ 'image'): chiếu ảnh 2D lên 1 mặt phẳng làm tâm
+    // điều khiển thay vì tải .obj — đúng cơ chế gốc của HF Space.
+    function loadTargetImage(url) {
+      while (targetGroup.children.length) targetGroup.remove(targetGroup.children[0])
+      if (!url) return
+      new THREE.TextureLoader().load(
+        url,
+        (texture) => {
+          if (disposed) return
+          if ('colorSpace' in texture) texture.colorSpace = THREE.SRGBColorSpace
+          const imgW = texture.image?.width || 1
+          const imgH = texture.image?.height || 1
+          const maxDim = 1.6
+          const aspect = imgW / imgH
+          const planeW = aspect >= 1 ? maxDim : maxDim * aspect
+          const planeH = aspect >= 1 ? maxDim / aspect : maxDim
+          const mesh = new THREE.Mesh(
+            new THREE.PlaneGeometry(planeW, planeH),
+            new THREE.MeshStandardMaterial({ map: texture, side: THREE.DoubleSide, roughness: 0.75, metalness: 0 })
+          )
+          mesh.position.y = planeH / 2
+          targetGroup.add(mesh)
+          onLoadSuccessRef.current?.(url)
+        },
+        undefined,
+        (err) => {
+          console.warn('Camera3DAngleGizmo: không tải được ảnh 2D', err)
+          onLoadErrorRef.current?.(err, url)
+        }
+      )
+    }
+
+    if (mode === 'image') loadTargetImage(imageUrl)
+    else loadTargetModel(objUrl)
 
     // --- Camera model (khối xanh nhỏ đại diện máy ảnh) ---
     const cameraGroup = new THREE.Group()
@@ -378,7 +416,7 @@ export default function Camera3DAngleGizmo({ objUrl, value, onChange, onLoadErro
       applyExternalRef.current = null
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [objUrl])
+  }, [mode, objUrl, imageUrl])
 
   // value điều khiển từ ngoài (sliders) -> áp vào scene đang chạy.
   useEffect(() => {

@@ -10,7 +10,6 @@ import Camera3DAngleGizmo, { buildCameraPrompt } from './CameraAngle3DGizmo.jsx'
 // (demo mặc định: nhân vật Attack05 (45).obj) thay vì ảnh phẳng, giúp xem
 // trước góc máy trực quan hơn.
 const CAMERA_SPACE_URL = 'https://huggingface.co/spaces/multimodalart/qwen-image-multiple-angles-3d-camera'
-const CAMERA_SPACE_EMBED_URL = 'https://multimodalart-qwen-image-multiple-angles-3d-camera.hf.space'
 const CAMERA_SPACE_ID = 'multimodalart/qwen-image-multiple-angles-3d-camera'
 const LORA_MODEL_URL = 'https://huggingface.co/fal/Qwen-Image-Edit-2511-Multiple-Angles-LoRA'
 const GRADIO_CLIENT_CDN = 'https://esm.sh/@gradio/client@1.18.0'
@@ -26,6 +25,14 @@ const DEFAULT_OBJ_URL = 'https://raw.githubusercontent.com/godekd3133/DX9_WorldS
 const FALLBACK_OBJ_URL = '/assets/models/krabbypattie01.obj'
 const FALLBACK_MTL_INFO_URL = 'https://github.com/xuankhanh1612/ai-doctor-admin/blob/main/public/assets/models/krabbypattie01.mtl'
 
+// Khung "🎮 3D Camera Control 2D Object" — chiếu ảnh 2D thật lên mặt phẳng
+// làm tâm gizmo, vì "Realtime Hugging Face API" bên dưới chỉ dùng upload
+// ảnh 2D để đổi góc chụp trước khi chạy (không dùng model .obj).
+const DEFAULT_IMAGE_2D_URL = 'https://png.pngtree.com/png-clipart/20230812/original/pngtree-world-hepatitis-day-with-human-liver-organ-and-stethoscope-vector-png-image_10294720.png'
+// Dùng tạm khi link ảnh 2D người dùng nhập vào textbox bị lỗi (404, CORS,
+// hotlink bị chặn...) — ảnh có sẵn thật trong public/src/mediapipe-khanh/.
+const FALLBACK_IMAGE_2D_URL = '/src/mediapipe-khanh/thumbs_up.png'
+
 const loadGradioClient = () => import(/* @vite-ignore */ GRADIO_CLIENT_CDN).then((m) => m.Client)
 
 function replaceImageToken(value, imageFile) {
@@ -39,12 +46,22 @@ function replaceImageToken(value, imageFile) {
 export default function CameraAngle3DStudioPanel() {
   const { theme } = useApp()
   const isDark = theme === 'dark'
-  const gizmoWrapperRef = useRef(null)
+  const gizmoWrapperRef = useRef(null) // khung "🎮 3D Camera Control 2D Object" (ảnh 2D)
+  const gizmo3dWrapperRef = useRef(null) // khung "🎮 3D Camera Control 3D Object" (model .obj)
 
-  const [objUrl, setObjUrl] = useState(DEFAULT_OBJ_URL)
-  const [effectiveObjUrl, setEffectiveObjUrl] = useState(DEFAULT_OBJ_URL)
-  const [objLoadError, setObjLoadError] = useState('')
+  // --- Khung "🎮 3D Camera Control 2D Object" — ảnh 2D làm tâm gizmo, camera
+  // này cũng là camera dùng để sinh prompt gửi cho "Realtime Hugging Face API". ---
+  const [image2dUrl, setImage2dUrl] = useState(DEFAULT_IMAGE_2D_URL)
+  const [effectiveImage2dUrl, setEffectiveImage2dUrl] = useState(DEFAULT_IMAGE_2D_URL)
+  const [image2dLoadError, setImage2dLoadError] = useState('')
   const [camera, setCamera] = useState({ azimuth: 0, elevation: 0, distance: 1.0 })
+
+  // --- Khung "🎮 3D Camera Control 3D Object" — bản sao dùng model .obj thật,
+  // độc lập với khung 2D Object ở trên (camera/model riêng, chỉ để xem trước). ---
+  const [obj3dUrl, setObj3dUrl] = useState(DEFAULT_OBJ_URL)
+  const [effectiveObj3dUrl, setEffectiveObj3dUrl] = useState(DEFAULT_OBJ_URL)
+  const [obj3dLoadError, setObj3dLoadError] = useState('')
+  const [camera3d, setCamera3d] = useState({ azimuth: 0, elevation: 0, distance: 1.0 })
 
   const [sourceImage, setSourceImage] = useState(null)
   const [sourcePreview, setSourcePreview] = useState('')
@@ -56,9 +73,13 @@ export default function CameraAngle3DStudioPanel() {
   const [rawResponse, setRawResponse] = useState(null)
   const [outputImage, setOutputImage] = useState('')
   const [busy, setBusy] = useState(false)
-  const [objDownloadState, setObjDownloadState] = useState('idle') // 'idle' | 'downloading' | 'done' | 'error'
+  const [objDownloadState, setObjDownloadState] = useState('idle') // 'idle' | 'downloading' | 'done' | 'error' (2D Object: ảnh)
   const [snapshotDownloadState, setSnapshotDownloadState] = useState('idle') // 'idle' | 'downloading' | 'done' | 'error'
   const [clipboardState, setClipboardState] = useState('idle') // 'idle' | 'copied' | 'pasted' | 'error'
+
+  const [obj3dDownloadState, setObj3dDownloadState] = useState('idle') // 3D Object: model .obj
+  const [snapshot3dDownloadState, setSnapshot3dDownloadState] = useState('idle')
+  const [clipboard3dState, setClipboard3dState] = useState('idle')
 
   const palette = useMemo(() => ({
     bg: isDark ? '#030712' : '#f3f7fb',
@@ -71,35 +92,59 @@ export default function CameraAngle3DStudioPanel() {
   }), [isDark])
 
   const prompt = buildCameraPrompt(camera.azimuth, camera.elevation, camera.distance)
+  const prompt3d = buildCameraPrompt(camera3d.azimuth, camera3d.elevation, camera3d.distance)
 
+  // --- Khung "🎮 3D Camera Control 2D Object" (ảnh 2D) ---
   // Mỗi khi người dùng gõ/dán/xoá link trong textbox, thử tải lại đúng link
   // đó — xoá cảnh báo lỗi cũ trước, để component tự báo lỗi mới (nếu có) qua
-  // handleObjLoadError bên dưới.
+  // handleImage2dLoadError bên dưới.
   useEffect(() => {
-    setObjLoadError('')
-    setEffectiveObjUrl(objUrl)
-  }, [objUrl])
+    setImage2dLoadError('')
+    setEffectiveImage2dUrl(image2dUrl)
+  }, [image2dUrl])
 
-  const handleObjLoadError = (err, failedUrl) => {
-    // Đang thử lại chính fallback mà vẫn lỗi (vd file demo bị xoá) -> chỉ log,
-    // không fallback tiếp để tránh vòng lặp vô hạn.
-    if (failedUrl === FALLBACK_OBJ_URL) {
-      console.warn('Camera3DAngleGizmo: cả model demo dự phòng cũng không tải được', err)
+  const handleImage2dLoadError = (err, failedUrl) => {
+    // Đang thử lại chính fallback mà vẫn lỗi -> chỉ log, không fallback tiếp
+    // để tránh vòng lặp vô hạn.
+    if (failedUrl === FALLBACK_IMAGE_2D_URL) {
+      console.warn('Camera3DAngleGizmo: cả ảnh 2D dự phòng cũng không tải được', err)
       return
     }
     // Chỉ xử lý nếu đây đúng là lần thử của link người dùng đang nhập hiện tại
     // (tránh trường hợp lỗi trả về trễ từ 1 URL đã bị thay bằng URL khác).
-    if (failedUrl !== objUrl) return
-    setObjLoadError(
-      `Không tải được model từ link này (${err?.message || 'lỗi tải file'}). Đang dùng tạm model demo public/assets/models/krabbypattie01.obj (kèm ${FALLBACK_MTL_INFO_URL}) cho đến khi bạn dán link .obj mới không lỗi vào ô trên.`
+    if (failedUrl !== image2dUrl) return
+    setImage2dLoadError(
+      `Không tải được ảnh 2D từ link này (${err?.message || 'lỗi tải file'}). Đang dùng tạm ảnh public/src/mediapipe-khanh/thumbs_up.png cho đến khi bạn dán link ảnh mới không lỗi vào ô trên.`
     )
-    setEffectiveObjUrl(FALLBACK_OBJ_URL)
+    setEffectiveImage2dUrl(FALLBACK_IMAGE_2D_URL)
   }
 
-  const handleObjLoadSuccess = (loadedUrl) => {
+  const handleImage2dLoadSuccess = (loadedUrl) => {
     // Chỉ xoá cảnh báo khi chính link người dùng đang nhập tải thành công —
     // nếu là fallback thì giữ nguyên cảnh báo để họ biết vẫn đang xem tạm.
-    if (loadedUrl === objUrl) setObjLoadError('')
+    if (loadedUrl === image2dUrl) setImage2dLoadError('')
+  }
+
+  // --- Khung "🎮 3D Camera Control 3D Object" (model .obj) ---
+  useEffect(() => {
+    setObj3dLoadError('')
+    setEffectiveObj3dUrl(obj3dUrl)
+  }, [obj3dUrl])
+
+  const handleObj3dLoadError = (err, failedUrl) => {
+    if (failedUrl === FALLBACK_OBJ_URL) {
+      console.warn('Camera3DAngleGizmo: cả model demo dự phòng cũng không tải được', err)
+      return
+    }
+    if (failedUrl !== obj3dUrl) return
+    setObj3dLoadError(
+      `Không tải được model từ link này (${err?.message || 'lỗi tải file'}). Đang dùng tạm model demo public/assets/models/krabbypattie01.obj (kèm ${FALLBACK_MTL_INFO_URL}) cho đến khi bạn dán link .obj mới không lỗi vào ô trên.`
+    )
+    setEffectiveObj3dUrl(FALLBACK_OBJ_URL)
+  }
+
+  const handleObj3dLoadSuccess = (loadedUrl) => {
+    if (loadedUrl === obj3dUrl) setObj3dLoadError('')
   }
 
   const handleImageChange = (e) => {
@@ -152,21 +197,21 @@ export default function CameraAngle3DStudioPanel() {
       .finally(() => setBusy(false))
   }
 
-  // Tải file .obj đang dùng trong gizmo về máy — fetch thật -> Blob -> <a
-  // download> để trình duyệt lưu đúng tên file, không chỉ mở link. Nếu
-  // server chặn CORS (một số repo GitHub raw/CDN), rơi về mở tab mới để tự
-  // "Save As" thủ công. Trả về true nếu tải trực tiếp thành công. Dùng
-  // effectiveObjUrl (model THẬT SỰ đang hiển thị trong gizmo — có thể là
-  // fallback nếu link người dùng nhập bị lỗi) thay vì objUrl thô.
-  const downloadObjFile = async () => {
+  // Tải file (.obj hoặc ảnh 2D) đang dùng trong gizmo về máy — fetch thật ->
+  // Blob -> <a download> để trình duyệt lưu đúng tên file, không chỉ mở
+  // link. Nếu server chặn CORS, rơi về mở tab mới để tự "Save As" thủ công.
+  // Trả về true nếu tải trực tiếp thành công. Dùng effectiveUrl (file THẬT
+  // SỰ đang hiển thị trong gizmo — có thể là fallback nếu link người dùng
+  // nhập bị lỗi) thay vì url thô người dùng đang gõ.
+  const downloadGizmoFile = async (effectiveUrl, defaultFileName) => {
     try {
-      const res = await fetch(effectiveObjUrl)
+      const res = await fetch(effectiveUrl)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const blob = await res.blob()
       const blobUrl = URL.createObjectURL(blob)
-      let fileName = 'model.obj'
+      let fileName = defaultFileName
       try {
-        const path = new URL(effectiveObjUrl, window.location.href).pathname
+        const path = new URL(effectiveUrl, window.location.href).pathname
         const base = path.split('/').pop()
         if (base) fileName = decodeURIComponent(base)
       } catch { /* giữ tên mặc định nếu URL không hợp lệ */ }
@@ -179,8 +224,8 @@ export default function CameraAngle3DStudioPanel() {
       setTimeout(() => URL.revokeObjectURL(blobUrl), 4000)
       return true
     } catch (err) {
-      console.warn('Download .obj failed, opening in new tab instead', err)
-      window.open(effectiveObjUrl, '_blank', 'noopener')
+      console.warn('Download file failed, opening in new tab instead', err)
+      window.open(effectiveUrl, '_blank', 'noopener')
       return false
     }
   }
@@ -190,8 +235,8 @@ export default function CameraAngle3DStudioPanel() {
   // thông tin góc XYZ + prompt hiện tại vào bên dưới ảnh, xuất ra PNG thật —
   // đây là phần "chỉnh góc XYZ" của tên nút, khác với file .obj gốc (vốn
   // không đổi theo góc máy).
-  const downloadAngleSnapshot = () => {
-    const srcCanvas = gizmoWrapperRef.current?.querySelector('canvas')
+  const downloadAngleSnapshot = (wrapperRef, cam, promptText) => {
+    const srcCanvas = wrapperRef.current?.querySelector('canvas')
     if (!srcCanvas) return false
     const w = srcCanvas.width
     const h = srcCanvas.height
@@ -206,41 +251,41 @@ export default function CameraAngle3DStudioPanel() {
     ctx.fillRect(0, h, w, bannerH)
     ctx.fillStyle = '#22d3ee'
     ctx.font = `900 ${Math.round(22 * scale)}px monospace`
-    ctx.fillText(`Azimuth ${camera.azimuth}° · Elevation ${camera.elevation}° · Distance ${camera.distance.toFixed(1)}`, 20 * scale, h + 40 * scale)
+    ctx.fillText(`Azimuth ${cam.azimuth}° · Elevation ${cam.elevation}° · Distance ${cam.distance.toFixed(1)}`, 20 * scale, h + 40 * scale)
     ctx.fillStyle = '#34d399'
     ctx.font = `${Math.round(16 * scale)}px monospace`
-    ctx.fillText(prompt, 20 * scale, h + 76 * scale)
+    ctx.fillText(promptText, 20 * scale, h + 76 * scale)
     const pngUrl = out.toDataURL('image/png')
     const a = document.createElement('a')
     a.href = pngUrl
-    a.download = `camera-angle-az${camera.azimuth}-el${camera.elevation}-dist${camera.distance.toFixed(1)}.png`
+    a.download = `camera-angle-az${cam.azimuth}-el${cam.elevation}-dist${cam.distance.toFixed(1)}.png`
     document.body.appendChild(a)
     a.click()
     a.remove()
     return true
   }
 
+  // --- Khung "🎮 3D Camera Control 2D Object" ---
   const downloadObjAndAngle = async () => {
-    if (!effectiveObjUrl) return
+    if (!effectiveImage2dUrl) return
     setObjDownloadState('downloading')
-    const objOk = await downloadObjFile()
-    setObjDownloadState(objOk ? 'done' : 'error')
+    const ok = await downloadGizmoFile(effectiveImage2dUrl, 'image-2d.png')
+    setObjDownloadState(ok ? 'done' : 'error')
     setTimeout(() => setObjDownloadState('idle'), 2200)
   }
 
   const downloadSnapshotOnly = () => {
     setSnapshotDownloadState('downloading')
-    const ok = downloadAngleSnapshot()
+    const ok = downloadAngleSnapshot(gizmoWrapperRef, camera, prompt)
     setSnapshotDownloadState(ok ? 'done' : 'error')
     setTimeout(() => setSnapshotDownloadState('idle'), 2200)
   }
 
-  // --- 3 nút nhỏ cạnh ô nhập link .obj ---
-  const clearObjUrl = () => { setObjUrl('') }
+  const clearImage2dUrl = () => { setImage2dUrl('') }
 
-  const copyObjUrlToClipboard = async () => {
+  const copyImage2dUrlToClipboard = async () => {
     try {
-      await navigator.clipboard.writeText(objUrl || '')
+      await navigator.clipboard.writeText(image2dUrl || '')
       setClipboardState('copied')
     } catch (err) {
       console.warn('Copy link failed', err)
@@ -249,16 +294,57 @@ export default function CameraAngle3DStudioPanel() {
     setTimeout(() => setClipboardState('idle'), 1800)
   }
 
-  const pasteObjUrlFromClipboard = async () => {
+  const pasteImage2dUrlFromClipboard = async () => {
     try {
       const text = await navigator.clipboard.readText()
-      if (text) setObjUrl(text.trim())
+      if (text) setImage2dUrl(text.trim())
       setClipboardState('pasted')
     } catch (err) {
       console.warn('Paste link failed (trình duyệt có thể chưa cấp quyền clipboard)', err)
       setClipboardState('error')
     }
     setTimeout(() => setClipboardState('idle'), 1800)
+  }
+
+  // --- Khung "🎮 3D Camera Control 3D Object" ---
+  const downloadObj3dAndAngle = async () => {
+    if (!effectiveObj3dUrl) return
+    setObj3dDownloadState('downloading')
+    const ok = await downloadGizmoFile(effectiveObj3dUrl, 'model.obj')
+    setObj3dDownloadState(ok ? 'done' : 'error')
+    setTimeout(() => setObj3dDownloadState('idle'), 2200)
+  }
+
+  const downloadSnapshot3dOnly = () => {
+    setSnapshot3dDownloadState('downloading')
+    const ok = downloadAngleSnapshot(gizmo3dWrapperRef, camera3d, prompt3d)
+    setSnapshot3dDownloadState(ok ? 'done' : 'error')
+    setTimeout(() => setSnapshot3dDownloadState('idle'), 2200)
+  }
+
+  const clearObj3dUrl = () => { setObj3dUrl('') }
+
+  const copyObj3dUrlToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(obj3dUrl || '')
+      setClipboard3dState('copied')
+    } catch (err) {
+      console.warn('Copy link failed', err)
+      setClipboard3dState('error')
+    }
+    setTimeout(() => setClipboard3dState('idle'), 1800)
+  }
+
+  const pasteObj3dUrlFromClipboard = async () => {
+    try {
+      const text = await navigator.clipboard.readText()
+      if (text) setObj3dUrl(text.trim())
+      setClipboard3dState('pasted')
+    } catch (err) {
+      console.warn('Paste link failed (trình duyệt có thể chưa cấp quyền clipboard)', err)
+      setClipboard3dState('error')
+    }
+    setTimeout(() => setClipboard3dState('idle'), 1800)
   }
 
   return (
@@ -282,18 +368,21 @@ export default function CameraAngle3DStudioPanel() {
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 420px), 1fr))', gap: 18, marginTop: 18 }}>
 
-          {/* --- GIZMO 3D + SLIDERS --- */}
+          {/* --- GIZMO 2D Object (ảnh 2D) + SLIDERS — cung cấp prompt/góc chụp
+               cho "🚀 Realtime Hugging Face API" bên dưới, vì API đó chỉ
+               dùng upload ảnh 2D để đổi góc chụp trước khi chạy. --- */}
           <section style={cardStyle(palette)}>
-            <h2 style={{ margin: '0 0 6px', fontSize: 20 }}>🎮 3D Camera Control</h2>
+            <h2 style={{ margin: '0 0 6px', fontSize: 20 }}>🎮 3D Camera Control 2D Object</h2>
             <p style={{ margin: '0 0 12px', color: palette.text2, fontSize: 12 }}>Kéo tay cầm: 🟢 Azimuth · 🩷 Elevation · 🟠 Distance</p>
 
             <div ref={gizmoWrapperRef}>
               <Camera3DAngleGizmo
-                objUrl={effectiveObjUrl}
+                mode="image"
+                imageUrl={effectiveImage2dUrl}
                 value={camera}
                 onChange={setCamera}
-                onLoadError={handleObjLoadError}
-                onLoadSuccess={handleObjLoadSuccess}
+                onLoadError={handleImage2dLoadError}
+                onLoadSuccess={handleImage2dLoadSuccess}
               />
             </div>
 
@@ -310,9 +399,9 @@ export default function CameraAngle3DStudioPanel() {
                 }}
               >
                 {objDownloadState === 'downloading' && '⏳ Đang tải...'}
-                {objDownloadState === 'done' && '✅ Đã tải (.obj)'}
+                {objDownloadState === 'done' && '✅ Đã tải (ảnh)'}
                 {objDownloadState === 'error' && '⚠️ Lỗi'}
-                {objDownloadState === 'idle' && '⬇️ Download 3D'}
+                {objDownloadState === 'idle' && '⬇️ Download ảnh 2D'}
               </button>
 
               <button
@@ -333,12 +422,12 @@ export default function CameraAngle3DStudioPanel() {
               </button>
             </div>
 
-            <label style={labelStyle(palette)}>Model .obj demo cho gizmo (đổi thử model khác)</label>
+            <label style={labelStyle(palette)}>Link ảnh 2D cho gizmo (đổi thử ảnh khác)</label>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <input value={objUrl} onChange={(e) => setObjUrl(e.target.value)} style={{ ...inputStyle(palette), fontFamily: 'monospace', fontSize: 11, flex: 1 }} />
+              <input value={image2dUrl} onChange={(e) => setImage2dUrl(e.target.value)} style={{ ...inputStyle(palette), fontFamily: 'monospace', fontSize: 11, flex: 1 }} />
               <button
                 type="button"
-                onClick={clearObjUrl}
+                onClick={clearImage2dUrl}
                 title="Xoá Link đang có trong Textbox"
                 aria-label="Xoá Link đang có trong Textbox"
                 style={iconButtonStyle(palette.red)}
@@ -347,7 +436,7 @@ export default function CameraAngle3DStudioPanel() {
               </button>
               <button
                 type="button"
-                onClick={copyObjUrlToClipboard}
+                onClick={copyImage2dUrlToClipboard}
                 title="Copy Link đang có trong Textbox vào bộ nhớ"
                 aria-label="Copy Link đang có trong Textbox vào bộ nhớ"
                 style={iconButtonStyle(palette.cyan)}
@@ -356,7 +445,7 @@ export default function CameraAngle3DStudioPanel() {
               </button>
               <button
                 type="button"
-                onClick={pasteObjUrlFromClipboard}
+                onClick={pasteImage2dUrlFromClipboard}
                 title="Copy Link trong bộ nhớ vào Textbox"
                 aria-label="Copy Link trong bộ nhớ vào Textbox"
                 style={iconButtonStyle(palette.green)}
@@ -364,9 +453,9 @@ export default function CameraAngle3DStudioPanel() {
                 {clipboardState === 'pasted' ? '✅' : '📥'}
               </button>
             </div>
-            {objLoadError && (
+            {image2dLoadError && (
               <div style={{ marginTop: 6, color: palette.red, fontSize: 12, fontWeight: 700, lineHeight: 1.5 }}>
-                ⚠️ {objLoadError}
+                ⚠️ {image2dLoadError}
               </div>
             )}
 
@@ -385,6 +474,113 @@ export default function CameraAngle3DStudioPanel() {
 
             <label style={labelStyle(palette)}>Prompt sinh ra</label>
             <div style={{ ...inputStyle(palette), fontFamily: 'monospace', fontSize: 12, color: palette.green }}>{prompt}</div>
+          </section>
+
+          {/* --- GIZMO 3D Object (model .obj thật) + SLIDERS — bản sao độc lập
+               của khung trên, chỉ để xem trước góc máy trên model 3D. --- */}
+          <section style={cardStyle(palette)}>
+            <h2 style={{ margin: '0 0 6px', fontSize: 20 }}>🎮 3D Camera Control 3D Object</h2>
+            <p style={{ margin: '0 0 12px', color: palette.text2, fontSize: 12 }}>Kéo tay cầm: 🟢 Azimuth · 🩷 Elevation · 🟠 Distance</p>
+
+            <div ref={gizmo3dWrapperRef}>
+              <Camera3DAngleGizmo
+                mode="obj"
+                objUrl={effectiveObj3dUrl}
+                value={camera3d}
+                onChange={setCamera3d}
+                onLoadError={handleObj3dLoadError}
+                onLoadSuccess={handleObj3dLoadSuccess}
+              />
+            </div>
+
+            <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
+              <button
+                type="button"
+                onClick={downloadObj3dAndAngle}
+                disabled={obj3dDownloadState === 'downloading'}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                  padding: '9px 14px', borderRadius: 999, fontSize: 12, fontWeight: 800, flex: 1,
+                  border: `1px solid ${palette.cyan}66`, background: `${palette.cyan}1f`, color: palette.cyan,
+                  cursor: obj3dDownloadState === 'downloading' ? 'wait' : 'pointer', opacity: obj3dDownloadState === 'downloading' ? 0.7 : 1,
+                }}
+              >
+                {obj3dDownloadState === 'downloading' && '⏳ Đang tải...'}
+                {obj3dDownloadState === 'done' && '✅ Đã tải (.obj)'}
+                {obj3dDownloadState === 'error' && '⚠️ Lỗi'}
+                {obj3dDownloadState === 'idle' && '⬇️ Download 3D'}
+              </button>
+
+              <button
+                type="button"
+                onClick={downloadSnapshot3dOnly}
+                disabled={snapshot3dDownloadState === 'downloading'}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                  padding: '9px 14px', borderRadius: 999, fontSize: 12, fontWeight: 800, flex: 1,
+                  border: `1px solid ${palette.violet}66`, background: `${palette.violet}1f`, color: palette.violet,
+                  cursor: snapshot3dDownloadState === 'downloading' ? 'wait' : 'pointer', opacity: snapshot3dDownloadState === 'downloading' ? 0.7 : 1,
+                }}
+              >
+                {snapshot3dDownloadState === 'downloading' && '⏳ Đang tải...'}
+                {snapshot3dDownloadState === 'done' && '✅ Đã tải (.png)'}
+                {snapshot3dDownloadState === 'error' && '⚠️ Lỗi'}
+                {snapshot3dDownloadState === 'idle' && '⬇️ Download Toàn cảnh góc chụp XYZ'}
+              </button>
+            </div>
+
+            <label style={labelStyle(palette)}>Model .obj demo cho gizmo (đổi thử model khác)</label>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <input value={obj3dUrl} onChange={(e) => setObj3dUrl(e.target.value)} style={{ ...inputStyle(palette), fontFamily: 'monospace', fontSize: 11, flex: 1 }} />
+              <button
+                type="button"
+                onClick={clearObj3dUrl}
+                title="Xoá Link đang có trong Textbox"
+                aria-label="Xoá Link đang có trong Textbox"
+                style={iconButtonStyle(palette.red)}
+              >
+                ❌
+              </button>
+              <button
+                type="button"
+                onClick={copyObj3dUrlToClipboard}
+                title="Copy Link đang có trong Textbox vào bộ nhớ"
+                aria-label="Copy Link đang có trong Textbox vào bộ nhớ"
+                style={iconButtonStyle(palette.cyan)}
+              >
+                {clipboard3dState === 'copied' ? '✅' : '📋'}
+              </button>
+              <button
+                type="button"
+                onClick={pasteObj3dUrlFromClipboard}
+                title="Copy Link trong bộ nhớ vào Textbox"
+                aria-label="Copy Link trong bộ nhớ vào Textbox"
+                style={iconButtonStyle(palette.green)}
+              >
+                {clipboard3dState === 'pasted' ? '✅' : '📥'}
+              </button>
+            </div>
+            {obj3dLoadError && (
+              <div style={{ marginTop: 6, color: palette.red, fontSize: 12, fontWeight: 700, lineHeight: 1.5 }}>
+                ⚠️ {obj3dLoadError}
+              </div>
+            )}
+
+            <div className="slider-row" style={{ marginTop: 14 }}>
+              <label style={{ ...labelStyle(palette), margin: 0, minWidth: 130 }}>Azimuth {camera3d.azimuth}°</label>
+              <input type="range" min={0} max={315} step={45} value={camera3d.azimuth} onChange={(e) => setCamera3d((prev) => ({ ...prev, azimuth: Number(e.target.value) }))} style={{ flex: 1 }} />
+            </div>
+            <div className="slider-row">
+              <label style={{ ...labelStyle(palette), margin: 0, minWidth: 130 }}>Elevation {camera3d.elevation}°</label>
+              <input type="range" min={-30} max={60} step={30} value={camera3d.elevation} onChange={(e) => setCamera3d((prev) => ({ ...prev, elevation: Number(e.target.value) }))} style={{ flex: 1 }} />
+            </div>
+            <div className="slider-row">
+              <label style={{ ...labelStyle(palette), margin: 0, minWidth: 130 }}>Distance {camera3d.distance.toFixed(1)}</label>
+              <input type="range" min={0.6} max={1.4} step={0.4} value={camera3d.distance} onChange={(e) => setCamera3d((prev) => ({ ...prev, distance: Number(e.target.value) }))} style={{ flex: 1 }} />
+            </div>
+
+            <label style={labelStyle(palette)}>Prompt sinh ra</label>
+            <div style={{ ...inputStyle(palette), fontFamily: 'monospace', fontSize: 12, color: palette.green }}>{prompt3d}</div>
           </section>
 
           {/* --- REALTIME HF SPACE --- */}
@@ -415,22 +611,15 @@ export default function CameraAngle3DStudioPanel() {
                 <img src={outputImage} alt="output" style={{ width: '100%', borderRadius: 18, border: `1px solid ${palette.border}` }} />
               </>
             )}
+
+            {(apiSchema || rawResponse) && (
+              <details open style={{ marginTop: 14 }}>
+                <summary style={{ cursor: 'pointer', fontWeight: 900 }}>API schema / Raw response</summary>
+                <pre style={{ overflow: 'auto', maxHeight: 380, background: palette.card2, color: palette.text, border: `1px solid ${palette.border}`, borderRadius: 14, padding: 12, fontSize: 11 }}>{JSON.stringify({ apiSchema, rawResponse }, null, 2)}</pre>
+              </details>
+            )}
           </section>
         </div>
-
-        <section style={{ ...cardStyle(palette), marginTop: 18 }}>
-          <h2 style={{ margin: '0 0 10px', fontSize: 20 }}>🖥️ Hugging Face Space realtime nhúng</h2>
-          <p style={{ marginTop: 0, color: palette.text2, fontSize: 13, lineHeight: 1.6 }}>
-            Nếu Space đổi endpoint hoặc bị giới hạn CORS, dùng UI chính thức nhúng bên dưới để chạy realtime trực tiếp.
-          </p>
-          <iframe title="Qwen Image Multiple Angles 3D Camera" src={CAMERA_SPACE_EMBED_URL} style={{ width: '100%', height: 760, border: `1px solid ${palette.border}`, borderRadius: 18, background: palette.card2 }} allow="camera; microphone; clipboard-read; clipboard-write; fullscreen" />
-          {(apiSchema || rawResponse) && (
-            <details open style={{ marginTop: 14 }}>
-              <summary style={{ cursor: 'pointer', fontWeight: 900 }}>API schema / Raw response</summary>
-              <pre style={{ overflow: 'auto', maxHeight: 380, background: palette.card2, color: palette.text, border: `1px solid ${palette.border}`, borderRadius: 14, padding: 12, fontSize: 11 }}>{JSON.stringify({ apiSchema, rawResponse }, null, 2)}</pre>
-            </details>
-          )}
-        </section>
       </div>
     </div>
   )
