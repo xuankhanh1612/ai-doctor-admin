@@ -673,6 +673,10 @@ export default function AvatarCreatorPanel() {
     if (!selectedAvatar) return
     setSaving(true)
     const previewUrl = selectedAvatar.thumbnail_url || selectedAvatar.image_url || selectedAvatar.model_file_url
+    // modelKind: cùng logic phân loại FBX/glTF (bao gồm VRM) đang dùng cho
+    // AnimatedAvatarViewer ở getFormatOptions() bên trên — lưu lại để màn
+    // hình Profile biết dùng loader nào khi hiển thị avatar 3D thật.
+    const modelKind = (selectedAvatar.format || '').toUpperCase().includes('FBX') ? 'fbx' : 'gltf'
     updateProfile({
       avatar: previewUrl,
       avatarCustomized: true,
@@ -684,6 +688,8 @@ export default function AvatarCreatorPanel() {
         license: selectedAvatar.license,
         thumbnailUrl: selectedAvatar.thumbnail_url || '',
         modelFileUrl: selectedAvatar.model_file_url || '',
+        format: selectedAvatar.format || 'VRM',
+        modelKind,
         source: 'ToxSam/open-source-avatars',
         openSea: getAvatarOpenSeaInfo(selectedAvatar),
       },

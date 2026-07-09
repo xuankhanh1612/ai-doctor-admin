@@ -3,6 +3,8 @@ import { useAuth } from '../context/AuthContext'
 import { useApp } from '../context/AppContext'
 import profileBannerImg from '../pages/AnonymousProfileUUID-Avatar-1080x720.png'
 import UserUuid3DAvatar from './UserUuid3DAvatar.jsx'
+import AnimatedAvatarViewer from './AnimatedAvatarViewer'
+import ObjModelViewer from './ObjModelViewer'
 
 const PROVIDER_META = {
   google: {
@@ -33,6 +35,27 @@ const PROVIDER_META = {
 
 const initialsAvatar = name => `https://ui-avatars.com/api/?name=${encodeURIComponent(name || 'User')}&background=6b3fd4&color=fff&size=256&bold=true&rounded=true`
 const isDataImage = value => /^data:image\//.test(String(value || ''))
+
+// Avatar hồ sơ là model 3D THẬT (không phải ảnh tĩnh) khi được lưu từ nút
+// "Use as profile avatar" (AvatarCreatorPanel.jsx) hoặc "Dùng làm avatar hồ
+// sơ" (MedicalAssetStorePanel.jsx) — cả hai đều ghi kèm modelFileUrl +
+// modelKind vào user.openSourceAvatar. modelKind quyết định loader thật nào
+// dựng mesh: 'obj' -> ObjModelViewer (THREE.OBJLoader + .mtl), còn lại
+// ('gltf' bao gồm VRM/GLB, hoặc 'fbx') -> AnimatedAvatarViewer (cùng viewer
+// đang chạy cho Tạo Avatar/Chợ Tài nguyên 3D).
+function ProfileAvatar3D({ source, size = 154, isDark }) {
+  if (!source?.modelFileUrl) return null
+  const kind = source.modelKind || (source.format === 'obj' ? 'obj' : source.format?.toUpperCase().includes('FBX') ? 'fbx' : 'gltf')
+  return (
+    <div style={{ width: size, height: size, borderRadius: 20, overflow: 'hidden', background: '#0f172a' }}>
+      {kind === 'obj' ? (
+        <ObjModelViewer modelUrl={source.modelFileUrl} mtlUrl={source.mtlUrl} isDark autoRotate showGrid={false} />
+      ) : (
+        <AnimatedAvatarViewer modelUrl={source.modelFileUrl} modelKind={kind === 'fbx' ? 'fbx' : 'gltf'} isDark autoRotate showGrid={false} showDragHint={false} />
+      )}
+    </div>
+  )
+}
 
 
 function profileCameraTimestamp(lang, date = new Date()) {
@@ -157,6 +180,13 @@ export default function UserProfilePanel() {
   const [phone, setPhone] = useState(user?.phone || '')
   const [avatarPreview, setAvatarPreview] = useState(user?.avatar || providerAvatar || initialsAvatar(user?.name))
   const [avatarCustomized, setAvatarCustomized] = useState(!!user?.avatarCustomized || isDataImage(user?.avatar))
+  // Avatar hồ sơ hiện tại có phải model 3D thật không — chỉ tin
+  // user.openSourceAvatar khi nó thật sự khớp với avatar đang active (tránh
+  // hiện nhầm model 3D cũ nếu user đã đổi sang ảnh khác nhưng dữ liệu cũ
+  // chưa bị dọn).
+  const [avatarModelSource, setAvatarModelSource] = useState(
+    user?.avatar && user?.openSourceAvatar?.thumbnailUrl === user.avatar ? user.openSourceAvatar : null
+  )
   const [cameraActive, setCameraActive] = useState(false)
   const [cameraFacingMode, setCameraFacingMode] = useState('user')
   const [cameraOverlayOn, setCameraOverlayOn] = useState(true)
@@ -186,13 +216,13 @@ export default function UserProfilePanel() {
   useEffect(() => { if (!cameraActive) return; setCameraNow(new Date()); const t = setInterval(() => setCameraNow(new Date()), 1000); return () => clearInterval(t) }, [cameraActive])
 
   const stopCamera = () => { streamRef.current?.getTracks?.().forEach(t => t.stop()); streamRef.current = null; setCameraActive(false) }
-  const useAccountAvatar = () => { if (!providerAvatar) return; setAvatarPreview(providerAvatar); setAvatarCustomized(false); setCameraError('') }
-  const useGeneratedAvatar = () => { setAvatarPreview(initialsAvatar(name || user?.name)); setAvatarCustomized(true); setCameraError('') }
+  const useAccountAvatar = () => { if (!providerAvatar) return; setAvatarPreview(providerAvatar); setAvatarCustomized(false); setAvatarModelSource(null); setCameraError('') }
+  const useGeneratedAvatar = () => { setAvatarPreview(initialsAvatar(name || user?.name)); setAvatarCustomized(true); setAvatarModelSource(null); setCameraError('') }
 
   const handleFile = (file) => {
     if (!file?.type?.startsWith('image/')) { setCameraError(vi ? 'Vui lòng chọn file hình ảnh.' : 'Please choose an image file.'); return }
     const reader = new FileReader()
-    reader.onload = () => { setAvatarPreview(reader.result); setAvatarCustomized(true); setCameraError(''); stopCamera() }
+    reader.onload = () => { setAvatarPreview(reader.result); setAvatarCustomized(true); setAvatarModelSource(null); setCameraError(''); stopCamera() }
     reader.readAsDataURL(file)
   }
 
@@ -230,13 +260,13 @@ export default function UserProfilePanel() {
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
     if (cameraFacingMode === 'user') ctx.setTransform(1, 0, 0, 1, 0, 0)
     if (cameraOverlayOn) drawProfileCameraOverlay(ctx, canvas.width, canvas.height, 'AI Profile Scan', profileCameraTimestamp(lang, cameraNow))
-    setAvatarPreview(canvas.toDataURL('image/jpeg', 0.9)); setAvatarCustomized(true); setCameraError(''); stopCamera()
+    setAvatarPreview(canvas.toDataURL('image/jpeg', 0.9)); setAvatarCustomized(true); setAvatarModelSource(null); setCameraError(''); stopCamera()
   }
 
   const handleSave = async () => {
     setSaving(true); setSaved(false)
     await new Promise(r => setTimeout(r, 250))
-    updateProfile({ name: name.trim() || user?.name, specialty: specialty.trim(), phone: phone.trim(), avatar: avatarPreview || initialsAvatar(name || user?.name), avatarCustomized })
+    updateProfile({ name: name.trim() || user?.name, specialty: specialty.trim(), phone: phone.trim(), avatar: avatarPreview || initialsAvatar(name || user?.name), avatarCustomized, openSourceAvatar: avatarModelSource })
     setSaving(false); setSaved(true); setTimeout(() => setSaved(false), 1800)
   }
 
@@ -273,7 +303,11 @@ export default function UserProfilePanel() {
             <div style={{ textAlign: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14, flexWrap: 'wrap', marginBottom: 14 }}>
                 <div style={{ position: 'relative', width: 154, height: 154, flex: '0 0 154px' }}>
-                  <img src={avatarPreview || initialsAvatar(name)} alt={vi ? 'Ảnh đại diện' : 'Avatar'} style={{ width: 154, height: 154, borderRadius: '50%', objectFit: 'cover', border: `4px solid ${providerMeta.border}`, boxShadow: `0 16px 45px ${providerMeta.border}` }} />
+                  {avatarModelSource ? (
+                    <ProfileAvatar3D source={avatarModelSource} size={154} isDark={isDark} />
+                  ) : (
+                    <img src={avatarPreview || initialsAvatar(name)} alt={vi ? 'Ảnh đại diện' : 'Avatar'} style={{ width: 154, height: 154, borderRadius: '50%', objectFit: 'cover', border: `4px solid ${providerMeta.border}`, boxShadow: `0 16px 45px ${providerMeta.border}` }} />
+                  )}
                   <div style={{ position: 'absolute', right: 8, bottom: 8, width: 38, height: 38, borderRadius: '50%', background: provider === 'apple' ? '#111' : '#fff', border: `3px solid ${surface2}`, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 24px rgba(0,0,0,0.25)' }}>
                     <ProviderBadge provider={provider} />
                   </div>
@@ -503,6 +537,9 @@ function AnonymousProfilePanel({ user, isDark, vi, lang, t, loginWithGoogle, log
   const [phone, setPhone] = useState(user?.phone || '')
   const [avatarPreview, setAvatarPreview] = useState(user?.avatar || initialsAvatar(user?.name))
   const [avatarCustomized, setAvatarCustomized] = useState(!!user?.avatarCustomized || isDataImage(user?.avatar))
+  const [avatarModelSource, setAvatarModelSource] = useState(
+    user?.avatar && user?.openSourceAvatar?.thumbnailUrl === user.avatar ? user.openSourceAvatar : null
+  )
   const [cameraActive, setCameraActive] = useState(false)
   const [cameraFacingMode, setCameraFacingMode] = useState('user')
   const [cameraOverlayOn, setCameraOverlayOn] = useState(true)
@@ -526,12 +563,12 @@ function AnonymousProfilePanel({ user, isDark, vi, lang, t, loginWithGoogle, log
   useEffect(() => { if (!cameraActive) return; setCameraNow(new Date()); const t = setInterval(() => setCameraNow(new Date()), 1000); return () => clearInterval(t) }, [cameraActive])
 
   const stopCamera = () => { streamRef.current?.getTracks?.().forEach(t => t.stop()); streamRef.current = null; setCameraActive(false) }
-  const useGeneratedAvatar = () => { setAvatarPreview(initialsAvatar(name || user?.name)); setAvatarCustomized(true); setCameraError('') }
+  const useGeneratedAvatar = () => { setAvatarPreview(initialsAvatar(name || user?.name)); setAvatarCustomized(true); setAvatarModelSource(null); setCameraError('') }
 
   const handleFile = (file) => {
     if (!file?.type?.startsWith('image/')) { setCameraError(vi ? 'Vui lòng chọn file hình ảnh.' : 'Please choose an image file.'); return }
     const reader = new FileReader()
-    reader.onload = () => { setAvatarPreview(reader.result); setAvatarCustomized(true); setCameraError(''); stopCamera() }
+    reader.onload = () => { setAvatarPreview(reader.result); setAvatarCustomized(true); setAvatarModelSource(null); setCameraError(''); stopCamera() }
     reader.readAsDataURL(file)
   }
 
@@ -569,13 +606,13 @@ function AnonymousProfilePanel({ user, isDark, vi, lang, t, loginWithGoogle, log
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
     if (cameraFacingMode === 'user') ctx.setTransform(1, 0, 0, 1, 0, 0)
     if (cameraOverlayOn) drawProfileCameraOverlay(ctx, canvas.width, canvas.height, 'AI Profile Scan', profileCameraTimestamp(lang, cameraNow))
-    setAvatarPreview(canvas.toDataURL('image/jpeg', 0.9)); setAvatarCustomized(true); setCameraError(''); stopCamera()
+    setAvatarPreview(canvas.toDataURL('image/jpeg', 0.9)); setAvatarCustomized(true); setAvatarModelSource(null); setCameraError(''); stopCamera()
   }
 
   const handleSave = async () => {
     setSaving(true); setSaved(false)
     await new Promise(r => setTimeout(r, 250))
-    updateProfile({ name: name.trim() || user?.name, specialty: specialty.trim(), phone: phone.trim(), avatar: avatarPreview || initialsAvatar(name || user?.name), avatarCustomized })
+    updateProfile({ name: name.trim() || user?.name, specialty: specialty.trim(), phone: phone.trim(), avatar: avatarPreview || initialsAvatar(name || user?.name), avatarCustomized, openSourceAvatar: avatarModelSource })
     setSaving(false); setSaved(true); setTimeout(() => setSaved(false), 1800)
   }
 
@@ -639,7 +676,11 @@ function AnonymousProfilePanel({ user, isDark, vi, lang, t, loginWithGoogle, log
               <div style={{ textAlign: 'center' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14, flexWrap: 'wrap', marginBottom: 14 }}>
                   <div style={{ position: 'relative', width: 140, height: 140, flex: '0 0 140px' }}>
-                    <img src={avatarPreview || initialsAvatar(name || user.name)} alt={vi ? 'Ảnh đại diện' : 'Avatar'} style={{ width: 140, height: 140, borderRadius: '50%', objectFit: 'cover', border: '4px solid rgba(45,138,94,0.5)', boxShadow: '0 16px 45px rgba(45,138,94,0.35)' }} />
+                    {avatarModelSource ? (
+                      <ProfileAvatar3D source={avatarModelSource} size={140} isDark={isDark} />
+                    ) : (
+                      <img src={avatarPreview || initialsAvatar(name || user.name)} alt={vi ? 'Ảnh đại diện' : 'Avatar'} style={{ width: 140, height: 140, borderRadius: '50%', objectFit: 'cover', border: '4px solid rgba(45,138,94,0.5)', boxShadow: '0 16px 45px rgba(45,138,94,0.35)' }} />
+                    )}
                     <div style={{ position: 'absolute', right: 6, bottom: 6, width: 34, height: 34, borderRadius: '50%', background: '#fff', border: `3px solid ${surface2}`, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 24px rgba(0,0,0,0.25)', fontSize: 15 }}>
                       🌿
                     </div>

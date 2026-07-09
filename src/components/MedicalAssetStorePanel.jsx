@@ -1054,7 +1054,13 @@ export default function MedicalAssetStorePanel() {
     setSaving(true);
     try {
       await saveDataToDB('user_current_avatar_asset', asset);
-      
+
+      // modelKind: cùng cách phân loại đang dùng ở modal xem trước phía trên
+      // (previewAsset.format === 'fbx' | 'obj' | mặc định glb/gltf) — lưu lại
+      // để màn hình Profile biết dùng đúng viewer 3D (AnimatedAvatarViewer
+      // hay ObjModelViewer) khi hiển thị avatar hồ sơ thật.
+      const modelKind = asset.format === 'fbx' ? 'fbx' : asset.format === 'obj' ? 'obj' : 'gltf';
+
       updateProfile({
         avatar: asset.thumbnail,
         avatarCustomized: true,
@@ -1066,6 +1072,9 @@ export default function MedicalAssetStorePanel() {
           license: 'Purchased Asset',
           thumbnailUrl: asset.thumbnail || '',
           modelFileUrl: asset.modelUrl || '',
+          mtlUrl: asset.mtlUrl || '',
+          format: asset.format || 'glb',
+          modelKind,
           source: 'internal_store',
         },
       });
