@@ -46,6 +46,8 @@ export default function CameraAngle3DStudioPanel() {
   const [outputImage, setOutputImage] = useState('')
   const [busy, setBusy] = useState(false)
   const [objDownloadState, setObjDownloadState] = useState('idle') // 'idle' | 'downloading' | 'done' | 'error'
+  const [snapshotDownloadState, setSnapshotDownloadState] = useState('idle') // 'idle' | 'downloading' | 'done' | 'error'
+  const [clipboardState, setClipboardState] = useState('idle') // 'idle' | 'copied' | 'pasted' | 'error'
 
   const palette = useMemo(() => ({
     bg: isDark ? '#030712' : '#f3f7fb',
@@ -179,11 +181,41 @@ export default function CameraAngle3DStudioPanel() {
     if (!objUrl) return
     setObjDownloadState('downloading')
     const objOk = await downloadObjFile()
-    // đợi 1 nhịp để trình duyệt không chặn 2 lượt download liên tiếp
-    await new Promise((r) => setTimeout(r, 400))
-    const snapshotOk = downloadAngleSnapshot()
-    setObjDownloadState(objOk && snapshotOk ? 'done' : 'error')
-    setTimeout(() => setObjDownloadState('idle'), 2400)
+    setObjDownloadState(objOk ? 'done' : 'error')
+    setTimeout(() => setObjDownloadState('idle'), 2200)
+  }
+
+  const downloadSnapshotOnly = () => {
+    setSnapshotDownloadState('downloading')
+    const ok = downloadAngleSnapshot()
+    setSnapshotDownloadState(ok ? 'done' : 'error')
+    setTimeout(() => setSnapshotDownloadState('idle'), 2200)
+  }
+
+  // --- 3 nút nhỏ cạnh ô nhập link .obj ---
+  const clearObjUrl = () => { setObjUrl('') }
+
+  const copyObjUrlToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(objUrl || '')
+      setClipboardState('copied')
+    } catch (err) {
+      console.warn('Copy link failed', err)
+      setClipboardState('error')
+    }
+    setTimeout(() => setClipboardState('idle'), 1800)
+  }
+
+  const pasteObjUrlFromClipboard = async () => {
+    try {
+      const text = await navigator.clipboard.readText()
+      if (text) setObjUrl(text.trim())
+      setClipboardState('pasted')
+    } catch (err) {
+      console.warn('Paste link failed (trình duyệt có thể chưa cấp quyền clipboard)', err)
+      setClipboardState('error')
+    }
+    setTimeout(() => setClipboardState('idle'), 1800)
   }
 
   return (
@@ -216,25 +248,73 @@ export default function CameraAngle3DStudioPanel() {
               <Camera3DAngleGizmo objUrl={objUrl} value={camera} onChange={setCamera} />
             </div>
 
-            <button
-              type="button"
-              onClick={downloadObjAndAngle}
-              disabled={objDownloadState === 'downloading'}
-              style={{
-                marginTop: 12, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                padding: '9px 16px', borderRadius: 999, fontSize: 12, fontWeight: 800, width: '100%',
-                border: `1px solid ${palette.cyan}66`, background: `${palette.cyan}1f`, color: palette.cyan,
-                cursor: objDownloadState === 'downloading' ? 'wait' : 'pointer', opacity: objDownloadState === 'downloading' ? 0.7 : 1,
-              }}
-            >
-              {objDownloadState === 'downloading' && '⏳ Đang tải...'}
-              {objDownloadState === 'done' && '✅ Đã tải xong (.obj + .png)'}
-              {objDownloadState === 'error' && '⚠️ Có lỗi, kiểm tra lại'}
-              {objDownloadState === 'idle' && '⬇️ Download 3D + chỉnh góc XYZ'}
-            </button>
+            <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
+              <button
+                type="button"
+                onClick={downloadObjAndAngle}
+                disabled={objDownloadState === 'downloading'}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                  padding: '9px 14px', borderRadius: 999, fontSize: 12, fontWeight: 800, flex: 1,
+                  border: `1px solid ${palette.cyan}66`, background: `${palette.cyan}1f`, color: palette.cyan,
+                  cursor: objDownloadState === 'downloading' ? 'wait' : 'pointer', opacity: objDownloadState === 'downloading' ? 0.7 : 1,
+                }}
+              >
+                {objDownloadState === 'downloading' && '⏳ Đang tải...'}
+                {objDownloadState === 'done' && '✅ Đã tải (.obj)'}
+                {objDownloadState === 'error' && '⚠️ Lỗi'}
+                {objDownloadState === 'idle' && '⬇️ Download 3D'}
+              </button>
+
+              <button
+                type="button"
+                onClick={downloadSnapshotOnly}
+                disabled={snapshotDownloadState === 'downloading'}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                  padding: '9px 14px', borderRadius: 999, fontSize: 12, fontWeight: 800, flex: 1,
+                  border: `1px solid ${palette.violet}66`, background: `${palette.violet}1f`, color: palette.violet,
+                  cursor: snapshotDownloadState === 'downloading' ? 'wait' : 'pointer', opacity: snapshotDownloadState === 'downloading' ? 0.7 : 1,
+                }}
+              >
+                {snapshotDownloadState === 'downloading' && '⏳ Đang tải...'}
+                {snapshotDownloadState === 'done' && '✅ Đã tải (.png)'}
+                {snapshotDownloadState === 'error' && '⚠️ Lỗi'}
+                {snapshotDownloadState === 'idle' && '⬇️ Download Toàn cảnh góc chụp XYZ'}
+              </button>
+            </div>
 
             <label style={labelStyle(palette)}>Model .obj demo cho gizmo (đổi thử model khác)</label>
-            <input value={objUrl} onChange={(e) => setObjUrl(e.target.value)} style={{ ...inputStyle(palette), fontFamily: 'monospace', fontSize: 11 }} />
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <input value={objUrl} onChange={(e) => setObjUrl(e.target.value)} style={{ ...inputStyle(palette), fontFamily: 'monospace', fontSize: 11, flex: 1 }} />
+              <button
+                type="button"
+                onClick={clearObjUrl}
+                title="Xoá Link đang có trong Textbox"
+                aria-label="Xoá Link đang có trong Textbox"
+                style={iconButtonStyle(palette.red)}
+              >
+                ❌
+              </button>
+              <button
+                type="button"
+                onClick={copyObjUrlToClipboard}
+                title="Copy Link đang có trong Textbox vào bộ nhớ"
+                aria-label="Copy Link đang có trong Textbox vào bộ nhớ"
+                style={iconButtonStyle(palette.cyan)}
+              >
+                {clipboardState === 'copied' ? '✅' : '📋'}
+              </button>
+              <button
+                type="button"
+                onClick={pasteObjUrlFromClipboard}
+                title="Copy Link trong bộ nhớ vào Textbox"
+                aria-label="Copy Link trong bộ nhớ vào Textbox"
+                style={iconButtonStyle(palette.green)}
+              >
+                {clipboardState === 'pasted' ? '✅' : '📥'}
+              </button>
+            </div>
 
             <div className="slider-row" style={{ marginTop: 14 }}>
               <label style={{ ...labelStyle(palette), margin: 0, minWidth: 130 }}>Azimuth {camera.azimuth}°</label>
@@ -308,4 +388,11 @@ function cardStyle(palette) {
 function labelStyle(palette) { return { display: 'block', color: palette.text2, fontSize: 12, fontWeight: 850, margin: '12px 0 6px' } }
 function inputStyle(palette) { return { width: '100%', boxSizing: 'border-box', border: `1px solid ${palette.border}`, borderRadius: 12, background: palette.card2, color: palette.text, padding: '11px 12px', outline: 'none', font: 'inherit' } }
 function linkButton(background, color) { return { display: 'inline-flex', justifyContent: 'center', textDecoration: 'none', borderRadius: 14, padding: '11px 14px', background, color, fontWeight: 950, fontSize: 13, boxShadow: '0 12px 32px rgba(0,0,0,.18)' } }
+function iconButtonStyle(accent) {
+  return {
+    flex: '0 0 auto', width: 38, height: 38, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+    borderRadius: 10, border: `1px solid ${accent}55`, background: `${accent}1a`, color: accent,
+    cursor: 'pointer', fontSize: 15, lineHeight: 1,
+  }
+}
 function actionButton(palette, busy, background, color) { return { border: 'none', borderRadius: 14, padding: '12px 14px', cursor: busy ? 'wait' : 'pointer', fontWeight: 950, color, background: busy ? palette.text2 : background } }
