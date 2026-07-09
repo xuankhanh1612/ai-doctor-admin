@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 import ObjModelViewer from './ObjModelViewer'
 import TouchlessHandCam from './webcam/TouchlessHandCam'
 import Camera3DAngleGizmo, { buildCameraPrompt } from './CameraAngle3DGizmo'
+import VirtualHands from './VirtualHands'
 
 // Medical Visual Playground 🧬 — Sandbox Y khoa 3D: chọn nội tạng, đổi chế độ
 // xem (Solid/Wireframe/X-Ray), và điều khiển mô hình KHÔNG CHẠM bằng tay qua
@@ -70,6 +71,13 @@ export default function MedicalVisualPlayground() {
   const [handRotation, setHandRotation] = useState(null) // [x, y] radian | null
   const [handScale, setHandScale] = useState(null) // number | null
   const lostTimerRef = useRef(null)
+  // Landmark thô (21 khớp/tay) cho VirtualHands — dùng useRef thay vì
+  // useState vì dữ liệu này cập nhật ~60 lần/giây; nếu dùng useState sẽ bắt
+  // React re-render toàn bộ MedicalVisualPlayground 60 lần/giây (rất tốn).
+  // VirtualHands tự đọc landmarksRef.current bên trong vòng lặp
+  // requestAnimationFrame riêng của nó, hoàn toàn không phụ thuộc chu kỳ
+  // render của React.
+  const handLandmarksRef = useRef([])
 
   const currentOrgan = organData[activeOrgan]
 
@@ -79,7 +87,7 @@ export default function MedicalVisualPlayground() {
 
   // Tắt touchless control -> quay lại trạng thái xoay bình thường.
   useEffect(() => {
-    if (!isTouchlessOn) { setHandRotation(null); setHandScale(null) }
+    if (!isTouchlessOn) { setHandRotation(null); setHandScale(null); handLandmarksRef.current = [] }
   }, [isTouchlessOn])
 
   // Touchless Control và Camera Angle Gizmo cùng chiếm khu vực canvas chính
@@ -106,6 +114,8 @@ export default function MedicalVisualPlayground() {
   // cử chỉ Pinch-to-zoom — chụm lại thì mô hình thu nhỏ, mở ra thì phóng to.
   const handleHandTrack = useCallback((landmarksList) => {
     if (lostTimerRef.current) { clearTimeout(lostTimerRef.current); lostTimerRef.current = null }
+    // Gán trực tiếp vào ref cho VirtualHands — KHÔNG setState, không re-render.
+    handLandmarksRef.current = landmarksList
     const hand = landmarksList?.[0]
     if (!hand) return
 
@@ -133,6 +143,7 @@ export default function MedicalVisualPlayground() {
     lostTimerRef.current = setTimeout(() => {
       setHandRotation(null)
       setHandScale(null)
+      handLandmarksRef.current = []
       lostTimerRef.current = null
     }, 600)
   }, [])
@@ -296,6 +307,16 @@ export default function MedicalVisualPlayground() {
             />
           )}
         </div>
+
+        {/* --- HOLOGRAM HANDS: khung xương bàn tay cyan lơ lửng phủ lên trên
+        mô hình, cập nhật qua handLandmarksRef (không re-render React) —
+        chỉ hiện khi Touchless Control đang bật và đang có tay trong khung
+        hình. pointer-events-none để không chặn thao tác kéo/chuột bên dưới. */}
+        {isTouchlessOn && !isCameraGizmoOn && (
+          <div className="absolute inset-0 pointer-events-none z-10">
+            <VirtualHands landmarksRef={handLandmarksRef} />
+          </div>
+        )}
 
         <div className="absolute top-6 right-6 flex flex-col gap-3 pointer-events-none z-20">
           <div className="bg-black/40 backdrop-blur-md border border-white/10 p-4 rounded-xl text-right shadow-lg">
