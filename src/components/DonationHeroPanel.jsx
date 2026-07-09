@@ -57,7 +57,7 @@ const TEXT = {
     privacy: 'Dữ liệu bạn cung cấp đều nằm ở máy của bạn, không bao giờ lưu vào server của chúng tôi. ',
     privacyBold: 'Tất cả dữ liệu là của bạn.',
     anatomyPreviewTitle: 'Bản đồ giải phẫu cơ thể',
-    anatomyPreviewHint: 'Di chuột vào từng điểm để xem chú thích',
+    anatomyPreviewHint: 'Chạm hoặc di chuột vào từng điểm để xem chú thích',
     footer: 'Anh Hùng Hiến Tặng · Cùng nhau lan toả sự sống',
     back: 'Quay lại',
     login: 'Đăng nhập',
@@ -98,7 +98,7 @@ const TEXT = {
     privacy: 'The data you provide stays on your device and is never stored on our servers. ',
     privacyBold: 'All your data belongs to you.',
     anatomyPreviewTitle: 'Body anatomy atlas',
-    anatomyPreviewHint: 'Hover over each point for details',
+    anatomyPreviewHint: 'Tap or hover over each point for details',
     footer: 'Donation Hero · Spreading life together',
     back: 'Back',
     login: 'Log in',
@@ -385,8 +385,11 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onBac
                   {isLevelOne && (
                     <div
                       className={`
-                        absolute bottom-full left-1/2 -translate-x-1/2 mb-4
-                        w-[280px] sm:w-[320px]
+                        fixed left-2 right-2 bottom-24 mb-0 w-auto translate-x-0
+                        sm:absolute sm:bottom-full sm:left-1/2 sm:right-auto sm:mb-4 sm:-translate-x-1/2
+                        sm:w-[min(520px,calc(100vw-2rem))]
+                        md:w-[min(580px,calc(100vw-3rem))]
+                        lg:w-[min(640px,calc(100vw-4rem))]
                         transition-all duration-200 ease-out origin-bottom z-30
                         ${showAnatomyPreview
                           ? 'opacity-100 scale-100 pointer-events-auto'
