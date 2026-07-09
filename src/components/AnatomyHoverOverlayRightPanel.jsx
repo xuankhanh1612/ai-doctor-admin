@@ -6,7 +6,7 @@ const ANATOMY_ANNOTATIONS = [
   { id: 'heart', top: '32%', left: '52%', label: 'Tim mạch', en: 'Heart', info: 'Bơm máu, nuôi dưỡng mô và duy trì tuần hoàn ổn định.', food: 'Yến mạch, cá béo, dầu oliu, rau lá xanh', color: '#ef4444' },
   { id: 'liver', top: '37%', left: '45%', label: 'Gan', en: 'Liver', info: 'Chuyển hoá dinh dưỡng, xử lý độc chất và hỗ trợ tiêu hoá chất béo.', food: 'Bông cải xanh, nghệ, trà xanh, rau đắng', color: '#f59e0b' },
   { id: 'stomach', top: '37%', left: '56%', label: 'Dạ dày', en: 'Stomach', info: 'Nghiền, trộn và tiêu hoá thức ăn trước khi chuyển xuống ruột non.', food: 'Yến mạch, bí đỏ, đậu hũ non, thực phẩm mềm', color: '#10b981' },
-  { id: 'kidneys', top: '43%', left: '49%', label: 'Thận', en: 'Kidneys', info: 'Lọc máu, cân bằng nước - điện giải và tạo nước tiểu.', food: 'Dưa leo, măng tây, nước lọc, giảm muối', color: '#3b82f6' },
+  { id: 'kidney', top: '43%', left: '49%', label: 'Thận', en: 'Kidneys', info: 'Lọc máu, cân bằng nước - điện giải và tạo nước tiểu.', food: 'Dưa leo, măng tây, nước lọc, giảm muối', color: '#3b82f6' },
   { id: 'small-intestine', top: '50%', left: '55%', label: 'Ruột non', en: 'Small intestine', info: 'Hấp thu phần lớn vitamin, khoáng chất, amino acid và năng lượng.', food: 'Chất xơ hoà tan, probiotic, rau củ nấu chín', color: '#22c55e' },
   { id: 'bone', top: '64%', left: '56%', label: 'Xương', en: 'Bone', info: 'Nâng đỡ cơ thể, bảo vệ nội tạng và dự trữ khoáng chất.', food: 'Canxi, vitamin D, protein nạc, vận động chịu lực', color: '#64748b' },
 ];
@@ -16,8 +16,24 @@ export default function AnatomyHoverOverlayRightPanel({
   title = 'Bản đồ nội tạng & dinh dưỡng',
   subtitle = 'Di chuyển chuột hoặc chạm vào từng điểm để xem cơ quan, chức năng và gợi ý thực phẩm hỗ trợ.',
   isDark = false,
+  scores = null,
+  selection = null,
 }) {
   const [activeId, setActiveId] = useState('liver');
+  const normalizedScores = useMemo(() => {
+    if (!scores) return null;
+    return ANATOMY_ANNOTATIONS.reduce((acc, item) => {
+      acc[item.id] = typeof scores[item.id] === 'number' ? scores[item.id] : null;
+      return acc;
+    }, {});
+  }, [scores]);
+
+  const hasLiveScores = !!normalizedScores;
+  const selectedFoodCount = selection
+    ? ['base', 'protein', 'veg', 'top', 'avoid'].filter((key) => selection[key]).length
+    : 0;
+  const targetOrganId = selection?.target?.organKey || null;
+
   const active = useMemo(
     () => ANATOMY_ANNOTATIONS.find((item) => item.id === activeId) || ANATOMY_ANNOTATIONS[0],
     [activeId]
@@ -32,6 +48,9 @@ export default function AnatomyHoverOverlayRightPanel({
   const border = isDark ? 'rgba(148,163,184,0.18)' : '#e2e8f0';
   const text = isDark ? '#e2e8f0' : '#0f172a';
   const muted = isDark ? '#94a3b8' : '#64748b';
+  const activeScore = normalizedScores?.[active.id];
+  const liveScoreLabel = typeof activeScore === 'number' ? `${activeScore}/10` : 'Chưa có món';
+  const liveScoreColor = typeof activeScore === 'number' && activeScore < 0 ? '#dc2626' : active.color;
 
   return (
     <section style={{ width: '100%', background: isDark ? '#0a0d1a' : '#f8fafc', padding: 'clamp(18px,3vw,32px) clamp(12px,3vw,24px) 28px' }}>
@@ -43,6 +62,12 @@ export default function AnatomyHoverOverlayRightPanel({
             </div>
             <h3 style={{ margin: 0, color: text, fontSize: 'clamp(20px,3vw,32px)', fontWeight: 950, letterSpacing: '-0.03em' }}>{title}</h3>
             <p style={{ margin: '8px 0 0', color: muted, fontSize: 13.5, lineHeight: 1.65, maxWidth: 720 }}>{subtitle}</p>
+            {hasLiveScores && (
+              <p style={{ margin: '8px 0 0', color: muted, fontSize: 12.5, lineHeight: 1.55, maxWidth: 720 }}>
+                ⚡ Đồng bộ realtime từ mâm cơm: đã chọn <strong style={{ color: text }}>{selectedFoodCount}</strong> món
+                {targetOrganId ? <> · trọng tâm <strong style={{ color: ANATOMY_ANNOTATIONS.find((item) => item.id === targetOrganId)?.color || text }}>{ANATOMY_ANNOTATIONS.find((item) => item.id === targetOrganId)?.label}</strong></> : null}.
+              </p>
+            )}
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {ANATOMY_ANNOTATIONS.slice(0, 6).map((item) => (
@@ -72,6 +97,11 @@ export default function AnatomyHoverOverlayRightPanel({
             <img src={imageSrc} alt="Human anatomy nutrition map" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'contain', background: '#fff' }} draggable={false} />
             {ANATOMY_ANNOTATIONS.map((item) => {
               const selected = item.id === active.id;
+              const score = normalizedScores?.[item.id];
+              const hasScore = typeof score === 'number';
+              const isTarget = targetOrganId === item.id;
+              const isDanger = hasScore && score < 0;
+              const ringSize = hasScore ? Math.max(6, Math.min(16, Math.abs(score) + 6)) : 5;
               return (
                 <button
                   key={item.id}
@@ -91,12 +121,19 @@ export default function AnatomyHoverOverlayRightPanel({
                     borderRadius: '50%',
                     border: '2px solid #fff',
                     background: item.color,
-                    boxShadow: `0 0 0 ${selected ? 10 : 5}px ${item.color}24, 0 0 24px ${item.color}`,
+                    boxShadow: `0 0 0 ${selected ? Math.max(10, ringSize) : ringSize}px ${isDanger ? '#dc2626' : item.color}24, 0 0 ${hasScore ? 30 : 24}px ${isDanger ? '#dc2626' : item.color}`,
+                    outline: isTarget ? '3px solid #facc15' : 'none',
                     cursor: 'pointer',
                     transition: 'all 0.18s ease',
                     zIndex: selected ? 3 : 2,
                   }}
-                />
+                >
+                  {hasScore && (
+                    <span style={{ position: 'absolute', left: '50%', top: -28, transform: 'translateX(-50%)', padding: '2px 6px', borderRadius: 999, background: isDanger ? '#fee2e2' : '#ecfeff', color: isDanger ? '#b91c1c' : item.color, fontSize: 10, fontWeight: 950, whiteSpace: 'nowrap', boxShadow: '0 8px 18px rgba(15,23,42,0.16)' }}>
+                      {score}/10{isTarget ? ' ⭐' : ''}
+                    </span>
+                  )}
+                </button>
               );
             })}
           </div>
@@ -112,6 +149,16 @@ export default function AnatomyHoverOverlayRightPanel({
               </div>
             </div>
 
+            {hasLiveScores && (
+              <div style={{ padding: 16, borderRadius: 18, background: `${liveScoreColor}12`, border: `1px solid ${liveScoreColor}44`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 900, color: liveScoreColor, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 6 }}>Điểm nội tạng realtime</div>
+                  <div style={{ color: muted, fontSize: 12.5, lineHeight: 1.5 }}>Cập nhật ngay khi bạn chọn/bỏ món ở mâm cơm phía trên.</div>
+                </div>
+                <div style={{ fontSize: 28, fontWeight: 950, color: liveScoreColor, fontFamily: 'monospace', whiteSpace: 'nowrap' }}>{liveScoreLabel}</div>
+              </div>
+            )}
+
             <div style={{ padding: 16, borderRadius: 18, background: isDark ? 'rgba(15,23,42,0.72)' : '#f8fafc', border: `1px solid ${border}` }}>
               <div style={{ fontSize: 11, fontWeight: 900, color: muted, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 8 }}>Chức năng chính</div>
               <p style={{ margin: 0, color: text, fontSize: 15, lineHeight: 1.75 }}>{active.info}</p>
@@ -123,7 +170,12 @@ export default function AnatomyHoverOverlayRightPanel({
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: 10, marginTop: 'auto' }}>
-              {ANATOMY_ANNOTATIONS.map((item) => (
+              {ANATOMY_ANNOTATIONS.map((item) => {
+                const score = normalizedScores?.[item.id];
+                const hasScore = typeof score === 'number';
+                const isDanger = hasScore && score < 0;
+                const isTarget = targetOrganId === item.id;
+                return (
                 <button
                   key={item.id}
                   type="button"
@@ -144,9 +196,13 @@ export default function AnatomyHoverOverlayRightPanel({
                   }}
                 >
                   <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: item.color, marginRight: 7 }} />
-                  {item.label}
+                  <span style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                    <span>{item.label}{isTarget ? ' ⭐' : ''}</span>
+                    {hasScore && <strong style={{ color: isDanger ? '#dc2626' : item.color, fontFamily: 'monospace' }}>{score}/10</strong>}
+                  </span>
                 </button>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>

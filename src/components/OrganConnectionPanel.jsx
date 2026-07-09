@@ -1730,7 +1730,7 @@ export default function OrganConnectionPanel({ onNext, onPrev, prevLabel, nextLa
       </div>
     </div>
 
-    <AnatomyHoverOverlayRightPanel isDark={isDark} />
+    <AnatomyHoverOverlayRightPanel isDark={isDark} scores={scores} selection={selection} />
 
     {/* Nav bar — luôn ở dưới cùng của toàn trang */}
     <div className="organ-nav-bar">
