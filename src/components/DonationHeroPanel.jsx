@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { UserPlus, ShieldCheck, HeartHandshake, BookOpen, Lock, Leaf, Sparkles, Award, Star, Zap, ArrowRight, LogIn } from 'lucide-react';
 import useHeroPanelPrefs from './heroPanels/useHeroPanelPrefs.js';
 import HeroPanelPrefsToggle from './heroPanels/HeroPanelPrefsToggle.jsx';
@@ -108,6 +108,26 @@ const TEXT = {
 
 export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onBack, onLogin }) {
   const [currentLevel] = useState(1);
+  // Popup xem trước bản đồ giải phẫu (thẻ Cấp 1 "Người Tìm Hiểu"): trước đây
+  // chỉ dùng CSS group-hover thuần (chỉ hoạt động với chuột trên desktop).
+  // Chuyển sang điều khiển bằng state để hỗ trợ cả thiết bị cảm ứng (tap để
+  // mở/đóng) lẫn desktop (vẫn giữ hover để mượt như trước).
+  const [showAnatomyPreview, setShowAnatomyPreview] = useState(false);
+  const anatomyPreviewRef = useRef(null);
+
+  // Trên mobile không có sự kiện "hover ra ngoài" để tự đóng popup, nên cần
+  // tự bắt sự kiện chạm/click ra ngoài vùng thẻ Cấp 1 + popup để đóng lại.
+  useEffect(() => {
+    if (!showAnatomyPreview) return;
+    const handleOutsideInteraction = (event) => {
+      if (anatomyPreviewRef.current && !anatomyPreviewRef.current.contains(event.target)) {
+        setShowAnatomyPreview(false);
+      }
+    };
+    document.addEventListener('pointerdown', handleOutsideInteraction);
+    return () => document.removeEventListener('pointerdown', handleOutsideInteraction);
+  }, [showAnatomyPreview]);
+
   const isGuest = mode === 'guest';
   const { isDark, isEn, toggleTheme, toggleLang } = useHeroPanelPrefs();
   // "Trang sau" của ChooseUserRolePanel: đọc lại đúng Cơ quan người dùng đã
@@ -295,12 +315,36 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onBac
               return (
                 <div
                   key={lvl.level}
+                  ref={isLevelOne ? anatomyPreviewRef : undefined}
                   className={`relative flex flex-col items-center w-[150px] text-center ${isLevelOne ? 'group' : ''}`}
+                  {...(isLevelOne
+                    ? {
+                        // Desktop: vẫn giữ hover cho mượt (di chuột vào/ra).
+                        onMouseEnter: () => setShowAnatomyPreview(true),
+                        onMouseLeave: () => setShowAnatomyPreview(false),
+                      }
+                    : {})}
                 >
                   <div className="relative mb-3">
                     <div
                       className={`w-16 h-16 flex items-center justify-center text-2xl bg-gradient-to-br ${unlocked ? lvl.ring : (isDark ? 'from-white/10 to-white/5' : 'from-gray-200 to-gray-300')} shadow-sm ${isLevelOne ? 'cursor-pointer' : ''}`}
                       style={{ clipPath: 'polygon(50% 0%, 95% 25%, 95% 75%, 50% 100%, 5% 75%, 5% 25%)' }}
+                      {...(isLevelOne
+                        ? {
+                            // Mobile/touch: bấm để mở/đóng (tap to toggle),
+                            // vì thiết bị cảm ứng không có sự kiện hover.
+                            onClick: () => setShowAnatomyPreview((prev) => !prev),
+                            role: 'button',
+                            tabIndex: 0,
+                            'aria-expanded': showAnatomyPreview,
+                            onKeyDown: (event) => {
+                              if (event.key === 'Enter' || event.key === ' ') {
+                                event.preventDefault();
+                                setShowAnatomyPreview((prev) => !prev);
+                              }
+                            },
+                          }
+                        : {})}
                     >
                       <span className={unlocked ? '' : 'opacity-40 grayscale'}>{lvl.icon}</span>
                     </div>
@@ -312,17 +356,21 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onBac
                   <div className={`text-xs mb-2 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{lvl.title}</div>
 
                   {/* Popup xem trước bản đồ giải phẫu — chỉ gắn vào thẻ Cấp 1
-                  "Người Tìm Hiểu", hiện ra khi hover (desktop) nhờ CSS
-                  group-hover, không cần thêm state/JS. Định vị tuyệt đối phía
-                  trên thẻ, căn giữa theo chiều ngang. */}
+                  "Người Tìm Hiểu". Điều khiển bằng state showAnatomyPreview
+                  (thay vì chỉ CSS group-hover thuần) để:
+                  - Desktop: mở khi hover (onMouseEnter/Leave ở thẻ cha).
+                  - Mobile/cảm ứng: mở/đóng khi tap vào icon (onClick), và tự
+                    đóng khi chạm ra ngoài (xem useEffect pointerdown ở trên).
+                  Định vị tuyệt đối phía trên thẻ, căn giữa theo chiều ngang. */}
                   {isLevelOne && (
                     <div
                       className={`
                         absolute bottom-full left-1/2 -translate-x-1/2 mb-4
                         w-[280px] sm:w-[320px]
-                        opacity-0 scale-95 pointer-events-none
-                        group-hover:opacity-100 group-hover:scale-100 group-hover:pointer-events-auto
                         transition-all duration-200 ease-out origin-bottom z-30
+                        ${showAnatomyPreview
+                          ? 'opacity-100 scale-100 pointer-events-auto'
+                          : 'opacity-0 scale-95 pointer-events-none'}
                       `}
                     >
                       <div className={`rounded-2xl border p-3 shadow-2xl ${isDark ? 'border-emerald-400/20 bg-[#0f172a]' : 'border-emerald-100 bg-white'}`}>
