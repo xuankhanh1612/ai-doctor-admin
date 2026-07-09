@@ -40,11 +40,11 @@ const SPREAD_Z = 15
 // để người dùng thấy giống selfie. MediaPipe vẫn trả landmark theo hệ tọa độ
 // raw của video, nên phải lật trục X khi dựng bàn tay ảo để cử chỉ khớp với
 // hình camera đang nhìn thấy trên màn hình.
-const mapLandmarkX = (x) => (0.5 - x) * SPREAD_X
+const mapLandmarkX = (x, mirrored = true) => (mirrored ? 0.5 - x : x - 0.5) * SPREAD_X
 const mapLandmarkY = (y) => -(y - 0.5) * SPREAD_Y
 const mapLandmarkZ = (z) => -z * SPREAD_Z
 
-export default function VirtualHands({ landmarksRef, color = '#06b6d4', className = '' }) {
+export default function VirtualHands({ landmarksRef, mirrored = true, color = '#06b6d4', className = '' }) {
   const containerRef = useRef(null)
 
   useEffect(() => {
@@ -104,7 +104,7 @@ export default function VirtualHands({ landmarksRef, color = '#06b6d4', classNam
           const lm = hand[i]
           if (!lm) continue
           dummy.position.set(
-            mapLandmarkX(lm.x),
+            mapLandmarkX(lm.x, mirrored),
             mapLandmarkY(lm.y),
             mapLandmarkZ(lm.z),
           )
@@ -118,7 +118,7 @@ export default function VirtualHands({ landmarksRef, color = '#06b6d4', classNam
         for (let i = 0; i < JOINT_COUNT; i++) {
           const lm = hand[i]
           if (!lm) continue
-          posAttr[i * 3] = mapLandmarkX(lm.x)
+          posAttr[i * 3] = mapLandmarkX(lm.x, mirrored)
           posAttr[i * 3 + 1] = mapLandmarkY(lm.y)
           posAttr[i * 3 + 2] = mapLandmarkZ(lm.z)
         }
@@ -151,7 +151,7 @@ export default function VirtualHands({ landmarksRef, color = '#06b6d4', classNam
       if (container) container.innerHTML = ''
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [mirrored])
 
   return (
     <div

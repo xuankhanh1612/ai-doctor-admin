@@ -1,5 +1,10 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import { useHandTracking } from './useHandTracking'
+
+const CAMERA_MODE = {
+  front: { facingMode: 'user', mirrored: true, label: 'Camera trước' },
+  rear: { facingMode: 'environment', mirrored: false, label: 'Camera sau' },
+}
 
 // Mini-map Webcam cho "Touchless Control" trong Medical Visual Playground.
 // CỐ TÌNH tối giản so với AIVisionWebcam.jsx (không quay video, không chụp
@@ -7,15 +12,36 @@ import { useHandTracking } from './useHandTracking'
 // Hand Landmarker mỗi khung hình, vẽ landmark lên canvas overlay, và bắn
 // tọa độ ra ngoài qua onHandTrack(landmarks) cho component cha (nơi tính
 // góc xoay + pinch-to-zoom rồi truyền vào ObjModelViewer).
-export default function TouchlessHandCam({ onHandTrack, onHandLost }) {
+const TouchlessHandCam = forwardRef(function TouchlessHandCam({ onHandTrack, onHandLost, onMappingChange, onClose }, ref) {
   const videoRef = useRef(null)
   const canvasRef = useRef(null)
   const streamRef = useRef(null)
   const rafRef = useRef(null)
+  const cameraModeRef = useRef('front')
 
   const [starting, setStarting] = useState(true)
   const [errorMsg, setErrorMsg] = useState('')
+  const [cameraMode, setCameraMode] = useState('front')
+  const [torchOn, setTorchOn] = useState(false)
+  const [torchSupported, setTorchSupported] = useState(false)
   const { status, error, ensureLoaded, detectVideoFrame } = useHandTracking()
+
+  const stopCamera = useCallback(() => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current)
+    rafRef.current = null
+    streamRef.current?.getTracks?.().forEach((t) => t.stop())
+    streamRef.current = null
+    setTorchOn(false)
+    setTorchSupported(false)
+    if (videoRef.current) videoRef.current.srcObject = null
+  }, [])
+
+  const syncMapping = useCallback((mode) => {
+    onMappingChange?.({
+      mirrored: CAMERA_MODE[mode]?.mirrored ?? false,
+      facingMode: CAMERA_MODE[mode]?.facingMode ?? 'environment',
+    })
+  }, [onMappingChange])
 
   const drawLandmarks = useCallback((landmarks) => {
     const canvas = canvasRef.current
@@ -65,60 +91,100 @@ export default function TouchlessHandCam({ onHandTrack, onHandLost }) {
     })
   }, [])
 
-  useEffect(() => {
-    let cancelled = false
+  const startCamera = useCallback(async (nextMode = cameraModeRef.current) => {
+    setStarting(true)
+    setErrorMsg('')
+    stopCamera()
+    cameraModeRef.current = nextMode
+    setCameraMode(nextMode)
+    syncMapping(nextMode)
 
-    async function start() {
-      setStarting(true)
-      setErrorMsg('')
-      try {
-        await ensureLoaded()
-        if (cancelled) return
-        if (!navigator.mediaDevices?.getUserMedia) {
-          setErrorMsg('Trình duyệt không hỗ trợ mở camera.')
-          setStarting(false)
-          return
-        }
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
-          audio: false,
-        })
-        if (cancelled) { stream.getTracks().forEach((t) => t.stop()); return }
-        streamRef.current = stream
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream
-          await videoRef.current.play().catch(() => {})
-        }
+    try {
+      await ensureLoaded()
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setErrorMsg('Trình duyệt không hỗ trợ mở camera.')
         setStarting(false)
-
-        const loop = () => {
-          const video = videoRef.current
-          if (video && video.readyState >= 2) {
-            const landmarks = detectVideoFrame(video)
-            drawLandmarks(landmarks)
-            if (landmarks) onHandTrack?.(landmarks)
-            else onHandLost?.()
-          }
-          rafRef.current = requestAnimationFrame(loop)
-        }
-        loop()
-      } catch (err) {
-        console.error('TouchlessHandCam start failed:', err)
-        setErrorMsg('Không thể mở camera hoặc tải model Hand Tracking.')
-        setStarting(false)
+        return
       }
+
+      const modeConfig = CAMERA_MODE[nextMode] || CAMERA_MODE.front
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { ideal: modeConfig.facingMode },
+          width: { ideal: 640 },
+          height: { ideal: 480 },
+        },
+        audio: false,
+      })
+
+      streamRef.current = stream
+      const videoTrack = stream.getVideoTracks?.()[0]
+      const capabilities = videoTrack?.getCapabilities?.()
+      setTorchSupported(Boolean(capabilities?.torch))
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream
+        await videoRef.current.play().catch(() => {})
+      }
+      setStarting(false)
+
+      const loop = () => {
+        const video = videoRef.current
+        if (video && video.readyState >= 2) {
+          const landmarks = detectVideoFrame(video)
+          drawLandmarks(landmarks)
+          if (landmarks) onHandTrack?.(landmarks)
+          else onHandLost?.()
+        }
+        rafRef.current = requestAnimationFrame(loop)
+      }
+      loop()
+    } catch (err) {
+      console.error('TouchlessHandCam start failed:', err)
+      setErrorMsg('Không thể mở camera hoặc tải model Hand Tracking.')
+      setStarting(false)
+    }
+  }, [detectVideoFrame, drawLandmarks, ensureLoaded, onHandLost, onHandTrack, stopCamera, syncMapping])
+
+  const switchToFrontCamera = useCallback(() => {
+    startCamera('front')
+  }, [startCamera])
+
+  const toggleTorch = useCallback(async () => {
+    const videoTrack = streamRef.current?.getVideoTracks?.()[0]
+    if (!videoTrack?.applyConstraints) {
+      setErrorMsg('Camera này không hỗ trợ bật đèn flash trên trình duyệt.')
+      return
     }
 
-    start()
-
-    return () => {
-      cancelled = true
-      if (rafRef.current) cancelAnimationFrame(rafRef.current)
-      streamRef.current?.getTracks?.().forEach((t) => t.stop())
-      streamRef.current = null
+    try {
+      const nextTorchOn = !torchOn
+      await videoTrack.applyConstraints({ advanced: [{ torch: nextTorchOn }] })
+      setTorchOn(nextTorchOn)
+      setTorchSupported(true)
+    } catch (err) {
+      console.warn('Torch toggle failed:', err)
+      setTorchSupported(false)
+      setErrorMsg('Camera/trình duyệt này không hỗ trợ đèn flash. Hãy chuyển sang camera sau nếu cần bật flash.')
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [torchOn])
+
+  useImperativeHandle(ref, () => ({
+    switchToFrontCamera,
+    toggleTorch,
+    closeCamera: () => {
+      stopCamera()
+      onClose?.()
+    },
+  }), [onClose, stopCamera, switchToFrontCamera, toggleTorch])
+
+  useEffect(() => {
+    startCamera('front')
+    return () => stopCamera()
+  }, [startCamera, stopCamera])
+
+  const mirrored = CAMERA_MODE[cameraMode]?.mirrored ?? false
+  const mirrorStyle = mirrored ? 'scaleX(-1)' : 'none'
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%', background: '#000' }}>
@@ -126,12 +192,19 @@ export default function TouchlessHandCam({ onHandTrack, onHandLost }) {
         ref={videoRef}
         muted
         playsInline
-        style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }}
+        style={{ width: '100%', height: '100%', objectFit: 'cover', transform: mirrorStyle }}
       />
       <canvas
         ref={canvasRef}
-        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', transform: 'scaleX(-1)' }}
+        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', transform: mirrorStyle }}
       />
+      <div style={{
+        position: 'absolute', right: 8, bottom: 8, padding: '3px 6px', borderRadius: 999,
+        background: 'rgba(0,0,0,0.58)', color: '#bae6fd', fontSize: 10, fontFamily: 'monospace',
+        border: '1px solid rgba(125,211,252,0.28)', pointerEvents: 'none',
+      }}>
+        {CAMERA_MODE[cameraMode]?.label || 'Camera'}{torchOn ? ' · Flash ON' : torchSupported ? ' · Flash ready' : ''}
+      </div>
       {(starting || status === 'loading') && !errorMsg && (
         <div style={{
           position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -150,4 +223,6 @@ export default function TouchlessHandCam({ onHandTrack, onHandLost }) {
       )}
     </div>
   )
-}
+})
+
+export default TouchlessHandCam
