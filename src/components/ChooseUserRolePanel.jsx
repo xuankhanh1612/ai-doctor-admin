@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ArrowRight, ShieldCheck, Lock, BookOpen, CheckCircle2 } from 'lucide-react';
 import useHeroPanelPrefs from './heroPanels/useHeroPanelPrefs.js';
 import HeroPanelPrefsToggle from './heroPanels/HeroPanelPrefsToggle.jsx';
 import useHeroSelection from './heroPanels/useHeroSelection.js';
 import HeroMicVoiceButton from './heroPanels/HeroMicVoiceButton.jsx';
-import { buildOrganLabels } from '../data/organs.js';
+import { buildOrganLabels, getOrganAnatomyAnnotationId } from '../data/organs.js';
+import AnatomyHoverOverlay from './AnatomyHoverOverlay.jsx';
 
 // ============================================================================
 // ChooseUserRolePanel — màn hình "Chọn Vai Trò Anh Hùng", đứng TRƯỚC
@@ -34,6 +35,8 @@ const TEXT = {
     roleTitleReceive: 'Nhận tạng',
     roleNote: 'Tôi cũng có thể Hiến / Nhận Tạng trong tương lai.',
     quickOrganTitle: 'Chọn nhanh cơ quan có thể hiến / nhận',
+    organPreviewTitle: 'Bản đồ giải phẫu cơ thể',
+    organPreviewHint: 'Đang highlight đúng cơ quan bạn đang chọn',
     viewAll: 'Tôi chưa muốn hiến tặng',
     legalText: 'Tất cả hoạt động hiến và nhận tạng đều theo quy trình cơ quan pháp luật tại quốc gia của bạn.',
     legalTags: ['An toàn', 'Minh bạch', 'Bảo mật', 'Nhân văn'],
@@ -59,6 +62,8 @@ const TEXT = {
     roleTitleReceive: 'Receive an organ',
     roleNote: 'I may also Donate / Receive an organ in the future.',
     quickOrganTitle: 'Quickly choose an organ to donate / receive',
+    organPreviewTitle: 'Body anatomy atlas',
+    organPreviewHint: 'Highlighting the organ you are choosing',
     viewAll: "I don't want to donate yet",
     legalText: 'All organ donation and transplant activities follow the legal procedures of the authorities in your country.',
     legalTags: ['Safe', 'Transparent', 'Secure', 'Humane'],
@@ -115,10 +120,12 @@ export default function ChooseUserRolePanel({ mode = 'guest', onSelectRole, onEn
   // useState nội bộ) để trang sau (DonationHeroPanel) load lại đúng lựa
   // chọn, và để quay lại màn hình này sau cũng thấy đúng lựa chọn cũ.
   const { role: selectedRole, organId: selectedOrgan, setRole: setSelectedRole, setOrgan: setSelectedOrgan } = useHeroSelection();
+  const [previewOrganId, setPreviewOrganId] = useState(null);
   const { isDark, isEn, toggleTheme, toggleLang } = useHeroPanelPrefs();
   const t = isEn ? TEXT.en : TEXT.vi;
   const ROLE_CARDS = buildRoleCards(t);
   const ORGANS = buildOrganLabels(isEn);
+  const previewAnnotationId = previewOrganId ? getOrganAnatomyAnnotationId(previewOrganId) : null;
 
   const handlePickRole = (roleId) => {
     setSelectedRole(roleId);
@@ -214,13 +221,18 @@ export default function ChooseUserRolePanel({ mode = 'guest', onSelectRole, onEn
             <span className={`h-px w-8 ${isDark ? 'bg-gray-600' : 'bg-gray-300'}`} />
           </div>
 
-          <div className="flex flex-wrap justify-center gap-3">
+          <div
+            className="relative flex flex-wrap justify-center gap-3"
+            onMouseLeave={() => setPreviewOrganId(null)}
+          >
             {ORGANS.map((organ) => {
               const isActive = selectedOrgan === organ.id;
               return (
                 <button
                   key={organ.id}
                   onClick={() => setSelectedOrgan(organ.id)}
+                  onMouseEnter={() => setPreviewOrganId(organ.id)}
+                  onFocus={() => setPreviewOrganId(organ.id)}
                   className="flex flex-col items-center gap-1.5 w-[76px] sm:w-[84px]"
                 >
                   <span
@@ -238,6 +250,22 @@ export default function ChooseUserRolePanel({ mode = 'guest', onSelectRole, onEn
                 </button>
               );
             })}
+
+            {previewAnnotationId && (
+              <div className="fixed left-2 right-2 bottom-24 z-30 sm:absolute sm:left-1/2 sm:right-auto sm:bottom-full sm:mb-4 sm:w-[min(580px,calc(100vw-3rem))] sm:-translate-x-1/2">
+                <div className={`rounded-2xl border p-3 shadow-2xl ${isDark ? 'border-emerald-400/20 bg-[#0f172a]' : 'border-emerald-100 bg-white'}`}>
+                  <div className="flex items-center justify-between mb-2 px-1">
+                    <span className={`text-xs font-bold ${isDark ? 'text-emerald-300' : 'text-emerald-700'}`}>{t.organPreviewTitle}</span>
+                  </div>
+                  <AnatomyHoverOverlay
+                    focusAnnotationId={previewAnnotationId}
+                    showOnlyFocus
+                  />
+                  <p className={`mt-2 px-1 text-[10px] ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{t.organPreviewHint}</p>
+                </div>
+                <div className={`w-3 h-3 rotate-45 mx-auto -mt-1.5 border-r border-b ${isDark ? 'border-emerald-400/20 bg-[#0f172a]' : 'border-emerald-100 bg-white'}`} />
+              </div>
+            )}
             <button
               onClick={() => handlePickRole(NO_DONATION_ROLE_ID)}
               className="flex flex-col items-center gap-1.5 w-[76px] sm:w-[84px]"

@@ -10,16 +10,16 @@
 export const DEFAULT_ORGAN_ID = 'gan';
 
 const ORGANS = [
-  { id: 'gan', vi: 'Gan', en: 'Liver', emoji: '🫘' },
-  { id: 'mauhiem', vi: 'Máu Hiếm/Hiến máu nhân đạo', en: 'Rare Blood / Blood Donation', emoji: '🩸' },
-  { id: 'tim', vi: 'Tim', en: 'Heart', emoji: '❤️' },
-  { id: 'phoi', vi: 'Phổi', en: 'Lungs', emoji: '🫁' },
-  { id: 'than', vi: 'Thận', en: 'Kidney', emoji: '🟤' },
-  { id: 'giacmac', vi: 'Giác mạc', en: 'Cornea', emoji: '👁️' },
-  { id: 'xuong', vi: 'Xương', en: 'Bone', emoji: '🦴' },
-  { id: 'da', vi: 'Da', en: 'Skin', emoji: '🧴' },
-  { id: 'tuy', vi: 'Tụy', en: 'Pancreas', emoji: '🟠' },
-  { id: 'ruot', vi: 'Ruột', en: 'Intestine', emoji: '🌀' },
+  { id: 'gan', vi: 'Gan', en: 'Liver', emoji: '🫘', anatomyAnnotationId: 'liver' },
+  { id: 'mauhiem', vi: 'Máu Hiếm/Hiến máu nhân đạo', en: 'Rare Blood / Blood Donation', emoji: '🩸', anatomyAnnotationId: 'blood-vessels' },
+  { id: 'tim', vi: 'Tim', en: 'Heart', emoji: '❤️', anatomyAnnotationId: 'heart' },
+  { id: 'phoi', vi: 'Phổi', en: 'Lungs', emoji: '🫁', anatomyAnnotationId: 'lungs' },
+  { id: 'than', vi: 'Thận', en: 'Kidney', emoji: '🟤', anatomyAnnotationId: 'kidneys' },
+  { id: 'giacmac', vi: 'Giác mạc', en: 'Cornea', emoji: '👁️', anatomyAnnotationId: 'cornea' },
+  { id: 'xuong', vi: 'Xương', en: 'Bone', emoji: '🦴', anatomyAnnotationId: 'bone' },
+  { id: 'da', vi: 'Da', en: 'Skin', emoji: '🧴', anatomyAnnotationId: 'skin' },
+  { id: 'tuy', vi: 'Tụy', en: 'Pancreas', emoji: '🟠', anatomyAnnotationId: 'pancreas' },
+  { id: 'ruot', vi: 'Ruột', en: 'Intestine', emoji: '🌀', anatomyAnnotationId: 'small-intestine' },
 ];
 
 export default ORGANS;
@@ -33,7 +33,16 @@ export function getOrganById(id) {
 // Danh sách rút gọn { id, label, emoji } theo đúng ngôn ngữ đang chọn — dùng
 // để render lưới "Chọn nhanh cơ quan" trong ChooseUserRolePanel.
 export function buildOrganLabels(isEn) {
-  return ORGANS.map((o) => ({ id: o.id, label: isEn ? o.en : o.vi, emoji: o.emoji }));
+  return ORGANS.map((o) => ({
+    id: o.id,
+    label: isEn ? o.en : o.vi,
+    emoji: o.emoji,
+    anatomyAnnotationId: o.anatomyAnnotationId,
+  }));
+}
+
+export function getOrganAnatomyAnnotationId(id) {
+  return getOrganById(id)?.anatomyAnnotationId || null;
 }
 
 // Viết hoa chữ cái đầu -> thường, để ghép organ label vào giữa câu (vd.
