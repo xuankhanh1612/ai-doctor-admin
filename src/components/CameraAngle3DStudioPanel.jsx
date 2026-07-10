@@ -42,6 +42,7 @@ const DEFAULT_COMBO_OBJ_URL = DEFAULT_OBJ_URL
 const DEFAULT_COMBO_MTL_URL = 'https://raw.githubusercontent.com/godekd3133/DX9_WorldSkill_Practice_Gyeonggi_01/81ed0a14c63d309bbfc0fc98c8a40a43325336e6/Resource/Player/Animation/Attack05/Attack05%20(45).mtl'
 const FALLBACK_COMBO_OBJ_URL = FALLBACK_OBJ_URL
 const FALLBACK_COMBO_MTL_URL = 'https://github.com/xuankhanh1612/ai-doctor-admin/blob/main/public/assets/models/krabbypattie01.mtl'
+const DEFAULT_OBJECT_TRANSFORM = { position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0 } }
 
 const loadGradioClient = () => import(/* @vite-ignore */ GRADIO_CLIENT_CDN).then((m) => m.Client)
 
@@ -66,6 +67,7 @@ export default function CameraAngle3DStudioPanel() {
   const [effectiveImage2dUrl, setEffectiveImage2dUrl] = useState(DEFAULT_IMAGE_2D_URL)
   const [image2dLoadError, setImage2dLoadError] = useState('')
   const [camera, setCamera] = useState({ azimuth: 0, elevation: 0, distance: 1.0 })
+  const [object2dTransform, setObject2dTransform] = useState(DEFAULT_OBJECT_TRANSFORM)
 
   // --- Khung "🎮 3D Camera Control 3D Object" — bản sao dùng model .obj thật,
   // độc lập với khung 2D Object ở trên (camera/model riêng, chỉ để xem trước). ---
@@ -73,6 +75,7 @@ export default function CameraAngle3DStudioPanel() {
   const [effectiveObj3dUrl, setEffectiveObj3dUrl] = useState(DEFAULT_OBJ_URL)
   const [obj3dLoadError, setObj3dLoadError] = useState('')
   const [camera3d, setCamera3d] = useState({ azimuth: 0, elevation: 0, distance: 1.0 })
+  const [object3dTransform, setObject3dTransform] = useState(DEFAULT_OBJECT_TRANSFORM)
 
   // --- Khung "🎮 3D Camera Control 2D + 3D Object" — bản sao khung 3D Object,
   // hiển thị ảnh 2D (textbox 1) + model .obj/.mtl (textbox 2) cùng lúc. ---
@@ -85,6 +88,7 @@ export default function CameraAngle3DStudioPanel() {
   const [effectiveComboMtlUrl, setEffectiveComboMtlUrl] = useState(DEFAULT_COMBO_MTL_URL)
   const [comboObjLoadError, setComboObjLoadError] = useState('')
   const [cameraCombo, setCameraCombo] = useState({ azimuth: 0, elevation: 0, distance: 1.0 })
+  const [objectComboTransform, setObjectComboTransform] = useState(DEFAULT_OBJECT_TRANSFORM)
 
   const [sourceImage, setSourceImage] = useState(null)
   const [sourcePreview, setSourcePreview] = useState('')
@@ -556,11 +560,14 @@ export default function CameraAngle3DStudioPanel() {
                 mode="image"
                 imageUrl={effectiveImage2dUrl}
                 value={camera}
+                objectTransform={object2dTransform}
                 onChange={setCamera}
                 onLoadError={handleImage2dLoadError}
                 onLoadSuccess={handleImage2dLoadSuccess}
               />
             </div>
+
+            <ObjectTransformControls palette={palette} value={object2dTransform} onChange={setObject2dTransform} />
 
             <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
               <button
@@ -663,11 +670,14 @@ export default function CameraAngle3DStudioPanel() {
                 mode="obj"
                 objUrl={effectiveObj3dUrl}
                 value={camera3d}
+                objectTransform={object3dTransform}
                 onChange={setCamera3d}
                 onLoadError={handleObj3dLoadError}
                 onLoadSuccess={handleObj3dLoadSuccess}
               />
             </div>
+
+            <ObjectTransformControls palette={palette} value={object3dTransform} onChange={setObject3dTransform} />
 
             <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
               <button
@@ -775,6 +785,7 @@ export default function CameraAngle3DStudioPanel() {
                 objUrl={effectiveComboObjUrl}
                 mtlUrl={effectiveComboMtlUrl}
                 value={cameraCombo}
+                objectTransform={objectComboTransform}
                 onChange={setCameraCombo}
                 onLoadError={(err, failedUrl) => {
                   if (failedUrl === effectiveComboImageUrl || failedUrl === comboImageUrl) handleComboImageLoadError(err, failedUrl)
@@ -786,6 +797,8 @@ export default function CameraAngle3DStudioPanel() {
                 }}
               />
             </div>
+
+            <ObjectTransformControls palette={palette} value={objectComboTransform} onChange={setObjectComboTransform} />
 
             <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
               <button
@@ -983,6 +996,46 @@ export default function CameraAngle3DStudioPanel() {
           </section>
         </div>
       </div>
+    </div>
+  )
+}
+
+
+function ObjectTransformControls({ palette, value, onChange }) {
+  const updateTransform = (group, axis) => (event) => {
+    const nextValue = Number(event.target.value)
+    onChange((prev) => ({
+      ...prev,
+      [group]: {
+        ...prev[group],
+        [axis]: nextValue,
+      },
+    }))
+  }
+
+  const resetTransform = () => onChange(DEFAULT_OBJECT_TRANSFORM)
+
+  const rows = [
+    ['position', 'x', '↔️ Di chuyển Object trái/phải trục X', -2, 2, 0.05, value.position.x.toFixed(2)],
+    ['position', 'y', '↔️ Di chuyển Object trái/phải trục Y', -2, 2, 0.05, value.position.y.toFixed(2)],
+    ['position', 'z', '↔️ Di chuyển Object trái/phải trục Z', -2, 2, 0.05, value.position.z.toFixed(2)],
+    ['rotation', 'x', '🔄 Xoay Object tại chỗ trục X', -180, 180, 5, `${value.rotation.x}°`],
+    ['rotation', 'y', '🔄 Xoay Object tại chỗ trục Y', -180, 180, 5, `${value.rotation.y}°`],
+    ['rotation', 'z', '🔄 Xoay Object tại chỗ trục Z', -180, 180, 5, `${value.rotation.z}°`],
+  ]
+
+  return (
+    <div style={{ marginTop: 14, padding: 12, border: `1px solid ${palette.border}`, borderRadius: 16, background: palette.card2 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 8 }}>
+        <div style={{ color: palette.text, fontSize: 13, fontWeight: 950 }}>Object XYZ Transform</div>
+        <button type="button" onClick={resetTransform} style={{ ...iconButtonStyle(palette.amber), width: 'auto', padding: '0 10px', fontSize: 12, fontWeight: 900 }}>Reset</button>
+      </div>
+      {rows.map(([group, axis, label, min, max, step, display]) => (
+        <div key={`${group}-${axis}`} className="slider-row" style={{ marginTop: 8 }}>
+          <label style={{ ...labelStyle(palette), margin: 0, minWidth: 210 }}>{label}: {display}</label>
+          <input type="range" min={min} max={max} step={step} value={value[group][axis]} onChange={updateTransform(group, axis)} style={{ flex: 1 }} />
+        </div>
+      ))}
     </div>
   )
 }

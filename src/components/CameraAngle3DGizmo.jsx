@@ -52,15 +52,18 @@ export function buildCameraPrompt(azimuth, elevation, distance) {
   return `<sks> ${AZIMUTH_NAMES[az]} ${ELEVATION_NAMES[String(el)]} ${DISTANCE_NAMES[distKey]}`
 }
 
-export default function Camera3DAngleGizmo({ mode = 'obj', objUrl, mtlUrl, imageUrl, value, onChange, onLoadError, onLoadSuccess }) {
+export default function Camera3DAngleGizmo({ mode = 'obj', objUrl, mtlUrl, imageUrl, value, objectTransform, onChange, onLoadError, onLoadSuccess }) {
   const wrapperRef = useRef(null)
   const promptRef = useRef(null)
   const liveRef = useRef({ azimuth: value?.azimuth ?? 0, elevation: value?.elevation ?? 0, distance: value?.distance ?? 1.0 })
+  const objectTransformRef = useRef(objectTransform)
   const applyExternalRef = useRef(null)
+  const applyObjectTransformRef = useRef(null)
   const onLoadErrorRef = useRef(onLoadError)
   const onLoadSuccessRef = useRef(onLoadSuccess)
   useEffect(() => { onLoadErrorRef.current = onLoadError }, [onLoadError])
   useEffect(() => { onLoadSuccessRef.current = onLoadSuccess }, [onLoadSuccess])
+  useEffect(() => { objectTransformRef.current = objectTransform }, [objectTransform])
 
   // Scene khởi tạo 1 lần; objUrl đổi thì tải lại model, KHÔNG huỷ toàn bộ scene.
   useEffect(() => {
@@ -98,8 +101,23 @@ export default function Camera3DAngleGizmo({ mode = 'obj', objUrl, mtlUrl, image
 
     // --- Target: model .obj thật thay cho mặt phẳng ảnh của bản gốc ---
     const targetGroup = new THREE.Group()
-    targetGroup.position.copy(CENTER)
     scene.add(targetGroup)
+
+    function applyObjectTransform(next = objectTransformRef.current) {
+      const position = next?.position || {}
+      const rotation = next?.rotation || {}
+      targetGroup.position.set(
+        CENTER.x + (position.x || 0),
+        CENTER.y + (position.y || 0),
+        CENTER.z + (position.z || 0)
+      )
+      targetGroup.rotation.set(
+        THREE.MathUtils.degToRad(rotation.x || 0),
+        THREE.MathUtils.degToRad(rotation.y || 0),
+        THREE.MathUtils.degToRad(rotation.z || 0)
+      )
+    }
+    applyObjectTransform()
 
     function loadTargetModel(url, mtlUrlParam, offsetX = 0) {
       while (targetGroup.children.length) targetGroup.remove(targetGroup.children[0])
@@ -120,6 +138,7 @@ export default function Camera3DAngleGizmo({ mode = 'obj', objUrl, mtlUrl, image
           }
         })
         targetGroup.add(object)
+        applyObjectTransform()
         onLoadSuccessRef.current?.(url)
       }
       const handleFailure = (err) => {
@@ -168,6 +187,7 @@ export default function Camera3DAngleGizmo({ mode = 'obj', objUrl, mtlUrl, image
           )
           mesh.position.set(offsetX, planeH / 2, 0)
           targetGroup.add(mesh)
+          applyObjectTransform()
           onLoadSuccessRef.current?.(url)
         },
         undefined,
@@ -417,6 +437,7 @@ export default function Camera3DAngleGizmo({ mode = 'obj', objUrl, mtlUrl, image
       if (next.distance != null) distanceFactor = next.distance
       updatePositions()
     }
+    applyObjectTransformRef.current = (next) => applyObjectTransform(next)
 
     return () => {
       disposed = true
@@ -440,6 +461,7 @@ export default function Camera3DAngleGizmo({ mode = 'obj', objUrl, mtlUrl, image
       })
       if (wrapper) wrapper.innerHTML = ''
       applyExternalRef.current = null
+      applyObjectTransformRef.current = null
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, objUrl, mtlUrl, imageUrl])
@@ -448,6 +470,14 @@ export default function Camera3DAngleGizmo({ mode = 'obj', objUrl, mtlUrl, image
   useEffect(() => {
     if (value && applyExternalRef.current) applyExternalRef.current(value)
   }, [value?.azimuth, value?.elevation, value?.distance])
+
+  // objectTransform điều khiển từ ngoài -> di chuyển/xoay object tại chỗ.
+  useEffect(() => {
+    if (applyObjectTransformRef.current) applyObjectTransformRef.current(objectTransform)
+  }, [
+    objectTransform?.position?.x, objectTransform?.position?.y, objectTransform?.position?.z,
+    objectTransform?.rotation?.x, objectTransform?.rotation?.y, objectTransform?.rotation?.z,
+  ])
 
   return (
     <div style={{ width: '100%', height: 420, position: 'relative', background: '#1a1a1a', borderRadius: 12, overflow: 'hidden' }}>
