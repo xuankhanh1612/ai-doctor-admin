@@ -6,7 +6,7 @@
     <title>Medical AI PvP/PvE/Co-op - Defender vs Boss</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { background-color: #0f172a; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; touch-action: none; user-select: none; }
+        body { background-color: #0f172a; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; touch-action: none; user-select: none; overflow-x: hidden; }
         canvas { background: linear-gradient(to bottom, #1e1b4b, #311042); border: 2px solid #4f46e5; box-shadow: 0 0 25px rgba(79, 70, 229, 0.4); }
         .ctrl-btn { background: rgba(30, 41, 59, 0.8); border: 1px solid #475569; border-radius: 8px; color: #cbd5e1; font-weight: bold; font-size: 11px; padding: 8px 4px; text-align: center; cursor: pointer; transition: 0.1s; }
         .ctrl-btn:active, .ctrl-btn.active { transform: scale(0.95); }
@@ -15,7 +15,7 @@
         .p2-btn:active, .p2-btn.active { background: #3b82f6; border-color: #60a5fa; color: white;}
         .boss-btn:active, .boss-btn.active { background: #e11d48; border-color: #fb7185; color: white;}
         
-        .organ-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 6px; background: #1e293b; border: 1px solid #334155; border-radius: 12px; cursor: pointer; }
+        .organ-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 6px; background: #1e293b; border: 1px solid #334155; border-radius: 12px; cursor: pointer; transition: all 0.2s;}
         .organ-btn:hover { background: #334155; border-color: #64748b; }
         .organ-btn.selected { border-color: #38bdf8; background: #0c4a6e; }
 
@@ -23,83 +23,105 @@
         .mode-btn.active { box-shadow: 0 0 10px rgba(255,255,255,0.2); }
     </style>
 </head>
-<body class="text-slate-200 min-h-screen flex flex-col items-center justify-center p-4">
+<body class="text-slate-200 min-h-screen flex items-center justify-center p-4 relative">
 
-    <div class="max-w-7xl w-full grid grid-cols-4 gap-6">
-        <div class="col-span-1 space-y-4 bg-slate-900/90 p-5 rounded-2xl border border-slate-800 shadow-2xl flex flex-col">
-            <div>
-                <span class="text-[10px] font-bold uppercase tracking-wider text-cyan-400 bg-cyan-950 px-2 py-1 rounded">Medical Sandbox</span>
-                <h1 class="text-xl font-black text-white mt-2">Bảo Vệ Cơ Thể</h1>
+    <button onclick="toggleMenu()" class="fixed top-4 right-4 z-50 bg-indigo-600 hover:bg-indigo-500 text-white border border-indigo-400 px-4 py-2 rounded-xl text-xs font-bold shadow-lg shadow-indigo-500/30 transition-all flex items-center gap-2">
+        <span id="menuIcon">▶</span> Ẩn / Hiện Menu
+    </button>
+
+    <div class="w-[800px] flex-shrink-0 flex flex-col relative z-10">
+        
+        <div class="bg-slate-950 p-2 rounded-t-xl border-t border-x border-slate-800 flex justify-between items-center px-4">
+            <div class="flex gap-4">
+                <div class="text-emerald-400 font-bold text-sm w-[80px]">🛡️ P1: <span id="p1-hp">10</span></div>
+                <div id="p2-hp-container" class="text-sky-400 font-bold text-sm hidden w-[80px]">🛡️ P2: <span id="p2-hp">10</span></div>
             </div>
+            <div class="text-fuchsia-400 font-bold text-sm bg-fuchsia-950/50 px-3 py-1 rounded border border-fuchsia-900">
+                🧱 TƯỜNG BASE: <span id="base-hp">20</span>/20
+            </div>
+            <div class="text-amber-400 font-bold text-sm">⏱️ <span id="time-display">0.0</span>s</div>
+            <div class="text-rose-400 font-bold text-sm">🦠 BOSS: <span id="boss-hp">10</span></div>
+        </div>
+        
+        <canvas id="gameCanvas" width="800" height="420" class="w-full object-cover"></canvas>
 
-            <div class="bg-slate-800 p-2 rounded-xl border border-slate-700">
-                <h3 class="text-[10px] font-bold text-slate-400 mb-2 text-center uppercase">Chế độ chơi</h3>
-                <div class="flex flex-col gap-2">
-                    <button id="mode-pve" onclick="setGameMode('pve')" class="mode-btn bg-indigo-600 hover:bg-indigo-500 text-white">👤 PvE (1 người vs AI)</button>
-                    <button id="mode-coop" onclick="setGameMode('coop')" class="mode-btn bg-sky-600 hover:bg-sky-500 text-white">👥 Co-op (2 người vs AI)</button>
-                    <button id="mode-pvp" onclick="setGameMode('pvp')" class="mode-btn bg-rose-600 hover:bg-rose-500 text-white">⚔️ PvP (Người vs Người)</button>
+        <div class="bg-slate-900 border-x border-slate-800 p-3 flex justify-between items-center">
+            <div class="flex flex-col items-center w-1/2 border-r border-slate-700 pr-2">
+                <span class="text-[11px] font-bold text-emerald-400 mb-2">P1 (Bảo Vệ) - Phím: W A S D E</span>
+                <div class="grid grid-cols-4 gap-1.5 w-full max-w-[300px]">
+                    <div class="col-span-4 flex justify-center mb-1">
+                        <button class="ctrl-btn p1-btn w-1/3" onmousedown="setKey('w', true)" onmouseup="setKey('w', false)">W Nhảy</button>
+                    </div>
+                    <button class="ctrl-btn p1-btn" onmousedown="setKey('a', true)" onmouseup="setKey('a', false)">A Trái</button>
+                    <button class="ctrl-btn p1-btn border-emerald-500 text-emerald-300" onmousedown="setKey('s', true)" onmouseup="setKey('s', false)">S Khiên</button>
+                    <button class="ctrl-btn p1-btn" onmousedown="setKey('d', true)" onmouseup="setKey('d', false)">D Phải</button>
+                    <button class="ctrl-btn p1-btn bg-emerald-900/50" onmousedown="setKey('e', true)" onmouseup="setKey('e', false)">E Bắn</button>
                 </div>
             </div>
 
-            <h3 class="text-xs font-bold text-slate-400 mt-2 border-b border-slate-700 pb-1">CHỌN HỆ CƠ QUAN:</h3>
-            <div class="grid grid-cols-2 gap-2 flex-1">
-                <button id="btn-brain" class="organ-btn selected" onclick="selectOrgan('brain')">
-                    <span class="text-2xl mb-1">🧠</span><span class="text-[10px] font-bold text-slate-300 text-center">Hệ thần kinh<br>(Não)</span>
-                </button>
-                <button id="btn-lungs" class="organ-btn" onclick="selectOrgan('lungs')">
-                    <span class="text-2xl mb-1">🫁</span><span class="text-[10px] font-bold text-slate-300 text-center">Hệ hô hấp<br>(Phổi)</span>
-                </button>
-                <button id="btn-heart" class="organ-btn" onclick="selectOrgan('heart')">
-                    <span class="text-2xl mb-1">🫀</span><span class="text-[10px] font-bold text-slate-300 text-center">Hệ tuần hoàn<br>(Tim)</span>
-                </button>
-                <button id="btn-kidneys" class="organ-btn" onclick="selectOrgan('kidneys')">
-                    <span class="text-2xl mb-1">💧</span><span class="text-[10px] font-bold text-slate-300 text-center">Hệ tiết niệu<br>(Thận)</span>
-                </button>
-                <button id="btn-stomach" class="organ-btn" onclick="selectOrgan('stomach')">
-                    <span class="text-2xl mb-1">🥩</span><span class="text-[10px] font-bold text-slate-300 text-center">Hệ tiêu hóa<br>(Bao tử)</span>
-                </button>
-                <button id="btn-liver" class="organ-btn" onclick="selectOrgan('liver')">
-                    <span class="text-2xl mb-1">🧫</span><span class="text-[10px] font-bold text-slate-300 text-center">Hệ gan mật<br>(Gan)</span>
-                </button>
+            <div class="flex flex-col items-center w-1/2 pl-2" id="p2-panel">
+                <span class="text-[11px] font-bold text-rose-400 mb-2" id="p2-control-label">P2 (Boss) - Phím: Mũi tên (↑ ↓ ← →)</span>
+                <div class="grid grid-cols-4 gap-1.5 w-full max-w-[300px]" id="p2-controls">
+                    </div>
             </div>
         </div>
 
-        <div class="col-span-3 flex flex-col">
-            <div class="bg-slate-950 p-2 rounded-t-xl border-t border-x border-slate-800 flex justify-between items-center px-4">
-                <div class="flex gap-4">
-                    <div class="text-emerald-400 font-bold text-sm w-[80px]">🛡️ P1: <span id="p1-hp">10</span></div>
-                    <div id="p2-hp-container" class="text-sky-400 font-bold text-sm hidden w-[80px]">🛡️ P2: <span id="p2-hp">10</span></div>
+        <div class="bg-slate-900 border-b border-x border-slate-800 rounded-b-xl p-3 shadow-xl flex justify-center">
+            <div class="flex flex-wrap justify-center gap-2 rounded-2xl border p-3 bg-slate-900/80 border-white/10 w-full">
+                <div class="flex items-center gap-2 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-colors border-white/10 bg-white/5 text-gray-300">
+                    <span class="text-base leading-none">👆</span><span>Ngón trỏ chỉ lên</span><span class="rounded-md px-1.5 py-0.5 font-mono uppercase bg-white/10">w</span><span class="opacity-70">· Nhảy</span>
                 </div>
-                <div class="text-fuchsia-400 font-bold text-sm bg-fuchsia-950/50 px-3 py-1 rounded border border-fuchsia-900">
-                    🧱 TƯỜNG BASE: <span id="base-hp">20</span>/20
+                <div class="flex items-center gap-2 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-colors border-white/10 bg-white/5 text-gray-300">
+                    <span class="text-base leading-none">👈</span><span>Ngón trỏ chỉ trái</span><span class="rounded-md px-1.5 py-0.5 font-mono uppercase bg-white/10">a</span><span class="opacity-70">· Trái</span>
                 </div>
-                <div class="text-amber-400 font-bold text-sm">⏱️ <span id="time-display">0.0</span>s</div>
-                <div class="text-rose-400 font-bold text-sm">🦠 BOSS: <span id="boss-hp">10</span></div>
-            </div>
-            
-            <canvas id="gameCanvas" width="800" height="420" class="w-full object-cover"></canvas>
-
-            <div class="bg-slate-900 border-b border-x border-slate-800 rounded-b-xl p-3 flex justify-between items-center shadow-xl">
-                
-                <div class="flex flex-col items-center w-1/2 border-r border-slate-700 pr-2">
-                    <span class="text-[11px] font-bold text-emerald-400 mb-2">P1 (Bảo Vệ) - Phím: W A S D E</span>
-                    <div class="grid grid-cols-4 gap-1.5 w-full max-w-[300px]">
-                        <div class="col-span-4 flex justify-center mb-1">
-                            <button class="ctrl-btn p1-btn w-1/3" onmousedown="setKey('w', true)" onmouseup="setKey('w', false)" ontouchstart="setKey('w', true)" ontouchend="setKey('w', false)">W Nhảy</button>
-                        </div>
-                        <button class="ctrl-btn p1-btn" onmousedown="setKey('a', true)" onmouseup="setKey('a', false)" ontouchstart="setKey('a', true)" ontouchend="setKey('a', false)">A Trái</button>
-                        <button class="ctrl-btn p1-btn border-emerald-500 text-emerald-300" onmousedown="setKey('s', true)" onmouseup="setKey('s', false)" ontouchstart="setKey('s', true)" ontouchend="setKey('s', false)">S Khiên</button>
-                        <button class="ctrl-btn p1-btn" onmousedown="setKey('d', true)" onmouseup="setKey('d', false)" ontouchstart="setKey('d', true)" ontouchend="setKey('d', false)">D Phải</button>
-                        <button class="ctrl-btn p1-btn bg-emerald-900/50" onmousedown="setKey('e', true)" onmouseup="setKey('e', false)" ontouchstart="setKey('e', true)" ontouchend="setKey('e', false)">E Bắn</button>
-                    </div>
+                <div class="flex items-center gap-2 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-colors border-white/10 bg-white/5 text-gray-300">
+                    <span class="text-base leading-none">🖐️</span><span>Xoè ≥3 ngón / cả bàn tay</span><span class="rounded-md px-1.5 py-0.5 font-mono uppercase bg-white/10">s</span><span class="opacity-70">· Khiên</span>
                 </div>
-
-                <div class="flex flex-col items-center w-1/2 pl-2" id="p2-panel">
-                    <span class="text-[11px] font-bold text-rose-400 mb-2" id="p2-control-label">P2 (Boss) - Phím: Mũi tên (↑ ↓ ← →)</span>
-                    <div class="grid grid-cols-4 gap-1.5 w-full max-w-[300px]" id="p2-controls">
-                        </div>
+                <div class="flex items-center gap-2 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-colors border-white/10 bg-white/5 text-gray-300">
+                    <span class="text-base leading-none">👉</span><span>Ngón trỏ chỉ phải</span><span class="rounded-md px-1.5 py-0.5 font-mono uppercase bg-white/10">d</span><span class="opacity-70">· Phải</span>
+                </div>
+                <div class="flex items-center gap-2 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-colors border-white/10 bg-white/5 text-gray-300">
+                    <span class="text-base leading-none">✊</span><span>Nắm chặt nắm đấm</span><span class="rounded-md px-1.5 py-0.5 font-mono uppercase bg-white/10">e</span><span class="opacity-70">· Bắn Lợi Khuẩn</span>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <div id="sideMenu" class="fixed top-16 right-4 bottom-4 w-[320px] bg-slate-900/95 p-5 rounded-2xl border border-slate-700 shadow-2xl flex flex-col z-40 transition-transform duration-300 translate-x-0 backdrop-blur-md overflow-y-auto">
+        <div>
+            <span class="text-[10px] font-bold uppercase tracking-wider text-cyan-400 bg-cyan-950 px-2 py-1 rounded">Medical Sandbox</span>
+            <h1 class="text-xl font-black text-white mt-2">Thiết Lập Game</h1>
+        </div>
+
+        <div class="bg-slate-800 p-2 rounded-xl border border-slate-700 mt-4">
+            <h3 class="text-[10px] font-bold text-slate-400 mb-2 text-center uppercase">1. Chế độ chơi</h3>
+            <div class="flex flex-col gap-2">
+                <button id="mode-pve" onclick="setGameMode('pve')" class="mode-btn bg-indigo-600 hover:bg-indigo-500 text-white">👤 PvE (1 người vs AI)</button>
+                <button id="mode-coop" onclick="setGameMode('coop')" class="mode-btn bg-sky-600 hover:bg-sky-500 text-white">👥 Co-op (2 người vs AI)</button>
+                <button id="mode-pvp" onclick="setGameMode('pvp')" class="mode-btn bg-rose-600 hover:bg-rose-500 text-white">⚔️ PvP (Người vs Người)</button>
+            </div>
+        </div>
+
+        <h3 class="text-xs font-bold text-slate-400 mt-4 border-b border-slate-700 pb-1">2. CHỌN HỆ CƠ QUAN:</h3>
+        <div class="grid grid-cols-2 gap-2 mt-2">
+            <button id="btn-brain" class="organ-btn selected" onclick="selectOrgan('brain')">
+                <span class="text-2xl mb-1">🧠</span><span class="text-[10px] font-bold text-slate-300 text-center">Hệ thần kinh<br>(Não)</span>
+            </button>
+            <button id="btn-lungs" class="organ-btn" onclick="selectOrgan('lungs')">
+                <span class="text-2xl mb-1">🫁</span><span class="text-[10px] font-bold text-slate-300 text-center">Hệ hô hấp<br>(Phổi)</span>
+            </button>
+            <button id="btn-heart" class="organ-btn" onclick="selectOrgan('heart')">
+                <span class="text-2xl mb-1">🫀</span><span class="text-[10px] font-bold text-slate-300 text-center">Hệ tuần hoàn<br>(Tim)</span>
+            </button>
+            <button id="btn-kidneys" class="organ-btn" onclick="selectOrgan('kidneys')">
+                <span class="text-2xl mb-1">💧</span><span class="text-[10px] font-bold text-slate-300 text-center">Hệ tiết niệu<br>(Thận)</span>
+            </button>
+            <button id="btn-stomach" class="organ-btn" onclick="selectOrgan('stomach')">
+                <span class="text-2xl mb-1">🥩</span><span class="text-[10px] font-bold text-slate-300 text-center">Hệ tiêu hóa<br>(Bao tử)</span>
+            </button>
+            <button id="btn-liver" class="organ-btn" onclick="selectOrgan('liver')">
+                <span class="text-2xl mb-1">🧫</span><span class="text-[10px] font-bold text-slate-300 text-center">Hệ gan mật<br>(Gan)</span>
+            </button>
         </div>
     </div>
 
@@ -107,9 +129,24 @@
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
 
+        // LOGIC ẨN HIỆN MENU SANG PHẢI (CHỈ DÙNG CSS TRANSFORM, KHÔNG LÀM LAG CANVAS)
+        let menuOpen = true;
+        function toggleMenu() {
+            menuOpen = !menuOpen;
+            const menu = document.getElementById('sideMenu');
+            const icon = document.getElementById('menuIcon');
+            if(menuOpen) {
+                menu.style.transform = 'translateX(0)';
+                icon.innerText = '▶';
+            } else {
+                menu.style.transform = 'translateX(120%)';
+                icon.innerText = '◀';
+            }
+        }
+
         // GAME STATE
         let gameMode = 'pve'; 
-        let gameState = 'playing'; 
+        let gameState = 'waiting'; // waiting, playing, win, lose
         let startTime = 0;
         let elapsedTime = 0;
         
@@ -119,8 +156,6 @@
         let p1 = { x: 50, y: 200, width: 24, height: 24, vx: 0, vy: 0, hp: 10, isGrounded: false, color: '#10b981', shieldActive: false, alive: true };
         let p2 = { x: 100, y: 200, width: 24, height: 24, vx: 0, vy: 0, hp: 10, isGrounded: false, color: '#38bdf8', shieldActive: false, active: false, alive: true };
         let boss = { x: 650, y: 150, radius: 25, vx: 0, vy: 2.5, hp: 10, maxHp: 10, dirY: 1, color: '#e11d48', shieldActive: false };
-        
-        // Cập nhật Tường Nội Tạng (Tank Style)
         let organBase = { x: 10, y: 120, w: 45, h: 140, hp: 20, maxHp: 20 }; 
         
         let projectiles = []; 
@@ -132,7 +167,7 @@
         const GRAVITY = 0.4;
         const JUMP = -9; 
 
-        // BẮT SỰ KIỆN PHÍM BẤM
+        // SỰ KIỆN BÀN PHÍM
         let keys = {};
         window.addEventListener('keydown', e => { 
             keys[e.key] = true; keys[e.key.toLowerCase()] = true; 
@@ -143,7 +178,7 @@
         });
         function setKey(k, val) { keys[k] = val; keys[k.toLowerCase()] = val; }
 
-        function setGameMode(mode) {
+        function setGameMode(mode, autoStart = true) {
             gameMode = mode;
             document.querySelectorAll('.mode-btn').forEach(btn => {
                 btn.classList.remove('active', 'border-white');
@@ -170,12 +205,12 @@
                 p2Label.innerText = "P2 (Bảo Vệ Cùng) - Phím: ↑ ↓ ← → Space";
                 p2Controls.innerHTML = `
                     <div class="col-span-4 flex justify-center mb-1">
-                        <button class="ctrl-btn p2-btn w-1/3" onmousedown="setKey('ArrowUp', true)" onmouseup="setKey('ArrowUp', false)" ontouchstart="setKey('ArrowUp', true)" ontouchend="setKey('ArrowUp', false)">↑ Nhảy</button>
+                        <button class="ctrl-btn p2-btn w-1/3" onmousedown="setKey('ArrowUp', true)" onmouseup="setKey('ArrowUp', false)">↑ Nhảy</button>
                     </div>
-                    <button class="ctrl-btn p2-btn" onmousedown="setKey('ArrowLeft', true)" onmouseup="setKey('ArrowLeft', false)" ontouchstart="setKey('ArrowLeft', true)" ontouchend="setKey('ArrowLeft', false)">← Trái</button>
-                    <button class="ctrl-btn p2-btn border-sky-500 text-sky-300" onmousedown="setKey('ArrowDown', true)" onmouseup="setKey('ArrowDown', false)" ontouchstart="setKey('ArrowDown', true)" ontouchend="setKey('ArrowDown', false)">↓ Khiên</button>
-                    <button class="ctrl-btn p2-btn" onmousedown="setKey('ArrowRight', true)" onmouseup="setKey('ArrowRight', false)" ontouchstart="setKey('ArrowRight', true)" ontouchend="setKey('ArrowRight', false)">→ Phải</button>
-                    <button class="ctrl-btn p2-btn bg-sky-900/50" onmousedown="setKey(' ', true)" onmouseup="setKey(' ', false)" ontouchstart="setKey(' ', true)" ontouchend="setKey(' ', false)">Space Bắn</button>
+                    <button class="ctrl-btn p2-btn" onmousedown="setKey('ArrowLeft', true)" onmouseup="setKey('ArrowLeft', false)">← Trái</button>
+                    <button class="ctrl-btn p2-btn border-sky-500 text-sky-300" onmousedown="setKey('ArrowDown', true)" onmouseup="setKey('ArrowDown', false)">↓ Khiên</button>
+                    <button class="ctrl-btn p2-btn" onmousedown="setKey('ArrowRight', true)" onmouseup="setKey('ArrowRight', false)">→ Phải</button>
+                    <button class="ctrl-btn p2-btn bg-sky-900/50" onmousedown="setKey(' ', true)" onmouseup="setKey(' ', false)">Space Bắn</button>
                 `;
             } else if (mode === 'pvp') {
                 p2.active = false;
@@ -184,18 +219,22 @@
                 p2Label.innerText = "P2 (Boss) - Phím: ↑ ↓ ← →";
                 p2Controls.innerHTML = `
                     <div class="col-span-4 flex justify-center mb-1">
-                        <button class="ctrl-btn boss-btn w-1/3 bg-rose-900/50" onmousedown="setKey('ArrowUp', true)" onmouseup="setKey('ArrowUp', false)" ontouchstart="setKey('ArrowUp', true)" ontouchend="setKey('ArrowUp', false)">↑ Bắn Virus</button>
+                        <button class="ctrl-btn boss-btn w-1/3 bg-rose-900/50" onmousedown="setKey('ArrowUp', true)" onmouseup="setKey('ArrowUp', false)">↑ Bắn Virus</button>
                     </div>
-                    <button class="ctrl-btn boss-btn" onmousedown="setKey('ArrowLeft', true)" onmouseup="setKey('ArrowLeft', false)" ontouchstart="setKey('ArrowLeft', true)" ontouchend="setKey('ArrowLeft', false)">← Trái</button>
-                    <button class="ctrl-btn boss-btn border-amber-500 text-amber-300" onmousedown="setKey('ArrowDown', true)" onmouseup="setKey('ArrowDown', false)" ontouchstart="setKey('ArrowDown', true)" ontouchend="setKey('ArrowDown', false)">↓ Khiên</button>
-                    <button class="ctrl-btn boss-btn" onmousedown="setKey('ArrowRight', true)" onmouseup="setKey('ArrowRight', false)" ontouchstart="setKey('ArrowRight', true)" ontouchend="setKey('ArrowRight', false)">→ Phải</button>
+                    <button class="ctrl-btn boss-btn" onmousedown="setKey('ArrowLeft', true)" onmouseup="setKey('ArrowLeft', false)">← Trái</button>
+                    <button class="ctrl-btn boss-btn border-amber-500 text-amber-300" onmousedown="setKey('ArrowDown', true)" onmouseup="setKey('ArrowDown', false)">↓ Khiên</button>
+                    <button class="ctrl-btn boss-btn" onmousedown="setKey('ArrowRight', true)" onmouseup="setKey('ArrowRight', false)">→ Phải</button>
                     <div></div>
                 `;
             }
-            resetGame();
+
+            if (autoStart) {
+                gameState = 'playing';
+                resetGame();
+            }
         }
 
-        function selectOrgan(type) {
+        function selectOrgan(type, autoStart = true) {
             document.querySelectorAll('.organ-btn').forEach(btn => btn.classList.remove('selected'));
             document.getElementById('btn-' + type).classList.add('selected');
 
@@ -218,17 +257,20 @@
                 envTheme = { name: "Hệ gan mật", bg: "rgba(30, 20, 10, 0.7)", wall: "#78350f", border: "#fbbf24", organColor: "#d97706" };
                 platforms = [{x: 160, y: 310, w: 130, h: 12, label: "Nhu mô gan"}, {x: 350, y: 220, w: 120, h: 12, label: "Ống mật"}, {x: 520, y: 140, w: 120, h: 12, label: "Tĩnh mạch"}];
             }
-            resetGame();
+            
+            if(autoStart) {
+                gameState = 'playing';
+                resetGame();
+            }
         }
 
         function resetGame() {
-            gameState = 'playing';
             startTime = Date.now(); elapsedTime = 0;
             
             p1.hp = 10; p1.alive = true;
             p2.hp = 10; p2.alive = true;
             boss.hp = 10;
-            organBase.hp = 20; // Tường luôn có 20 HP
+            organBase.hp = 20; 
             
             p1.x = 80; p1.y = 200; p1.vy = 0;
             p2.x = 120; p2.y = 200; p2.vy = 0;
@@ -285,7 +327,7 @@
             elapsedTime = (Date.now() - startTime) / 1000;
             document.getElementById('time-display').innerText = elapsedTime.toFixed(1);
 
-            // Xử lý P1
+            // P1
             if(p1.hp <= 0) p1.alive = false;
             if(p1.alive) {
                 applyPhysics(p1, { left: 'a', right: 'd', jump: 'w', shield: 's' });
@@ -295,17 +337,17 @@
                 }
             }
 
-            // Xử lý P2
+            // P2
             if(p2.hp <= 0) p2.alive = false;
             if(p2.active && p2.alive) {
                 applyPhysics(p2, { left: 'arrowleft', right: 'arrowright', jump: 'arrowup', shield: 'arrowdown' });
-                if (keys[' '] && Date.now() - p2LastShot > 350) { // Nút Space
+                if (keys[' '] && Date.now() - p2LastShot > 350) { 
                     projectiles.push({ x: p2.x + p2.width, y: p2.y + p2.height/2, vx: 8, vy: 0, type: 'p2_proj', color: '#7dd3fc', r: 5 });
                     p2LastShot = Date.now();
                 }
             }
 
-            // Xử lý Boss
+            // Boss
             if(gameMode === 'pve' || gameMode === 'coop') {
                 boss.y += boss.vy * boss.dirY;
                 if (boss.y < 60 || boss.y > canvas.height - 60) boss.dirY *= -1;
@@ -337,7 +379,7 @@
                 }
             }
 
-            // Vật phẩm bay lơ lửng
+            // Floaters
             const handleFloaters = (arr, isVirus) => {
                 for(let i = arr.length -1; i >= 0; i--) {
                     let m = arr[i]; m.x += m.vx; m.y += m.vy;
@@ -357,27 +399,20 @@
             handleFloaters(mapViruses, true);
             handleFloaters(mapHeals, false);
 
-            // Xử lý va chạm Đạn
+            // Đạn
             for (let i = projectiles.length - 1; i >= 0; i--) {
                 let proj = projectiles[i]; proj.x += proj.vx; proj.y += proj.vy;
                 if (proj.x < 0 || proj.x > canvas.width) { projectiles.splice(i, 1); continue; }
 
                 if (proj.type === 'boss_proj') {
-                    // Check khiên
                     if (p1.alive && p1.shieldActive && proj.x <= p1.x + p1.width + 10 && proj.x >= p1.x + p1.width && Math.abs(proj.y - (p1.y + p1.height/2)) < 25) { projectiles.splice(i, 1); continue; }
                     if (p2.active && p2.alive && p2.shieldActive && proj.x <= p2.x + p2.width + 10 && proj.x >= p2.x + p2.width && Math.abs(proj.y - (p2.y + p2.height/2)) < 25) { projectiles.splice(i, 1); continue; }
                     
-                    // Check trúng người
                     if (p1.alive && proj.x < p1.x + p1.width && proj.x > p1.x && proj.y > p1.y && proj.y < p1.y + p1.height) { p1.hp--; updateUI(); projectiles.splice(i, 1); checkWin(); continue; }
                     if (p2.active && p2.alive && proj.x < p2.x + p2.width && proj.x > p2.x && proj.y > p2.y && proj.y < p2.y + p2.height) { p2.hp--; updateUI(); projectiles.splice(i, 1); checkWin(); continue; }
                     
-                    // Check trúng TƯỜNG (Base)
                     if (proj.x <= organBase.x + organBase.w) {
-                        organBase.hp--; 
-                        updateUI(); 
-                        projectiles.splice(i, 1); 
-                        checkWin(); 
-                        continue;
+                        organBase.hp--; updateUI(); projectiles.splice(i, 1); checkWin(); continue;
                     }
                 }
 
@@ -393,13 +428,8 @@
 
         function checkWin() {
             let defendersDead = p2.active ? (!p1.alive && !p2.alive) : (!p1.alive);
-            
-            if ((defendersDead || organBase.hp <= 0) && gameState === 'playing') {
-                gameState = 'lose';
-            }
-            else if (boss.hp <= 0 && gameState === 'playing') {
-                gameState = 'win';
-            }
+            if ((defendersDead || organBase.hp <= 0) && gameState === 'playing') gameState = 'lose';
+            else if (boss.hp <= 0 && gameState === 'playing') gameState = 'win';
         }
 
         function updateUI() {
@@ -412,11 +442,11 @@
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
-            // Background
+            // BG & Particles
             ctx.fillStyle = envTheme.bg; ctx.fillRect(0, 0, canvas.width, canvas.height);
             particles.forEach(p => { ctx.fillStyle='rgba(255,255,255,0.15)'; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2); ctx.fill(); });
 
-            // Tường Trần & Sàn
+            // Tường
             ctx.fillStyle = envTheme.wall; ctx.fillRect(0, 0, canvas.width, 30); ctx.fillRect(0, canvas.height-30, canvas.width, 30);
             ctx.fillStyle = '#cbd5e1'; ctx.font = 'bold 12px sans-serif'; ctx.fillText(`Thành Phía Trên`, 10, 20); ctx.fillText(`Thành Phía Dưới`, 10, canvas.height - 10);
 
@@ -426,26 +456,21 @@
                 ctx.fillStyle = '#cbd5e1'; ctx.font = '11px sans-serif'; ctx.fillText(plat.label, plat.x + 5, plat.y - 5);
             });
 
-            // 🧱 VẼ TƯỜNG BẢO VỆ (TANK STYLE) VÀ NỘI TẠNG
-            // 1. Vẽ nội tạng phía trong
+            // 🧱 NỘI TẠNG VÀ TƯỜNG GẠCH
             let innerOrganW = organBase.w - 15;
             ctx.fillStyle = envTheme.organColor; 
             ctx.fillRect(organBase.x, organBase.y, innerOrganW, organBase.h);
             ctx.fillStyle = '#fff'; ctx.font = 'bold 10px sans-serif';
             ctx.save(); ctx.translate(organBase.x + 15, organBase.y + 110); ctx.rotate(-Math.PI/2); ctx.fillText(envTheme.name ? envTheme.name.toUpperCase() : "NỘI TẠNG", 0, 0); ctx.restore();
 
-            // 2. Vẽ Lớp Tường Gạch phía ngoài
             let wallX = organBase.x + innerOrganW;
             let wallW = 15;
-            ctx.fillStyle = '#b45309'; // Màu gạch
+            ctx.fillStyle = '#b45309'; 
             ctx.fillRect(wallX, organBase.y, wallW, organBase.h);
-            ctx.strokeStyle = '#78350f'; // Viền gạch
+            ctx.strokeStyle = '#78350f'; 
             ctx.lineWidth = 1.5;
-            for(let i=0; i<organBase.h; i+=12) {
-                ctx.strokeRect(wallX, organBase.y + i, wallW, 12);
-            }
+            for(let i=0; i<organBase.h; i+=12) { ctx.strokeRect(wallX, organBase.y + i, wallW, 12); }
 
-            // Máu Tường Base
             ctx.fillStyle = '#000'; ctx.fillRect(organBase.x, organBase.y - 15, organBase.w, 8);
             ctx.fillStyle = '#f43f5e'; ctx.fillRect(organBase.x, organBase.y - 15, (organBase.hp/organBase.maxHp)*organBase.w, 8);
             ctx.fillStyle = '#fff'; ctx.font = '9px sans-serif'; ctx.fillText(`BASE HP`, organBase.x, organBase.y - 18);
@@ -476,7 +501,6 @@
                     let a = (i * Math.PI) / 4 + Date.now()/500; ctx.strokeStyle = '#fca5a5'; ctx.lineWidth=2;
                     ctx.beginPath(); ctx.moveTo(boss.x, boss.y); ctx.lineTo(boss.x + Math.cos(a)*(boss.radius+10), boss.y + Math.sin(a)*(boss.radius+10)); ctx.stroke();
                 }
-                
                 ctx.fillStyle = '#000'; ctx.fillRect(boss.x - 30, boss.y - boss.radius - 22, 60, 6);
                 ctx.fillStyle = '#ef4444'; ctx.fillRect(boss.x - 30, boss.y - boss.radius - 22, (boss.hp/boss.maxHp)*60, 6);
                 ctx.fillStyle = '#fff'; ctx.font = 'bold 10px Arial'; ctx.textAlign = 'center'; ctx.fillText('BOSS UNG THƯ', boss.x, boss.y - boss.radius - 28); ctx.textAlign = 'left';
@@ -484,8 +508,18 @@
                 if(boss.shieldActive) { ctx.strokeStyle = '#fb7185'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(boss.x, boss.y, boss.radius + 15, Math.PI/2, Math.PI*1.5); ctx.stroke(); }
             }
 
+            // MÀN HÌNH CHỜ BẮT ĐẦU (WAITING SCREEN)
+            if (gameState === 'waiting') {
+                ctx.fillStyle = 'rgba(0,0,0,0.7)'; ctx.fillRect(0,0,canvas.width,canvas.height);
+                ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
+                ctx.font = 'bold 36px sans-serif'; ctx.fillText('SẴN SÀNG BẢO VỆ CƠ THỂ!', canvas.width/2, canvas.height/2 - 20);
+                ctx.fillStyle = '#38bdf8'; ctx.font = '16px sans-serif'; 
+                ctx.fillText('Chọn Chế độ chơi hoặc Hệ Cơ Quan ở menu tay phải để bắt đầu.', canvas.width/2, canvas.height/2 + 25);
+                ctx.textAlign = 'left';
+            }
+
             // Game Over
-            if (gameState !== 'playing') {
+            if (gameState === 'lose' || gameState === 'win') {
                 ctx.fillStyle = 'rgba(0,0,0,0.85)'; ctx.fillRect(0,0,canvas.width,canvas.height);
                 ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; 
                 
@@ -502,15 +536,18 @@
                     ctx.fillStyle = '#fca5a5'; ctx.font = '20px sans-serif'; 
                     ctx.fillText("BOSS UNG THƯ ĐÃ CHIẾM CƠ THỂ!", canvas.width/2, 210);
                 }
-                ctx.font = '14px sans-serif'; ctx.fillStyle='#94a3b8'; ctx.fillText("Bấm vào các nút chọn Hệ Cơ Quan để chơi lại", canvas.width/2, 300);
+                ctx.font = '14px sans-serif'; ctx.fillStyle='#94a3b8'; ctx.fillText("Bấm vào Menu tay phải để chơi lại", canvas.width/2, 300);
                 ctx.textAlign = 'left';
             }
         }
 
         function loop() { update(); draw(); requestAnimationFrame(loop); }
         
-        setGameMode('pve'); 
-        selectOrgan('brain');
+        // Khởi tạo giao diện ban đầu, CHƯA BẮT ĐẦU GAME NGAY
+        setGameMode('pve', false); 
+        selectOrgan('brain', false);
+        gameState = 'waiting'; // Khóa ở màn hình chờ
+        resetGame(); // Setup object positions
         loop();
     </script>
 </body>
