@@ -16,7 +16,7 @@ import VirtualHands from './VirtualHands'
 const DEFAULT_ATTACK05_OBJ_URL = 'https://raw.githubusercontent.com/godekd3133/DX9_WorldSkill_Practice_Gyeonggi_01/81ed0a14c63d309bbfc0fc98c8a40a43325336e6/Resource/Player/Animation/Attack05/Attack05%20(45).obj'
 const DEFAULT_ATTACK05_MTL_URL = 'https://raw.githubusercontent.com/godekd3133/DX9_WorldSkill_Practice_Gyeonggi_01/81ed0a14c63d309bbfc0fc98c8a40a43325336e6/Resource/Player/Animation/Attack05/Attack05%20(45).mtl'
 const DEFAULT_IMAGE_2D_URL = 'https://png.pngtree.com/png-clipart/20230812/original/pngtree-world-hepatitis-day-with-human-liver-organ-and-stethoscope-vector-png-image_10294720.png'
-const DEFAULT_OBJECT_TRANSFORM = { position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0 } }
+const DEFAULT_XYZ_TRANSFORM = { position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0 } }
 
 const organData = {
   heart: {
@@ -47,7 +47,7 @@ const organData = {
     id: 'attack05', name: 'Attack05 (Default)', emoji: '🛡️',
     objUrl: DEFAULT_ATTACK05_OBJ_URL,
     mtlUrl: DEFAULT_ATTACK05_MTL_URL,
-    info: '> Model Attack05 mặc định theo yêu cầu cho Medical 3D Lab.\n> OBJ và MTL được nạp từ GitHub raw vào textbox mặc định.\n> Object 3D phủ màu cyan để đồng bộ giao diện lab.',
+    info: '> Model Attack05 mặc định theo yêu cầu cho Medical 3D Lab.\n> OBJ và MTL được nạp từ GitHub raw vào textbox mặc định.\n> Mô hình 3D phủ màu cyan để đồng bộ giao diện lab.',
     color: '#06b6d4',
   },
   // Model demo dùng để KIỂM CHỨNG pipeline OBJ/MTL đang hoạt động thật (khác
@@ -78,8 +78,8 @@ export default function MedicalVisualPlayground({ onFullscreenChange }) {
   const [customObjUrl, setCustomObjUrl] = useState(DEFAULT_ATTACK05_OBJ_URL)
   const [customMtlUrl, setCustomMtlUrl] = useState(DEFAULT_ATTACK05_MTL_URL)
   const [customImage2dUrl, setCustomImage2dUrl] = useState(DEFAULT_IMAGE_2D_URL)
-  const [objectComboImageTransform, setObjectComboImageTransform] = useState(DEFAULT_OBJECT_TRANSFORM)
-  const [objectComboObjTransform, setObjectComboObjTransform] = useState(DEFAULT_OBJECT_TRANSFORM)
+  const [imageXyzTransform, setImageXyzTransform] = useState(DEFAULT_XYZ_TRANSFORM)
+  const [modelXyzTransform, setModelXyzTransform] = useState(DEFAULT_XYZ_TRANSFORM)
   const [customImageClipboardState, setCustomImageClipboardState] = useState('idle')
   const [customObjClipboardState, setCustomObjClipboardState] = useState('idle')
   const [customMtlClipboardState, setCustomMtlClipboardState] = useState('idle')
@@ -300,7 +300,7 @@ export default function MedicalVisualPlayground({ onFullscreenChange }) {
           <div>
             <h3 className="text-xs uppercase tracking-widest text-slate-400 font-semibold mb-4">Chọn cơ quan</h3>
             <div className="grid grid-cols-2 gap-3">
-              {Object.values(organData).map((organ) => (
+              {[organData.heart, organData.brain, organData.lungs, organData.liver, organData.attack05, organData.krabbyPattie].map((organ) => (
                 <button
                   key={organ.id}
                   onClick={() => setActiveOrgan(organ.id)}
@@ -324,7 +324,7 @@ export default function MedicalVisualPlayground({ onFullscreenChange }) {
                   aria-label="Default OBJ model URL"
                   value={customObjUrl}
                   onChange={(e) => setCustomObjUrl(e.target.value)}
-                  placeholder="Dán link model .obj cho Object 3D và Camera Angle Gizmo"
+                  placeholder="Dán link model .obj cho mô hình 3D và Camera Angle Gizmo"
                   className="min-w-0 flex-1 rounded-lg border border-slate-600 bg-slate-950/80 px-3 py-2 font-mono text-[11px] text-slate-100 outline-none transition focus:border-cyan-300 focus:ring-2 focus:ring-cyan-400/20"
                 />
                 <button
@@ -356,7 +356,7 @@ export default function MedicalVisualPlayground({ onFullscreenChange }) {
                 </button>
               </div>
               <p className="mt-2 text-[10px] leading-relaxed text-slate-400">
-                Ô này dùng mặc định cho Object 3D phủ màu và Camera Angle Gizmo; để trống sẽ quay lại model của cơ quan đang chọn.
+                Ô này dùng mặc định cho mô hình 3D phủ màu và Camera Angle Gizmo; để trống sẽ quay lại model của cơ quan đang chọn.
               </p>
             </div>
 
@@ -369,7 +369,7 @@ export default function MedicalVisualPlayground({ onFullscreenChange }) {
                   aria-label="Default MTL material URL"
                   value={customMtlUrl}
                   onChange={(e) => setCustomMtlUrl(e.target.value)}
-                  placeholder="Dán link material .mtl cho Object 3D và Camera Angle Gizmo"
+                  placeholder="Dán link material .mtl cho mô hình 3D và Camera Angle Gizmo"
                   className="min-w-0 flex-1 rounded-lg border border-slate-600 bg-slate-950/80 px-3 py-2 font-mono text-[11px] text-slate-100 outline-none transition focus:border-cyan-300 focus:ring-2 focus:ring-cyan-400/20"
                 />
                 <button
@@ -401,7 +401,7 @@ export default function MedicalVisualPlayground({ onFullscreenChange }) {
                 </button>
               </div>
               <p className="mt-2 text-[10px] leading-relaxed text-slate-400">
-                Material .mtl đi kèm Object 3D phủ màu; để trống sẽ dùng material của cơ quan đang chọn nếu có.
+                Material .mtl đi kèm mô hình 3D phủ màu; để trống sẽ dùng material của cơ quan đang chọn nếu có.
               </p>
             </div>
           </div>
@@ -581,7 +581,10 @@ export default function MedicalVisualPlayground({ onFullscreenChange }) {
         </button>
 
         <div className="absolute inset-0 flex items-center justify-center opacity-[0.03] pointer-events-none">
-          <h1 className="text-[clamp(4rem,14vw,10rem)] font-black uppercase tracking-tighter">ANATOMY</h1>
+          <div className="text-center leading-none">
+            <div className="text-[clamp(2rem,7vw,5rem)] font-black uppercase tracking-[0.18em]">KhanhLX</div>
+            <h1 className="text-[clamp(4rem,14vw,10rem)] font-black uppercase tracking-tighter">ANATOMY</h1>
+          </div>
         </div>
 
         <div className="absolute inset-0 flex items-center justify-center cursor-move">
@@ -592,7 +595,7 @@ export default function MedicalVisualPlayground({ onFullscreenChange }) {
                 imageUrl={gizmoImageUrl}
                 objUrl={gizmoObjUrl}
                 mtlUrl={gizmoMtlUrl}
-                objectTransforms={{ image: objectComboImageTransform, obj: objectComboObjTransform }}
+                objectTransforms={{ image: imageXyzTransform, obj: modelXyzTransform }}
                 value={cameraAngle}
                 onChange={setCameraAngle}
               />
@@ -658,18 +661,20 @@ export default function MedicalVisualPlayground({ onFullscreenChange }) {
           {isRightMenuOpen ? 'Ẩn menu phải' : '☰ Menu 2D + 3D'}
         </button>
 
-        <div className={`absolute right-3 top-16 z-30 w-[min(380px,calc(100%-1.5rem))] max-h-[calc(100%-1.5rem)] overflow-hidden rounded-2xl border border-cyan-300/30 bg-slate-950/90 text-left shadow-2xl shadow-cyan-950/30 backdrop-blur-xl transition-all duration-300 ${isRightMenuOpen ? 'translate-x-0 opacity-100' : 'translate-x-[calc(100%+1rem)] opacity-0 pointer-events-none'}`}>
+        <div className={`absolute right-3 top-16 z-30 w-[min(760px,calc(100%-1.5rem))] max-h-[calc(100%-1.5rem)] overflow-hidden rounded-2xl border border-cyan-300/30 bg-slate-950/90 text-left shadow-2xl shadow-cyan-950/30 backdrop-blur-xl transition-all duration-300 ${isRightMenuOpen ? 'translate-x-0 opacity-100' : 'translate-x-[calc(100%+1rem)] opacity-0 pointer-events-none'}`}>
           <div className="flex items-center justify-between gap-3 border-b border-white/10 p-3">
             <div>
-              <div className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">Object XYZ Transform · 2D + 3D</div>
+              <div className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">XYZ Transform · 2D + 3D</div>
               <div className="text-[10px] text-slate-400">Menu toggle ẩn/hiện bên phải cho Camera Angle Gizmo.</div>
             </div>
             <button type="button" onClick={() => setIsRightMenuOpen(false)} className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-white/10 bg-white/5 text-slate-200 hover:bg-white/10" aria-label="Đóng menu bên phải">✕</button>
           </div>
           <div className="max-h-[calc(100vh-8rem)] space-y-3 overflow-y-auto p-3">
-            <UrlControl label="Textbox 1 · Link ảnh 2D" value={customImage2dUrl} onChange={setCustomImage2dUrl} onClear={clearCustomImageUrl} onCopy={copyCustomImageUrlToClipboard} onPaste={pasteCustomImageUrlFromClipboard} state={customImageClipboardState} placeholder="Dán link ảnh 2D để hiển thị cùng Object 3D" />
-            <ObjectTransformControls title="2D Object XYZ Transform" value={objectComboImageTransform} onChange={setObjectComboImageTransform} columns />
-            <ObjectTransformControls title="3D Object XYZ Transform" value={objectComboObjTransform} onChange={setObjectComboObjTransform} />
+            <UrlControl label="Textbox 1 · Link ảnh 2D" value={customImage2dUrl} onChange={setCustomImage2dUrl} onClear={clearCustomImageUrl} onCopy={copyCustomImageUrlToClipboard} onPaste={pasteCustomImageUrlFromClipboard} state={customImageClipboardState} placeholder="Dán link ảnh 2D để hiển thị cùng mô hình 3D" />
+            <div className="grid gap-3 md:grid-cols-2">
+              <XyzTransformControls title="2D XYZ Transform" value={imageXyzTransform} onChange={setImageXyzTransform} />
+              <XyzTransformControls title="3D XYZ Transform" value={modelXyzTransform} onChange={setModelXyzTransform} />
+            </div>
           </div>
         </div>
         {isTouchlessOn && !isCameraGizmoOn && (
@@ -743,28 +748,28 @@ function UrlControl({ label, value, onChange, onClear, onCopy, onPaste, state, p
   )
 }
 
-function ObjectTransformControls({ value, onChange, title, columns = false }) {
+function XyzTransformControls({ value, onChange, title }) {
   const updateTransform = (group, axis) => (event) => {
     const nextValue = Number(event.target.value)
     onChange((prev) => ({ ...prev, [group]: { ...prev[group], [axis]: nextValue } }))
   }
 
   const rows = [
-    ['position', 'x', '↔️ Di chuyển Object trục X', -2, 2, 0.05, value.position.x.toFixed(2)],
-    ['position', 'y', '↕️ Di chuyển Object trục Y', -2, 2, 0.05, value.position.y.toFixed(2)],
-    ['position', 'z', '↗️ Di chuyển Object trục Z', -2, 2, 0.05, value.position.z.toFixed(2)],
-    ['rotation', 'x', '🔄 Xoay Object trục X', -180, 180, 5, `${value.rotation.x}°`],
-    ['rotation', 'y', '🔄 Xoay Object trục Y', -180, 180, 5, `${value.rotation.y}°`],
-    ['rotation', 'z', '🔄 Xoay Object trục Z', -180, 180, 5, `${value.rotation.z}°`],
+    ['position', 'x', '↔️ Di chuyển trục X', -2, 2, 0.05, value.position.x.toFixed(2)],
+    ['position', 'y', '↕️ Di chuyển trục Y', -2, 2, 0.05, value.position.y.toFixed(2)],
+    ['position', 'z', '↗️ Di chuyển trục Z', -2, 2, 0.05, value.position.z.toFixed(2)],
+    ['rotation', 'x', '🔄 Xoay trục X', -180, 180, 5, `${value.rotation.x}°`],
+    ['rotation', 'y', '🔄 Xoay trục Y', -180, 180, 5, `${value.rotation.y}°`],
+    ['rotation', 'z', '🔄 Xoay trục Z', -180, 180, 5, `${value.rotation.z}°`],
   ]
 
   return (
     <div className="rounded-xl border border-slate-700 bg-slate-900/80 p-3">
       <div className="mb-3 flex items-center justify-between gap-2">
         <div className="text-xs font-black text-slate-100">{title}</div>
-        <button type="button" onClick={() => onChange(DEFAULT_OBJECT_TRANSFORM)} className="rounded-lg border border-amber-300/40 bg-amber-500/10 px-3 py-1 text-[11px] font-black text-amber-200 transition hover:bg-amber-500/20">Reset</button>
+        <button type="button" onClick={() => onChange(DEFAULT_XYZ_TRANSFORM)} className="rounded-lg border border-amber-300/40 bg-amber-500/10 px-3 py-1 text-[11px] font-black text-amber-200 transition hover:bg-amber-500/20">Reset</button>
       </div>
-      <div className={columns ? 'grid gap-3 sm:grid-cols-2' : 'space-y-3'}>
+      <div className="space-y-3">
         {rows.map(([group, axis, label, min, max, step, display]) => (
           <label key={`${group}-${axis}`} className="block text-[11px] font-bold text-slate-300">
             <span className="mb-1 flex items-center justify-between gap-2"><span>{label}</span><span className="font-mono text-cyan-200">{display}</span></span>
