@@ -61,6 +61,8 @@ export default function MedicalVisualPlayground() {
   const [showRoadmap, setShowRoadmap] = useState(false)
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const [isSpatialHoverOn, setIsSpatialHoverOn] = useState(false)
+  const [customObjUrl, setCustomObjUrl] = useState(organData.krabbyPattie.objUrl)
+  const [customObjClipboardState, setCustomObjClipboardState] = useState('idle')
 
   // --- Camera Angle Gizmo: tái sử dụng công nghệ điều khiển góc máy ảnh của
   // CameraAngle3DGizmo.jsx (3 tay cầm kéo Azimuth/Elevation/Distance, snap
@@ -85,6 +87,32 @@ export default function MedicalVisualPlayground() {
   const handLandmarksRef = useRef([])
 
   const currentOrgan = organData[activeOrgan]
+  const gizmoObjUrl = customObjUrl.trim() || currentOrgan.objUrl
+
+  const clearCustomObjUrl = () => setCustomObjUrl('')
+
+  const copyCustomObjUrlToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(customObjUrl || '')
+      setCustomObjClipboardState('copied')
+    } catch (err) {
+      console.warn('Copy OBJ link failed', err)
+      setCustomObjClipboardState('error')
+    }
+    setTimeout(() => setCustomObjClipboardState('idle'), 1800)
+  }
+
+  const pasteCustomObjUrlFromClipboard = async () => {
+    try {
+      const text = await navigator.clipboard.readText()
+      if (text) setCustomObjUrl(text.trim())
+      setCustomObjClipboardState('pasted')
+    } catch (err) {
+      console.warn('Paste OBJ link failed (trình duyệt có thể chưa cấp quyền clipboard)', err)
+      setCustomObjClipboardState('error')
+    }
+    setTimeout(() => setCustomObjClipboardState('idle'), 1800)
+  }
 
   const handleHandMappingChange = useCallback((nextMapping) => {
     handMappingRef.current = nextMapping
@@ -198,6 +226,50 @@ export default function MedicalVisualPlayground() {
                   <span>{organ.emoji}</span> {organ.name.split(' ')[0]}
                 </button>
               ))}
+            </div>
+
+            <div className="mt-3 rounded-xl border border-slate-700 bg-slate-900/80 p-3">
+              <label className="mb-2 block text-[10px] font-black uppercase tracking-[0.18em] text-cyan-300">
+                Textbox 2 · Link model .obj
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  value={customObjUrl}
+                  onChange={(e) => setCustomObjUrl(e.target.value)}
+                  placeholder="Dán link model .obj cho Camera Angle Gizmo"
+                  className="min-w-0 flex-1 rounded-lg border border-slate-600 bg-slate-950/80 px-3 py-2 font-mono text-[11px] text-slate-100 outline-none transition focus:border-cyan-300 focus:ring-2 focus:ring-cyan-400/20"
+                />
+                <button
+                  type="button"
+                  onClick={clearCustomObjUrl}
+                  title="Xoá Link đang có trong Textbox"
+                  aria-label="Xoá Link đang có trong Textbox"
+                  className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-red-300/40 bg-red-500/10 text-xs shadow-sm transition hover:bg-red-500/20"
+                >
+                  ❌
+                </button>
+                <button
+                  type="button"
+                  onClick={copyCustomObjUrlToClipboard}
+                  title="Copy Link đang có trong Textbox vào bộ nhớ"
+                  aria-label="Copy Link đang có trong Textbox vào bộ nhớ"
+                  className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-cyan-300/40 bg-cyan-500/10 text-xs shadow-sm transition hover:bg-cyan-500/20"
+                >
+                  {customObjClipboardState === 'copied' ? '✅' : '📋'}
+                </button>
+                <button
+                  type="button"
+                  onClick={pasteCustomObjUrlFromClipboard}
+                  title="Copy Link trong bộ nhớ vào Textbox"
+                  aria-label="Copy Link trong bộ nhớ vào Textbox"
+                  className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-emerald-300/40 bg-emerald-500/10 text-xs shadow-sm transition hover:bg-emerald-500/20"
+                >
+                  {customObjClipboardState === 'pasted' ? '✅' : '📥'}
+                </button>
+              </div>
+              <p className="mt-2 text-[10px] leading-relaxed text-slate-400">
+                Ô này dùng cho Camera Angle Gizmo; để trống sẽ quay lại model của cơ quan đang chọn.
+              </p>
             </div>
           </div>
 
@@ -374,7 +446,7 @@ export default function MedicalVisualPlayground() {
           {isCameraGizmoOn ? (
             <div className="w-full h-full max-w-3xl max-h-[560px] p-6">
               <Camera3DAngleGizmo
-                objUrl={currentOrgan.objUrl}
+                objUrl={gizmoObjUrl}
                 value={cameraAngle}
                 onChange={setCameraAngle}
               />
