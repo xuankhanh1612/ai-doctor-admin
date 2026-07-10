@@ -1669,8 +1669,8 @@ html, body, #root {
   background: rgba(6,10,24,0.84);
   box-shadow: 0 28px 90px rgba(0,0,0,0.35);
   /* Tall enough so game screens (Nhiệm vụ list, webcam) don't need internal scroll */
-  height: calc(100vh - 90px);
-  min-height: 860px;
+  height: calc(100dvh - 28px);
+  min-height: min(100dvh, 860px);
   display: flex;
   flex-direction: column;
 }
@@ -1687,8 +1687,8 @@ html, body, #root {
 .health-journey-game-frame {
   display: block;
   width: 100%;
-  height: calc(100vh - 90px);
-  min-height: 860px;
+  height: calc(100dvh - 28px);
+  min-height: min(100dvh, 860px);
   border: 0;
   background: #050816;
 }
@@ -1753,14 +1753,14 @@ html, body, #root {
 
   .health-journey-game-frame-card {
     border-radius: 20px;
-    height: calc(100vh - 70px);
-    min-height: 680px;
+    height: calc(100dvh - 28px);
+    min-height: min(100dvh, 680px);
   }
 
   .health-journey-game-frame,
   .inbody-app-html-frame {
-    height: calc(100vh - 70px);
-    min-height: 680px;
+    height: calc(100dvh - 28px);
+    min-height: min(100dvh, 680px);
   }
 
   .inbody-app-html-copy {
