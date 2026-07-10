@@ -62,7 +62,9 @@ export default function MedicalVisualPlayground() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const [isSpatialHoverOn, setIsSpatialHoverOn] = useState(false)
   const [customObjUrl, setCustomObjUrl] = useState(organData.krabbyPattie.objUrl)
+  const [customMtlUrl, setCustomMtlUrl] = useState(organData.krabbyPattie.mtlUrl)
   const [customObjClipboardState, setCustomObjClipboardState] = useState('idle')
+  const [customMtlClipboardState, setCustomMtlClipboardState] = useState('idle')
 
   // --- Camera Angle Gizmo: tái sử dụng công nghệ điều khiển góc máy ảnh của
   // CameraAngle3DGizmo.jsx (3 tay cầm kéo Azimuth/Elevation/Distance, snap
@@ -88,8 +90,10 @@ export default function MedicalVisualPlayground() {
 
   const currentOrgan = organData[activeOrgan]
   const gizmoObjUrl = customObjUrl.trim() || currentOrgan.objUrl
+  const gizmoMtlUrl = customMtlUrl.trim() || currentOrgan.mtlUrl
 
   const clearCustomObjUrl = () => setCustomObjUrl('')
+  const clearCustomMtlUrl = () => setCustomMtlUrl('')
 
   const copyCustomObjUrlToClipboard = async () => {
     try {
@@ -112,6 +116,29 @@ export default function MedicalVisualPlayground() {
       setCustomObjClipboardState('error')
     }
     setTimeout(() => setCustomObjClipboardState('idle'), 1800)
+  }
+
+  const copyCustomMtlUrlToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(customMtlUrl || '')
+      setCustomMtlClipboardState('copied')
+    } catch (err) {
+      console.warn('Copy MTL link failed', err)
+      setCustomMtlClipboardState('error')
+    }
+    setTimeout(() => setCustomMtlClipboardState('idle'), 1800)
+  }
+
+  const pasteCustomMtlUrlFromClipboard = async () => {
+    try {
+      const text = await navigator.clipboard.readText()
+      if (text) setCustomMtlUrl(text.trim())
+      setCustomMtlClipboardState('pasted')
+    } catch (err) {
+      console.warn('Paste MTL link failed (trình duyệt có thể chưa cấp quyền clipboard)', err)
+      setCustomMtlClipboardState('error')
+    }
+    setTimeout(() => setCustomMtlClipboardState('idle'), 1800)
   }
 
   const handleHandMappingChange = useCallback((nextMapping) => {
@@ -269,6 +296,50 @@ export default function MedicalVisualPlayground() {
               </div>
               <p className="mt-2 text-[10px] leading-relaxed text-slate-400">
                 Ô này dùng cho Camera Angle Gizmo; để trống sẽ quay lại model của cơ quan đang chọn.
+              </p>
+            </div>
+
+            <div className="mt-3 rounded-xl border border-slate-700 bg-slate-900/80 p-3">
+              <label className="mb-2 block text-[10px] font-black uppercase tracking-[0.18em] text-cyan-300">
+                Textbox 3 · Link model .mtl (material)
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  value={customMtlUrl}
+                  onChange={(e) => setCustomMtlUrl(e.target.value)}
+                  placeholder="Dán link material .mtl cho Camera Angle Gizmo"
+                  className="min-w-0 flex-1 rounded-lg border border-slate-600 bg-slate-950/80 px-3 py-2 font-mono text-[11px] text-slate-100 outline-none transition focus:border-cyan-300 focus:ring-2 focus:ring-cyan-400/20"
+                />
+                <button
+                  type="button"
+                  onClick={clearCustomMtlUrl}
+                  title="Xoá Link đang có trong Textbox"
+                  aria-label="Xoá Link đang có trong Textbox"
+                  className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-red-300/40 bg-red-500/10 text-xs shadow-sm transition hover:bg-red-500/20"
+                >
+                  ❌
+                </button>
+                <button
+                  type="button"
+                  onClick={copyCustomMtlUrlToClipboard}
+                  title="Copy Link đang có trong Textbox vào bộ nhớ"
+                  aria-label="Copy Link đang có trong Textbox vào bộ nhớ"
+                  className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-cyan-300/40 bg-cyan-500/10 text-xs shadow-sm transition hover:bg-cyan-500/20"
+                >
+                  {customMtlClipboardState === 'copied' ? '✅' : '📋'}
+                </button>
+                <button
+                  type="button"
+                  onClick={pasteCustomMtlUrlFromClipboard}
+                  title="Copy Link trong bộ nhớ vào Textbox"
+                  aria-label="Copy Link trong bộ nhớ vào Textbox"
+                  className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-emerald-300/40 bg-emerald-500/10 text-xs shadow-sm transition hover:bg-emerald-500/20"
+                >
+                  {customMtlClipboardState === 'pasted' ? '✅' : '📥'}
+                </button>
+              </div>
+              <p className="mt-2 text-[10px] leading-relaxed text-slate-400">
+                Material .mtl đi kèm model .obj; để trống sẽ dùng material của cơ quan đang chọn nếu có.
               </p>
             </div>
           </div>
@@ -447,6 +518,7 @@ export default function MedicalVisualPlayground() {
             <div className="w-full h-full max-w-3xl max-h-[560px] p-6">
               <Camera3DAngleGizmo
                 objUrl={gizmoObjUrl}
+                mtlUrl={gizmoMtlUrl}
                 value={cameraAngle}
                 onChange={setCameraAngle}
               />
