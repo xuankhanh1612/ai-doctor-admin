@@ -13,6 +13,9 @@ import VirtualHands from './VirtualHands'
 // đường dẫn (xem MedicalVisualPlayground.md, mục 2 "Yêu cầu hệ thống"). Nếu
 // file chưa tồn tại, ObjModelViewer sẽ chỉ log warning và không hiển thị
 // mesh — không phải lỗi của component.
+const DEFAULT_ATTACK05_OBJ_URL = 'https://raw.githubusercontent.com/godekd3133/DX9_WorldSkill_Practice_Gyeonggi_01/81ed0a14c63d309bbfc0fc98c8a40a43325336e6/Resource/Player/Animation/Attack05/Attack05%20(45).obj'
+const DEFAULT_ATTACK05_MTL_URL = 'https://raw.githubusercontent.com/godekd3133/DX9_WorldSkill_Practice_Gyeonggi_01/81ed0a14c63d309bbfc0fc98c8a40a43325336e6/Resource/Player/Animation/Attack05/Attack05%20(45).mtl'
+
 const organData = {
   heart: {
     id: 'heart', name: 'Tim (Heart)', emoji: '❤️',
@@ -38,6 +41,13 @@ const organData = {
     info: '> Kích thước: Bình thường.\n> Men gan: AST 25 U/L, ALT 22 U/L.\n> Không có dấu hiệu nhiễm mỡ.',
     color: '#84cc16',
   },
+  attack05: {
+    id: 'attack05', name: 'Attack05 (Default)', emoji: '🛡️',
+    objUrl: DEFAULT_ATTACK05_OBJ_URL,
+    mtlUrl: DEFAULT_ATTACK05_MTL_URL,
+    info: '> Model Attack05 mặc định theo yêu cầu cho Medical 3D Lab.\n> OBJ và MTL được nạp từ GitHub raw vào textbox mặc định.\n> Object 3D phủ màu cyan để đồng bộ giao diện lab.',
+    color: '#06b6d4',
+  },
   // Model demo dùng để KIỂM CHỨNG pipeline OBJ/MTL đang hoạt động thật (khác
   // với các entry nội tạng ở trên vốn là placeholder path chưa có file thật).
   // File .obj/.mtl đã được tải về và đặt tương đối trong
@@ -53,7 +63,7 @@ const organData = {
 }
 
 export default function MedicalVisualPlayground() {
-  const [activeOrgan, setActiveOrgan] = useState('heart')
+  const [activeOrgan, setActiveOrgan] = useState('attack05')
   const [viewMode, setViewMode] = useState('solid') // solid | wireframe | xray
   const [autoRotate, setAutoRotate] = useState(true)
   const [isTouchlessOn, setIsTouchlessOn] = useState(false)
@@ -61,8 +71,8 @@ export default function MedicalVisualPlayground() {
   const [showRoadmap, setShowRoadmap] = useState(false)
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const [isSpatialHoverOn, setIsSpatialHoverOn] = useState(false)
-  const [customObjUrl, setCustomObjUrl] = useState(organData.krabbyPattie.objUrl)
-  const [customMtlUrl, setCustomMtlUrl] = useState(organData.krabbyPattie.mtlUrl)
+  const [customObjUrl, setCustomObjUrl] = useState(DEFAULT_ATTACK05_OBJ_URL)
+  const [customMtlUrl, setCustomMtlUrl] = useState(DEFAULT_ATTACK05_MTL_URL)
   const [customObjClipboardState, setCustomObjClipboardState] = useState('idle')
   const [customMtlClipboardState, setCustomMtlClipboardState] = useState('idle')
 
@@ -89,8 +99,12 @@ export default function MedicalVisualPlayground() {
   const handLandmarksRef = useRef([])
 
   const currentOrgan = organData[activeOrgan]
-  const gizmoObjUrl = customObjUrl.trim() || currentOrgan.objUrl
-  const gizmoMtlUrl = customMtlUrl.trim() || currentOrgan.mtlUrl
+  const customObjUrlValue = customObjUrl.trim()
+  const customMtlUrlValue = customMtlUrl.trim()
+  const gizmoObjUrl = customObjUrlValue || currentOrgan.objUrl
+  const gizmoMtlUrl = customMtlUrlValue || currentOrgan.mtlUrl
+  const viewerObjUrl = customObjUrlValue || currentOrgan.objUrl
+  const viewerMtlUrl = customMtlUrlValue || currentOrgan.mtlUrl
 
   const clearCustomObjUrl = () => setCustomObjUrl('')
   const clearCustomMtlUrl = () => setCustomMtlUrl('')
@@ -261,9 +275,10 @@ export default function MedicalVisualPlayground() {
               </label>
               <div className="flex items-center gap-2">
                 <input
+                  aria-label="Default OBJ model URL"
                   value={customObjUrl}
                   onChange={(e) => setCustomObjUrl(e.target.value)}
-                  placeholder="Dán link model .obj cho Camera Angle Gizmo"
+                  placeholder="Dán link model .obj cho Object 3D và Camera Angle Gizmo"
                   className="min-w-0 flex-1 rounded-lg border border-slate-600 bg-slate-950/80 px-3 py-2 font-mono text-[11px] text-slate-100 outline-none transition focus:border-cyan-300 focus:ring-2 focus:ring-cyan-400/20"
                 />
                 <button
@@ -295,7 +310,7 @@ export default function MedicalVisualPlayground() {
                 </button>
               </div>
               <p className="mt-2 text-[10px] leading-relaxed text-slate-400">
-                Ô này dùng cho Camera Angle Gizmo; để trống sẽ quay lại model của cơ quan đang chọn.
+                Ô này dùng mặc định cho Object 3D phủ màu và Camera Angle Gizmo; để trống sẽ quay lại model của cơ quan đang chọn.
               </p>
             </div>
 
@@ -305,9 +320,10 @@ export default function MedicalVisualPlayground() {
               </label>
               <div className="flex items-center gap-2">
                 <input
+                  aria-label="Default MTL material URL"
                   value={customMtlUrl}
                   onChange={(e) => setCustomMtlUrl(e.target.value)}
-                  placeholder="Dán link material .mtl cho Camera Angle Gizmo"
+                  placeholder="Dán link material .mtl cho Object 3D và Camera Angle Gizmo"
                   className="min-w-0 flex-1 rounded-lg border border-slate-600 bg-slate-950/80 px-3 py-2 font-mono text-[11px] text-slate-100 outline-none transition focus:border-cyan-300 focus:ring-2 focus:ring-cyan-400/20"
                 />
                 <button
@@ -339,7 +355,7 @@ export default function MedicalVisualPlayground() {
                 </button>
               </div>
               <p className="mt-2 text-[10px] leading-relaxed text-slate-400">
-                Material .mtl đi kèm model .obj; để trống sẽ dùng material của cơ quan đang chọn nếu có.
+                Material .mtl đi kèm Object 3D phủ màu; để trống sẽ dùng material của cơ quan đang chọn nếu có.
               </p>
             </div>
           </div>
@@ -525,8 +541,8 @@ export default function MedicalVisualPlayground() {
             </div>
           ) : (
             <ObjModelViewer
-              modelUrl={currentOrgan.objUrl}
-              mtlUrl={currentOrgan.mtlUrl}
+              modelUrl={viewerObjUrl}
+              mtlUrl={viewerMtlUrl}
               isDark
               autoRotate={autoRotate}
               showGrid={false}
@@ -562,8 +578,8 @@ export default function MedicalVisualPlayground() {
           </div>
           <div className="bg-black/40 backdrop-blur-md border border-white/10 p-4 rounded-xl text-left shadow-lg">
             <div className="text-xs text-slate-300 mb-1">
-              Asset: <span className="font-mono text-white">{currentOrgan.objUrl.split('/').pop()}</span>
-              {currentOrgan.mtlUrl && <span className="font-mono text-slate-400"> + {currentOrgan.mtlUrl.split('/').pop()}</span>}
+              Asset: <span className="font-mono text-white">{viewerObjUrl.split('/').pop()}</span>
+              {viewerMtlUrl && <span className="font-mono text-slate-400"> + {viewerMtlUrl.split('/').pop()}</span>}
             </div>
             <div className="text-xs text-slate-300">
               Render: <span className="text-green-400">Three.js / WebGL</span>
