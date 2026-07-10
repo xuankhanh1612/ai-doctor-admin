@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import ObjModelViewer from './ObjModelViewer'
 import TouchlessHandCam from './webcam/TouchlessHandCam'
-import Camera3DAngleGizmo, { buildCameraPrompt } from './CameraAngle3DGizmo'
+import Camera3DAngleGizmo from './CameraAngle3DGizmo'
 import VirtualHands from './VirtualHands'
 
 // Medical Visual Playground 🧬 — Sandbox Y khoa 3D: chọn nội tạng, đổi chế độ
@@ -69,7 +69,6 @@ export default function MedicalVisualPlayground({ onFullscreenChange }) {
   const [viewMode, setViewMode] = useState('solid') // solid | wireframe | xray
   const [autoRotate, setAutoRotate] = useState(true)
   const [isTouchlessOn, setIsTouchlessOn] = useState(false)
-  const [accuracy, setAccuracy] = useState(98)
   const [showRoadmap, setShowRoadmap] = useState(false)
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const [isRightMenuOpen, setIsRightMenuOpen] = useState(false)
@@ -199,9 +198,6 @@ export default function MedicalVisualPlayground({ onFullscreenChange }) {
     ))
   }, [])
 
-  useEffect(() => {
-    setAccuracy(Math.floor(Math.random() * 5) + 95)
-  }, [activeOrgan])
 
   // Tắt touchless control -> quay lại trạng thái xoay bình thường.
   useEffect(() => {
@@ -629,33 +625,6 @@ export default function MedicalVisualPlayground({ onFullscreenChange }) {
             <VirtualHands landmarksRef={handLandmarksRef} mirrored={handMapping.mirrored} />
           </div>
         )}
-
-        <div className="absolute left-3 top-16 flex max-w-xs max-sm:max-w-[calc(100vw-1.5rem)] flex-col gap-3 pointer-events-none z-20">
-          <div className="bg-black/40 backdrop-blur-md border border-white/10 p-4 rounded-xl text-left shadow-lg">
-            <div className="text-4xl font-light text-white tracking-tighter">
-              {accuracy}<span className="text-lg text-slate-400">%</span>
-            </div>
-            <div className="text-[10px] text-blue-400 font-bold tracking-widest uppercase mt-1">Độ chính xác mô hình</div>
-          </div>
-          <div className="bg-black/40 backdrop-blur-md border border-white/10 p-4 rounded-xl text-left shadow-lg">
-            <div className="text-xs text-slate-300 mb-1">
-              Asset: <span className="font-mono text-white">{viewerObjUrl.split('/').pop()}</span>
-              {viewerMtlUrl && <span className="font-mono text-slate-400"> + {viewerMtlUrl.split('/').pop()}</span>}
-            </div>
-            <div className="text-xs text-slate-300">
-              Render: <span className="text-green-400">Three.js / WebGL</span>
-            </div>
-            {isTouchlessOn && (handRotation || handScale) && (
-              <div className="text-[10px] text-cyan-300 mt-1">🖐 Touchless đang điều khiển</div>
-            )}
-            {isCameraGizmoOn && (
-              <div className="text-[10px] text-emerald-300 mt-1 font-mono">
-                {buildCameraPrompt(cameraAngle.azimuth, cameraAngle.elevation, cameraAngle.distance)}
-              </div>
-            )}
-          </div>
-        </div>
-
 
         <button type="button" onClick={() => setIsRightMenuOpen((v) => !v)} className="absolute right-3 top-3 z-40 rounded-full border border-cyan-300/40 bg-slate-950/85 px-4 py-2 text-xs font-black uppercase tracking-wider text-cyan-100 shadow-[0_0_18px_rgba(6,182,212,0.25)] backdrop-blur-md transition hover:bg-cyan-500/20 max-sm:px-3 max-sm:text-[10px]">
           {isRightMenuOpen ? 'Ẩn menu phải' : '☰ Menu 2D + 3D'}
