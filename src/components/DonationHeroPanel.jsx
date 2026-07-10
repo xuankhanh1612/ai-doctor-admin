@@ -4,6 +4,7 @@ import useHeroPanelPrefs from './heroPanels/useHeroPanelPrefs.js';
 import HeroPanelPrefsToggle from './heroPanels/HeroPanelPrefsToggle.jsx';
 import useHeroSelection from './heroPanels/useHeroSelection.js';
 import HeroMicVoiceButton from './heroPanels/HeroMicVoiceButton.jsx';
+import HeroPopupCornerCloseButtons from './heroPanels/HeroPopupCornerCloseButtons.jsx';
 import { getOrganById, lowerFirst } from '../data/organs.js';
 import BackButton from './common/BackButton.jsx';
 import ExploreButton from './common/ExploreButton.jsx';
@@ -431,8 +432,9 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onBac
                           : 'opacity-0 scale-95 pointer-events-none'}
                       `}
                     >
-                      <div className={`rounded-2xl border p-3 shadow-2xl ${isDark ? 'border-emerald-400/20 bg-[#0f172a]' : 'border-emerald-100 bg-white'}`}>
-                        <div className="flex items-center justify-between mb-2 px-1">
+                      <div className={`relative rounded-2xl border p-3 shadow-2xl ${isDark ? 'border-emerald-400/20 bg-[#0f172a]' : 'border-emerald-100 bg-white'}`}>
+                        <HeroPopupCornerCloseButtons onClose={() => setShowAnatomyPreview(false)} isDark={isDark} label={isEn ? 'Close popup' : 'Đóng popup'} />
+                        <div className="flex items-center justify-between mb-2 px-10">
                           <span className={`text-xs font-bold ${isDark ? 'text-emerald-300' : 'text-emerald-700'}`}>{t.anatomyPreviewTitle}</span>
                         </div>
                         <AnatomyHoverOverlay />
@@ -462,8 +464,9 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onBac
                           : 'opacity-0 scale-95 pointer-events-none'}
                       `}
                     >
-                      <div className={`rounded-2xl border p-3 shadow-2xl ${isDark ? 'border-emerald-400/20 bg-[#0f172a]' : 'border-emerald-100 bg-white'}`}>
-                        <div className="flex items-center justify-between mb-2 px-1">
+                      <div className={`relative rounded-2xl border p-3 shadow-2xl ${isDark ? 'border-emerald-400/20 bg-[#0f172a]' : 'border-emerald-100 bg-white'}`}>
+                        <HeroPopupCornerCloseButtons onClose={() => setShowBodyProtectionPreview(false)} isDark={isDark} label={isEn ? 'Close popup' : 'Đóng popup'} />
+                        <div className="flex items-center justify-between mb-2 px-10">
                           <span className={`text-xs font-bold ${isDark ? 'text-emerald-300' : 'text-emerald-700'}`}>{t.bodyProtectionPreviewTitle}</span>
                         </div>
                         <div className="overflow-hidden rounded-xl border border-white/10 bg-slate-950">
@@ -498,8 +501,9 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onBac
                           : 'opacity-0 scale-95 pointer-events-none'}
                       `}
                     >
-                      <div className={`rounded-2xl border p-3 shadow-2xl ${isDark ? 'border-sky-400/20 bg-[#0f172a]' : 'border-sky-100 bg-white'}`}>
-                        <div className="flex items-center justify-between mb-2 px-1">
+                      <div className={`relative rounded-2xl border p-3 shadow-2xl ${isDark ? 'border-sky-400/20 bg-[#0f172a]' : 'border-sky-100 bg-white'}`}>
+                        <HeroPopupCornerCloseButtons onClose={() => setShowCaptainKhanhPreview(false)} isDark={isDark} label={isEn ? 'Close popup' : 'Đóng popup'} />
+                        <div className="flex items-center justify-between mb-2 px-10">
                           <span className={`text-xs font-bold ${isDark ? 'text-sky-300' : 'text-sky-700'}`}>{t.captainKhanhPreviewTitle}</span>
                         </div>
                         <div className="overflow-hidden rounded-xl border border-white/10 bg-slate-950">
