@@ -60,6 +60,8 @@ const TEXT = {
     anatomyPreviewHint: 'Chạm hoặc di chuột vào từng điểm để xem chú thích',
     bodyProtectionPreviewTitle: 'Game bảo vệ cơ thể',
     bodyProtectionPreviewHint: 'Di chuột hoặc chạm vào Cấp 2 để xem trước trò chơi',
+    captainKhanhPreviewTitle: 'Captain Khánh Game',
+    captainKhanhPreviewHint: 'Di chuột hoặc chạm vào Cấp 3 để mở trò chơi',
     footer: 'Anh Hùng Hiến Tặng · Cùng nhau lan toả sự sống',
     back: 'Quay lại',
     login: 'Đăng nhập',
@@ -103,6 +105,8 @@ const TEXT = {
     anatomyPreviewHint: 'Tap or hover over each point for details',
     bodyProtectionPreviewTitle: 'Body protection game',
     bodyProtectionPreviewHint: 'Hover or tap Level 2 to preview the game',
+    captainKhanhPreviewTitle: 'Captain Khánh Game',
+    captainKhanhPreviewHint: 'Hover or tap Level 3 to open the game',
     footer: 'Donation Hero · Spreading life together',
     back: 'Back',
     login: 'Log in',
@@ -124,13 +128,15 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onBac
   // mở/đóng) lẫn desktop (vẫn giữ hover để mượt như trước).
   const [showAnatomyPreview, setShowAnatomyPreview] = useState(false);
   const [showBodyProtectionPreview, setShowBodyProtectionPreview] = useState(false);
+  const [showCaptainKhanhPreview, setShowCaptainKhanhPreview] = useState(false);
   const anatomyPreviewRef = useRef(null);
   const bodyProtectionPreviewRef = useRef(null);
+  const captainKhanhPreviewRef = useRef(null);
 
   // Trên mobile không có sự kiện "hover ra ngoài" để tự đóng popup, nên cần
   // tự bắt sự kiện chạm/click ra ngoài vùng thẻ Cấp 1/Cấp 2 + popup để đóng lại.
   useEffect(() => {
-    if (!showAnatomyPreview && !showBodyProtectionPreview) return;
+    if (!showAnatomyPreview && !showBodyProtectionPreview && !showCaptainKhanhPreview) return;
     const handleOutsideInteraction = (event) => {
       if (anatomyPreviewRef.current && !anatomyPreviewRef.current.contains(event.target)) {
         setShowAnatomyPreview(false);
@@ -138,10 +144,13 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onBac
       if (bodyProtectionPreviewRef.current && !bodyProtectionPreviewRef.current.contains(event.target)) {
         setShowBodyProtectionPreview(false);
       }
+      if (captainKhanhPreviewRef.current && !captainKhanhPreviewRef.current.contains(event.target)) {
+        setShowCaptainKhanhPreview(false);
+      }
     };
     document.addEventListener('pointerdown', handleOutsideInteraction);
     return () => document.removeEventListener('pointerdown', handleOutsideInteraction);
-  }, [showAnatomyPreview, showBodyProtectionPreview]);
+  }, [showAnatomyPreview, showBodyProtectionPreview, showCaptainKhanhPreview]);
 
   const isGuest = mode === 'guest';
   const { isDark, isEn, toggleTheme, toggleLang } = useHeroPanelPrefs();
@@ -333,11 +342,12 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onBac
               const isCurrent = lvl.level === currentLevel;
               const isLevelOne = lvl.level === 1;
               const isLevelTwo = lvl.level === 2;
-              const isPreviewLevel = isLevelOne || isLevelTwo;
+              const isLevelThree = lvl.level === 3;
+              const isPreviewLevel = isLevelOne || isLevelTwo || isLevelThree;
               return (
                 <div
                   key={lvl.level}
-                  ref={isLevelOne ? anatomyPreviewRef : isLevelTwo ? bodyProtectionPreviewRef : undefined}
+                  ref={isLevelOne ? anatomyPreviewRef : isLevelTwo ? bodyProtectionPreviewRef : isLevelThree ? captainKhanhPreviewRef : undefined}
                   className={`relative flex flex-col items-center w-[150px] text-center ${isPreviewLevel ? 'group' : ''}`}
                   {...(isPreviewLevel
                     ? {
@@ -345,10 +355,12 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onBac
                         onMouseEnter: () => {
                           if (isLevelOne) setShowAnatomyPreview(true);
                           if (isLevelTwo) setShowBodyProtectionPreview(true);
+                          if (isLevelThree) setShowCaptainKhanhPreview(true);
                         },
                         onMouseLeave: () => {
                           if (isLevelOne) setShowAnatomyPreview(false);
                           if (isLevelTwo) setShowBodyProtectionPreview(false);
+                          if (isLevelThree) setShowCaptainKhanhPreview(false);
                         },
                       }
                     : {})}
@@ -370,15 +382,17 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onBac
                             onClick: () => {
                               if (isLevelOne) setShowAnatomyPreview((prev) => !prev);
                               if (isLevelTwo) setShowBodyProtectionPreview((prev) => !prev);
+                              if (isLevelThree) setShowCaptainKhanhPreview((prev) => !prev);
                             },
                             role: 'button',
                             tabIndex: 0,
-                            'aria-expanded': isLevelOne ? showAnatomyPreview : showBodyProtectionPreview,
+                            'aria-expanded': isLevelOne ? showAnatomyPreview : isLevelTwo ? showBodyProtectionPreview : showCaptainKhanhPreview,
                             onKeyDown: (event) => {
                               if (event.key === 'Enter' || event.key === ' ') {
                                 event.preventDefault();
                                 if (isLevelOne) setShowAnatomyPreview((prev) => !prev);
                                 if (isLevelTwo) setShowBodyProtectionPreview((prev) => !prev);
+                                if (isLevelThree) setShowCaptainKhanhPreview((prev) => !prev);
                               }
                             },
                           }
@@ -464,6 +478,43 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onBac
                       </div>
                       <div
                         className={`w-3 h-3 rotate-45 mx-auto -mt-1.5 border-r border-b ${isDark ? 'border-emerald-400/20 bg-[#0f172a]' : 'border-emerald-100 bg-white'}`}
+                      />
+                    </div>
+                  )}
+
+                  {/* Popup iframe Captain Khánh Game — gắn vào thẻ Cấp 3.
+                  Desktop mở khi hover, mobile/cảm ứng mở/đóng khi tap icon. */}
+                  {isLevelThree && (
+                    <div
+                      className={`
+                        fixed left-2 right-2 bottom-24 mb-0 w-auto translate-x-0
+                        sm:absolute sm:bottom-full sm:left-1/2 sm:right-auto sm:mb-4 sm:-translate-x-1/2
+                        sm:w-[min(720px,calc(100vw-2rem))]
+                        md:w-[min(820px,calc(100vw-3rem))]
+                        lg:w-[min(920px,calc(100vw-4rem))]
+                        transition-all duration-200 ease-out origin-bottom z-30
+                        ${showCaptainKhanhPreview
+                          ? 'opacity-100 scale-100 pointer-events-auto'
+                          : 'opacity-0 scale-95 pointer-events-none'}
+                      `}
+                    >
+                      <div className={`rounded-2xl border p-3 shadow-2xl ${isDark ? 'border-sky-400/20 bg-[#0f172a]' : 'border-sky-100 bg-white'}`}>
+                        <div className="flex items-center justify-between mb-2 px-1">
+                          <span className={`text-xs font-bold ${isDark ? 'text-sky-300' : 'text-sky-700'}`}>{t.captainKhanhPreviewTitle}</span>
+                        </div>
+                        <div className="overflow-hidden rounded-xl border border-white/10 bg-slate-950">
+                          <iframe
+                            src="https://captain-khanh-game.vercel.app/"
+                            title={t.captainKhanhPreviewTitle}
+                            className="h-[min(62vh,520px)] w-full"
+                            loading="lazy"
+                            allow="fullscreen; autoplay; clipboard-read; clipboard-write"
+                          />
+                        </div>
+                        <p className={`mt-2 px-1 text-[10px] ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{t.captainKhanhPreviewHint}</p>
+                      </div>
+                      <div
+                        className={`w-3 h-3 rotate-45 mx-auto -mt-1.5 border-r border-b ${isDark ? 'border-sky-400/20 bg-[#0f172a]' : 'border-sky-100 bg-white'}`}
                       />
                     </div>
                   )}
