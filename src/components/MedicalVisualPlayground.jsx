@@ -539,7 +539,7 @@ export default function MedicalVisualPlayground() {
         )}
 
         {isTouchlessOn && (
-          <div className="fixed left-6 top-28 z-40 w-72 aspect-video bg-black rounded-xl border border-white/20 overflow-hidden shadow-2xl">
+          <div className="fixed bottom-6 left-6 z-40 w-72 aspect-video bg-black rounded-xl border border-white/20 overflow-hidden shadow-2xl">
             <TouchlessHandCam
               ref={touchlessCameraRef}
               onHandTrack={handleHandTrack}
