@@ -286,7 +286,7 @@ export default function MedicalVisualPlayground({ onFullscreenChange }) {
   }, [])
 
   return (
-    <div className="relative flex h-full min-h-[640px] bg-slate-900 text-white font-sans overflow-hidden rounded-2xl border border-slate-700">
+    <div className={`relative flex bg-slate-900 text-white font-sans overflow-hidden ${isFullScreenMode ? 'h-[calc(100dvh-58px)] min-h-0 rounded-none border-0' : 'h-full min-h-[640px] rounded-2xl border border-slate-700'}`}>
 
       {/* --- SIDEBAR --- */}
       <div className={`${isSidebarCollapsed ? 'w-0 border-r-0 -translate-x-full' : 'w-80 max-lg:w-72 max-sm:absolute max-sm:inset-y-0 max-sm:left-0 max-sm:w-[86vw] translate-x-0'} bg-slate-800 border-r border-slate-700 flex flex-col shadow-2xl z-10 overflow-hidden transition-all duration-300 ease-out`}>
@@ -577,8 +577,8 @@ export default function MedicalVisualPlayground({ onFullscreenChange }) {
           {isSidebarCollapsed ? '☰ Mở Lab Panel' : '⟵ Đóng Panel'}
         </button>
 
-        <button type="button" onClick={toggleFullScreenMode} className="absolute left-1/2 top-3 z-30 hidden -translate-x-1/2 rounded-full sm:block border border-fuchsia-300/40 bg-slate-950/85 px-4 py-2 text-xs font-black uppercase tracking-wider text-fuchsia-100 shadow-[0_0_18px_rgba(217,70,239,0.25)] backdrop-blur-md transition hover:bg-fuchsia-500/20 max-sm:px-3 max-sm:text-[10px]">
-          {isFullScreenMode ? '☰ Toàn màn hình' : 'Toàn màn hình'}
+        <button type="button" onClick={toggleFullScreenMode} className="absolute left-1/2 top-3 z-30 -translate-x-1/2 rounded-full border border-fuchsia-300/40 bg-slate-950/85 px-4 py-2 text-xs font-black uppercase tracking-wider text-fuchsia-100 shadow-[0_0_18px_rgba(217,70,239,0.25)] backdrop-blur-md transition hover:bg-fuchsia-500/20 max-sm:px-3 max-sm:text-[10px]">
+          {isFullScreenMode ? 'Thoát toàn màn hình' : 'Toàn màn hình'}
         </button>
 
         <div className="absolute inset-0 flex items-center justify-center opacity-[0.03] pointer-events-none">
@@ -590,7 +590,7 @@ export default function MedicalVisualPlayground({ onFullscreenChange }) {
 
         <div className="absolute inset-0 flex items-center justify-center cursor-move">
           {isCameraGizmoOn ? (
-            <div className="w-full h-full max-w-4xl max-h-[min(620px,82vh)] p-3 sm:p-6">
+            <div className={`${isFullScreenMode ? 'h-full max-h-none max-w-none' : 'max-h-[min(620px,82vh)] max-w-4xl'} w-full p-3 sm:p-6`}>
               <Camera3DAngleGizmo
                 mode="both"
                 imageUrl={gizmoImageUrl}
