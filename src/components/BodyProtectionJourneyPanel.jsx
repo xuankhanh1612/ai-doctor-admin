@@ -36,7 +36,7 @@ const GAME_SRC = '/games/hanh-trinh-bao-ve-co-the.html'
 const HOLD_FRAMES_TO_ACTIVATE = 3
 const HOLD_FRAMES_TO_RELEASE = 5
 
-export default function BodyProtectionJourneyPanel({ onBack }) {
+export default function BodyProtectionJourneyPanel({ onBack, onFullscreenChange }) {
   const { theme } = useApp()
   const isDark = theme === 'dark'
   const [fullscreen, setFullscreen] = useState(false)
@@ -104,6 +104,20 @@ export default function BodyProtectionJourneyPanel({ onBack }) {
     releaseActiveKey()
   }, [releaseActiveKey])
 
+  // Bật "Toàn màn hình" -> báo lên App.jsx để ẩn menu chính (Sidebar) bên
+  // trái, nhường toàn bộ chiều ngang cho khung game. Tắt lại -> hiện menu.
+  const toggleFullscreen = useCallback(() => {
+    setFullscreen((v) => {
+      const next = !v
+      onFullscreenChange?.(next)
+      return next
+    })
+  }, [onFullscreenChange])
+
+  // Rời khỏi trang này khi đang ở chế độ toàn màn hình -> luôn trả lại
+  // Sidebar cho App.jsx, tránh trường hợp bị ẩn menu vĩnh viễn.
+  useEffect(() => () => onFullscreenChange?.(false), [onFullscreenChange])
+
   // Tắt camera cử chỉ (toggle off hoặc rời trang) -> luôn nhả phím đang giữ,
   // tránh trường hợp game bị "kẹt phím" (ví dụ Khiên bật mãi không tắt).
   useEffect(() => {
@@ -149,7 +163,7 @@ export default function BodyProtectionJourneyPanel({ onBack }) {
 
             <button
               type="button"
-              onClick={() => setFullscreen((v) => !v)}
+              onClick={toggleFullscreen}
               className={`inline-flex w-fit items-center gap-2 rounded-2xl border px-4 py-2 text-sm font-semibold shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md ${
                 isDark
                   ? 'border-white/15 bg-white/5 text-gray-200 hover:bg-white/10'
@@ -204,7 +218,7 @@ export default function BodyProtectionJourneyPanel({ onBack }) {
           />
 
           {gestureOn && (
-            <div className="absolute bottom-4 right-4 z-20 w-56 overflow-hidden rounded-xl border border-white/20 bg-black shadow-2xl sm:w-64">
+            <div className="fixed bottom-6 right-6 z-50 w-56 overflow-hidden rounded-xl border border-white/20 bg-black shadow-2xl sm:w-64">
               <div className="aspect-video">
                 <TouchlessHandCam
                   ref={touchlessCameraRef}

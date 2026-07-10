@@ -78,6 +78,12 @@ export default function App() {
     showEnd: false,
   })
   const [sidebarOpenSignal, setSidebarOpenSignal] = useState(0)
+  // Bấm "Toàn màn hình" trong BodyProtectionJourneyPanel (trang "Hành Trình
+  // Bảo Vệ Cơ Thể") -> ẩn hẳn Sidebar bên trái để nhường chỗ cho khung game.
+  // Luôn trả lại true (hiện Sidebar) mỗi khi rời khỏi panel đó, tránh việc
+  // menu bị ẩn vĩnh viễn nếu người dùng điều hướng đi nơi khác lúc đang
+  // toàn màn hình.
+  const [hideSidebarForFocus, setHideSidebarForFocus] = useState(false)
 
   // Thứ tự màn hình cho KHÁCH (guest, chưa đăng nhập) khi vào web:
   // 1) 'chooseRole'  -> ChooseUserRolePanel ("Chọn Vai Trò Anh Hùng") — CHẠY
@@ -125,6 +131,14 @@ export default function App() {
     setUploadedImages([])
     setImagingScrollTarget(null)
   }, [user?.uuid])
+
+  // Lưới an toàn: rời khỏi 'bodyProtectionJourney' (điều hướng sang trang
+  // khác) trong lúc đang toàn màn hình -> luôn hiện lại Sidebar.
+  useEffect(() => {
+    if (active !== 'bodyProtectionJourney' && hideSidebarForFocus) {
+      setHideSidebarForFocus(false)
+    }
+  }, [active, hideSidebarForFocus])
 
   const panelLabels = {
     adminConcept: 'AI Doctor Admin Panel',
@@ -372,7 +386,9 @@ export default function App() {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
       <Topbar activePanel={active} onNavigateProfile={() => setActive('profile')} onNavigateAdmin={() => setActive('admin')} />
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-        <Sidebar active={active} onNavigate={(id) => setActive(id)} openSignal={sidebarOpenSignal} />
+        {!hideSidebarForFocus && (
+          <Sidebar active={active} onNavigate={(id) => setActive(id)} openSignal={sidebarOpenSignal} />
+        )}
         <main ref={mainRef} style={{ flex: 1, overflowY: 'auto', background: mainBg, paddingBottom: 104 }}>
           <PanelErrorBoundary
             resetKey={active}
@@ -439,7 +455,10 @@ export default function App() {
               <DonationHeroPanel mode="member" onBack={() => setActive('chooseUserRole')} />
             )}
             {active === 'bodyProtectionJourney' && (
-              <BodyProtectionJourneyPanel onBack={() => setActive('donationHero')} />
+              <BodyProtectionJourneyPanel
+                onBack={() => setActive('donationHero')}
+                onFullscreenChange={setHideSidebarForFocus}
+              />
             )}
             {active === 'profile'   && <UserProfilePanel />}
             {active === 'myAiAvatar' && user?.isAdmin && <MyAIAvatarPanel />}
