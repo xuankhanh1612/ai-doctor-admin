@@ -128,7 +128,7 @@ export default function BodyProtectionJourneyPanel({ onNext, nextLabel, onPrev, 
 
   return (
     <div className={`animate-fade min-h-full w-full ${fullscreen ? 'px-0 py-0' : 'px-4 py-6 sm:px-8'} ${pageBg}`}>
-      <div className={`${fullscreen ? 'h-[calc(100dvh-58px)] max-w-none gap-2' : 'mx-auto max-w-6xl gap-5'} flex flex-col`}>
+      <div className={`${fullscreen ? 'h-[calc(100svh-58px)] max-w-none gap-2' : 'mx-auto h-[calc(100svh-112px)] min-h-[720px] max-w-6xl gap-5 max-lg:h-[calc(100svh-96px)] max-lg:min-h-[640px] max-sm:h-[calc(100svh-80px)] max-sm:min-h-[560px]'} flex flex-col`}>
         <div className={`${fullscreen ? 'px-3 py-2 sm:px-4' : ''} flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between`}>
           <div className="flex items-center gap-3">
             <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-400 to-cyan-500 text-white shadow-lg shadow-cyan-500/20">
@@ -178,13 +178,13 @@ export default function BodyProtectionJourneyPanel({ onNext, nextLabel, onPrev, 
 
         <div
           className={`relative min-h-0 flex-1 overflow-hidden border shadow-2xl ${fullscreen ? 'rounded-none' : 'rounded-3xl'} ${cardBg}`}
-          style={{ height: fullscreen ? 'auto' : 'min(900px, 82vh)' }}
+          style={{ height: 'auto' }}
         >
           <iframe
             ref={iframeRef}
             title="Hành Trình Bảo Vệ Cơ Thể — Bảo Vệ Cơ Thể PvP/PvE/Co-op"
             src={GAME_SRC}
-            className="h-full w-full"
+            className="h-full min-h-full w-full"
             style={{ border: 'none', display: 'block' }}
             allow="autoplay; fullscreen"
           />
