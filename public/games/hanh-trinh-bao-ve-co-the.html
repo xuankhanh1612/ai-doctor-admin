@@ -67,11 +67,14 @@
         <div class="col-span-3 flex flex-col">
             <div class="bg-slate-950 p-2 rounded-t-xl border-t border-x border-slate-800 flex justify-between items-center px-4">
                 <div class="flex gap-4">
-                    <div class="text-emerald-400 font-bold text-sm">🛡️ P1 HP: <span id="p1-hp">10</span></div>
-                    <div id="p2-hp-container" class="text-sky-400 font-bold text-sm hidden">🛡️ P2 HP: <span id="p2-hp">10</span></div>
+                    <div class="text-emerald-400 font-bold text-sm w-[80px]">🛡️ P1: <span id="p1-hp">10</span></div>
+                    <div id="p2-hp-container" class="text-sky-400 font-bold text-sm hidden w-[80px]">🛡️ P2: <span id="p2-hp">10</span></div>
+                </div>
+                <div class="text-fuchsia-400 font-bold text-sm bg-fuchsia-950/50 px-3 py-1 rounded border border-fuchsia-900">
+                    🧱 TƯỜNG BASE: <span id="base-hp">20</span>/20
                 </div>
                 <div class="text-amber-400 font-bold text-sm">⏱️ <span id="time-display">0.0</span>s</div>
-                <div class="text-rose-400 font-bold text-sm">🦠 BOSS HP: <span id="boss-hp">10</span></div>
+                <div class="text-rose-400 font-bold text-sm">🦠 BOSS: <span id="boss-hp">10</span></div>
             </div>
             
             <canvas id="gameCanvas" width="800" height="420" class="w-full object-cover"></canvas>
@@ -113,10 +116,12 @@
         let envTheme = { name: "Hệ thần kinh", bg: "rgba(25, 10, 40, 0.7)", wall: "#4c1d95", border: "#8b5cf6", organColor: "#f472b6" };
         
         // ENTITIES
-        let p1 = { x: 50, y: 200, width: 24, height: 24, vx: 0, vy: 0, hp: 10, isGrounded: false, color: '#10b981', shieldActive: false };
-        let p2 = { x: 100, y: 200, width: 24, height: 24, vx: 0, vy: 0, hp: 10, isGrounded: false, color: '#38bdf8', shieldActive: false, active: false };
+        let p1 = { x: 50, y: 200, width: 24, height: 24, vx: 0, vy: 0, hp: 10, isGrounded: false, color: '#10b981', shieldActive: false, alive: true };
+        let p2 = { x: 100, y: 200, width: 24, height: 24, vx: 0, vy: 0, hp: 10, isGrounded: false, color: '#38bdf8', shieldActive: false, active: false, alive: true };
         let boss = { x: 650, y: 150, radius: 25, vx: 0, vy: 2.5, hp: 10, maxHp: 10, dirY: 1, color: '#e11d48', shieldActive: false };
-        let organBase = { x: 10, y: 120, w: 30, h: 140 }; 
+        
+        // Cập nhật Tường Nội Tạng (Tank Style)
+        let organBase = { x: 10, y: 120, w: 45, h: 140, hp: 20, maxHp: 20 }; 
         
         let projectiles = []; 
         let platforms = [];
@@ -125,9 +130,9 @@
         let particles = [];
         
         const GRAVITY = 0.4;
-        const JUMP = -9; // Tăng lực nhảy lên một chút cho mượt
+        const JUMP = -9; 
 
-        // BẮT SỰ KIỆN PHÍM BẤM (HỖ TRỢ TOUCH CHO MOBILE/IPAD)
+        // BẮT SỰ KIỆN PHÍM BẤM
         let keys = {};
         window.addEventListener('keydown', e => { 
             keys[e.key] = true; keys[e.key.toLowerCase()] = true; 
@@ -196,22 +201,22 @@
 
             if(type === 'brain') {
                 envTheme = { name: "Hệ thần kinh", bg: "rgba(25, 10, 40, 0.7)", wall: "#4c1d95", border: "#8b5cf6", organColor: "#f472b6" };
-                platforms = [{x: 120, y: 310, w: 100, h: 12, label: "Khe Synapse"}, {x: 300, y: 240, w: 150, h: 12, label: "Sợi trục"}, {x: 480, y: 160, w: 120, h: 12, label: "Tế bào đệm"}];
+                platforms = [{x: 140, y: 310, w: 100, h: 12, label: "Khe Synapse"}, {x: 320, y: 240, w: 150, h: 12, label: "Sợi trục"}, {x: 500, y: 160, w: 120, h: 12, label: "Tế bào đệm"}];
             } else if(type === 'lungs') {
                 envTheme = { name: "Hệ hô hấp", bg: "rgba(10, 30, 50, 0.7)", wall: "#0c4a6e", border: "#38bdf8", organColor: "#7dd3fc" };
-                platforms = [{x: 120, y: 300, w: 120, h: 12, label: "Màng phổi"}, {x: 280, y: 220, w: 150, h: 12, label: "Cuống phổi"}, {x: 480, y: 140, w: 100, h: 12, label: "Phế nang"}];
+                platforms = [{x: 140, y: 300, w: 120, h: 12, label: "Màng phổi"}, {x: 300, y: 220, w: 150, h: 12, label: "Cuống phổi"}, {x: 500, y: 140, w: 100, h: 12, label: "Phế nang"}];
             } else if(type === 'heart') {
                 envTheme = { name: "Hệ tuần hoàn", bg: "rgba(40, 10, 15, 0.7)", wall: "#7f1d1d", border: "#ef4444", organColor: "#fb7185" };
-                platforms = [{x: 150, y: 290, w: 120, h: 12, label: "Hồng cầu"}, {x: 350, y: 210, w: 140, h: 12, label: "Tiểu cầu"}, {x: 520, y: 130, w: 100, h: 12, label: "Bạch cầu"}];
+                platforms = [{x: 160, y: 290, w: 120, h: 12, label: "Hồng cầu"}, {x: 360, y: 210, w: 140, h: 12, label: "Tiểu cầu"}, {x: 540, y: 130, w: 100, h: 12, label: "Bạch cầu"}];
             } else if(type === 'kidneys') {
                 envTheme = { name: "Hệ tiết niệu", bg: "rgba(20, 20, 50, 0.7)", wall: "#1e3a8a", border: "#34d399", organColor: "#6ee7b7" };
-                platforms = [{x: 120, y: 280, w: 110, h: 12, label: "Bể thận"}, {x: 290, y: 210, w: 130, h: 12, label: "Cầu thận"}, {x: 460, y: 150, w: 120, h: 12, label: "Ống thận"}];
+                platforms = [{x: 140, y: 280, w: 110, h: 12, label: "Bể thận"}, {x: 310, y: 210, w: 130, h: 12, label: "Cầu thận"}, {x: 480, y: 150, w: 120, h: 12, label: "Ống thận"}];
             } else if(type === 'stomach') {
                 envTheme = { name: "Hệ tiêu hóa", bg: "rgba(6, 24, 15, 0.7)", wall: "#064e3b", border: "#10b981", organColor: "#fde047" };
-                platforms = [{x: 130, y: 300, w: 120, h: 12, label: "Dịch vị"}, {x: 300, y: 230, w: 140, h: 12, label: "Nhung mao"}, {x: 480, y: 160, w: 110, h: 12, label: "Lớp nhầy"}, {x: 250, y: 120, w: 130, h: 12, label: "Enzyme phân giải"}];
+                platforms = [{x: 150, y: 300, w: 120, h: 12, label: "Dịch vị"}, {x: 320, y: 230, w: 140, h: 12, label: "Nhung mao"}, {x: 500, y: 160, w: 110, h: 12, label: "Lớp nhầy"}, {x: 270, y: 120, w: 130, h: 12, label: "Enzyme phân giải"}];
             } else if(type === 'liver') {
                 envTheme = { name: "Hệ gan mật", bg: "rgba(30, 20, 10, 0.7)", wall: "#78350f", border: "#fbbf24", organColor: "#d97706" };
-                platforms = [{x: 140, y: 310, w: 130, h: 12, label: "Nhu mô gan"}, {x: 330, y: 220, w: 120, h: 12, label: "Ống mật"}, {x: 500, y: 140, w: 120, h: 12, label: "Tĩnh mạch"}];
+                platforms = [{x: 160, y: 310, w: 130, h: 12, label: "Nhu mô gan"}, {x: 350, y: 220, w: 120, h: 12, label: "Ống mật"}, {x: 520, y: 140, w: 120, h: 12, label: "Tĩnh mạch"}];
             }
             resetGame();
         }
@@ -219,9 +224,14 @@
         function resetGame() {
             gameState = 'playing';
             startTime = Date.now(); elapsedTime = 0;
-            p1.hp = 10; p2.hp = 10; boss.hp = 10;
-            p1.x = 50; p1.y = 200; p1.vy = 0;
-            p2.x = 100; p2.y = 200; p2.vy = 0;
+            
+            p1.hp = 10; p1.alive = true;
+            p2.hp = 10; p2.alive = true;
+            boss.hp = 10;
+            organBase.hp = 20; // Tường luôn có 20 HP
+            
+            p1.x = 80; p1.y = 200; p1.vy = 0;
+            p2.x = 120; p2.y = 200; p2.vy = 0;
             boss.x = 650; boss.y = 150;
             
             projectiles = []; mapViruses = []; mapHeals = []; particles = [];
@@ -234,7 +244,6 @@
 
         let p1LastShot = 0; let p2LastShot = 0; let bossLastShot = 0;
 
-        // VÁ LỖI KHÔNG NHẢY ĐƯỢC: RESET LẠI ISGROUNDED TRƯỚC KHI TÍNH VA CHẠM
         function applyPhysics(player, controls) {
             if (keys[controls.left]) player.vx = -4.5;
             else if (keys[controls.right]) player.vx = 4.5;
@@ -250,27 +259,17 @@
             player.x += player.vx; 
             player.y += player.vy;
             
-            // Giới hạn biên màn hình
             if (player.x < organBase.x + organBase.w) player.x = organBase.x + organBase.w;
             if (player.x + player.width > canvas.width) player.x = canvas.width - player.width;
             
-            // Va chạm Trần nhà
-            if (player.y <= 30) { 
-                player.y = 30; 
-                player.vy = 0; 
-            }
-            
-            // RESET MẶT ĐẤT
+            if (player.y <= 30) { player.y = 30; player.vy = 0; }
             player.isGrounded = false;
-
-            // Va chạm Sàn nhà
             if (player.y + player.height >= canvas.height - 30) { 
                 player.y = canvas.height - 30 - player.height; 
                 player.vy = 0; 
                 player.isGrounded = true; 
             }
 
-            // Va chạm Bậc thang
             platforms.forEach(plat => {
                 if (player.x < plat.x + plat.w && player.x + player.width > plat.x && player.y + player.height > plat.y && player.y + player.height - player.vy <= plat.y + 14) {
                     player.y = plat.y - player.height; 
@@ -287,7 +286,8 @@
             document.getElementById('time-display').innerText = elapsedTime.toFixed(1);
 
             // Xử lý P1
-            if(p1.hp > 0) {
+            if(p1.hp <= 0) p1.alive = false;
+            if(p1.alive) {
                 applyPhysics(p1, { left: 'a', right: 'd', jump: 'w', shield: 's' });
                 if (keys['e'] && Date.now() - p1LastShot > 350) { 
                     projectiles.push({ x: p1.x + p1.width, y: p1.y + p1.height/2, vx: 8, vy: 0, type: 'p1_proj', color: '#34d399', r: 5 });
@@ -296,7 +296,8 @@
             }
 
             // Xử lý P2
-            if(p2.active && p2.hp > 0) {
+            if(p2.hp <= 0) p2.alive = false;
+            if(p2.active && p2.alive) {
                 applyPhysics(p2, { left: 'arrowleft', right: 'arrowright', jump: 'arrowup', shield: 'arrowdown' });
                 if (keys[' '] && Date.now() - p2LastShot > 350) { // Nút Space
                     projectiles.push({ x: p2.x + p2.width, y: p2.y + p2.height/2, vx: 8, vy: 0, type: 'p2_proj', color: '#7dd3fc', r: 5 });
@@ -343,11 +344,11 @@
                     if(m.x < 100 || m.x > canvas.width-100) m.vx *= -1;
                     if(m.y < 50 || m.y > canvas.height-50) m.vy *= -1;
 
-                    if(p1.hp > 0 && Math.hypot((p1.x + p1.width/2) - m.x, (p1.y + p1.height/2) - m.y) < m.r + 12) {
+                    if(p1.alive && Math.hypot((p1.x + p1.width/2) - m.x, (p1.y + p1.height/2) - m.y) < m.r + 12) {
                         if(isVirus) p1.hp--; else if(p1.hp < 10) p1.hp++;
                         arr.splice(i, 1); checkWin(); updateUI(); continue;
                     }
-                    if(p2.active && p2.hp > 0 && Math.hypot((p2.x + p2.width/2) - m.x, (p2.y + p2.height/2) - m.y) < m.r + 12) {
+                    if(p2.active && p2.alive && Math.hypot((p2.x + p2.width/2) - m.x, (p2.y + p2.height/2) - m.y) < m.r + 12) {
                         if(isVirus) p2.hp--; else if(p2.hp < 10) p2.hp++;
                         arr.splice(i, 1); checkWin(); updateUI(); continue;
                     }
@@ -362,14 +363,21 @@
                 if (proj.x < 0 || proj.x > canvas.width) { projectiles.splice(i, 1); continue; }
 
                 if (proj.type === 'boss_proj') {
-                    if (p1.hp > 0 && p1.shieldActive && proj.x <= p1.x + p1.width + 10 && proj.x >= p1.x + p1.width && Math.abs(proj.y - (p1.y + p1.height/2)) < 25) { projectiles.splice(i, 1); continue; }
-                    if (p2.active && p2.hp > 0 && p2.shieldActive && proj.x <= p2.x + p2.width + 10 && proj.x >= p2.x + p2.width && Math.abs(proj.y - (p2.y + p2.height/2)) < 25) { projectiles.splice(i, 1); continue; }
+                    // Check khiên
+                    if (p1.alive && p1.shieldActive && proj.x <= p1.x + p1.width + 10 && proj.x >= p1.x + p1.width && Math.abs(proj.y - (p1.y + p1.height/2)) < 25) { projectiles.splice(i, 1); continue; }
+                    if (p2.active && p2.alive && p2.shieldActive && proj.x <= p2.x + p2.width + 10 && proj.x >= p2.x + p2.width && Math.abs(proj.y - (p2.y + p2.height/2)) < 25) { projectiles.splice(i, 1); continue; }
                     
-                    if (p1.hp > 0 && proj.x < p1.x + p1.width && proj.x > p1.x && proj.y > p1.y && proj.y < p1.y + p1.height) { p1.hp--; updateUI(); projectiles.splice(i, 1); checkWin(); continue; }
-                    if (p2.active && p2.hp > 0 && proj.x < p2.x + p2.width && proj.x > p2.x && proj.y > p2.y && proj.y < p2.y + p2.height) { p2.hp--; updateUI(); projectiles.splice(i, 1); checkWin(); continue; }
+                    // Check trúng người
+                    if (p1.alive && proj.x < p1.x + p1.width && proj.x > p1.x && proj.y > p1.y && proj.y < p1.y + p1.height) { p1.hp--; updateUI(); projectiles.splice(i, 1); checkWin(); continue; }
+                    if (p2.active && p2.alive && proj.x < p2.x + p2.width && proj.x > p2.x && proj.y > p2.y && proj.y < p2.y + p2.height) { p2.hp--; updateUI(); projectiles.splice(i, 1); checkWin(); continue; }
                     
+                    // Check trúng TƯỜNG (Base)
                     if (proj.x <= organBase.x + organBase.w) {
-                        p1.hp--; if(p2.active) p2.hp--; updateUI(); projectiles.splice(i, 1); checkWin(); continue;
+                        organBase.hp--; 
+                        updateUI(); 
+                        projectiles.splice(i, 1); 
+                        checkWin(); 
+                        continue;
                     }
                 }
 
@@ -384,15 +392,21 @@
         }
 
         function checkWin() {
-            let defendersDead = p2.active ? (p1.hp <= 0 && p2.hp <= 0) : (p1.hp <= 0);
-            if (defendersDead && gameState === 'playing') gameState = 'lose';
-            else if (boss.hp <= 0 && gameState === 'playing') gameState = 'win';
+            let defendersDead = p2.active ? (!p1.alive && !p2.alive) : (!p1.alive);
+            
+            if ((defendersDead || organBase.hp <= 0) && gameState === 'playing') {
+                gameState = 'lose';
+            }
+            else if (boss.hp <= 0 && gameState === 'playing') {
+                gameState = 'win';
+            }
         }
 
         function updateUI() {
             document.getElementById('p1-hp').innerText = Math.max(0, p1.hp);
             if(p2.active) document.getElementById('p2-hp').innerText = Math.max(0, p2.hp);
             document.getElementById('boss-hp').innerText = Math.max(0, boss.hp);
+            document.getElementById('base-hp').innerText = Math.max(0, organBase.hp);
         }
 
         function draw() {
@@ -402,7 +416,7 @@
             ctx.fillStyle = envTheme.bg; ctx.fillRect(0, 0, canvas.width, canvas.height);
             particles.forEach(p => { ctx.fillStyle='rgba(255,255,255,0.15)'; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2); ctx.fill(); });
 
-            // Tường
+            // Tường Trần & Sàn
             ctx.fillStyle = envTheme.wall; ctx.fillRect(0, 0, canvas.width, 30); ctx.fillRect(0, canvas.height-30, canvas.width, 30);
             ctx.fillStyle = '#cbd5e1'; ctx.font = 'bold 12px sans-serif'; ctx.fillText(`Thành Phía Trên`, 10, 20); ctx.fillText(`Thành Phía Dưới`, 10, canvas.height - 10);
 
@@ -412,10 +426,29 @@
                 ctx.fillStyle = '#cbd5e1'; ctx.font = '11px sans-serif'; ctx.fillText(plat.label, plat.x + 5, plat.y - 5);
             });
 
-            // Nội tạng bảo vệ
-            ctx.fillStyle = envTheme.organColor; ctx.fillRect(organBase.x, organBase.y, organBase.w, organBase.h);
-            ctx.fillStyle = '#fff'; ctx.font = 'bold 12px sans-serif';
-            ctx.save(); ctx.translate(organBase.x + 20, organBase.y + 110); ctx.rotate(-Math.PI/2); ctx.fillText(envTheme.name ? envTheme.name.toUpperCase() : "NỘI TẠNG", 0, 0); ctx.restore();
+            // 🧱 VẼ TƯỜNG BẢO VỆ (TANK STYLE) VÀ NỘI TẠNG
+            // 1. Vẽ nội tạng phía trong
+            let innerOrganW = organBase.w - 15;
+            ctx.fillStyle = envTheme.organColor; 
+            ctx.fillRect(organBase.x, organBase.y, innerOrganW, organBase.h);
+            ctx.fillStyle = '#fff'; ctx.font = 'bold 10px sans-serif';
+            ctx.save(); ctx.translate(organBase.x + 15, organBase.y + 110); ctx.rotate(-Math.PI/2); ctx.fillText(envTheme.name ? envTheme.name.toUpperCase() : "NỘI TẠNG", 0, 0); ctx.restore();
+
+            // 2. Vẽ Lớp Tường Gạch phía ngoài
+            let wallX = organBase.x + innerOrganW;
+            let wallW = 15;
+            ctx.fillStyle = '#b45309'; // Màu gạch
+            ctx.fillRect(wallX, organBase.y, wallW, organBase.h);
+            ctx.strokeStyle = '#78350f'; // Viền gạch
+            ctx.lineWidth = 1.5;
+            for(let i=0; i<organBase.h; i+=12) {
+                ctx.strokeRect(wallX, organBase.y + i, wallW, 12);
+            }
+
+            // Máu Tường Base
+            ctx.fillStyle = '#000'; ctx.fillRect(organBase.x, organBase.y - 15, organBase.w, 8);
+            ctx.fillStyle = '#f43f5e'; ctx.fillRect(organBase.x, organBase.y - 15, (organBase.hp/organBase.maxHp)*organBase.w, 8);
+            ctx.fillStyle = '#fff'; ctx.font = '9px sans-serif'; ctx.fillText(`BASE HP`, organBase.x, organBase.y - 18);
 
             // Vật phẩm & Đạn
             mapViruses.forEach(m => { ctx.fillStyle='#ef4444'; ctx.beginPath(); ctx.arc(m.x, m.y, m.r, 0, Math.PI*2); ctx.fill(); });
@@ -423,14 +456,14 @@
             projectiles.forEach(p => { ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2); ctx.fill(); });
 
             // P1
-            if(p1.hp > 0) {
+            if(p1.alive) {
                 ctx.fillStyle = p1.color; ctx.fillRect(p1.x, p1.y, p1.width, p1.height);
                 ctx.fillStyle = '#ffffff'; ctx.fillRect(p1.x + (p1.vx >= 0 ? 12 : 4), p1.y + 4, 6, 6);
                 if(p1.shieldActive) { ctx.strokeStyle = '#34d399'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(p1.x + p1.width/2, p1.y + p1.height/2, 25, -Math.PI/2, Math.PI/2); ctx.stroke(); }
             }
 
             // P2
-            if(p2.active && p2.hp > 0) {
+            if(p2.active && p2.alive) {
                 ctx.fillStyle = p2.color; ctx.fillRect(p2.x, p2.y, p2.width, p2.height);
                 ctx.fillStyle = '#ffffff'; ctx.fillRect(p2.x + (p2.vx >= 0 ? 12 : 4), p2.y + 4, 6, 6);
                 if(p2.shieldActive) { ctx.strokeStyle = '#7dd3fc'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(p2.x + p2.width/2, p2.y + p2.height/2, 25, -Math.PI/2, Math.PI/2); ctx.stroke(); }
@@ -463,7 +496,11 @@
                     ctx.fillStyle = '#fbbf24'; ctx.font = 'bold 22px sans-serif'; ctx.fillText(`Huy chương: ${medal}`, canvas.width/2, 210);
                     ctx.fillStyle = '#cbd5e1'; ctx.font = '18px sans-serif'; ctx.fillText(`Thời gian: ${elapsedTime.toFixed(1)}s - Điểm: ${score}`, canvas.width/2, 240);
                 } else {
-                    ctx.fillStyle = '#e11d48'; ctx.font = 'bold 36px sans-serif'; ctx.fillText("BOSS ĐÃ PHÁ HỦY CƠ THỂ!", canvas.width/2, 180);
+                    ctx.fillStyle = '#e11d48'; ctx.font = 'bold 32px sans-serif'; 
+                    let reason = organBase.hp <= 0 ? "TƯỜNG BẢO VỆ ĐÃ BỊ PHÁ HỦY!" : "TẤT CẢ NGƯỜI BẢO VỆ ĐÃ TỬ TRẬN!";
+                    ctx.fillText(reason, canvas.width/2, 170);
+                    ctx.fillStyle = '#fca5a5'; ctx.font = '20px sans-serif'; 
+                    ctx.fillText("BOSS UNG THƯ ĐÃ CHIẾM CƠ THỂ!", canvas.width/2, 210);
                 }
                 ctx.font = '14px sans-serif'; ctx.fillStyle='#94a3b8'; ctx.fillText("Bấm vào các nút chọn Hệ Cơ Quan để chơi lại", canvas.width/2, 300);
                 ctx.textAlign = 'left';
