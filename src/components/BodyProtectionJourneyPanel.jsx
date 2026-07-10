@@ -3,7 +3,7 @@ import { ShieldCheck, Maximize2, Minimize2, Hand } from 'lucide-react'
 import BackButton from './common/BackButton.jsx'
 import { useApp } from '../context/AppContext'
 import TouchlessHandCam from './webcam/TouchlessHandCam.jsx'
-import { classifyGestureKey, GESTURE_KEY_LABELS, GESTURE_KEY_ORDER } from './webcam/gestureToKey.js'
+import { classifyGestureKey, GESTURE_KEY_LABELS } from './webcam/gestureToKey.js'
 
 // ============================================================================
 // BodyProtectionJourneyPanel — "Hành Trình Bảo Vệ Cơ Thể"
@@ -176,34 +176,6 @@ export default function BodyProtectionJourneyPanel({ onBack, onFullscreenChange 
           </div>
         </div>
 
-        {/* Chú thích mapping cử chỉ -> phím User 1 — luôn hiển thị để người
-        chơi biết trước cách điều khiển, kể cả khi chưa bật camera. */}
-        <div className={`flex flex-wrap gap-2 rounded-2xl border p-3 ${cardBg}`}>
-          {GESTURE_KEY_ORDER.map((key) => {
-            const info = GESTURE_KEY_LABELS[key]
-            const isActive = gestureOn && activeGestureKey === key
-            return (
-              <div
-                key={key}
-                className={`flex items-center gap-2 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-colors ${
-                  isActive
-                    ? 'border-emerald-400/70 bg-emerald-500/15 text-emerald-300'
-                    : isDark
-                      ? 'border-white/10 bg-white/5 text-gray-300'
-                      : 'border-gray-200 bg-gray-50 text-gray-600'
-                }`}
-              >
-                <span className="text-base leading-none">{info.icon}</span>
-                <span>{info.text}</span>
-                <span className={`rounded-md px-1.5 py-0.5 font-mono uppercase ${isDark ? 'bg-white/10' : 'bg-white'}`}>
-                  {key}
-                </span>
-                <span className="opacity-70">· {info.action}</span>
-              </div>
-            )
-          })}
-        </div>
-
         <div
           className={`relative overflow-hidden rounded-3xl border shadow-2xl ${cardBg}`}
           style={{ height: fullscreen ? 'calc(100vh - 160px)' : 'min(900px, 82vh)' }}
@@ -218,7 +190,7 @@ export default function BodyProtectionJourneyPanel({ onBack, onFullscreenChange 
           />
 
           {gestureOn && (
-            <div className="fixed bottom-6 right-6 z-50 w-56 overflow-hidden rounded-xl border border-white/20 bg-black shadow-2xl sm:w-64">
+            <div className="fixed bottom-6 left-6 z-50 w-56 overflow-hidden rounded-xl border border-white/20 bg-black shadow-2xl sm:w-64">
               <div className="aspect-video">
                 <TouchlessHandCam
                   ref={touchlessCameraRef}
