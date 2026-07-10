@@ -64,7 +64,7 @@ const organData = {
   },
 }
 
-export default function MedicalVisualPlayground() {
+export default function MedicalVisualPlayground({ onFullscreenChange }) {
   const [activeOrgan, setActiveOrgan] = useState('attack05')
   const [viewMode, setViewMode] = useState('solid') // solid | wireframe | xray
   const [autoRotate, setAutoRotate] = useState(true)
@@ -233,10 +233,12 @@ export default function MedicalVisualPlayground() {
   const toggleFullScreenMode = useCallback(() => {
     setIsFullScreenMode((v) => {
       const next = !v
-      setIsSidebarCollapsed(next)
+      onFullscreenChange?.(next)
       return next
     })
-  }, [])
+  }, [onFullscreenChange])
+
+  useEffect(() => () => onFullscreenChange?.(false), [onFullscreenChange])
 
   // --- HAND TRACKING MAPPER (map tọa độ MediaPipe -> rotation/scale 3D) ---
   // wrist (landmark 0): x,y trong khoảng 0..1 -> trừ 0.5 để lấy tâm khung
@@ -567,14 +569,14 @@ export default function MedicalVisualPlayground() {
       {/* --- MAIN CANVAS --- */}
       <div className="min-w-0 flex-1 relative bg-[linear-gradient(rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:40px_40px]">
         <button
-          onClick={() => { setIsSidebarCollapsed((v) => !v); setIsFullScreenMode(false) }}
+          onClick={() => { setIsSidebarCollapsed((v) => !v); setIsFullScreenMode(false); onFullscreenChange?.(false) }}
           className="absolute left-3 top-3 z-30 rounded-full border border-cyan-300/30 bg-slate-950/80 px-3 py-2 text-xs font-bold uppercase tracking-wider text-cyan-100 shadow-[0_0_18px_rgba(6,182,212,0.25)] backdrop-blur-md transition hover:bg-cyan-500/20"
           title={isSidebarCollapsed ? 'Mở bảng bên trái' : 'Đóng bảng bên trái'}
         >
           {isSidebarCollapsed ? '☰ Mở Lab Panel' : '⟵ Đóng Panel'}
         </button>
 
-        <button type="button" onClick={toggleFullScreenMode} className="absolute left-1/2 top-3 z-30 -translate-x-1/2 rounded-full border border-fuchsia-300/40 bg-slate-950/85 px-4 py-2 text-xs font-black uppercase tracking-wider text-fuchsia-100 shadow-[0_0_18px_rgba(217,70,239,0.25)] backdrop-blur-md transition hover:bg-fuchsia-500/20 max-sm:px-3 max-sm:text-[10px]">
+        <button type="button" onClick={toggleFullScreenMode} className="absolute left-1/2 top-3 z-30 hidden -translate-x-1/2 rounded-full sm:block border border-fuchsia-300/40 bg-slate-950/85 px-4 py-2 text-xs font-black uppercase tracking-wider text-fuchsia-100 shadow-[0_0_18px_rgba(217,70,239,0.25)] backdrop-blur-md transition hover:bg-fuchsia-500/20 max-sm:px-3 max-sm:text-[10px]">
           {isFullScreenMode ? '☰ Toàn màn hình' : 'Toàn màn hình'}
         </button>
 
@@ -652,7 +654,11 @@ export default function MedicalVisualPlayground() {
         </div>
 
 
-        <div className={`absolute right-3 top-3 z-30 w-[min(380px,calc(100%-1.5rem))] max-h-[calc(100%-1.5rem)] overflow-hidden rounded-2xl border border-cyan-300/30 bg-slate-950/90 text-left shadow-2xl shadow-cyan-950/30 backdrop-blur-xl transition-all duration-300 ${isRightMenuOpen ? 'translate-x-0 opacity-100' : 'translate-x-[calc(100%+1rem)] opacity-0 pointer-events-none'}`}>
+        <button type="button" onClick={() => setIsRightMenuOpen((v) => !v)} className="absolute right-3 top-3 z-40 rounded-full border border-cyan-300/40 bg-slate-950/85 px-4 py-2 text-xs font-black uppercase tracking-wider text-cyan-100 shadow-[0_0_18px_rgba(6,182,212,0.25)] backdrop-blur-md transition hover:bg-cyan-500/20 max-sm:px-3 max-sm:text-[10px]">
+          {isRightMenuOpen ? 'Ẩn menu phải' : '☰ Menu 2D + 3D'}
+        </button>
+
+        <div className={`absolute right-3 top-16 z-30 w-[min(380px,calc(100%-1.5rem))] max-h-[calc(100%-1.5rem)] overflow-hidden rounded-2xl border border-cyan-300/30 bg-slate-950/90 text-left shadow-2xl shadow-cyan-950/30 backdrop-blur-xl transition-all duration-300 ${isRightMenuOpen ? 'translate-x-0 opacity-100' : 'translate-x-[calc(100%+1rem)] opacity-0 pointer-events-none'}`}>
           <div className="flex items-center justify-between gap-3 border-b border-white/10 p-3">
             <div>
               <div className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">Object XYZ Transform · 2D + 3D</div>
@@ -662,15 +668,10 @@ export default function MedicalVisualPlayground() {
           </div>
           <div className="max-h-[calc(100vh-8rem)] space-y-3 overflow-y-auto p-3">
             <UrlControl label="Textbox 1 · Link ảnh 2D" value={customImage2dUrl} onChange={setCustomImage2dUrl} onClear={clearCustomImageUrl} onCopy={copyCustomImageUrlToClipboard} onPaste={pasteCustomImageUrlFromClipboard} state={customImageClipboardState} placeholder="Dán link ảnh 2D để hiển thị cùng Object 3D" />
-            <ObjectTransformControls title="2D Object XYZ Transform" value={objectComboImageTransform} onChange={setObjectComboImageTransform} />
+            <ObjectTransformControls title="2D Object XYZ Transform" value={objectComboImageTransform} onChange={setObjectComboImageTransform} columns />
             <ObjectTransformControls title="3D Object XYZ Transform" value={objectComboObjTransform} onChange={setObjectComboObjTransform} />
           </div>
         </div>
-
-        <button type="button" onClick={() => setIsRightMenuOpen((v) => !v)} className="absolute right-3 bottom-3 z-30 rounded-full border border-cyan-300/40 bg-slate-950/85 px-4 py-2 text-xs font-black uppercase tracking-wider text-cyan-100 shadow-[0_0_18px_rgba(6,182,212,0.25)] backdrop-blur-md transition hover:bg-cyan-500/20 max-sm:px-3 max-sm:text-[10px]">
-          {isRightMenuOpen ? 'Ẩn menu phải' : '☰ Menu 2D + 3D'}
-        </button>
-
         {isTouchlessOn && !isCameraGizmoOn && (
           <div className="absolute right-3 top-16 z-40 flex flex-wrap justify-end gap-2">
             <button
@@ -742,7 +743,7 @@ function UrlControl({ label, value, onChange, onClear, onCopy, onPaste, state, p
   )
 }
 
-function ObjectTransformControls({ value, onChange, title }) {
+function ObjectTransformControls({ value, onChange, title, columns = false }) {
   const updateTransform = (group, axis) => (event) => {
     const nextValue = Number(event.target.value)
     onChange((prev) => ({ ...prev, [group]: { ...prev[group], [axis]: nextValue } }))
@@ -763,7 +764,7 @@ function ObjectTransformControls({ value, onChange, title }) {
         <div className="text-xs font-black text-slate-100">{title}</div>
         <button type="button" onClick={() => onChange(DEFAULT_OBJECT_TRANSFORM)} className="rounded-lg border border-amber-300/40 bg-amber-500/10 px-3 py-1 text-[11px] font-black text-amber-200 transition hover:bg-amber-500/20">Reset</button>
       </div>
-      <div className="space-y-3">
+      <div className={columns ? 'grid gap-3 sm:grid-cols-2' : 'space-y-3'}>
         {rows.map(([group, axis, label, min, max, step, display]) => (
           <label key={`${group}-${axis}`} className="block text-[11px] font-bold text-slate-300">
             <span className="mb-1 flex items-center justify-between gap-2"><span>{label}</span><span className="font-mono text-cyan-200">{display}</span></span>
