@@ -132,10 +132,10 @@ export default function App() {
     setImagingScrollTarget(null)
   }, [user?.uuid])
 
-  // Lưới an toàn: rời khỏi 'bodyProtectionJourney' (điều hướng sang trang
-  // khác) trong lúc đang toàn màn hình -> luôn hiện lại Sidebar.
+  // Lưới an toàn: rời khỏi các panel có chế độ toàn màn hình (điều hướng sang
+  // trang khác) trong lúc đang toàn màn hình -> luôn hiện lại Sidebar.
   useEffect(() => {
-    if (active !== 'bodyProtectionJourney' && hideSidebarForFocus) {
+    if (!['bodyProtectionJourney', 'medicalVisualPlayground'].includes(active) && hideSidebarForFocus) {
       setHideSidebarForFocus(false)
     }
   }, [active, hideSidebarForFocus])
@@ -404,7 +404,7 @@ export default function App() {
             )}
             {active === 'healthJourneyGame' && <HealthJourneyGamePanel onNext={goNext} nextLabel={nextLabel} onViewMedicalRecord={() => setActive('upload')} onOpenMyRewardHealth={() => setActive('myRewardHealth')} />}
             {active === 'medicalAssetStore' && <MedicalAssetStorePanel />} {/* <--- RENDER PANEL Ở ĐÂY */}
-            {active === 'medicalVisualPlayground' && <MedicalVisualPlayground />}
+            {active === 'medicalVisualPlayground' && <MedicalVisualPlayground onFullscreenChange={setHideSidebarForFocus} />}
             {active === 'myRewardHealth' && <MyRewardHealthPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} onOpenFoodToday={() => setActive('organConnection')} />}
             {active === 'healthJourney' && <HealthJourneyPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} onOpenStressRelief={() => setActive('stressRelief')} onOpenInBody={() => setActive('aiInbodyPortal')} onViewMedicalRecord={() => setActive('upload')} />}
             {active === 'lunchJourney' && <LunchJourneyPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} onOpenStressRelief={() => setActive('stressRelief')} onOpenInBody={() => setActive('aiInbodyPortal')} onViewMedicalRecord={() => setActive('upload')} />}
