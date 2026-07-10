@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { ShieldCheck, Maximize2, Minimize2, Hand } from 'lucide-react'
-import BackButton from './common/BackButton.jsx'
+import NavButtons from './NavButtons.jsx'
 import { useApp } from '../context/AppContext'
 import TouchlessHandCam from './webcam/TouchlessHandCam.jsx'
 import { classifyGestureKey, GESTURE_KEY_LABELS } from './webcam/gestureToKey.js'
@@ -36,7 +36,7 @@ const GAME_SRC = '/games/hanh-trinh-bao-ve-co-the.html'
 const HOLD_FRAMES_TO_ACTIVATE = 3
 const HOLD_FRAMES_TO_RELEASE = 5
 
-export default function BodyProtectionJourneyPanel({ onBack, onFullscreenChange }) {
+export default function BodyProtectionJourneyPanel({ onNext, nextLabel, onPrev, prevLabel, onFullscreenChange }) {
   const { theme } = useApp()
   const isDark = theme === 'dark'
   const [fullscreen, setFullscreen] = useState(false)
@@ -223,11 +223,12 @@ export default function BodyProtectionJourneyPanel({ onBack, onFullscreenChange 
           )}
         </div>
 
-        {onBack && (
-          <div className="flex justify-start">
-            <BackButton isDark={isDark} onClick={onBack} label="Quay lại" />
-          </div>
-        )}
+        <NavButtons
+          onNext={onNext}
+          nextLabel={nextLabel || 'Health Journey Game'}
+          onPrev={onPrev}
+          prevLabel={prevLabel}
+        />
       </div>
     </div>
   )

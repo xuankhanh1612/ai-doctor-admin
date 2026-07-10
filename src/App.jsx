@@ -60,13 +60,13 @@ import LoginPage from './pages/LoginPage.jsx'
 import { addNotification } from './lib/notifications.js'
 import { useTTS } from './lib/groqAiClient.js'
 
-// THÊM 'medicalAssetStore' NGAY SAU 'healthJourneyGame'
-const PANELS = ['adminConcept', 'healthJourneyGame', 'medicalAssetStore', 'medicalVisualPlayground', 'myRewardHealth', 'rssPortal', 'waterDrinkChatBot', 'wikiMedVision', 'fullDocSummarization', 'documentOCR', 'cameraAngle3DStudio', 'organConnection', 'healthJourney', 'lunchJourney', 'dinnerJourney', 'upload', 'imaging', 'checkin', 'family', 'record', 'familyRelationship', 'matrix3dBody', 'omnidirectional3dBody', 'twin', 'telemedicine', 'statAnalysis', 'swarm', 'consensus', 'varCheck', 'protein3d', 'aiHealthcareVision', 'aiHealthcareVisionControl', 'stressRelief', 'aiInbodyPortal', 'printPortal', 'patientReflect', 'chatHistory', 'myImageToVideo', 'make3DModel', 'my3dAsset', 'twoDTo3DAsset', 'xyzCameraAngle']
+// Thứ tự này đồng bộ menu chính và nút điều hướng qua/lại giữa các màn hình.
+const PANELS = ['bodyProtectionJourney', 'healthJourneyGame', 'medicalAssetStore', 'medicalVisualPlayground', 'myRewardHealth', 'rssPortal', 'waterDrinkChatBot', 'wikiMedVision', 'fullDocSummarization', 'documentOCR', 'cameraAngle3DStudio', 'organConnection', 'healthJourney', 'lunchJourney', 'dinnerJourney', 'upload', 'imaging', 'checkin', 'family', 'record', 'familyRelationship', 'matrix3dBody', 'omnidirectional3dBody', 'twin', 'telemedicine', 'statAnalysis', 'swarm', 'consensus', 'varCheck', 'protein3d', 'aiHealthcareVision', 'aiHealthcareVisionControl', 'stressRelief', 'aiInbodyPortal', 'printPortal', 'patientReflect', 'chatHistory', 'myImageToVideo', 'make3DModel', 'my3dAsset', 'twoDTo3DAsset', 'xyzCameraAngle']
 
 export default function App() {
   const { user, loading } = useAuth()
   const { theme, t } = useApp()
-  const [active, setActive]               = useState('healthJourneyGame')
+  const [active, setActive]               = useState('bodyProtectionJourney')
   const [selectedMember, setSelectedMember] = useState(null)
   const [compareImage, setCompareImage] = useState(null)
   const [uploadedImages, setUploadedImages] = useState([])
@@ -210,7 +210,7 @@ export default function App() {
     return () => window.removeEventListener('navigate-to-chat-history', navigateToChatHistory)
   }, [navigateToChatHistory])
   const openMainMenu = useCallback(() => {
-    setActive('healthJourneyGame')
+    setActive('bodyProtectionJourney')
     window.setTimeout(() => setSidebarOpenSignal(signal => signal + 1), 0)
   }, [])
 
@@ -219,7 +219,7 @@ export default function App() {
 
   useEffect(() => {
     if (ADMIN_ONLY_PANELS.includes(active) && !user?.isAdmin) {
-      setActive('healthJourneyGame')
+      setActive('bodyProtectionJourney')
     }
   }, [active, user?.isAdmin])
 
@@ -303,9 +303,9 @@ export default function App() {
     }
   }, [active, updateScrollControls])
 
-  const activePanelIndex = PANELS.indexOf(active)
-  const prevPanel = PANELS[activePanelIndex - 1]
-  const nextPanel = PANELS[activePanelIndex + 1]
+  const activePanelIndex = visiblePanels.indexOf(active)
+  const prevPanel = visiblePanels[activePanelIndex - 1]
+  const nextPanel = visiblePanels[activePanelIndex + 1]
   const prevLabel = prevPanel ? panelLabels[prevPanel] : null
   const nextLabel = nextPanel ? panelLabels[nextPanel] : null
 
@@ -456,7 +456,8 @@ export default function App() {
             )}
             {active === 'bodyProtectionJourney' && (
               <BodyProtectionJourneyPanel
-                onBack={() => setActive('donationHero')}
+                onNext={goNext}
+                nextLabel={nextLabel}
                 onFullscreenChange={setHideSidebarForFocus}
               />
             )}
@@ -823,7 +824,7 @@ function GlobalBottomNav({ active, onOpenMainMenu, onNavigate }) {
   const { theme } = useApp()
   const isDark = theme === 'dark'
   const items = [
-    { id: 'health', label: 'Health', icon: '♿', action: onOpenMainMenu, active: ['healthJourneyGame', 'medicalAssetStore', 'medicalVisualPlayground', 'myRewardHealth', 'healthJourney', 'lunchJourney', 'dinnerJourney'].includes(active) },
+    { id: 'health', label: 'Health', icon: '♿', action: onOpenMainMenu, active: ['bodyProtectionJourney', 'healthJourneyGame', 'medicalAssetStore', 'medicalVisualPlayground', 'myRewardHealth', 'healthJourney', 'lunchJourney', 'dinnerJourney'].includes(active) },
     { id: 'family', label: 'Community', icon: '👥', action: () => onNavigate('family'), active: active === 'family' },
     { id: 'aiHealthcareVision', label: 'AI Scan', icon: '🧬', action: () => onNavigate('aiHealthcareVision'), active: active === 'aiHealthcareVision' || active === 'aiHealthcareVisionControl' },
     { id: 'upload', label: 'Record', icon: '📄', action: () => onNavigate('upload'), active: active === 'upload' },
