@@ -2,8 +2,6 @@ import React, { useState } from 'react'
 
 const navItems = [
   { id: 'dashboard', label: 'Trang chủ', icon: '▦' },
-  { id: 'patient', label: 'Bệnh nhân', icon: '◎' },
-  { id: 'journey', label: 'Hành trình', icon: '✦' },
   { id: 'api', label: 'Tài nguyên AI', icon: '◈' },
 ]
 
@@ -37,8 +35,6 @@ export default function AdminConceptPanel() {
           <span style={styles.statusPill}>{active === 'api' ? 'Giám sát quota realtime' : 'Hệ thống bình thường'}</span>
         </div>
         {active === 'dashboard' && <DashboardView />}
-        {active === 'patient' && <PatientView />}
-        {active === 'journey' && <JourneyView />}
         {active === 'api' && <ApiMonitorView />}
       </section>
     </div>
@@ -62,7 +58,7 @@ function DashboardView() {
   </>
 }
 
-function PatientView() {
+export function PatientView() {
   return <>
     <header style={styles.patientHeader}><div style={styles.avatar}>NA</div><div><h1 style={styles.h1}>Nguyễn Văn A</h1><p style={styles.muted}>ID: PT-2026-9042 · Nam · 34 tuổi</p></div></header>
     <div style={styles.twoCol}>
@@ -76,7 +72,7 @@ function PatientView() {
   </>
 }
 
-function JourneyView() {
+export function JourneyView() {
   return <>
     <div style={styles.gameHero}><div><h1 style={{...styles.h1, color:'#26e0c6'}}>Hành trình Khỏe mạnh</h1><p style={styles.muted}>Level 12 · Chiến binh Dinh dưỡng</p></div><div style={styles.expBox}><b>ĐIỂM EXP<br/><span>4,250</span></b><b>🔥 CHUỖI<br/><span>14 Ngày</span></b></div></div>
     <Card title="Nhiệm vụ hằng ngày"><Quest done title="Uống 2 lít nước" meta="Tiến độ: 2000/2000 ml" reward="+50 EXP" /><Quest title="Đi bộ 5000 bước" meta="Tiến độ: 3000/5000 bước" reward="+100 EXP" progress={60} /></Card>
