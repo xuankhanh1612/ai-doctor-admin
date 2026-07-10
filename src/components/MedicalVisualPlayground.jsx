@@ -199,6 +199,7 @@ export default function MedicalVisualPlayground({ onFullscreenChange }) {
     ))
   }, [])
 
+
   useEffect(() => {
     setAccuracy(Math.floor(Math.random() * 5) + 95)
   }, [activeOrgan])
@@ -630,7 +631,7 @@ export default function MedicalVisualPlayground({ onFullscreenChange }) {
           </div>
         )}
 
-        <div className="absolute left-3 top-16 flex max-w-xs max-sm:max-w-[calc(100vw-1.5rem)] flex-col gap-3 pointer-events-none z-20">
+        <div className="absolute left-3 top-16 z-20 hidden max-w-xs flex-col gap-3 pointer-events-none lg:flex">
           <div className="bg-black/40 backdrop-blur-md border border-white/10 p-4 rounded-xl text-left shadow-lg">
             <div className="text-4xl font-light text-white tracking-tighter">
               {accuracy}<span className="text-lg text-slate-400">%</span>
@@ -656,23 +657,41 @@ export default function MedicalVisualPlayground({ onFullscreenChange }) {
           </div>
         </div>
 
-
         <button type="button" onClick={() => setIsRightMenuOpen((v) => !v)} className="absolute right-3 top-3 z-40 rounded-full border border-cyan-300/40 bg-slate-950/85 px-4 py-2 text-xs font-black uppercase tracking-wider text-cyan-100 shadow-[0_0_18px_rgba(6,182,212,0.25)] backdrop-blur-md transition hover:bg-cyan-500/20 max-sm:px-3 max-sm:text-[10px]">
           {isRightMenuOpen ? 'Ẩn menu phải' : '☰ Menu 2D + 3D'}
         </button>
 
-        <div className={`absolute right-3 top-16 z-30 w-[min(760px,calc(100%-1.5rem))] max-h-[calc(100%-1.5rem)] overflow-hidden rounded-2xl border border-cyan-300/30 bg-slate-950/90 text-left shadow-2xl shadow-cyan-950/30 backdrop-blur-xl transition-all duration-300 ${isRightMenuOpen ? 'translate-x-0 opacity-100' : 'translate-x-[calc(100%+1rem)] opacity-0 pointer-events-none'}`}>
-          <div className="flex items-center justify-between gap-3 border-b border-white/10 p-3">
-            <div>
-              <div className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">XYZ Transform · 2D + 3D</div>
-              <div className="text-[10px] text-slate-400">Menu toggle ẩn/hiện bên phải cho Camera Angle Gizmo.</div>
+        <div className={`absolute inset-x-3 top-16 z-30 max-h-[calc(100%-1.5rem)] overflow-hidden text-left transition-all duration-300 lg:pointer-events-none lg:grid lg:grid-cols-[minmax(280px,360px)_minmax(280px,360px)] lg:justify-between lg:gap-[min(18vw,16rem)] ${isRightMenuOpen ? 'translate-y-0 opacity-100' : 'translate-y-3 opacity-0 pointer-events-none'}`}>
+          <div className="pointer-events-auto overflow-hidden rounded-2xl border border-cyan-300/30 bg-slate-950/90 shadow-2xl shadow-cyan-950/30 backdrop-blur-xl lg:col-start-1">
+            <div className="flex items-center justify-between gap-3 border-b border-white/10 p-3">
+              <div>
+                <div className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">2D Transform</div>
+                <div className="text-[10px] text-slate-400">Ảnh 2D và vị trí XYZ.</div>
+              </div>
+              <button type="button" onClick={() => setIsRightMenuOpen(false)} className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-white/10 bg-white/5 text-slate-200 hover:bg-white/10" aria-label="Đóng menu bên phải">✕</button>
             </div>
-            <button type="button" onClick={() => setIsRightMenuOpen(false)} className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-white/10 bg-white/5 text-slate-200 hover:bg-white/10" aria-label="Đóng menu bên phải">✕</button>
+            <div className="max-h-[calc(100vh-8rem)] overflow-y-auto p-3">
+              <div className="grid grid-cols-2 gap-3 lg:block lg:space-y-3">
+                <div className="col-span-2">
+                  <UrlControl label="Textbox 1 · Link ảnh 2D" value={customImage2dUrl} onChange={setCustomImage2dUrl} onClear={clearCustomImageUrl} onCopy={copyCustomImageUrlToClipboard} onPaste={pasteCustomImageUrlFromClipboard} state={customImageClipboardState} placeholder="Dán link ảnh 2D để hiển thị cùng mô hình 3D" />
+                </div>
+                <XyzTransformControls title="2D XYZ Transform" value={imageXyzTransform} onChange={setImageXyzTransform} />
+                <div className="lg:hidden">
+                  <XyzTransformControls title="3D XYZ Transform" value={modelXyzTransform} onChange={setModelXyzTransform} />
+                </div>
+              </div>
+            </div>
           </div>
-          <div className="max-h-[calc(100vh-8rem)] space-y-3 overflow-y-auto p-3">
-            <UrlControl label="Textbox 1 · Link ảnh 2D" value={customImage2dUrl} onChange={setCustomImage2dUrl} onClear={clearCustomImageUrl} onCopy={copyCustomImageUrlToClipboard} onPaste={pasteCustomImageUrlFromClipboard} state={customImageClipboardState} placeholder="Dán link ảnh 2D để hiển thị cùng mô hình 3D" />
-            <div className="grid gap-3 md:grid-cols-2">
-              <XyzTransformControls title="2D XYZ Transform" value={imageXyzTransform} onChange={setImageXyzTransform} />
+
+          <div className="pointer-events-auto hidden overflow-hidden rounded-2xl border border-fuchsia-300/30 bg-slate-950/90 shadow-2xl shadow-fuchsia-950/20 backdrop-blur-xl lg:col-start-2 lg:block">
+            <div className="flex items-center justify-between gap-3 border-b border-white/10 p-3">
+              <div>
+                <div className="text-xs font-black uppercase tracking-[0.18em] text-fuchsia-200">3D Transform</div>
+                <div className="text-[10px] text-slate-400">Tách sang bên phải để giữ trống vùng quan sát giữa.</div>
+              </div>
+              <button type="button" onClick={() => setIsRightMenuOpen(false)} className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-white/10 bg-white/5 text-slate-200 hover:bg-white/10" aria-label="Đóng menu bên phải">✕</button>
+            </div>
+            <div className="max-h-[calc(100vh-8rem)] overflow-y-auto p-3">
               <XyzTransformControls title="3D XYZ Transform" value={modelXyzTransform} onChange={setModelXyzTransform} />
             </div>
           </div>
