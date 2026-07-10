@@ -65,7 +65,7 @@ const PANELS = ['adminConcept', 'healthJourneyGame', 'medicalAssetStore', 'medic
 export default function App() {
   const { user, loading } = useAuth()
   const { theme, t } = useApp()
-  const [active, setActive]               = useState('adminConcept')
+  const [active, setActive]               = useState('healthJourneyGame')
   const [selectedMember, setSelectedMember] = useState(null)
   const [compareImage, setCompareImage] = useState(null)
   const [uploadedImages, setUploadedImages] = useState([])
@@ -198,13 +198,21 @@ export default function App() {
     window.setTimeout(() => setSidebarOpenSignal(signal => signal + 1), 0)
   }, [])
 
+  const visiblePanels = user?.isAdmin ? PANELS : PANELS.filter(id => id !== 'adminConcept')
+
+  useEffect(() => {
+    if (active === 'adminConcept' && !user?.isAdmin) {
+      setActive('healthJourneyGame')
+    }
+  }, [active, user?.isAdmin])
+
   const goNext = () => {
-    const idx = PANELS.indexOf(active)
-    if (idx < PANELS.length - 1) setActive(PANELS[idx + 1])
+    const idx = visiblePanels.indexOf(active)
+    if (idx >= 0 && idx < visiblePanels.length - 1) setActive(visiblePanels[idx + 1])
   }
   const goPrev = () => {
-    const idx = PANELS.indexOf(active)
-    if (idx > 0) setActive(PANELS[idx - 1])
+    const idx = visiblePanels.indexOf(active)
+    if (idx > 0) setActive(visiblePanels[idx - 1])
   }
 
   const handleSelectCompareFile = (dataUrl, records = [], options = {}) => {
@@ -371,7 +379,10 @@ export default function App() {
             familyStorageOwnerId={familyStorageOwnerId}
             user={user}
           >
-            {active === 'adminConcept' && <AdminConceptPanel />}
+            {active === 'adminConcept' && user?.isAdmin && <AdminConceptPanel />}
+            {active === 'adminConcept' && !user?.isAdmin && (
+              <div style={{ padding: 40, textAlign: 'center', color: '#ff5252' }}>🔒 Admin only</div>
+            )}
             {active === 'healthJourneyGame' && <HealthJourneyGamePanel onNext={goNext} nextLabel={nextLabel} onViewMedicalRecord={() => setActive('upload')} onOpenMyRewardHealth={() => setActive('myRewardHealth')} />}
             {active === 'medicalAssetStore' && <MedicalAssetStorePanel />} {/* <--- RENDER PANEL Ở ĐÂY */}
             {active === 'medicalVisualPlayground' && <MedicalVisualPlayground />}
