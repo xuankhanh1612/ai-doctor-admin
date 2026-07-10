@@ -389,7 +389,7 @@ export default function App() {
         {!hideSidebarForFocus && (
           <Sidebar active={active} onNavigate={(id) => setActive(id)} openSignal={sidebarOpenSignal} />
         )}
-        <main ref={mainRef} style={{ flex: 1, overflowY: 'auto', background: mainBg, paddingBottom: 104 }}>
+        <main ref={mainRef} style={{ flex: 1, overflowY: 'auto', background: mainBg, paddingBottom: hideSidebarForFocus ? 0 : 104 }}>
           <PanelErrorBoundary
             resetKey={active}
             isDark={isDark}
@@ -496,11 +496,13 @@ export default function App() {
           />
           <GlobalPageReader readRootRef={mainRef} activeKey={active} />
         </main>
-        <GlobalBottomNav
-          active={active}
-          onOpenMainMenu={openMainMenu}
-          onNavigate={(id) => setActive(id)}
-        />
+        {!hideSidebarForFocus && (
+          <GlobalBottomNav
+            active={active}
+            onOpenMainMenu={openMainMenu}
+            onNavigate={(id) => setActive(id)}
+          />
+        )}
         <GlobalAIChatbot activePanelLabel={panelLabels[active] || active} />
       </div>
     </div>
