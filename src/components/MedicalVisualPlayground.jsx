@@ -286,7 +286,7 @@ export default function MedicalVisualPlayground({ onFullscreenChange }) {
   }, [])
 
   return (
-    <div className={`relative flex bg-slate-900 text-white font-sans overflow-hidden ${isFullScreenMode ? 'h-[calc(100dvh-58px)] min-h-0 rounded-none border-0' : 'h-full min-h-[640px] rounded-2xl border border-slate-700'}`}>
+    <div className={`relative flex bg-slate-900 text-white font-sans overflow-hidden ${isFullScreenMode ? 'h-[calc(100svh-58px)] min-h-0 rounded-none border-0' : 'h-full min-h-[640px] rounded-2xl border border-slate-700'}`}>
 
       {/* --- SIDEBAR --- */}
       <div className={`${isSidebarCollapsed ? 'w-0 border-r-0 -translate-x-full' : 'w-80 max-lg:w-72 max-sm:absolute max-sm:inset-y-0 max-sm:left-0 max-sm:w-[86vw] translate-x-0'} bg-slate-800 border-r border-slate-700 flex flex-col shadow-2xl z-10 overflow-hidden transition-all duration-300 ease-out`}>
@@ -661,8 +661,8 @@ export default function MedicalVisualPlayground({ onFullscreenChange }) {
           {isRightMenuOpen ? 'Ẩn menu phải' : '☰ Menu 2D + 3D'}
         </button>
 
-        <div className={`absolute inset-x-3 top-16 bottom-3 z-50 overflow-y-auto overscroll-contain text-left transition-all duration-300 lg:grid lg:overflow-visible lg:grid-cols-[minmax(280px,360px)_minmax(280px,360px)] lg:justify-between lg:gap-[min(18vw,16rem)] ${isRightMenuOpen ? 'translate-y-0 opacity-100' : 'translate-y-3 opacity-0 pointer-events-none'}`}>
-          <div className="pointer-events-auto max-h-full overflow-hidden rounded-2xl border border-cyan-300/30 bg-slate-950/90 shadow-2xl shadow-cyan-950/30 backdrop-blur-xl lg:col-start-1">
+        <div className={`absolute inset-x-3 top-16 bottom-3 z-50 overflow-y-auto overscroll-contain text-left transition-all duration-300 lg:grid lg:grid-cols-[minmax(280px,360px)_minmax(280px,360px)] lg:items-start lg:justify-between lg:gap-[min(18vw,16rem)] ${isRightMenuOpen ? 'translate-y-0 opacity-100 pointer-events-auto' : 'translate-y-3 opacity-0 pointer-events-none'}`}>
+          <div className="pointer-events-auto max-h-[calc(100svh-5rem)] overflow-hidden rounded-2xl border border-cyan-300/30 bg-slate-950/90 shadow-2xl shadow-cyan-950/30 backdrop-blur-xl lg:col-start-1">
             <div className="flex items-center justify-between gap-3 border-b border-white/10 p-3">
               <div>
                 <div className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">2D Transform</div>
@@ -670,7 +670,7 @@ export default function MedicalVisualPlayground({ onFullscreenChange }) {
               </div>
               <button type="button" onClick={() => setIsRightMenuOpen(false)} className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-white/10 bg-white/5 text-slate-200 hover:bg-white/10" aria-label="Đóng menu bên phải">✕</button>
             </div>
-            <div className="max-h-[calc(100dvh-8rem)] overflow-y-auto p-3">
+            <div className="max-h-[calc(100svh-9.5rem)] overflow-y-auto overscroll-contain p-3">
               <div className="grid grid-cols-2 gap-3 lg:block lg:space-y-3">
                 <div className="col-span-2">
                   <UrlControl label="Textbox 1 · Link ảnh 2D" value={customImage2dUrl} onChange={setCustomImage2dUrl} onClear={clearCustomImageUrl} onCopy={copyCustomImageUrlToClipboard} onPaste={pasteCustomImageUrlFromClipboard} state={customImageClipboardState} placeholder="Dán link ảnh 2D để hiển thị cùng mô hình 3D" />
@@ -683,7 +683,7 @@ export default function MedicalVisualPlayground({ onFullscreenChange }) {
             </div>
           </div>
 
-          <div className="pointer-events-auto hidden max-h-full overflow-hidden rounded-2xl border border-fuchsia-300/30 bg-slate-950/90 shadow-2xl shadow-fuchsia-950/20 backdrop-blur-xl lg:col-start-2 lg:block">
+          <div className="pointer-events-auto hidden max-h-[calc(100svh-5rem)] overflow-hidden rounded-2xl border border-fuchsia-300/30 bg-slate-950/90 shadow-2xl shadow-fuchsia-950/20 backdrop-blur-xl lg:col-start-2 lg:block">
             <div className="flex items-center justify-between gap-3 border-b border-white/10 p-3">
               <div>
                 <div className="text-xs font-black uppercase tracking-[0.18em] text-fuchsia-200">3D Transform</div>
@@ -691,7 +691,7 @@ export default function MedicalVisualPlayground({ onFullscreenChange }) {
               </div>
               <button type="button" onClick={() => setIsRightMenuOpen(false)} className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-white/10 bg-white/5 text-slate-200 hover:bg-white/10" aria-label="Đóng menu bên phải">✕</button>
             </div>
-            <div className="max-h-[calc(100dvh-8rem)] overflow-y-auto p-3">
+            <div className="max-h-[calc(100svh-9.5rem)] overflow-y-auto overscroll-contain p-3">
               <XyzTransformControls title="3D XYZ Transform" value={modelXyzTransform} onChange={setModelXyzTransform} />
             </div>
           </div>
