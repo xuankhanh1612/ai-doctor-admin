@@ -88,7 +88,8 @@ export default function CameraAngle3DStudioPanel() {
   const [effectiveComboMtlUrl, setEffectiveComboMtlUrl] = useState(DEFAULT_COMBO_MTL_URL)
   const [comboObjLoadError, setComboObjLoadError] = useState('')
   const [cameraCombo, setCameraCombo] = useState({ azimuth: 0, elevation: 0, distance: 1.0 })
-  const [objectComboTransform, setObjectComboTransform] = useState(DEFAULT_OBJECT_TRANSFORM)
+  const [objectComboImageTransform, setObjectComboImageTransform] = useState(DEFAULT_OBJECT_TRANSFORM)
+  const [objectComboObjTransform, setObjectComboObjTransform] = useState(DEFAULT_OBJECT_TRANSFORM)
 
   const [sourceImage, setSourceImage] = useState(null)
   const [sourcePreview, setSourcePreview] = useState('')
@@ -785,7 +786,7 @@ export default function CameraAngle3DStudioPanel() {
                 objUrl={effectiveComboObjUrl}
                 mtlUrl={effectiveComboMtlUrl}
                 value={cameraCombo}
-                objectTransform={objectComboTransform}
+                objectTransforms={{ image: objectComboImageTransform, obj: objectComboObjTransform }}
                 onChange={setCameraCombo}
                 onLoadError={(err, failedUrl) => {
                   if (failedUrl === effectiveComboImageUrl || failedUrl === comboImageUrl) handleComboImageLoadError(err, failedUrl)
@@ -797,8 +798,6 @@ export default function CameraAngle3DStudioPanel() {
                 }}
               />
             </div>
-
-            <ObjectTransformControls palette={palette} value={objectComboTransform} onChange={setObjectComboTransform} />
 
             <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
               <button
@@ -958,6 +957,27 @@ export default function CameraAngle3DStudioPanel() {
             <div style={{ ...inputStyle(palette), fontFamily: 'monospace', fontSize: 12, color: palette.green }}>{promptCombo}</div>
           </section>
 
+
+          {/* --- COMBO OBJECT TRANSFORMS: đặt cạnh khu Realtime HF để dễ quan sát khi tinh chỉnh 2 object. --- */}
+          <section style={cardStyle(palette)}>
+            <h2 style={{ margin: '0 0 6px', fontSize: 20 }}>Object XYZ Transform · 2D + 3D</h2>
+            <p style={{ margin: '0 0 12px', color: palette.text2, fontSize: 12 }}>Điều khiển riêng từng object trong khung “🎮 3D Camera Control 2D + 3D Object”.</p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12, alignItems: 'start' }}>
+              <ObjectTransformControls
+                palette={palette}
+                title="2D Object XYZ Transform"
+                value={objectComboImageTransform}
+                onChange={setObjectComboImageTransform}
+              />
+              <ObjectTransformControls
+                palette={palette}
+                title="3D Object XYZ Transform"
+                value={objectComboObjTransform}
+                onChange={setObjectComboObjTransform}
+              />
+            </div>
+          </section>
+
           {/* --- REALTIME HF SPACE --- */}
           <section style={cardStyle(palette)}>
             <h2 style={{ margin: '0 0 12px', fontSize: 20 }}>🚀 Realtime Hugging Face API</h2>
@@ -1001,7 +1021,7 @@ export default function CameraAngle3DStudioPanel() {
 }
 
 
-function ObjectTransformControls({ palette, value, onChange }) {
+function ObjectTransformControls({ palette, value, onChange, title = 'Object XYZ Transform' }) {
   const updateTransform = (group, axis) => (event) => {
     const nextValue = Number(event.target.value)
     onChange((prev) => ({
@@ -1027,7 +1047,7 @@ function ObjectTransformControls({ palette, value, onChange }) {
   return (
     <div style={{ marginTop: 14, padding: 12, border: `1px solid ${palette.border}`, borderRadius: 16, background: palette.card2 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 8 }}>
-        <div style={{ color: palette.text, fontSize: 13, fontWeight: 950 }}>Object XYZ Transform</div>
+        <div style={{ color: palette.text, fontSize: 13, fontWeight: 950 }}>{title}</div>
         <button type="button" onClick={resetTransform} style={{ ...iconButtonStyle(palette.amber), width: 'auto', padding: '0 10px', fontSize: 12, fontWeight: 900 }}>Reset</button>
       </div>
       {rows.map(([group, axis, label, min, max, step, display]) => (

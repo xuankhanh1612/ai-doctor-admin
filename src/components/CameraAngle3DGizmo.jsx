@@ -52,11 +52,12 @@ export function buildCameraPrompt(azimuth, elevation, distance) {
   return `<sks> ${AZIMUTH_NAMES[az]} ${ELEVATION_NAMES[String(el)]} ${DISTANCE_NAMES[distKey]}`
 }
 
-export default function Camera3DAngleGizmo({ mode = 'obj', objUrl, mtlUrl, imageUrl, value, objectTransform, onChange, onLoadError, onLoadSuccess }) {
+export default function Camera3DAngleGizmo({ mode = 'obj', objUrl, mtlUrl, imageUrl, value, objectTransform, objectTransforms, onChange, onLoadError, onLoadSuccess }) {
   const wrapperRef = useRef(null)
   const promptRef = useRef(null)
   const liveRef = useRef({ azimuth: value?.azimuth ?? 0, elevation: value?.elevation ?? 0, distance: value?.distance ?? 1.0 })
   const objectTransformRef = useRef(objectTransform)
+  const objectTransformsRef = useRef(objectTransforms)
   const applyExternalRef = useRef(null)
   const applyObjectTransformRef = useRef(null)
   const onLoadErrorRef = useRef(onLoadError)
@@ -64,6 +65,7 @@ export default function Camera3DAngleGizmo({ mode = 'obj', objUrl, mtlUrl, image
   useEffect(() => { onLoadErrorRef.current = onLoadError }, [onLoadError])
   useEffect(() => { onLoadSuccessRef.current = onLoadSuccess }, [onLoadSuccess])
   useEffect(() => { objectTransformRef.current = objectTransform }, [objectTransform])
+  useEffect(() => { objectTransformsRef.current = objectTransforms }, [objectTransforms])
 
   // Scene khởi tạo 1 lần; objUrl đổi thì tải lại model, KHÔNG huỷ toàn bộ scene.
   useEffect(() => {
@@ -101,26 +103,36 @@ export default function Camera3DAngleGizmo({ mode = 'obj', objUrl, mtlUrl, image
 
     // --- Target: model .obj thật thay cho mặt phẳng ảnh của bản gốc ---
     const targetGroup = new THREE.Group()
+    const imageTargetGroup = new THREE.Group()
+    const modelTargetGroup = new THREE.Group()
     scene.add(targetGroup)
+    scene.add(imageTargetGroup)
+    scene.add(modelTargetGroup)
 
-    function applyObjectTransform(next = objectTransformRef.current) {
+    function applyTransformToGroup(group, next) {
       const position = next?.position || {}
       const rotation = next?.rotation || {}
-      targetGroup.position.set(
+      group.position.set(
         CENTER.x + (position.x || 0),
         CENTER.y + (position.y || 0),
         CENTER.z + (position.z || 0)
       )
-      targetGroup.rotation.set(
+      group.rotation.set(
         THREE.MathUtils.degToRad(rotation.x || 0),
         THREE.MathUtils.degToRad(rotation.y || 0),
         THREE.MathUtils.degToRad(rotation.z || 0)
       )
     }
+
+    function applyObjectTransform(next = objectTransformRef.current, nextPair = objectTransformsRef.current) {
+      applyTransformToGroup(targetGroup, next)
+      applyTransformToGroup(imageTargetGroup, nextPair?.image || next)
+      applyTransformToGroup(modelTargetGroup, nextPair?.obj || next)
+    }
     applyObjectTransform()
 
-    function loadTargetModel(url, mtlUrlParam, offsetX = 0) {
-      while (targetGroup.children.length) targetGroup.remove(targetGroup.children[0])
+    function loadTargetModel(url, mtlUrlParam, offsetX = 0, parentGroup = targetGroup) {
+      while (parentGroup.children.length) parentGroup.remove(parentGroup.children[0])
       if (!url) return
 
       const attachObject = (object) => {
@@ -137,7 +149,7 @@ export default function Camera3DAngleGizmo({ mode = 'obj', objUrl, mtlUrl, image
             o.material = new THREE.MeshStandardMaterial({ color: 0x6fd3ff, roughness: 0.55, metalness: 0.1 })
           }
         })
-        targetGroup.add(object)
+        parentGroup.add(object)
         applyObjectTransform()
         onLoadSuccessRef.current?.(url)
       }
@@ -168,7 +180,7 @@ export default function Camera3DAngleGizmo({ mode = 'obj', objUrl, mtlUrl, image
 
     // --- Target (chế độ 'image'): chiếu ảnh 2D lên 1 mặt phẳng làm tâm
     // điều khiển thay vì tải .obj — đúng cơ chế gốc của HF Space.
-    function loadTargetImage(url, offsetX = 0) {
+    function loadTargetImage(url, offsetX = 0, parentGroup = targetGroup) {
       if (!url) return
       new THREE.TextureLoader().load(
         url,
@@ -186,7 +198,7 @@ export default function Camera3DAngleGizmo({ mode = 'obj', objUrl, mtlUrl, image
             new THREE.MeshStandardMaterial({ map: texture, side: THREE.DoubleSide, roughness: 0.75, metalness: 0 })
           )
           mesh.position.set(offsetX, planeH / 2, 0)
-          targetGroup.add(mesh)
+          parentGroup.add(mesh)
           applyObjectTransform()
           onLoadSuccessRef.current?.(url)
         },
@@ -202,8 +214,8 @@ export default function Camera3DAngleGizmo({ mode = 'obj', objUrl, mtlUrl, image
       loadTargetImage(imageUrl)
     } else if (mode === 'both') {
       // Cả 2 vật thể cùng lúc: ảnh 2D bên trái, model .obj bên phải.
-      loadTargetImage(imageUrl, -0.95)
-      loadTargetModel(objUrl, mtlUrl, 0.95)
+      loadTargetImage(imageUrl, -0.95, imageTargetGroup)
+      loadTargetModel(objUrl, mtlUrl, 0.95, modelTargetGroup)
     } else {
       loadTargetModel(objUrl)
     }
@@ -437,7 +449,7 @@ export default function Camera3DAngleGizmo({ mode = 'obj', objUrl, mtlUrl, image
       if (next.distance != null) distanceFactor = next.distance
       updatePositions()
     }
-    applyObjectTransformRef.current = (next) => applyObjectTransform(next)
+    applyObjectTransformRef.current = (next, nextPair) => applyObjectTransform(next, nextPair)
 
     return () => {
       disposed = true
@@ -473,10 +485,14 @@ export default function Camera3DAngleGizmo({ mode = 'obj', objUrl, mtlUrl, image
 
   // objectTransform điều khiển từ ngoài -> di chuyển/xoay object tại chỗ.
   useEffect(() => {
-    if (applyObjectTransformRef.current) applyObjectTransformRef.current(objectTransform)
+    if (applyObjectTransformRef.current) applyObjectTransformRef.current(objectTransform, objectTransforms)
   }, [
     objectTransform?.position?.x, objectTransform?.position?.y, objectTransform?.position?.z,
     objectTransform?.rotation?.x, objectTransform?.rotation?.y, objectTransform?.rotation?.z,
+    objectTransforms?.image?.position?.x, objectTransforms?.image?.position?.y, objectTransforms?.image?.position?.z,
+    objectTransforms?.image?.rotation?.x, objectTransforms?.image?.rotation?.y, objectTransforms?.image?.rotation?.z,
+    objectTransforms?.obj?.position?.x, objectTransforms?.obj?.position?.y, objectTransforms?.obj?.position?.z,
+    objectTransforms?.obj?.rotation?.x, objectTransforms?.obj?.rotation?.y, objectTransforms?.obj?.rotation?.z,
   ])
 
   return (
