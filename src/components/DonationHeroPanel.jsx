@@ -58,6 +58,8 @@ const TEXT = {
     privacyBold: 'Tất cả dữ liệu là của bạn.',
     anatomyPreviewTitle: 'Bản đồ giải phẫu cơ thể',
     anatomyPreviewHint: 'Chạm hoặc di chuột vào từng điểm để xem chú thích',
+    bodyProtectionPreviewTitle: 'Game bảo vệ cơ thể',
+    bodyProtectionPreviewHint: 'Di chuột hoặc chạm vào Cấp 2 để xem trước trò chơi',
     footer: 'Anh Hùng Hiến Tặng · Cùng nhau lan toả sự sống',
     back: 'Quay lại',
     login: 'Đăng nhập',
@@ -99,6 +101,8 @@ const TEXT = {
     privacyBold: 'All your data belongs to you.',
     anatomyPreviewTitle: 'Body anatomy atlas',
     anatomyPreviewHint: 'Tap or hover over each point for details',
+    bodyProtectionPreviewTitle: 'Body protection game',
+    bodyProtectionPreviewHint: 'Hover or tap Level 2 to preview the game',
     footer: 'Donation Hero · Spreading life together',
     back: 'Back',
     login: 'Log in',
@@ -119,20 +123,25 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onBac
   // Chuyển sang điều khiển bằng state để hỗ trợ cả thiết bị cảm ứng (tap để
   // mở/đóng) lẫn desktop (vẫn giữ hover để mượt như trước).
   const [showAnatomyPreview, setShowAnatomyPreview] = useState(false);
+  const [showBodyProtectionPreview, setShowBodyProtectionPreview] = useState(false);
   const anatomyPreviewRef = useRef(null);
+  const bodyProtectionPreviewRef = useRef(null);
 
   // Trên mobile không có sự kiện "hover ra ngoài" để tự đóng popup, nên cần
-  // tự bắt sự kiện chạm/click ra ngoài vùng thẻ Cấp 1 + popup để đóng lại.
+  // tự bắt sự kiện chạm/click ra ngoài vùng thẻ Cấp 1/Cấp 2 + popup để đóng lại.
   useEffect(() => {
-    if (!showAnatomyPreview) return;
+    if (!showAnatomyPreview && !showBodyProtectionPreview) return;
     const handleOutsideInteraction = (event) => {
       if (anatomyPreviewRef.current && !anatomyPreviewRef.current.contains(event.target)) {
         setShowAnatomyPreview(false);
       }
+      if (bodyProtectionPreviewRef.current && !bodyProtectionPreviewRef.current.contains(event.target)) {
+        setShowBodyProtectionPreview(false);
+      }
     };
     document.addEventListener('pointerdown', handleOutsideInteraction);
     return () => document.removeEventListener('pointerdown', handleOutsideInteraction);
-  }, [showAnatomyPreview]);
+  }, [showAnatomyPreview, showBodyProtectionPreview]);
 
   const isGuest = mode === 'guest';
   const { isDark, isEn, toggleTheme, toggleLang } = useHeroPanelPrefs();
@@ -323,16 +332,24 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onBac
               const unlocked = lvl.level <= currentLevel;
               const isCurrent = lvl.level === currentLevel;
               const isLevelOne = lvl.level === 1;
+              const isLevelTwo = lvl.level === 2;
+              const isPreviewLevel = isLevelOne || isLevelTwo;
               return (
                 <div
                   key={lvl.level}
-                  ref={isLevelOne ? anatomyPreviewRef : undefined}
-                  className={`relative flex flex-col items-center w-[150px] text-center ${isLevelOne ? 'group' : ''}`}
-                  {...(isLevelOne
+                  ref={isLevelOne ? anatomyPreviewRef : isLevelTwo ? bodyProtectionPreviewRef : undefined}
+                  className={`relative flex flex-col items-center w-[150px] text-center ${isPreviewLevel ? 'group' : ''}`}
+                  {...(isPreviewLevel
                     ? {
                         // Desktop: vẫn giữ hover cho mượt (di chuột vào/ra).
-                        onMouseEnter: () => setShowAnatomyPreview(true),
-                        onMouseLeave: () => setShowAnatomyPreview(false),
+                        onMouseEnter: () => {
+                          if (isLevelOne) setShowAnatomyPreview(true);
+                          if (isLevelTwo) setShowBodyProtectionPreview(true);
+                        },
+                        onMouseLeave: () => {
+                          if (isLevelOne) setShowAnatomyPreview(false);
+                          if (isLevelTwo) setShowBodyProtectionPreview(false);
+                        },
                       }
                     : {})}
                 >
@@ -344,20 +361,24 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onBac
                       />
                     )}
                     <div
-                      className={`relative overflow-hidden w-16 h-16 flex items-center justify-center text-2xl bg-gradient-to-br ${isLevelOne && unlocked ? 'from-slate-900/80 to-slate-950' : unlocked ? lvl.ring : (isDark ? 'from-white/10 to-white/5' : 'from-gray-200 to-gray-300')} shadow-sm transition-all duration-300 ${isLevelOne ? 'cursor-pointer group-hover:scale-[0.98]' : ''}`}
+                      className={`relative overflow-hidden w-16 h-16 flex items-center justify-center text-2xl bg-gradient-to-br ${isLevelOne && unlocked ? 'from-slate-900/80 to-slate-950' : unlocked ? lvl.ring : (isDark ? 'from-white/10 to-white/5' : 'from-gray-200 to-gray-300')} shadow-sm transition-all duration-300 ${isPreviewLevel ? 'cursor-pointer group-hover:scale-[0.98]' : ''}`}
                       style={{ clipPath: 'polygon(50% 0%, 95% 25%, 95% 75%, 50% 100%, 5% 75%, 5% 25%)' }}
-                      {...(isLevelOne
+                      {...(isPreviewLevel
                         ? {
                             // Mobile/touch: bấm để mở/đóng (tap to toggle),
                             // vì thiết bị cảm ứng không có sự kiện hover.
-                            onClick: () => setShowAnatomyPreview((prev) => !prev),
+                            onClick: () => {
+                              if (isLevelOne) setShowAnatomyPreview((prev) => !prev);
+                              if (isLevelTwo) setShowBodyProtectionPreview((prev) => !prev);
+                            },
                             role: 'button',
                             tabIndex: 0,
-                            'aria-expanded': showAnatomyPreview,
+                            'aria-expanded': isLevelOne ? showAnatomyPreview : showBodyProtectionPreview,
                             onKeyDown: (event) => {
                               if (event.key === 'Enter' || event.key === ' ') {
                                 event.preventDefault();
-                                setShowAnatomyPreview((prev) => !prev);
+                                if (isLevelOne) setShowAnatomyPreview((prev) => !prev);
+                                if (isLevelTwo) setShowBodyProtectionPreview((prev) => !prev);
                               }
                             },
                           }
@@ -409,6 +430,44 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onBac
                       />
                     </div>
                   )}
+
+                  {/* Popup xem trước game bảo vệ cơ thể — gắn vào thẻ Cấp 2
+                  "Người Quan Tâm". Desktop mở khi hover, mobile/cảm ứng
+                  mở/đóng khi tap icon, tương tự popup Cấp 1. */}
+                  {isLevelTwo && (
+                    <div
+                      className={`
+                        fixed left-2 right-2 bottom-24 mb-0 w-auto translate-x-0
+                        sm:absolute sm:bottom-full sm:left-1/2 sm:right-auto sm:mb-4 sm:-translate-x-1/2
+                        sm:w-[min(720px,calc(100vw-2rem))]
+                        md:w-[min(820px,calc(100vw-3rem))]
+                        lg:w-[min(920px,calc(100vw-4rem))]
+                        transition-all duration-200 ease-out origin-bottom z-30
+                        ${showBodyProtectionPreview
+                          ? 'opacity-100 scale-100 pointer-events-auto'
+                          : 'opacity-0 scale-95 pointer-events-none'}
+                      `}
+                    >
+                      <div className={`rounded-2xl border p-3 shadow-2xl ${isDark ? 'border-emerald-400/20 bg-[#0f172a]' : 'border-emerald-100 bg-white'}`}>
+                        <div className="flex items-center justify-between mb-2 px-1">
+                          <span className={`text-xs font-bold ${isDark ? 'text-emerald-300' : 'text-emerald-700'}`}>{t.bodyProtectionPreviewTitle}</span>
+                        </div>
+                        <div className="overflow-hidden rounded-xl border border-white/10 bg-slate-950">
+                          <iframe
+                            src="/games/bao-ve-co-the-auto.html"
+                            title={t.bodyProtectionPreviewTitle}
+                            className="h-[min(62vh,520px)] w-full"
+                            loading="lazy"
+                          />
+                        </div>
+                        <p className={`mt-2 px-1 text-[10px] ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{t.bodyProtectionPreviewHint}</p>
+                      </div>
+                      <div
+                        className={`w-3 h-3 rotate-45 mx-auto -mt-1.5 border-r border-b ${isDark ? 'border-emerald-400/20 bg-[#0f172a]' : 'border-emerald-100 bg-white'}`}
+                      />
+                    </div>
+                  )}
+
 
                   {isCurrent ? (
                     <span className={`text-[11px] font-semibold px-3 py-1 rounded-full ${isDark ? 'bg-emerald-500/15 text-emerald-300' : 'bg-emerald-100 text-emerald-700'}`}>
