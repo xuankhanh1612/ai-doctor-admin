@@ -36,6 +36,7 @@ export default function Sidebar({ active, onNavigate, openSignal = 0 }) {
   const surface2 = isDark ? 'rgba(255,255,255,0.06)'  : 'rgba(0,0,0,0.06)'
 
   const STEPS = [
+    { id: 'adminConcept', label: 'AI Doctor Admin Panel', step: '00' },
     { id: 'healthJourneyGame', label: 'Health Journey Game', step: '01' },
     { id: 'medicalAssetStore', label: 'Chợ Tài nguyên 3D', step: '01a' },
     { id: 'medicalVisualPlayground', label: 'Medical 3D Lab (Touchless)', step: '01a2' },
