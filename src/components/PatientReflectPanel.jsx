@@ -3,6 +3,7 @@ import NavButtons from './NavButtons.jsx'
 import { useApp } from '../context/AppContext'
 import { useAuth } from '../context/AuthContext.jsx'
 import { getGlobalChatHistory } from '../lib/globalChatbotStorage.js'
+import { JourneyView, PatientView } from './AdminConceptPanel.jsx'
 
 const RANGE_OPTIONS = [
   { value: 30, vi: '30 ngày qua', en: 'Past 30 days' },
@@ -161,6 +162,19 @@ export default function PatientReflectPanel({ onNext, onPrev, prevLabel, nextLab
             {reflection.usingSample && <span style={{ border: '1px solid rgba(249,115,22,0.35)', borderRadius: 999, padding: '8px 11px', color: '#f97316', background: 'rgba(249,115,22,0.08)', fontSize: 12, fontWeight: 900 }}>{isVi ? 'Đang dùng dữ liệu demo' : 'Demo data'}</span>}
           </div>
         </section>
+
+        <section style={{ marginTop: 24, border: `1px solid ${border}`, borderRadius: 30, padding: 24, background: card, boxShadow: isDark ? '0 24px 80px rgba(0,0,0,0.32)' : '0 24px 70px rgba(14,165,233,0.10)' }}>
+          <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: 1.6, color: '#0ea5e9', marginBottom: 16 }}>{isVi ? 'AI DOCTOR ADMIN · BỆNH NHÂN' : 'AI DOCTOR ADMIN · PATIENT'}</div>
+          <div style={{ color: '#1f2937' }}>
+            <PatientView />
+          </div>
+        </section>
+
+        <section style={{ marginTop: 24, border: `1px solid ${border}`, borderRadius: 30, padding: 24, background: '#071022', backgroundImage: 'linear-gradient(30deg, rgba(255,255,255,.08) 12%, transparent 12.5%, transparent 87%, rgba(255,255,255,.08) 87.5%)', backgroundSize: '64px 64px', boxShadow: isDark ? '0 24px 80px rgba(0,0,0,0.32)' : '0 24px 70px rgba(14,165,233,0.10)' }}>
+          <div style={{ fontSize: 12, fontWeight: 900, letterSpacing: 1.6, color: '#26e0c6', marginBottom: 16 }}>{isVi ? 'AI DOCTOR ADMIN · HÀNH TRÌNH' : 'AI DOCTOR ADMIN · JOURNEY'}</div>
+          <JourneyView />
+        </section>
+
         <NavButtons onPrev={onPrev} prevLabel={prevLabel} onNext={onNext} nextLabel={nextLabel} />
       </div>
     </div>
