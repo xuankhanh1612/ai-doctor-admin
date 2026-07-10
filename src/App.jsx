@@ -41,6 +41,7 @@ import StressReliefPanel from './components/StressReliefPanel.jsx'
 import PrintCenter from './print/PrintCenter.jsx'
 import UserProfilePanel from './components/UserProfilePanel.jsx'
 import DonationHeroPanel from './components/DonationHeroPanel.jsx'
+import BodyProtectionJourneyPanel from './components/BodyProtectionJourneyPanel.jsx'
 import ChooseUserRolePanel from './components/ChooseUserRolePanel.jsx'
 import AvatarCreatorPanel from './components/AvatarCreatorPanel.jsx'
 import Make3DModelPanel from './components/Make3DModelPanel.jsx'
@@ -129,6 +130,7 @@ export default function App() {
     adminConcept: 'AI Doctor Admin Panel',
     chooseUserRole: 'Chọn Vai Trò Anh Hùng',
     donationHero: 'Anh Hùng Hiến Tặng',
+    bodyProtectionJourney: 'Hành Trình Bảo Vệ Cơ Thể',
     healthJourneyGame: 'Health Journey Game',
     medicalAssetStore: 'Chợ Tài nguyên 3D', // <--- THÊM NHÃN TẠI ĐÂY
     medicalVisualPlayground: 'Medical 3D Lab (Touchless)',
@@ -435,6 +437,9 @@ export default function App() {
             )}
             {active === 'donationHero' && (
               <DonationHeroPanel mode="member" onBack={() => setActive('chooseUserRole')} />
+            )}
+            {active === 'bodyProtectionJourney' && (
+              <BodyProtectionJourneyPanel onBack={() => setActive('donationHero')} />
             )}
             {active === 'profile'   && <UserProfilePanel />}
             {active === 'myAiAvatar' && user?.isAdmin && <MyAIAvatarPanel />}
