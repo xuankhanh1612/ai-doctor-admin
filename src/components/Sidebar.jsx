@@ -45,8 +45,6 @@ export default function Sidebar({ active, onNavigate, openSignal = 0 }) {
     { id: 'wikiMedVision',          label: t('wikiMedVision'),           step: '03' },
     { id: 'fullDocSummarization',   label: 'Full-Document Summarization', step: '04' },
     { id: 'documentOCR',            label: 'Document OCR',               step: '05' },
-    { id: 'twoDTo3DAsset',          label: '2D to 3D Asset',           step: '05b' },
-    { id: 'xyzCameraAngle',         label: 'Góc chụp toạ độ XYZ',      step: '05b2' },
     { id: 'cameraAngle3DStudio',    label: '3D Camera Angle (Qwen)',   step: '05c' },
     { id: 'organConnection',   label: 'Ăn gì tốt hôm nay',   step: '06' },
     { id: 'healthJourney', label: t('healthJourney'), step: '07' },
@@ -73,10 +71,14 @@ export default function Sidebar({ active, onNavigate, openSignal = 0 }) {
     { id: 'printPortal', label: 'Print Portal', step: '27' },
     { id: 'patientReflect', label: 'Patient Reflection', step: '27b' },
     { id: 'chatHistory', label: 'Lịch sử Chat với AI', step: '28' },
-    { id: 'myImageToVideo', label: 'My Image to Video', step: 'LAST' },
   ]
 
   const ADMIN_STEPS = user?.isAdmin ? [
+    { id: 'myImageToVideo', label: 'My Image to Video', step: 'LAST', icon: '🎞️' },
+    { id: 'make3DModel', label: 'Make 3D Model', step: 'CULTS', icon: '🧙‍♀️' },
+    { id: 'my3dAsset', label: 'My 3D Asset', step: 'GLB', icon: '🧊' },
+    { id: 'twoDTo3DAsset', label: '2D to 3D Asset', step: '05b', icon: '🖼️' },
+    { id: 'xyzCameraAngle', label: 'Góc chụp toạ độ XYZ', step: '05b2', icon: '📐' },
     { id: 'aiHealthcareVisionControl', label: t('aiHealthcareVisionControl'), step: '24b' },
     { id: 'admin', label: t('adminPanel'), step: '★', icon: '🛡️' },
     { id: 'myAiAvatar', label: 'My AI Avatar', step: 'LAM', icon: '🪄' },
@@ -146,16 +148,6 @@ export default function Sidebar({ active, onNavigate, openSignal = 0 }) {
         </NavItem>
       ))}
 
-      <NavItem active={active === 'make3DModel'} onClick={() => handleNavigate('make3DModel')} text={text} text2={text2} isDark={isDark}>
-        <span style={{ fontSize: 13 }}>🧙‍♀️</span>
-        <span style={{ flex: 1 }}>Make 3D Model</span>
-        <span style={{ fontSize: 10, fontFamily: 'monospace', color: text3 }}>CULTS</span>
-      </NavItem>
-      <NavItem active={active === 'my3dAsset'} onClick={() => handleNavigate('my3dAsset')} text={text} text2={text2} isDark={isDark}>
-        <span style={{ fontSize: 13 }}>🧊</span>
-        <span style={{ flex: 1 }}>My 3D Asset</span>
-        <span style={{ fontSize: 10, fontFamily: 'monospace', color: text3 }}>GLB</span>
-      </NavItem>
 
       {ADMIN_STEPS.length > 0 && (
         <>
