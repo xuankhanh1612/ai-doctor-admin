@@ -36,41 +36,42 @@ export default function Sidebar({ active, onNavigate, openSignal = 0 }) {
   const surface2 = isDark ? 'rgba(255,255,255,0.06)'  : 'rgba(0,0,0,0.06)'
 
   const STEPS = [
-    { id: 'healthJourneyGame', label: 'Health Journey Game', step: '01' },
-    { id: 'medicalAssetStore', label: 'Chợ Tài nguyên 3D', step: '01a' },
-    { id: 'medicalVisualPlayground', label: 'Medical 3D Lab (Touchless)', step: '01a2' },
-    { id: 'myRewardHealth', label: 'My Reward Health', step: '01b' },
-    { id: 'rssPortal', label: 'Healthy RSS Portal', step: '01c' },
-    { id: 'waterDrinkChatBot', label: t('waterDrinkChatBot'), step: '02' },
-    { id: 'wikiMedVision',          label: t('wikiMedVision'),           step: '03' },
-    { id: 'fullDocSummarization',   label: 'Full-Document Summarization', step: '04' },
-    { id: 'documentOCR',            label: 'Document OCR',               step: '05' },
-    { id: 'cameraAngle3DStudio',    label: '3D Camera Angle (Qwen)',   step: '05c' },
-    { id: 'organConnection',   label: 'Ăn gì tốt hôm nay',   step: '06' },
-    { id: 'healthJourney', label: t('healthJourney'), step: '07' },
-    { id: 'lunchJourney', label: t('lunchJourney'), step: '08' },
-    { id: 'dinnerJourney', label: t('dinnerJourney'), step: '09' },
-    { id: 'upload',    label: t('uploadRecords'),   step: '10' },
-    { id: 'imaging',    label: t('imaging'),        step: '11' },
-    { id: 'checkin',   label: t('checkin'),         step: '12' },
-    { id: 'family',    label: t('familyTree'),      step: '13' },
-    { id: 'record',    label: t('patientRecord'),   step: '14' },
-    { id: 'familyRelationship', label: t('familyRelationship'), step: '15' },
-    { id: 'matrix3dBody', label: t('matrix3dBody'), step: '16' },
-    { id: 'omnidirectional3dBody', label: t('omnidirectional3dBody'), step: '17' },
-    { id: 'twin',      label: t('twin'),            step: '18' },
-    { id: 'telemedicine', label: t('telemedicine'), step: '19' },
-    { id: 'statAnalysis', label: t('statAnalysis'), step: '20' },
-    { id: 'swarm',      label: t('swarmCouncil'),    step: '21' },
-    { id: 'consensus', label: t('consensus'),       step: '22' },
-    { id: 'varCheck', label: 'VAR Y TẾ',             step: '22b' },
-    { id: 'protein3d', label: t('protein3d'),       step: '23' },
-    { id: 'aiHealthcareVision', label: t('aiHealthcareVision'), step: '24' },
-    { id: 'stressRelief', label: t('stressRelief'), step: '25' },
-    { id: 'aiInbodyPortal', label: t('aiInbodyPortal'), step: '26' },
-    { id: 'printPortal', label: 'Print Portal', step: '27' },
-    { id: 'patientReflect', label: 'Patient Reflection', step: '27b' },
-    { id: 'chatHistory', label: 'Lịch sử Chat với AI', step: '28' },
+    { id: 'bodyProtectionJourney', label: 'Hành Trình Bảo Vệ Cơ Thể', step: '01' },
+    { id: 'healthJourneyGame', label: 'Health Journey Game', step: '02' },
+    { id: 'medicalAssetStore', label: 'Chợ Tài nguyên 3D', step: '03' },
+    { id: 'medicalVisualPlayground', label: 'Medical 3D Lab (Touchless)', step: '04' },
+    { id: 'myRewardHealth', label: 'My Reward Health', step: '05' },
+    { id: 'rssPortal', label: 'Healthy RSS Portal', step: '06' },
+    { id: 'waterDrinkChatBot', label: t('waterDrinkChatBot'), step: '07' },
+    { id: 'wikiMedVision', label: t('wikiMedVision'), step: '08' },
+    { id: 'fullDocSummarization', label: 'Full-Document Summarization', step: '09' },
+    { id: 'documentOCR', label: 'Document OCR', step: '10' },
+    { id: 'cameraAngle3DStudio', label: '3D Camera Angle (Qwen)', step: '11' },
+    { id: 'organConnection', label: 'Ăn gì tốt hôm nay', step: '12' },
+    { id: 'healthJourney', label: t('healthJourney'), step: '13' },
+    { id: 'lunchJourney', label: t('lunchJourney'), step: '14' },
+    { id: 'dinnerJourney', label: t('dinnerJourney'), step: '15' },
+    { id: 'upload', label: t('uploadRecords'), step: '16' },
+    { id: 'imaging', label: t('imaging'), step: '17' },
+    { id: 'checkin', label: t('checkin'), step: '18' },
+    { id: 'family', label: t('familyTree'), step: '19' },
+    { id: 'record', label: t('patientRecord'), step: '20' },
+    { id: 'familyRelationship', label: t('familyRelationship'), step: '21' },
+    { id: 'matrix3dBody', label: t('matrix3dBody'), step: '22' },
+    { id: 'omnidirectional3dBody', label: t('omnidirectional3dBody'), step: '23' },
+    { id: 'twin', label: t('twin'), step: '24' },
+    { id: 'telemedicine', label: t('telemedicine'), step: '25' },
+    { id: 'statAnalysis', label: t('statAnalysis'), step: '26' },
+    { id: 'swarm', label: t('swarmCouncil'), step: '27' },
+    { id: 'consensus', label: t('consensus'), step: '28' },
+    { id: 'varCheck', label: 'VAR Y TẾ', step: '29' },
+    { id: 'protein3d', label: t('protein3d'), step: '30' },
+    { id: 'aiHealthcareVision', label: t('aiHealthcareVision'), step: '31' },
+    { id: 'stressRelief', label: t('stressRelief'), step: '32' },
+    { id: 'aiInbodyPortal', label: t('aiInbodyPortal'), step: '33' },
+    { id: 'printPortal', label: 'Print Portal', step: '34' },
+    { id: 'patientReflect', label: 'Patient Reflection', step: '35' },
+    { id: 'chatHistory', label: 'Lịch sử Chat với AI', step: '36' },
   ]
 
   const ADMIN_STEPS = user?.isAdmin ? [
@@ -127,11 +128,6 @@ export default function Sidebar({ active, onNavigate, openSignal = 0 }) {
         <span style={{ fontSize: 13 }}>🦸</span>
         <span style={{ flex: 1 }}>Anh Hùng Hiến Tặng</span>
         <span style={{ fontSize: 10, fontFamily: 'monospace', color: text3 }}>GAN</span>
-      </NavItem>
-      <NavItem active={active === 'bodyProtectionJourney'} onClick={() => handleNavigate('bodyProtectionJourney')} text={text} text2={text2} isDark={isDark}>
-        <span style={{ fontSize: 13 }}>🛡️</span>
-        <span style={{ flex: 1 }}>Hành Trình Bảo Vệ Cơ Thể</span>
-        <span style={{ fontSize: 10, fontFamily: 'monospace', color: text3 }}>GAME</span>
       </NavItem>
       <SectionLabel color={text3}>{t('profile')}</SectionLabel>
       <NavItem active={active === 'profile'} onClick={() => handleNavigate('profile')} text={text} text2={text2} isDark={isDark}>
