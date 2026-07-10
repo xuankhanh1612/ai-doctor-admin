@@ -2,13 +2,22 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Medical AI PvP/PvE/Co-op - Defender vs Boss</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Medical AI PvP/PvE/Co-op - Responsive</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { background-color: #0f172a; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; touch-action: none; user-select: none; overflow-x: hidden; }
-        canvas { background: linear-gradient(to bottom, #1e1b4b, #311042); border: 2px solid #4f46e5; box-shadow: 0 0 25px rgba(79, 70, 229, 0.4); }
-        .ctrl-btn { background: rgba(30, 41, 59, 0.8); border: 1px solid #475569; border-radius: 8px; color: #cbd5e1; font-weight: bold; font-size: 11px; padding: 8px 4px; text-align: center; cursor: pointer; transition: 0.1s; }
+        /* CSS tự động co giãn Canvas theo màn hình mà không làm bể logic Game */
+        canvas { 
+            background: linear-gradient(to bottom, #1e1b4b, #311042); 
+            border: 2px solid #4f46e5; 
+            box-shadow: 0 0 25px rgba(79, 70, 229, 0.4); 
+            width: 100%; 
+            height: auto; 
+            aspect-ratio: 800 / 420;
+        }
+        .ctrl-btn { background: rgba(30, 41, 59, 0.8); border: 1px solid #475569; border-radius: 8px; color: #cbd5e1; font-weight: bold; padding: 6px 2px; text-align: center; cursor: pointer; transition: 0.1s; }
+        @media (min-width: 640px) { .ctrl-btn { padding: 8px 4px; } }
         .ctrl-btn:active, .ctrl-btn.active { transform: scale(0.95); }
         
         .p1-btn:active, .p1-btn.active { background: #10b981; border-color: #34d399; color: white;}
@@ -23,71 +32,75 @@
         .mode-btn.active { box-shadow: 0 0 10px rgba(255,255,255,0.2); }
     </style>
 </head>
-<body class="text-slate-200 min-h-screen flex items-center justify-center p-4 relative">
+<body class="text-slate-200 min-h-screen flex items-center justify-center p-2 sm:p-4 relative">
 
-    <button onclick="toggleMenu()" class="fixed top-4 right-4 z-50 bg-indigo-600 hover:bg-indigo-500 text-white border border-indigo-400 px-4 py-2 rounded-xl text-xs font-bold shadow-lg shadow-indigo-500/30 transition-all flex items-center gap-2">
-        <span id="menuIcon">▶</span> Ẩn / Hiện Menu
+    <button onclick="toggleMenu()" class="fixed top-2 right-2 sm:top-4 sm:right-4 z-50 bg-indigo-600 hover:bg-indigo-500 text-white border border-indigo-400 px-3 py-2 sm:px-4 rounded-xl text-[10px] sm:text-xs font-bold shadow-lg shadow-indigo-500/30 transition-all flex items-center gap-2">
+        <span id="menuIcon">▶</span> <span class="hidden sm:inline">Ẩn / Hiện Menu</span><span class="sm:hidden">Menu</span>
     </button>
 
-    <div class="w-[800px] flex-shrink-0 flex flex-col relative z-10">
+    <div class="w-full max-w-[800px] flex-shrink-0 flex flex-col relative z-10 mt-10 sm:mt-0">
         
-        <div class="bg-slate-950 p-2 rounded-t-xl border-t border-x border-slate-800 flex justify-between items-center px-4">
-            <div class="flex gap-4">
-                <div class="text-emerald-400 font-bold text-sm w-[80px]">🛡️ P1: <span id="p1-hp">10</span></div>
-                <div id="p2-hp-container" class="text-sky-400 font-bold text-sm hidden w-[80px]">🛡️ P2: <span id="p2-hp">10</span></div>
+        <div class="bg-slate-950 p-2 rounded-t-xl border-t border-x border-slate-800 flex justify-between items-center px-2 sm:px-4 flex-wrap gap-2">
+            <div class="flex gap-2 sm:gap-4 w-full sm:w-auto justify-between sm:justify-start">
+                <div class="text-emerald-400 font-bold text-[10px] sm:text-sm">🛡️ P1: <span id="p1-hp">10</span></div>
+                <div id="p2-hp-container" class="text-sky-400 font-bold text-[10px] sm:text-sm hidden">🛡️ P2: <span id="p2-hp">10</span></div>
+                <div class="text-rose-400 font-bold text-[10px] sm:text-sm sm:hidden">🦠 BOSS: <span id="boss-hp">10</span></div>
             </div>
-            <div class="text-fuchsia-400 font-bold text-sm bg-fuchsia-950/50 px-3 py-1 rounded border border-fuchsia-900">
-                🧱 TƯỜNG BASE: <span id="base-hp">20</span>/20
+            
+            <div class="flex justify-between w-full sm:w-auto sm:gap-4 items-center">
+                <div class="text-fuchsia-400 font-bold text-[10px] sm:text-sm bg-fuchsia-950/50 px-2 py-0.5 sm:px-3 sm:py-1 rounded border border-fuchsia-900">
+                    🧱 TƯỜNG: <span id="base-hp">20</span>/20
+                </div>
+                <div class="text-amber-400 font-bold text-[10px] sm:text-sm">⏱️ <span id="time-display">0.0</span>s</div>
+                <div class="text-rose-400 font-bold text-sm hidden sm:block">🦠 BOSS: <span id="boss-hp-desktop">10</span></div>
             </div>
-            <div class="text-amber-400 font-bold text-sm">⏱️ <span id="time-display">0.0</span>s</div>
-            <div class="text-rose-400 font-bold text-sm">🦠 BOSS: <span id="boss-hp">10</span></div>
         </div>
         
         <canvas id="gameCanvas" width="800" height="420" class="w-full object-cover"></canvas>
 
-        <div class="bg-slate-900 border-x border-slate-800 p-3 flex justify-between items-center">
-            <div class="flex flex-col items-center w-1/2 border-r border-slate-700 pr-2">
-                <span class="text-[11px] font-bold text-emerald-400 mb-2">P1 (Bảo Vệ) - Phím: W A S D E</span>
-                <div class="grid grid-cols-4 gap-1.5 w-full max-w-[300px]">
-                    <div class="col-span-4 flex justify-center mb-1">
-                        <button class="ctrl-btn p1-btn w-1/3" onmousedown="setKey('w', true)" onmouseup="setKey('w', false)">W Nhảy</button>
+        <div class="bg-slate-900 border-x border-slate-800 p-2 sm:p-3 flex justify-between items-center">
+            <div class="flex flex-col items-center w-1/2 border-r border-slate-700 pr-1 sm:pr-2">
+                <span class="text-[9px] sm:text-[11px] font-bold text-emerald-400 mb-2">P1 - Phím: W A S D E</span>
+                <div class="grid grid-cols-4 gap-1 sm:gap-1.5 w-full max-w-[300px]">
+                    <div class="col-span-4 flex justify-center mb-0.5">
+                        <button class="ctrl-btn p1-btn w-1/3 text-[9px] sm:text-[11px]" onmousedown="setKey('w', true)" onmouseup="setKey('w', false)" ontouchstart="setKey('w', true)" ontouchend="setKey('w', false)">W Nhảy</button>
                     </div>
-                    <button class="ctrl-btn p1-btn" onmousedown="setKey('a', true)" onmouseup="setKey('a', false)">A Trái</button>
-                    <button class="ctrl-btn p1-btn border-emerald-500 text-emerald-300" onmousedown="setKey('s', true)" onmouseup="setKey('s', false)">S Khiên</button>
-                    <button class="ctrl-btn p1-btn" onmousedown="setKey('d', true)" onmouseup="setKey('d', false)">D Phải</button>
-                    <button class="ctrl-btn p1-btn bg-emerald-900/50" onmousedown="setKey('e', true)" onmouseup="setKey('e', false)">E Bắn</button>
+                    <button class="ctrl-btn p1-btn text-[9px] sm:text-[11px]" onmousedown="setKey('a', true)" onmouseup="setKey('a', false)" ontouchstart="setKey('a', true)" ontouchend="setKey('a', false)">A Trái</button>
+                    <button class="ctrl-btn p1-btn border-emerald-500 text-emerald-300 text-[9px] sm:text-[11px]" onmousedown="setKey('s', true)" onmouseup="setKey('s', false)" ontouchstart="setKey('s', true)" ontouchend="setKey('s', false)">S Khiên</button>
+                    <button class="ctrl-btn p1-btn text-[9px] sm:text-[11px]" onmousedown="setKey('d', true)" onmouseup="setKey('d', false)" ontouchstart="setKey('d', true)" ontouchend="setKey('d', false)">D Phải</button>
+                    <button class="ctrl-btn p1-btn bg-emerald-900/50 text-[9px] sm:text-[11px]" onmousedown="setKey('e', true)" onmouseup="setKey('e', false)" ontouchstart="setKey('e', true)" ontouchend="setKey('e', false)">E Bắn</button>
                 </div>
             </div>
 
-            <div class="flex flex-col items-center w-1/2 pl-2" id="p2-panel">
-                <span class="text-[11px] font-bold text-rose-400 mb-2" id="p2-control-label">P2 (Boss) - Phím: Mũi tên (↑ ↓ ← →)</span>
-                <div class="grid grid-cols-4 gap-1.5 w-full max-w-[300px]" id="p2-controls">
+            <div class="flex flex-col items-center w-1/2 pl-1 sm:pl-2" id="p2-panel">
+                <span class="text-[9px] sm:text-[11px] font-bold text-rose-400 mb-2 text-center" id="p2-control-label">P2 - Phím: ↑ ↓ ← →</span>
+                <div class="grid grid-cols-4 gap-1 sm:gap-1.5 w-full max-w-[300px]" id="p2-controls">
                     </div>
             </div>
         </div>
 
-        <div class="bg-slate-900 border-b border-x border-slate-800 rounded-b-xl p-3 shadow-xl flex justify-center">
-            <div class="flex flex-wrap justify-center gap-2 rounded-2xl border p-3 bg-slate-900/80 border-white/10 w-full">
-                <div class="flex items-center gap-2 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-colors border-white/10 bg-white/5 text-gray-300">
-                    <span class="text-base leading-none">👆</span><span>Ngón trỏ chỉ lên</span><span class="rounded-md px-1.5 py-0.5 font-mono uppercase bg-white/10">w</span><span class="opacity-70">· Nhảy</span>
+        <div class="bg-slate-900 border-b border-x border-slate-800 rounded-b-xl p-2 sm:p-3 shadow-xl flex justify-center">
+            <div class="flex flex-wrap justify-center gap-1.5 sm:gap-2 rounded-2xl border p-2 sm:p-3 bg-slate-900/80 border-white/10 w-full">
+                <div class="flex items-center gap-1 sm:gap-2 rounded-xl border px-2 py-1 sm:px-3 sm:py-1.5 text-[9px] sm:text-xs font-semibold transition-colors border-white/10 bg-white/5 text-gray-300">
+                    <span class="text-sm sm:text-base leading-none">👆</span><span>Ngón trỏ lên</span><span class="rounded-md px-1 sm:px-1.5 py-0.5 font-mono uppercase bg-white/10">w</span><span class="opacity-70 hidden sm:inline">· Nhảy</span>
                 </div>
-                <div class="flex items-center gap-2 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-colors border-white/10 bg-white/5 text-gray-300">
-                    <span class="text-base leading-none">👈</span><span>Ngón trỏ chỉ trái</span><span class="rounded-md px-1.5 py-0.5 font-mono uppercase bg-white/10">a</span><span class="opacity-70">· Trái</span>
+                <div class="flex items-center gap-1 sm:gap-2 rounded-xl border px-2 py-1 sm:px-3 sm:py-1.5 text-[9px] sm:text-xs font-semibold transition-colors border-white/10 bg-white/5 text-gray-300">
+                    <span class="text-sm sm:text-base leading-none">👈</span><span>Trỏ trái</span><span class="rounded-md px-1 sm:px-1.5 py-0.5 font-mono uppercase bg-white/10">a</span><span class="opacity-70 hidden sm:inline">· Trái</span>
                 </div>
-                <div class="flex items-center gap-2 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-colors border-white/10 bg-white/5 text-gray-300">
-                    <span class="text-base leading-none">🖐️</span><span>Xoè ≥3 ngón / cả bàn tay</span><span class="rounded-md px-1.5 py-0.5 font-mono uppercase bg-white/10">s</span><span class="opacity-70">· Khiên</span>
+                <div class="flex items-center gap-1 sm:gap-2 rounded-xl border px-2 py-1 sm:px-3 sm:py-1.5 text-[9px] sm:text-xs font-semibold transition-colors border-white/10 bg-white/5 text-gray-300">
+                    <span class="text-sm sm:text-base leading-none">🖐️</span><span>Xoè bàn tay</span><span class="rounded-md px-1 sm:px-1.5 py-0.5 font-mono uppercase bg-white/10">s</span><span class="opacity-70 hidden sm:inline">· Khiên</span>
                 </div>
-                <div class="flex items-center gap-2 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-colors border-white/10 bg-white/5 text-gray-300">
-                    <span class="text-base leading-none">👉</span><span>Ngón trỏ chỉ phải</span><span class="rounded-md px-1.5 py-0.5 font-mono uppercase bg-white/10">d</span><span class="opacity-70">· Phải</span>
+                <div class="flex items-center gap-1 sm:gap-2 rounded-xl border px-2 py-1 sm:px-3 sm:py-1.5 text-[9px] sm:text-xs font-semibold transition-colors border-white/10 bg-white/5 text-gray-300">
+                    <span class="text-sm sm:text-base leading-none">👉</span><span>Trỏ phải</span><span class="rounded-md px-1 sm:px-1.5 py-0.5 font-mono uppercase bg-white/10">d</span><span class="opacity-70 hidden sm:inline">· Phải</span>
                 </div>
-                <div class="flex items-center gap-2 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-colors border-white/10 bg-white/5 text-gray-300">
-                    <span class="text-base leading-none">✊</span><span>Nắm chặt nắm đấm</span><span class="rounded-md px-1.5 py-0.5 font-mono uppercase bg-white/10">e</span><span class="opacity-70">· Bắn Lợi Khuẩn</span>
+                <div class="flex items-center gap-1 sm:gap-2 rounded-xl border px-2 py-1 sm:px-3 sm:py-1.5 text-[9px] sm:text-xs font-semibold transition-colors border-white/10 bg-white/5 text-gray-300">
+                    <span class="text-sm sm:text-base leading-none">✊</span><span>Nắm đấm</span><span class="rounded-md px-1 sm:px-1.5 py-0.5 font-mono uppercase bg-white/10">e</span><span class="opacity-70 hidden sm:inline">· Bắn</span>
                 </div>
             </div>
         </div>
     </div>
 
-    <div id="sideMenu" class="fixed top-16 right-4 bottom-4 w-[320px] bg-slate-900/95 p-5 rounded-2xl border border-slate-700 shadow-2xl flex flex-col z-40 transition-transform duration-300 translate-x-0 backdrop-blur-md overflow-y-auto">
+    <div id="sideMenu" class="fixed top-12 sm:top-16 right-0 sm:right-4 bottom-0 sm:bottom-4 w-full sm:w-[320px] bg-slate-900/95 sm:rounded-2xl border-l sm:border border-slate-700 shadow-2xl flex flex-col z-40 transition-transform duration-300 translate-x-[120%] backdrop-blur-md overflow-y-auto pt-6 sm:pt-5 px-5 pb-5">
         <div>
             <span class="text-[10px] font-bold uppercase tracking-wider text-cyan-400 bg-cyan-950 px-2 py-1 rounded">Medical Sandbox</span>
             <h1 class="text-xl font-black text-white mt-2">Thiết Lập Game</h1>
@@ -103,7 +116,7 @@
         </div>
 
         <h3 class="text-xs font-bold text-slate-400 mt-4 border-b border-slate-700 pb-1">2. CHỌN HỆ CƠ QUAN:</h3>
-        <div class="grid grid-cols-2 gap-2 mt-2">
+        <div class="grid grid-cols-2 gap-2 mt-2 pb-10 sm:pb-0">
             <button id="btn-brain" class="organ-btn selected" onclick="selectOrgan('brain')">
                 <span class="text-2xl mb-1">🧠</span><span class="text-[10px] font-bold text-slate-300 text-center">Hệ thần kinh<br>(Não)</span>
             </button>
@@ -129,8 +142,8 @@
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
 
-        // LOGIC ẨN HIỆN MENU SANG PHẢI (CHỈ DÙNG CSS TRANSFORM, KHÔNG LÀM LAG CANVAS)
-        let menuOpen = true;
+        // Toggle Menu
+        let menuOpen = false;
         function toggleMenu() {
             menuOpen = !menuOpen;
             const menu = document.getElementById('sideMenu');
@@ -146,7 +159,7 @@
 
         // GAME STATE
         let gameMode = 'pve'; 
-        let gameState = 'waiting'; // waiting, playing, win, lose
+        let gameState = 'waiting'; 
         let startTime = 0;
         let elapsedTime = 0;
         
@@ -167,7 +180,7 @@
         const GRAVITY = 0.4;
         const JUMP = -9; 
 
-        // SỰ KIỆN BÀN PHÍM
+        // KEYBOARD
         let keys = {};
         window.addEventListener('keydown', e => { 
             keys[e.key] = true; keys[e.key.toLowerCase()] = true; 
@@ -195,35 +208,35 @@
             if (mode === 'pve') {
                 p2.active = false;
                 p2HpUi.classList.add('hidden');
-                p2Label.className = "text-[11px] font-bold text-slate-500 mb-2";
-                p2Label.innerText = "BOSS ĐANG ĐƯỢC AI ĐIỀU KHIỂN (PvE)";
-                p2Controls.innerHTML = `<div class="col-span-4 text-center text-xs text-slate-500 py-4">Hệ thống đang tự động điều khiển Boss.</div>`;
+                p2Label.className = "text-[9px] sm:text-[11px] font-bold text-slate-500 mb-2 text-center";
+                p2Label.innerText = "BOSS ĐƯỢC AI ĐIỀU KHIỂN";
+                p2Controls.innerHTML = `<div class="col-span-4 text-center text-[10px] text-slate-500 py-4">Hệ thống đang tự động điều khiển Boss.</div>`;
             } else if (mode === 'coop') {
                 p2.active = true;
                 p2HpUi.classList.remove('hidden');
-                p2Label.className = "text-[11px] font-bold text-sky-400 mb-2";
-                p2Label.innerText = "P2 (Bảo Vệ Cùng) - Phím: ↑ ↓ ← → Space";
+                p2Label.className = "text-[9px] sm:text-[11px] font-bold text-sky-400 mb-2 text-center";
+                p2Label.innerText = "P2 - Phím: ↑ ↓ ← → Space";
                 p2Controls.innerHTML = `
-                    <div class="col-span-4 flex justify-center mb-1">
-                        <button class="ctrl-btn p2-btn w-1/3" onmousedown="setKey('ArrowUp', true)" onmouseup="setKey('ArrowUp', false)">↑ Nhảy</button>
+                    <div class="col-span-4 flex justify-center mb-0.5">
+                        <button class="ctrl-btn p2-btn w-1/3 text-[9px] sm:text-[11px]" onmousedown="setKey('ArrowUp', true)" onmouseup="setKey('ArrowUp', false)" ontouchstart="setKey('ArrowUp', true)" ontouchend="setKey('ArrowUp', false)">↑ Nhảy</button>
                     </div>
-                    <button class="ctrl-btn p2-btn" onmousedown="setKey('ArrowLeft', true)" onmouseup="setKey('ArrowLeft', false)">← Trái</button>
-                    <button class="ctrl-btn p2-btn border-sky-500 text-sky-300" onmousedown="setKey('ArrowDown', true)" onmouseup="setKey('ArrowDown', false)">↓ Khiên</button>
-                    <button class="ctrl-btn p2-btn" onmousedown="setKey('ArrowRight', true)" onmouseup="setKey('ArrowRight', false)">→ Phải</button>
-                    <button class="ctrl-btn p2-btn bg-sky-900/50" onmousedown="setKey(' ', true)" onmouseup="setKey(' ', false)">Space Bắn</button>
+                    <button class="ctrl-btn p2-btn text-[9px] sm:text-[11px]" onmousedown="setKey('ArrowLeft', true)" onmouseup="setKey('ArrowLeft', false)" ontouchstart="setKey('ArrowLeft', true)" ontouchend="setKey('ArrowLeft', false)">← Trái</button>
+                    <button class="ctrl-btn p2-btn border-sky-500 text-sky-300 text-[9px] sm:text-[11px]" onmousedown="setKey('ArrowDown', true)" onmouseup="setKey('ArrowDown', false)" ontouchstart="setKey('ArrowDown', true)" ontouchend="setKey('ArrowDown', false)">↓ Khiên</button>
+                    <button class="ctrl-btn p2-btn text-[9px] sm:text-[11px]" onmousedown="setKey('ArrowRight', true)" onmouseup="setKey('ArrowRight', false)" ontouchstart="setKey('ArrowRight', true)" ontouchend="setKey('ArrowRight', false)">→ Phải</button>
+                    <button class="ctrl-btn p2-btn bg-sky-900/50 text-[9px] sm:text-[11px]" onmousedown="setKey(' ', true)" onmouseup="setKey(' ', false)" ontouchstart="setKey(' ', true)" ontouchend="setKey(' ', false)">Space Bắn</button>
                 `;
             } else if (mode === 'pvp') {
                 p2.active = false;
                 p2HpUi.classList.add('hidden');
-                p2Label.className = "text-[11px] font-bold text-rose-400 mb-2";
-                p2Label.innerText = "P2 (Boss) - Phím: ↑ ↓ ← →";
+                p2Label.className = "text-[9px] sm:text-[11px] font-bold text-rose-400 mb-2 text-center";
+                p2Label.innerText = "BOSS - Phím: ↑ ↓ ← →";
                 p2Controls.innerHTML = `
-                    <div class="col-span-4 flex justify-center mb-1">
-                        <button class="ctrl-btn boss-btn w-1/3 bg-rose-900/50" onmousedown="setKey('ArrowUp', true)" onmouseup="setKey('ArrowUp', false)">↑ Bắn Virus</button>
+                    <div class="col-span-4 flex justify-center mb-0.5">
+                        <button class="ctrl-btn boss-btn w-1/3 bg-rose-900/50 text-[9px] sm:text-[11px]" onmousedown="setKey('ArrowUp', true)" onmouseup="setKey('ArrowUp', false)" ontouchstart="setKey('ArrowUp', true)" ontouchend="setKey('ArrowUp', false)">↑ Bắn Virus</button>
                     </div>
-                    <button class="ctrl-btn boss-btn" onmousedown="setKey('ArrowLeft', true)" onmouseup="setKey('ArrowLeft', false)">← Trái</button>
-                    <button class="ctrl-btn boss-btn border-amber-500 text-amber-300" onmousedown="setKey('ArrowDown', true)" onmouseup="setKey('ArrowDown', false)">↓ Khiên</button>
-                    <button class="ctrl-btn boss-btn" onmousedown="setKey('ArrowRight', true)" onmouseup="setKey('ArrowRight', false)">→ Phải</button>
+                    <button class="ctrl-btn boss-btn text-[9px] sm:text-[11px]" onmousedown="setKey('ArrowLeft', true)" onmouseup="setKey('ArrowLeft', false)" ontouchstart="setKey('ArrowLeft', true)" ontouchend="setKey('ArrowLeft', false)">← Trái</button>
+                    <button class="ctrl-btn boss-btn border-amber-500 text-amber-300 text-[9px] sm:text-[11px]" onmousedown="setKey('ArrowDown', true)" onmouseup="setKey('ArrowDown', false)" ontouchstart="setKey('ArrowDown', true)" ontouchend="setKey('ArrowDown', false)">↓ Khiên</button>
+                    <button class="ctrl-btn boss-btn text-[9px] sm:text-[11px]" onmousedown="setKey('ArrowRight', true)" onmouseup="setKey('ArrowRight', false)" ontouchstart="setKey('ArrowRight', true)" ontouchend="setKey('ArrowRight', false)">→ Phải</button>
                     <div></div>
                 `;
             }
@@ -231,6 +244,7 @@
             if (autoStart) {
                 gameState = 'playing';
                 resetGame();
+                if(window.innerWidth < 640 && menuOpen) toggleMenu(); // Tự đóng menu trên mobile khi bắt đầu
             }
         }
 
@@ -261,23 +275,21 @@
             if(autoStart) {
                 gameState = 'playing';
                 resetGame();
+                if(window.innerWidth < 640 && menuOpen) toggleMenu();
             }
         }
 
         function resetGame() {
             startTime = Date.now(); elapsedTime = 0;
-            
             p1.hp = 10; p1.alive = true;
             p2.hp = 10; p2.alive = true;
-            boss.hp = 10;
-            organBase.hp = 20; 
+            boss.hp = 10; organBase.hp = 20; 
             
             p1.x = 80; p1.y = 200; p1.vy = 0;
             p2.x = 120; p2.y = 200; p2.vy = 0;
             boss.x = 650; boss.y = 150;
             
             projectiles = []; mapViruses = []; mapHeals = []; particles = [];
-
             for(let i=0; i<4; i++) mapViruses.push({ x: 200 + Math.random()*400, y: 50 + Math.random()*250, r: 8, vx: (Math.random()-0.5)*2, vy: (Math.random()-0.5)*2 });
             for(let i=0; i<3; i++) mapHeals.push({ x: 200 + Math.random()*400, y: 50 + Math.random()*250, r: 7, vx: (Math.random()-0.5)*2, vy: (Math.random()-0.5)*2 });
             for(let i=0; i<25; i++) particles.push({ x: Math.random()*canvas.width, y: Math.random()*canvas.height, r: Math.random()*2+1, vy: Math.random()*0.5 });
@@ -297,9 +309,7 @@
             }
             player.shieldActive = !!keys[controls.shield];
 
-            player.vy += GRAVITY; 
-            player.x += player.vx; 
-            player.y += player.vy;
+            player.vy += GRAVITY; player.x += player.vx; player.y += player.vy;
             
             if (player.x < organBase.x + organBase.w) player.x = organBase.x + organBase.w;
             if (player.x + player.width > canvas.width) player.x = canvas.width - player.width;
@@ -308,15 +318,12 @@
             player.isGrounded = false;
             if (player.y + player.height >= canvas.height - 30) { 
                 player.y = canvas.height - 30 - player.height; 
-                player.vy = 0; 
-                player.isGrounded = true; 
+                player.vy = 0; player.isGrounded = true; 
             }
 
             platforms.forEach(plat => {
                 if (player.x < plat.x + plat.w && player.x + player.width > plat.x && player.y + player.height > plat.y && player.y + player.height - player.vy <= plat.y + 14) {
-                    player.y = plat.y - player.height; 
-                    player.vy = 0; 
-                    player.isGrounded = true;
+                    player.y = plat.y - player.height; player.vy = 0; player.isGrounded = true;
                 }
             });
         }
@@ -327,7 +334,6 @@
             elapsedTime = (Date.now() - startTime) / 1000;
             document.getElementById('time-display').innerText = elapsedTime.toFixed(1);
 
-            // P1
             if(p1.hp <= 0) p1.alive = false;
             if(p1.alive) {
                 applyPhysics(p1, { left: 'a', right: 'd', jump: 'w', shield: 's' });
@@ -337,7 +343,6 @@
                 }
             }
 
-            // P2
             if(p2.hp <= 0) p2.alive = false;
             if(p2.active && p2.alive) {
                 applyPhysics(p2, { left: 'arrowleft', right: 'arrowright', jump: 'arrowup', shield: 'arrowdown' });
@@ -347,16 +352,13 @@
                 }
             }
 
-            // Boss
             if(gameMode === 'pve' || gameMode === 'coop') {
                 boss.y += boss.vy * boss.dirY;
                 if (boss.y < 60 || boss.y > canvas.height - 60) boss.dirY *= -1;
-                
                 if (Date.now() - bossLastShot > (gameMode === 'coop' ? 800 : 1200) && Math.random() < 0.6) {
                     projectiles.push({ x: boss.x - boss.radius, y: boss.y, vx: -7, vy: 0, type: 'boss_proj', color: '#fb7185', r: 6 });
                     bossLastShot = Date.now();
                 }
-
                 boss.shieldActive = false;
                 projectiles.forEach(p => {
                     if ((p.type === 'p1_proj' || p.type === 'p2_proj') && p.x > boss.x - 120 && p.y > boss.y - 40 && p.y < boss.y + 40) {
@@ -366,12 +368,8 @@
             } else if (gameMode === 'pvp') {
                 boss.y += boss.vy * boss.dirY;
                 if (boss.y < 60 || boss.y > canvas.height - 60) boss.dirY *= -1;
-
-                if (keys['arrowleft']) boss.x -= 4;
-                if (keys['arrowright']) boss.x += 4;
-                if(boss.x < canvas.width/2) boss.x = canvas.width/2;
-                if(boss.x > canvas.width - boss.radius) boss.x = canvas.width - boss.radius;
-
+                if (keys['arrowleft']) boss.x -= 4; if (keys['arrowright']) boss.x += 4;
+                if(boss.x < canvas.width/2) boss.x = canvas.width/2; if(boss.x > canvas.width - boss.radius) boss.x = canvas.width - boss.radius;
                 boss.shieldActive = !!keys['arrowdown'];
                 if (keys['arrowup'] && Date.now() - bossLastShot > 400) {
                     projectiles.push({ x: boss.x - boss.radius, y: boss.y, vx: -7, vy: 0, type: 'boss_proj', color: '#fb7185', r: 6 });
@@ -379,13 +377,10 @@
                 }
             }
 
-            // Floaters
             const handleFloaters = (arr, isVirus) => {
                 for(let i = arr.length -1; i >= 0; i--) {
                     let m = arr[i]; m.x += m.vx; m.y += m.vy;
-                    if(m.x < 100 || m.x > canvas.width-100) m.vx *= -1;
-                    if(m.y < 50 || m.y > canvas.height-50) m.vy *= -1;
-
+                    if(m.x < 100 || m.x > canvas.width-100) m.vx *= -1; if(m.y < 50 || m.y > canvas.height-50) m.vy *= -1;
                     if(p1.alive && Math.hypot((p1.x + p1.width/2) - m.x, (p1.y + p1.height/2) - m.y) < m.r + 12) {
                         if(isVirus) p1.hp--; else if(p1.hp < 10) p1.hp++;
                         arr.splice(i, 1); checkWin(); updateUI(); continue;
@@ -396,10 +391,8 @@
                     }
                 }
             };
-            handleFloaters(mapViruses, true);
-            handleFloaters(mapHeals, false);
+            handleFloaters(mapViruses, true); handleFloaters(mapHeals, false);
 
-            // Đạn
             for (let i = projectiles.length - 1; i >= 0; i--) {
                 let proj = projectiles[i]; proj.x += proj.vx; proj.y += proj.vy;
                 if (proj.x < 0 || proj.x > canvas.width) { projectiles.splice(i, 1); continue; }
@@ -411,16 +404,12 @@
                     if (p1.alive && proj.x < p1.x + p1.width && proj.x > p1.x && proj.y > p1.y && proj.y < p1.y + p1.height) { p1.hp--; updateUI(); projectiles.splice(i, 1); checkWin(); continue; }
                     if (p2.active && p2.alive && proj.x < p2.x + p2.width && proj.x > p2.x && proj.y > p2.y && proj.y < p2.y + p2.height) { p2.hp--; updateUI(); projectiles.splice(i, 1); checkWin(); continue; }
                     
-                    if (proj.x <= organBase.x + organBase.w) {
-                        organBase.hp--; updateUI(); projectiles.splice(i, 1); checkWin(); continue;
-                    }
+                    if (proj.x <= organBase.x + organBase.w) { organBase.hp--; updateUI(); projectiles.splice(i, 1); checkWin(); continue; }
                 }
 
                 if (proj.type === 'p1_proj' || proj.type === 'p2_proj') {
                     if (boss.shieldActive && proj.x >= boss.x - boss.radius - 12 && proj.x <= boss.x - boss.radius && Math.abs(proj.y - boss.y) < boss.radius + 10) { projectiles.splice(i, 1); continue; }
-                    if (Math.hypot(proj.x - boss.x, proj.y - boss.y) < boss.radius + proj.r) {
-                        boss.hp--; updateUI(); projectiles.splice(i, 1); checkWin(); continue;
-                    }
+                    if (Math.hypot(proj.x - boss.x, proj.y - boss.y) < boss.radius + proj.r) { boss.hp--; updateUI(); projectiles.splice(i, 1); checkWin(); continue; }
                 }
             }
             particles.forEach(p => { p.y += p.vy; if(p.y > canvas.height) p.y = 0; });
@@ -428,25 +417,24 @@
 
         function checkWin() {
             let defendersDead = p2.active ? (!p1.alive && !p2.alive) : (!p1.alive);
-            if ((defendersDead || organBase.hp <= 0) && gameState === 'playing') gameState = 'lose';
-            else if (boss.hp <= 0 && gameState === 'playing') gameState = 'win';
+            if ((defendersDead || organBase.hp <= 0) && gameState === 'playing') { gameState = 'lose'; if(!menuOpen) toggleMenu(); }
+            else if (boss.hp <= 0 && gameState === 'playing') { gameState = 'win'; if(!menuOpen) toggleMenu(); }
         }
 
         function updateUI() {
             document.getElementById('p1-hp').innerText = Math.max(0, p1.hp);
             if(p2.active) document.getElementById('p2-hp').innerText = Math.max(0, p2.hp);
             document.getElementById('boss-hp').innerText = Math.max(0, boss.hp);
+            document.getElementById('boss-hp-desktop').innerText = Math.max(0, boss.hp);
             document.getElementById('base-hp').innerText = Math.max(0, organBase.hp);
         }
 
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
-            // BG & Particles
             ctx.fillStyle = envTheme.bg; ctx.fillRect(0, 0, canvas.width, canvas.height);
             particles.forEach(p => { ctx.fillStyle='rgba(255,255,255,0.15)'; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2); ctx.fill(); });
 
-            // Tường
             ctx.fillStyle = envTheme.wall; ctx.fillRect(0, 0, canvas.width, 30); ctx.fillRect(0, canvas.height-30, canvas.width, 30);
             ctx.fillStyle = '#cbd5e1'; ctx.font = 'bold 12px sans-serif'; ctx.fillText(`Thành Phía Trên`, 10, 20); ctx.fillText(`Thành Phía Dưới`, 10, canvas.height - 10);
 
@@ -456,45 +444,36 @@
                 ctx.fillStyle = '#cbd5e1'; ctx.font = '11px sans-serif'; ctx.fillText(plat.label, plat.x + 5, plat.y - 5);
             });
 
-            // 🧱 NỘI TẠNG VÀ TƯỜNG GẠCH
+            // VẼ TƯỜNG & NỘI TẠNG
             let innerOrganW = organBase.w - 15;
-            ctx.fillStyle = envTheme.organColor; 
-            ctx.fillRect(organBase.x, organBase.y, innerOrganW, organBase.h);
+            ctx.fillStyle = envTheme.organColor; ctx.fillRect(organBase.x, organBase.y, innerOrganW, organBase.h);
             ctx.fillStyle = '#fff'; ctx.font = 'bold 10px sans-serif';
             ctx.save(); ctx.translate(organBase.x + 15, organBase.y + 110); ctx.rotate(-Math.PI/2); ctx.fillText(envTheme.name ? envTheme.name.toUpperCase() : "NỘI TẠNG", 0, 0); ctx.restore();
 
-            let wallX = organBase.x + innerOrganW;
-            let wallW = 15;
-            ctx.fillStyle = '#b45309'; 
-            ctx.fillRect(wallX, organBase.y, wallW, organBase.h);
-            ctx.strokeStyle = '#78350f'; 
-            ctx.lineWidth = 1.5;
+            let wallX = organBase.x + innerOrganW; let wallW = 15;
+            ctx.fillStyle = '#b45309'; ctx.fillRect(wallX, organBase.y, wallW, organBase.h);
+            ctx.strokeStyle = '#78350f'; ctx.lineWidth = 1.5;
             for(let i=0; i<organBase.h; i+=12) { ctx.strokeRect(wallX, organBase.y + i, wallW, 12); }
-
             ctx.fillStyle = '#000'; ctx.fillRect(organBase.x, organBase.y - 15, organBase.w, 8);
             ctx.fillStyle = '#f43f5e'; ctx.fillRect(organBase.x, organBase.y - 15, (organBase.hp/organBase.maxHp)*organBase.w, 8);
             ctx.fillStyle = '#fff'; ctx.font = '9px sans-serif'; ctx.fillText(`BASE HP`, organBase.x, organBase.y - 18);
 
-            // Vật phẩm & Đạn
             mapViruses.forEach(m => { ctx.fillStyle='#ef4444'; ctx.beginPath(); ctx.arc(m.x, m.y, m.r, 0, Math.PI*2); ctx.fill(); });
             mapHeals.forEach(m => { ctx.fillStyle='#34d399'; ctx.beginPath(); ctx.arc(m.x, m.y, m.r, 0, Math.PI*2); ctx.fill(); });
             projectiles.forEach(p => { ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2); ctx.fill(); });
 
-            // P1
             if(p1.alive) {
                 ctx.fillStyle = p1.color; ctx.fillRect(p1.x, p1.y, p1.width, p1.height);
                 ctx.fillStyle = '#ffffff'; ctx.fillRect(p1.x + (p1.vx >= 0 ? 12 : 4), p1.y + 4, 6, 6);
                 if(p1.shieldActive) { ctx.strokeStyle = '#34d399'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(p1.x + p1.width/2, p1.y + p1.height/2, 25, -Math.PI/2, Math.PI/2); ctx.stroke(); }
             }
 
-            // P2
             if(p2.active && p2.alive) {
                 ctx.fillStyle = p2.color; ctx.fillRect(p2.x, p2.y, p2.width, p2.height);
                 ctx.fillStyle = '#ffffff'; ctx.fillRect(p2.x + (p2.vx >= 0 ? 12 : 4), p2.y + 4, 6, 6);
                 if(p2.shieldActive) { ctx.strokeStyle = '#7dd3fc'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(p2.x + p2.width/2, p2.y + p2.height/2, 25, -Math.PI/2, Math.PI/2); ctx.stroke(); }
             }
 
-            // Boss
             if(boss.hp > 0) {
                 ctx.fillStyle = boss.color; ctx.beginPath(); ctx.arc(boss.x, boss.y, boss.radius, 0, Math.PI*2); ctx.fill();
                 for(let i=0; i<8; i++) {
@@ -508,13 +487,13 @@
                 if(boss.shieldActive) { ctx.strokeStyle = '#fb7185'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(boss.x, boss.y, boss.radius + 15, Math.PI/2, Math.PI*1.5); ctx.stroke(); }
             }
 
-            // MÀN HÌNH CHỜ BẮT ĐẦU (WAITING SCREEN)
+            // MÀN HÌNH CHỜ BẮT ĐẦU
             if (gameState === 'waiting') {
                 ctx.fillStyle = 'rgba(0,0,0,0.7)'; ctx.fillRect(0,0,canvas.width,canvas.height);
                 ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
-                ctx.font = 'bold 36px sans-serif'; ctx.fillText('SẴN SÀNG BẢO VỆ CƠ THỂ!', canvas.width/2, canvas.height/2 - 20);
+                ctx.font = 'bold 32px sans-serif'; ctx.fillText('SẴN SÀNG BẢO VỆ CƠ THỂ!', canvas.width/2, canvas.height/2 - 20);
                 ctx.fillStyle = '#38bdf8'; ctx.font = '16px sans-serif'; 
-                ctx.fillText('Chọn Chế độ chơi hoặc Hệ Cơ Quan ở menu tay phải để bắt đầu.', canvas.width/2, canvas.height/2 + 25);
+                ctx.fillText('Chọn Chế độ chơi hoặc Nội tạng ở menu tay phải để Bắt đầu.', canvas.width/2, canvas.height/2 + 25);
                 ctx.textAlign = 'left';
             }
 
@@ -536,19 +515,22 @@
                     ctx.fillStyle = '#fca5a5'; ctx.font = '20px sans-serif'; 
                     ctx.fillText("BOSS UNG THƯ ĐÃ CHIẾM CƠ THỂ!", canvas.width/2, 210);
                 }
-                ctx.font = '14px sans-serif'; ctx.fillStyle='#94a3b8'; ctx.fillText("Bấm vào Menu tay phải để chơi lại", canvas.width/2, 300);
+                ctx.font = '14px sans-serif'; ctx.fillStyle='#94a3b8'; ctx.fillText("Mở Menu tay phải để chơi lại", canvas.width/2, 300);
                 ctx.textAlign = 'left';
             }
         }
 
         function loop() { update(); draw(); requestAnimationFrame(loop); }
         
-        // Khởi tạo giao diện ban đầu, CHƯA BẮT ĐẦU GAME NGAY
+        // Init state
         setGameMode('pve', false); 
         selectOrgan('brain', false);
-        gameState = 'waiting'; // Khóa ở màn hình chờ
-        resetGame(); // Setup object positions
+        gameState = 'waiting'; 
+        resetGame();
         loop();
+        
+        // Tự động mở menu nếu trên máy tính để bàn
+        if(window.innerWidth > 1024) toggleMenu();
     </script>
 </body>
 </html>
