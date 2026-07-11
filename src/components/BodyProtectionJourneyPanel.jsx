@@ -128,53 +128,61 @@ export default function BodyProtectionJourneyPanel({ onNext, nextLabel, onPrev, 
 
   return (
     <div className={`animate-fade min-h-full w-full ${fullscreen ? 'px-0 py-0' : 'px-4 py-6 sm:px-8'} ${pageBg}`}>
-      <div className={`${fullscreen ? 'h-[calc(100svh-58px)] max-w-none gap-2' : 'mx-auto h-[calc(100svh-112px)] min-h-[720px] max-w-6xl gap-5 max-lg:h-[calc(100svh-96px)] max-lg:min-h-[640px] max-sm:h-[calc(100svh-80px)] max-sm:min-h-[560px]'} flex flex-col`}>
-        <div className={`${fullscreen ? 'px-3 py-2 sm:px-4' : ''} flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between`}>
-          <div className="flex items-center gap-3">
-            <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-400 to-cyan-500 text-white shadow-lg shadow-cyan-500/20">
-              <ShieldCheck size={22} />
-            </span>
-            <div>
-              <h1 className={`text-xl font-black leading-tight sm:text-2xl ${textMain}`}>
-                🛡️ Hành Trình Bảo Vệ Cơ Thể
-              </h1>
-              <p className={`text-xs sm:text-sm ${textSub}`}>
-                Mini-game PvP/PvE/Co-op: chọn hệ cơ quan, chiến đấu với BOSS UNG THƯ, thu thập Lợi Khuẩn và né Virus.
-              </p>
+      <div className={`${fullscreen ? 'h-[calc(100dvh-58px)] max-w-none gap-0' : 'mx-auto h-[calc(100svh-112px)] min-h-[720px] max-w-6xl gap-5 max-lg:h-[calc(100svh-96px)] max-lg:min-h-[640px] max-sm:h-[calc(100svh-80px)] max-sm:min-h-[560px]'} flex flex-col`}>
+        {/* Chế độ THƯỜNG: header đầy đủ (tiêu đề + mô tả + nút) nằm trong flex
+        layout, chiếm chỗ như cũ. Chế độ TOÀN MÀN HÌNH: KHÔNG render header
+        này nữa — 2 nút điều khiển được chuyển thành overlay nổi `absolute`
+        đè lên góc trên-phải của iframe (xem ngay dưới), để khung game chiếm
+        trọn 100% chiều cao còn lại (100dvh - 58px của Topbar) thay vì bị trừ
+        thêm phần header + NavButtons như trước. */}
+        {!fullscreen && (
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-400 to-cyan-500 text-white shadow-lg shadow-cyan-500/20">
+                <ShieldCheck size={22} />
+              </span>
+              <div>
+                <h1 className={`text-xl font-black leading-tight sm:text-2xl ${textMain}`}>
+                  🛡️ Hành Trình Bảo Vệ Cơ Thể
+                </h1>
+                <p className={`text-xs sm:text-sm ${textSub}`}>
+                  Mini-game PvP/PvE/Co-op: chọn hệ cơ quan, chiến đấu với BOSS UNG THƯ, thu thập Lợi Khuẩn và né Virus.
+                </p>
+              </div>
             </div>
-          </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setGestureOn((v) => !v)}
-              className={`inline-flex w-fit items-center gap-2 rounded-2xl border px-4 py-2 text-sm font-semibold shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md ${
-                gestureOn
-                  ? 'border-emerald-400/60 bg-emerald-500/15 text-emerald-300'
-                  : isDark
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setGestureOn((v) => !v)}
+                className={`inline-flex w-fit items-center gap-2 rounded-2xl border px-4 py-2 text-sm font-semibold shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md ${
+                  gestureOn
+                    ? 'border-emerald-400/60 bg-emerald-500/15 text-emerald-300'
+                    : isDark
+                      ? 'border-white/15 bg-white/5 text-gray-200 hover:bg-white/10'
+                      : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                }`}
+                title="Điều khiển User 1 bằng cử chỉ tay qua camera (giống Medical 3D Lab)"
+              >
+                <Hand size={16} />
+                {gestureOn ? '🔴 Tắt Camera Cử Chỉ' : '🖐️ Bật Camera Cử Chỉ (User 1)'}
+              </button>
+
+              <button
+                type="button"
+                onClick={toggleFullscreen}
+                className={`inline-flex w-fit items-center gap-2 rounded-2xl border px-4 py-2 text-sm font-semibold shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md ${
+                  isDark
                     ? 'border-white/15 bg-white/5 text-gray-200 hover:bg-white/10'
                     : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
-              }`}
-              title="Điều khiển User 1 bằng cử chỉ tay qua camera (giống Medical 3D Lab)"
-            >
-              <Hand size={16} />
-              {gestureOn ? '🔴 Tắt Camera Cử Chỉ' : '🖐️ Bật Camera Cử Chỉ (User 1)'}
-            </button>
-
-            <button
-              type="button"
-              onClick={toggleFullscreen}
-              className={`inline-flex w-fit items-center gap-2 rounded-2xl border px-4 py-2 text-sm font-semibold shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md ${
-                isDark
-                  ? 'border-white/15 bg-white/5 text-gray-200 hover:bg-white/10'
-                  : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              {fullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
-              {fullscreen ? 'Thu nhỏ' : 'Toàn màn hình'}
-            </button>
+                }`}
+              >
+                {fullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+                {fullscreen ? 'Thu nhỏ' : 'Toàn màn hình'}
+              </button>
+            </div>
           </div>
-        </div>
+        )}
 
         <div
           className={`relative min-h-0 flex-1 overflow-hidden border shadow-2xl ${fullscreen ? 'rounded-none' : 'rounded-3xl'} ${cardBg}`}
@@ -188,6 +196,36 @@ export default function BodyProtectionJourneyPanel({ onNext, nextLabel, onPrev, 
             style={{ border: 'none', display: 'block' }}
             allow="autoplay; fullscreen"
           />
+
+          {/* Overlay nổi CHỈ hiện khi toàn màn hình: thay thế header/NavButtons
+          bằng 2 nút gọn ở góc trên-phải, không chiếm chỗ trong layout nên
+          iframe phía dưới được cao tối đa. */}
+          {fullscreen && (
+            <div className="absolute right-2 top-2 z-40 flex flex-wrap items-center justify-end gap-2 sm:right-3 sm:top-3">
+              <button
+                type="button"
+                onClick={() => setGestureOn((v) => !v)}
+                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold shadow-lg backdrop-blur-md transition-all hover:-translate-y-0.5 ${
+                  gestureOn
+                    ? 'border-emerald-400/60 bg-emerald-500/20 text-emerald-200'
+                    : 'border-white/20 bg-black/60 text-gray-100 hover:bg-black/80'
+                }`}
+                title="Điều khiển User 1 bằng cử chỉ tay qua camera"
+              >
+                <Hand size={14} />
+                <span className="hidden sm:inline">{gestureOn ? '🔴 Tắt Camera Cử Chỉ' : '🖐️ Bật Camera Cử Chỉ'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={toggleFullscreen}
+                className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-black/60 px-3 py-1.5 text-xs font-semibold text-gray-100 shadow-lg backdrop-blur-md transition-all hover:-translate-y-0.5 hover:bg-black/80"
+                title="Thoát toàn màn hình"
+              >
+                <Minimize2 size={14} />
+                <span className="hidden sm:inline">Thu nhỏ</span>
+              </button>
+            </div>
+          )}
 
           {gestureOn && (
             <div className="fixed bottom-6 left-6 z-50 w-56 overflow-hidden rounded-xl border border-white/20 bg-black shadow-2xl sm:w-64">
@@ -223,12 +261,18 @@ export default function BodyProtectionJourneyPanel({ onNext, nextLabel, onPrev, 
           )}
         </div>
 
-        <NavButtons
-          onNext={onNext}
-          nextLabel={nextLabel || 'Health Journey Game'}
-          onPrev={onPrev}
-          prevLabel={prevLabel}
-        />
+        {/* Ẩn hẳn NavButtons khi toàn màn hình — cũng giống header, nó không
+        còn chiếm chỗ trong flex layout nữa nên iframe phía trên được cao
+        tối đa. Người dùng thoát toàn màn hình (nút "Thu nhỏ" nổi) để thấy
+        lại NavButtons điều hướng trang kế tiếp. */}
+        {!fullscreen && (
+          <NavButtons
+            onNext={onNext}
+            nextLabel={nextLabel || 'Health Journey Game'}
+            onPrev={onPrev}
+            prevLabel={prevLabel}
+          />
+        )}
       </div>
     </div>
   )

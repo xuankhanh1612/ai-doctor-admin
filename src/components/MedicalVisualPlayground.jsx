@@ -661,16 +661,32 @@ export default function MedicalVisualPlayground({ onFullscreenChange }) {
           {isRightMenuOpen ? 'Ẩn menu phải' : '☰ Menu 2D + 3D'}
         </button>
 
-        <div className={`absolute inset-x-3 top-16 bottom-3 z-50 overflow-y-auto overscroll-contain text-left transition-all duration-300 lg:grid lg:grid-cols-[minmax(280px,360px)_minmax(280px,360px)] lg:items-start lg:justify-between lg:gap-[min(18vw,16rem)] ${isRightMenuOpen ? 'translate-y-0 opacity-100 pointer-events-auto' : 'translate-y-3 opacity-0 pointer-events-none'}`}>
-          <div className="pointer-events-auto max-h-[calc(100svh-5rem)] overflow-hidden rounded-2xl border border-cyan-300/30 bg-slate-950/90 shadow-2xl shadow-cyan-950/30 backdrop-blur-xl lg:col-start-1">
-            <div className="flex items-center justify-between gap-3 border-b border-white/10 p-3">
+        {/* LƯU Ý FIX BUG "không bấm được / không kéo xuống được menu phải":
+        Trước đây mỗi card có 2 lớp overflow lồng nhau — lớp NGOÀI
+        `overflow-hidden` + `max-h-[calc(100svh-5rem)]` cắt cứng chiều cao,
+        còn lớp cuộn thật (`overflow-y-auto`) lại nằm ở div CON bên trong với
+        1 con số max-height khác (100svh-9.5rem). Khi phần header bị wrap
+        2 dòng (ví dụ dòng mô tả dài ở màn hẹp), tổng chiều cao thật (header
+        + nội dung) vượt quá giới hạn của lớp NGOÀI — phần cuối (nút Reset,
+        slider cuối...) bị lớp NGOÀI cắt đứt vĩnh viễn: cuộn lớp TRONG cỡ nào
+        cũng không lộ ra được, và cũng không bấm được vì phần tử đó coi như
+        không hiển thị. Cách sửa: chỉ giữ ĐÚNG MỘT lớp cuộn cho mỗi card
+        (flex-col: header shrink-0 + nội dung flex-1 min-h-0 overflow-y-auto),
+        và chiều cao tối đa của card tính theo % không gian còn lại của chính
+        wrapper cha (đã overflow-y-auto) thay vì một con số 100svh trừ cứng
+        dễ lệch. Toàn bộ overlay cũng được nâng z-index lên trên các nút nổi
+        toàn cục khác (vd. bong bóng AI Smart Agent ở góc dưới-phải) để không
+        bị đè mất vùng bấm. */}
+        <div className={`absolute inset-x-3 top-16 bottom-3 z-[235] flex flex-col gap-3 overflow-y-auto overscroll-contain text-left transition-all duration-300 lg:grid lg:grid-cols-[minmax(280px,360px)_minmax(280px,360px)] lg:items-start lg:justify-between lg:gap-[min(18vw,16rem)] ${isRightMenuOpen ? 'translate-y-0 opacity-100 pointer-events-auto' : 'translate-y-3 opacity-0 pointer-events-none'}`}>
+          <div className="pointer-events-auto flex max-h-full flex-col overflow-hidden rounded-2xl border border-cyan-300/30 bg-slate-950/90 shadow-2xl shadow-cyan-950/30 backdrop-blur-xl lg:col-start-1">
+            <div className="flex shrink-0 items-center justify-between gap-3 border-b border-white/10 bg-slate-950/95 p-3">
               <div>
                 <div className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">2D Transform</div>
                 <div className="text-[10px] text-slate-400">Ảnh 2D và vị trí XYZ.</div>
               </div>
               <button type="button" onClick={() => setIsRightMenuOpen(false)} className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-white/10 bg-white/5 text-slate-200 hover:bg-white/10" aria-label="Đóng menu bên phải">✕</button>
             </div>
-            <div className="max-h-[calc(100svh-9.5rem)] overflow-y-auto overscroll-contain p-3">
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3">
               <div className="grid grid-cols-2 gap-3 lg:block lg:space-y-3">
                 <div className="col-span-2">
                   <UrlControl label="Textbox 1 · Link ảnh 2D" value={customImage2dUrl} onChange={setCustomImage2dUrl} onClear={clearCustomImageUrl} onCopy={copyCustomImageUrlToClipboard} onPaste={pasteCustomImageUrlFromClipboard} state={customImageClipboardState} placeholder="Dán link ảnh 2D để hiển thị cùng mô hình 3D" />
@@ -683,15 +699,15 @@ export default function MedicalVisualPlayground({ onFullscreenChange }) {
             </div>
           </div>
 
-          <div className="pointer-events-auto hidden max-h-[calc(100svh-5rem)] overflow-hidden rounded-2xl border border-fuchsia-300/30 bg-slate-950/90 shadow-2xl shadow-fuchsia-950/20 backdrop-blur-xl lg:col-start-2 lg:block">
-            <div className="flex items-center justify-between gap-3 border-b border-white/10 p-3">
+          <div className="pointer-events-auto hidden max-h-full flex-col overflow-hidden rounded-2xl border border-fuchsia-300/30 bg-slate-950/90 shadow-2xl shadow-fuchsia-950/20 backdrop-blur-xl lg:col-start-2 lg:flex">
+            <div className="flex shrink-0 items-center justify-between gap-3 border-b border-white/10 bg-slate-950/95 p-3">
               <div>
                 <div className="text-xs font-black uppercase tracking-[0.18em] text-fuchsia-200">3D Transform</div>
                 <div className="text-[10px] text-slate-400">Tách sang bên phải để giữ trống vùng quan sát giữa.</div>
               </div>
               <button type="button" onClick={() => setIsRightMenuOpen(false)} className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-white/10 bg-white/5 text-slate-200 hover:bg-white/10" aria-label="Đóng menu bên phải">✕</button>
             </div>
-            <div className="max-h-[calc(100svh-9.5rem)] overflow-y-auto overscroll-contain p-3">
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3">
               <XyzTransformControls title="3D XYZ Transform" value={modelXyzTransform} onChange={setModelXyzTransform} />
             </div>
           </div>
