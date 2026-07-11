@@ -461,42 +461,12 @@ export default function MedicalVisualPlayground({ onFullscreenChange }) {
                 </div>
               )}
 
-              <button
-                onClick={() => {
-                  setIsSpatialHoverOn((v) => {
-                    const next = !v
-                    if (next) {
-                      setIsTouchlessOn(true)
-                      setIsCameraGizmoOn(false)
-                    }
-                    return next
-                  })
-                }}
-                className={`w-full px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg transition-all ${
-                  isSpatialHoverOn
-                    ? 'bg-fuchsia-500/80 hover:bg-fuchsia-500 text-white border border-fuchsia-300'
-                    : 'bg-cyan-600/80 hover:bg-cyan-600 text-white border border-cyan-300'
-                }`}
-              >
-                {isSpatialHoverOn ? '🧤 Tắt chạm 3D' : '🧤 Bật chạm hotspot 3D'}
-              </button>
 
-              {isSpatialHoverOn && (
-                <div className="bg-black/40 border border-cyan-300/20 px-3 py-2 rounded-lg text-[10px] font-mono text-cyan-200 text-left">
-                  Đưa ngón trỏ ảo vào chấm sáng để mở bảng chú thích 3D kiểu AnatomyHoverOverlay.
+              {isCameraGizmoOn && (
+                <div className="bg-black/40 border border-emerald-300/20 px-3 py-2 rounded-lg text-[10px] font-mono text-emerald-200 text-left">
+                  Dùng Camera Angle Gizmo để chọn góc chụp 3D chuẩn hoá; các chế độ chạm hotspot 3D và Touchless Control đã được lược bỏ khỏi màn hình này.
                 </div>
               )}
-
-              <button
-                onClick={toggleTouchless}
-                className={`w-full px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg transition-all ${
-                  isTouchlessOn
-                    ? 'bg-red-500/80 hover:bg-red-500 text-white border border-red-400'
-                    : 'bg-blue-600/80 hover:bg-blue-600 text-white border border-blue-400'
-                }`}
-              >
-                {isTouchlessOn ? '🔴 Tắt Touchless Control' : '🤚 Bật Touchless Control'}
-              </button>
             </div>
           </div>
 
