@@ -21,6 +21,7 @@ import HealthJourneyGamePanel from './components/HealthJourneyGamePanel.jsx'
 import MyRewardHealthPanel from './components/MyRewardHealthPanel.jsx'
 import MedicalAssetStorePanel from './components/MedicalAssetStorePanel.jsx' // <--- IMPORT PANEL MỚI Ở ĐÂY
 import MedicalVisualPlayground from './components/MedicalVisualPlayground.jsx'
+import MedicalVisualCameraAngle3D from './components/MedicalVisualCameraAngle3D.jsx'
 import LunchJourneyPanel from './components/LunchJourneyPanel.jsx'
 import DinnerJourneyPanel from './components/DinnerJourneyPanel.jsx'
 import FamilyTreePanel from './components/family/FamilyTreePanel.jsx'
@@ -61,7 +62,7 @@ import { addNotification } from './lib/notifications.js'
 import { useTTS } from './lib/groqAiClient.js'
 
 // Thứ tự này đồng bộ menu chính và nút điều hướng qua/lại giữa các màn hình.
-const PANELS = ['bodyProtectionJourney', 'healthJourneyGame', 'medicalAssetStore', 'medicalVisualPlayground', 'myRewardHealth', 'rssPortal', 'waterDrinkChatBot', 'wikiMedVision', 'fullDocSummarization', 'documentOCR', 'cameraAngle3DStudio', 'organConnection', 'healthJourney', 'lunchJourney', 'dinnerJourney', 'upload', 'imaging', 'checkin', 'family', 'record', 'familyRelationship', 'matrix3dBody', 'omnidirectional3dBody', 'twin', 'telemedicine', 'statAnalysis', 'swarm', 'consensus', 'varCheck', 'protein3d', 'aiHealthcareVision', 'aiHealthcareVisionControl', 'stressRelief', 'aiInbodyPortal', 'printPortal', 'patientReflect', 'chatHistory', 'myImageToVideo', 'make3DModel', 'my3dAsset', 'twoDTo3DAsset', 'xyzCameraAngle']
+const PANELS = ['bodyProtectionJourney', 'healthJourneyGame', 'medicalAssetStore', 'medicalVisualPlayground', 'medicalVisualCameraAngle3D', 'myRewardHealth', 'rssPortal', 'waterDrinkChatBot', 'wikiMedVision', 'fullDocSummarization', 'documentOCR', 'cameraAngle3DStudio', 'organConnection', 'healthJourney', 'lunchJourney', 'dinnerJourney', 'upload', 'imaging', 'checkin', 'family', 'record', 'familyRelationship', 'matrix3dBody', 'omnidirectional3dBody', 'twin', 'telemedicine', 'statAnalysis', 'swarm', 'consensus', 'varCheck', 'protein3d', 'aiHealthcareVision', 'aiHealthcareVisionControl', 'stressRelief', 'aiInbodyPortal', 'printPortal', 'patientReflect', 'chatHistory', 'myImageToVideo', 'make3DModel', 'my3dAsset', 'twoDTo3DAsset', 'xyzCameraAngle']
 
 export default function App() {
   const { user, loading } = useAuth()
@@ -148,6 +149,7 @@ export default function App() {
     healthJourneyGame: 'Health Journey Game',
     medicalAssetStore: 'Chợ Tài nguyên 3D', // <--- THÊM NHÃN TẠI ĐÂY
     medicalVisualPlayground: 'Medical 3D Lab (Touchless)',
+    medicalVisualCameraAngle3D: 'Medical Camera Angle 3D',
     myRewardHealth: 'My Reward Health',
     healthJourney: t('healthJourney'),
     lunchJourney: t('lunchJourney'),
@@ -405,6 +407,7 @@ export default function App() {
             {active === 'healthJourneyGame' && <HealthJourneyGamePanel onNext={goNext} nextLabel={nextLabel} onViewMedicalRecord={() => setActive('upload')} onOpenMyRewardHealth={() => setActive('myRewardHealth')} />}
             {active === 'medicalAssetStore' && <MedicalAssetStorePanel />} {/* <--- RENDER PANEL Ở ĐÂY */}
             {active === 'medicalVisualPlayground' && <MedicalVisualPlayground onFullscreenChange={setHideSidebarForFocus} />}
+            {active === 'medicalVisualCameraAngle3D' && <MedicalVisualCameraAngle3D onFullscreenChange={setHideSidebarForFocus} />}
             {active === 'myRewardHealth' && <MyRewardHealthPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} onOpenFoodToday={() => setActive('organConnection')} />}
             {active === 'healthJourney' && <HealthJourneyPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} onOpenStressRelief={() => setActive('stressRelief')} onOpenInBody={() => setActive('aiInbodyPortal')} onViewMedicalRecord={() => setActive('upload')} />}
             {active === 'lunchJourney' && <LunchJourneyPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} onOpenStressRelief={() => setActive('stressRelief')} onOpenInBody={() => setActive('aiInbodyPortal')} onViewMedicalRecord={() => setActive('upload')} />}
@@ -826,7 +829,7 @@ function GlobalBottomNav({ active, onOpenMainMenu, onNavigate }) {
   const { theme } = useApp()
   const isDark = theme === 'dark'
   const items = [
-    { id: 'health', label: 'Health', icon: '♿', action: onOpenMainMenu, active: ['bodyProtectionJourney', 'healthJourneyGame', 'medicalAssetStore', 'medicalVisualPlayground', 'myRewardHealth', 'healthJourney', 'lunchJourney', 'dinnerJourney'].includes(active) },
+    { id: 'health', label: 'Health', icon: '♿', action: onOpenMainMenu, active: ['bodyProtectionJourney', 'healthJourneyGame', 'medicalAssetStore', 'medicalVisualPlayground', 'medicalVisualCameraAngle3D', 'myRewardHealth', 'healthJourney', 'lunchJourney', 'dinnerJourney'].includes(active) },
     { id: 'family', label: 'Community', icon: '👥', action: () => onNavigate('family'), active: active === 'family' },
     { id: 'aiHealthcareVision', label: 'AI Scan', icon: '🧬', action: () => onNavigate('aiHealthcareVision'), active: active === 'aiHealthcareVision' || active === 'aiHealthcareVisionControl' },
     { id: 'upload', label: 'Record', icon: '📄', action: () => onNavigate('upload'), active: active === 'upload' },
