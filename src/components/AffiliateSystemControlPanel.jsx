@@ -4,7 +4,7 @@ import {
   ShoppingCart, Activity, Sparkles, Loader2, MessageSquareText, 
   Network, UserCircle, Target, TrendingUp, Lightbulb,
   HeartHandshake, PlayCircle, Clock, GraduationCap, Copy, CheckCircle2,
-  Wallet, History, AlertTriangle
+  Wallet, History, AlertTriangle, BarChart3
 } from 'lucide-react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer 
@@ -74,7 +74,7 @@ const callGeminiAPI = async (prompt) => {
   return "Lỗi kết nối AI.";
 };
 
-export default function AffiliateSystem() {
+export default function AffiliateSystemControlPanel() {
   const [activeTab, setActiveTab] = useState('user'); // 'admin' | 'stats' | 'user'
   const [users, setUsers] = useState(INITIAL_USERS);
   const [policy, setPolicy] = useState(INITIAL_POLICY);
@@ -718,7 +718,7 @@ export default function AffiliateSystem() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in duration-300">
              <div className="lg:col-span-2 bg-[#141414] p-6 rounded-2xl border border-[#262626]">
                  <h2 className="text-lg font-bold mb-6 text-white flex items-center gap-2">
-                   <BarChart className="w-5 h-5 text-red-500" /> Bảng Xếp Hạng Thu Nhập Leader
+                   <BarChart3 className="w-5 h-5 text-red-500" /> Bảng Xếp Hạng Thu Nhập Leader
                  </h2>
                  <div className="h-[300px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
