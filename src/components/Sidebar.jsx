@@ -42,6 +42,7 @@ export default function Sidebar({ active, onNavigate, openSignal = 0 }) {
     { id: 'medicalVisualPlayground', label: 'Medical 3D Lab (Touchless)', step: '04' },
     { id: 'medicalVisualCameraAngle3D', label: 'Medical Camera Angle 3D', step: '04b' },
     { id: 'myRewardHealth', label: 'My Reward Health', step: '05' },
+    { id: 'affiliate', label: 'Affiliate & Earn Đa Tầng', step: '05b' },
     { id: 'rssPortal', label: 'Healthy RSS Portal', step: '06' },
     { id: 'waterDrinkChatBot', label: t('waterDrinkChatBot'), step: '07' },
     { id: 'wikiMedVision', label: t('wikiMedVision'), step: '08' },
