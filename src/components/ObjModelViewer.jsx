@@ -54,10 +54,12 @@ export default function ObjModelViewer({
   const handControlRef = useRef({ rotation: null, scale: null })
   const [activeHotspot, setActiveHotspot] = useState(null)
   const [hotspotScreens, setHotspotScreens] = useState([])
+  const materialModeRef = useRef({ wireframe, transparent, opacity, color })
 
   const hotspots = useMemo(() => TOUCH_HOTSPOTS[organId] || TOUCH_HOTSPOTS.heart, [organId])
   handControlRef.current.rotation = customRotation
   handControlRef.current.scale = customScale
+  materialModeRef.current = { wireframe, transparent, opacity, color }
   spatialRef.current.enabled = enableSpatialHover
   spatialRef.current.handLandmarksRef = handLandmarksRef
   spatialRef.current.hotspots = hotspots
@@ -192,15 +194,16 @@ export default function ObjModelViewer({
     function applyMaterialMode() {
       const model = modelRef.current
       if (!model) return
+      const mode = materialModeRef.current
       model.object.traverse((obj) => {
         if (!obj.isMesh || !obj.material) return
         const materials = Array.isArray(obj.material) ? obj.material : [obj.material]
         materials.forEach((m) => {
-          m.wireframe = !!wireframe
-          m.transparent = !!transparent || opacity < 1
-          m.opacity = transparent ? Math.min(opacity, 0.35) : opacity
+          m.wireframe = !!mode.wireframe
+          m.transparent = !!mode.transparent || mode.opacity < 1
+          m.opacity = mode.transparent ? Math.min(mode.opacity, 0.35) : mode.opacity
           m.depthWrite = !(m.transparent)
-          if (color) m.color?.set(color)
+          if (mode.color) m.color?.set(mode.color)
           m.needsUpdate = true
         })
       })
