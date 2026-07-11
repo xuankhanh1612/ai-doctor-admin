@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import ObjModelViewer from './ObjModelViewer'
 import TouchlessHandCam from './webcam/TouchlessHandCam'
-import Camera3DAngleGizmo, { buildCameraPrompt } from './CameraAngle3DGizmo'
 import VirtualHands from './VirtualHands'
 
 // Medical Visual Playground 🧬 — Sandbox Y khoa 3D: chọn nội tạng, đổi chế độ
@@ -15,8 +14,6 @@ import VirtualHands from './VirtualHands'
 // mesh — không phải lỗi của component.
 const DEFAULT_ATTACK05_OBJ_URL = 'https://raw.githubusercontent.com/godekd3133/DX9_WorldSkill_Practice_Gyeonggi_01/81ed0a14c63d309bbfc0fc98c8a40a43325336e6/Resource/Player/Animation/Attack05/Attack05%20(45).obj'
 const DEFAULT_ATTACK05_MTL_URL = 'https://raw.githubusercontent.com/godekd3133/DX9_WorldSkill_Practice_Gyeonggi_01/81ed0a14c63d309bbfc0fc98c8a40a43325336e6/Resource/Player/Animation/Attack05/Attack05%20(45).mtl'
-const DEFAULT_IMAGE_2D_URL = 'https://png.pngtree.com/png-clipart/20230812/original/pngtree-world-hepatitis-day-with-human-liver-organ-and-stethoscope-vector-png-image_10294720.png'
-const DEFAULT_XYZ_TRANSFORM = { position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0 } }
 
 const organData = {
   heart: {
@@ -72,24 +69,12 @@ export default function MedicalVisualPlayground({ onFullscreenChange }) {
   const [accuracy, setAccuracy] = useState(98)
   const [showRoadmap, setShowRoadmap] = useState(false)
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
-  const [isRightMenuOpen, setIsRightMenuOpen] = useState(false)
   const [isFullScreenMode, setIsFullScreenMode] = useState(false)
   const [isSpatialHoverOn, setIsSpatialHoverOn] = useState(false)
   const [customObjUrl, setCustomObjUrl] = useState(DEFAULT_ATTACK05_OBJ_URL)
   const [customMtlUrl, setCustomMtlUrl] = useState(DEFAULT_ATTACK05_MTL_URL)
-  const [customImage2dUrl, setCustomImage2dUrl] = useState(DEFAULT_IMAGE_2D_URL)
-  const [imageXyzTransform, setImageXyzTransform] = useState(DEFAULT_XYZ_TRANSFORM)
-  const [modelXyzTransform, setModelXyzTransform] = useState(DEFAULT_XYZ_TRANSFORM)
-  const [customImageClipboardState, setCustomImageClipboardState] = useState('idle')
   const [customObjClipboardState, setCustomObjClipboardState] = useState('idle')
   const [customMtlClipboardState, setCustomMtlClipboardState] = useState('idle')
-
-  // --- Camera Angle Gizmo: tái sử dụng công nghệ điều khiển góc máy ảnh của
-  // CameraAngle3DGizmo.jsx (3 tay cầm kéo Azimuth/Elevation/Distance, snap
-  // 8×4×3 vị trí) ngay trong Medical 3D Lab, thay cho OrbitControls tự do
-  // khi bật, để bác sĩ chọn đúng góc chụp chuẩn hoá cho từng cơ quan.
-  const [isCameraGizmoOn, setIsCameraGizmoOn] = useState(false)
-  const [cameraAngle, setCameraAngle] = useState({ azimuth: 0, elevation: 0, distance: 1.0 })
 
   // --- Touchless Control: tọa độ do TouchlessHandCam bắn ra mỗi khung hình ---
   const [handRotation, setHandRotation] = useState(null) // [x, y] radian | null
@@ -109,40 +94,12 @@ export default function MedicalVisualPlayground({ onFullscreenChange }) {
   const currentOrgan = organData[activeOrgan]
   const customObjUrlValue = customObjUrl.trim()
   const customMtlUrlValue = customMtlUrl.trim()
-  const customImage2dUrlValue = customImage2dUrl.trim()
-  const gizmoImageUrl = customImage2dUrlValue || DEFAULT_IMAGE_2D_URL
-  const gizmoObjUrl = customObjUrlValue || currentOrgan.objUrl
-  const gizmoMtlUrl = customMtlUrlValue || currentOrgan.mtlUrl
   const viewerObjUrl = customObjUrlValue || currentOrgan.objUrl
   const viewerMtlUrl = customMtlUrlValue || currentOrgan.mtlUrl
 
-  const clearCustomImageUrl = () => setCustomImage2dUrl('')
   const clearCustomObjUrl = () => setCustomObjUrl('')
   const clearCustomMtlUrl = () => setCustomMtlUrl('')
 
-
-  const copyCustomImageUrlToClipboard = async () => {
-    try {
-      await navigator.clipboard.writeText(customImage2dUrl || '')
-      setCustomImageClipboardState('copied')
-    } catch (err) {
-      console.warn('Copy 2D image link failed', err)
-      setCustomImageClipboardState('error')
-    }
-    setTimeout(() => setCustomImageClipboardState('idle'), 1800)
-  }
-
-  const pasteCustomImageUrlFromClipboard = async () => {
-    try {
-      const text = await navigator.clipboard.readText()
-      if (text) setCustomImage2dUrl(text.trim())
-      setCustomImageClipboardState('pasted')
-    } catch (err) {
-      console.warn('Paste 2D image link failed (trình duyệt có thể chưa cấp quyền clipboard)', err)
-      setCustomImageClipboardState('error')
-    }
-    setTimeout(() => setCustomImageClipboardState('idle'), 1800)
-  }
 
   const copyCustomObjUrlToClipboard = async () => {
     try {
@@ -209,24 +166,10 @@ export default function MedicalVisualPlayground({ onFullscreenChange }) {
     if (!isTouchlessOn) { setHandRotation(null); setHandScale(null); handLandmarksRef.current = [] }
   }, [isTouchlessOn])
 
-  // Touchless Control và Camera Angle Gizmo cùng chiếm khu vực canvas chính
-  // -> loại trừ lẫn nhau, bật cái này thì tắt cái kia.
   const toggleTouchless = useCallback(() => {
     setIsTouchlessOn((v) => {
       const next = !v
-      if (next) setIsCameraGizmoOn(false)
       if (!next) setIsSpatialHoverOn(false)
-      return next
-    })
-  }, [])
-  const toggleCameraGizmo = useCallback(() => {
-    setIsCameraGizmoOn((v) => {
-      const next = !v
-      if (next) {
-        setIsTouchlessOn(false)
-        setIsSpatialHoverOn(false)
-        setIsRightMenuOpen(true)
-      }
       return next
     })
   }, [])
@@ -325,7 +268,7 @@ export default function MedicalVisualPlayground({ onFullscreenChange }) {
                   aria-label="Default OBJ model URL"
                   value={customObjUrl}
                   onChange={(e) => setCustomObjUrl(e.target.value)}
-                  placeholder="Dán link model .obj cho mô hình 3D và Camera Angle Gizmo"
+                  placeholder="Dán link model .obj cho mô hình 3D"
                   className="min-w-0 flex-1 rounded-lg border border-slate-600 bg-slate-950/80 px-3 py-2 font-mono text-[11px] text-slate-100 outline-none transition focus:border-cyan-300 focus:ring-2 focus:ring-cyan-400/20"
                 />
                 <button
@@ -357,7 +300,7 @@ export default function MedicalVisualPlayground({ onFullscreenChange }) {
                 </button>
               </div>
               <p className="mt-2 text-[10px] leading-relaxed text-slate-400">
-                Ô này dùng mặc định cho mô hình 3D phủ màu và Camera Angle Gizmo; để trống sẽ quay lại model của cơ quan đang chọn.
+                Ô này dùng mặc định cho mô hình 3D phủ màu; để trống sẽ quay lại model của cơ quan đang chọn.
               </p>
             </div>
 
@@ -370,7 +313,7 @@ export default function MedicalVisualPlayground({ onFullscreenChange }) {
                   aria-label="Default MTL material URL"
                   value={customMtlUrl}
                   onChange={(e) => setCustomMtlUrl(e.target.value)}
-                  placeholder="Dán link material .mtl cho mô hình 3D và Camera Angle Gizmo"
+                  placeholder="Dán link material .mtl cho mô hình 3D"
                   className="min-w-0 flex-1 rounded-lg border border-slate-600 bg-slate-950/80 px-3 py-2 font-mono text-[11px] text-slate-100 outline-none transition focus:border-cyan-300 focus:ring-2 focus:ring-cyan-400/20"
                 />
                 <button
@@ -439,27 +382,6 @@ export default function MedicalVisualPlayground({ onFullscreenChange }) {
           <div>
             <h3 className="text-xs uppercase tracking-widest text-slate-400 font-semibold mb-4">Điều khiển 3D</h3>
             <div className="bg-slate-900/80 border border-slate-700 p-3 rounded-xl space-y-2">
-              <button
-                onClick={toggleCameraGizmo}
-                className={`w-full px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg transition-all ${
-                  isCameraGizmoOn
-                    ? 'bg-red-500/80 hover:bg-red-500 text-white border border-red-400'
-                    : 'bg-emerald-600/80 hover:bg-emerald-600 text-white border border-emerald-400'
-                }`}
-              >
-                {isCameraGizmoOn ? '🔴 Tắt Camera Angle Gizmo' : '🎥 Bật Camera Angle Gizmo'}
-              </button>
-
-              {isCameraGizmoOn && (
-                <div className="space-y-2">
-                  <div className="bg-black/40 border border-white/10 px-3 py-2 rounded-lg text-[10px] font-mono text-emerald-300 text-left">
-                    Kéo 🟢 Azimuth / 🩷 Elevation / 🟠 Distance quanh {currentOrgan.name} để chọn góc chụp chuẩn.
-                  </div>
-                  <button type="button" onClick={() => setIsRightMenuOpen((v) => !v)} className="w-full rounded-lg border border-cyan-300/40 bg-cyan-500/10 px-3 py-2 text-xs font-black uppercase tracking-wider text-cyan-100 transition hover:bg-cyan-500/20">
-                    {isRightMenuOpen ? 'Ẩn menu bên phải' : 'Hiện menu bên phải'}
-                  </button>
-                </div>
-              )}
 
               <button
                 onClick={() => {
@@ -467,7 +389,6 @@ export default function MedicalVisualPlayground({ onFullscreenChange }) {
                     const next = !v
                     if (next) {
                       setIsTouchlessOn(true)
-                      setIsCameraGizmoOn(false)
                     }
                     return next
                   })
@@ -589,25 +510,7 @@ export default function MedicalVisualPlayground({ onFullscreenChange }) {
         </div>
 
         <div className="absolute inset-0 flex items-center justify-center cursor-move">
-          {isCameraGizmoOn ? (
-            <div className={`${isFullScreenMode ? 'h-full max-h-none max-w-none' : 'max-h-[min(620px,82vh)] max-w-4xl'} w-full p-3 sm:p-6`}>
-              <Camera3DAngleGizmo
-                mode="both"
-                imageUrl={gizmoImageUrl}
-                objUrl={gizmoObjUrl}
-                mtlUrl={gizmoMtlUrl}
-                objectTransforms={{ image: imageXyzTransform, obj: modelXyzTransform }}
-                wireframe={viewMode === 'wireframe'}
-                transparent={viewMode === 'xray'}
-                opacity={viewMode === 'xray' ? 0.3 : 1}
-                color={currentOrgan.color}
-                autoRotate={autoRotate}
-                value={cameraAngle}
-                onChange={setCameraAngle}
-              />
-            </div>
-          ) : (
-            <ObjModelViewer
+          <ObjModelViewer
               modelUrl={viewerObjUrl}
               mtlUrl={viewerMtlUrl}
               isDark
@@ -622,15 +525,14 @@ export default function MedicalVisualPlayground({ onFullscreenChange }) {
               handLandmarksRef={handLandmarksRef}
               enableSpatialHover={isSpatialHoverOn}
               organId={currentOrgan.id}
-            />
-          )}
+          />
         </div>
 
         {/* --- HOLOGRAM HANDS: khung xương bàn tay cyan lơ lửng phủ lên trên
         mô hình, cập nhật qua handLandmarksRef (không re-render React) —
         chỉ hiện khi Touchless Control đang bật và đang có tay trong khung
         hình. pointer-events-none để không chặn thao tác kéo/chuột bên dưới. */}
-        {isTouchlessOn && !isCameraGizmoOn && (
+        {isTouchlessOn && (
           <div className="absolute inset-0 pointer-events-none z-10">
             <VirtualHands landmarksRef={handLandmarksRef} mirrored={handMapping.mirrored} />
           </div>
@@ -654,70 +556,10 @@ export default function MedicalVisualPlayground({ onFullscreenChange }) {
             {isTouchlessOn && (handRotation || handScale) && (
               <div className="text-[10px] text-cyan-300 mt-1">🖐 Touchless đang điều khiển</div>
             )}
-            {isCameraGizmoOn && (
-              <div className="text-[10px] text-emerald-300 mt-1 font-mono">
-                {buildCameraPrompt(cameraAngle.azimuth, cameraAngle.elevation, cameraAngle.distance)}
-              </div>
-            )}
           </div>
         </div>
 
-        <button type="button" onClick={() => setIsRightMenuOpen((v) => !v)} className="absolute right-3 top-3 z-40 rounded-full border border-cyan-300/40 bg-slate-950/85 px-4 py-2 text-xs font-black uppercase tracking-wider text-cyan-100 shadow-[0_0_18px_rgba(6,182,212,0.25)] backdrop-blur-md transition hover:bg-cyan-500/20 max-sm:px-3 max-sm:text-[10px]">
-          {isRightMenuOpen ? 'Ẩn menu phải' : '☰ Menu 2D + 3D'}
-        </button>
-
-        {/* LƯU Ý FIX BUG "không bấm được / không kéo xuống được menu phải":
-        Trước đây mỗi card có 2 lớp overflow lồng nhau — lớp NGOÀI
-        `overflow-hidden` + `max-h-[calc(100svh-5rem)]` cắt cứng chiều cao,
-        còn lớp cuộn thật (`overflow-y-auto`) lại nằm ở div CON bên trong với
-        1 con số max-height khác (100svh-9.5rem). Khi phần header bị wrap
-        2 dòng (ví dụ dòng mô tả dài ở màn hẹp), tổng chiều cao thật (header
-        + nội dung) vượt quá giới hạn của lớp NGOÀI — phần cuối (nút Reset,
-        slider cuối...) bị lớp NGOÀI cắt đứt vĩnh viễn: cuộn lớp TRONG cỡ nào
-        cũng không lộ ra được, và cũng không bấm được vì phần tử đó coi như
-        không hiển thị. Cách sửa: chỉ giữ ĐÚNG MỘT lớp cuộn cho mỗi card
-        (flex-col: header shrink-0 + nội dung flex-1 min-h-0 overflow-y-auto),
-        và chiều cao tối đa của card tính theo % không gian còn lại của chính
-        wrapper cha (đã overflow-y-auto) thay vì một con số 100svh trừ cứng
-        dễ lệch. Toàn bộ overlay cũng được nâng z-index lên trên các nút nổi
-        toàn cục khác (vd. bong bóng AI Smart Agent ở góc dưới-phải) để không
-        bị đè mất vùng bấm. */}
-        <div className={`absolute inset-x-3 top-16 bottom-3 z-[235] flex flex-col gap-3 overflow-y-auto overscroll-contain text-left transition-all duration-300 lg:grid lg:grid-cols-[minmax(280px,360px)_minmax(280px,360px)] lg:items-start lg:justify-between lg:gap-[min(18vw,16rem)] ${isRightMenuOpen ? 'translate-y-0 opacity-100 pointer-events-auto' : 'translate-y-3 opacity-0 pointer-events-none'}`}>
-          <div className="pointer-events-auto flex max-h-full flex-col overflow-hidden rounded-2xl border border-cyan-300/30 bg-slate-950/90 shadow-2xl shadow-cyan-950/30 backdrop-blur-xl lg:col-start-1">
-            <div className="flex shrink-0 items-center justify-between gap-3 border-b border-white/10 bg-slate-950/95 p-3">
-              <div>
-                <div className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">2D Transform</div>
-                <div className="text-[10px] text-slate-400">Ảnh 2D và vị trí XYZ.</div>
-              </div>
-              <button type="button" onClick={() => setIsRightMenuOpen(false)} className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-white/10 bg-white/5 text-slate-200 hover:bg-white/10" aria-label="Đóng menu bên phải">✕</button>
-            </div>
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3">
-              <div className="grid grid-cols-2 gap-3 lg:block lg:space-y-3">
-                <div className="col-span-2">
-                  <UrlControl label="Textbox 1 · Link ảnh 2D" value={customImage2dUrl} onChange={setCustomImage2dUrl} onClear={clearCustomImageUrl} onCopy={copyCustomImageUrlToClipboard} onPaste={pasteCustomImageUrlFromClipboard} state={customImageClipboardState} placeholder="Dán link ảnh 2D để hiển thị cùng mô hình 3D" />
-                </div>
-                <XyzTransformControls title="2D XYZ Transform" value={imageXyzTransform} onChange={setImageXyzTransform} />
-                <div className="lg:hidden">
-                  <XyzTransformControls title="3D XYZ Transform" value={modelXyzTransform} onChange={setModelXyzTransform} />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="pointer-events-auto hidden max-h-full flex-col overflow-hidden rounded-2xl border border-fuchsia-300/30 bg-slate-950/90 shadow-2xl shadow-fuchsia-950/20 backdrop-blur-xl lg:col-start-2 lg:flex">
-            <div className="flex shrink-0 items-center justify-between gap-3 border-b border-white/10 bg-slate-950/95 p-3">
-              <div>
-                <div className="text-xs font-black uppercase tracking-[0.18em] text-fuchsia-200">3D Transform</div>
-                <div className="text-[10px] text-slate-400">Tách sang bên phải để giữ trống vùng quan sát giữa.</div>
-              </div>
-              <button type="button" onClick={() => setIsRightMenuOpen(false)} className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-white/10 bg-white/5 text-slate-200 hover:bg-white/10" aria-label="Đóng menu bên phải">✕</button>
-            </div>
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3">
-              <XyzTransformControls title="3D XYZ Transform" value={modelXyzTransform} onChange={setModelXyzTransform} />
-            </div>
-          </div>
-        </div>
-        {isTouchlessOn && !isCameraGizmoOn && (
+        {isTouchlessOn && (
           <div className="absolute right-3 top-16 z-40 flex flex-wrap justify-end gap-2">
             <button
               type="button"
@@ -764,58 +606,6 @@ export default function MedicalVisualPlayground({ onFullscreenChange }) {
             </div>
           </div>
         )}
-      </div>
-    </div>
-  )
-}
-
-function UrlControl({ label, value, onChange, onClear, onCopy, onPaste, state, placeholder }) {
-  return (
-    <div className="rounded-xl border border-slate-700 bg-slate-900/80 p-3">
-      <label className="mb-2 block text-[10px] font-black uppercase tracking-[0.18em] text-cyan-300">{label}</label>
-      <div className="flex items-center gap-2 max-[420px]:flex-wrap">
-        <input
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          placeholder={placeholder}
-          className="min-w-0 flex-1 rounded-lg border border-slate-600 bg-slate-950/80 px-3 py-2 font-mono text-[11px] text-slate-100 outline-none transition focus:border-cyan-300 focus:ring-2 focus:ring-cyan-400/20 max-[420px]:basis-full"
-        />
-        <button type="button" onClick={onClear} title="Xoá Link đang có trong Textbox" className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-red-300/40 bg-red-500/10 text-xs shadow-sm transition hover:bg-red-500/20">❌</button>
-        <button type="button" onClick={onCopy} title="Copy Link đang có trong Textbox vào bộ nhớ" className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-cyan-300/40 bg-cyan-500/10 text-xs shadow-sm transition hover:bg-cyan-500/20">{state === 'copied' ? '✅' : '📋'}</button>
-        <button type="button" onClick={onPaste} title="Copy Link trong bộ nhớ vào Textbox" className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-emerald-300/40 bg-emerald-500/10 text-xs shadow-sm transition hover:bg-emerald-500/20">{state === 'pasted' ? '✅' : '📥'}</button>
-      </div>
-    </div>
-  )
-}
-
-function XyzTransformControls({ value, onChange, title }) {
-  const updateTransform = (group, axis) => (event) => {
-    const nextValue = Number(event.target.value)
-    onChange((prev) => ({ ...prev, [group]: { ...prev[group], [axis]: nextValue } }))
-  }
-
-  const rows = [
-    ['position', 'x', '↔️ Di chuyển trục X', -2, 2, 0.05, value.position.x.toFixed(2)],
-    ['position', 'y', '↕️ Di chuyển trục Y', -2, 2, 0.05, value.position.y.toFixed(2)],
-    ['position', 'z', '↗️ Di chuyển trục Z', -2, 2, 0.05, value.position.z.toFixed(2)],
-    ['rotation', 'x', '🔄 Xoay trục X', -180, 180, 5, `${value.rotation.x}°`],
-    ['rotation', 'y', '🔄 Xoay trục Y', -180, 180, 5, `${value.rotation.y}°`],
-    ['rotation', 'z', '🔄 Xoay trục Z', -180, 180, 5, `${value.rotation.z}°`],
-  ]
-
-  return (
-    <div className="rounded-xl border border-slate-700 bg-slate-900/80 p-3">
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <div className="text-xs font-black text-slate-100">{title}</div>
-        <button type="button" onClick={() => onChange(DEFAULT_XYZ_TRANSFORM)} className="rounded-lg border border-amber-300/40 bg-amber-500/10 px-3 py-1 text-[11px] font-black text-amber-200 transition hover:bg-amber-500/20">Reset</button>
-      </div>
-      <div className="space-y-3">
-        {rows.map(([group, axis, label, min, max, step, display]) => (
-          <label key={`${group}-${axis}`} className="block text-[11px] font-bold text-slate-300">
-            <span className="mb-1 flex items-center justify-between gap-2"><span>{label}</span><span className="font-mono text-cyan-200">{display}</span></span>
-            <input type="range" min={min} max={max} step={step} value={value[group][axis]} onChange={updateTransform(group, axis)} className="w-full accent-cyan-400" />
-          </label>
-        ))}
       </div>
     </div>
   )
