@@ -52,7 +52,11 @@ export function buildCameraPrompt(azimuth, elevation, distance) {
   return `<sks> ${AZIMUTH_NAMES[az]} ${ELEVATION_NAMES[String(el)]} ${DISTANCE_NAMES[distKey]}`
 }
 
-export default function Camera3DAngleGizmo({ mode = 'obj', objUrl, mtlUrl, imageUrl, value, objectTransform, objectTransforms, onChange, onLoadError, onLoadSuccess }) {
+export default function Camera3DAngleGizmo({
+  mode = 'obj', objUrl, mtlUrl, imageUrl, value, objectTransform, objectTransforms,
+  wireframe = false, transparent = false, opacity = 1, color = null, autoRotate = false,
+  onChange, onLoadError, onLoadSuccess,
+}) {
   const wrapperRef = useRef(null)
   const promptRef = useRef(null)
   const liveRef = useRef({ azimuth: value?.azimuth ?? 0, elevation: value?.elevation ?? 0, distance: value?.distance ?? 1.0 })
@@ -62,8 +66,11 @@ export default function Camera3DAngleGizmo({ mode = 'obj', objUrl, mtlUrl, image
   const applyObjectTransformRef = useRef(null)
   const onLoadErrorRef = useRef(onLoadError)
   const onLoadSuccessRef = useRef(onLoadSuccess)
+  const renderModeRef = useRef({ wireframe, transparent, opacity, color, autoRotate })
+  const applyRenderModeRef = useRef(null)
   useEffect(() => { onLoadErrorRef.current = onLoadError }, [onLoadError])
   useEffect(() => { onLoadSuccessRef.current = onLoadSuccess }, [onLoadSuccess])
+  useEffect(() => { renderModeRef.current = { wireframe, transparent, opacity, color, autoRotate } }, [wireframe, transparent, opacity, color, autoRotate])
   useEffect(() => { objectTransformRef.current = objectTransform }, [objectTransform])
   useEffect(() => { objectTransformsRef.current = objectTransforms }, [objectTransforms])
 
@@ -131,6 +138,24 @@ export default function Camera3DAngleGizmo({ mode = 'obj', objUrl, mtlUrl, image
     }
     applyObjectTransform()
 
+    function applyRenderMode() {
+      const mode = renderModeRef.current
+      ;[targetGroup, imageTargetGroup, modelTargetGroup].forEach((group) => {
+        group.traverse((o) => {
+          if (!o.isMesh || !o.material) return
+          const materials = Array.isArray(o.material) ? o.material : [o.material]
+          materials.forEach((m) => {
+            m.wireframe = !!mode.wireframe
+            m.transparent = !!mode.transparent || mode.opacity < 1
+            m.opacity = mode.transparent ? Math.min(mode.opacity, 0.35) : mode.opacity
+            m.depthWrite = !m.transparent
+            if (mode.color && !m.map) m.color?.set(mode.color)
+            m.needsUpdate = true
+          })
+        })
+      })
+    }
+
     function loadTargetModel(url, mtlUrlParam, offsetX = 0, parentGroup = targetGroup) {
       while (parentGroup.children.length) parentGroup.remove(parentGroup.children[0])
       if (!url) return
@@ -150,6 +175,7 @@ export default function Camera3DAngleGizmo({ mode = 'obj', objUrl, mtlUrl, image
           }
         })
         parentGroup.add(object)
+        applyRenderMode()
         applyObjectTransform()
         onLoadSuccessRef.current?.(url)
       }
@@ -199,6 +225,7 @@ export default function Camera3DAngleGizmo({ mode = 'obj', objUrl, mtlUrl, image
           )
           mesh.position.set(offsetX, planeH / 2, 0)
           parentGroup.add(mesh)
+          applyRenderMode()
           applyObjectTransform()
           onLoadSuccessRef.current?.(url)
         },
@@ -428,6 +455,11 @@ export default function Camera3DAngleGizmo({ mode = 'obj', objUrl, mtlUrl, image
     let raf = 0
     function render() {
       raf = requestAnimationFrame(render)
+      if (renderModeRef.current.autoRotate && !isDragging) {
+        targetGroup.rotation.y += 0.006
+        imageTargetGroup.rotation.y += 0.006
+        modelTargetGroup.rotation.y += 0.006
+      }
       renderer.render(scene, camera)
     }
     render()
@@ -442,6 +474,7 @@ export default function Camera3DAngleGizmo({ mode = 'obj', objUrl, mtlUrl, image
 
     // Cho phép cha cập nhật góc từ bên ngoài (vd kéo slider) mà không cần
     // huỷ/tạo lại scene.
+    applyRenderModeRef.current = applyRenderMode
     applyExternalRef.current = (next) => {
       if (!next) return
       if (next.azimuth != null) azimuthAngle = next.azimuth
@@ -474,9 +507,14 @@ export default function Camera3DAngleGizmo({ mode = 'obj', objUrl, mtlUrl, image
       if (wrapper) wrapper.innerHTML = ''
       applyExternalRef.current = null
       applyObjectTransformRef.current = null
+      applyRenderModeRef.current = null
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, objUrl, mtlUrl, imageUrl])
+
+  useEffect(() => {
+    if (applyRenderModeRef.current) applyRenderModeRef.current()
+  }, [wireframe, transparent, opacity, color])
 
   // value điều khiển từ ngoài (sliders) -> áp vào scene đang chạy.
   useEffect(() => {

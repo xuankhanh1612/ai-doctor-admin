@@ -597,6 +597,11 @@ export default function MedicalVisualPlayground({ onFullscreenChange }) {
                 objUrl={gizmoObjUrl}
                 mtlUrl={gizmoMtlUrl}
                 objectTransforms={{ image: imageXyzTransform, obj: modelXyzTransform }}
+                wireframe={viewMode === 'wireframe'}
+                transparent={viewMode === 'xray'}
+                opacity={viewMode === 'xray' ? 0.3 : 1}
+                color={currentOrgan.color}
+                autoRotate={autoRotate}
                 value={cameraAngle}
                 onChange={setCameraAngle}
               />
