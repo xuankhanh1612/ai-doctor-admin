@@ -54,12 +54,12 @@ export default function ObjModelViewer({
   const handControlRef = useRef({ rotation: null, scale: null })
   const [activeHotspot, setActiveHotspot] = useState(null)
   const [hotspotScreens, setHotspotScreens] = useState([])
-  const materialModeRef = useRef({ wireframe, transparent, opacity, color })
+  const renderModeRef = useRef({ wireframe, transparent, opacity, color, autoRotate })
 
   const hotspots = useMemo(() => TOUCH_HOTSPOTS[organId] || TOUCH_HOTSPOTS.heart, [organId])
   handControlRef.current.rotation = customRotation
   handControlRef.current.scale = customScale
-  materialModeRef.current = { wireframe, transparent, opacity, color }
+  renderModeRef.current = { wireframe, transparent, opacity, color, autoRotate }
   spatialRef.current.enabled = enableSpatialHover
   spatialRef.current.handLandmarksRef = handLandmarksRef
   spatialRef.current.hotspots = hotspots
@@ -175,7 +175,7 @@ export default function ObjModelViewer({
           model.object.scale.setScalar(current + (targetScale - current) * 0.12)
         }
       } else {
-        controls.autoRotate = !!autoRotate
+        controls.autoRotate = !!renderModeRef.current.autoRotate
       }
       updateSpatialHotspots()
       controls.update()
@@ -194,7 +194,7 @@ export default function ObjModelViewer({
     function applyMaterialMode() {
       const model = modelRef.current
       if (!model) return
-      const mode = materialModeRef.current
+      const mode = renderModeRef.current
       model.object.traverse((obj) => {
         if (!obj.isMesh || !obj.material) return
         const materials = Array.isArray(obj.material) ? obj.material : [obj.material]
@@ -260,7 +260,7 @@ export default function ObjModelViewer({
   }, [modelUrl, mtlUrl, organId])
 
   useEffect(() => {
-    if (stateRef.current.controls) stateRef.current.controls.autoRotate = !!autoRotate
+    if (stateRef.current.controls) stateRef.current.controls.autoRotate = !!renderModeRef.current.autoRotate
   }, [autoRotate])
 
   useEffect(() => {
