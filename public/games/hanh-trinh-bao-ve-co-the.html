@@ -115,6 +115,13 @@
             </div>
         </div>
 
+        <div class="bg-slate-800 p-2 rounded-xl border border-slate-700 mt-3">
+            <h3 class="text-[10px] font-bold text-slate-400 mb-2 text-center uppercase">Camera cử chỉ</h3>
+            <button id="gesture-camera-btn" onclick="toggleGestureCamera()" class="mode-btn w-full bg-amber-600 hover:bg-amber-500 text-white">🖐️ Bật Camera Cử Chỉ (User 2)</button>
+            <div id="gesture-camera-status" class="mt-2 text-[10px] leading-relaxed text-slate-400">User 1: tay trái · User 2: tay phải.</div>
+            <video id="gesture-video" class="mt-2 hidden w-full rounded-lg border border-slate-700" autoplay playsinline muted></video>
+        </div>
+
         <h3 class="text-xs font-bold text-slate-400 mt-4 border-b border-slate-700 pb-1">2. CHỌN HỆ CƠ QUAN:</h3>
         <div class="grid grid-cols-2 gap-2 mt-2 pb-10 sm:pb-0">
             <button id="btn-brain" class="organ-btn selected" onclick="selectOrgan('brain')">
@@ -180,16 +187,23 @@
         const GRAVITY = 0.4;
         const JUMP = -9; 
 
-        // KEYBOARD
+        // KEYBOARD / TOUCH / CAMERA INPUT
         let keys = {};
+        let cameraKeys = {};
+        const keyAliases = { ' ': [' ', 'space'], Space: [' ', 'space'] };
+        function normalizeKeyList(k) {
+            const base = keyAliases[k] || [k, String(k).toLowerCase()];
+            return [...new Set(base)];
+        }
+        function writeKey(store, k, val) { normalizeKeyList(k).forEach(name => { store[name] = val; }); }
+        function isKeyDown(k) { return normalizeKeyList(k).some(name => !!keys[name] || !!cameraKeys[name]); }
         window.addEventListener('keydown', e => { 
-            keys[e.key] = true; keys[e.key.toLowerCase()] = true; 
+            writeKey(keys, e.key, true);
             if(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " "].includes(e.key)) e.preventDefault(); 
         });
-        window.addEventListener('keyup', e => { 
-            keys[e.key] = false; keys[e.key.toLowerCase()] = false; 
-        });
-        function setKey(k, val) { keys[k] = val; keys[k.toLowerCase()] = val; }
+        window.addEventListener('keyup', e => { writeKey(keys, e.key, false); });
+        function setKey(k, val) { writeKey(keys, k, val); }
+        function setCameraKey(k, val) { writeKey(cameraKeys, k, val); }
 
         function setGameMode(mode, autoStart = true) {
             gameMode = mode;
@@ -299,15 +313,15 @@
         let p1LastShot = 0; let p2LastShot = 0; let bossLastShot = 0;
 
         function applyPhysics(player, controls) {
-            if (keys[controls.left]) player.vx = -4.5;
-            else if (keys[controls.right]) player.vx = 4.5;
+            if (isKeyDown(controls.left)) player.vx = -4.5;
+            else if (isKeyDown(controls.right)) player.vx = 4.5;
             else player.vx = 0;
 
-            if (keys[controls.jump] && player.isGrounded) { 
+            if (isKeyDown(controls.jump) && player.isGrounded) { 
                 player.vy = JUMP; 
                 player.isGrounded = false; 
             }
-            player.shieldActive = !!keys[controls.shield];
+            player.shieldActive = !!isKeyDown(controls.shield);
 
             player.vy += GRAVITY; player.x += player.vx; player.y += player.vy;
             
@@ -337,7 +351,7 @@
             if(p1.hp <= 0) p1.alive = false;
             if(p1.alive) {
                 applyPhysics(p1, { left: 'a', right: 'd', jump: 'w', shield: 's' });
-                if (keys['e'] && Date.now() - p1LastShot > 350) { 
+                if (isKeyDown('e') && Date.now() - p1LastShot > 350) { 
                     projectiles.push({ x: p1.x + p1.width, y: p1.y + p1.height/2, vx: 8, vy: 0, type: 'p1_proj', color: '#34d399', r: 5 });
                     p1LastShot = Date.now();
                 }
@@ -346,7 +360,7 @@
             if(p2.hp <= 0) p2.alive = false;
             if(p2.active && p2.alive) {
                 applyPhysics(p2, { left: 'arrowleft', right: 'arrowright', jump: 'arrowup', shield: 'arrowdown' });
-                if (keys[' '] && Date.now() - p2LastShot > 350) { 
+                if (isKeyDown(' ') && Date.now() - p2LastShot > 350) { 
                     projectiles.push({ x: p2.x + p2.width, y: p2.y + p2.height/2, vx: 8, vy: 0, type: 'p2_proj', color: '#7dd3fc', r: 5 });
                     p2LastShot = Date.now();
                 }
@@ -368,10 +382,10 @@
             } else if (gameMode === 'pvp') {
                 boss.y += boss.vy * boss.dirY;
                 if (boss.y < 60 || boss.y > canvas.height - 60) boss.dirY *= -1;
-                if (keys['arrowleft']) boss.x -= 4; if (keys['arrowright']) boss.x += 4;
+                if (isKeyDown('arrowleft')) boss.x -= 4; if (isKeyDown('arrowright')) boss.x += 4;
                 if(boss.x < canvas.width/2) boss.x = canvas.width/2; if(boss.x > canvas.width - boss.radius) boss.x = canvas.width - boss.radius;
-                boss.shieldActive = !!keys['arrowdown'];
-                if (keys['arrowup'] && Date.now() - bossLastShot > 400) {
+                boss.shieldActive = !!isKeyDown('arrowdown');
+                if (isKeyDown('arrowup') && Date.now() - bossLastShot > 400) {
                     projectiles.push({ x: boss.x - boss.radius, y: boss.y, vx: -7, vy: 0, type: 'boss_proj', color: '#fb7185', r: 6 });
                     bossLastShot = Date.now();
                 }
@@ -518,6 +532,138 @@
                 ctx.font = '14px sans-serif'; ctx.fillStyle='#94a3b8'; ctx.fillText("Mở Menu tay phải để chơi lại", canvas.width/2, 300);
                 ctx.textAlign = 'left';
             }
+        }
+
+        // CAMERA GESTURE CONTROL (MediaPipe Hands)
+        const gestureKeyMap = {
+            p1: { left: 'a', right: 'd', up: 'w', shield: 's', fist: 'e' },
+            p2Coop: { left: 'ArrowLeft', right: 'ArrowRight', up: 'ArrowUp', shield: 'ArrowDown', fist: ' ' },
+            p2Pvp: { left: 'ArrowLeft', right: 'ArrowRight', up: 'ArrowUp', shield: 'ArrowDown', fist: null }
+        };
+        let gestureCameraActive = false;
+        let gestureStream = null;
+        let gestureHands = null;
+        let gestureLoopId = null;
+
+        function setGestureStatus(text, isError = false) {
+            const el = document.getElementById('gesture-camera-status');
+            if (!el) return;
+            el.textContent = text;
+            el.className = `mt-2 text-[10px] leading-relaxed ${isError ? 'text-rose-300' : 'text-slate-400'}`;
+        }
+
+        function loadScriptOnce(src) {
+            return new Promise((resolve, reject) => {
+                if (document.querySelector(`script[src="${src}"]`)) return resolve();
+                const script = document.createElement('script');
+                script.src = src;
+                script.crossOrigin = 'anonymous';
+                script.onload = resolve;
+                script.onerror = reject;
+                document.head.appendChild(script);
+            });
+        }
+
+        async function ensureGestureHands() {
+            await loadScriptOnce('https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js');
+            if (gestureHands) return gestureHands;
+            gestureHands = new Hands({ locateFile: file => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}` });
+            gestureHands.setOptions({ maxNumHands: 2, modelComplexity: 1, minDetectionConfidence: 0.65, minTrackingConfidence: 0.55, selfieMode: true });
+            gestureHands.onResults(handleGestureResults);
+            return gestureHands;
+        }
+
+        async function toggleGestureCamera() {
+            if (gestureCameraActive) return stopGestureCamera();
+            const btn = document.getElementById('gesture-camera-btn');
+            const video = document.getElementById('gesture-video');
+            try {
+                btn.disabled = true;
+                setGestureStatus('Đang tải AI nhận dạng bàn tay...');
+                await ensureGestureHands();
+                gestureStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 640, height: 480 }, audio: false });
+                video.srcObject = gestureStream;
+                video.classList.remove('hidden');
+                await video.play();
+                gestureCameraActive = true;
+                btn.textContent = '⏹️ Tắt Camera Cử Chỉ (User 2)';
+                btn.classList.remove('bg-amber-600', 'hover:bg-amber-500');
+                btn.classList.add('bg-rose-600', 'hover:bg-rose-500');
+                runGestureLoop();
+            } catch (err) {
+                console.error('Gesture camera failed:', err);
+                setGestureStatus('Không thể bật camera cử chỉ. Vui lòng cấp quyền camera và thử lại.', true);
+                stopGestureCamera();
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        function stopGestureCamera() {
+            gestureCameraActive = false;
+            if (gestureLoopId) cancelAnimationFrame(gestureLoopId);
+            gestureLoopId = null;
+            if (gestureStream) gestureStream.getTracks().forEach(track => track.stop());
+            gestureStream = null;
+            clearGestureKeys();
+            const video = document.getElementById('gesture-video');
+            video.pause(); video.srcObject = null; video.classList.add('hidden');
+            const btn = document.getElementById('gesture-camera-btn');
+            btn.textContent = '🖐️ Bật Camera Cử Chỉ (User 2)';
+            btn.classList.add('bg-amber-600', 'hover:bg-amber-500');
+            btn.classList.remove('bg-rose-600', 'hover:bg-rose-500');
+            setGestureStatus('User 1: tay trái · User 2: tay phải.');
+        }
+
+        async function runGestureLoop() {
+            if (!gestureCameraActive || !gestureHands) return;
+            const video = document.getElementById('gesture-video');
+            if (video.readyState >= 2) await gestureHands.send({ image: video });
+            gestureLoopId = requestAnimationFrame(runGestureLoop);
+        }
+
+        function clearGestureKeys() {
+            ['w','a','s','d','e','ArrowLeft','ArrowRight','ArrowUp','ArrowDown',' '].forEach(k => setCameraKey(k, false));
+        }
+
+        function countExtendedFingers(lm, handedness) {
+            const tips = [8, 12, 16, 20], pips = [6, 10, 14, 18];
+            let count = tips.reduce((sum, tip, i) => sum + (lm[tip].y < lm[pips[i]].y ? 1 : 0), 0);
+            const thumbOpen = handedness === 'Right' ? lm[4].x < lm[3].x : lm[4].x > lm[3].x;
+            return count + (thumbOpen ? 1 : 0);
+        }
+
+        function classifyHandGesture(lm, handedness) {
+            const wrist = lm[0], indexTip = lm[8], indexPip = lm[6];
+            const extended = countExtendedFingers(lm, handedness);
+            return {
+                left: indexTip.x < wrist.x - 0.10,
+                right: indexTip.x > wrist.x + 0.10,
+                up: indexTip.y < indexPip.y - 0.08 && indexTip.y < wrist.y - 0.18,
+                shield: extended >= 3,
+                fist: extended <= 1
+            };
+        }
+
+        function applyGestureToKeys(gesture, map) {
+            setCameraKey(map.left, gesture.left);
+            setCameraKey(map.right, gesture.right);
+            setCameraKey(map.up, gesture.up);
+            setCameraKey(map.shield, gesture.shield);
+            if (map.fist) setCameraKey(map.fist, gesture.fist);
+        }
+
+        function handleGestureResults(results) {
+            clearGestureKeys();
+            let leftSeen = false, rightSeen = false;
+            (results.multiHandLandmarks || []).forEach((landmarks, index) => {
+                const handedness = results.multiHandedness?.[index]?.label || '';
+                const gesture = classifyHandGesture(landmarks, handedness);
+                if (handedness === 'Left') { leftSeen = true; applyGestureToKeys(gesture, gestureKeyMap.p1); }
+                if (handedness === 'Right') { rightSeen = true; applyGestureToKeys(gesture, gameMode === 'pvp' ? gestureKeyMap.p2Pvp : gestureKeyMap.p2Coop); }
+            });
+            const p2Text = gameMode === 'pvp' ? 'User 2/PvP: 👈/👉 di chuyển · 🖐️ khiên · 👆 bắn virus' : 'User 2/Co-op: 👈/👉 di chuyển · 👆 nhảy · 🖐️ khiên · ✊ bắn';
+            setGestureStatus(`Camera ON · Tay trái User 1: ${leftSeen ? 'đã nhận' : 'chưa thấy'} · Tay phải User 2: ${rightSeen ? 'đã nhận' : 'chưa thấy'} · ${p2Text}`);
         }
 
         function loop() { update(); draw(); requestAnimationFrame(loop); }
