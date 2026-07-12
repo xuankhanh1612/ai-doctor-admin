@@ -50,7 +50,7 @@ export default function MyPainPathBodyPanel() {
   const [view, setView] = useState('front')
   const [selectedAreas, setSelectedAreas] = useState([])
   const [selectedPoints, setSelectedPoints] = useState([])
-  const [painLevel, setPainLevel] = useState(1)
+  const [activePainPointId, setActivePainPointId] = useState(null)
   const dots = useMemo(() => allDots(view), [view])
   const selectedCount = mode === 'standard' ? selectedAreas.length : selectedPoints.length
 
@@ -59,17 +59,35 @@ export default function MyPainPathBodyPanel() {
       setSelectedAreas(prev => prev.includes(dot.areaId) ? prev.filter(id => id !== dot.areaId) : [...prev, dot.areaId])
       return
     }
-    setSelectedPoints(prev => prev.some(point => point.id === dot.id) ? prev.filter(point => point.id !== dot.id) : [...prev, { ...dot, painLevel: mode === 'painMap' ? painLevel : null }])
+    setSelectedPoints(prev => {
+      const existingPoint = prev.find(point => point.id === dot.id)
+      if (existingPoint) {
+        if (mode === 'painMap') setActivePainPointId(dot.id)
+        return prev
+      }
+      if (mode === 'painMap') setActivePainPointId(dot.id)
+      return [...prev, { ...dot, painLevel: mode === 'painMap' ? 1 : null }]
+    })
   }
 
   const removeChip = (id) => {
-    if (mode === 'standard') setSelectedAreas(prev => prev.filter(areaId => areaId !== id))
-    else setSelectedPoints(prev => prev.filter(point => point.id !== id))
+    if (mode === 'standard') {
+      setSelectedAreas(prev => prev.filter(areaId => areaId !== id))
+      return
+    }
+    setSelectedPoints(prev => prev.filter(point => point.id !== id))
+    if (activePainPointId === id) setActivePainPointId(null)
   }
 
+  const updateActivePainLevel = (level) => {
+    if (!activePainPointId) return
+    setSelectedPoints(prev => prev.map(point => point.id === activePainPointId ? { ...point, painLevel: level } : point))
+  }
+
+  const activePainPoint = selectedPoints.find(point => point.id === activePainPointId)
   const chips = mode === 'standard'
     ? selectedAreas.map(id => ({ id, label: [...FRONT_BODY_AREAS, ...BACK_BODY_AREAS].find(area => `${id}`.endsWith(area.id))?.label || id }))
-    : selectedPoints.map(point => ({ id: point.id, label: `${point.view.toUpperCase()} · ${point.areaLabel} — ${mode === 'painMap' && point.painLevel ? `pain level ${point.painLevel}/5` : 'point'}` }))
+    : selectedPoints.map(point => ({ id: point.id, label: `${point.view.toUpperCase()} · ${point.areaLabel} — ${mode === 'painMap' && point.painLevel ? `pain level ${point.painLevel}/5` : 'point'}`, active: point.id === activePainPointId }))
 
   return (
     <section style={styles.page}>
@@ -90,12 +108,15 @@ export default function MyPainPathBodyPanel() {
           <div style={styles.dotGrid} aria-label="Interactive pain body map">
             {dots.map(dot => {
               const selected = mode === 'standard' ? selectedAreas.includes(dot.areaId) : selectedPoints.some(point => point.id === dot.id)
-              return <button key={dot.id} onClick={() => handleDotClick(dot)} title={dot.areaLabel} style={{ ...styles.dot, left: `${dot.x * 4}%`, top: `${dot.y * 3.6}%`, background: selected ? (mode === 'painMap' ? getPainColor(selectedPoints.find(point => point.id === dot.id)?.painLevel || painLevel) : '#cc5d38') : '#747166' }} />
+              return <button key={dot.id} onClick={() => handleDotClick(dot)} title={dot.areaLabel} style={{ ...styles.dot, left: `${dot.x * 4}%`, top: `${dot.y * 3.6}%`, background: selected ? (mode === 'painMap' ? getPainColor(selectedPoints.find(point => point.id === dot.id)?.painLevel) : '#cc5d38') : '#747166', outline: activePainPointId === dot.id ? '2px solid #fff' : 'none' }} />
             })}
           </div>
           <div style={styles.chipsTitle}>BODY MAP · {mode === 'standard' ? 'SELECT AFFECTED AREAS' : mode === 'detailed' ? 'TAP A SPECIFIC POINT' : 'TAP A POINT, THEN RATE PAIN'}</div>
-          <div style={styles.chips}>{chips.map(chip => <button key={chip.id} onClick={() => removeChip(chip.id)} style={styles.chip}>{chip.label} <span style={styles.chipX}>×</span></button>)}</div>
-          {mode === 'painMap' && <div style={styles.painScale} aria-label="Pain intensity scale from yellow level 1 to red level 5">{[1, 2, 3, 4, 5].map(level => <button key={level} onClick={() => setPainLevel(level)} style={{ ...styles.painButton, background: getPainColor(level), outline: painLevel === level ? '2px solid #fff' : 'none' }}>{level}</button>)}</div>}
+          <div style={styles.chips}>{chips.map(chip => <button key={chip.id} onClick={() => mode === 'painMap' ? setActivePainPointId(chip.id) : removeChip(chip.id)} style={{ ...styles.chip, ...(chip.active ? styles.chipActive : {}) }}>{chip.label} <span onClick={(event) => { event.stopPropagation(); removeChip(chip.id) }} style={styles.chipX}>×</span></button>)}</div>
+          {mode === 'painMap' && <div style={styles.painScaleWrap}>
+            <div style={styles.painScaleLabel}>{activePainPoint ? `Rate pain for ${activePainPoint.view.toUpperCase()} · ${activePainPoint.areaLabel}` : 'Tap a point, then set its own pain level'}</div>
+            <div style={styles.painScale} aria-label="Pain intensity scale from yellow level 1 to red level 5 for the active point">{[1, 2, 3, 4, 5].map(level => <button key={level} disabled={!activePainPoint} onClick={() => updateActivePainLevel(level)} style={{ ...styles.painButton, background: getPainColor(level), outline: activePainPoint?.painLevel === level ? '2px solid #fff' : 'none', opacity: activePainPoint ? 1 : 0.45 }}>{level}</button>)}</div>
+          </div>}
         </div>
         <div style={styles.controlPane}>
           <div style={styles.meta}><span>STAGE</span><b>&gt; BODY SELECTION</b><span>VIEW</span><b>&gt; {view.toUpperCase()}</b><span>SELECTED</span><b>&gt; {selectedCount} {selectedCount === 1 ? 'POINT' : 'POINTS'}</b></div>
@@ -120,6 +141,6 @@ const styles = {
   hero: { textAlign: 'center', padding: '0 24px 34px' }, title: { fontSize: 'clamp(44px, 6vw, 76px)', margin: '0 0 20px', fontWeight: 900, letterSpacing: '-0.05em' }, subtitle: { fontSize: 22, color: '#746f68', margin: 0 },
   card: { width: 'min(1180px, calc(100% - 48px))', margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 1fr', borderRadius: 24, overflow: 'hidden', boxShadow: '0 22px 60px rgba(33,28,20,.12)', background: '#fff' },
   bodyPane: { minHeight: 680, background: '#282724', padding: 30, position: 'relative', color: '#c4bcb0' }, tabs: { display: 'flex', gap: 20 }, tab: { border: 0, background: 'transparent', color: '#8c857b', letterSpacing: '.12em', fontFamily: 'monospace', cursor: 'pointer' }, tabActive: { border: 0, borderBottom: '1px solid #c85d3a', background: 'transparent', color: '#c85d3a', letterSpacing: '.12em', fontFamily: 'monospace', cursor: 'pointer' },
-  dotGrid: { position: 'relative', height: 520, marginTop: 20, backgroundImage: 'radial-gradient(rgba(255,255,255,.08) 1px, transparent 1px)', backgroundSize: '32px 32px' }, dot: { position: 'absolute', width: 9, height: 9, borderRadius: 99, border: 0, transform: 'translate(-50%, -50%)', cursor: 'pointer' }, chipsTitle: { fontFamily: 'monospace', letterSpacing: '.16em', fontSize: 12, marginBottom: 12 }, chips: { display: 'flex', flexWrap: 'wrap', gap: 9 }, chip: { border: 0, borderRadius: 18, background: '#56524b', color: '#f0ece5', padding: '8px 12px', fontSize: 14 }, chipX: { color: '#d86b45', fontWeight: 900 }, painScale: { marginTop: 18, padding: 14, borderRadius: 12, background: '#4b4740', display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10 }, painButton: { border: 0, borderRadius: 8, padding: '10px 0', fontWeight: 800 },
+  dotGrid: { position: 'relative', height: 520, marginTop: 20, backgroundImage: 'radial-gradient(rgba(255,255,255,.08) 1px, transparent 1px)', backgroundSize: '32px 32px' }, dot: { position: 'absolute', width: 9, height: 9, borderRadius: 99, border: 0, transform: 'translate(-50%, -50%)', cursor: 'pointer' }, chipsTitle: { fontFamily: 'monospace', letterSpacing: '.16em', fontSize: 12, marginBottom: 12 }, chips: { display: 'flex', flexWrap: 'wrap', gap: 9 }, chip: { border: 0, borderRadius: 18, background: '#56524b', color: '#f0ece5', padding: '8px 12px', fontSize: 14 }, chipX: { color: '#d86b45', fontWeight: 900 }, chipActive: { boxShadow: '0 0 0 2px #f0ece5 inset', background: '#6a655d' }, painScaleWrap: { marginTop: 18, padding: 14, borderRadius: 12, background: '#4b4740' }, painScaleLabel: { color: '#d6cec2', fontSize: 13, marginBottom: 10 }, painScale: { display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10 }, painButton: { border: 0, borderRadius: 8, padding: '10px 0', fontWeight: 800 },
   controlPane: { padding: '50px 52px', position: 'relative' }, meta: { display: 'grid', gridTemplateColumns: '120px 1fr', gap: '7px 18px', fontFamily: 'monospace', color: '#948e85', letterSpacing: '.08em' }, rule: { border: 0, borderTop: '1px solid #e4dfd6', margin: '28px 0' }, question: { fontSize: 30, margin: 0 }, helper: { color: '#69645e', fontSize: 17, lineHeight: 1.5 }, label: { display: 'block', fontFamily: 'monospace', letterSpacing: '.12em', color: '#a49d94', fontSize: 12, marginTop: 26 }, select: { width: '100%', border: '1px solid #e8e1d7', borderRadius: 12, padding: '14px 18px', fontSize: 17, color: '#4b4742', background: '#fff' }, continueButton: { position: 'absolute', left: 52, right: 52, bottom: 46, border: 0, borderRadius: 14, background: '#c85d3a', color: '#fff', padding: 18, fontSize: 17, fontWeight: 800 },
 }
