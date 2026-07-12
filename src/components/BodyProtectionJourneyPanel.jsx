@@ -3,7 +3,7 @@ import { ShieldCheck, Maximize2, Minimize2, Hand } from 'lucide-react'
 import NavButtons from './NavButtons.jsx'
 import { useApp } from '../context/AppContext'
 import TouchlessHandCam from './webcam/TouchlessHandCam.jsx'
-import { classifyGestureKey, GESTURE_KEY_LABELS } from './webcam/gestureToKey.js'
+import { classifyGestureKey, expandUser1GestureKeys, GESTURE_KEY_LABELS } from './webcam/gestureToKey.js'
 
 // ============================================================================
 // BodyProtectionJourneyPanel — "Hành Trình Bảo Vệ Cơ Thể"
@@ -59,7 +59,9 @@ export default function BodyProtectionJourneyPanel({ onNext, nextLabel, onPrev, 
   const sendKeyToGame = useCallback((key, isDown) => {
     if (!key) return
     try {
-      iframeRef.current?.contentWindow?.setKey?.(key, isDown)
+      expandUser1GestureKeys(key).forEach((mappedKey) => {
+        iframeRef.current?.contentWindow?.setKey?.(mappedKey, isDown)
+      })
     } catch (err) {
       console.warn('[BodyProtectionJourneyPanel] Không gọi được setKey() trong game iframe:', err)
     }
