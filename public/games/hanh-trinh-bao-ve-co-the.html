@@ -117,8 +117,15 @@
 
         <div class="bg-slate-800 p-2 rounded-xl border border-slate-700 mt-3">
             <h3 class="text-[10px] font-bold text-slate-400 mb-2 text-center uppercase">Camera cử chỉ</h3>
-            <button id="gesture-camera-btn" onclick="toggleGestureCamera()" class="mode-btn w-full bg-amber-600 hover:bg-amber-500 text-white">🖐️ Bật Camera Cử Chỉ (User 2)</button>
-            <div id="gesture-camera-status" class="mt-2 text-[10px] leading-relaxed text-slate-400">User 1: tay trái · User 2: tay phải.</div>
+            <div class="flex flex-col gap-2">
+                <button id="gesture-camera-user1-btn" onclick="toggleGestureCamera('user1')" class="mode-btn w-full bg-emerald-600 hover:bg-emerald-500 text-white">🖐️ Bật Camera Cử Chỉ (User 1)</button>
+                <button id="gesture-camera-2user-btn" onclick="toggleGestureCamera('twoUser')" class="mode-btn w-full bg-amber-600 hover:bg-amber-500 text-white">🖐️ Bật Camera Cử Chỉ 2 User</button>
+            </div>
+            <div class="mt-2 grid grid-cols-2 gap-1 text-[10px] font-bold">
+                <div id="gesture-user1-status" class="rounded-lg border border-emerald-700/60 bg-emerald-950/40 px-2 py-1 text-emerald-300">User 1 · tay trái màn hình: chờ</div>
+                <div id="gesture-user2-status" class="rounded-lg border border-sky-700/60 bg-sky-950/40 px-2 py-1 text-sky-300">User 2 · tay phải: chờ</div>
+            </div>
+            <div id="gesture-camera-status" class="mt-2 text-[10px] leading-relaxed text-slate-400">Luôn dùng 1 camera. Bật User 1 để nhận tay trái màn hình; bật 2 User để nhận thêm tay phải cho User 2.</div>
             <video id="gesture-video" class="mt-2 hidden w-full rounded-lg border border-slate-700" autoplay playsinline muted></video>
         </div>
 
@@ -537,10 +544,10 @@
         // CAMERA GESTURE CONTROL (MediaPipe Hands)
         const gestureKeyMap = {
             p1: { left: 'a', right: 'd', up: 'w', shield: 's', fist: 'e' },
-            p2Coop: { left: 'ArrowLeft', right: 'ArrowRight', up: 'ArrowUp', shield: 'ArrowDown', fist: ' ' },
-            p2Pvp: { left: 'ArrowLeft', right: 'ArrowRight', up: 'ArrowUp', shield: 'ArrowDown', fist: null }
+            p2: { left: 'ArrowLeft', right: 'ArrowRight', up: 'ArrowUp', shield: 'ArrowDown', fist: ' ' }
         };
         let gestureCameraActive = false;
+        let gestureControlMode = 'off'; // off | user1 | twoUser
         let gestureStream = null;
         let gestureHands = null;
         let gestureLoopId = null;
@@ -550,6 +557,30 @@
             if (!el) return;
             el.textContent = text;
             el.className = `mt-2 text-[10px] leading-relaxed ${isError ? 'text-rose-300' : 'text-slate-400'}`;
+        }
+
+        function setGestureUserStatus(id, text, color, active) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.textContent = text;
+            const palette = {
+                emerald: { active: 'border-emerald-400 bg-emerald-900/70 text-white', idle: 'border-emerald-700/60 bg-emerald-950/40 text-emerald-300' },
+                sky: { active: 'border-sky-400 bg-sky-900/70 text-white', idle: 'border-sky-700/60 bg-sky-950/40 text-sky-300' }
+            };
+            const stateClass = active ? palette[color].active : palette[color].idle;
+            el.className = `rounded-lg border px-2 py-1 ${stateClass}`;
+        }
+
+        function setGestureButtonState(activeMode = 'off') {
+            const user1Btn = document.getElementById('gesture-camera-user1-btn');
+            const twoUserBtn = document.getElementById('gesture-camera-2user-btn');
+            if (!user1Btn || !twoUserBtn) return;
+
+            user1Btn.textContent = activeMode === 'user1' ? '⏹️ Tắt Camera Cử Chỉ (User 1)' : '🖐️ Bật Camera Cử Chỉ (User 1)';
+            twoUserBtn.textContent = activeMode === 'twoUser' ? '⏹️ Tắt Camera Cử Chỉ 2 User' : '🖐️ Bật Camera Cử Chỉ 2 User';
+
+            user1Btn.className = `mode-btn w-full text-white ${activeMode === 'user1' ? 'bg-rose-600 hover:bg-rose-500' : 'bg-emerald-600 hover:bg-emerald-500'}`;
+            twoUserBtn.className = `mode-btn w-full text-white ${activeMode === 'twoUser' ? 'bg-rose-600 hover:bg-rose-500' : 'bg-amber-600 hover:bg-amber-500'}`;
         }
 
         function loadScriptOnce(src) {
@@ -573,34 +604,39 @@
             return gestureHands;
         }
 
-        async function toggleGestureCamera() {
-            if (gestureCameraActive) return stopGestureCamera();
-            const btn = document.getElementById('gesture-camera-btn');
+        async function toggleGestureCamera(mode = 'twoUser') {
+            if (gestureCameraActive && gestureControlMode === mode) return stopGestureCamera();
+            const user1Btn = document.getElementById('gesture-camera-user1-btn');
+            const twoUserBtn = document.getElementById('gesture-camera-2user-btn');
             const video = document.getElementById('gesture-video');
             try {
-                btn.disabled = true;
-                setGestureStatus('Đang tải AI nhận dạng bàn tay...');
+                if (user1Btn) user1Btn.disabled = true;
+                if (twoUserBtn) twoUserBtn.disabled = true;
+                gestureControlMode = mode;
+                setGestureButtonState(mode);
+                setGestureStatus(mode === 'twoUser' ? 'Đang bật 1 camera để nhận User 1 + User 2...' : 'Đang bật camera để nhận User 1...');
                 await ensureGestureHands();
-                gestureStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 640, height: 480 }, audio: false });
-                video.srcObject = gestureStream;
-                video.classList.remove('hidden');
-                await video.play();
+                if (!gestureStream) {
+                    gestureStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 640, height: 480 }, audio: false });
+                    video.srcObject = gestureStream;
+                    video.classList.remove('hidden');
+                    await video.play();
+                }
                 gestureCameraActive = true;
-                btn.textContent = '⏹️ Tắt Camera Cử Chỉ (User 2)';
-                btn.classList.remove('bg-amber-600', 'hover:bg-amber-500');
-                btn.classList.add('bg-rose-600', 'hover:bg-rose-500');
-                runGestureLoop();
+                if (!gestureLoopId) runGestureLoop();
             } catch (err) {
                 console.error('Gesture camera failed:', err);
                 setGestureStatus('Không thể bật camera cử chỉ. Vui lòng cấp quyền camera và thử lại.', true);
                 stopGestureCamera();
             } finally {
-                btn.disabled = false;
+                if (user1Btn) user1Btn.disabled = false;
+                if (twoUserBtn) twoUserBtn.disabled = false;
             }
         }
 
         function stopGestureCamera() {
             gestureCameraActive = false;
+            gestureControlMode = 'off';
             if (gestureLoopId) cancelAnimationFrame(gestureLoopId);
             gestureLoopId = null;
             if (gestureStream) gestureStream.getTracks().forEach(track => track.stop());
@@ -608,15 +644,14 @@
             clearGestureKeys();
             const video = document.getElementById('gesture-video');
             video.pause(); video.srcObject = null; video.classList.add('hidden');
-            const btn = document.getElementById('gesture-camera-btn');
-            btn.textContent = '🖐️ Bật Camera Cử Chỉ (User 2)';
-            btn.classList.add('bg-amber-600', 'hover:bg-amber-500');
-            btn.classList.remove('bg-rose-600', 'hover:bg-rose-500');
-            setGestureStatus('User 1: tay trái · User 2: tay phải.');
+            setGestureButtonState('off');
+            setGestureStatus('Luôn dùng 1 camera. Bật User 1 để nhận tay trái màn hình; bật 2 User để nhận thêm tay phải cho User 2.');
+            setGestureUserStatus('gesture-user1-status', 'User 1 · tay trái màn hình: chờ', 'emerald', false);
+            setGestureUserStatus('gesture-user2-status', 'User 2 · tay phải: chờ', 'sky', false);
         }
 
         async function runGestureLoop() {
-            if (!gestureCameraActive || !gestureHands) return;
+            if (!gestureCameraActive || !gestureHands) { gestureLoopId = null; return; }
             const video = document.getElementById('gesture-video');
             if (video.readyState >= 2) await gestureHands.send({ image: video });
             gestureLoopId = requestAnimationFrame(runGestureLoop);
@@ -653,17 +688,53 @@
             if (map.fist) setCameraKey(map.fist, gesture.fist);
         }
 
+        function getHandCenterX(landmarks) {
+            return landmarks.reduce((sum, point) => sum + point.x, 0) / landmarks.length;
+        }
+
+        function getGestureAssignments(results) {
+            const hands = (results.multiHandLandmarks || []).map((landmarks, index) => ({
+                landmarks,
+                index,
+                centerX: getHandCenterX(landmarks),
+                handedness: results.multiHandedness?.[index]?.label || ''
+            }));
+            const assignments = { user1: null, user2: null };
+            const leftScreenHands = hands.filter(hand => hand.centerX <= 0.56);
+            const rightScreenHands = hands.filter(hand => hand.centerX >= 0.44);
+
+            // User 1 is intentionally limited to the left side of the camera view.
+            assignments.user1 = leftScreenHands.find(hand => hand.handedness === 'Left') || leftScreenHands.sort((a, b) => a.centerX - b.centerX)[0] || null;
+
+            if (gestureControlMode === 'twoUser') {
+                // User 2 is the right-hand/right-side participant added by the 2 User button.
+                assignments.user2 = rightScreenHands.find(hand => hand.handedness === 'Right' && hand !== assignments.user1) || rightScreenHands.sort((a, b) => b.centerX - a.centerX).find(hand => hand !== assignments.user1) || null;
+
+                if ((!assignments.user1 || !assignments.user2) && hands.length >= 2) {
+                    const byX = [...hands].sort((a, b) => a.centerX - b.centerX);
+                    assignments.user1 = assignments.user1 || byX[0];
+                    assignments.user2 = assignments.user2 || byX[byX.length - 1];
+                }
+            }
+
+            return assignments;
+        }
+
         function handleGestureResults(results) {
             clearGestureKeys();
-            let leftSeen = false, rightSeen = false;
-            (results.multiHandLandmarks || []).forEach((landmarks, index) => {
-                const handedness = results.multiHandedness?.[index]?.label || '';
-                const gesture = classifyHandGesture(landmarks, handedness);
-                if (handedness === 'Left') { leftSeen = true; applyGestureToKeys(gesture, gestureKeyMap.p1); }
-                if (handedness === 'Right') { rightSeen = true; applyGestureToKeys(gesture, gameMode === 'pvp' ? gestureKeyMap.p2Pvp : gestureKeyMap.p2Coop); }
-            });
-            const p2Text = gameMode === 'pvp' ? 'User 2/PvP: 👈/👉 di chuyển · 🖐️ khiên · 👆 bắn virus' : 'User 2/Co-op: 👈/👉 di chuyển · 👆 nhảy · 🖐️ khiên · ✊ bắn';
-            setGestureStatus(`Camera ON · Tay trái User 1: ${leftSeen ? 'đã nhận' : 'chưa thấy'} · Tay phải User 2: ${rightSeen ? 'đã nhận' : 'chưa thấy'} · ${p2Text}`);
+            const { user1, user2 } = getGestureAssignments(results);
+
+            if (user1) applyGestureToKeys(classifyHandGesture(user1.landmarks, 'Left'), gestureKeyMap.p1);
+            if (gestureControlMode === 'twoUser' && user2) applyGestureToKeys(classifyHandGesture(user2.landmarks, 'Right'), gestureKeyMap.p2);
+
+            setGestureUserStatus('gesture-user1-status', `User 1 · tay trái màn hình: ${user1 ? 'đã nhận' : 'chưa thấy'}`, 'emerald', !!user1);
+            setGestureUserStatus('gesture-user2-status', `User 2 · tay phải: ${gestureControlMode === 'twoUser' ? (user2 ? 'đã nhận' : 'chưa thấy') : 'chưa bật'}`, 'sky', gestureControlMode === 'twoUser' && !!user2);
+
+            const handCount = results.multiHandLandmarks?.length || 0;
+            const modeText = gestureControlMode === 'twoUser'
+                ? '2 User: User 1 tay trái màn hình + User 2 tay phải · User 2: 👈/👉 di chuyển · 👆 nhảy · 🖐️ khiên · ✊ Space bắn'
+                : 'User 1: chỉ nhận tay trái màn hình theo mapping W/A/S/D/E cũ';
+            setGestureStatus(`Camera ON · 1 camera · Đang thấy ${handCount}/2 bàn tay · ${modeText}`);
         }
 
         function loop() { update(); draw(); requestAnimationFrame(loop); }
