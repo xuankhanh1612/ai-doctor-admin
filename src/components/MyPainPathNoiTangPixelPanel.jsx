@@ -1,9 +1,9 @@
 import React, { useMemo, useState } from 'react'
 
 const PARTS = [
-  { id: 'head', label: 'Head', sections: ['Eyes & Brows', 'Nose', 'Mouth'] },
-  { id: 'chest', label: 'Chest', sections: ['Left Lower Chest', 'Right Chest', 'Left Chest'] },
-  { id: 'stomach', label: 'Stomach', sections: ['Upper Abdomen', 'Lower Left Abdomen', 'Lower Right Abdomen', 'Center Abdomen'] },
+  { id: 'head', label: 'Head', sections: ['Eyes & Brows', 'Nose', 'Mouth', 'Jaw & Chin'] },
+  { id: 'chest', label: 'Chest', sections: ['Right Chest', 'Left Chest', 'Left Lower Chest', 'Right Lower Chest'] },
+  { id: 'stomach', label: 'Stomach', sections: ['Upper Right Abdomen', 'Upper Left Abdomen', 'Navel (Center)', 'Lower Right Abdomen', 'Lower Left Abdomen'] },
   { id: 'leftHand', label: 'Left Hand', sections: ['Thumb', 'Index Finger', 'Middle Finger', 'Ring Finger', 'Pinky Finger', 'Palm'] },
   { id: 'rightHand', label: 'Right Hand', sections: ['Pinky Finger', 'Ring Finger', 'Middle Finger', 'Thumb', 'Index Finger', 'Palm'] },
   { id: 'leftLeg', label: 'Left Leg', sections: ['Thigh', 'Knee', 'Shin', 'Ankle', 'Foot'] },
@@ -23,13 +23,13 @@ function buildDots(partId) {
 
       if (partId === 'head') {
         const visible = isEllipse(x, y, 21, 18, 11.5, 12.5) || isEllipse(x, y, 13, 22, 3.4, 3.2) || isEllipse(x, y, 29, 22, 3.4, 3.2) || isEllipse(x, y, 21, 30, 6.7, 4.8)
-        if (visible) section = y < 18 ? 'Eyes & Brows' : between(y, 18, 24) ? 'Nose' : 'Mouth'
+        if (visible) section = y < 18 ? 'Eyes & Brows' : between(y, 18, 23) ? 'Nose' : y < 29 ? 'Mouth' : 'Jaw & Chin'
       } else if (partId === 'chest') {
         const visible = isEllipse(x, y, 21, 20, 14.5, 13)
-        if (visible) section = x < 21 ? (y > 24 ? 'Left Lower Chest' : 'Left Chest') : 'Right Chest'
+        if (visible) section = x < 21 ? (y > 24 ? 'Left Lower Chest' : 'Left Chest') : (y > 24 ? 'Right Lower Chest' : 'Right Chest')
       } else if (partId === 'stomach') {
         const visible = isEllipse(x, y, 21, 19, 13.5, 12.5)
-        if (visible) section = y < 17 ? 'Upper Abdomen' : x < 18 ? 'Lower Left Abdomen' : x > 24 ? 'Lower Right Abdomen' : 'Center Abdomen'
+        if (visible) section = isEllipse(x, y, 21, 20, 4.4, 4.4) ? 'Navel (Center)' : y < 19 ? (x < 21 ? 'Upper Left Abdomen' : 'Upper Right Abdomen') : (x < 21 ? 'Lower Left Abdomen' : 'Lower Right Abdomen')
       } else if (partId === 'back') {
         const visible = isEllipse(x, y, 21, 20, 14, 14)
         if (visible) section = y < 20 ? (x < 21 ? 'Right Shoulder Blade' : 'Left Shoulder Blade') : (x < 21 ? 'Lower Right Back' : 'Mid Left Back')
