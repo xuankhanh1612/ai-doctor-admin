@@ -46,6 +46,7 @@ import BodyProtectionJourneyPanel from './components/BodyProtectionJourneyPanel.
 import MyPainPathBodyPanel from './components/MyPainPathBodyPanel.jsx'
 import MyPainPathBodyPixelPanel from './components/MyPainPathBodyPixelPanel.jsx'
 import MyPainPathNoiTangPanel from './components/MyPainPathNoiTangPanel.jsx'
+import MyPainPathNoiTangPixelPanel from './components/MyPainPathNoiTangPixelPanel.jsx'
 import ChooseUserRolePanel from './components/ChooseUserRolePanel.jsx'
 import AvatarCreatorPanel from './components/AvatarCreatorPanel.jsx'
 import Make3DModelPanel from './components/Make3DModelPanel.jsx'
@@ -67,7 +68,7 @@ import { addNotification } from './lib/notifications.js'
 import { useTTS } from './lib/groqAiClient.js'
 
 // Thứ tự này đồng bộ menu chính và nút điều hướng qua/lại giữa các màn hình.
-const PANELS = ['bodyProtectionJourney', 'myPainPathBody', 'myPainPathBodyPixel', 'myPainPathNoiTang', 'healthJourneyGame', 'medicalAssetStore', 'medicalVisualPlayground', 'medicalVisualCameraAngle3D', 'myRewardHealth', 'affiliateControl', 'affiliate', 'rssPortal', 'waterDrinkChatBot', 'wikiMedVision', 'fullDocSummarization', 'documentOCR', 'cameraAngle3DStudio', 'organConnection', 'healthJourney', 'lunchJourney', 'dinnerJourney', 'upload', 'imaging', 'checkin', 'family', 'record', 'familyRelationship', 'matrix3dBody', 'omnidirectional3dBody', 'twin', 'telemedicine', 'statAnalysis', 'swarm', 'consensus', 'varCheck', 'protein3d', 'aiHealthcareVision', 'aiHealthcareVisionControl', 'stressRelief', 'aiInbodyPortal', 'printPortal', 'patientReflect', 'chatHistory', 'myImageToVideo', 'make3DModel', 'my3dAsset', 'twoDTo3DAsset', 'xyzCameraAngle']
+const PANELS = ['bodyProtectionJourney', 'myPainPathBody', 'myPainPathBodyPixel', 'myPainPathNoiTang', 'myPainPathNoiTangPixel', 'healthJourneyGame', 'medicalAssetStore', 'medicalVisualPlayground', 'medicalVisualCameraAngle3D', 'myRewardHealth', 'affiliateControl', 'affiliate', 'rssPortal', 'waterDrinkChatBot', 'wikiMedVision', 'fullDocSummarization', 'documentOCR', 'cameraAngle3DStudio', 'organConnection', 'healthJourney', 'lunchJourney', 'dinnerJourney', 'upload', 'imaging', 'checkin', 'family', 'record', 'familyRelationship', 'matrix3dBody', 'omnidirectional3dBody', 'twin', 'telemedicine', 'statAnalysis', 'swarm', 'consensus', 'varCheck', 'protein3d', 'aiHealthcareVision', 'aiHealthcareVisionControl', 'stressRelief', 'aiInbodyPortal', 'printPortal', 'patientReflect', 'chatHistory', 'myImageToVideo', 'make3DModel', 'my3dAsset', 'twoDTo3DAsset', 'xyzCameraAngle']
 
 export default function App() {
   const { user, loading } = useAuth()
@@ -154,6 +155,7 @@ export default function App() {
     myPainPathBody: 'My Pain Path Body',
     myPainPathBodyPixel: 'My Pain Path Body Pixel',
     myPainPathNoiTang: 'My Pain Path Nội Tạng',
+    myPainPathNoiTangPixel: 'My Pain Path Nội Tạng Pixel',
     healthJourneyGame: 'Health Journey Game',
     medicalAssetStore: 'Chợ Tài nguyên 3D', // <--- THÊM NHÃN TẠI ĐÂY
     medicalVisualPlayground: 'Medical 3D Lab (Touchless)',
@@ -417,6 +419,7 @@ export default function App() {
             {active === 'myPainPathBody' && <MyPainPathBodyPanel />}
             {active === 'myPainPathBodyPixel' && <MyPainPathBodyPixelPanel />}
             {active === 'myPainPathNoiTang' && <MyPainPathNoiTangPanel />}
+            {active === 'myPainPathNoiTangPixel' && <MyPainPathNoiTangPixelPanel />}
             {active === 'healthJourneyGame' && <HealthJourneyGamePanel onNext={goNext} nextLabel={nextLabel} onViewMedicalRecord={() => setActive('upload')} onOpenMyRewardHealth={() => setActive('myRewardHealth')} />}
             {active === 'medicalAssetStore' && <MedicalAssetStorePanel />} {/* <--- RENDER PANEL Ở ĐÂY */}
             {active === 'medicalVisualPlayground' && <MedicalVisualPlayground onFullscreenChange={setHideSidebarForFocus} />}
