@@ -43,6 +43,7 @@ import PrintCenter from './print/PrintCenter.jsx'
 import UserProfilePanel from './components/UserProfilePanel.jsx'
 import DonationHeroPanel from './components/DonationHeroPanel.jsx'
 import BodyProtectionJourneyPanel from './components/BodyProtectionJourneyPanel.jsx'
+import MyPainPathBodyPanel from './components/MyPainPathBodyPanel.jsx'
 import ChooseUserRolePanel from './components/ChooseUserRolePanel.jsx'
 import AvatarCreatorPanel from './components/AvatarCreatorPanel.jsx'
 import Make3DModelPanel from './components/Make3DModelPanel.jsx'
@@ -64,7 +65,7 @@ import { addNotification } from './lib/notifications.js'
 import { useTTS } from './lib/groqAiClient.js'
 
 // Thứ tự này đồng bộ menu chính và nút điều hướng qua/lại giữa các màn hình.
-const PANELS = ['bodyProtectionJourney', 'healthJourneyGame', 'medicalAssetStore', 'medicalVisualPlayground', 'medicalVisualCameraAngle3D', 'myRewardHealth', 'affiliateControl', 'affiliate', 'rssPortal', 'waterDrinkChatBot', 'wikiMedVision', 'fullDocSummarization', 'documentOCR', 'cameraAngle3DStudio', 'organConnection', 'healthJourney', 'lunchJourney', 'dinnerJourney', 'upload', 'imaging', 'checkin', 'family', 'record', 'familyRelationship', 'matrix3dBody', 'omnidirectional3dBody', 'twin', 'telemedicine', 'statAnalysis', 'swarm', 'consensus', 'varCheck', 'protein3d', 'aiHealthcareVision', 'aiHealthcareVisionControl', 'stressRelief', 'aiInbodyPortal', 'printPortal', 'patientReflect', 'chatHistory', 'myImageToVideo', 'make3DModel', 'my3dAsset', 'twoDTo3DAsset', 'xyzCameraAngle']
+const PANELS = ['bodyProtectionJourney', 'myPainPathBody', 'healthJourneyGame', 'medicalAssetStore', 'medicalVisualPlayground', 'medicalVisualCameraAngle3D', 'myRewardHealth', 'affiliateControl', 'affiliate', 'rssPortal', 'waterDrinkChatBot', 'wikiMedVision', 'fullDocSummarization', 'documentOCR', 'cameraAngle3DStudio', 'organConnection', 'healthJourney', 'lunchJourney', 'dinnerJourney', 'upload', 'imaging', 'checkin', 'family', 'record', 'familyRelationship', 'matrix3dBody', 'omnidirectional3dBody', 'twin', 'telemedicine', 'statAnalysis', 'swarm', 'consensus', 'varCheck', 'protein3d', 'aiHealthcareVision', 'aiHealthcareVisionControl', 'stressRelief', 'aiInbodyPortal', 'printPortal', 'patientReflect', 'chatHistory', 'myImageToVideo', 'make3DModel', 'my3dAsset', 'twoDTo3DAsset', 'xyzCameraAngle']
 
 export default function App() {
   const { user, loading } = useAuth()
@@ -148,6 +149,7 @@ export default function App() {
     chooseUserRole: 'Chọn Vai Trò Anh Hùng',
     donationHero: 'Anh Hùng Hiến Tặng',
     bodyProtectionJourney: 'Hành Trình Bảo Vệ Cơ Thể',
+    myPainPathBody: 'My Pain Path Body',
     healthJourneyGame: 'Health Journey Game',
     medicalAssetStore: 'Chợ Tài nguyên 3D', // <--- THÊM NHÃN TẠI ĐÂY
     medicalVisualPlayground: 'Medical 3D Lab (Touchless)',
@@ -408,6 +410,7 @@ export default function App() {
             {active === 'adminConcept' && !user?.isAdmin && (
               <div style={{ padding: 40, textAlign: 'center', color: '#ff5252' }}>🔒 Admin only</div>
             )}
+            {active === 'myPainPathBody' && <MyPainPathBodyPanel />}
             {active === 'healthJourneyGame' && <HealthJourneyGamePanel onNext={goNext} nextLabel={nextLabel} onViewMedicalRecord={() => setActive('upload')} onOpenMyRewardHealth={() => setActive('myRewardHealth')} />}
             {active === 'medicalAssetStore' && <MedicalAssetStorePanel />} {/* <--- RENDER PANEL Ở ĐÂY */}
             {active === 'medicalVisualPlayground' && <MedicalVisualPlayground onFullscreenChange={setHideSidebarForFocus} />}
