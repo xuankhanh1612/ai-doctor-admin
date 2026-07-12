@@ -39,6 +39,7 @@ export default function Sidebar({ active, onNavigate, openSignal = 0 }) {
     { id: 'bodyProtectionJourney', label: 'Hành Trình Bảo Vệ Cơ Thể', step: '01' },
     { id: 'myPainPathBody', label: 'My Pain Path Body', step: '01b' },
     { id: 'myPainPathBodyPixel', label: 'My Pain Path Body Pixel', step: '01c' },
+    { id: 'myPainPathNoiTang', label: 'My Pain Path Nội Tạng', step: '01d' },
     { id: 'healthJourneyGame', label: 'Health Journey Game', step: '02' },
     { id: 'medicalAssetStore', label: 'Chợ Tài nguyên 3D', step: '03' },
     { id: 'medicalVisualPlayground', label: 'Medical 3D Lab (Touchless)', step: '04' },
