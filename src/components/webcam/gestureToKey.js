@@ -2,11 +2,12 @@
 // Landmarker) thành 1 trong 5 phím điều khiển của "User 1" (Player 1) trong
 // mini-game "Hành Trình Bảo Vệ Cơ Thể" (bao-ve-co-the-PvP-PvE-Co-op.html):
 //
-//   👆 Ngón trỏ chỉ thẳng lên            -> 'w'  (Nhảy)
-//   👈 Ngón trỏ chỉ thẳng sang trái       -> 'a'  (Trái)
-//   🖐 Xoè từ 3 ngón trở lên (kể cả 4/5)  -> 's'  (Khiên)
-//   👉 Ngón trỏ chỉ thẳng sang phải       -> 'd'  (Phải)
-//   ✊ Nắm chặt bàn tay (0 ngón duỗi)     -> 'e'  (Bắn Lợi Khuẩn)
+//   👆 Ngón trỏ chỉ thẳng lên            -> 'w'  (Nhảy) + 'ArrowUp'
+//   👈 Ngón trỏ chỉ thẳng sang trái       -> 'a'  (Trái) + 'ArrowLeft'
+//   👇 Ngón trỏ chỉ thẳng xuống           -> 'ArrowDown' (Xuống)
+//   🖐 Xoè từ 3 ngón trở lên (kể cả 4/5)  -> 's'  (Khiên) + 'ArrowDown'
+//   👉 Ngón trỏ chỉ thẳng sang phải       -> 'd'  (Phải) + 'ArrowRight'
+//   ✊ Nắm chặt bàn tay (0 ngón duỗi)     -> 'e'  (Bắn Lợi Khuẩn) + Space
 //
 // Không dùng bất kỳ trục x/y tuyệt đối nào để suy luận "ngón duỗi" (chỉ so
 // khoảng cách từ cổ tay tới đầu ngón so với khoảng cách cổ tay tới đốt giữa)
@@ -76,6 +77,7 @@ export function classifyGestureKey(hand, { mirrored = true } = {}) {
 
     const isMoreVertical = Math.abs(dy) > Math.abs(dx) * 1.3
     if (isMoreVertical && dy < 0) return 'w' // chỉ lên trên khung hình -> Nhảy
+    if (isMoreVertical && dy > 0) return 'ArrowDown' // chỉ xuống dưới khung hình -> Xuống
 
     const isMoreHorizontal = Math.abs(dx) > Math.abs(dy) * 0.8
     if (isMoreHorizontal) return dx < 0 ? 'a' : 'd' // chỉ trái / chỉ phải
@@ -86,11 +88,25 @@ export function classifyGestureKey(hand, { mirrored = true } = {}) {
 
 // Nhãn hiển thị cho UI (chú thích + badge cử chỉ đang nhận diện).
 export const GESTURE_KEY_LABELS = {
-  w: { icon: '👆', text: 'Ngón trỏ chỉ lên', action: 'Nhảy' },
+  w: { icon: '👆', text: 'Ngón trỏ chỉ lên', action: 'Nhảy / Lên' },
   a: { icon: '👈', text: 'Ngón trỏ chỉ trái', action: 'Trái' },
   s: { icon: '🖐️', text: 'Xoè ≥3 ngón / cả bàn tay', action: 'Khiên' },
   d: { icon: '👉', text: 'Ngón trỏ chỉ phải', action: 'Phải' },
   e: { icon: '✊', text: 'Nắm chặt nắm đấm', action: 'Bắn Lợi Khuẩn' },
+  ArrowDown: { icon: '👇', text: 'Ngón trỏ chỉ xuống', action: 'Xuống' },
 }
 
-export const GESTURE_KEY_ORDER = ['w', 'a', 's', 'd', 'e']
+export const GESTURE_KEY_ORDER = ['w', 'a', 's', 'd', 'e', 'ArrowDown']
+
+export const USER1_GESTURE_KEY_ALIASES = {
+  a: ['a', 'ArrowLeft'],
+  d: ['d', 'ArrowRight'],
+  w: ['w', 'ArrowUp'],
+  ArrowDown: ['ArrowDown'],
+  s: ['s', 'ArrowDown'],
+  e: ['e', ' '],
+}
+
+export function expandUser1GestureKeys(key) {
+  return USER1_GESTURE_KEY_ALIASES[key] || (key ? [key] : [])
+}

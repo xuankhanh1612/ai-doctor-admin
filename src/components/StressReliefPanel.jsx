@@ -1,9 +1,14 @@
-import React, { useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
+import { Hand } from 'lucide-react'
 import NavButtons from './NavButtons.jsx'
 import { useApp } from '../context/AppContext.jsx'
+import TouchlessHandCam from './webcam/TouchlessHandCam.jsx'
+import { classifyGestureKey, expandUser1GestureKeys, GESTURE_KEY_LABELS } from './webcam/gestureToKey.js'
 
 const STRESS_RELIEF_URL = 'https://castle.xyz/d/t8p9l7o0N'
 const CUSTOM_GAMES_KEY = 'stress_relief_custom_games'
+const HOLD_FRAMES_TO_ACTIVATE = 3
+const HOLD_FRAMES_TO_RELEASE = 5
 
 const DEFAULT_GAMES = [
   {
@@ -188,10 +193,97 @@ export default function StressReliefPanel({ onNext, nextLabel, onPrev, prevLabel
   const [draftCaption, setDraftCaption] = useState('')
   const [draftLink, setDraftLink] = useState('')
   const [saveStatus, setSaveStatus] = useState(null)
+  const [gestureOn, setGestureOn] = useState(false)
+  const [activeGestureKey, setActiveGestureKey] = useState(null)
+
+  const iframeRef = useRef(null)
+  const activeKeysRef = useRef([])
+  const pendingRef = useRef({ key: null, count: 0 })
+  const handMappingRef = useRef({ mirrored: true, facingMode: 'user' })
 
   const allGames = [...DEFAULT_GAMES, ...customGames]
   const selectedGame = allGames.find(g => g.id === selectedId) || allGames[0]
   const isDraftValid = draftCaption.trim().length > 0 && /^https?:\/\//i.test(draftLink.trim())
+
+
+
+  const dispatchKeyboardEvent = useCallback((targetWindow, type, key) => {
+    if (!targetWindow || !key) return
+    const eventInit = {
+      key,
+      code: key === ' ' ? 'Space' : key,
+      bubbles: true,
+      cancelable: true,
+    }
+    try {
+      targetWindow.dispatchEvent(new KeyboardEvent(type, eventInit))
+      targetWindow.document?.dispatchEvent?.(new KeyboardEvent(type, eventInit))
+    } catch (err) {
+      // Cross-origin games may reject direct document access. The parent window
+      // still receives the event, and same-origin games also receive setKey().
+      if (type === 'keydown') console.debug('[StressReliefPanel] Không gửi được phím vào iframe cross-origin:', err)
+    }
+  }, [])
+
+  const sendGestureKeys = useCallback((gestureKey, isDown) => {
+    const keys = expandUser1GestureKeys(gestureKey)
+    const eventType = isDown ? 'keydown' : 'keyup'
+    keys.forEach((key) => {
+      dispatchKeyboardEvent(window, eventType, key)
+      const gameWindow = iframeRef.current?.contentWindow
+      dispatchKeyboardEvent(gameWindow, eventType, key)
+      try {
+        gameWindow?.setKey?.(key, isDown)
+      } catch {
+        // Ignore cross-origin frames; keyboard events above are best-effort.
+      }
+    })
+    activeKeysRef.current = isDown ? keys : []
+  }, [dispatchKeyboardEvent])
+
+  const releaseActiveGestureKeys = useCallback(() => {
+    activeKeysRef.current.forEach((key) => {
+      dispatchKeyboardEvent(window, 'keyup', key)
+      dispatchKeyboardEvent(iframeRef.current?.contentWindow, 'keyup', key)
+      try { iframeRef.current?.contentWindow?.setKey?.(key, false) } catch {}
+    })
+    activeKeysRef.current = []
+    pendingRef.current = { key: null, count: 0 }
+    setActiveGestureKey(null)
+  }, [dispatchKeyboardEvent])
+
+  const handleHandMappingChange = useCallback((nextMapping) => {
+    handMappingRef.current = nextMapping
+  }, [])
+
+  const handleHandTrack = useCallback((landmarksArr) => {
+    const hand = landmarksArr?.[0]
+    const candidate = classifyGestureKey(hand, { mirrored: handMappingRef.current.mirrored })
+    const pending = pendingRef.current
+
+    if (candidate === pending.key) pending.count += 1
+    else {
+      pending.key = candidate
+      pending.count = 1
+    }
+
+    const threshold = candidate ? HOLD_FRAMES_TO_ACTIVATE : HOLD_FRAMES_TO_RELEASE
+    if (pending.count < threshold || candidate === activeGestureKey) return
+
+    if (activeGestureKey) sendGestureKeys(activeGestureKey, false)
+    if (candidate) sendGestureKeys(candidate, true)
+    setActiveGestureKey(candidate)
+  }, [activeGestureKey, sendGestureKeys])
+
+  const handleHandLost = useCallback(() => {
+    releaseActiveGestureKeys()
+  }, [releaseActiveGestureKeys])
+
+  useEffect(() => {
+    if (!gestureOn) releaseActiveGestureKeys()
+  }, [gestureOn, releaseActiveGestureKeys])
+
+  useEffect(() => () => releaseActiveGestureKeys(), [releaseActiveGestureKeys])
 
   function handleAddGame() {
     const caption = draftCaption.trim()
@@ -436,9 +528,20 @@ export default function StressReliefPanel({ onNext, nextLabel, onPrev, prevLabel
               : 'Nhấn vào game muốn chơi để load. Không gian xả stress nhanh và cân bằng cảm xúc.'}
           </p>
         </div>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 999, background: 'rgba(0,229,255,0.10)', color: 'var(--cyan)', border: '1px solid rgba(0,229,255,0.20)', fontSize: 11, fontWeight: 900, whiteSpace: 'nowrap' }}>
-          🌿 {lang === 'en' ? 'RELAX MODE' : 'CHẾ ĐỘ THƯ GIÃN'}
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          <button
+            type="button"
+            onClick={() => setGestureOn((v) => !v)}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 999, background: gestureOn ? 'rgba(16,185,129,0.16)' : 'rgba(0,229,255,0.10)', color: gestureOn ? '#6ee7b7' : 'var(--cyan)', border: `1px solid ${gestureOn ? 'rgba(16,185,129,0.35)' : 'rgba(0,229,255,0.20)'}`, fontSize: 11, fontWeight: 900, whiteSpace: 'nowrap', cursor: 'pointer' }}
+            title="Nhận dạng bàn tay User 1: 👈/👉/👇/👆/🖐️/✊ sang WASD + phím mũi tên + Space"
+          >
+            <Hand size={14} />
+            {gestureOn ? '🔴 Tắt Camera Cử Chỉ' : '🖐️ Bật Camera Cử Chỉ (User 1)'}
+          </button>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 999, background: 'rgba(0,229,255,0.10)', color: 'var(--cyan)', border: '1px solid rgba(0,229,255,0.20)', fontSize: 11, fontWeight: 900, whiteSpace: 'nowrap' }}>
+            🌿 {lang === 'en' ? 'RELAX MODE' : 'CHẾ ĐỘ THƯ GIÃN'}
+          </span>
+        </div>
       </div>
 
       {/* Game Picker Card */}
@@ -537,6 +640,7 @@ export default function StressReliefPanel({ onNext, nextLabel, onPrev, prevLabel
 
       <div className="stress-relief-frame-card">
         <iframe
+          ref={iframeRef}
           key={selectedGame.id}
           title={lang === 'en' ? selectedGame.captionEn : selectedGame.caption}
           src={selectedGame.src}
@@ -555,6 +659,31 @@ export default function StressReliefPanel({ onNext, nextLabel, onPrev, prevLabel
           </>
         )}
       </div>
+
+      {gestureOn && (
+        <div className="fixed bottom-6 left-6 z-50 w-56 overflow-hidden rounded-xl border border-white/20 bg-black shadow-2xl sm:w-64">
+          <div className="aspect-video">
+            <TouchlessHandCam
+              onHandTrack={handleHandTrack}
+              onHandLost={handleHandLost}
+              onMappingChange={handleHandMappingChange}
+              onClose={() => setGestureOn(false)}
+            />
+          </div>
+          <div className="flex items-center justify-between gap-2 bg-black/80 px-2 py-1.5">
+            <div className="flex items-center gap-1.5 text-[10px] font-mono text-emerald-300">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
+              User 1 · WASD + ←↑↓→ + Space
+            </div>
+            <button type="button" onClick={() => setGestureOn(false)} className="rounded-md px-1.5 py-0.5 text-[10px] font-bold text-red-300 hover:bg-red-500/20">✕</button>
+          </div>
+          {activeGestureKey && (
+            <div className="absolute left-2 top-2 rounded-md bg-black/70 px-2 py-1 text-[10px] font-bold text-emerald-300">
+              {GESTURE_KEY_LABELS[activeGestureKey]?.icon} {GESTURE_KEY_LABELS[activeGestureKey]?.action}
+            </div>
+          )}
+        </div>
+      )}
 
       <NavButtons onNext={onNext} nextLabel={nextLabel} onPrev={onPrev} prevLabel={prevLabel} />
     </div>
