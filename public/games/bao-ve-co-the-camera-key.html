@@ -391,6 +391,7 @@
         let cameraAsBackground = false;
         let hideGestureSkeleton = false;
         let hideCameraBox = false;
+        let lastMultiHandLandmarks = null;
 
         // ==========================================
         // GAME LOGIC CORE
@@ -550,15 +551,22 @@
 
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            if (cameraAsBackground && isAiActive) {
+            if (cameraAsBackground && isAiActive && !hideCameraBox) {
                 const camVideo = document.getElementById('webcam');
                 if (camVideo && camVideo.readyState >= 2) {
                     ctx.save();
                     if (currentFacingMode === 'user') { ctx.scale(-1, 1); ctx.translate(-canvas.width, 0); }
                     ctx.globalAlpha = 0.55;
                     ctx.drawImage(camVideo, 0, 0, canvas.width, canvas.height);
-                    ctx.restore();
                     ctx.globalAlpha = 1;
+                    if (!hideGestureSkeleton && lastMultiHandLandmarks) {
+                        lastMultiHandLandmarks.forEach((lm, idx) => {
+                            const handColor = idx === 0 ? '#10b981' : '#38bdf8';
+                            drawConnectors(ctx, lm, HAND_CONNECTIONS, {color: handColor, lineWidth: 3});
+                            drawLandmarks(ctx, lm, {color: '#ffffff', lineWidth: 1, radius: 3});
+                        });
+                    }
+                    ctx.restore();
                 }
             }
             ctx.fillStyle = envTheme.bg; ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -670,9 +678,18 @@
             btnCamBoxHide.innerHTML = hideCameraBox ? '👁️ Hiện lại Camera toàn màn hình' : '📴 Tạm ẩn Camera trên toàn màn hình';
         }
 
+        // Khung camera nhỏ nổi bên ngoài chỉ hiện khi: đang bật AI, KHÔNG ở chế độ camera-làm-nền,
+        // và người dùng chưa bấm ẩn thủ công. Camera + MediaPipe vẫn chạy nền bất kể trạng thái hiển thị này.
+        function updateSmallCamBoxVisibility() {
+            const shouldShow = isAiActive && !cameraAsBackground && !hideCameraBox;
+            camContainer.classList.toggle('hidden', !shouldShow);
+        }
+
         function toggleCameraBackground() {
             if (!isAiActive) return;
             cameraAsBackground = !cameraAsBackground;
+            // Khi bật Camera làm nền chơi Game: tự động tắt khung camera nhỏ nổi bên ngoài.
+            updateSmallCamBoxVisibility();
             updateExtraTogglesUI();
         }
 
@@ -685,9 +702,9 @@
         function toggleCameraBoxVisibility() {
             if (!isAiActive) return;
             hideCameraBox = !hideCameraBox;
-            // Chỉ ẩn/hiện khung camera trên màn hình, KHÔNG dừng camera hay dừng nhận diện cử chỉ.
-            if (hideCameraBox) camContainer.classList.add('hidden');
-            else camContainer.classList.remove('hidden');
+            // Chỉ ẩn/hiện (bằng CSS) khung camera nào đang còn hiển thị — khung nhỏ nổi bên ngoài
+            // hoặc lớp camera nền trong khung chơi Game. KHÔNG dừng camera hay dừng nhận diện cử chỉ.
+            updateSmallCamBoxVisibility();
             updateExtraTogglesUI();
         }
 
@@ -750,6 +767,7 @@
             if (loadingText.style.display !== 'none') loadingText.style.display = 'none';
             canvasCtx.save(); canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height); canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
             let p1DetectedKey = null; let p2DetectedKey = null;
+            lastMultiHandLandmarks = (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) ? results.multiHandLandmarks : null;
 
             if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
                 let handsArray = results.multiHandLandmarks.map((lm) => { return { landmarks: lm, x: lm[0].x }; });
@@ -786,7 +804,8 @@
             }
             isAiActive = false; activeAiHandsMode = 0;
             cameraAsBackground = false; hideGestureSkeleton = false; hideCameraBox = false;
-            camContainer.classList.add('hidden'); updateStatusUI(0);
+            lastMultiHandLandmarks = null;
+            updateSmallCamBoxVisibility(); updateStatusUI(0);
         }
 
         function toggleCameraFacingMode() {
@@ -816,14 +835,17 @@
 
         function startCamera(modeNumHands) {
             if (activeAiHandsMode === modeNumHands) { stopCamera(); return; }
-            if (!isAiActive) {
-                // Bật camera mới hoàn toàn: reset các tuỳ chọn nền/ẩn về mặc định
+            const firstActivation = !isAiActive;
+            if (firstActivation) {
+                // Bật camera mới hoàn toàn: reset các tuỳ chọn nền/ẩn về mặc định, và đánh dấu AI đã active
+                // NGAY LẬP TỨC để 3 nút điều khiển hiển thị camera được bật (không disabled) ngay từ lần đầu.
                 cameraAsBackground = false; hideGestureSkeleton = false; hideCameraBox = false;
+                isAiActive = true;
             }
-            if (!hideCameraBox) camContainer.classList.remove('hidden');
+            updateSmallCamBoxVisibility();
             activeAiHandsMode = modeNumHands; updateStatusUI(modeNumHands);
             hands.setOptions({ maxNumHands: modeNumHands, modelComplexity: 1, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
-            if (!isAiActive) { isAiActive = true; startMediaPipeEngine(); }
+            if (firstActivation) startMediaPipeEngine();
         }
     </script>
 </body>
