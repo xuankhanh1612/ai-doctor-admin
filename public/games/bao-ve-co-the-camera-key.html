@@ -43,6 +43,15 @@
         .key-btn:hover { border-color: #ff4655; background: #2a3445; }
         .key-btn.listening { background: #ff4655; border-color: #ff4655; color: #fff; font-weight: bold; animation: pulse 1s infinite; }
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+
+        .extra-toggle-btn {
+            background: #1e293b; border: 1px solid #334155; color: #cbd5e1; font-weight: bold;
+            font-size: 10.5px; padding: 8px 6px; border-radius: 10px; cursor: pointer; transition: all 0.2s;
+            text-align: center; line-height: 1.25; display: flex; align-items: center; justify-content: center;
+        }
+        .extra-toggle-btn:hover:not(:disabled) { background: #334155; border-color: #64748b; }
+        .extra-toggle-btn.on { background: #0c4a6e; border-color: #38bdf8; color: #7dd3fc; box-shadow: 0 0 8px rgba(56,189,248,.4); }
+        .extra-toggle-btn:disabled { opacity: 0.4; cursor: not-allowed; }
     </style>
 </head>
 <body class="text-slate-200 min-h-screen flex flex-col items-center p-2 sm:p-4 relative">
@@ -142,8 +151,20 @@
                     <span class="text-[#60a5fa] text-xs font-bold text-center">User 2 · tay phải:<br><span id="statusTxtP2" class="text-white">chờ</span></span>
                 </div>
             </div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 w-full max-w-[500px] mb-3">
+                <button id="btnBgToggle" onclick="toggleCameraBackground()" class="extra-toggle-btn" disabled>
+                    🖼️ Đưa Camera vào làm nền chơi Game
+                </button>
+                <button id="btnGestureHide" onclick="toggleGestureSkeleton()" class="extra-toggle-btn" disabled>
+                    🙈 Tạm ẩn cử chỉ 2 bàn tay
+                </button>
+                <button id="btnCamBoxHide" onclick="toggleCameraBoxVisibility()" class="extra-toggle-btn" disabled>
+                    📴 Tạm ẩn Camera trên toàn màn hình
+                </button>
+            </div>
             <p class="text-slate-400 text-[10px] sm:text-xs text-center max-w-[500px] mb-4">
                 Luôn dùng 1 camera. Bật User 1 để nhận tay trái màn hình; bật 2 User để nhận thêm tay phải cho User 2.
+                Camera vẫn quan sát cử chỉ theo chế độ 1/2 tay đã chọn kể cả khi bạn ẩn khung hình hoặc ẩn cử chỉ để tập trung chơi game.
             </p>
             <button onclick="openSettings()" class="bg-slate-700 hover:bg-slate-600 text-white border border-slate-500 px-5 py-2 rounded-lg text-xs font-bold transition-all shadow-md">
                 ⚙️ Cài đặt Phím / Map Cử Chỉ
@@ -363,6 +384,15 @@
         }
 
         // ==========================================
+        // AI CAMERA STATE (khai báo sớm để tránh lỗi thứ tự biến khi draw() chạy)
+        // ==========================================
+        let isAiActive = false;
+        let currentFacingMode = 'user';
+        let cameraAsBackground = false;
+        let hideGestureSkeleton = false;
+        let hideCameraBox = false;
+
+        // ==========================================
         // GAME LOGIC CORE
         // ==========================================
         const canvas = document.getElementById('gameCanvas');
@@ -520,6 +550,17 @@
 
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (cameraAsBackground && isAiActive) {
+                const camVideo = document.getElementById('webcam');
+                if (camVideo && camVideo.readyState >= 2) {
+                    ctx.save();
+                    if (currentFacingMode === 'user') { ctx.scale(-1, 1); ctx.translate(-canvas.width, 0); }
+                    ctx.globalAlpha = 0.55;
+                    ctx.drawImage(camVideo, 0, 0, canvas.width, canvas.height);
+                    ctx.restore();
+                    ctx.globalAlpha = 1;
+                }
+            }
             ctx.fillStyle = envTheme.bg; ctx.fillRect(0, 0, canvas.width, canvas.height);
             particles.forEach(p => { ctx.fillStyle='rgba(255,255,255,0.15)'; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2); ctx.fill(); });
             ctx.fillStyle = envTheme.wall; ctx.fillRect(0, 0, canvas.width, 30); ctx.fillRect(0, canvas.height-30, canvas.width, 30);
@@ -601,11 +642,9 @@
         // ==========================================
         // AI CAMERA LOGIC
         // ==========================================
-        let isAiActive = false;
         let aiCameraInstance = null;
         let activeAIKeys = { p1: null, p2: null };
-        let activeAiHandsMode = 0; 
-        let currentFacingMode = 'user'; 
+        let activeAiHandsMode = 0;
 
         const videoElement = document.getElementById('webcam');
         const canvasElement = document.getElementById('output_canvas');
@@ -614,7 +653,44 @@
         const camContainer = document.getElementById('ai-cam-container');
         const btn1User = document.getElementById('btnStart1User');
         const btn2User = document.getElementById('btnStart2User');
-        
+        const btnBgToggle = document.getElementById('btnBgToggle');
+        const btnGestureHide = document.getElementById('btnGestureHide');
+        const btnCamBoxHide = document.getElementById('btnCamBoxHide');
+
+        function updateExtraTogglesUI() {
+            [btnBgToggle, btnGestureHide, btnCamBoxHide].forEach(b => b.disabled = !isAiActive);
+
+            btnBgToggle.classList.toggle('on', cameraAsBackground);
+            btnBgToggle.innerHTML = cameraAsBackground ? '✅ Đang dùng Camera làm nền' : '🖼️ Đưa Camera vào làm nền chơi Game';
+
+            btnGestureHide.classList.toggle('on', hideGestureSkeleton);
+            btnGestureHide.innerHTML = hideGestureSkeleton ? '👁️ Hiện lại cử chỉ 2 bàn tay' : '🙈 Tạm ẩn cử chỉ 2 bàn tay';
+
+            btnCamBoxHide.classList.toggle('on', hideCameraBox);
+            btnCamBoxHide.innerHTML = hideCameraBox ? '👁️ Hiện lại Camera toàn màn hình' : '📴 Tạm ẩn Camera trên toàn màn hình';
+        }
+
+        function toggleCameraBackground() {
+            if (!isAiActive) return;
+            cameraAsBackground = !cameraAsBackground;
+            updateExtraTogglesUI();
+        }
+
+        function toggleGestureSkeleton() {
+            if (!isAiActive) return;
+            hideGestureSkeleton = !hideGestureSkeleton;
+            updateExtraTogglesUI();
+        }
+
+        function toggleCameraBoxVisibility() {
+            if (!isAiActive) return;
+            hideCameraBox = !hideCameraBox;
+            // Chỉ ẩn/hiện khung camera trên màn hình, KHÔNG dừng camera hay dừng nhận diện cử chỉ.
+            if (hideCameraBox) camContainer.classList.add('hidden');
+            else camContainer.classList.remove('hidden');
+            updateExtraTogglesUI();
+        }
+
         function updateStatusUI(handsCount) {
             btn1User.innerHTML = handsCount === 1 ? '🛑 Tắt Camera (User 1)' : '✋ Bật Camera Cử Chỉ (User 1)';
             btn1User.className = handsCount === 1 
@@ -630,6 +706,8 @@
             document.getElementById('statusTxtP1').className = (handsCount >= 1) ? 'text-emerald-400' : 'text-white';
             document.getElementById('statusTxtP2').innerText = (handsCount === 2) ? 'đang chạy' : 'chờ';
             document.getElementById('statusTxtP2').className = (handsCount === 2) ? 'text-sky-400' : 'text-white';
+
+            updateExtraTogglesUI();
         }
 
         function triggerVirtualKeyForPlayer(player, key) {
@@ -681,8 +759,10 @@
                 for (let i = 0; i < handsArray.length; i++) {
                     const lm = handsArray[i].landmarks;
                     let handColor = i === 0 ? '#10b981' : '#38bdf8';
-                    drawConnectors(canvasCtx, lm, HAND_CONNECTIONS, {color: handColor, lineWidth: 2});
-                    drawLandmarks(canvasCtx, lm, {color: '#ffffff', lineWidth: 1, radius: 2});
+                    if (!hideGestureSkeleton) {
+                        drawConnectors(canvasCtx, lm, HAND_CONNECTIONS, {color: handColor, lineWidth: 2});
+                        drawLandmarks(canvasCtx, lm, {color: '#ffffff', lineWidth: 1, radius: 2});
+                    }
                     
                     if(activeAiHandsMode === 1 && i === 0) p1DetectedKey = getGestureKey(lm, 'p1');
                     else if (activeAiHandsMode === 2) {
@@ -705,6 +785,7 @@
                 }
             }
             isAiActive = false; activeAiHandsMode = 0;
+            cameraAsBackground = false; hideGestureSkeleton = false; hideCameraBox = false;
             camContainer.classList.add('hidden'); updateStatusUI(0);
         }
 
@@ -735,7 +816,11 @@
 
         function startCamera(modeNumHands) {
             if (activeAiHandsMode === modeNumHands) { stopCamera(); return; }
-            camContainer.classList.remove('hidden');
+            if (!isAiActive) {
+                // Bật camera mới hoàn toàn: reset các tuỳ chọn nền/ẩn về mặc định
+                cameraAsBackground = false; hideGestureSkeleton = false; hideCameraBox = false;
+            }
+            if (!hideCameraBox) camContainer.classList.remove('hidden');
             activeAiHandsMode = modeNumHands; updateStatusUI(modeNumHands);
             hands.setOptions({ maxNumHands: modeNumHands, modelComplexity: 1, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
             if (!isAiActive) { isAiActive = true; startMediaPipeEngine(); }
