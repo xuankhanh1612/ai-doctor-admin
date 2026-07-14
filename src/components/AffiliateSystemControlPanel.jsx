@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { useAuth } from '../context/AuthContext';
 import { 
   Users, Settings, DollarSign, Plus, Trash2, ArrowRight, 
   ShoppingCart, Activity, Sparkles, Loader2, MessageSquareText, 
@@ -49,6 +50,25 @@ const QUIZ_QUESTIONS = [
 
 
 const REFERRAL_CODES_STORAGE_KEY = 'affiliate-control-referral-codes-v1';
+
+const getLoggedInAffiliateUser = (authUser) => {
+  if (!authUser?.uuid) return null;
+  return {
+    id: authUser.uuid,
+    name: authUser.name || authUser.email || 'User đang đăng nhập',
+    email: authUser.email || '',
+    parentId: 'u1',
+    balances: { ...defaultBalances },
+    isCurrentLoggedInUser: true,
+    isGuestAffiliateUser: !!authUser.isAnonymous,
+  };
+};
+
+const formatAffiliateUserLabel = (affiliateUser) => {
+  if (!affiliateUser) return '';
+  const uuid = affiliateUser.id || affiliateUser.uuid;
+  return uuid ? `${affiliateUser.name} · UUID: ${uuid}` : affiliateUser.name;
+};
 
 const pad2 = (value) => String(value).padStart(2, '0');
 
@@ -125,6 +145,7 @@ const callGeminiAPI = async (prompt) => {
 };
 
 export default function AffiliateSystemControlPanel() {
+  const { user: authUser } = useAuth();
   const [activeTab, setActiveTab] = useState('user'); // 'admin' | 'stats' | 'user'
   const [users, setUsers] = useState(INITIAL_USERS);
   const [policy, setPolicy] = useState(INITIAL_POLICY);
@@ -132,6 +153,7 @@ export default function AffiliateSystemControlPanel() {
   const [viewingUserId, setViewingUserId] = useState('u2'); // Mặc định xem account u2
   const [referralCodes, setReferralCodes] = useState(readStoredReferralCodes);
   const [copiedReferralLink, setCopiedReferralLink] = useState(false);
+  const loggedInAffiliateUser = useMemo(() => getLoggedInAffiliateUser(authUser), [authUser]);
 
   // --- CUSTOM TOAST STATE ---
   const [toast, setToast] = useState({ show: false, title: '', message: '', type: 'success' });
@@ -156,6 +178,31 @@ export default function AffiliateSystemControlPanel() {
   const [currentQuizIndex, setCurrentQuizIndex] = useState(0);
   const [quizCompleted, setQuizCompleted] = useState({});
   const [selectedAnswer, setSelectedAnswer] = useState(null);
+
+
+  useEffect(() => {
+    if (!loggedInAffiliateUser) return;
+
+    setUsers(prev => {
+      const existingUser = prev.find(u => u.id === loggedInAffiliateUser.id);
+      if (existingUser) {
+        return prev.map(u => u.id === loggedInAffiliateUser.id ? {
+          ...u,
+          ...loggedInAffiliateUser,
+          balances: u.balances || { ...defaultBalances },
+        } : u);
+      }
+
+      return [
+        ...prev,
+        {
+          ...loggedInAffiliateUser,
+          balances: { ...defaultBalances },
+        },
+      ];
+    });
+    setViewingUserId(loggedInAffiliateUser.id);
+  }, [loggedInAffiliateUser]);
 
   // --- CLOCK TICKER FOR COOLDOWN ---
   useEffect(() => {
@@ -497,9 +544,12 @@ export default function AffiliateSystemControlPanel() {
                     className="bg-transparent text-lg font-bold text-white focus:outline-none cursor-pointer appearance-none"
                   >
                     {users.filter(u => u.id !== 'u1').map(u => (
-                      <option key={`view_${u.id}`} value={u.id} className="bg-slate-800 text-white">{u.name}</option>
+                      <option key={`view_${u.id}`} value={u.id} className="bg-slate-800 text-white">{formatAffiliateUserLabel(u)}</option>
                     ))}
                   </select>
+                  {viewingUserStat?.id && (
+                    <div className="text-[11px] text-slate-500 font-mono mt-0.5">UUID: {viewingUserStat.id}</div>
+                  )}
                 </div>
               </div>
               
