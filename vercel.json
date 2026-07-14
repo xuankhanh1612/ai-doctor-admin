@@ -3,5 +3,11 @@
     "api/lam-generate.js": {
       "maxDuration": 60
     }
-  }
+  },
+  "rewrites": [
+    {
+      "source": "/r/:code",
+      "destination": "/index.html"
+    }
+  ]
 }
