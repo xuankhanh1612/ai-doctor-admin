@@ -52,7 +52,7 @@ const QUIZ_QUESTIONS = [
 const REFERRAL_CODES_STORAGE_KEY = 'affiliate-control-referral-codes-v1';
 
 const getLoggedInAffiliateUser = (authUser) => {
-  if (!authUser?.uuid || authUser?.isAnonymous) return null;
+  if (!authUser?.uuid) return null;
   return {
     id: authUser.uuid,
     name: authUser.name || authUser.email || 'User đang đăng nhập',
@@ -60,6 +60,7 @@ const getLoggedInAffiliateUser = (authUser) => {
     parentId: 'u1',
     balances: { ...defaultBalances },
     isCurrentLoggedInUser: true,
+    isGuestAffiliateUser: !!authUser.isAnonymous,
   };
 };
 
