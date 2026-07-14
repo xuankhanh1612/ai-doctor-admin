@@ -47,6 +47,56 @@ const QUIZ_QUESTIONS = [
   }
 ];
 
+
+const REFERRAL_CODES_STORAGE_KEY = 'affiliate-control-referral-codes-v1';
+
+const pad2 = (value) => String(value).padStart(2, '0');
+
+const createRecruitmentReferralCode = () => {
+  const now = new Date();
+  const timestamp = [
+    now.getFullYear(),
+    pad2(now.getMonth() + 1),
+    pad2(now.getDate()),
+    pad2(now.getHours()),
+    pad2(now.getMinutes()),
+    pad2(now.getSeconds())
+  ].join('');
+  const randomDigits = Math.floor(10000000 + Math.random() * 90000000);
+  return `HEALTH-${timestamp}-${randomDigits}-OWL9JB`;
+};
+
+const readStoredReferralCodes = () => {
+  if (typeof window === 'undefined') return {};
+  try {
+    return JSON.parse(window.localStorage.getItem(REFERRAL_CODES_STORAGE_KEY) || '{}') || {};
+  } catch (error) {
+    return {};
+  }
+};
+
+const getDomainUrl = () => {
+  if (typeof window === 'undefined') return 'https://ai-doctor-admin.vercel.app';
+  return window.location.origin.replace(/\/$/, '');
+};
+
+const copyTextToClipboard = async (text) => {
+  if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+
+  const textArea = document.createElement('textarea');
+  textArea.value = text;
+  textArea.setAttribute('readonly', '');
+  textArea.style.position = 'fixed';
+  textArea.style.opacity = '0';
+  document.body.appendChild(textArea);
+  textArea.select();
+  document.execCommand('copy');
+  document.body.removeChild(textArea);
+};
+
 // --- GEMINI API INTEGRATION ---
 // Khuyến nghị: Thay apiKey bằng import.meta.env.VITE_GEMINI_API_KEY trong dự án Vite
 const apiKey = ""; 
@@ -80,6 +130,8 @@ export default function AffiliateSystemControlPanel() {
   const [policy, setPolicy] = useState(INITIAL_POLICY);
   const [transactions, setTransactions] = useState(INITIAL_TRANSACTIONS);
   const [viewingUserId, setViewingUserId] = useState('u2'); // Mặc định xem account u2
+  const [referralCodes, setReferralCodes] = useState(readStoredReferralCodes);
+  const [copiedReferralLink, setCopiedReferralLink] = useState(false);
 
   // --- CUSTOM TOAST STATE ---
   const [toast, setToast] = useState({ show: false, title: '', message: '', type: 'success' });
@@ -192,6 +244,36 @@ export default function AffiliateSystemControlPanel() {
     }));
 
   const viewingUserStat = userStats.find(u => u.id === viewingUserId);
+  const viewingUserReferralCode = referralCodes[viewingUserId] || '';
+  const viewingUserReferralLink = viewingUserReferralCode ? `${getDomainUrl()}/r/${viewingUserReferralCode}` : '';
+
+  useEffect(() => {
+    setReferralCodes(prev => {
+      const next = { ...prev };
+      let changed = false;
+
+      users.forEach(user => {
+        if (!next[user.id]) {
+          next[user.id] = createRecruitmentReferralCode();
+          changed = true;
+        }
+      });
+
+      if (changed && typeof window !== 'undefined') {
+        try {
+          window.localStorage.setItem(REFERRAL_CODES_STORAGE_KEY, JSON.stringify(next));
+        } catch (error) {
+          // Nếu trình duyệt chặn localStorage, link vẫn được tạo cho phiên hiện tại.
+        }
+      }
+
+      return changed ? next : prev;
+    });
+  }, [users]);
+
+  useEffect(() => {
+    setCopiedReferralLink(false);
+  }, [viewingUserId]);
 
   // --- HELPER: UPDATE BALANCE ---
   const updateUserBalance = (userId, currency, amount) => {
@@ -342,9 +424,20 @@ export default function AffiliateSystemControlPanel() {
 
   const cooldownStr = getCooldownDisplay();
 
-  const handleCopyLink = () => {
-    // navigator.clipboard.writeText(`https://hien-mau-nhan-van.vercel.app/r/${viewingUserId}`);
-    showToast("Thành công", "Đã sao chép liên kết giới thiệu vào bộ nhớ tạm.", "success");
+  const handleCopyLink = async () => {
+    if (!viewingUserReferralLink) {
+      showToast("Chưa sẵn sàng", "Link Ref tuyển dụng F1 đang được tạo, vui lòng thử lại.", "error");
+      return;
+    }
+
+    try {
+      await copyTextToClipboard(viewingUserReferralLink);
+      setCopiedReferralLink(true);
+      showToast("Thành công", `Đã sao chép link Ref tuyển dụng F1: ${viewingUserReferralLink}`, "success");
+      setTimeout(() => setCopiedReferralLink(false), 2000);
+    } catch (error) {
+      showToast("Lỗi Copy", "Không thể sao chép link vào bộ nhớ tạm.", "error");
+    }
   };
 
   // --- UI COMPONENTS ---
@@ -558,7 +651,7 @@ export default function AffiliateSystemControlPanel() {
                       <input 
                         type="text" 
                         readOnly 
-                        value={`https://hien-mau-nhan-van.vercel.app/r/${viewingUserStat.id}`}
+                        value={viewingUserReferralLink}
                         className="w-full bg-transparent text-slate-300 text-sm px-3 outline-none"
                       />
                     </div>
@@ -566,7 +659,7 @@ export default function AffiliateSystemControlPanel() {
                       onClick={handleCopyLink}
                       className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-bold text-sm transition flex items-center gap-2"
                     >
-                      <Copy className="w-4 h-4" /> Copy
+                      {copiedReferralLink ? <CheckCircle2 className="w-4 h-4" /> : <Copy className="w-4 h-4" />} {copiedReferralLink ? 'Copied' : 'Copy'}
                     </button>
                   </div>
                   
