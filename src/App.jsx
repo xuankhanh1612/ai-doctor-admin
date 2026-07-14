@@ -63,6 +63,7 @@ import PatientReflectPanel from './components/PatientReflectPanel.jsx'
 import MyImageToVideoPanel from './components/MyImageToVideoPanel.jsx'
 import AffiliateSystemControlPanel from './components/AffiliateSystemControlPanel.jsx'
 import AffiliateSystemPanel from './components/AffiliateSystemPanel.jsx'
+import AffiliateReferralLandingPage from './components/AffiliateReferralLandingPage.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 import { addNotification } from './lib/notifications.js'
 import { useTTS } from './lib/groqAiClient.js'
@@ -322,6 +323,12 @@ export default function App() {
   const nextPanel = visiblePanels[activePanelIndex + 1]
   const prevLabel = prevPanel ? panelLabels[prevPanel] : null
   const nextLabel = nextPanel ? panelLabels[nextPanel] : null
+
+  const referralRouteMatch = typeof window !== 'undefined' ? window.location.pathname.match(/^\/r\/[^/?#]+/i) : null
+
+  if (referralRouteMatch) {
+    return <AffiliateReferralLandingPage />
+  }
 
   if (loading) {
     return (
