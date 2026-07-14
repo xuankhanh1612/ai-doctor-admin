@@ -838,16 +838,33 @@
       }
     }catch(e){}
   }
-  function preventFocusSteal(el){
+  // LƯU Ý: trước đây hàm này chỉ gọi preventDefault() trên 'touchstart' rồi dựa vào sự kiện
+  // 'click' phát sinh sau đó để chạy hành động. Trên iOS (Safari lẫn Chrome — cả hai đều chạy
+  // trên engine WebKit theo quy định của Apple), preventDefault() trong 'touchstart' khiến
+  // WebKit KHÔNG bao giờ phát sinh 'click' nữa => nút bấm không phản hồi trên iPhone dù vẫn
+  // hoạt động bình thường trên desktop (chuột). Đây chính là lý do nút Toggle, nút Camera và
+  // nút Ánh xạ điều khiển "im re" trên Chrome iPhone.
+  // Cách sửa: chạy hành động ngay trong 'touchend' (không phụ thuộc 'click' của WebKit),
+  // đồng thời vẫn giữ 'click' cho chuột/desktop, có khoá chống gọi 2 lần.
+  function bindTapAction(el, handler){
     if(!el) return;
+    let lastFireTs = 0;
+    function fire(ev){
+      const now = Date.now();
+      if(now - lastFireTs < 400) return; // chặn click "ma" gọi lại lần 2
+      lastFireTs = now;
+      if(ev) ev.preventDefault();
+      handler();
+      refocusGameFrame();
+    }
     el.addEventListener('mousedown', e => e.preventDefault());
     el.addEventListener('touchstart', e => e.preventDefault(), {passive:false});
+    el.addEventListener('touchend', fire, {passive:false});
+    el.addEventListener('click', fire);
   }
-  [vctrlToggleBtn, camToggleBtn].forEach(preventFocusSteal);
 
-  vctrlToggleBtn.addEventListener('click', () => {
+  bindTapAction(vctrlToggleBtn, () => {
     setVctrlCollapsed(!vctrlBar.classList.contains('collapsed'));
-    refocusGameFrame();
   });
 
   function openGame(game){
@@ -1268,7 +1285,7 @@
   }
   document.getElementById('vcamFlipBtn').addEventListener('click', e => { e.stopPropagation(); flipGestureCamera(); });
 
-  camToggleBtn.addEventListener('click', () => { gestureActive ? stopGestureCamera() : startGestureCamera(); refocusGameFrame(); });
+  bindTapAction(camToggleBtn, () => { gestureActive ? stopGestureCamera() : startGestureCamera(); });
 
   // ---------- MODAL CÀI ĐẶT: QUẢN LÝ CAMERA & ÁNH XẠ ĐIỀU KHIỂN ----------
   let cmapListeningTarget = null; // { type:'phys'|'output', action, btn } | null
@@ -1380,8 +1397,7 @@
     cmapOverlay.classList.remove('open');
     refocusGameFrame();
   }
-  preventFocusSteal(cmapOpenBtn);
-  cmapOpenBtn.addEventListener('click', openCmapModal);
+  bindTapAction(cmapOpenBtn, openCmapModal);
   cmapCloseBtn.addEventListener('click', closeCmapModal);
   cmapSaveBtn.addEventListener('click', closeCmapModal);
   cmapOverlay.addEventListener('click', e => { if(e.target === cmapOverlay) closeCmapModal(); });
