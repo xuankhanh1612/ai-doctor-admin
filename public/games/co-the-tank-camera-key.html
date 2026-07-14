@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Medical AI PvP/PvE/Co-op - Tank Defense</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+
+    <style>
+        body { background-color: #0f172a; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; touch-action: none; user-select: none; overflow-x: hidden; }
+        
+        canvas { background: linear-gradient(to bottom, #1e1b4b, #311042); border: 2px solid #4f46e5; box-shadow: 0 0 25px rgba(79, 70, 229, 0.4); width: 100%; height: auto; aspect-ratio: 800 / 420; image-rendering: pixelated; }
+        
+        .ctrl-btn { 
+            background: rgba(30, 41, 59, 0.8); border: 1px solid #475569; border-radius: 8px; color: #cbd5e1; font-weight: bold; 
+            padding: 4px 2px; text-align: center; cursor: pointer; transition: 0.1s; 
+            display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; line-height: 1.1;
+        }
+        @media (min-width: 640px) { .ctrl-btn { padding: 6px 4px; } }
+        .ctrl-btn:active, .ctrl-btn.active { transform: scale(0.95); }
+        .p1-btn:active, .p1-btn.active { background: #10b981; border-color: #34d399; color: white;}
+        .p2-btn:active, .p2-btn.active { background: #3b82f6; border-color: #60a5fa; color: white;}
+        .boss-btn:active, .boss-btn.active { background: #e11d48; border-color: #fb7185; color: white;}
+        
+        .organ-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 6px; background: #1e293b; border: 1px solid #334155; border-radius: 12px; cursor: pointer; transition: all 0.2s;}
+        .organ-btn:hover { background: #334155; border-color: #64748b; }
+        .organ-btn.selected { border-color: #38bdf8; background: #0c4a6e; }
+        .mode-btn { padding: 8px; border-radius: 8px; font-weight: bold; font-size: 12px; transition: 0.2s; border: 1px solid transparent; }
+        .mode-btn.active { box-shadow: 0 0 10px rgba(255,255,255,0.2); }
+
+        .settings-panel { background: rgba(20, 25, 35, 0.98); border: 1px solid #323d4d; width: 800px; max-width: 95vw; border-radius: 6px; box-shadow: 0 15px 40px rgba(0,0,0,0.8); overflow: hidden; }
+        .settings-header { background: #1a2230; padding: 15px; font-size: 18px; font-weight: bold; border-bottom: 3px solid #ff4655; text-transform: uppercase; letter-spacing: 2px; text-align: center; color: white;}
+        .category-title { color: #8b99a6; font-size: 12px; margin: 10px 10px 5px; text-transform: uppercase; font-weight: bold; letter-spacing: 1px; border-bottom: 1px solid #323d4d; padding-bottom: 5px;}
+        .keybind-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: rgba(255,255,255,0.01); transition: background 0.2s ease; border-radius: 4px;}
+        .keybind-row:hover { background: rgba(255,255,255,0.05); }
+        .action-name { font-size: 12px; font-weight: 500; color: #e0e6ed; display: flex; align-items: center; gap: 8px;}
+        .key-btn { background: #232b38; border: 1px solid #3c4858; color: #fff; padding: 4px 10px; border-radius: 4px; cursor: pointer; min-width: 80px; font-family: 'Consolas', monospace; font-size: 12px; text-align: center; transition: all 0.2s ease; }
+        .key-btn:hover { border-color: #ff4655; background: #2a3445; }
+        .key-btn.listening { background: #ff4655; border-color: #ff4655; color: #fff; font-weight: bold; animation: pulse 1s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+
+        .extra-toggle-btn {
+            background: #1e293b; border: 1px solid #334155; color: #cbd5e1; font-weight: bold;
+            font-size: 10.5px; padding: 8px 6px; border-radius: 10px; cursor: pointer; transition: all 0.2s;
+            text-align: center; line-height: 1.25; display: flex; align-items: center; justify-content: center;
+        }
+        .extra-toggle-btn:hover:not(:disabled) { background: #334155; border-color: #64748b; }
+        .extra-toggle-btn.on { background: #0c4a6e; border-color: #38bdf8; color: #7dd3fc; box-shadow: 0 0 8px rgba(56,189,248,.4); }
+        .extra-toggle-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    </style>
+</head>
+<body class="text-slate-200 min-h-screen flex flex-col items-center p-2 sm:p-4 relative">
+
+    <div id="ai-cam-container" class="fixed bottom-4 right-4 sm:bottom-4 sm:right-auto sm:left-4 w-[160px] h-[120px] sm:w-[240px] sm:h-[180px] bg-slate-900 border-2 border-emerald-500 rounded-xl overflow-hidden z-[60] shadow-lg shadow-emerald-500/30 flex items-center justify-center hidden">
+        <button onclick="toggleCameraFacingMode()" title="Đổi Camera Trước/Sau" class="absolute top-1 left-1 z-30 bg-black/60 text-white rounded-full w-7 h-7 flex items-center justify-center text-xs hover:bg-white/30 backdrop-blur pointer-events-auto border border-white/20">🔄</button>
+        <button onclick="stopCamera()" title="Tắt Camera" class="absolute top-1 right-1 z-30 bg-black/60 text-white rounded-full w-7 h-7 flex items-center justify-center text-xs hover:bg-red-500/80 backdrop-blur pointer-events-auto border border-white/20">❌</button>
+        <span id="cam-loading" class="text-[10px] sm:text-xs text-emerald-300 font-bold animate-pulse absolute z-10 text-center px-2 pointer-events-none">Đang tải AI Camera...</span>
+        <video id="webcam" class="hidden" autoplay playsinline></video>
+        <canvas id="output_canvas" width="320" height="240" class="w-full h-full object-cover transform scale-x-[-1] relative z-20 pointer-events-none"></canvas>
+        <div class="absolute bottom-1 left-0 w-full flex justify-between px-2 text-[8px] font-bold text-white/70 z-30 drop-shadow-md pointer-events-none">
+            <span>← P1</span><span>P2 →</span>
+        </div>
+    </div>
+
+    <div class="w-full flex justify-between items-center fixed top-2 px-2 sm:top-4 sm:px-4 z-50 pointer-events-none">
+        <button id="posToggleBtn" onclick="toggleMenuPosition()" class="pointer-events-auto bg-slate-700 hover:bg-slate-600 text-white border border-slate-500 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-[10px] sm:text-xs font-bold shadow-lg transition-all">
+            Đổi Menu Sang Trái
+        </button>
+    </div>
+
+    <div id="settingsModal" class="fixed inset-0 bg-black/80 z-[100] hidden flex justify-center items-center backdrop-blur-sm">
+        <div class="settings-panel">
+            <div class="settings-header">Cài Đặt Điều Khiển & Cử Chỉ AI</div>
+            <div class="flex flex-col sm:flex-row p-2">
+                <div class="w-full sm:w-1/2 p-2 border-b sm:border-b-0 sm:border-r border-slate-700">
+                    <div class="category-title text-emerald-400">P1 - BÊN TRÁI MÀN HÌNH</div>
+                    <div class="keybind-row"><span class="action-name"><span>👆</span> Lên / Trỏ lên</span><button class="key-btn" data-action="p1_up">W</button></div>
+                    <div class="keybind-row"><span class="action-name"><span>👈</span> Trái / Trỏ trái</span><button class="key-btn" data-action="p1_left">A</button></div>
+                    <div class="keybind-row"><span class="action-name"><span>✌️</span> Xuống / 2 ngón</span><button class="key-btn" data-action="p1_down">S</button></div>
+                    <div class="keybind-row"><span class="action-name"><span>👉</span> Phải / Trỏ phải</span><button class="key-btn" data-action="p1_right">D</button></div>
+                    <div class="keybind-row"><span class="action-name"><span>🖐️</span> Khiên / Xòe tay</span><button class="key-btn" data-action="p1_shield">E</button></div>
+                    <div class="keybind-row"><span class="action-name"><span>✊</span> Bắn / Nắm đấm</span><button class="key-btn" data-action="p1_shoot">Space</button></div>
+                </div>
+                <div class="w-full sm:w-1/2 p-2">
+                    <div class="category-title text-sky-400">P2 - BÊN PHẢI MÀN HÌNH</div>
+                    <div class="keybind-row"><span class="action-name"><span>👆</span> Lên / Trỏ lên</span><button class="key-btn" data-action="p2_up">ArrowUp</button></div>
+                    <div class="keybind-row"><span class="action-name"><span>👈</span> Trái / Trỏ trái</span><button class="key-btn" data-action="p2_left">ArrowLeft</button></div>
+                    <div class="keybind-row"><span class="action-name"><span>✌️</span> Xuống / 2 ngón</span><button class="key-btn" data-action="p2_down">ArrowDown</button></div>
+                    <div class="keybind-row"><span class="action-name"><span>👉</span> Phải / Trỏ phải</span><button class="key-btn" data-action="p2_right">ArrowRight</button></div>
+                    <div class="keybind-row"><span class="action-name"><span>🖐️</span> Khiên / Xòe tay</span><button class="key-btn" data-action="p2_shield">M</button></div>
+                    <div class="keybind-row"><span class="action-name"><span>✊</span> Bắn / Nắm đấm</span><button class="key-btn" data-action="p2_shoot">N</button></div>
+                </div>
+            </div>
+            <div class="p-3 sm:p-4 flex justify-end gap-2 bg-[#151b26] border-t border-[#323d4d]">
+                <button class="px-4 py-2 border border-slate-600 rounded text-slate-400 text-xs font-bold hover:bg-slate-700" onclick="resetToDefault()">Mặc định</button>
+                <button class="px-4 py-2 bg-rose-500 rounded text-white text-xs font-bold hover:bg-rose-600" onclick="closeSettings()">Lưu & Đóng</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="w-full max-w-[800px] flex-shrink-0 flex flex-col relative z-10 mt-12 sm:mt-14 mb-10">
+        
+        <div class="bg-slate-950 p-2 rounded-t-xl border-t border-x border-slate-800 flex justify-between items-center px-2 sm:px-4 flex-wrap gap-2">
+            <div class="flex gap-2 sm:gap-4 w-full sm:w-auto justify-between sm:justify-start">
+                <div class="text-emerald-400 font-bold text-[10px] sm:text-sm">🛡️ P1: <span id="p1-hp">10</span></div>
+                <div id="p2-hp-container" class="text-sky-400 font-bold text-[10px] sm:text-sm hidden">🛡️ P2: <span id="p2-hp">10</span></div>
+                <div class="text-rose-400 font-bold text-[10px] sm:text-sm">🦠 BOSS UNG THƯ: <span id="enemy-count">5</span></div>
+            </div>
+            <div class="flex justify-between w-full sm:w-auto sm:gap-4 items-center">
+                <div class="text-fuchsia-400 font-bold text-[10px] sm:text-sm bg-fuchsia-950/50 px-2 py-0.5 sm:px-3 sm:py-1 rounded border border-fuchsia-900">
+                    🧱 THÀNH TRÌ: <span id="base-hp">20</span>/20
+                </div>
+                <div class="text-amber-400 font-bold text-[10px] sm:text-sm">⏱️ <span id="time-display">0.0</span>s</div>
+            </div>
+        </div>
+        
+        <canvas id="gameCanvas" width="800" height="420" class="w-full object-cover"></canvas>
+
+        <div class="bg-slate-900 border-x border-slate-800 p-2 sm:p-3 flex justify-between items-center">
+            <div class="flex flex-col items-center w-1/2 border-r border-slate-700 pr-1 sm:pr-2">
+                <span class="text-[9px] sm:text-[11px] font-bold text-emerald-400 mb-2 text-center" id="p1-control-label">P1</span>
+                <div class="grid grid-cols-4 gap-1 sm:gap-1.5 w-full max-w-[300px]" id="p1-controls"></div>
+            </div>
+            <div class="flex flex-col items-center w-1/2 pl-1 sm:pl-2">
+                <span class="text-[9px] sm:text-[11px] font-bold text-rose-400 mb-2 text-center" id="p2-control-label">P2</span>
+                <div class="grid grid-cols-4 gap-1 sm:gap-1.5 w-full max-w-[300px]" id="p2-controls"></div>
+            </div>
+        </div>
+
+        <div class="bg-[#1a2333] border border-slate-700 rounded-b-xl p-4 shadow-xl flex flex-col items-center">
+            <h3 class="text-slate-300 font-bold text-xs uppercase tracking-widest mb-3">Camera Cử Chỉ</h3>
+            <div class="flex flex-col w-full max-w-[400px] gap-2 mb-3">
+                <button id="btnStart1User" onclick="startCamera(1)" class="w-full bg-[#1b6b50] hover:bg-[#165a43] text-emerald-100 font-bold py-3 rounded-lg border border-[#238a67] transition-all text-sm shadow-md">
+                    ✋ Bật Camera Cử Chỉ (User 1)
+                </button>
+                <button id="btnStart2User" onclick="startCamera(2)" class="w-full bg-[#8b5a2b] hover:bg-[#7a4e25] text-amber-100 font-bold py-3 rounded-lg border border-[#a66c33] transition-all text-sm shadow-md">
+                    ✋ Bật Camera Cử Chỉ 2 User
+                </button>
+            </div>
+            <div class="flex flex-row w-full max-w-[400px] gap-2 mb-3">
+                <div id="statusP1" class="w-1/2 bg-[#0f172a] border border-[#1b6b50] rounded-lg p-2 flex items-center justify-center transition-all">
+                    <span class="text-[#34d399] text-xs font-bold text-center">User 1 · tay trái<br>màn hình: <span id="statusTxtP1" class="text-white">chờ</span></span>
+                </div>
+                <div id="statusP2" class="w-1/2 bg-[#0f172a] border border-[#1e3a8a] rounded-lg p-2 flex items-center justify-center transition-all">
+                    <span class="text-[#60a5fa] text-xs font-bold text-center">User 2 · tay phải:<br><span id="statusTxtP2" class="text-white">chờ</span></span>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 w-full max-w-[500px] mb-3">
+                <button id="btnBgToggle" onclick="toggleCameraBackground()" class="extra-toggle-btn" disabled>
+                    🖼️ Đưa Camera vào làm nền chơi Game
+                </button>
+                <button id="btnGestureHide" onclick="toggleGestureSkeleton()" class="extra-toggle-btn" disabled>
+                    🙈 Tạm ẩn cử chỉ 2 bàn tay
+                </button>
+                <button id="btnCamBoxHide" onclick="toggleCameraBoxVisibility()" class="extra-toggle-btn" disabled>
+                    📴 Tạm ẩn Camera trên toàn màn hình
+                </button>
+            </div>
+            <button onclick="openSettings()" class="bg-slate-700 hover:bg-slate-600 text-white border border-slate-500 px-5 py-2 rounded-lg text-xs font-bold transition-all shadow-md">
+                ⚙️ Cài đặt Phím / Map Cử Chỉ
+            </button>
+        </div>
+    </div>
+
+    <div id="sideMenu" class="fixed top-12 sm:top-16 right-0 sm:right-4 bottom-0 sm:bottom-4 w-full sm:w-[320px] bg-slate-900/95 sm:rounded-2xl border-l sm:border border-slate-700 shadow-2xl flex flex-col z-[80] transition-transform duration-300 translate-x-[120%] backdrop-blur-md overflow-y-auto pt-14 px-5 pb-12">
+        <button onclick="closeMenu()" class="absolute top-3 right-3 w-8 h-8 flex items-center justify-center bg-rose-600 hover:bg-rose-500 text-white rounded-full font-bold shadow-md z-50 border border-rose-400 text-sm transition">✕</button>
+
+        <div>
+            <span class="text-[10px] font-bold uppercase tracking-wider text-cyan-400 bg-cyan-950 px-2 py-1 rounded">Medical Tank Sandbox</span>
+            <h1 class="text-xl font-black text-white mt-2">Thiết Lập Game</h1>
+        </div>
+        <div class="bg-slate-800 p-2 rounded-xl border border-slate-700 mt-4">
+            <h3 class="text-[10px] font-bold text-slate-400 mb-2 text-center uppercase">1. Chế độ chơi</h3>
+            <div class="flex flex-col gap-2">
+                <button id="mode-pve" onclick="setGameMode('pve')" class="mode-btn bg-indigo-600 hover:bg-indigo-500 text-white">👤 PvE (1 người vs AI)</button>
+                <button id="mode-coop" onclick="setGameMode('coop')" class="mode-btn bg-sky-600 hover:bg-sky-500 text-white">👥 Co-op (2 người vs AI)</button>
+                <button id="mode-pvp" onclick="setGameMode('pvp')" class="mode-btn bg-rose-600 hover:bg-rose-500 text-white">⚔️ PvP (P1 vs P2 Boss)</button>
+            </div>
+        </div>
+        <h3 class="text-xs font-bold text-slate-400 mt-4 border-b border-slate-700 pb-1">2. CHỌN HỆ NỘI TẠNG:</h3>
+        <div class="grid grid-cols-2 gap-2 mt-2 pb-10 sm:pb-0">
+            <button id="btn-brain" class="organ-btn selected" onclick="selectOrgan('brain')"><span class="text-2xl mb-1">🧠</span><span class="text-[10px] font-bold text-slate-300 text-center">Hệ thần kinh</span></button>
+            <button id="btn-lungs" class="organ-btn" onclick="selectOrgan('lungs')"><span class="text-2xl mb-1">🫁</span><span class="text-[10px] font-bold text-slate-300 text-center">Hệ hô hấp</span></button>
+            <button id="btn-heart" class="organ-btn" onclick="selectOrgan('heart')"><span class="text-2xl mb-1">🫀</span><span class="text-[10px] font-bold text-slate-300 text-center">Hệ tuần hoàn</span></button>
+            <button id="btn-kidneys" class="organ-btn" onclick="selectOrgan('kidneys')"><span class="text-2xl mb-1">💧</span><span class="text-[10px] font-bold text-slate-300 text-center">Hệ tiết niệu</span></button>
+            <button id="btn-stomach" class="organ-btn" onclick="selectOrgan('stomach')"><span class="text-2xl mb-1">🥩</span><span class="text-[10px] font-bold text-slate-300 text-center">Hệ tiêu hóa</span></button>
+            <button id="btn-liver" class="organ-btn" onclick="selectOrgan('liver')"><span class="text-2xl mb-1">🧫</span><span class="text-[10px] font-bold text-slate-300 text-center">Hệ gan mật</span></button>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // UI TOGGLES (MENU LEFT/RIGHT)
+        // ==========================================
+        let menuOpen = false; let isMenuRight = true; 
+
+        function toggleMenuPosition() {
+            isMenuRight = !isMenuRight;
+            const menu = document.getElementById('sideMenu');
+            const toggleBtn = document.getElementById('posToggleBtn');
+            menu.classList.remove('right-0', 'sm:right-4', 'left-0', 'sm:left-4');
+            if(isMenuRight) {
+                menu.classList.add('right-0', 'sm:right-4'); toggleBtn.innerText = 'Đổi Menu Sang Trái';
+            } else {
+                menu.classList.add('left-0', 'sm:left-4'); toggleBtn.innerText = 'Đổi Menu Sang Phải';
+            }
+            openMenu(); 
+        }
+
+        function openMenu() { menuOpen = true; document.getElementById('sideMenu').style.transform = 'translateX(0)'; }
+        function closeMenu() { menuOpen = false; document.getElementById('sideMenu').style.transform = isMenuRight ? 'translateX(120%)' : 'translateX(-120%)'; }
+
+        // ==========================================
+        // CÀI ĐẶT PHÍM & GESTURE MAPPING
+        // ==========================================
+        const defaultMappings = {
+            p1_up: 'w', p1_left: 'a', p1_down: 's', p1_right: 'd', p1_shield: 'e', p1_shoot: ' ',
+            p2_up: 'arrowup', p2_left: 'arrowleft', p2_down: 'arrowdown', p2_right: 'arrowright', p2_shield: 'm', p2_shoot: 'n'
+        };
+        let keyMappings = { ...defaultMappings };
+        let listeningAction = null; let currentButton = null;
+
+        const savedKeys = localStorage.getItem('tankCustomKeys_v2');
+        if (savedKeys) keyMappings = JSON.parse(savedKeys);
+
+        function formatKeyName(k) {
+            if (k === ' ') return 'SPACE';
+            if (k.toLowerCase().startsWith('arrow')) return k.substring(5).toUpperCase();
+            return k.toUpperCase();
+        }
+
+        function updateSettingsUI() {
+            document.querySelectorAll('.key-btn').forEach(btn => {
+                const action = btn.getAttribute('data-action');
+                if (keyMappings[action]) btn.innerText = formatKeyName(keyMappings[action]);
+            });
+            renderControlsUI();
+        }
+
+        function openSettings() { document.getElementById('settingsModal').classList.remove('hidden'); updateSettingsUI(); }
+        function closeSettings() { 
+            document.getElementById('settingsModal').classList.add('hidden'); 
+            localStorage.setItem('tankCustomKeys_v2', JSON.stringify(keyMappings));
+            if (currentButton) { currentButton.classList.remove('listening'); listeningAction = null; currentButton = null; }
+            updateSettingsUI(); 
+        }
+        function resetToDefault() { keyMappings = { ...defaultMappings }; updateSettingsUI(); }
+
+        document.querySelectorAll('.key-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                if (currentButton) { currentButton.classList.remove('listening'); currentButton.innerText = formatKeyName(keyMappings[listeningAction]); }
+                listeningAction = this.getAttribute('data-action');
+                currentButton = this; this.classList.add('listening'); this.innerText = '???';
+            });
+        });
+
+        document.addEventListener('keydown', function(event) {
+            if (listeningAction) {
+                event.preventDefault(); 
+                keyMappings[listeningAction] = event.key.toLowerCase();
+                currentButton.classList.remove('listening');
+                listeningAction = null; currentButton = null;
+                updateSettingsUI(); 
+            }
+        });
+
+        // ==========================================
+        // DYNAMIC UI RENDERING
+        // ==========================================
+        function renderControlsUI() {
+            const getK = (k) => formatKeyName(keyMappings[k]);
+            
+            document.getElementById('p1-control-label').innerText = `P1 - Phím: ${getK('p1_up')}/${getK('p1_left')}/${getK('p1_down')}/${getK('p1_right')} - Khiên: ${getK('p1_shield')}`;
+            document.getElementById('p1-controls').innerHTML = `
+                <div class="col-span-4 flex justify-center mb-0.5 gap-1">
+                    <button class="ctrl-btn p1-btn w-1/3 text-[9px]" onmousedown="setKey('${keyMappings.p1_up}', true)" onmouseup="setKey('${keyMappings.p1_up}', false)">
+                        <span>${getK('p1_up')} Lên</span>
+                    </button>
+                    <button class="ctrl-btn p1-btn border-emerald-500 text-emerald-300 w-1/3 text-[9px]" onmousedown="setKey('${keyMappings.p1_shield}', true)" onmouseup="setKey('${keyMappings.p1_shield}', false)">
+                        <span>${getK('p1_shield')} Khiên</span>
+                    </button>
+                </div>
+                <button class="ctrl-btn p1-btn text-[9px]" onmousedown="setKey('${keyMappings.p1_left}', true)" onmouseup="setKey('${keyMappings.p1_left}', false)"><span>${getK('p1_left')} Trái</span></button>
+                <button class="ctrl-btn p1-btn text-[9px]" onmousedown="setKey('${keyMappings.p1_down}', true)" onmouseup="setKey('${keyMappings.p1_down}', false)"><span>${getK('p1_down')} Xuống</span></button>
+                <button class="ctrl-btn p1-btn text-[9px]" onmousedown="setKey('${keyMappings.p1_right}', true)" onmouseup="setKey('${keyMappings.p1_right}', false)"><span>${getK('p1_right')} Phải</span></button>
+                <button class="ctrl-btn p1-btn bg-emerald-900/50 text-[9px]" onmousedown="setKey('${keyMappings.p1_shoot}', true)" onmouseup="setKey('${keyMappings.p1_shoot}', false)"><span>${getK('p1_shoot')} Bắn</span></button>
+            `;
+
+            const p2Label = document.getElementById('p2-control-label');
+            const p2Controls = document.getElementById('p2-controls');
+
+            if (gameMode === 'pve') { 
+                p2Label.innerText = "BOSS ĐƯỢC AI ĐIỀU KHIỂN"; 
+                p2Controls.innerHTML = `<div class="col-span-4 text-center text-[10px] text-slate-500 py-4">AI tự động điều khiển Boss.</div>`; 
+            } else { 
+                p2Label.className = gameMode==='pvp' ? "text-[9px] sm:text-[11px] font-bold text-rose-400 mb-2 text-center" : "text-[9px] sm:text-[11px] font-bold text-sky-400 mb-2 text-center";
+                p2Label.innerText = `${gameMode==='pvp' ? 'BOSS' : 'P2'} - Phím: ${getK('p2_up')}/${getK('p2_left')}/${getK('p2_down')}/${getK('p2_right')} - Khiên: ${getK('p2_shield')}`; 
+                let btnCls = gameMode==='pvp' ? 'boss-btn' : 'p2-btn';
+                p2Controls.innerHTML = `
+                    <div class="col-span-4 flex justify-center mb-0.5 gap-1">
+                        <button class="ctrl-btn ${btnCls} w-1/3 text-[9px]" onmousedown="setKey('${keyMappings.p2_up}', true)" onmouseup="setKey('${keyMappings.p2_up}', false)">
+                            <span>${getK('p2_up')} Lên</span>
+                        </button>
+                        <button class="ctrl-btn ${btnCls} border-amber-500 text-amber-300 w-1/3 text-[9px]" onmousedown="setKey('${keyMappings.p2_shield}', true)" onmouseup="setKey('${keyMappings.p2_shield}', false)">
+                            <span>${getK('p2_shield')} Khiên</span>
+                        </button>
+                    </div>
+                    <button class="ctrl-btn ${btnCls} text-[9px]" onmousedown="setKey('${keyMappings.p2_left}', true)" onmouseup="setKey('${keyMappings.p2_left}', false)"><span>${getK('p2_left')} Trái</span></button>
+                    <button class="ctrl-btn ${btnCls} text-[9px]" onmousedown="setKey('${keyMappings.p2_down}', true)" onmouseup="setKey('${keyMappings.p2_down}', false)"><span>${getK('p2_down')} Xuống</span></button>
+                    <button class="ctrl-btn ${btnCls} text-[9px]" onmousedown="setKey('${keyMappings.p2_right}', true)" onmouseup="setKey('${keyMappings.p2_right}', false)"><span>${getK('p2_right')} Phải</span></button>
+                    <button class="ctrl-btn ${btnCls} bg-opacity-50 text-[9px]" onmousedown="setKey('${keyMappings.p2_shoot}', true)" onmouseup="setKey('${keyMappings.p2_shoot}', false)"><span>${getK('p2_shoot')} Bắn</span></button>
+                `; 
+            }
+        }
+
+        // ==========================================
+        // AI CAMERA STATE
+        // ==========================================
+        let isAiActive = false; let currentFacingMode = 'user'; let cameraAsBackground = false; 
+        let hideGestureSkeleton = false; let hideCameraBox = false; let lastMultiHandLandmarks = null;
+
+        // ==========================================
+        // GAME LOGIC CORE (TOP-DOWN TANK)
+        // ==========================================
+        const canvas = document.getElementById('gameCanvas'); const ctx = canvas.getContext('2d');
+        let gameMode = 'pve'; let gameState = 'waiting'; let startTime = 0; let elapsedTime = 0;
+        let envTheme = { name: "Hệ thần kinh", bg: "#1e1b4b", wall: "#4c1d95", border: "#8b5cf6", organColor: "#f472b6" };
+        
+        let p1 = { x: 300, y: 340, w: 26, h: 26, speed: 3.5, hp: 10, dir: 'up', color: '#10b981', type: 'p1', alive: true, manualShield: false, autoShieldEndTime: 0 };
+        let p2 = { x: 470, y: 340, w: 26, h: 26, speed: 3.5, hp: 10, dir: 'up', color: '#38bdf8', type: 'p2', active: false, alive: true, manualShield: false, autoShieldEndTime: 0 };
+        let organBase = { x: 360, y: 360, w: 80, h: 60, hp: 20, maxHp: 20 }; 
+        let enemies = []; let enemiesSpawned = 0; const TOTAL_ENEMIES = 5;
+        let projectiles = []; let walls = []; let mapLabels = []; let probiotics = [];
+        
+        let keys = {};
+        window.addEventListener('keydown', e => { 
+            if (!listeningAction) { keys[e.key] = true; keys[e.key.toLowerCase()] = true; if(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " "].includes(e.key)) e.preventDefault(); }
+        });
+        window.addEventListener('keyup', e => { keys[e.key] = false; keys[e.key.toLowerCase()] = false; });
+        function setKey(k, val) { if(k) { keys[k] = val; keys[k.toLowerCase()] = val; } }
+
+        function setGameMode(mode, autoStart = true) {
+            gameMode = mode;
+            document.querySelectorAll('.mode-btn').forEach(btn => { btn.classList.remove('active', 'border-white'); btn.style.opacity = '0.5'; });
+            document.getElementById('mode-' + mode).classList.add('active', 'border-white'); document.getElementById('mode-' + mode).style.opacity = '1';
+            
+            const p2HpUi = document.getElementById('p2-hp-container');
+            if (mode === 'pve') { p2.active = false; p2HpUi.classList.add('hidden'); }
+            else if (mode === 'coop') { p2.active = true; p2.type = 'p2'; p2.color = '#38bdf8'; p2HpUi.classList.remove('hidden'); }
+            else if (mode === 'pvp') { p2.active = true; p2.type = 'boss'; p2.color = '#e11d48'; p2HpUi.classList.remove('hidden'); document.getElementById('p2-hp-container').innerHTML = `🦠 BOSS: <span id="p2-hp">10</span>`;}
+
+            renderControlsUI();
+            if (autoStart) { gameState = 'playing'; resetGame(); if(window.innerWidth < 640 && menuOpen) closeMenu(); }
+        }
+
+        function generateWalls(type) {
+            walls = []; mapLabels = []; let labels = [];
+            if(type === 'brain') { envTheme = { name: "Hệ thần kinh", bg: "#1e1b4b", wall: "#4c1d95", border: "#8b5cf6", organColor: "#f472b6" }; labels=["Nơ-ron", "Synapse", "Sợi trục", "Tế bào đệm"]; } 
+            else if(type === 'lungs') { envTheme = { name: "Hệ hô hấp", bg: "#082f49", wall: "#0c4a6e", border: "#38bdf8", organColor: "#7dd3fc" }; labels=["Phế nang", "Tiểu phế quản", "Màng phổi", "Mao mạch"]; } 
+            else if(type === 'heart') { envTheme = { name: "Hệ tuần hoàn", bg: "#450a0a", wall: "#7f1d1d", border: "#ef4444", organColor: "#fb7185" }; labels=["Tâm nhĩ", "Tâm thất", "Van tim", "Động mạch"]; } 
+            else if(type === 'kidneys') { envTheme = { name: "Hệ tiết niệu", bg: "#172554", wall: "#1e3a8a", border: "#34d399", organColor: "#6ee7b7" }; labels=["Cầu thận", "Ống thận", "Bể thận", "Niệu quản"]; } 
+            else if(type === 'stomach') { envTheme = { name: "Hệ tiêu hóa", bg: "#022c22", wall: "#064e3b", border: "#10b981", organColor: "#fde047" }; labels=["Niêm mạc", "Dịch vị", "Cơ vòng", "Nhung mao"]; } 
+            else if(type === 'liver') { envTheme = { name: "Hệ gan mật", bg: "#451a03", wall: "#78350f", border: "#fbbf24", organColor: "#d97706" }; labels=["Tiểu thùy gan", "Ống mật", "Tĩnh mạch cửa", "Túi mật"]; }
+            
+            const addWall = (x, y, w, h, lIndex) => { walls.push({x, y, w, h, hp: 5}); if(lIndex !== undefined) mapLabels.push({x: x + w/2, y: y + h/2, text: labels[lIndex % labels.length]}); };
+            addWall(320, 360, 20, 60); addWall(460, 360, 20, 60); addWall(320, 340, 160, 20); 
+            for(let i=0; i<4; i++) { addWall(120 + i*160, 60, 40, 120, i); addWall(120 + i*160, 240, 40, 60, i+1); }
+            addWall(0, 200, 60, 40); addWall(740, 200, 60, 40);
+        }
+
+        function selectOrgan(type, autoStart = true) {
+            document.querySelectorAll('.organ-btn').forEach(btn => btn.classList.remove('selected'));
+            document.getElementById('btn-' + type).classList.add('selected');
+            generateWalls(type);
+            if(autoStart) { gameState = 'playing'; resetGame(); if(window.innerWidth < 640 && menuOpen) closeMenu(); }
+        }
+
+        function resetGame() {
+            startTime = Date.now(); elapsedTime = 0; p1.hp = 10; p1.alive = true; p1.autoShieldEndTime = 0; 
+            p2.hp = 10; p2.alive = true; p2.autoShieldEndTime = 0; organBase.hp = 20; 
+            p1.x = 260; p1.y = 380; p1.dir = 'up'; p2.x = 510; p2.y = 380; p2.dir = 'up';
+            if(gameMode === 'pvp') { p2.x = 400; p2.y = 20; p2.dir = 'down'; }
+            projectiles = []; enemies = []; enemiesSpawned = 0; probiotics = [];
+            
+            for(let i=0; i<3; i++) {
+                probiotics.push({x: 100 + Math.random()*600, y: 100 + Math.random()*200, r: 8, vx: (Math.random()-0.5)*3, vy: (Math.random()-0.5)*3});
+            }
+            updateUI();
+        }
+
+        let p1LastShot = 0; let p2LastShot = 0; 
+
+        function checkCollision(x, y, w, h) {
+            if(x < 0 || x + w > canvas.width || y < 0 || y + h > canvas.height) return true;
+            if(x < organBase.x + organBase.w && x + w > organBase.x && y < organBase.y + organBase.h && y + h > organBase.y) return true;
+            for(let wObj of walls) { if(x < wObj.x + wObj.w && x + w > wObj.x && y < wObj.y + wObj.h && y + h > wObj.y) return true; }
+            return false;
+        }
+
+        function moveTank(tank, controls) {
+            let dx = 0, dy = 0;
+            if (keys[controls.up]) { dy = -tank.speed; tank.dir = 'up'; }
+            else if (keys[controls.down]) { dy = tank.speed; tank.dir = 'down'; }
+            else if (keys[controls.left]) { dx = -tank.speed; tank.dir = 'left'; }
+            else if (keys[controls.right]) { dx = tank.speed; tank.dir = 'right'; }
+            
+            if(dx !== 0 && !checkCollision(tank.x + dx, tank.y, tank.w, tank.h)) tank.x += dx;
+            if(dy !== 0 && !checkCollision(tank.x, tank.y + dy, tank.w, tank.h)) tank.y += dy;
+        }
+
+        function spawnEnemy() {
+            if(enemiesSpawned >= TOTAL_ENEMIES || enemies.length >= 5) return;
+            let spawnPts = [{x: 20, y: 20}, {x: canvas.width - 46, y: 20}];
+            let pt = spawnPts[enemiesSpawned % 2];
+            enemies.push({ x: pt.x, y: pt.y, w: 26, h: 26, speed: 2, hp: 5, dir: 'down', color: '#e11d48', lastShot: 0, lastTurn: 0 });
+            enemiesSpawned++; updateUI();
+        }
+
+        function shoot(tank, type) {
+            let px = tank.x + tank.w/2; let py = tank.y + tank.h/2; let vx = 0, vy = 0;
+            if(tank.dir === 'up') { vy = -6; py -= tank.h/2; } else if(tank.dir === 'down') { vy = 6; py += tank.h/2; }
+            else if(tank.dir === 'left') { vx = -6; px -= tank.w/2; } else if(tank.dir === 'right') { vx = 6; px += tank.w/2; }
+            projectiles.push({ x: px, y: py, vx, vy, type: type, r: 4, color: tank.color });
+        }
+
+        function update() {
+            if(gameState !== 'playing') return;
+            elapsedTime = (Date.now() - startTime) / 1000; document.getElementById('time-display').innerText = elapsedTime.toFixed(1);
+
+            if(p1.alive) {
+                p1.manualShield = !!keys[keyMappings.p1_shield];
+                moveTank(p1, { up: keyMappings.p1_up, down: keyMappings.p1_down, left: keyMappings.p1_left, right: keyMappings.p1_right });
+                if (keys[keyMappings.p1_shoot] && Date.now() - p1LastShot > 350) { shoot(p1, 'p1'); p1LastShot = Date.now(); }
+            }
+            if(p2.active && p2.alive) {
+                p2.manualShield = !!keys[keyMappings.p2_shield];
+                moveTank(p2, { up: keyMappings.p2_up, down: keyMappings.p2_down, left: keyMappings.p2_left, right: keyMappings.p2_right });
+                if (keys[keyMappings.p2_shoot] && Date.now() - p2LastShot > 350) { shoot(p2, p2.type); p2LastShot = Date.now(); }
+            }
+
+            // Cập nhật Lợi Khuẩn
+            probiotics.forEach((pb, i) => {
+                pb.x += pb.vx; pb.y += pb.vy;
+                if(pb.x < pb.r || pb.x > canvas.width - pb.r) pb.vx *= -1;
+                if(pb.y < pb.r || pb.y > canvas.height - pb.r) pb.vy *= -1;
+                
+                const checkPickup = (tank) => {
+                    if(tank.alive && Math.hypot((tank.x+tank.w/2) - pb.x, (tank.y+tank.h/2) - pb.y) < pb.r + tank.w/2) {
+                        tank.autoShieldEndTime = Date.now() + 20000; // 20 giây auto shield
+                        return true;
+                    }
+                    return false;
+                };
+                if(checkPickup(p1) || (p2.active && checkPickup(p2))) probiotics.splice(i, 1);
+            });
+
+            if(gameMode !== 'pvp') {
+                if(Math.random() < 0.015) spawnEnemy(); // Điều chỉnh tỷ lệ spawn để luân phiên mượt hơn
+                for(let i=enemies.length-1; i>=0; i--) {
+                    let e = enemies[i];
+                    if(Date.now() - e.lastTurn > 1000 && Math.random() < 0.05) {
+                        e.dir = ['up','down','left','right'][Math.floor(Math.random()*4)]; e.lastTurn = Date.now();
+                    }
+                    let dx = 0, dy = 0;
+                    if(e.dir==='up') dy = -e.speed; else if(e.dir==='down') dy = e.speed;
+                    else if(e.dir==='left') dx = -e.speed; else if(e.dir==='right') dx = e.speed;
+                    
+                    if(!checkCollision(e.x + dx, e.y, e.w, e.h)) { e.x += dx; e.y += dy; } 
+                    else { e.dir = ['up','down','left','right'][Math.floor(Math.random()*4)]; e.lastTurn = Date.now(); }
+                    
+                    if(Date.now() - e.lastShot > 1500 && Math.random() < 0.03) { shoot(e, 'enemy'); e.lastShot = Date.now(); }
+                }
+            }
+
+            for (let i = projectiles.length - 1; i >= 0; i--) {
+                let p = projectiles[i]; p.x += p.vx; p.y += p.vy; let hit = false;
+                if (p.x < 0 || p.x > canvas.width || p.y < 0 || p.y > canvas.height) hit = true;
+                
+                if(!hit) {
+                    for(let j = walls.length - 1; j >= 0; j--) {
+                        let w = walls[j];
+                        if(p.x > w.x && p.x < w.x+w.w && p.y > w.y && p.y < w.y+w.h) { hit = true; w.hp--; if(w.hp<=0) walls.splice(j, 1); break; }
+                    }
+                }
+                if(!hit && p.x > organBase.x && p.x < organBase.x+organBase.w && p.y > organBase.y && p.y < organBase.y+organBase.h) { hit = true; if(p.type !== 'p1' && p.type !== 'p2') organBase.hp--; }
+                
+                const checkTankHit = (tank) => {
+                    let hasShield = tank.manualShield || (tank.autoShieldEndTime && Date.now() < tank.autoShieldEndTime);
+                    if(tank.alive && p.x > tank.x && p.x < tank.x+tank.w && p.y > tank.y && p.y < tank.y+tank.h) { 
+                        hit = true; 
+                        if(!hasShield) { tank.hp--; if(tank.hp<=0) tank.alive = false; }
+                        return true; 
+                    }
+                    return false;
+                };
+
+                if(!hit && p.type !== 'p1') checkTankHit(p1);
+                if(!hit && p.type !== p2.type && p2.active) checkTankHit(p2);
+                
+                if(!hit && (p.type === 'p1' || p.type === 'p2')) {
+                    for(let j = enemies.length - 1; j >= 0; j--) {
+                        if(p.x > enemies[j].x && p.x < enemies[j].x+enemies[j].w && p.y > enemies[j].y && p.y < enemies[j].y+enemies[j].h) {
+                            hit = true; enemies[j].hp--; 
+                            if(enemies[j].hp<=0) {
+                                if(p.type === 'p1') p1.hp += 5; // Giết Boss hồi 5 HP
+                                if(p.type === 'p2') p2.hp += 5;
+                                enemies.splice(j, 1); 
+                            }
+                            break;
+                        }
+                    }
+                }
+                if(hit) { projectiles.splice(i, 1); updateUI(); checkWin(); }
+            }
+        }
+
+        function checkWin() {
+            let defendersDead = p2.active && p2.type==='p2' ? (!p1.alive && !p2.alive) : (!p1.alive);
+            if ((defendersDead || organBase.hp <= 0) && gameState === 'playing') { 
+                gameState = 'lose'; if(!menuOpen && window.innerWidth < 1024) openMenu(); 
+            }
+            else if (gameState === 'playing') { 
+                if(gameMode === 'pvp' && !p2.alive) { gameState = 'win'; if(!menuOpen && window.innerWidth < 1024) openMenu(); }
+                else if (gameMode !== 'pvp' && enemiesSpawned >= TOTAL_ENEMIES && enemies.length === 0) { gameState = 'win'; if(!menuOpen && window.innerWidth < 1024) openMenu(); }
+            }
+        }
+
+        function updateUI() {
+            document.getElementById('p1-hp').innerText = Math.max(0, p1.hp);
+            if(p2.active) document.getElementById('p2-hp').innerText = Math.max(0, p2.hp);
+            document.getElementById('enemy-count').innerText = gameMode === 'pvp' ? (p2.alive?1:0) : (TOTAL_ENEMIES - enemiesSpawned + enemies.length);
+            document.getElementById('base-hp').innerText = Math.max(0, organBase.hp);
+        }
+
+        function drawTank(tank, isEnemy) {
+            if(!tank.alive) return;
+            ctx.fillStyle = tank.color; ctx.fillRect(tank.x, tank.y, tank.w, tank.h);
+            ctx.fillStyle = '#000'; 
+            if (tank.dir === 'up') ctx.fillRect(tank.x + tank.w/2 - 3, tank.y - 6, 6, 14);
+            else if (tank.dir === 'down') ctx.fillRect(tank.x + tank.w/2 - 3, tank.y + tank.h - 8, 6, 14);
+            else if (tank.dir === 'left') ctx.fillRect(tank.x - 6, tank.y + tank.h/2 - 3, 14, 6);
+            else if (tank.dir === 'right') ctx.fillRect(tank.x + tank.w - 8, tank.y + tank.h/2 - 3, 14, 6);
+            
+            ctx.fillStyle = '#000'; ctx.fillRect(tank.x, tank.y - 8, tank.w, 4);
+            let hpRatio = tank.hp / (isEnemy ? 5 : Math.max(10, tank.hp));
+            ctx.fillStyle = '#10b981'; ctx.fillRect(tank.x, tank.y - 8, hpRatio*tank.w, 4);
+
+            // Vẽ Khiên chắn đạn nhấp nháy
+            let hasShield = tank.manualShield || (tank.autoShieldEndTime && Date.now() < tank.autoShieldEndTime);
+            if(hasShield && !isEnemy) {
+                if(Math.floor(Date.now() / 150) % 2 === 0 || (tank.autoShieldEndTime && Date.now() < tank.autoShieldEndTime)) {
+                    ctx.strokeStyle = tank.color; ctx.lineWidth = 3; ctx.beginPath(); 
+                    ctx.arc(tank.x + tank.w/2, tank.y + tank.h/2, 22, 0, Math.PI*2); ctx.stroke();
+                }
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (cameraAsBackground && isAiActive && !hideCameraBox) {
+                const camVideo = document.getElementById('webcam');
+                if (camVideo && camVideo.readyState >= 2) {
+                    ctx.save();
+                    if (currentFacingMode === 'user') { ctx.scale(-1, 1); ctx.translate(-canvas.width, 0); }
+                    ctx.globalAlpha = 0.4; ctx.drawImage(camVideo, 0, 0, canvas.width, canvas.height); ctx.globalAlpha = 1;
+                    if (!hideGestureSkeleton && lastMultiHandLandmarks) {
+                        lastMultiHandLandmarks.forEach((lm, idx) => {
+                            drawConnectors(ctx, lm, HAND_CONNECTIONS, {color: idx === 0 ? '#10b981' : '#38bdf8', lineWidth: 3});
+                            drawLandmarks(ctx, lm, {color: '#ffffff', lineWidth: 1, radius: 3});
+                        });
+                    }
+                    ctx.restore();
+                }
+            } else { ctx.fillStyle = envTheme.bg; ctx.fillRect(0, 0, canvas.width, canvas.height); }
+
+            walls.forEach(w => { 
+                ctx.fillStyle = envTheme.wall; ctx.fillRect(w.x, w.y, w.w, w.h); 
+                ctx.strokeStyle = envTheme.border; ctx.lineWidth = 2; ctx.strokeRect(w.x, w.y, w.w, w.h); 
+            });
+            
+            ctx.fillStyle = '#cbd5e1'; ctx.font = '10px sans-serif'; ctx.textAlign = 'center';
+            mapLabels.forEach(l => { ctx.fillText(l.text, l.x, l.y + 4); }); ctx.textAlign = 'left';
+
+            ctx.fillStyle = envTheme.organColor; ctx.fillRect(organBase.x, organBase.y, organBase.w, organBase.h);
+            ctx.fillStyle = '#fff'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center';
+            ctx.fillText(envTheme.name.toUpperCase(), organBase.x + organBase.w/2, organBase.y + organBase.h/2);
+            ctx.fillStyle = '#000'; ctx.fillRect(organBase.x, organBase.y - 12, organBase.w, 8);
+            ctx.fillStyle = '#f43f5e'; ctx.fillRect(organBase.x, organBase.y - 12, (organBase.hp/organBase.maxHp)*organBase.w, 8);
+            ctx.textAlign = 'left';
+
+            probiotics.forEach(pb => {
+                ctx.fillStyle = '#34d399'; ctx.beginPath(); ctx.arc(pb.x, pb.y, pb.r, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = '#fff'; ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('+', pb.x, pb.y+3); ctx.textAlign = 'left';
+            });
+
+            drawTank(p1, false); if(p2.active) drawTank(p2, p2.type==='boss');
+            enemies.forEach(e => drawTank(e, true));
+            projectiles.forEach(p => { ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2); ctx.fill(); });
+
+            if (gameState === 'waiting') {
+                ctx.fillStyle = 'rgba(0,0,0,0.7)'; ctx.fillRect(0,0,canvas.width,canvas.height);
+                ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.font = 'bold 32px sans-serif'; ctx.fillText('SẴN SÀNG BẢO VỆ CƠ THỂ!', canvas.width/2, canvas.height/2 - 20);
+                ctx.fillStyle = '#38bdf8'; ctx.font = '16px sans-serif'; ctx.fillText('Chọn Chế độ chơi hoặc Nội tạng ở menu tay phải để Bắt đầu.', canvas.width/2, canvas.height/2 + 25); ctx.textAlign = 'left';
+            } else if (gameState === 'lose' || gameState === 'win') {
+                ctx.fillStyle = 'rgba(0,0,0,0.85)'; ctx.fillRect(0,0,canvas.width,canvas.height);
+                ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; 
+                if (gameState === 'win') {
+                    ctx.fillStyle = '#10b981'; ctx.font = 'bold 36px sans-serif'; ctx.fillText("BẢO VỆ THÀNH CÔNG!", canvas.width/2, 160);
+                    ctx.fillStyle = '#cbd5e1'; ctx.font = '18px sans-serif'; ctx.fillText(`Thời gian: ${elapsedTime.toFixed(1)}s`, canvas.width/2, 210);
+                } else {
+                    ctx.fillStyle = '#e11d48'; ctx.font = 'bold 32px sans-serif'; 
+                    let reason = organBase.hp <= 0 ? "NỘI TẠNG ĐÃ BỊ PHÁ HỦY!" : "TẤT CẢ NGƯỜI BẢO VỆ ĐÃ TỬ TRẬN!";
+                    ctx.fillText(reason, canvas.width/2, 170);
+                    ctx.fillStyle = '#fca5a5'; ctx.font = '20px sans-serif'; ctx.fillText("VIRUS ĐÃ CHIẾM CƠ THỂ!", canvas.width/2, 210);
+                }
+                ctx.font = '14px sans-serif'; ctx.fillStyle='#94a3b8'; ctx.fillText("Mở Menu tay phải để chơi lại", canvas.width/2, 300); ctx.textAlign = 'left';
+            }
+        }
+        function loop() { update(); draw(); requestAnimationFrame(loop); }
+        setGameMode('pve', false); selectOrgan('brain', false); gameState = 'waiting'; resetGame(); loop();
+        if(window.innerWidth > 1024) openMenu();
+
+        // ==========================================
+        // AI CAMERA LOGIC
+        // ==========================================
+        let aiCameraInstance = null; let activeAIKeys = { p1: null, p2: null }; let activeAiHandsMode = 0;
+        const videoElement = document.getElementById('webcam'); const canvasElement = document.getElementById('output_canvas');
+        const canvasCtx = canvasElement.getContext('2d'); const loadingText = document.getElementById('cam-loading');
+        const camContainer = document.getElementById('ai-cam-container');
+        const btnBgToggle = document.getElementById('btnBgToggle'); const btnGestureHide = document.getElementById('btnGestureHide'); const btnCamBoxHide = document.getElementById('btnCamBoxHide');
+
+        function updateExtraTogglesUI() {
+            [btnBgToggle, btnGestureHide, btnCamBoxHide].forEach(b => b.disabled = !isAiActive);
+            btnBgToggle.classList.toggle('on', cameraAsBackground); btnBgToggle.innerHTML = cameraAsBackground ? '✅ Đang dùng Camera làm nền' : '🖼️ Đưa Camera vào làm nền chơi Game';
+            btnGestureHide.classList.toggle('on', hideGestureSkeleton); btnGestureHide.innerHTML = hideGestureSkeleton ? '👁️ Hiện lại cử chỉ 2 bàn tay' : '🙈 Tạm ẩn cử chỉ 2 bàn tay';
+            btnCamBoxHide.classList.toggle('on', hideCameraBox); btnCamBoxHide.innerHTML = hideCameraBox ? '👁️ Hiện lại Camera toàn màn hình' : '📴 Tạm ẩn Camera trên toàn màn hình';
+        }
+
+        function updateSmallCamBoxVisibility() { camContainer.classList.toggle('hidden', !(isAiActive && !cameraAsBackground && !hideCameraBox)); }
+        function toggleCameraBackground() { if (!isAiActive) return; cameraAsBackground = !cameraAsBackground; updateSmallCamBoxVisibility(); updateExtraTogglesUI(); }
+        function toggleGestureSkeleton() { if (!isAiActive) return; hideGestureSkeleton = !hideGestureSkeleton; updateExtraTogglesUI(); }
+        function toggleCameraBoxVisibility() { if (!isAiActive) return; hideCameraBox = !hideCameraBox; updateSmallCamBoxVisibility(); updateExtraTogglesUI(); }
+
+        function updateStatusUI(handsCount) {
+            document.getElementById('btnStart1User').innerHTML = handsCount === 1 ? '🛑 Tắt Camera (User 1)' : '✋ Bật Camera Cử Chỉ (User 1)';
+            document.getElementById('btnStart2User').innerHTML = handsCount === 2 ? '🛑 Tắt Camera (2 User)' : '✋ Bật Camera Cử Chỉ 2 User';
+            document.getElementById('statusTxtP1').innerText = (handsCount >= 1) ? 'đang chạy' : 'chờ'; document.getElementById('statusTxtP1').className = (handsCount >= 1) ? 'text-emerald-400' : 'text-white';
+            document.getElementById('statusTxtP2').innerText = (handsCount === 2) ? 'đang chạy' : 'chờ'; document.getElementById('statusTxtP2').className = (handsCount === 2) ? 'text-sky-400' : 'text-white';
+            updateExtraTogglesUI();
+        }
+
+        function triggerVirtualKeyForPlayer(player, key) {
+            if (activeAIKeys[player] && activeAIKeys[player] !== key) setKey(activeAIKeys[player], false);
+            if (key) setKey(key, true);
+            activeAIKeys[player] = key;
+        }
+
+        function getGestureKey(landmarks, playerPrefix) {
+            const indexTip = landmarks[8]; const indexBase = landmarks[5];
+            const middleTip = landmarks[12]; const middleBase = landmarks[9];
+            const ringTip = landmarks[16]; const ringBase = landmarks[13];
+            const pinkyTip = landmarks[20]; const pinkyBase = landmarks[17];
+            const upCount = [indexTip.y < indexBase.y, middleTip.y < middleBase.y, ringTip.y < ringBase.y, pinkyTip.y < pinkyBase.y].filter(Boolean).length;
+            
+            if (upCount >= 3) return keyMappings[`${playerPrefix}_shield`]; // Xòe tay = Khiên
+            if (upCount === 2) return keyMappings[`${playerPrefix}_down`]; // 2 ngón tay = Đi xuống
+            if (upCount === 0) return keyMappings[`${playerPrefix}_shoot`]; // Nắm đấm = Bắn
+            
+            if (upCount === 1 && indexTip.y < indexBase.y) {
+                const dx = indexTip.x - indexBase.x; const dy = indexTip.y - indexBase.y;
+                if (Math.abs(dy) > Math.abs(dx) * 1.5) return keyMappings[`${playerPrefix}_up`];
+                if (currentFacingMode === 'environment') {
+                    if (dx < -0.04) return keyMappings[`${playerPrefix}_left`]; if (dx > 0.04) return keyMappings[`${playerPrefix}_right`];
+                } else {
+                    if (dx > 0.04) return keyMappings[`${playerPrefix}_left`]; if (dx < -0.04) return keyMappings[`${playerPrefix}_right`];
+                }
+                return keyMappings[`${playerPrefix}_up`]; 
+            }
+            return null;
+        }
+
+        const hands = new Hands({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`});
+        hands.onResults((results) => {
+            if (loadingText.style.display !== 'none') loadingText.style.display = 'none';
+            canvasCtx.save(); canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height); canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
+            let p1DetectedKey = null; let p2DetectedKey = null;
+            lastMultiHandLandmarks = (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) ? results.multiHandLandmarks : null;
+
+            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                let handsArray = results.multiHandLandmarks.map((lm) => { return { landmarks: lm, x: lm[0].x }; });
+                if (currentFacingMode === 'user') handsArray.sort((a, b) => b.x - a.x); else handsArray.sort((a, b) => a.x - b.x); 
+
+                for (let i = 0; i < handsArray.length; i++) {
+                    const lm = handsArray[i].landmarks;
+                    if (!hideGestureSkeleton) {
+                        drawConnectors(canvasCtx, lm, HAND_CONNECTIONS, {color: i === 0 ? '#10b981' : '#38bdf8', lineWidth: 2});
+                        drawLandmarks(canvasCtx, lm, {color: '#ffffff', lineWidth: 1, radius: 2});
+                    }
+                    if(activeAiHandsMode === 1 && i === 0) p1DetectedKey = getGestureKey(lm, 'p1');
+                    else if (activeAiHandsMode === 2) { if (i === 0) p1DetectedKey = getGestureKey(lm, 'p1'); if (i === 1) p2DetectedKey = getGestureKey(lm, 'p2'); }
+                }
+            }
+            triggerVirtualKeyForPlayer('p1', p1DetectedKey); triggerVirtualKeyForPlayer('p2', p2DetectedKey);
+            canvasCtx.restore();
+        });
+
+        function stopCamera() {
+            if (aiCameraInstance) { aiCameraInstance.stop(); if(videoElement.srcObject) { videoElement.srcObject.getTracks().forEach(t => t.stop()); videoElement.srcObject = null; } }
+            isAiActive = false; activeAiHandsMode = 0; cameraAsBackground = false; hideGestureSkeleton = false; hideCameraBox = false; lastMultiHandLandmarks = null;
+            updateSmallCamBoxVisibility(); updateStatusUI(0);
+        }
+
+        function toggleCameraFacingMode() {
+            if(!isAiActive) return; currentFacingMode = (currentFacingMode === 'user') ? 'environment' : 'user';
+            if (currentFacingMode === 'user') canvasElement.classList.add('scale-x-[-1]'); else canvasElement.classList.remove('scale-x-[-1]');
+            startMediaPipeEngine(); 
+        }
+
+        function startMediaPipeEngine() {
+            if (aiCameraInstance) { aiCameraInstance.stop(); if(videoElement.srcObject) videoElement.srcObject.getTracks().forEach(t => t.stop()); }
+            loadingText.style.display = 'block'; 
+            aiCameraInstance = new Camera(videoElement, { onFrame: async () => { await hands.send({image: videoElement}); }, width: 320, height: 240, facingMode: currentFacingMode });
+            aiCameraInstance.start().catch(err => { loadingText.innerText = "Lỗi: Camera bị chặn!"; loadingText.className = "text-[10px] sm:text-xs text-red-500 font-bold absolute z-10 text-center"; stopCamera(); });
+        }
+
+        function startCamera(modeNumHands) {
+            if (activeAiHandsMode === modeNumHands) { stopCamera(); return; }
+            if (!isAiActive) { cameraAsBackground = false; hideGestureSkeleton = false; hideCameraBox = false; isAiActive = true; }
+            updateSmallCamBoxVisibility(); activeAiHandsMode = modeNumHands; updateStatusUI(modeNumHands);
+            hands.setOptions({ maxNumHands: modeNumHands, modelComplexity: 1, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
+            if (isAiActive) startMediaPipeEngine();
+        }
+    </script>
+</body>
+</html>
