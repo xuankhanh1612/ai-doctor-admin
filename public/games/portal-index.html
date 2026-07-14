@@ -1,0 +1,1450 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Trạm Game Y Tế | Bảo Vệ Cơ Thể — Game Portal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800;900&family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#070b14; --bg-alt:#0b1220; --panel:rgba(13,20,36,.82); --panel-solid:#0d1424;
+    --border:#1c2740; --border-hi:#2c3c5c;
+    --violet:#8b5cf6; --violet-dim:#4c2f8f;
+    --cyan:#22d3ee; --emerald:#10b981; --amber:#fbbf24; --rose:#fb7185;
+    --text:#e7ecf6; --text-dim:#8ea0bd; --text-faint:#516079;
+    --font-display:'Orbitron',sans-serif; --font-body:'Rajdhani',sans-serif; --font-mono:'Share Tech Mono',monospace;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{height:100%;}
+  body{
+    background:
+      radial-gradient(circle at 12% 8%, rgba(139,92,246,.16), transparent 42%),
+      radial-gradient(circle at 88% 18%, rgba(34,211,238,.13), transparent 40%),
+      radial-gradient(circle at 50% 100%, rgba(16,185,129,.10), transparent 45%),
+      var(--bg);
+    color:var(--text);
+    font-family:var(--font-body);
+    font-size:16px;
+    min-height:100%;
+    overflow-x:hidden;
+    position:relative;
+  }
+  body::before{
+    content:'';
+    position:fixed; inset:0; pointer-events:none; z-index:0;
+    background-image:
+      linear-gradient(rgba(139,92,246,.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(139,92,246,.05) 1px, transparent 1px);
+    background-size: 42px 42px;
+    mask-image: radial-gradient(ellipse at 50% 0%, black 0%, transparent 75%);
+  }
+  ::selection{ background:var(--violet); color:#fff; }
+  ::-webkit-scrollbar{width:10px; height:10px;}
+  ::-webkit-scrollbar-track{background:var(--bg-alt);}
+  ::-webkit-scrollbar-thumb{background:var(--border-hi); border-radius:8px;}
+
+  .wrap{ position:relative; z-index:1; max-width:1180px; margin:0 auto; padding:0 20px 80px; }
+
+  /* ===== TOP BAR ===== */
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+    padding:16px 4px; flex-wrap:wrap;
+  }
+  .brand{ display:flex; align-items:center; gap:10px; }
+  .brand .dot{ width:10px; height:10px; border-radius:50%; background:var(--emerald); box-shadow:0 0 10px var(--emerald); animation:blink 2s infinite; }
+  @keyframes blink{ 0%,100%{opacity:1;} 50%{opacity:.35;} }
+  .brand span{ font-family:var(--font-mono); font-size:12px; letter-spacing:2px; color:var(--text-dim); text-transform:uppercase; }
+  .player-box{
+    display:flex; align-items:center; gap:8px; background:var(--panel); border:1px solid var(--border);
+    padding:8px 12px; border-radius:10px;
+  }
+  .player-box label{ font-size:12px; color:var(--text-faint); font-family:var(--font-mono); white-space:nowrap; }
+  .player-box input{
+    background:transparent; border:none; outline:none; color:var(--amber); font-family:var(--font-mono);
+    font-size:14px; width:130px; border-bottom:1px dashed var(--border-hi); padding-bottom:2px;
+  }
+
+  /* ===== HERO ===== */
+  .hero{ position:relative; padding:38px 4px 26px; text-align:center; }
+  .hero .tag{
+    display:inline-flex; align-items:center; gap:8px; font-family:var(--font-mono); font-size:11px;
+    letter-spacing:3px; color:var(--cyan); border:1px solid rgba(34,211,238,.35); background:rgba(34,211,238,.06);
+    padding:5px 14px; border-radius:999px; text-transform:uppercase; margin-bottom:18px;
+  }
+  h1.title{
+    font-family:var(--font-display); font-weight:900; font-size:clamp(30px,5.4vw,54px);
+    letter-spacing:1px; line-height:1.08;
+    background:linear-gradient(180deg,#fff 20%, #b9c6ff 55%, var(--violet) 120%);
+    -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
+    text-shadow:0 0 46px rgba(139,92,246,.35);
+  }
+  .hero p.sub{ color:var(--text-dim); font-size:17px; max-width:600px; margin:16px auto 0; line-height:1.55; }
+  .scanpulse{
+    position:absolute; top:-40px; left:50%; transform:translateX(-50%);
+    width:520px; height:260px; border-radius:50%;
+    background:radial-gradient(ellipse at center, rgba(139,92,246,.28), transparent 68%);
+    filter:blur(10px); z-index:-1; animation:pulse 4.5s ease-in-out infinite;
+  }
+  @keyframes pulse{ 0%,100%{ opacity:.55; transform:translateX(-50%) scale(1);} 50%{ opacity:.9; transform:translateX(-50%) scale(1.08);} }
+
+  /* ===== STATS STRIP ===== */
+  .stats{ display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin:30px 0 8px; }
+  .stat{
+    background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:14px 16px;
+    text-align:center; position:relative; overflow:hidden;
+  }
+  .stat::after{ content:''; position:absolute; left:0; right:0; top:0; height:2px; background:linear-gradient(90deg,var(--violet),var(--cyan)); }
+  .stat b{ display:block; font-family:var(--font-mono); font-size:26px; color:#fff; }
+  .stat span{ font-size:12px; color:var(--text-faint); text-transform:uppercase; letter-spacing:1px; }
+  @media (max-width:640px){ .stats{ grid-template-columns:repeat(2,1fr); } }
+
+  /* ===== TABS ===== */
+  .tabs{ display:flex; gap:8px; margin:34px 0 20px; border-bottom:1px solid var(--border); }
+  .tab-btn{
+    font-family:var(--font-display); font-weight:700; font-size:13px; letter-spacing:1px;
+    color:var(--text-faint); background:none; border:none; padding:12px 6px; cursor:pointer;
+    position:relative; text-transform:uppercase;
+  }
+  .tab-btn.active{ color:#fff; }
+  .tab-btn.active::after{
+    content:''; position:absolute; left:0; right:0; bottom:-1px; height:2px;
+    background:linear-gradient(90deg,var(--violet),var(--cyan)); box-shadow:0 0 8px var(--violet);
+  }
+  .tab-panel{ display:none; animation:fadein .35s ease; }
+  .tab-panel.active{ display:block; }
+  @keyframes fadein{ from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);} }
+
+  /* ===== CATEGORY LABEL ===== */
+  .cat-heading{
+    display:flex; align-items:center; gap:10px; margin:26px 0 14px;
+    font-family:var(--font-display); font-size:13px; letter-spacing:2px; color:var(--text-dim); text-transform:uppercase;
+  }
+  .cat-heading::after{ content:''; flex:1; height:1px; background:var(--border); }
+  .cat-heading em{ font-style:normal; padding:3px 10px; border-radius:6px; font-size:11px; }
+  .cat-camera em{ color:var(--cyan); background:rgba(34,211,238,.1); border:1px solid rgba(34,211,238,.3); }
+  .cat-keyboard em{ color:var(--emerald); background:rgba(16,185,129,.1); border:1px solid rgba(16,185,129,.3); }
+  .cat-demo em{ color:var(--amber); background:rgba(251,191,36,.1); border:1px solid rgba(251,191,36,.3); }
+  .cat-external em{ color:var(--rose); background:rgba(251,113,133,.1); border:1px solid rgba(251,113,133,.3); }
+
+  /* ===== GAME GRID ===== */
+  .grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:16px; }
+  .card{
+    position:relative; background:var(--panel-solid); border:1px solid var(--border); border-radius:14px;
+    padding:20px; cursor:pointer; transition:transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+    display:flex; flex-direction:column; gap:10px; min-height:190px;
+  }
+  .card:hover{ transform:translateY(-4px); border-color:var(--border-hi); box-shadow:0 14px 34px rgba(0,0,0,.45); }
+  .card::before, .card::after{
+    content:''; position:absolute; width:16px; height:16px; border:2px solid transparent; transition:border-color .2s;
+  }
+  .card::before{ top:6px; left:6px; border-top-color:var(--violet); border-left-color:var(--violet); }
+  .card::after{ bottom:6px; right:6px; border-bottom-color:var(--cyan); border-right-color:var(--cyan); }
+  .card:hover::before, .card:hover::after{ width:24px; height:24px; }
+  .card .icon{ font-size:32px; line-height:1; }
+  .card h3{ font-family:var(--font-display); font-size:15px; font-weight:700; letter-spacing:.4px; color:#fff; }
+  .card p{ font-size:13.5px; color:var(--text-dim); line-height:1.5; flex:1; }
+  .card .chips{ display:flex; gap:6px; flex-wrap:wrap; }
+  .chip{ font-family:var(--font-mono); font-size:10px; padding:3px 8px; border-radius:999px; border:1px solid var(--border-hi); color:var(--text-dim); text-transform:uppercase; letter-spacing:.5px; }
+  .card .best{ font-family:var(--font-mono); font-size:12px; color:var(--amber); }
+  .card .play-btn{
+    margin-top:4px; font-family:var(--font-display); font-size:12px; font-weight:700; letter-spacing:1px;
+    color:#0b1220; background:linear-gradient(90deg,var(--cyan),var(--violet)); border:none; padding:10px 14px;
+    border-radius:8px; cursor:pointer; text-transform:uppercase;
+  }
+
+  /* ===== LEADERBOARD ===== */
+  .lb-controls{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:16px; }
+  select, .btn-ghost{
+    background:var(--panel); color:var(--text); border:1px solid var(--border); border-radius:8px;
+    padding:9px 12px; font-family:var(--font-body); font-size:14px; cursor:pointer;
+  }
+  .btn-ghost{ font-family:var(--font-mono); font-size:12px; color:var(--rose); border-color:rgba(251,113,133,.35); }
+  .btn-ghost:hover{ background:rgba(251,113,133,.08); }
+  .lb-table{ width:100%; border-collapse:collapse; background:var(--panel-solid); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+  .lb-table th{
+    text-align:left; font-family:var(--font-mono); font-size:11px; letter-spacing:1px; color:var(--text-faint);
+    text-transform:uppercase; padding:12px 14px; border-bottom:1px solid var(--border); background:rgba(255,255,255,.02);
+  }
+  .lb-table td{ padding:11px 14px; border-bottom:1px solid var(--border); font-size:14px; }
+  .lb-table tr:last-child td{ border-bottom:none; }
+  .lb-table tr:hover td{ background:rgba(139,92,246,.05); }
+  .rank{ font-family:var(--font-mono); font-weight:700; }
+  .rank.gold{ color:#ffd54a; } .rank.silver{ color:#cbd5e1; } .rank.bronze{ color:#d98b4a; }
+  .status-win{ color:var(--emerald); font-weight:600; }
+  .status-lose{ color:var(--rose); font-weight:600; }
+  .score-val{ font-family:var(--font-mono); color:var(--amber); }
+  .empty-state{ text-align:center; padding:50px 20px; color:var(--text-faint); }
+  .empty-state .big{ font-size:40px; margin-bottom:10px; }
+
+  /* ===== GAME OVERLAY ===== */
+  .overlay{
+    position:fixed; inset:0; background:#04060c; z-index:200; display:none; flex-direction:column;
+  }
+  .overlay.open{ display:flex; }
+  .overlay-top{
+    display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 16px;
+    background:#0b1220; border-bottom:1px solid var(--border); flex-wrap:wrap;
+  }
+  .overlay-top .left{ display:flex; align-items:center; gap:10px; min-width:0; }
+  .overlay-top .left .icon{ font-size:20px; }
+  .overlay-top h4{ font-family:var(--font-display); font-size:13px; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .status-pill{
+    font-family:var(--font-mono); font-size:11px; padding:4px 10px; border-radius:999px; white-space:nowrap;
+    border:1px solid var(--border-hi); color:var(--text-dim);
+  }
+  .status-pill.live{ color:var(--emerald); border-color:rgba(16,185,129,.4); background:rgba(16,185,129,.08); }
+  .overlay-top .right{ display:flex; gap:8px; }
+  .icon-btn{
+    background:var(--panel); border:1px solid var(--border); color:var(--text); border-radius:8px;
+    padding:8px 12px; cursor:pointer; font-family:var(--font-body); font-size:13px; font-weight:600;
+  }
+  .icon-btn:hover{ border-color:var(--border-hi); }
+  .icon-btn.exit{ color:var(--rose); }
+  .overlay-body{ position:relative; flex:1; background:#000; }
+  .overlay-body iframe{ width:100%; height:100%; border:none; display:block; }
+  .overlay-loading{
+    position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:14px; background:#04060c; color:var(--text-dim); font-family:var(--font-mono); font-size:13px;
+  }
+  .spinner{ width:36px; height:36px; border-radius:50%; border:3px solid var(--border-hi); border-top-color:var(--violet); animation:spin 1s linear infinite; }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+
+  /* result toast inside overlay */
+  .result-toast{
+    position:absolute; left:50%; bottom:26px; transform:translateX(-50%) translateY(20px);
+    background:var(--panel-solid); border:1px solid var(--border-hi); border-radius:14px; padding:16px 22px;
+    display:flex; align-items:center; gap:16px; opacity:0; pointer-events:none; transition:all .35s ease;
+    box-shadow:0 18px 40px rgba(0,0,0,.55); z-index:5;
+  }
+  .result-toast.show{ opacity:1; transform:translateX(-50%) translateY(0); pointer-events:auto; }
+  .result-toast .medal{ font-size:30px; }
+  .result-toast .info b{ display:block; font-family:var(--font-display); font-size:14px; }
+  .result-toast .info span{ font-family:var(--font-mono); font-size:12px; color:var(--text-dim); }
+  .result-toast .info span.win{ color:var(--emerald); }
+  .result-toast .info span.lose{ color:var(--rose); }
+
+  /* ===== VIRTUAL CONTROLS (external game bridge) ===== */
+  .vctrl-bar{
+    position:absolute; left:0; right:0; bottom:0; display:none; flex-direction:column; z-index:8;
+  }
+  .vctrl-bar.show{ display:flex; }
+  .vctrl-toggle-row{ display:flex; justify-content:center; pointer-events:none; }
+  .vctrl-toggle{
+    pointer-events:auto; background:var(--panel-solid); border:1px solid var(--border-hi); border-bottom:none;
+    color:var(--text-dim); font-family:var(--font-mono); font-size:11px; letter-spacing:.02em;
+    padding:6px 18px; border-radius:10px 10px 0 0; cursor:pointer; margin-bottom:-1px;
+  }
+  .vctrl-toggle:hover{ color:#fff; border-color:var(--border-hi); }
+  .vctrl-inner{
+    display:flex; align-items:center; justify-content:space-between; gap:14px; padding:12px 16px;
+    background:linear-gradient(0deg, rgba(4,6,12,.95), rgba(4,6,12,.55)); border-top:1px solid var(--border-hi);
+    flex-wrap:wrap; max-height:240px; overflow:hidden; opacity:1;
+    transition:max-height .25s ease, padding .25s ease, opacity .2s ease;
+  }
+  .vctrl-bar.collapsed .vctrl-inner{ max-height:0; padding-top:0; padding-bottom:0; opacity:0; pointer-events:none; }
+  .dpad{ display:grid; grid-template-columns:44px 44px 44px; grid-template-rows:44px 44px 44px; gap:4px; }
+  .dpad button{
+    background:var(--panel-solid); border:1px solid var(--border-hi); color:#fff; border-radius:8px; font-size:16px;
+    cursor:pointer; user-select:none; touch-action:none;
+  }
+  .dpad button:active, .dpad button.active{ background:var(--violet); border-color:var(--violet); }
+  .dpad .u{ grid-column:2; grid-row:1; } .dpad .l{ grid-column:1; grid-row:2; }
+  .dpad .r{ grid-column:3; grid-row:2; } .dpad .d{ grid-column:2; grid-row:3; }
+  .action-btn{
+    width:64px; height:64px; border-radius:50%; background:linear-gradient(180deg,var(--rose),#be123c);
+    border:none; color:#fff; font-size:22px; cursor:pointer; touch-action:none; box-shadow:0 6px 18px rgba(251,113,133,.4);
+  }
+  .action-btn:active, .action-btn.active{ filter:brightness(1.3); }
+  .qe-group{ display:flex; align-items:center; gap:8px; }
+  .qe-btn{
+    width:52px; height:52px; border-radius:14px; border:1px solid var(--border-hi); cursor:pointer; touch-action:none;
+    background:var(--panel-solid); color:#fff; font-family:var(--font-display); font-size:15px; font-weight:800;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; line-height:1.1; gap:2px;
+  }
+  .qe-btn span{ font-family:var(--font-mono); font-size:8.5px; font-weight:400; color:var(--text-dim); letter-spacing:.02em; }
+  .qe-btn.pull{ border-color:var(--amber); }
+  .qe-btn.pull:active, .qe-btn.pull.active{ background:rgba(251,191,36,.22); border-color:var(--amber); }
+  .qe-btn.fire{ border-color:var(--rose); }
+  .qe-btn.fire:active, .qe-btn.fire.active{ background:rgba(251,113,133,.22); border-color:var(--rose); }
+  /* Biến thể cho các nút được sinh động theo vkeyMap của từng game (vd xoay nòng/tăng-giảm lực của Angry Bird) */
+  .qe-btn.extra-cyan{ border-color:var(--cyan); }
+  .qe-btn.extra-cyan:active, .qe-btn.extra-cyan.active{ background:rgba(34,211,238,.22); border-color:var(--cyan); }
+  .qe-btn.extra-amber{ border-color:var(--amber); }
+  .qe-btn.extra-amber:active, .qe-btn.extra-amber.active{ background:rgba(251,191,36,.22); border-color:var(--amber); }
+  .qe-btn.extra-rose{ border-color:var(--rose); }
+  .qe-btn.extra-rose:active, .qe-btn.extra-rose.active{ background:rgba(251,113,133,.22); border-color:var(--rose); }
+  .vctrl-right{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .cam-toggle-btn{
+    font-family:var(--font-mono); font-size:12px; padding:10px 14px; border-radius:10px; cursor:pointer;
+    background:var(--panel-solid); border:1px solid var(--border-hi); color:var(--cyan);
+  }
+  .cam-toggle-btn.on{ background:rgba(34,211,238,.15); border-color:var(--cyan); color:#fff; }
+  .vcam-preview{
+    width:140px; height:105px; border-radius:8px; overflow:hidden; border:1px solid var(--border-hi); display:none; position:relative; background:#000;
+  }
+  .vcam-preview.show{ display:block; }
+  .vcam-preview video, .vcam-preview canvas{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; transform:scaleX(-1); }
+  /* Camera sau (environment) không phải soi gương -> không lật ngang, giữ đúng góc nhìn ra thế giới */
+  .vcam-preview.facing-env video, .vcam-preview.facing-env canvas{ transform:none; }
+  .vcam-hint{ font-family:var(--font-mono); font-size:10.5px; color:var(--text-faint); max-width:220px; line-height:1.4; }
+
+  /* ===== CAMERA FACING TOGGLE ===== */
+  .vcam-flip-btn{
+    position:absolute; top:4px; right:4px; z-index:5; width:24px; height:24px; border-radius:50%;
+    background:rgba(0,0,0,.55); border:1px solid rgba(255,255,255,.3); color:#fff; font-size:12px;
+    cursor:pointer; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(2px);
+  }
+  .vcam-flip-btn:hover{ background:rgba(139,92,246,.6); }
+  .settings-gear-btn{
+    font-family:var(--font-mono); font-size:12px; padding:10px 12px; border-radius:10px; cursor:pointer;
+    background:var(--panel-solid); border:1px solid var(--border-hi); color:var(--text-dim);
+  }
+  .settings-gear-btn:hover{ color:#fff; border-color:var(--border-hi); }
+
+  /* ===== CONTROL MAPPING SETTINGS MODAL ===== */
+  .cmap-overlay{
+    position:fixed; inset:0; background:rgba(2,4,10,.82); z-index:200; display:none;
+    align-items:center; justify-content:center; padding:16px; backdrop-filter:blur(3px);
+  }
+  .cmap-overlay.open{ display:flex; }
+  .cmap-panel{
+    width:720px; max-width:100%; max-height:88vh; overflow-y:auto; background:var(--panel-solid);
+    border:1px solid var(--border-hi); border-radius:16px; box-shadow:0 20px 60px rgba(0,0,0,.6);
+  }
+  .cmap-header{
+    position:sticky; top:0; background:var(--panel-solid); z-index:2; padding:16px 20px; border-bottom:1px solid var(--border);
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .cmap-header h2{ font-family:var(--font-display); font-size:15px; letter-spacing:1.5px; color:#fff; text-transform:uppercase; }
+  .cmap-close{ background:none; border:1px solid var(--border-hi); color:var(--text-dim); border-radius:8px; width:30px; height:30px; cursor:pointer; }
+  .cmap-close:hover{ color:#fff; border-color:var(--rose); }
+  .cmap-body{ padding:6px 20px 20px; }
+  .cmap-section{ margin-top:18px; }
+  .cmap-section h3{
+    font-family:var(--font-mono); font-size:11.5px; letter-spacing:1.5px; text-transform:uppercase; color:var(--cyan);
+    border-bottom:1px solid var(--border); padding-bottom:6px; margin-bottom:10px; display:flex; align-items:center; gap:8px;
+  }
+  .cmap-row{
+    display:flex; align-items:center; justify-content:space-between; gap:10px; padding:7px 10px; border-radius:8px;
+  }
+  .cmap-row:hover{ background:rgba(255,255,255,.03); }
+  .cmap-row .cmap-label{ font-size:13px; color:var(--text); display:flex; align-items:center; gap:8px; }
+  .cmap-row .cmap-hint{ font-size:11px; color:var(--text-faint); font-family:var(--font-mono); }
+  .cmap-keybtn{
+    background:var(--panel); border:1px solid var(--border-hi); color:#fff; padding:5px 12px; border-radius:6px;
+    cursor:pointer; min-width:86px; text-align:center; font-family:var(--font-mono); font-size:12px;
+  }
+  .cmap-keybtn:hover{ border-color:var(--cyan); }
+  .cmap-keybtn.listening{ background:var(--violet); border-color:var(--violet); color:#fff; animation:cmapPulse 1s infinite; }
+  @keyframes cmapPulse{ 0%,100%{opacity:1;} 50%{opacity:.5;} }
+  .cmap-select{
+    background:var(--panel); border:1px solid var(--border-hi); color:#fff; padding:5px 10px; border-radius:6px;
+    font-family:var(--font-mono); font-size:12px; cursor:pointer;
+  }
+  .cmap-camera-row{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .cmap-camera-row .cam-toggle-btn, .cmap-camera-row .vcam-flip-inline{
+    font-family:var(--font-mono); font-size:12px; padding:8px 12px; border-radius:8px; cursor:pointer;
+    background:var(--panel); border:1px solid var(--border-hi); color:var(--cyan);
+  }
+  .cmap-footer{
+    padding:14px 20px; border-top:1px solid var(--border); display:flex; justify-content:space-between; gap:10px;
+    position:sticky; bottom:0; background:var(--panel-solid);
+  }
+  .cmap-footer .btn-reset{
+    font-family:var(--font-mono); font-size:12px; padding:9px 14px; border-radius:8px; cursor:pointer;
+    background:none; border:1px solid var(--border-hi); color:var(--text-dim);
+  }
+  .cmap-footer .btn-save{
+    font-family:var(--font-display); font-weight:700; font-size:12px; letter-spacing:1px; text-transform:uppercase;
+    padding:9px 20px; border-radius:8px; cursor:pointer; border:none; color:#0b1220;
+    background:linear-gradient(90deg,var(--cyan),var(--violet));
+  }
+  .cmap-note{ font-size:11.5px; color:var(--text-faint); line-height:1.5; margin-top:6px; }
+
+  footer{ text-align:center; color:var(--text-faint); font-size:12px; padding:30px 0 10px; font-family:var(--font-mono); }
+  footer a{ color:var(--cyan); text-decoration:none; }
+
+  /* ===== RESPONSIVE / MOBILE ===== */
+  @media (max-width:680px){
+    .wrap{ padding:0 12px 60px; }
+    .topbar{ padding:12px 2px; gap:10px; }
+    .player-box{ flex:1; min-width:0; }
+    .player-box input{ width:100%; }
+
+    .hero{ padding:26px 2px 16px; }
+    .hero p.sub{ font-size:14.5px; }
+    .scanpulse{ width:340px; height:180px; }
+
+    .tabs{ gap:2px; margin:26px 0 16px; }
+    .tab-btn{ font-size:12px; padding:10px 4px; }
+
+    .grid{ grid-template-columns:repeat(auto-fill,minmax(145px,1fr)); gap:10px; }
+    .card{ padding:14px; min-height:160px; gap:8px; }
+    .card .icon{ font-size:24px; }
+    .card h3{ font-size:13px; }
+    .card p{ font-size:12px; }
+    .card .play-btn{ font-size:11px; padding:9px 10px; }
+
+    .lb-controls{ gap:8px; }
+    .lb-controls select, .lb-controls .btn-ghost{ font-size:12.5px; padding:8px 10px; flex:1; min-width:120px; }
+    .lb-table th, .lb-table td{ padding:8px 8px; font-size:12.5px; }
+
+    /* ---- Game overlay chrome ---- */
+    .overlay-top{ padding:8px 10px; gap:6px; }
+    .overlay-top h4{ font-size:12px; max-width:38vw; }
+    .status-pill{ font-size:10px; padding:3px 8px; }
+    .icon-btn{ padding:7px 9px; font-size:12px; }
+
+    /* ---- Virtual controls bar ---- */
+    .vctrl-inner{ padding:8px 8px; gap:8px; max-height:340px; }
+    .dpad{ grid-template-columns:38px 38px 38px; grid-template-rows:38px 38px 38px; gap:3px; }
+    .dpad button{ font-size:13px; }
+    .action-btn{ width:54px; height:54px; font-size:19px; }
+    .qe-btn{ width:44px; height:44px; border-radius:11px; }
+    .qe-btn span{ font-size:7px; }
+    .vcam-preview{ width:92px; height:69px; }
+    .vcam-hint{ display:none; } /* tiết kiệm diện tích trên điện thoại */
+    .vctrl-right{ gap:6px; }
+    .cam-toggle-btn, .settings-gear-btn{ font-size:11px; padding:8px 10px; }
+
+    /* ---- Control mapping modal ---- */
+    .cmap-panel{ max-height:94vh; border-radius:12px; }
+    .cmap-header{ padding:14px 14px; }
+    .cmap-header h2{ font-size:13px; }
+    .cmap-body{ padding:4px 14px 14px; }
+    .cmap-row{ flex-wrap:wrap; padding:8px 6px; }
+    .cmap-camera-row{ gap:8px; }
+    .cmap-camera-row .cam-toggle-btn, .cmap-camera-row .vcam-flip-inline{ font-size:11.5px; padding:8px 10px; }
+    .cmap-footer{ padding:12px 14px; flex-wrap:wrap; gap:8px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="topbar">
+    <div class="brand"><span class="dot"></span><span>Trạm Chỉ Huy · Bảo Vệ Cơ Thể</span></div>
+    <div class="player-box">
+      <label>👤 NGƯỜI CHƠI</label>
+      <input id="playerNameInput" type="text" maxlength="20" placeholder="Nhập tên...">
+    </div>
+  </div>
+
+  <section class="hero">
+    <div class="scanpulse"></div>
+    <div class="tag">🧬 Game Portal · Y Học Miễn Dịch</div>
+    <h1 class="title">BẢO VỆ CƠ THỂ<br>GAME PORTAL</h1>
+    <p class="sub">Chọn một nhiệm vụ, hoá thân thành tế bào bảo vệ, chiến đấu chống virus &amp; Boss Ung Thư bằng cử chỉ tay AI hoặc bàn phím. Mọi trận thắng/thua đều được ghi điểm theo thời gian vào Leader Board.</p>
+  </section>
+
+  <div class="stats" id="statsStrip">
+    <div class="stat"><b id="statGames">9</b><span>Game khả dụng</span></div>
+    <div class="stat"><b id="statPlays">0</b><span>Lượt đã chơi</span></div>
+    <div class="stat"><b id="statWins">0</b><span>Lần thắng</span></div>
+    <div class="stat"><b id="statBest">–</b><span>Điểm cao nhất</span></div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="games">🎮 Chọn Game</button>
+    <button class="tab-btn" data-tab="leaderboard">🏆 Leader Board</button>
+  </div>
+
+  <div class="tab-panel active" id="panel-games">
+    <div id="gameCategories"></div>
+  </div>
+
+  <div class="tab-panel" id="panel-leaderboard">
+    <div class="lb-controls">
+      <select id="lbGameFilter"></select>
+      <select id="lbSort">
+        <option value="score">Sắp xếp: Điểm cao nhất</option>
+        <option value="time">Sắp xếp: Thời gian trụ lâu nhất</option>
+        <option value="recent">Sắp xếp: Mới nhất</option>
+      </select>
+      <button class="btn-ghost" id="clearLbBtn">🗑️ Xoá toàn bộ dữ liệu</button>
+    </div>
+    <div id="lbTableWrap"></div>
+  </div>
+</div>
+
+<footer>Dữ liệu Leader Board được lưu cục bộ trên trình duyệt (localStorage) — không gửi lên máy chủ nào. · <a href="#" id="scrollTopLink">Về đầu trang</a></footer>
+
+<!-- ===== GAME OVERLAY ===== -->
+<div class="overlay" id="overlay">
+  <div class="overlay-top">
+    <div class="left">
+      <span class="icon" id="ovIcon">🎮</span>
+      <h4 id="ovTitle">Đang tải game...</h4>
+      <span class="status-pill" id="ovStatus">Đang kết nối...</span>
+    </div>
+    <div class="right">
+      <button class="icon-btn" id="ovReload">🔄 Chơi lại</button>
+      <button class="icon-btn exit" id="ovExit">✕ Thoát về Portal</button>
+    </div>
+  </div>
+  <div class="overlay-body">
+    <iframe id="ovFrame" allow="camera; microphone; autoplay; fullscreen" allowfullscreen></iframe>
+    <div class="overlay-loading" id="ovLoading">
+      <div class="spinner"></div>
+      <div id="ovLoadingText">Đang khởi động game...</div>
+    </div>
+    <div class="result-toast" id="resultToast">
+      <div class="medal" id="toastMedal">🏅</div>
+      <div class="info">
+        <b id="toastTitle">Đã ghi điểm!</b>
+        <span id="toastDetail">Điểm: 0 · Thời gian: 0s</span>
+      </div>
+    </div>
+
+    <div class="vctrl-bar" id="vctrlBar">
+      <div class="vctrl-toggle-row">
+        <button class="vctrl-toggle" id="vctrlToggleBtn" type="button">▾ Ẩn điều khiển</button>
+      </div>
+      <div class="vctrl-inner" id="vctrlInner">
+        <div class="dpad" id="vDpad">
+          <button class="u" data-dir="up">▲</button>
+          <button class="l" data-dir="left">◀</button>
+          <button class="r" data-dir="right">▶</button>
+          <button class="d" data-dir="down">▼</button>
+        </div>
+        <div class="vcam-preview" id="vcamPreview">
+          <video id="vcamVideo" autoplay playsinline muted></video>
+          <canvas id="vcamCanvas"></canvas>
+          <button class="vcam-flip-btn" id="vcamFlipBtn" type="button" title="Đổi Camera Trước/Sau">🔄</button>
+        </div>
+        <div class="qe-group" id="vExtraGroup"><!-- Sinh động: nút phụ theo vkeyMap của game đang mở (Kéo/Bắn, hoặc Xoay/Lực...) --></div>
+        <div class="vctrl-right">
+          <div class="vcam-hint" id="vcamHint"></div>
+          <button class="cam-toggle-btn" id="camToggleBtn">🖐️ Bật Camera Cử Chỉ (Beta)</button>
+          <button class="settings-gear-btn" id="cmapOpenBtn" type="button">⚙️ Ánh xạ điều khiển</button>
+          <button class="action-btn" id="vActionBtn">🔫</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="cmap-overlay" id="cmapOverlay">
+  <div class="cmap-panel">
+    <div class="cmap-header">
+      <h2>⚙️ Quản Lý Camera &amp; Ánh Xạ Điều Khiển</h2>
+      <button class="cmap-close" id="cmapCloseBtn" type="button">✕</button>
+    </div>
+    <div class="cmap-body">
+
+      <div class="cmap-section">
+        <h3>📷 Quản Lý Camera (Trước / Sau)</h3>
+        <div class="cmap-camera-row">
+          <button class="cam-toggle-btn" id="cmapCamToggleBtn">🖐️ Bật Camera Cử Chỉ (Beta)</button>
+          <button class="vcam-flip-inline" id="cmapCamFlipBtn" type="button">🔄 Đổi Camera Trước/Sau</button>
+          <span class="cmap-hint" id="cmapCamFacingLabel">Đang dùng: Camera trước</span>
+        </div>
+        <p class="cmap-note">Bật camera rồi mới đổi được trước/sau. Đổi camera sẽ khởi động lại pipeline nhận diện tay (video tắt/mở lại trong giây lát).</p>
+      </div>
+
+      <div class="cmap-section">
+        <h3>⌨️ Bàn Phím Vật Lý → Hành Động</h3>
+        <div id="cmapPhysicalRows"></div>
+        <p class="cmap-note">Bấm vào phím rồi gõ phím vật lý muốn dùng. Các phím này hoạt động ngay cả khi không bật camera.</p>
+      </div>
+
+      <div class="cmap-section">
+        <h3>🖐️ Cử Chỉ Tay → Hành Động</h3>
+        <div id="cmapGestureRows"></div>
+        <p class="cmap-note">👆 Chỉ ngón trỏ luôn dùng để đổi hướng (8 góc) — chỉ ✊ Nắm tay và ✋ Xoè tay là đổi được sang hành động khác.</p>
+      </div>
+
+      <div class="cmap-section">
+        <h3>🚀 Hành Động → Phím Gửi Cho Game Ngoài</h3>
+        <div id="cmapOutputRows"></div>
+        <p class="cmap-note">Đây là phím thật sẽ được gửi (qua postMessage) vào game nhúng ngoài (vd captain-khanh-game.vercel.app). Đổi để hợp với game khác cần phím khác.</p>
+      </div>
+
+    </div>
+    <div class="cmap-footer">
+      <button class="btn-reset" id="cmapResetBtn" type="button">↩️ Khôi phục mặc định</button>
+      <button class="btn-save" id="cmapSaveBtn" type="button">Lưu &amp; Đóng</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ===================== CONFIG =====================
+  const GAMES = [
+    { id:"camera-key", file:"bao-ve-co-the-camera-key.html", title:"Bảo Vệ Cơ Thể – Camera Cử Chỉ (Đầy đủ)", icon:"🖐️",
+      desc:"Bản đầy đủ nhất: điều khiển bằng cử chỉ tay AI, tuỳ chỉnh phím, chọn hệ cơ quan, 3 chế độ PvE / Co-op / PvP.",
+      category:"camera", scoring:"winlose" },
+    { id:"camera-key-2angrybird", file:"bao-ve-co-the-camera-key-2angrybird.html", title:"Bảo Vệ Cơ Thể – 2 Người Chơi Camera", icon:"🤜🤛",
+      desc:"Phiên bản 2 người chơi cùng dùng camera cử chỉ, đối kháng kiểu Angry Bird trên cùng một màn hình.",
+      category:"camera", scoring:"winlose" },
+    { id:"camera-no-key", file:"bao-ve-co-the-camera-no-key.html", title:"Bảo Vệ Cơ Thể – Chỉ Camera (Responsive)", icon:"📷",
+      desc:"Chơi hoàn toàn bằng camera cử chỉ tay, giao diện responsive gọn cho điện thoại, không cần đổi phím.",
+      category:"camera", scoring:"winlose" },
+    { id:"no-camera", file:"bao-ve-co-the-no-camera.html", title:"Bảo Vệ Cơ Thể – Không Cần Camera", icon:"⌨️",
+      desc:"Chơi bằng bàn phím / nút chạm, không cần bật camera — phù hợp khi không có webcam.",
+      category:"keyboard", scoring:"winlose" },
+    { id:"auto", file:"bao-ve-co-the-auto.html", title:"Bảo Vệ Cơ Thể – Chế Độ Tự Động", icon:"🤖",
+      desc:"Chế độ Defender vs Boss gọn nhẹ, khởi động nhanh, phù hợp luyện tập tốc độ phản xạ.",
+      category:"keyboard", scoring:"winlose" },
+    { id:"gesture-battle-demo", file:"gesture-battle-demo.html", title:"Demo Cử Chỉ – Bảo Vệ Cơ Thể v1", icon:"🎮",
+      desc:"Bản demo nhận diện cử chỉ tay để kéo-bắn virus, bảo vệ tường thành trước Boss Ung Thư.",
+      category:"demo", scoring:"winlose" },
+    { id:"gesture-battle-demo-v2", file:"gesture-battle-demo-v2.html", title:"Demo Cử Chỉ – Bảo Vệ Cơ Thể v2", icon:"🎮",
+      desc:"Bản demo cử chỉ tay nâng cấp v2 với bố cục tường thành mới.",
+      category:"demo", scoring:"winlose" },
+    { id:"gesture-battle-demo-v3", file:"gesture-battle-demo-v3.html", title:"Demo Cử Chỉ – Bảo Vệ Cơ Thể v3", icon:"🎮",
+      desc:"Bản demo cử chỉ tay nâng cấp v3, Boss ném đá theo quỹ đạo vòng cung mới.",
+      category:"demo", scoring:"winlose" },
+    { id:"gesture-slingshot-demo", file:"gesture-slingshot-demo.html", title:"Demo Cử Chỉ – Ná Bắn Tê Giác", icon:"🪃",
+      desc:"Xoè tay để kéo ná, nắm tay để bắn mục tiêu. Điểm tự do — bấm “Nộp điểm” trong game để ghi vào Leader Board.",
+      category:"demo", scoring:"freeplay" },
+    { id:"captain-khanh", title:"Captain Khánh Game", icon:"🚀",
+      desc:"Game phiêu lưu của riêng bạn (Solar2D), nhúng trực tiếp từ Vercel. Chơi bằng bàn phím vật lý, D-Pad ảo trên màn hình, hoặc bật camera cử chỉ tay (beta).",
+      category:"external", scoring:"none", external:true,
+      embedUrl:"https://captain-khanh-game.vercel.app/",
+      vkeyMap:{
+        up:    { key:"ArrowUp",    code:"ArrowUp",    keyCode:38 },
+        down:  { key:"ArrowDown",  code:"ArrowDown",  keyCode:40 },
+        left:  { key:"ArrowLeft",  code:"ArrowLeft",  keyCode:37 },
+        right: { key:"ArrowRight", code:"ArrowRight", keyCode:39 },
+        action:{ key:" ",          code:"Space",      keyCode:32 },
+        pull:  { key:"q",          code:"KeyQ",       keyCode:81 },
+        fire:  { key:"e",          code:"KeyE",       keyCode:69 }
+      } },
+    { id:"angry-bird-nft-khanh", title:"Angry Bird NFT Khánh Game", icon:"🐦",
+      desc:"Game bắn đại bác kiểu Angry Birds (Solar2D), nhúng trực tiếp từ Vercel. Mũi tên dùng để lia camera qua màn chơi, nút Bắn gửi phím Space để khai hoả đại bác. Xoay nòng (◀/▶) và tăng-giảm lực (▲/▼) dùng phím Q/E/W/S (giữ phím), có nút ảo tương ứng và có thể điều khiển bằng cử chỉ tay — ngoài ra vẫn có thể kéo-thả chuột-chạm trực tiếp trên đại bác trong game như cách chơi gốc.",
+      category:"external", scoring:"none", external:true,
+      embedUrl:"https://angry-bird-nft-khanh.vercel.app/",
+      vkeyMap:{
+        // Trong controller.lua của game: left/right/up/down (_M.keys) chỉ pan camera/map (type='motion'), KHÔNG xoay đại bác.
+        up:    { key:"ArrowUp",    code:"ArrowUp",    keyCode:38 },
+        down:  { key:"ArrowDown",  code:"ArrowDown",  keyCode:40 },
+        left:  { key:"ArrowLeft",  code:"ArrowLeft",  keyCode:37 },
+        right: { key:"ArrowRight", code:"ArrowRight", keyCode:39 },
+        // space/enter/numPadEnter đều là type='action' → bắn đại bác (cannon:engageForce()).
+        action:{ key:" ",          code:"Space",      keyCode:32 },
+        // q/e/w/s trong controller.lua là type='rotation': q/e xoay góc nòng (CCW/CW), w/s tăng/giảm lực bắn.
+        // Đây là các phím giữ (held) — engine tự bắn lại processRotation() mỗi khung hình trong lúc còn giữ,
+        // nên chỉ cần bridge gửi đúng 1 cặp keydown/keyup (xem index-AngryBird.html) là đủ, không cần lặp lại.
+        rotateLeft:  { key:"q", code:"KeyQ", keyCode:81 }, // xoay nòng ngược chiều kim đồng hồ
+        rotateRight: { key:"e", code:"KeyE", keyCode:69 }, // xoay nòng theo chiều kim đồng hồ
+        forceUp:     { key:"w", code:"KeyW", keyCode:87 }, // tăng lực bắn
+        forceDown:   { key:"s", code:"KeyS", keyCode:83 }  // giảm lực bắn
+      },
+      // Game này không cần lia camera qua trái/phải/lên/xuống bằng cử chỉ tay, nên gán CỐ ĐỊNH ✊/✋/👆
+      // riêng cho game này thay vì dùng gestureActionMap chung + angleToDirs (8 hướng pan camera):
+      //   ✊ Nắm tay          -> forceUp   (giữ phím W, tăng lực bắn)
+      //   ✋ Xoè tay (≥3 ngón) -> action    (giữ phím Space, khai hoả đại bác)
+      //   👆 1 ngón trỏ theo 4 hướng ◀▶▲▼ -> ánh xạ THẲNG sang 4 nút ảo Q/E/W/S (không lia camera 8 hướng)
+      gestureOverride: {
+        fist: "forceUp",
+        palm: "action",
+        point: { left:"rotateLeft", right:"rotateRight", up:"forceUp", down:"forceDown" }
+      } },
+  ];
+  const CATS = {
+    camera:{ label:"Camera Cử Chỉ AI", cls:"cat-camera" },
+    keyboard:{ label:"Bàn Phím / Không Camera", cls:"cat-keyboard" },
+    demo:{ label:"Demo Kỹ Thuật", cls:"cat-demo" },
+    external:{ label:"Game Của Bạn (Nhúng Ngoài)", cls:"cat-external" }
+  };
+  const LB_KEY = "gamePortalLeaderboard_v1";
+  const NAME_KEY = "gamePortalPlayerName_v1";
+  const MAX_ENTRIES = 500;
+
+  // ===================== STATE / STORAGE =====================
+  function loadLB(){ try{ return JSON.parse(localStorage.getItem(LB_KEY)) || []; }catch(e){ return []; } }
+  function saveLB(list){ try{ localStorage.setItem(LB_KEY, JSON.stringify(list.slice(-MAX_ENTRIES))); }catch(e){} }
+  function getPlayerName(){ return (localStorage.getItem(NAME_KEY) || "").trim(); }
+  function setPlayerName(n){ try{ localStorage.setItem(NAME_KEY, n); }catch(e){} }
+
+  const playerInput = document.getElementById('playerNameInput');
+  playerInput.value = getPlayerName();
+  playerInput.addEventListener('input', () => setPlayerName(playerInput.value));
+
+  function currentPlayer(){ return getPlayerName() || "Người chơi ẩn danh"; }
+
+  // ===================== GAME GRID RENDER =====================
+  function bestScoreFor(gameId){
+    const list = loadLB().filter(e => e.gameId === gameId && e.playerName === currentPlayer());
+    if(!list.length) return null;
+    return list.reduce((a,b)=> b.score > a.score ? b : a);
+  }
+
+  function renderGameGrid(){
+    const wrap = document.getElementById('gameCategories');
+    wrap.innerHTML = '';
+    Object.keys(CATS).forEach(catKey => {
+      const games = GAMES.filter(g => g.category === catKey);
+      if(!games.length) return;
+      const heading = document.createElement('div');
+      heading.className = 'cat-heading ' + CATS[catKey].cls;
+      heading.innerHTML = `<em>${CATS[catKey].label}</em>`;
+      wrap.appendChild(heading);
+
+      const grid = document.createElement('div');
+      grid.className = 'grid';
+      games.forEach(g => {
+        const best = bestScoreFor(g.id);
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `
+          <div class="icon">${g.icon}</div>
+          <h3>${g.title}</h3>
+          <p>${g.desc}</p>
+          <div class="chips">
+            <span class="chip">${g.scoring === 'winlose' ? 'Thắng / Thua' : 'Chấm điểm tự do'}</span>
+          </div>
+          ${best ? `<div class="best">🏅 Điểm cao nhất của bạn: ${best.score} (${best.timeSec}s)</div>` : ''}
+          <button class="play-btn">▶ CHƠI NGAY</button>
+        `;
+        card.addEventListener('click', () => openGame(g));
+        grid.appendChild(card);
+      });
+      wrap.appendChild(grid);
+    });
+  }
+
+  // ===================== STATS STRIP =====================
+  function renderStats(){
+    const all = loadLB();
+    const mine = all.filter(e => e.playerName === currentPlayer());
+    document.getElementById('statGames').textContent = GAMES.length;
+    document.getElementById('statPlays').textContent = mine.length;
+    document.getElementById('statWins').textContent = mine.filter(e => e.status === 'win').length;
+    document.getElementById('statBest').textContent = mine.length ? Math.max(...mine.map(e=>e.score)) : '–';
+  }
+
+  // ===================== TABS =====================
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+      if(btn.dataset.tab === 'leaderboard') renderLeaderboard();
+    });
+  });
+
+  // ===================== LEADERBOARD =====================
+  const lbGameFilter = document.getElementById('lbGameFilter');
+  const lbSort = document.getElementById('lbSort');
+  function populateGameFilter(){
+    lbGameFilter.innerHTML = '<option value="all">Tất cả các game</option>' +
+      GAMES.map(g => `<option value="${g.id}">${g.icon} ${g.title}</option>`).join('');
+  }
+  populateGameFilter();
+
+  function medalFor(rank){
+    if(rank === 0) return '🥇';
+    if(rank === 1) return '🥈';
+    if(rank === 2) return '🥉';
+    return '';
+  }
+
+  function renderLeaderboard(){
+    const wrap = document.getElementById('lbTableWrap');
+    let list = loadLB();
+    const filterId = lbGameFilter.value;
+    if(filterId !== 'all') list = list.filter(e => e.gameId === filterId);
+
+    const sortMode = lbSort.value;
+    list = list.slice().sort((a,b) => {
+      if(sortMode === 'score') return b.score - a.score;
+      if(sortMode === 'time') return b.timeSec - a.timeSec;
+      return b.ts - a.ts;
+    });
+
+    if(!list.length){
+      wrap.innerHTML = `<div class="empty-state"><div class="big">🏆</div>Chưa có dữ liệu Leader Board.<br>Hãy chơi một game để ghi điểm đầu tiên!</div>`;
+      return;
+    }
+
+    const rows = list.slice(0, 100).map((e, i) => {
+      const rankCls = i===0 ? 'gold' : i===1 ? 'silver' : i===2 ? 'bronze' : '';
+      const gameMeta = GAMES.find(g => g.id === e.gameId);
+      const dateStr = new Date(e.ts).toLocaleString('vi-VN');
+      return `<tr>
+        <td class="rank ${rankCls}">${medalFor(i) || (i+1)}</td>
+        <td>${escapeHtml(e.playerName)}</td>
+        <td>${gameMeta ? gameMeta.icon + ' ' + gameMeta.title : e.gameTitle}</td>
+        <td class="score-val">${e.score}</td>
+        <td>${e.timeSec}s</td>
+        <td class="${e.status==='win' ? 'status-win' : 'status-lose'}">${e.status==='win' ? '✅ Thắng' : '💀 Thua'}</td>
+        <td>${dateStr}</td>
+      </tr>`;
+    }).join('');
+
+    wrap.innerHTML = `
+      <table class="lb-table">
+        <thead><tr>
+          <th>#</th><th>Người chơi</th><th>Game</th><th>Điểm</th><th>Thời gian</th><th>Kết quả</th><th>Thời điểm</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+  }
+  function escapeHtml(s){ const d=document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+  lbGameFilter.addEventListener('change', renderLeaderboard);
+  lbSort.addEventListener('change', renderLeaderboard);
+  document.getElementById('clearLbBtn').addEventListener('click', () => {
+    if(confirm('Xoá toàn bộ dữ liệu Leader Board trên trình duyệt này? Hành động không thể hoàn tác.')){
+      saveLB([]);
+      renderLeaderboard();
+      renderStats();
+      renderGameGrid();
+    }
+  });
+
+  // ===================== OVERLAY / IFRAME GAME =====================
+  const overlay = document.getElementById('overlay');
+  const ovFrame = document.getElementById('ovFrame');
+  const ovTitle = document.getElementById('ovTitle');
+  const ovIcon = document.getElementById('ovIcon');
+  const ovStatus = document.getElementById('ovStatus');
+  const ovLoading = document.getElementById('ovLoading');
+  const ovLoadingText = document.getElementById('ovLoadingText');
+  const resultToast = document.getElementById('resultToast');
+  let currentGame = null;
+  let readyTimeout = null;
+
+  const vctrlBar = document.getElementById('vctrlBar');
+  const vctrlToggleBtn = document.getElementById('vctrlToggleBtn');
+  const camToggleBtn = document.getElementById('camToggleBtn');
+  const vcamPreview = document.getElementById('vcamPreview');
+  const vActionBtn = document.getElementById('vActionBtn');
+
+  function setVctrlCollapsed(collapsed){
+    vctrlBar.classList.toggle('collapsed', collapsed);
+    vctrlToggleBtn.textContent = collapsed ? '▲ Hiện điều khiển' : '▾ Ẩn điều khiển';
+  }
+
+  // ---------- CHỐNG MẤT FOCUS IFRAME (nguyên nhân gây pause game khi bấm nút Toggle) ----------
+  // Game nhúng ngoài (Solar2D/Corona) tự pause khi cửa sổ/iframe của nó bị blur. Bấm 1 nút HTML
+  // bình thường trên trang portal sẽ cướp focus từ iframe -> gây blur -> game bị pause, kể cả
+  // khi người dùng không có ý định tạm dừng. Áp dụng 2 lớp phòng vệ cho các nút thuộc "khung" của
+  // overlay (không phải nút gửi phím ảo, những nút đó đã tự preventDefault ở nơi khác):
+  //   1) preventDefault trên mousedown/touchstart để nút không nhận focus ngay từ đầu.
+  //   2) sau khi xử lý click xong, trả focus lại cho iframe đang chứa game.
+  function refocusGameFrame(){
+    try{
+      if(overlay.classList.contains('open') && ovFrame && ovFrame.contentWindow){
+        ovFrame.contentWindow.focus();
+      }
+    }catch(e){}
+  }
+  function preventFocusSteal(el){
+    if(!el) return;
+    el.addEventListener('mousedown', e => e.preventDefault());
+    el.addEventListener('touchstart', e => e.preventDefault(), {passive:false});
+  }
+  [vctrlToggleBtn, camToggleBtn].forEach(preventFocusSteal);
+
+  vctrlToggleBtn.addEventListener('click', () => {
+    setVctrlCollapsed(!vctrlBar.classList.contains('collapsed'));
+    refocusGameFrame();
+  });
+
+  function openGame(game){
+    currentGame = game;
+    ovTitle.textContent = game.title;
+    ovIcon.textContent = game.icon;
+    ovStatus.textContent = 'Đang kết nối...';
+    ovStatus.classList.remove('live');
+    ovLoading.style.display = 'flex';
+    ovLoadingText.textContent = game.external ? 'Đang tải game từ Vercel...' : 'Đang khởi động game...';
+    resultToast.classList.remove('show');
+    ovFrame.src = game.external ? game.embedUrl : game.file;
+    overlay.classList.add('open');
+    document.body.style.overflow = 'hidden';
+    clearTimeout(readyTimeout);
+
+    if(game.external){
+      vctrlBar.classList.add('show');
+      setVctrlCollapsed(false);
+      renderExtraButtons(game); // sinh nút ảo Q/E/W/S (hoặc ◀▶▲▼) theo đúng vkeyMap của game vừa mở
+      updateVcamHint();
+      // Game ngoài không gửi PORTAL_GAME_READY, nên tự ẩn loading sau thời gian ngắn
+      readyTimeout = setTimeout(() => {
+        ovLoading.style.display = 'none';
+        ovStatus.textContent = '🟢 Đang chơi (nhúng ngoài)';
+        ovStatus.classList.add('live');
+      }, 3500);
+    } else {
+      vctrlBar.classList.remove('show');
+      renderExtraButtons(null); // dọn nút ảo phụ còn sót lại từ game ngoài trước đó (nếu có)
+      readyTimeout = setTimeout(() => { ovLoading.style.display = 'none'; }, 6000);
+    }
+  }
+
+  function closeOverlay(){
+    overlay.classList.remove('open');
+    document.body.style.overflow = '';
+    ovFrame.src = 'about:blank';
+    vctrlBar.classList.remove('show');
+    stopGestureCamera();
+    currentGame = null;
+    renderGameGrid();
+    renderStats();
+  }
+
+  document.getElementById('ovExit').addEventListener('click', closeOverlay);
+  document.getElementById('ovReload').addEventListener('click', () => { if(currentGame) openGame(currentGame); });
+  document.addEventListener('keydown', e => { if(e.key === 'Escape' && overlay.classList.contains('open')) closeOverlay(); });
+
+  // ---------- VIRTUAL KEY BRIDGE (postMessage sang iframe ngoài domain) ----------
+  const VKEY_STORE_PREFIX = 'portalVkeyMapOverride_v1__';
+  function getEffectiveVkeyMap(game){
+    if(!game || !game.vkeyMap) return null;
+    let override = null;
+    try{ override = JSON.parse(localStorage.getItem(VKEY_STORE_PREFIX + game.id) || 'null'); }catch(e){}
+    return Object.assign({}, game.vkeyMap, override || {});
+  }
+  function saveVkeyMapOverride(gameId, map){
+    try{ localStorage.setItem(VKEY_STORE_PREFIX + gameId, JSON.stringify(map)); }catch(e){}
+  }
+  function sendVKey(dir, action){
+    if(!currentGame || !currentGame.external || !currentGame.vkeyMap) return;
+    const map = getEffectiveVkeyMap(currentGame);
+    const km = map[dir];
+    if(!km) return;
+    try{
+      ovFrame.contentWindow.postMessage({ type:'PORTAL_VKEY', key:km.key, code:km.code, keyCode:km.keyCode, action }, currentGame.embedUrl);
+    }catch(e){}
+  }
+
+  document.querySelectorAll('#vDpad button').forEach(btn => {
+    const dir = btn.dataset.dir;
+    const down = ev => { ev.preventDefault(); btn.classList.add('active'); sendVKey(dir, 'down'); };
+    const up = ev => { if(ev) ev.preventDefault(); btn.classList.remove('active'); sendVKey(dir, 'up'); };
+    btn.addEventListener('mousedown', down); btn.addEventListener('mouseup', up); btn.addEventListener('mouseleave', up);
+    btn.addEventListener('touchstart', down, {passive:false}); btn.addEventListener('touchend', up); btn.addEventListener('touchcancel', up);
+  });
+  (function(){
+    const down = ev => { ev.preventDefault(); vActionBtn.classList.add('active'); sendVKey('action', 'down'); };
+    const up = ev => { if(ev) ev.preventDefault(); vActionBtn.classList.remove('active'); sendVKey('action', 'up'); };
+    vActionBtn.addEventListener('mousedown', down); vActionBtn.addEventListener('mouseup', up); vActionBtn.addEventListener('mouseleave', up);
+    vActionBtn.addEventListener('touchstart', down, {passive:false}); vActionBtn.addEventListener('touchend', up); vActionBtn.addEventListener('touchcancel', up);
+  })();
+  // ---------- NÚT ẢO PHỤ (Q/E/W/S...) SINH ĐỘNG THEO vkeyMap CỦA TỪNG GAME ----------
+  // captain-khanh dùng Q=kéo lực / E=bắn. angry-bird-nft-khanh dùng Q/E=xoay nòng, W/S=tăng-giảm lực.
+  // Container #vExtraGroup được render lại mỗi khi mở game (xem openGame()) và dùng 1 bộ listener
+  // ủy quyền (delegation) duy nhất nên không phụ thuộc vào id cố định của từng nút.
+  const vExtraGroup = document.getElementById('vExtraGroup');
+  const EXTRA_BTN_META = {
+    pull:        { label:'Q', sub:'Kéo lực',   color:'pull' },
+    fire:        { label:'E', sub:'Bắn',       color:'fire' },
+    rotateLeft:  { label:'◀', sub:'Xoay trái', color:'extra-cyan'  },
+    rotateRight: { label:'▶', sub:'Xoay phải', color:'extra-cyan'  },
+    forceUp:     { label:'▲', sub:'Tăng lực',  color:'extra-amber' },
+    forceDown:   { label:'▼', sub:'Giảm lực',  color:'extra-rose'  }
+  };
+  function renderExtraButtons(game){
+    if(!game || !game.external || !game.vkeyMap){ vExtraGroup.innerHTML = ''; return; }
+    const actions = Object.keys(game.vkeyMap).filter(a => !['up','down','left','right','action'].includes(a));
+    vExtraGroup.innerHTML = actions.map(a => {
+      const meta = EXTRA_BTN_META[a] || { label:a.slice(0,1).toUpperCase(), sub:a, color:'extra-cyan' };
+      return `<button class="qe-btn ${meta.color}" data-extra-action="${a}">${meta.label}<span>${meta.sub}</span></button>`;
+    }).join('');
+  }
+  function extraBtnDown(ev){
+    const btn = ev.target.closest('.qe-btn[data-extra-action]');
+    if(!btn) return;
+    ev.preventDefault();
+    btn.classList.add('active');
+    sendVKey(btn.dataset.extraAction, 'down');
+  }
+  function extraBtnUp(ev){
+    const btn = ev.target.closest('.qe-btn[data-extra-action]');
+    if(!btn) return;
+    if(ev) ev.preventDefault();
+    btn.classList.remove('active');
+    sendVKey(btn.dataset.extraAction, 'up');
+  }
+  vExtraGroup.addEventListener('mousedown', extraBtnDown);
+  vExtraGroup.addEventListener('mouseup', extraBtnUp);
+  vExtraGroup.addEventListener('mouseleave', ev => { vExtraGroup.querySelectorAll('.qe-btn.active').forEach(b => { b.classList.remove('active'); sendVKey(b.dataset.extraAction, 'up'); }); });
+  vExtraGroup.addEventListener('touchstart', extraBtnDown, {passive:false});
+  vExtraGroup.addEventListener('touchend', extraBtnUp);
+  vExtraGroup.addEventListener('touchcancel', extraBtnUp);
+
+  // ---------- GESTURE CAMERA (beta) — chạy trong Portal, gửi phím ảo vào iframe ----------
+  let gestureActive = false;
+  let gestureStream = null;
+  let gestureHands = null;
+  let gestureCameraUtil = null;
+  let gestureLibsLoaded = false;
+  let currentFacingMode = 'user'; // 'user' = camera trước, 'environment' = camera sau
+  let activeDirs = { up:false, down:false, left:false, right:false };
+  // Trạng thái "đang giữ" dùng chung cho cả bàn phím vật lý lẫn cử chỉ tay, cho MỌI hành động giữ
+  // (pull/fire/action/rotateLeft/rotateRight/forceUp/forceDown) — tránh gửi lặp postMessage khi
+  // trạng thái không đổi, và cho phép mở rộng thêm hành động mới mà không phải sửa lại logic.
+  let activeHold = {};
+
+  function loadScriptOnce(src){
+    return new Promise((resolve, reject) => {
+      if(document.querySelector('script[data-gesture-lib="'+src+'"]')){ resolve(); return; }
+      const s = document.createElement('script');
+      s.src = src; s.crossOrigin = 'anonymous'; s.dataset.gestureLib = src;
+      s.onload = resolve; s.onerror = reject;
+      document.head.appendChild(s);
+    });
+  }
+
+  async function ensureGestureLibs(){
+    if(gestureLibsLoaded) return;
+    await loadScriptOnce('https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js');
+    await loadScriptOnce('https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js');
+    await loadScriptOnce('https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js');
+    gestureLibsLoaded = true;
+  }
+
+  const DIRS = ['up','down','left','right'];
+  function setDirs(wanted){
+    DIRS.forEach(d => {
+      const on = !!wanted[d];
+      if(on !== activeDirs[d]){
+        activeDirs[d] = on;
+        sendVKey(d, on ? 'down' : 'up');
+      }
+    });
+  }
+  const NO_DIRS = { up:false, down:false, left:false, right:false };
+  // Hàm giữ/nhả dùng chung cho pull, fire, action, rotateLeft, rotateRight, forceUp, forceDown.
+  function setHold(action, on){
+    if(!!activeHold[action] === on) return;
+    activeHold[action] = on;
+    sendVKey(action, on ? 'down' : 'up');
+  }
+  function releaseAllHolds(){
+    Object.keys(activeHold).forEach(a => { if(activeHold[a]) setHold(a, false); });
+  }
+
+  // ---------- ÁNH XẠ (MAPPING) CÓ THỂ TUỲ CHỈNH: bàn phím vật lý & cử chỉ tay → hành động trừu tượng ----------
+  // "action trừu tượng" ở đây là 1 trong các dir mà sendVKey() nhận: up/down/left/right/action/pull/fire
+  const ABSTRACT_ACTIONS = ['up','down','left','right','action','pull','fire','rotateLeft','rotateRight','forceUp','forceDown'];
+  const ACTION_LABELS = { up:'Lên (▲)', down:'Xuống (▼)', left:'Trái (◀)', right:'Phải (▶)', action:'Hành động / Bắn chính', pull:'Kéo lực (giữ)', fire:'Bắn tại lực hiện tại', rotateLeft:'Xoay nòng trái (◀)', rotateRight:'Xoay nòng phải (▶)', forceUp:'Tăng lực bắn (▲)', forceDown:'Giảm lực bắn (▼)' };
+  const defaultPhysicalKeyMap = { up:'arrowup', down:'arrowdown', left:'arrowleft', right:'arrowright', action:' ', pull:'q', fire:'e', rotateLeft:'z', rotateRight:'x', forceUp:'c', forceDown:'v' };
+  // Mọi hành động "giữ" (không phải hướng point) đều có thể được gán cho ✊ Nắm tay / ✋ Xoè tay trong modal cài đặt.
+  const HOLDABLE_ACTIONS = ABSTRACT_ACTIONS.filter(a => !['up','down','left','right'].includes(a));
+  const defaultGestureActionMap = { fist:'pull', palm:'fire' }; // 👆 point luôn dành riêng cho hướng (up/down/left/right)
+  const PHYS_KEY_STORE = 'portalPhysicalKeyMap_v1';
+  const GEST_ACTION_STORE = 'portalGestureActionMap_v1';
+
+  function loadJSON(key, fallback){
+    try{ const v = JSON.parse(localStorage.getItem(key) || 'null'); return v ? Object.assign({}, fallback, v) : { ...fallback }; }catch(e){ return { ...fallback }; }
+  }
+  let physicalKeyMap = loadJSON(PHYS_KEY_STORE, defaultPhysicalKeyMap);
+  let gestureActionMap = loadJSON(GEST_ACTION_STORE, defaultGestureActionMap);
+
+  function formatKeyName(k){
+    if(k === ' ') return 'SPACE';
+    if(k.toLowerCase().startsWith('arrow')) return k.substring(5).toUpperCase();
+    return k.toUpperCase();
+  }
+
+  // Nhãn phím thật sự sẽ được gửi cho 1 hành động trừu tượng (pull/fire/action/...),
+  // ưu tiên lấy từ vkeyMap (đã áp override nếu có) của game ngoài đang mở, để hint luôn khớp
+  // với phím thực sự bắn ra — nếu chưa mở game nào thì dùng phím mặc định làm dự phòng.
+  const FALLBACK_OUTPUT_KEY = { up:'▲', down:'▼', left:'◀', right:'▶', action:'SPACE', pull:'Q', fire:'E', rotateLeft:'Q', rotateRight:'E', forceUp:'W', forceDown:'S' };
+  function outputKeyLabelFor(actionName){
+    if(currentGame && currentGame.vkeyMap){
+      const map = getEffectiveVkeyMap(currentGame);
+      if(map && map[actionName]) return formatKeyName(map[actionName].key);
+    }
+    return FALLBACK_OUTPUT_KEY[actionName] || actionName.toUpperCase();
+  }
+
+  // Sinh lại dòng hint cử chỉ tay theo đúng gestureActionMap hiện tại (✊/✋ có thể được người dùng
+  // đổi sang hành động khác trong modal Ánh xạ điều khiển), thay vì để cứng "kéo lực (Q)/bắn (E)".
+  function updateVcamHint(){
+    const vcamHint = document.getElementById('vcamHint');
+    if(!vcamHint) return;
+    const fistAction = gestureActionMap.fist;
+    const palmAction = gestureActionMap.palm;
+    const fistLabel = (ACTION_LABELS[fistAction] || fistAction).replace(/\s*\([^)]*\)\s*$/, ''); // bỏ phần (▲) v.v nếu có trong nhãn gốc
+    const palmLabel = (ACTION_LABELS[palmAction] || palmAction).replace(/\s*\([^)]*\)\s*$/, '');
+    vcamHint.textContent = `✊ Nắm tay = ${fistLabel} (${outputKeyLabelFor(fistAction)}) · 👆 Chỉ ngón trỏ = đổi hướng · ✋ Xoè tay = ${palmLabel} (${outputKeyLabelFor(palmAction)})`;
+  }
+
+  // Bàn phím vật lý → hành động (chỉ hoạt động khi đang mở 1 game ngoài có vkeyMap)
+  let physKeysHeld = {};
+  document.addEventListener('keydown', e => {
+    if(cmapListeningTarget) return; // đang trong lúc bấm-để-đổi-phím trong modal cài đặt, bỏ qua điều khiển game
+    if(!currentGame || !currentGame.external) return;
+    const k = e.key.toLowerCase();
+    const action = Object.keys(physicalKeyMap).find(a => physicalKeyMap[a] === k);
+    if(!action) return;
+    e.preventDefault();
+    if(physKeysHeld[k]) return; // tránh lặp lại do key-repeat của trình duyệt
+    physKeysHeld[k] = true;
+    applyAbstractAction(action, true);
+  });
+  document.addEventListener('keyup', e => {
+    const k = e.key.toLowerCase();
+    if(!physKeysHeld[k]) return;
+    physKeysHeld[k] = false;
+    const action = Object.keys(physicalKeyMap).find(a => physicalKeyMap[a] === k);
+    if(action) applyAbstractAction(action, false);
+  });
+  function applyAbstractAction(action, on){
+    if(HOLDABLE_ACTIONS.includes(action)) return setHold(action, on);
+    if(['up','down','left','right'].includes(action)){
+      const next = { ...activeDirs, [action]: on };
+      setDirs(next);
+    }
+  }
+
+  // Phân loại cử chỉ: ✊ Nắm tay = kéo lực (Q) · ✋ Xoè tay (≥3/4 ngón) = bắn (E) · còn lại = hướng theo đầu ngón trỏ (8 góc)
+  function angleToDirs(deg){
+    // 8 cung 45°, tâm tại 0°=phải, 90°=xuống, ±180°=trái, -90°=lên (mỗi góc chéo bật đồng thời 2 hướng, như giữ 2 phím mũi tên)
+    if(deg > -22.5 && deg <= 22.5)   return { right:true };
+    if(deg > 22.5 && deg <= 67.5)    return { down:true, right:true };
+    if(deg > 67.5 && deg <= 112.5)   return { down:true };
+    if(deg > 112.5 && deg <= 157.5)  return { down:true, left:true };
+    if(deg > 157.5 || deg <= -157.5) return { left:true };
+    if(deg > -157.5 && deg <= -112.5)return { up:true, left:true };
+    if(deg > -112.5 && deg <= -67.5) return { up:true };
+    return { up:true, right:true }; // (-67.5, -22.5]
+  }
+
+  // 4 cung 90° (không chéo) — dùng cho game có gestureOverride.point, nơi 1 ngón trỏ ánh xạ THẲNG
+  // sang 1 trong 4 nút ảo (vd Q/E/W/S) thay vì lia camera theo 8 hướng như angleToDirs() ở trên.
+  function angleToQuadrantAction(deg, map){
+    if(deg > -45 && deg <= 45)   return map.right;
+    if(deg > 45 && deg <= 135)   return map.down;
+    if(deg > 135 || deg <= -135) return map.left;
+    return map.up; // (-135, -45]
+  }
+
+  function classifyGesture(lm){
+    const indexTip = lm[8], indexBase = lm[5], middleTip = lm[12], middleBase = lm[9];
+    const ringTip = lm[16], ringBase = lm[13], pinkyTip = lm[20], pinkyBase = lm[17];
+    const upCount = [indexTip.y < indexBase.y, middleTip.y < middleBase.y, ringTip.y < ringBase.y, pinkyTip.y < pinkyBase.y].filter(Boolean).length;
+
+    if(upCount === 0) return { gesture:'fist' };
+    if(upCount >= 3) return { gesture:'palm' };
+
+    // Toạ độ landmark từ MediaPipe luôn lấy từ khung hình GỐC (chưa lật gương) của camera, bất kể
+    // camera trước/sau. Nhưng khung xem trước (vcamVideo/vcamCanvas) chỉ lật gương (scaleX(-1)) khi
+    // đang dùng camera TRƯỚC (để giống soi gương tự nhiên) — camera SAU thì không lật (xem CSS
+    // .vcam-preview.facing-env). Vì vậy trục X phải được đảo dấu tương ứng để hướng ◀▶ nhận diện được
+    // luôn khớp đúng với hướng người chơi ĐANG THẤY trên preview, dù đang dùng camera nào.
+    const mirrored = currentFacingMode === 'user';
+    const dx = mirrored ? -(indexTip.x - indexBase.x) : (indexTip.x - indexBase.x);
+    // QUAN TRỌNG: angleToDirs()/angleToQuadrantAction() bên dưới dùng quy ước toạ độ ẢNH gốc
+    // (0°=phải, 90°=xuống, -90°=lên — giống hệ trục ảnh, KHÔNG phải hệ trục toán học y-lên-dương).
+    // Vì vậy dy phải giữ nguyên dấu gốc (tip.y - base.y): trỏ xuống -> tip.y > base.y -> dy dương -> 90° -> "xuống".
+    // (Trước đây có đảo dấu dy ở đây khiến lên/xuống — và cả 4 hướng chéo liên quan — bị NGƯỢC.)
+    const dy = (indexTip.y - indexBase.y);
+    const deg = Math.atan2(dy, dx) * 180 / Math.PI;
+    return { gesture:'point', dirs: angleToDirs(deg), deg };
+  }
+
+  function applyGesture(res, lm){
+    if(!lm){ releaseAllHolds(); setDirs(NO_DIRS); return; }
+    const g = classifyGesture(lm);
+    const isFist = g.gesture === 'fist', isPalm = g.gesture === 'palm', isPoint = g.gesture === 'point';
+    const override = currentGame && currentGame.gestureOverride;
+
+    if(override){
+      // Chế độ riêng cho game này: game không cần lia camera bằng cử chỉ tay, nên ✊/✋ được gán CỐ ĐỊNH
+      // (không qua gestureActionMap chung), và 1 ngón trỏ theo 4 hướng ◀▶▲▼ ánh xạ THẲNG sang 4 nút ảo
+      // (vd Q/E/W/S) thay vì lia camera lên/xuống/trái/phải như các game khác.
+      const pointAction = isPoint ? angleToQuadrantAction(g.deg, override.point) : null;
+      HOLDABLE_ACTIONS.forEach(a => {
+        setHold(a, (isFist && override.fist === a) || (isPalm && override.palm === a) || (isPoint && pointAction === a));
+      });
+      setDirs(NO_DIRS);
+      return;
+    }
+
+    // fist/palm giờ tra qua gestureActionMap (mặc định fist=pull, palm=fire) để có thể đổi trong modal cài đặt
+    // sang BẤT KỲ hành động giữ nào (pull/fire/action/rotateLeft/rotateRight/forceUp/forceDown) — nhờ vậy
+    // game Angry Bird có thể xoay nòng / tăng-giảm lực hoàn toàn bằng cử chỉ tay, không chỉ Bảo Vệ Cơ Thể.
+    const fistAction = gestureActionMap.fist;
+    const palmAction = gestureActionMap.palm;
+    HOLDABLE_ACTIONS.forEach(a => {
+      setHold(a, (isFist && fistAction === a) || (isPalm && palmAction === a));
+    });
+    setDirs(isPoint ? g.dirs : NO_DIRS);
+  }
+
+
+  // Tạo instance Hands DUY NHẤT một lần cho toàn bộ vòng đời trang, không bao giờ đóng/tạo lại nó nữa.
+  // (Lần trước dùng cách "close() rồi new Hands() mỗi lần bật lại" nhưng vẫn còn tái diễn mất cử chỉ tay sau khi
+  // tắt/mở lại — việc đóng rồi khởi tạo lại context WASM/WebGL của MediaPipe nhiều lần trong 1 trang không ổn định.
+  // Chỉ start/stop vòng lặp lấy khung hình (Camera) xung quanh 1 Hands sống mãi là cách chắc chắn hơn.)
+  let gestureHandsReady = false;
+  function ensureGestureHandsInstance(){
+    if(gestureHandsReady) return;
+    const canvas = document.getElementById('vcamCanvas');
+    const ctx = canvas.getContext('2d');
+    gestureHands = new Hands({ locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}` });
+    gestureHands.setOptions({ maxNumHands:1, modelComplexity:1, minDetectionConfidence:0.6, minTrackingConfidence:0.5 });
+    gestureHands.onResults(res => {
+      canvas.width = 224; canvas.height = 168;
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      if(res.image) ctx.drawImage(res.image, 0,0, canvas.width, canvas.height);
+      const lm = (res.multiHandLandmarks && res.multiHandLandmarks.length) ? res.multiHandLandmarks[0] : null;
+      if(lm){
+        if(window.drawConnectors) drawConnectors(ctx, lm, window.HAND_CONNECTIONS, { color:'#22d3ee', lineWidth:2 });
+        if(window.drawLandmarks) drawLandmarks(ctx, lm, { color:'#fbbf24', fillColor:'#fbbf24', lineWidth:1, radius:3 });
+      }
+      applyGesture(res, lm);
+    });
+    gestureHandsReady = true;
+  }
+
+  // Bật/tắt class 'facing-env' trên khung xem trước (vcamPreview) theo đúng currentFacingMode.
+  // CSS: .vcam-preview mặc định luôn lật gương (scaleX(-1)) — đúng cho camera TRƯỚC (giống soi gương).
+  // .vcam-preview.facing-env bỏ lật gương — dùng cho camera SAU (không soi gương).
+  // (Bug trước đây: class này được định nghĩa trong CSS nhưng KHÔNG bao giờ được gán trong JS, nên
+  // khung xem trước luôn bị lật gương kể cả khi dùng camera sau — làm hướng ◀▶ nhận diện được trong
+  // classifyGesture() [đã tính dx dựa trên giả định camera sau KHÔNG lật gương] bị ngược với những gì
+  // người chơi thấy trên preview.)
+  function updateVcamPreviewFacingClass(){
+    vcamPreview.classList.toggle('facing-env', currentFacingMode === 'environment');
+  }
+
+  async function startGestureCamera(){
+    if(gestureActive) return;
+    camToggleBtn.textContent = '⏳ Đang bật camera...';
+    try{
+      await ensureGestureLibs();
+      const video = document.getElementById('vcamVideo');
+      const canvas = document.getElementById('vcamCanvas');
+      canvas.width = 224; canvas.height = 168;
+      updateVcamPreviewFacingClass();
+
+      ensureGestureHandsInstance();
+
+      gestureCameraUtil = new Camera(video, {
+        onFrame: async () => { await gestureHands.send({ image: video }); },
+        width:224, height:168, facingMode: currentFacingMode
+      });
+      await gestureCameraUtil.start();
+      gestureStream = video.srcObject;
+      gestureActive = true;
+      vcamPreview.classList.add('show');
+      camToggleBtn.textContent = '🛑 Tắt Camera Cử Chỉ';
+      camToggleBtn.classList.add('on');
+      updateCmapCameraUI();
+    }catch(err){
+      alert('Không thể bật camera cử chỉ: ' + (err && err.message ? err.message : err));
+      camToggleBtn.textContent = '🖐️ Bật Camera Cử Chỉ (Beta)';
+    }
+  }
+
+  function stopGestureCamera(){
+    if(!gestureActive) return;
+    try{ if(gestureCameraUtil) gestureCameraUtil.stop(); }catch(e){}
+    try{ if(gestureStream) gestureStream.getTracks().forEach(t => t.stop()); }catch(e){}
+    // KHÔNG đóng/nil gestureHands nữa — chỉ dọn Camera + track video. Hands instance giữ nguyên,
+    // sống xuyên suốt để lần bật lại không phải khởi tạo lại WASM/WebGL context (nguồn gây mất cử chỉ tay).
+    gestureCameraUtil = null;
+    gestureStream = null;
+    const video = document.getElementById('vcamVideo');
+    if(video) video.srcObject = null;
+    setDirs(NO_DIRS); releaseAllHolds();
+    gestureActive = false;
+    vcamPreview.classList.remove('show');
+    camToggleBtn.textContent = '🖐️ Bật Camera Cử Chỉ (Beta)';
+    camToggleBtn.classList.remove('on');
+    updateCmapCameraUI();
+  }
+
+  // Đổi camera trước/sau: dừng Camera hiện tại rồi bật lại với facingMode ngược lại (Hands instance không đổi).
+  async function flipGestureCamera(){
+    if(!gestureActive) return;
+    currentFacingMode = (currentFacingMode === 'user') ? 'environment' : 'user';
+    stopGestureCamera();
+    await startGestureCamera();
+  }
+  document.getElementById('vcamFlipBtn').addEventListener('click', e => { e.stopPropagation(); flipGestureCamera(); });
+
+  camToggleBtn.addEventListener('click', () => { gestureActive ? stopGestureCamera() : startGestureCamera(); refocusGameFrame(); });
+
+  // ---------- MODAL CÀI ĐẶT: QUẢN LÝ CAMERA & ÁNH XẠ ĐIỀU KHIỂN ----------
+  let cmapListeningTarget = null; // { type:'phys'|'output', action, btn } | null
+  const cmapOverlay = document.getElementById('cmapOverlay');
+  const cmapOpenBtn = document.getElementById('cmapOpenBtn');
+  const cmapCloseBtn = document.getElementById('cmapCloseBtn');
+  const cmapSaveBtn = document.getElementById('cmapSaveBtn');
+  const cmapResetBtn = document.getElementById('cmapResetBtn');
+  const cmapPhysicalRows = document.getElementById('cmapPhysicalRows');
+  const cmapGestureRows = document.getElementById('cmapGestureRows');
+  const cmapOutputRows = document.getElementById('cmapOutputRows');
+  const cmapCamToggleBtn = document.getElementById('cmapCamToggleBtn');
+  const cmapCamFlipBtn = document.getElementById('cmapCamFlipBtn');
+  const cmapCamFacingLabel = document.getElementById('cmapCamFacingLabel');
+
+  function updateCmapCameraUI(){
+    cmapCamToggleBtn.textContent = gestureActive ? '🛑 Tắt Camera Cử Chỉ' : '🖐️ Bật Camera Cử Chỉ (Beta)';
+    cmapCamToggleBtn.classList.toggle('on', gestureActive);
+    cmapCamFacingLabel.textContent = 'Đang dùng: Camera ' + (currentFacingMode === 'user' ? 'trước' : 'sau') + (gestureActive ? '' : ' (chưa bật)');
+  }
+  cmapCamToggleBtn.addEventListener('click', () => { gestureActive ? stopGestureCamera() : startGestureCamera(); });
+  cmapCamFlipBtn.addEventListener('click', () => flipGestureCamera());
+
+  function renderCmapPhysicalRows(){
+    cmapPhysicalRows.innerHTML = ABSTRACT_ACTIONS.map(a => `
+      <div class="cmap-row">
+        <span class="cmap-label">${ACTION_LABELS[a]}</span>
+        <button class="cmap-keybtn" data-target="phys" data-action="${a}">${formatKeyName(physicalKeyMap[a])}</button>
+      </div>`).join('');
+  }
+
+  function renderCmapGestureRows(){
+    const gestureOptions = a => HOLDABLE_ACTIONS
+      .map(x => `<option value="${x}" ${gestureActionMap[a] === x ? 'selected' : ''}>${ACTION_LABELS[x]}</option>`).join('');
+    cmapGestureRows.innerHTML = `
+      <div class="cmap-row">
+        <span class="cmap-label">✊ Nắm tay</span>
+        <select class="cmap-select" data-gesture="fist">${gestureOptions('fist')}</select>
+      </div>
+      <div class="cmap-row">
+        <span class="cmap-label">✋ Xoè tay (≥3/4 ngón)</span>
+        <select class="cmap-select" data-gesture="palm">${gestureOptions('palm')}</select>
+      </div>`;
+    cmapGestureRows.querySelectorAll('select').forEach(sel => {
+      sel.addEventListener('change', () => { gestureActionMap[sel.dataset.gesture] = sel.value; updateVcamHint(); });
+    });
+  }
+
+  function renderCmapOutputRows(){
+    if(!currentGame || !currentGame.external || !currentGame.vkeyMap){
+      cmapOutputRows.innerHTML = `<div class="cmap-note">Mở một game nhúng ngoài (có ánh xạ phím) để chỉnh phần này. Hiện chưa có game ngoài nào đang mở.</div>`;
+      return;
+    }
+    const map = getEffectiveVkeyMap(currentGame);
+    cmapOutputRows.innerHTML = `<div class="cmap-note" style="margin-bottom:8px;">Đang chỉnh cho: <b>${currentGame.title}</b></div>` +
+      ABSTRACT_ACTIONS.map(a => `
+      <div class="cmap-row">
+        <span class="cmap-label">${ACTION_LABELS[a]}</span>
+        <button class="cmap-keybtn" data-target="output" data-action="${a}">${map[a] ? formatKeyName(map[a].key) : '—'}</button>
+      </div>`).join('');
+  }
+
+  function startListenKey(btn, targetType, action){
+    if(cmapListeningTarget && cmapListeningTarget.btn){
+      cmapListeningTarget.btn.classList.remove('listening');
+    }
+    cmapListeningTarget = { type: targetType, action, btn };
+    btn.classList.add('listening');
+    btn.textContent = '...?';
+  }
+
+  cmapOverlay.addEventListener('click', e => {
+    const btn = e.target.closest('.cmap-keybtn');
+    if(!btn) return;
+    startListenKey(btn, btn.dataset.target, btn.dataset.action);
+  });
+
+  document.addEventListener('keydown', e => {
+    if(!cmapListeningTarget) return;
+    e.preventDefault();
+    const { type, action, btn } = cmapListeningTarget;
+    const key = e.key.toLowerCase();
+    if(type === 'phys'){
+      physicalKeyMap[action] = key;
+      btn.textContent = formatKeyName(key);
+    } else if(type === 'output' && currentGame){
+      const map = getEffectiveVkeyMap(currentGame);
+      map[action] = { key: e.key, code: e.code, keyCode: e.keyCode };
+      saveVkeyMapOverride(currentGame.id, map);
+      btn.textContent = formatKeyName(e.key);
+    }
+    btn.classList.remove('listening');
+    cmapListeningTarget = null;
+    updateVcamHint();
+  });
+
+  function openCmapModal(){
+    renderCmapPhysicalRows();
+    renderCmapGestureRows();
+    renderCmapOutputRows();
+    updateCmapCameraUI();
+    cmapOverlay.classList.add('open');
+  }
+  function closeCmapModal(){
+    if(cmapListeningTarget && cmapListeningTarget.btn) cmapListeningTarget.btn.classList.remove('listening');
+    cmapListeningTarget = null;
+    try{ localStorage.setItem(PHYS_KEY_STORE, JSON.stringify(physicalKeyMap)); }catch(e){}
+    try{ localStorage.setItem(GEST_ACTION_STORE, JSON.stringify(gestureActionMap)); }catch(e){}
+    cmapOverlay.classList.remove('open');
+    refocusGameFrame();
+  }
+  preventFocusSteal(cmapOpenBtn);
+  cmapOpenBtn.addEventListener('click', openCmapModal);
+  cmapCloseBtn.addEventListener('click', closeCmapModal);
+  cmapSaveBtn.addEventListener('click', closeCmapModal);
+  cmapOverlay.addEventListener('click', e => { if(e.target === cmapOverlay) closeCmapModal(); });
+  cmapResetBtn.addEventListener('click', () => {
+    physicalKeyMap = { ...defaultPhysicalKeyMap };
+    gestureActionMap = { ...defaultGestureActionMap };
+    if(currentGame && currentGame.external && currentGame.vkeyMap){
+      try{ localStorage.removeItem(VKEY_STORE_PREFIX + currentGame.id); }catch(e){}
+    }
+    renderCmapPhysicalRows();
+    renderCmapGestureRows();
+    renderCmapOutputRows();
+    updateVcamHint();
+  });
+
+
+  window.addEventListener('message', (event) => {
+    const data = event.data;
+    if(!data || typeof data !== 'object') return;
+
+    if(data.type === 'PORTAL_GAME_READY' || data.type === 'PORTAL_VKEY_BRIDGE_READY'){
+      ovLoading.style.display = 'none';
+      ovStatus.textContent = '🟢 Đang chơi';
+      ovStatus.classList.add('live');
+      clearTimeout(readyTimeout);
+    }
+
+    if(data.type === 'PORTAL_GAME_RESULT'){
+      const entry = {
+        id: 'e' + Date.now() + Math.random().toString(16).slice(2),
+        playerName: currentPlayer(),
+        gameId: data.gameId,
+        gameTitle: data.gameTitle,
+        status: data.status === 'win' ? 'win' : 'lose',
+        score: Number(data.score) || 0,
+        timeSec: Number(data.timeSec) || 0,
+        meta: data.meta || null,
+        ts: Date.now()
+      };
+      const list = loadLB();
+      list.push(entry);
+      saveLB(list);
+
+      // toast
+      document.getElementById('toastMedal').textContent = entry.status === 'win' ? '🏆' : '💀';
+      document.getElementById('toastTitle').textContent = entry.status === 'win' ? 'Chiến thắng! Đã ghi điểm vào Leader Board' : 'Thất bại — đã ghi nhận thời gian trụ vững';
+      const detail = document.getElementById('toastDetail');
+      detail.innerHTML = `Điểm: <b class="${entry.status}">${entry.score}</b> · Thời gian: ${entry.timeSec}s`;
+      resultToast.classList.add('show');
+      setTimeout(() => resultToast.classList.remove('show'), 4200);
+
+      renderStats();
+    }
+  });
+
+  document.getElementById('scrollTopLink').addEventListener('click', e => { e.preventDefault(); window.scrollTo({top:0, behavior:'smooth'}); });
+
+  // ===================== INIT =====================
+  renderGameGrid();
+  renderStats();
+  renderLeaderboard();
+  updateVcamHint();
+})();
+</script>
+</body>
+</html>
