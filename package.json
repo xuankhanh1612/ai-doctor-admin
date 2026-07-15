@@ -21,6 +21,7 @@
     "chart.js": "^4.5.1",
     "lucide-react": "^0.383.0",
     "pdfjs-dist": "^4.4.168",
+    "permissionless": "^0.3.7",
     "prisma": "^6.19.3",
     "react": "^18.3.1",
     "react-chartjs-2": "^5.3.1",
@@ -28,7 +29,8 @@
     "react-pdf": "^9.1.1",
     "react-router-dom": "^6.24.0",
     "recharts": "^2.15.4",
-    "three": "^0.165.0"
+    "three": "^0.165.0",
+    "viem": "^2.55.2"
   },
   "devDependencies": {
     "@types/react": "^18.3.1",
