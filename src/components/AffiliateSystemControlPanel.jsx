@@ -20,7 +20,7 @@ import { toSimpleSmartAccount } from 'permissionless/accounts';
 import { privateKeyToAccount } from 'viem/accounts';
 
 // Lấy từ .env (Đảm bảo file .env của Vite dùng tiền tố VITE_)
-const BUNDLER_URL = import.meta.env.VITE_BUNDLER_URL || "https://api.pimlico.io/v2/97/rpc?apikey=YOUR_API_KEY";
+const BUNDLER_URL = import.meta.env.VITE_BUNDLER_URL || "https://api.pimlico.io/v2/97/rpc?apikey=YOUR_PIMLICO_API_KEY";
 const PAYMASTER_ADDRESS = import.meta.env.VITE_PAYMASTER_ADDRESS || "0x177858e3450ff286E7d301100363567A555E435f";
 const AFFILIATE_CONTRACT = import.meta.env.VITE_AFFILIATE_CONTRACT || "0x44f787D670Ff4Ef65334D6637960bb7Fe5E1231c";
 
