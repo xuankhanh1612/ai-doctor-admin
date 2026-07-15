@@ -542,6 +542,7 @@
 
 <footer>Dữ liệu Leader Board được lưu cục bộ trên trình duyệt (localStorage) — không gửi lên máy chủ nào. · <a href="#" id="scrollTopLink">Về đầu trang</a></footer>
 
+<!-- ===== GAME OVERLAY ===== -->
 <div class="overlay" id="overlay">
   <div class="overlay-top">
     <div class="left">
@@ -568,6 +569,7 @@
       </div>
     </div>
 
+    <!-- Toggle Controls Menu (Can be docked Top/Bottom/Left/Right) -->
     <div class="vctrl-bar pos-bottom" id="vctrlBar">
       <div class="vctrl-toggle-row">
         <button class="vctrl-toggle" id="vctrlToggleBtn" type="button">▾ Ẩn điều khiển</button>
@@ -576,9 +578,11 @@
       <div class="vctrl-inner" id="vctrlInner">
         
         <div class="vctrl-move-group">
+          <!-- JOYSTICK -->
           <div class="vjoystick" id="vJoystick">
             <div class="knob" id="vJoyKnob"></div>
           </div>
+          <!-- DPAD -->
           <div class="dpad" id="vDpad">
             <button class="u" data-dir="up">▲</button>
             <button class="l" data-dir="left">◀</button>
@@ -1053,14 +1057,24 @@
       dy = (dy / dist) * maxDist;
     }
     
+    // UI Cập nhật (vẫn đi theo ngón tay một cách trực quan)
     vJoyKnob.style.transform = `translate(${dx}px, ${dy}px)`;
 
     let thresh = maxDist * 0.35; // 35% ngưỡng lệch mới kích hoạt phím
+    
+    // === CHỈNH SỬA LOGIC: Đảo ngược hướng bắn dành riêng cho game Captain ===
+    let logicDx = dx;
+    let logicDy = dy;
+    if (currentGame && currentGame.id === 'captain-khanh') {
+        logicDx = -dx;
+        logicDy = -dy;
+    }
+
     let newState = {
-      up: dy < -thresh,
-      down: dy > thresh,
-      left: dx < -thresh,
-      right: dx > thresh
+      up: logicDy < -thresh,
+      down: logicDy > thresh,
+      left: logicDx < -thresh,
+      right: logicDx > thresh
     };
 
     ['up','down','left','right'].forEach(dir => {
@@ -1142,6 +1156,7 @@
   vExtraGroup.addEventListener('touchend', extraBtnUp);
   vExtraGroup.addEventListener('touchcancel', extraBtnUp);
 
+
   // ---------- GESTURE CAMERA (beta) ----------
   let gestureActive = false;
   let gestureStream = null;
@@ -1151,6 +1166,27 @@
   let currentFacingMode = 'user'; 
   let activeDirs = { up:false, down:false, left:false, right:false };
   let activeHold = {};
+
+  // -- HELPER: Ánh xạ cử chỉ ngón trỏ vào UI của Joystick --
+  function updateGestureJoystick(isPoint, deg) {
+    // Không can thiệp nếu người chơi đang dùng chuột / ngón tay điều khiển Joystick
+    if (!vJoystick || !vJoyKnob || joyActive) return;
+    
+    if (isPoint) {
+      let maxDist = (vJoystick.offsetWidth / 2) - (vJoyKnob.offsetWidth / 2);
+      if (maxDist <= 0) maxDist = 25; 
+      
+      const rad = deg * Math.PI / 180;
+      const dx = Math.cos(rad) * maxDist;
+      const dy = Math.sin(rad) * maxDist;
+      
+      vJoystick.classList.add('active');
+      vJoyKnob.style.transform = `translate(${dx}px, ${dy}px)`;
+    } else {
+      vJoystick.classList.remove('active');
+      vJoyKnob.style.transform = `translate(0px, 0px)`;
+    }
+  }
 
   function loadScriptOnce(src){
     return new Promise((resolve, reject) => {
@@ -1291,7 +1327,11 @@
   }
 
   function applyGesture(res, lm){
-    if(!lm){ releaseAllHolds(); setDirs(NO_DIRS); return; }
+    if(!lm){ 
+      releaseAllHolds(); setDirs(NO_DIRS); 
+      updateGestureJoystick(false, 0); 
+      return; 
+    }
     const g = classifyGesture(lm);
     const isFist = g.gesture === 'fist', isPalm = g.gesture === 'palm', isPoint = g.gesture === 'point';
     const override = currentGame && currentGame.gestureOverride;
@@ -1302,6 +1342,7 @@
         setHold(a, (isFist && override.fist === a) || (isPalm && override.palm === a) || (isPoint && pointAction === a));
       });
       setDirs(NO_DIRS);
+      updateGestureJoystick(false, 0); 
       return;
     }
 
@@ -1310,7 +1351,18 @@
     HOLDABLE_ACTIONS.forEach(a => {
       setHold(a, (isFist && fistAction === a) || (isPalm && palmAction === a));
     });
-    setDirs(isPoint ? g.dirs : NO_DIRS);
+    
+    // === CHỈNH SỬA LOGIC CỬ CHỈ: Đảo ngược hướng khi là game Captain ===
+    let logicDirs = isPoint ? g.dirs : NO_DIRS;
+    if (currentGame && currentGame.id === 'captain-khanh' && isPoint) {
+        let logicDeg = (g.deg + 180) % 360; // Cộng thêm 180 độ để lấy đối xứng
+        if (logicDeg > 180) logicDeg -= 360;
+        logicDirs = angleToDirs(logicDeg);
+    }
+    setDirs(logicDirs);
+
+    // Cập nhật UI của Joystick theo góc của ngón trỏ (UI không bị đảo ngược)
+    updateGestureJoystick(isPoint, g.deg);
   }
 
   let gestureHandsReady = false;
@@ -1377,6 +1429,8 @@
     const video = document.getElementById('vcamVideo');
     if(video) video.srcObject = null;
     setDirs(NO_DIRS); releaseAllHolds();
+    updateGestureJoystick(false, 0); 
+    
     gestureActive = false;
     vcamPreview.classList.remove('show');
     camToggleBtn.textContent = '🖐️ Bật Camera Cử Chỉ (Beta)';
@@ -1519,7 +1573,6 @@
     renderCmapOutputRows();
     updateVcamHint();
   });
-
 
   window.addEventListener('message', (event) => {
     const data = event.data;
