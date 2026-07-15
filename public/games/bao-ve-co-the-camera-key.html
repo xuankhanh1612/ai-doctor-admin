@@ -399,12 +399,12 @@
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         let gameMode = 'pve'; let gameState = 'waiting'; let startTime = 0; let elapsedTime = 0;
-        let envTheme = { name: "Hệ thần kinh", bg: "rgba(25, 10, 40, 0.7)", wall: "#4c1d95", border: "#8b5cf6", organColor: "#f472b6" };
+        let envTheme = { name: "Hệ thần kinh", icon: "🧠", bg: "rgba(25, 10, 40, 0.7)", wall: "#4c1d95", border: "#8b5cf6", organColor: "#f472b6" };
         
         let p1 = { x: 50, y: 200, width: 24, height: 24, vx: 0, vy: 0, hp: 10, isGrounded: false, color: '#10b981', shieldActive: false, alive: true };
         let p2 = { x: 100, y: 200, width: 24, height: 24, vx: 0, vy: 0, hp: 10, isGrounded: false, color: '#38bdf8', shieldActive: false, active: false, alive: true };
         let boss = { x: 650, y: 150, radius: 25, vx: 0, vy: 2.5, hp: 10, maxHp: 10, dirY: 1, color: '#e11d48', shieldActive: false };
-        let organBase = { x: 10, y: 120, w: 45, h: 140, hp: 20, maxHp: 20 }; 
+        let organBase = { x: 10, y: 110, w: 60, h: 160, hp: 20, maxHp: 20 }; 
         let projectiles = []; let platforms = []; let mapViruses = []; let mapHeals = []; let particles = [];
         const GRAVITY = 0.4; const JUMP = -9; 
 
@@ -432,12 +432,12 @@
         function selectOrgan(type, autoStart = true) {
             document.querySelectorAll('.organ-btn').forEach(btn => btn.classList.remove('selected'));
             document.getElementById('btn-' + type).classList.add('selected');
-            if(type === 'brain') { envTheme = { name: "Hệ thần kinh", bg: "rgba(25, 10, 40, 0.7)", wall: "#4c1d95", border: "#8b5cf6", organColor: "#f472b6" }; platforms = [{x: 140, y: 310, w: 100, h: 12, label: "Khe Synapse"}, {x: 320, y: 240, w: 150, h: 12, label: "Sợi trục"}, {x: 500, y: 160, w: 120, h: 12, label: "Tế bào đệm"}]; } 
-            else if(type === 'lungs') { envTheme = { name: "Hệ hô hấp", bg: "rgba(10, 30, 50, 0.7)", wall: "#0c4a6e", border: "#38bdf8", organColor: "#7dd3fc" }; platforms = [{x: 140, y: 300, w: 120, h: 12, label: "Màng phổi"}, {x: 300, y: 220, w: 150, h: 12, label: "Cuống phổi"}, {x: 500, y: 140, w: 100, h: 12, label: "Phế nang"}]; } 
-            else if(type === 'heart') { envTheme = { name: "Hệ tuần hoàn", bg: "rgba(40, 10, 15, 0.7)", wall: "#7f1d1d", border: "#ef4444", organColor: "#fb7185" }; platforms = [{x: 160, y: 290, w: 120, h: 12, label: "Hồng cầu"}, {x: 360, y: 210, w: 140, h: 12, label: "Tiểu cầu"}, {x: 540, y: 130, w: 100, h: 12, label: "Bạch cầu"}]; } 
-            else if(type === 'kidneys') { envTheme = { name: "Hệ tiết niệu", bg: "rgba(20, 20, 50, 0.7)", wall: "#1e3a8a", border: "#34d399", organColor: "#6ee7b7" }; platforms = [{x: 140, y: 280, w: 110, h: 12, label: "Bể thận"}, {x: 310, y: 210, w: 130, h: 12, label: "Cầu thận"}, {x: 480, y: 150, w: 120, h: 12, label: "Ống thận"}]; } 
-            else if(type === 'stomach') { envTheme = { name: "Hệ tiêu hóa", bg: "rgba(6, 24, 15, 0.7)", wall: "#064e3b", border: "#10b981", organColor: "#fde047" }; platforms = [{x: 150, y: 300, w: 120, h: 12, label: "Dịch vị"}, {x: 320, y: 230, w: 140, h: 12, label: "Nhung mao"}, {x: 500, y: 160, w: 110, h: 12, label: "Lớp nhầy"}, {x: 270, y: 120, w: 130, h: 12, label: "Enzyme phân giải"}]; } 
-            else if(type === 'liver') { envTheme = { name: "Hệ gan mật", bg: "rgba(30, 20, 10, 0.7)", wall: "#78350f", border: "#fbbf24", organColor: "#d97706" }; platforms = [{x: 160, y: 310, w: 130, h: 12, label: "Nhu mô gan"}, {x: 350, y: 220, w: 120, h: 12, label: "Ống mật"}, {x: 520, y: 140, w: 120, h: 12, label: "Tĩnh mạch"}]; }
+            if(type === 'brain') { envTheme = { name: "Hệ thần kinh", icon: "🧠", bg: "rgba(25, 10, 40, 0.7)", wall: "#4c1d95", border: "#8b5cf6", organColor: "#f472b6" }; platforms = [{x: 140, y: 310, w: 100, h: 12, label: "Khe Synapse"}, {x: 320, y: 240, w: 150, h: 12, label: "Sợi trục"}, {x: 500, y: 160, w: 120, h: 12, label: "Tế bào đệm"}]; } 
+            else if(type === 'lungs') { envTheme = { name: "Hệ hô hấp", icon: "🫁", bg: "rgba(10, 30, 50, 0.7)", wall: "#0c4a6e", border: "#38bdf8", organColor: "#7dd3fc" }; platforms = [{x: 140, y: 300, w: 120, h: 12, label: "Màng phổi"}, {x: 300, y: 220, w: 150, h: 12, label: "Cuống phổi"}, {x: 500, y: 140, w: 100, h: 12, label: "Phế nang"}]; } 
+            else if(type === 'heart') { envTheme = { name: "Hệ tuần hoàn", icon: "🫀", bg: "rgba(40, 10, 15, 0.7)", wall: "#7f1d1d", border: "#ef4444", organColor: "#fb7185" }; platforms = [{x: 160, y: 290, w: 120, h: 12, label: "Hồng cầu"}, {x: 360, y: 210, w: 140, h: 12, label: "Tiểu cầu"}, {x: 540, y: 130, w: 100, h: 12, label: "Bạch cầu"}]; } 
+            else if(type === 'kidneys') { envTheme = { name: "Hệ tiết niệu", icon: "💧", bg: "rgba(20, 20, 50, 0.7)", wall: "#1e3a8a", border: "#34d399", organColor: "#6ee7b7" }; platforms = [{x: 140, y: 280, w: 110, h: 12, label: "Bể thận"}, {x: 310, y: 210, w: 130, h: 12, label: "Cầu thận"}, {x: 480, y: 150, w: 120, h: 12, label: "Ống thận"}]; } 
+            else if(type === 'stomach') { envTheme = { name: "Hệ tiêu hóa", icon: "🥩", bg: "rgba(6, 24, 15, 0.7)", wall: "#064e3b", border: "#10b981", organColor: "#fde047" }; platforms = [{x: 150, y: 300, w: 120, h: 12, label: "Dịch vị"}, {x: 320, y: 230, w: 140, h: 12, label: "Nhung mao"}, {x: 500, y: 160, w: 110, h: 12, label: "Lớp nhầy"}, {x: 270, y: 120, w: 130, h: 12, label: "Enzyme phân giải"}]; } 
+            else if(type === 'liver') { envTheme = { name: "Hệ gan mật", icon: "🧫", bg: "rgba(30, 20, 10, 0.7)", wall: "#78350f", border: "#fbbf24", organColor: "#d97706" }; platforms = [{x: 160, y: 310, w: 130, h: 12, label: "Nhu mô gan"}, {x: 350, y: 220, w: 120, h: 12, label: "Ống mật"}, {x: 520, y: 140, w: 120, h: 12, label: "Tĩnh mạch"}]; }
             if(autoStart) { gameState = 'playing'; resetGame(); if(window.innerWidth < 640 && menuOpen) closeMenu(); }
         }
 
@@ -534,10 +534,12 @@
             if ((defendersDead || organBase.hp <= 0) && gameState === 'playing') { 
                 gameState = 'lose'; 
                 if(!menuOpen && window.innerWidth < 1024) openMenu(); 
+                reportGameResult('lose', 0, elapsedTime, { reason: organBase.hp <= 0 ? 'wall_destroyed' : 'defenders_dead' });
             }
             else if (boss.hp <= 0 && gameState === 'playing') { 
                 gameState = 'win'; 
                 if(!menuOpen && window.innerWidth < 1024) openMenu(); 
+                reportGameResult('win', Math.max(10000 - Math.floor(elapsedTime * 150), 500), elapsedTime, { mode: gameMode, organ: envTheme.name });
             }
         }
 
@@ -582,8 +584,12 @@
 
             let innerOrganW = organBase.w - 15;
             ctx.fillStyle = envTheme.organColor; ctx.fillRect(organBase.x, organBase.y, innerOrganW, organBase.h);
-            ctx.fillStyle = '#fff'; ctx.font = 'bold 10px sans-serif';
-            ctx.save(); ctx.translate(organBase.x + 15, organBase.y + 110); ctx.rotate(-Math.PI/2); ctx.fillText(envTheme.name ? envTheme.name.toUpperCase() : "NỘI TẠNG", 0, 0); ctx.restore();
+            ctx.fillStyle = '#fff'; ctx.font = 'bold 11px sans-serif';
+            ctx.save(); 
+            ctx.translate(organBase.x + 24, organBase.y + 145); 
+            ctx.rotate(-Math.PI/2); 
+            ctx.fillText(`${envTheme.icon || ''} ${envTheme.name ? envTheme.name.toUpperCase() : "NỘI TẠNG"}`, 0, 0); 
+            ctx.restore();
 
             let wallX = organBase.x + innerOrganW; let wallW = 15;
             ctx.fillStyle = '#b45309'; ctx.fillRect(wallX, organBase.y, wallW, organBase.h);
@@ -847,6 +853,26 @@
             hands.setOptions({ maxNumHands: modeNumHands, modelComplexity: 1, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
             if (firstActivation) startMediaPipeEngine();
         }
-    </script>
+    
+    // ===== PORTAL BRIDGE (auto-injected) =====
+    window.__PORTAL_GAME_ID__ = 'camera-key';
+    window.__PORTAL_GAME_TITLE__ = 'Bảo Vệ Cơ Thể – Camera Cử Chỉ (Đầy đủ)';
+    function reportGameResult(status, score, timeSec, meta) {
+        try {
+            window.parent.postMessage({
+                type: 'PORTAL_GAME_RESULT',
+                gameId: window.__PORTAL_GAME_ID__,
+                gameTitle: window.__PORTAL_GAME_TITLE__,
+                status: status,
+                score: Math.round(score || 0),
+                timeSec: Math.round((timeSec || 0) * 10) / 10,
+                meta: meta || null,
+                ts: Date.now()
+            }, '*');
+        } catch(e) {}
+    }
+    try { window.parent.postMessage({ type: 'PORTAL_GAME_READY', gameId: window.__PORTAL_GAME_ID__, gameTitle: window.__PORTAL_GAME_TITLE__ }, '*'); } catch(e) {}
+    // ===== END PORTAL BRIDGE =====
+</script>
 </body>
 </html>
