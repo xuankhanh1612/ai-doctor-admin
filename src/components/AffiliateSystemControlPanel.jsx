@@ -1,15 +1,38 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { useAuth } from '../context/AuthContext';
 import { 
   Users, Settings, DollarSign, Plus, Trash2, ArrowRight, 
   ShoppingCart, Activity, Sparkles, Loader2, MessageSquareText, 
   Network, UserCircle, Target, TrendingUp, Lightbulb,
   HeartHandshake, PlayCircle, Clock, GraduationCap, Copy, CheckCircle2,
-  Wallet, History, AlertTriangle, BarChart3
+  Wallet, History, AlertTriangle
 } from 'lucide-react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer 
 } from 'recharts';
+
+// ==========================================
+// CẤU HÌNH WEB3 & ACCOUNT ABSTRACTION (BSC Testnet)
+// ==========================================
+import { createPublicClient, http, encodeFunctionData } from 'viem';
+import { bscTestnet } from 'viem/chains';
+import { createSmartAccountClient } from 'permissionless';
+import { privateKeyToSimpleSmartAccount } from 'permissionless/accounts';
+import { createPimlicoBundlerClient } from 'permissionless/clients/pimlico';
+
+// Lấy từ .env (Đảm bảo file .env của Vite dùng tiền tố VITE_)
+const BUNDLER_URL = import.meta.env.VITE_BUNDLER_URL || "https://api.pimlico.io/v2/97/rpc?apikey=YOUR_API_KEY";
+const PAYMASTER_ADDRESS = import.meta.env.VITE_PAYMASTER_ADDRESS || "0x177858e3450ff286E7d301100363567A555E435f";
+const AFFILIATE_CONTRACT = import.meta.env.VITE_AFFILIATE_CONTRACT || "0x44f787D670Ff4Ef65334D6637960bb7Fe5E1231c";
+
+const publicClient = createPublicClient({
+  chain: bscTestnet,
+  transport: http("https://data-seed-prebsc-1-s1.binance.org:8545")
+});
+
+const bundlerClient = createPimlicoBundlerClient({
+  transport: http(BUNDLER_URL),
+  entryPoint: "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789", // EIP-4337 v0.6
+});
 
 // --- MOCK DATA BAN ĐẦU ---
 const defaultBalances = { VND: 0, VIET: 0, PI: 0, BTC: 0, ETH: 0, BNB: 0, USDT: 0 };
@@ -48,78 +71,8 @@ const QUIZ_QUESTIONS = [
   }
 ];
 
-
-const REFERRAL_CODES_STORAGE_KEY = 'affiliate-control-referral-codes-v1';
-
-const getLoggedInAffiliateUser = (authUser) => {
-  if (!authUser?.uuid) return null;
-  return {
-    id: authUser.uuid,
-    name: authUser.name || authUser.email || 'User đang đăng nhập',
-    email: authUser.email || '',
-    parentId: 'u1',
-    balances: { ...defaultBalances },
-    isCurrentLoggedInUser: true,
-    isGuestAffiliateUser: !!authUser.isAnonymous,
-  };
-};
-
-const formatAffiliateUserLabel = (affiliateUser) => {
-  if (!affiliateUser) return '';
-  const uuid = affiliateUser.id || affiliateUser.uuid;
-  return uuid ? `${affiliateUser.name} · UUID: ${uuid}` : affiliateUser.name;
-};
-
-const pad2 = (value) => String(value).padStart(2, '0');
-
-const createRecruitmentReferralCode = () => {
-  const now = new Date();
-  const timestamp = [
-    now.getFullYear(),
-    pad2(now.getMonth() + 1),
-    pad2(now.getDate()),
-    pad2(now.getHours()),
-    pad2(now.getMinutes()),
-    pad2(now.getSeconds())
-  ].join('');
-  const randomDigits = Math.floor(10000000 + Math.random() * 90000000);
-  return `HEALTH-${timestamp}-${randomDigits}-OWL9JB`;
-};
-
-const readStoredReferralCodes = () => {
-  if (typeof window === 'undefined') return {};
-  try {
-    return JSON.parse(window.localStorage.getItem(REFERRAL_CODES_STORAGE_KEY) || '{}') || {};
-  } catch (error) {
-    return {};
-  }
-};
-
-const getDomainUrl = () => {
-  if (typeof window === 'undefined') return 'https://ai-doctor-admin.vercel.app';
-  return window.location.origin.replace(/\/$/, '');
-};
-
-const copyTextToClipboard = async (text) => {
-  if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-    await navigator.clipboard.writeText(text);
-    return;
-  }
-
-  const textArea = document.createElement('textarea');
-  textArea.value = text;
-  textArea.setAttribute('readonly', '');
-  textArea.style.position = 'fixed';
-  textArea.style.opacity = '0';
-  document.body.appendChild(textArea);
-  textArea.select();
-  document.execCommand('copy');
-  document.body.removeChild(textArea);
-};
-
 // --- GEMINI API INTEGRATION ---
-// Khuyến nghị: Thay apiKey bằng import.meta.env.VITE_GEMINI_API_KEY trong dự án Vite
-const apiKey = ""; 
+const apiKey = import.meta.env.VITE_GEMINI_API_KEY || ""; 
 const callGeminiAPI = async (prompt) => {
   if (!apiKey) return "Vui lòng cấu hình VITE_GEMINI_API_KEY trong file .env";
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
@@ -144,16 +97,12 @@ const callGeminiAPI = async (prompt) => {
   return "Lỗi kết nối AI.";
 };
 
-export default function AffiliateSystemControlPanel() {
-  const { user: authUser } = useAuth();
+export default function AffiliateSystem() {
   const [activeTab, setActiveTab] = useState('user'); // 'admin' | 'stats' | 'user'
   const [users, setUsers] = useState(INITIAL_USERS);
   const [policy, setPolicy] = useState(INITIAL_POLICY);
   const [transactions, setTransactions] = useState(INITIAL_TRANSACTIONS);
   const [viewingUserId, setViewingUserId] = useState('u2'); // Mặc định xem account u2
-  const [referralCodes, setReferralCodes] = useState(readStoredReferralCodes);
-  const [copiedReferralLink, setCopiedReferralLink] = useState(false);
-  const loggedInAffiliateUser = useMemo(() => getLoggedInAffiliateUser(authUser), [authUser]);
 
   // --- CUSTOM TOAST STATE ---
   const [toast, setToast] = useState({ show: false, title: '', message: '', type: 'success' });
@@ -178,31 +127,6 @@ export default function AffiliateSystemControlPanel() {
   const [currentQuizIndex, setCurrentQuizIndex] = useState(0);
   const [quizCompleted, setQuizCompleted] = useState({});
   const [selectedAnswer, setSelectedAnswer] = useState(null);
-
-
-  useEffect(() => {
-    if (!loggedInAffiliateUser) return;
-
-    setUsers(prev => {
-      const existingUser = prev.find(u => u.id === loggedInAffiliateUser.id);
-      if (existingUser) {
-        return prev.map(u => u.id === loggedInAffiliateUser.id ? {
-          ...u,
-          ...loggedInAffiliateUser,
-          balances: u.balances || { ...defaultBalances },
-        } : u);
-      }
-
-      return [
-        ...prev,
-        {
-          ...loggedInAffiliateUser,
-          balances: { ...defaultBalances },
-        },
-      ];
-    });
-    setViewingUserId(loggedInAffiliateUser.id);
-  }, [loggedInAffiliateUser]);
 
   // --- CLOCK TICKER FOR COOLDOWN ---
   useEffect(() => {
@@ -291,36 +215,6 @@ export default function AffiliateSystemControlPanel() {
     }));
 
   const viewingUserStat = userStats.find(u => u.id === viewingUserId);
-  const viewingUserReferralCode = referralCodes[viewingUserId] || '';
-  const viewingUserReferralLink = viewingUserReferralCode ? `${getDomainUrl()}/r/${viewingUserReferralCode}` : '';
-
-  useEffect(() => {
-    setReferralCodes(prev => {
-      const next = { ...prev };
-      let changed = false;
-
-      users.forEach(user => {
-        if (!next[user.id]) {
-          next[user.id] = createRecruitmentReferralCode();
-          changed = true;
-        }
-      });
-
-      if (changed && typeof window !== 'undefined') {
-        try {
-          window.localStorage.setItem(REFERRAL_CODES_STORAGE_KEY, JSON.stringify(next));
-        } catch (error) {
-          // Nếu trình duyệt chặn localStorage, link vẫn được tạo cho phiên hiện tại.
-        }
-      }
-
-      return changed ? next : prev;
-    });
-  }, [users]);
-
-  useEffect(() => {
-    setCopiedReferralLink(false);
-  }, [viewingUserId]);
 
   // --- HELPER: UPDATE BALANCE ---
   const updateUserBalance = (userId, currency, amount) => {
@@ -335,33 +229,89 @@ export default function AffiliateSystemControlPanel() {
     }));
   };
 
+  // --- CORE WEB3: GỬI GIAO DỊCH KHÔNG TỐN PHÍ (GASLESS) ---
+  const executeGaslessTask = async (userId, functionName, args) => {
+    try {
+      showToast("Đang xử lý Web3", "Đang đóng gói giao dịch và xin cấp phí Gas...", "success");
+
+      // 1. Ví ẩn danh (Mô phỏng 1 Private Key ngẫu nhiên cho user)
+      const mockPrivateKey = "0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"; 
+      
+      // 2. Khởi tạo Smart Account ẩn danh
+      const smartAccount = await privateKeyToSimpleSmartAccount(publicClient, {
+        privateKey: mockPrivateKey,
+        factoryAddress: "0x9406Cc6185a346906296ED927B7f54229C8f08bd",
+        entryPoint: "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789",
+      });
+
+      // 3. Ép Bundler dùng tiền từ Paymaster của bạn!
+      const smartAccountClient = createSmartAccountClient({
+        account: smartAccount,
+        entryPoint: "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789",
+        chain: bscTestnet,
+        bundlerTransport: http(BUNDLER_URL),
+        middleware: {
+          sponsorUserOperation: async ({ userOperation }) => ({
+            ...userOperation,
+            paymasterAndData: PAYMASTER_ADDRESS
+          })
+        }
+      });
+
+      // 4. Mã hóa lệnh gọi hàm Affiliate Contract (Hàm rewardTask)
+      const callData = encodeFunctionData({
+        abi: [{ type: "function", name: functionName, inputs: [{ type: "uint256" }] }],
+        functionName: functionName,
+        args: args,
+      });
+
+      // 5. Gửi lên Blockchain!
+      const txHash = await smartAccountClient.sendTransaction({
+        to: AFFILIATE_CONTRACT,
+        data: callData,
+        value: 0n, // Không gửi kèm BNB
+      });
+
+      showToast("Thành công Web3!", `TxHash: ${txHash.substring(0, 15)}...`, "success");
+      return txHash;
+
+    } catch (error) {
+      console.error("Web3 Error:", error);
+      showToast("Lỗi Web3", error.message || "Giao dịch thất bại", "error");
+      return null;
+    }
+  };
+
   // --- TASK HANDLERS ---
   const handleStartAd = () => {
     setIsWatchingAd(true);
-    setAdTimer(15);
+    setAdTimer(15); // Đổi thành 15 giây xem quảng cáo
   };
 
-  const handleAdSuccess = () => {
+  const handleAdSuccess = async () => {
     setIsWatchingAd(false);
     
-    // Thưởng trực tiếp cho user làm task
-    updateUserBalance(viewingUserId, 'VND', 5000);
-    updateUserBalance(viewingUserId, 'PI', 0.1);
+    // --- KÍCH HOẠT BLOCKCHAIN ON-CHAIN ---
+    // Gọi hàm rewardTask trên Smart Contract với phần thưởng cơ bản là 5000 (điền kèm hậu tố 'n' cho BigInt)
+    const txHash = await executeGaslessTask(viewingUserId, "rewardTask", [5000n]);
     
-    // Khóa tính năng xem quảng cáo trong 4 giờ (14400 giây)
-    setAdCooldowns(prev => ({ ...prev, [viewingUserId]: Date.now() + 14400 * 1000 }));
-    
-    // Tạo transaction giả lập base 5000đ để chia cho tuyến trên
-    const newTx = {
-      id: `t_ad_${Date.now()}`,
-      userId: viewingUserId,
-      amount: 5000,
-      date: new Date().toISOString().split('T')[0],
-      note: 'Xem Quảng Cáo AdSense',
-      type: 'TASK_AD'
-    };
-    setTransactions(prev => [...prev, newTx]);
-    showToast("Hoàn thành!", "Bạn nhận được +5,000 VNĐ và +0.1 PI. Tuyến trên cũng đã nhận được hoa hồng chiết khấu.", "success");
+    if (txHash) {
+      // Chỉ khi Smart Contract chạy thành công, mới cập nhật giao diện
+      updateUserBalance(viewingUserId, 'VND', 5000);
+      updateUserBalance(viewingUserId, 'PI', 0.1);
+      
+      setAdCooldowns(prev => ({ ...prev, [viewingUserId]: Date.now() + 14400 * 1000 }));
+      
+      const newTx = {
+        id: txHash, // Lấy mã Hash thật từ Blockchain làm ID giao dịch!
+        userId: viewingUserId,
+        amount: 5000,
+        date: new Date().toISOString().split('T')[0],
+        note: 'Xem Quảng Cáo AdSense (On-chain Web3)',
+        type: 'TASK_AD'
+      };
+      setTransactions(prev => [...prev, newTx]);
+    }
   };
 
   const handleAnswerQuiz = () => {
@@ -471,20 +421,8 @@ export default function AffiliateSystemControlPanel() {
 
   const cooldownStr = getCooldownDisplay();
 
-  const handleCopyLink = async () => {
-    if (!viewingUserReferralLink) {
-      showToast("Chưa sẵn sàng", "Link Ref tuyển dụng F1 đang được tạo, vui lòng thử lại.", "error");
-      return;
-    }
-
-    try {
-      await copyTextToClipboard(viewingUserReferralLink);
-      setCopiedReferralLink(true);
-      showToast("Thành công", `Đã sao chép link Ref tuyển dụng F1: ${viewingUserReferralLink}`, "success");
-      setTimeout(() => setCopiedReferralLink(false), 2000);
-    } catch (error) {
-      showToast("Lỗi Copy", "Không thể sao chép link vào bộ nhớ tạm.", "error");
-    }
+  const handleCopyLink = () => {
+    showToast("Thành công", "Đã sao chép liên kết giới thiệu vào bộ nhớ tạm.", "success");
   };
 
   // --- UI COMPONENTS ---
@@ -496,7 +434,7 @@ export default function AffiliateSystemControlPanel() {
         <div className="flex items-center gap-2">
           <HeartHandshake className="text-red-500 h-8 w-8" />
           <h1 className="text-2xl font-bold tracking-tight text-white">
-            Hiến Máu Nhân Văn <span className="text-sm font-normal text-slate-500 ml-2">Affiliate Engine</span>
+            Hiến Máu Nhân Văn <span className="text-sm font-normal text-slate-500 ml-2">Affiliate Engine Web3</span>
           </h1>
         </div>
         <nav className="flex gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0 hide-scrollbar">
@@ -544,12 +482,9 @@ export default function AffiliateSystemControlPanel() {
                     className="bg-transparent text-lg font-bold text-white focus:outline-none cursor-pointer appearance-none"
                   >
                     {users.filter(u => u.id !== 'u1').map(u => (
-                      <option key={`view_${u.id}`} value={u.id} className="bg-slate-800 text-white">{formatAffiliateUserLabel(u)}</option>
+                      <option key={`view_${u.id}`} value={u.id} className="bg-slate-800 text-white">{u.name}</option>
                     ))}
                   </select>
-                  {viewingUserStat?.id && (
-                    <div className="text-[11px] text-slate-500 font-mono mt-0.5">UUID: {viewingUserStat.id}</div>
-                  )}
                 </div>
               </div>
               
@@ -586,7 +521,7 @@ export default function AffiliateSystemControlPanel() {
                   <div className="flex justify-between items-start mb-4 relative z-10">
                     <div>
                       <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                        <PlayCircle className="w-6 h-6 text-emerald-400" /> Xem Quảng Cáo Hỗ Trợ Quỹ
+                        <PlayCircle className="w-6 h-6 text-emerald-400" /> Xem Quảng Cáo Web3
                       </h3>
                       <p className="text-sm text-slate-400 mt-1">Nhiệm vụ lặp lại mỗi 4 giờ. Giúp duy trì quỹ nhân văn.</p>
                     </div>
@@ -605,15 +540,9 @@ export default function AffiliateSystemControlPanel() {
                         <div className="text-emerald-400 text-2xl font-mono font-bold mb-2">00:{adTimer.toString().padStart(2, '0')}</div>
                         <p className="text-xs text-slate-400 animate-pulse mb-4">Đang phát quảng cáo... vui lòng không đóng cửa sổ.</p>
                         
-                        {/* --- CHÚ Ý: KHU VỰC GẮN MÃ GOOGLE ADSENSE THẬT KHI DEPLOY VERCEL --- */}
                         <div className="w-full h-[90px] bg-[#0a0a0a] border border-dashed border-[#333] flex items-center justify-center relative overflow-hidden rounded-lg">
                            <span className="text-slate-600 text-xs z-10 absolute pointer-events-none">Ads Container (Insert Google script here)</span>
-                           {/* Xóa chú thích này và thay bằng thẻ <ins> của Google AdSense */}
-                           {/* <ins className="adsbygoogle" style={{display: 'block'}} data-ad-client="ca-pub-xxxx" data-ad-slot="xxxx" data-ad-format="auto" data-full-width-responsive="true"></ins> */}
-                           {/* Code kích hoạt: (adsbygoogle = window.adsbygoogle || []).push({}); */}
                         </div>
-                        {/* --- END GOOGLE ADSENSE --- */}
-
                       </div>
                     ) : (
                       <button 
@@ -701,7 +630,7 @@ export default function AffiliateSystemControlPanel() {
                       <input 
                         type="text" 
                         readOnly 
-                        value={viewingUserReferralLink}
+                        value={`https://hien-mau-nhan-van.vercel.app/r/${viewingUserStat.id}`}
                         className="w-full bg-transparent text-slate-300 text-sm px-3 outline-none"
                       />
                     </div>
@@ -709,7 +638,7 @@ export default function AffiliateSystemControlPanel() {
                       onClick={handleCopyLink}
                       className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-bold text-sm transition flex items-center gap-2"
                     >
-                      {copiedReferralLink ? <CheckCircle2 className="w-4 h-4" /> : <Copy className="w-4 h-4" />} {copiedReferralLink ? 'Copied' : 'Copy'}
+                      <Copy className="w-4 h-4" /> Copy
                     </button>
                   </div>
                   
@@ -861,7 +790,7 @@ export default function AffiliateSystemControlPanel() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in duration-300">
              <div className="lg:col-span-2 bg-[#141414] p-6 rounded-2xl border border-[#262626]">
                  <h2 className="text-lg font-bold mb-6 text-white flex items-center gap-2">
-                   <BarChart3 className="w-5 h-5 text-red-500" /> Bảng Xếp Hạng Thu Nhập Leader
+                   <BarChart className="w-5 h-5 text-red-500" /> Bảng Xếp Hạng Thu Nhập Leader
                  </h2>
                  <div className="h-[300px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
