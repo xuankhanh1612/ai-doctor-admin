@@ -253,7 +253,6 @@
   .vctrl-bar.pos-left .vctrl-toggle, .vctrl-bar.pos-left .vctrl-toggle-pos { border-radius:0 10px 10px 0; border-left:none; margin-left:-1px; padding:18px 6px; writing-mode:vertical-rl; }
   .vctrl-bar.pos-right .vctrl-toggle, .vctrl-bar.pos-right .vctrl-toggle-pos { border-radius:10px 0 0 10px; border-right:none; margin-right:-1px; padding:18px 6px; writing-mode:vertical-rl; transform: rotate(180deg); }
 
-
   .vctrl-inner{
     display:flex; align-items:center; justify-content:space-between; gap:14px; padding:12px 16px;
     opacity:1; transition:all .25s ease; overflow:hidden;
@@ -262,13 +261,51 @@
   /* Inner Adaptations */
   .vctrl-bar.pos-bottom .vctrl-inner { border-top:1px solid var(--border-hi); background:linear-gradient(0deg, rgba(4,6,12,.95), rgba(4,6,12,.55)); max-height:240px; width:100%; flex-wrap:wrap; }
   .vctrl-bar.pos-top .vctrl-inner { border-bottom:1px solid var(--border-hi); background:linear-gradient(180deg, rgba(4,6,12,.95), rgba(4,6,12,.55)); max-height:240px; width:100%; flex-wrap:wrap; }
-  .vctrl-bar.pos-left .vctrl-inner { border-right:1px solid var(--border-hi); background:linear-gradient(90deg, rgba(4,6,12,.95), rgba(4,6,12,.55)); max-width:260px; height:100%; flex-direction:column; overflow-y:auto; }
-  .vctrl-bar.pos-right .vctrl-inner { border-left:1px solid var(--border-hi); background:linear-gradient(270deg, rgba(4,6,12,.95), rgba(4,6,12,.55)); max-width:260px; height:100%; flex-direction:column; overflow-y:auto; }
+  .vctrl-bar.pos-left .vctrl-inner { border-right:1px solid var(--border-hi); background:linear-gradient(90deg, rgba(4,6,12,.95), rgba(4,6,12,.55)); max-width:280px; height:100%; flex-direction:column; overflow-y:auto; }
+  .vctrl-bar.pos-right .vctrl-inner { border-left:1px solid var(--border-hi); background:linear-gradient(270deg, rgba(4,6,12,.95), rgba(4,6,12,.55)); max-width:280px; height:100%; flex-direction:column; overflow-y:auto; }
 
   .vctrl-bar.collapsed.pos-bottom .vctrl-inner, .vctrl-bar.collapsed.pos-top .vctrl-inner { max-height:0; padding-top:0; padding-bottom:0; opacity:0; pointer-events:none; }
   .vctrl-bar.collapsed.pos-left .vctrl-inner, .vctrl-bar.collapsed.pos-right .vctrl-inner { max-width:0; padding-left:0; padding-right:0; opacity:0; pointer-events:none; }
 
-  /* D-PAD update: 4 rows to include SPACE */
+  /* ===== MOVE GROUP (JOYSTICK + DPAD) ===== */
+  .vctrl-move-group { display: flex; align-items: center; gap: 14px; }
+  .vctrl-bar.pos-left .vctrl-move-group, .vctrl-bar.pos-right .vctrl-move-group { flex-direction: column; }
+
+  /* VIRTUAL JOYSTICK */
+  .vjoystick {
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.05);
+    border: 2px solid var(--border-hi);
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    touch-action: none;
+    flex-shrink: 0;
+    cursor: pointer;
+  }
+  .vjoystick::before {
+    content: ''; position: absolute; inset: -10px; border-radius: 50%; border: 1px dashed rgba(255,255,255,0.1); pointer-events: none;
+  }
+  .vjoystick .knob {
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, var(--cyan), var(--violet));
+    border-radius: 50%;
+    position: absolute;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.6);
+    pointer-events: none;
+    transition: transform 0.08s;
+  }
+  .vjoystick.active .knob {
+    transition: none;
+    filter: brightness(1.2);
+    box-shadow: 0 0 15px var(--cyan);
+  }
+
+  /* DPAD */
   .dpad{ display:grid; grid-template-columns:44px 44px 44px; grid-template-rows:44px 44px 44px 34px; gap:4px; }
   .dpad button{
     background:var(--panel-solid); border:1px solid var(--border-hi); color:#fff; border-radius:8px; font-size:16px;
@@ -426,7 +463,10 @@
 
     /* ---- Virtual controls bar ---- */
     .vctrl-bar.pos-bottom .vctrl-inner, .vctrl-bar.pos-top .vctrl-inner{ padding:8px 8px; gap:8px; max-height:340px; }
-    .vctrl-bar.pos-left .vctrl-inner, .vctrl-bar.pos-right .vctrl-inner{ padding:8px; gap:8px; max-width:160px; }
+    .vctrl-bar.pos-left .vctrl-inner, .vctrl-bar.pos-right .vctrl-inner{ padding:8px; gap:8px; max-width:180px; }
+
+    .vjoystick { width: 78px; height: 78px; }
+    .vjoystick .knob { width: 34px; height: 34px; }
 
     .dpad{ grid-template-columns:38px 38px 38px; grid-template-rows:38px 38px 38px 30px; gap:3px; }
     .dpad button{ font-size:13px; }
@@ -502,7 +542,6 @@
 
 <footer>Dữ liệu Leader Board được lưu cục bộ trên trình duyệt (localStorage) — không gửi lên máy chủ nào. · <a href="#" id="scrollTopLink">Về đầu trang</a></footer>
 
-<!-- ===== GAME OVERLAY ===== -->
 <div class="overlay" id="overlay">
   <div class="overlay-top">
     <div class="left">
@@ -529,20 +568,26 @@
       </div>
     </div>
 
-    <!-- Toggle Controls Menu (Can be docked Top/Bottom/Left/Right) -->
     <div class="vctrl-bar pos-bottom" id="vctrlBar">
       <div class="vctrl-toggle-row">
         <button class="vctrl-toggle" id="vctrlToggleBtn" type="button">▾ Ẩn điều khiển</button>
         <button class="vctrl-toggle-pos" id="posCycleBtn" type="button">📍 Cạnh: Dưới</button>
       </div>
       <div class="vctrl-inner" id="vctrlInner">
-        <div class="dpad" id="vDpad">
-          <button class="u" data-dir="up">▲</button>
-          <button class="l" data-dir="left">◀</button>
-          <button class="r" data-dir="right">▶</button>
-          <button class="d" data-dir="down">▼</button>
-          <button class="space" data-dir="action">SPACE</button>
+        
+        <div class="vctrl-move-group">
+          <div class="vjoystick" id="vJoystick">
+            <div class="knob" id="vJoyKnob"></div>
+          </div>
+          <div class="dpad" id="vDpad">
+            <button class="u" data-dir="up">▲</button>
+            <button class="l" data-dir="left">◀</button>
+            <button class="r" data-dir="right">▶</button>
+            <button class="d" data-dir="down">▼</button>
+            <button class="space" data-dir="action">SPACE</button>
+          </div>
         </div>
+
         <div class="vcam-preview" id="vcamPreview">
           <video id="vcamVideo" autoplay playsinline muted></video>
           <canvas id="vcamCanvas"></canvas>
@@ -851,7 +896,7 @@
 
   function updateToggleUI(){
     const col = vctrlBar.classList.contains('collapsed');
-    const isVert = (currentPosIdx === 2 || currentPosIdx === 3); // Left or Right
+    const isVert = (currentPosIdx === 2 || currentPosIdx === 3); 
     
     if (isVert) {
       vctrlToggleBtn.textContent = col ? (currentPosIdx === 2 ? '▶ Hiện' : '◀ Hiện') : (currentPosIdx === 2 ? '◀ Ẩn' : '▶ Ẩn');
@@ -969,6 +1014,7 @@
     }catch(e){}
   }
 
+  // --- DPAD EVENT BINDINGS ---
   document.querySelectorAll('#vDpad button').forEach(btn => {
     const dir = btn.dataset.dir;
     const down = ev => { ev.preventDefault(); btn.classList.add('active'); sendVKey(dir, 'down'); };
@@ -984,6 +1030,80 @@
     vActionBtn.addEventListener('touchstart', down, {passive:false}); vActionBtn.addEventListener('touchend', up); vActionBtn.addEventListener('touchcancel', up);
   })();
 
+  // --- JOYSTICK LOGIC ---
+  const vJoystick = document.getElementById('vJoystick');
+  const vJoyKnob = document.getElementById('vJoyKnob');
+  let joyActive = false;
+  let joyCenter = {x: 0, y: 0};
+  let joyState = { up: false, down: false, left: false, right: false };
+
+  function updateJoy(e) {
+    if(!joyActive) return;
+    e.preventDefault();
+    let clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    let clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    
+    let dx = clientX - joyCenter.x;
+    let dy = clientY - joyCenter.y;
+    let dist = Math.sqrt(dx*dx + dy*dy);
+    
+    let maxDist = (vJoystick.offsetWidth / 2) - (vJoyKnob.offsetWidth / 2);
+    if(dist > maxDist) {
+      dx = (dx / dist) * maxDist;
+      dy = (dy / dist) * maxDist;
+    }
+    
+    vJoyKnob.style.transform = `translate(${dx}px, ${dy}px)`;
+
+    let thresh = maxDist * 0.35; // 35% ngưỡng lệch mới kích hoạt phím
+    let newState = {
+      up: dy < -thresh,
+      down: dy > thresh,
+      left: dx < -thresh,
+      right: dx > thresh
+    };
+
+    ['up','down','left','right'].forEach(dir => {
+      if(newState[dir] !== joyState[dir]) {
+        joyState[dir] = newState[dir];
+        sendVKey(dir, newState[dir] ? 'down' : 'up');
+      }
+    });
+  }
+
+  function stopJoy(e) {
+    if(!joyActive) return;
+    if(e) e.preventDefault();
+    joyActive = false;
+    vJoystick.classList.remove('active');
+    vJoyKnob.style.transform = `translate(0px, 0px)`;
+    
+    ['up','down','left','right'].forEach(dir => {
+      if(joyState[dir]) {
+        joyState[dir] = false;
+        sendVKey(dir, 'up');
+      }
+    });
+  }
+
+  function startJoy(e) {
+    joyActive = true;
+    vJoystick.classList.add('active');
+    let rect = vJoystick.getBoundingClientRect();
+    joyCenter = { x: rect.left + rect.width/2, y: rect.top + rect.height/2 };
+    updateJoy(e);
+  }
+
+  vJoystick.addEventListener('mousedown', startJoy);
+  window.addEventListener('mousemove', updateJoy);
+  window.addEventListener('mouseup', stopJoy);
+
+  vJoystick.addEventListener('touchstart', startJoy, {passive: false});
+  window.addEventListener('touchmove', updateJoy, {passive: false});
+  window.addEventListener('touchend', stopJoy);
+  window.addEventListener('touchcancel', stopJoy);
+
+  // --- DYNAMIC EXTRA BUTTONS ---
   const vExtraGroup = document.getElementById('vExtraGroup');
   const EXTRA_BTN_META = {
     pull:        { label:'Q', sub:'Kéo lực',   color:'pull' },
