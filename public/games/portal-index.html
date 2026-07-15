@@ -227,24 +227,49 @@
 
   /* ===== VIRTUAL CONTROLS (external game bridge) ===== */
   .vctrl-bar{
-    position:absolute; left:0; right:0; bottom:0; display:none; flex-direction:column; z-index:8;
+    position:absolute; display:none; z-index:8;
   }
   .vctrl-bar.show{ display:flex; }
-  .vctrl-toggle-row{ display:flex; justify-content:center; pointer-events:none; }
-  .vctrl-toggle{
-    pointer-events:auto; background:var(--panel-solid); border:1px solid var(--border-hi); border-bottom:none;
+  
+  /* POSITION CLASSES */
+  .vctrl-bar.pos-bottom { left:0; right:0; bottom:0; flex-direction:column; }
+  .vctrl-bar.pos-top { left:0; right:0; top:0; flex-direction:column-reverse; }
+  .vctrl-bar.pos-left { left:0; top:0; bottom:0; flex-direction:row-reverse; }
+  .vctrl-bar.pos-right { right:0; top:0; bottom:0; flex-direction:row; }
+
+  .vctrl-toggle-row{ display:flex; justify-content:center; gap:4px; pointer-events:none; }
+  .vctrl-bar.pos-left .vctrl-toggle-row, .vctrl-bar.pos-right .vctrl-toggle-row { flex-direction:column; align-items:center; }
+
+  .vctrl-toggle, .vctrl-toggle-pos {
+    pointer-events:auto; background:var(--panel-solid); border:1px solid var(--border-hi);
     color:var(--text-dim); font-family:var(--font-mono); font-size:11px; letter-spacing:.02em;
-    padding:6px 18px; border-radius:10px 10px 0 0; cursor:pointer; margin-bottom:-1px;
+    padding:6px 18px; cursor:pointer;
   }
-  .vctrl-toggle:hover{ color:#fff; border-color:var(--border-hi); }
+  .vctrl-toggle:hover, .vctrl-toggle-pos:hover { color:#fff; border-color:var(--border-hi); }
+  
+  /* Adjust toggles based on pos */
+  .vctrl-bar.pos-bottom .vctrl-toggle, .vctrl-bar.pos-bottom .vctrl-toggle-pos { border-radius:10px 10px 0 0; border-bottom:none; margin-bottom:-1px; }
+  .vctrl-bar.pos-top .vctrl-toggle, .vctrl-bar.pos-top .vctrl-toggle-pos { border-radius:0 0 10px 10px; border-top:none; margin-top:-1px; }
+  .vctrl-bar.pos-left .vctrl-toggle, .vctrl-bar.pos-left .vctrl-toggle-pos { border-radius:0 10px 10px 0; border-left:none; margin-left:-1px; padding:18px 6px; writing-mode:vertical-rl; }
+  .vctrl-bar.pos-right .vctrl-toggle, .vctrl-bar.pos-right .vctrl-toggle-pos { border-radius:10px 0 0 10px; border-right:none; margin-right:-1px; padding:18px 6px; writing-mode:vertical-rl; transform: rotate(180deg); }
+
+
   .vctrl-inner{
     display:flex; align-items:center; justify-content:space-between; gap:14px; padding:12px 16px;
-    background:linear-gradient(0deg, rgba(4,6,12,.95), rgba(4,6,12,.55)); border-top:1px solid var(--border-hi);
-    flex-wrap:wrap; max-height:240px; overflow:hidden; opacity:1;
-    transition:max-height .25s ease, padding .25s ease, opacity .2s ease;
+    opacity:1; transition:all .25s ease; overflow:hidden;
   }
-  .vctrl-bar.collapsed .vctrl-inner{ max-height:0; padding-top:0; padding-bottom:0; opacity:0; pointer-events:none; }
-  .dpad{ display:grid; grid-template-columns:44px 44px 44px; grid-template-rows:44px 44px 44px; gap:4px; }
+  
+  /* Inner Adaptations */
+  .vctrl-bar.pos-bottom .vctrl-inner { border-top:1px solid var(--border-hi); background:linear-gradient(0deg, rgba(4,6,12,.95), rgba(4,6,12,.55)); max-height:240px; width:100%; flex-wrap:wrap; }
+  .vctrl-bar.pos-top .vctrl-inner { border-bottom:1px solid var(--border-hi); background:linear-gradient(180deg, rgba(4,6,12,.95), rgba(4,6,12,.55)); max-height:240px; width:100%; flex-wrap:wrap; }
+  .vctrl-bar.pos-left .vctrl-inner { border-right:1px solid var(--border-hi); background:linear-gradient(90deg, rgba(4,6,12,.95), rgba(4,6,12,.55)); max-width:260px; height:100%; flex-direction:column; overflow-y:auto; }
+  .vctrl-bar.pos-right .vctrl-inner { border-left:1px solid var(--border-hi); background:linear-gradient(270deg, rgba(4,6,12,.95), rgba(4,6,12,.55)); max-width:260px; height:100%; flex-direction:column; overflow-y:auto; }
+
+  .vctrl-bar.collapsed.pos-bottom .vctrl-inner, .vctrl-bar.collapsed.pos-top .vctrl-inner { max-height:0; padding-top:0; padding-bottom:0; opacity:0; pointer-events:none; }
+  .vctrl-bar.collapsed.pos-left .vctrl-inner, .vctrl-bar.collapsed.pos-right .vctrl-inner { max-width:0; padding-left:0; padding-right:0; opacity:0; pointer-events:none; }
+
+  /* D-PAD update: 4 rows to include SPACE */
+  .dpad{ display:grid; grid-template-columns:44px 44px 44px; grid-template-rows:44px 44px 44px 34px; gap:4px; }
   .dpad button{
     background:var(--panel-solid); border:1px solid var(--border-hi); color:#fff; border-radius:8px; font-size:16px;
     cursor:pointer; user-select:none; touch-action:none;
@@ -252,6 +277,8 @@
   .dpad button:active, .dpad button.active{ background:var(--violet); border-color:var(--violet); }
   .dpad .u{ grid-column:2; grid-row:1; } .dpad .l{ grid-column:1; grid-row:2; }
   .dpad .r{ grid-column:3; grid-row:2; } .dpad .d{ grid-column:2; grid-row:3; }
+  .dpad .space{ grid-column:1 / 4; grid-row:4; font-size: 13px; font-family: var(--font-display); letter-spacing: 1px; color: var(--cyan); }
+
   .action-btn{
     width:64px; height:64px; border-radius:50%; background:linear-gradient(180deg,var(--rose),#be123c);
     border:none; color:#fff; font-size:22px; cursor:pointer; touch-action:none; box-shadow:0 6px 18px rgba(251,113,133,.4);
@@ -268,7 +295,6 @@
   .qe-btn.pull:active, .qe-btn.pull.active{ background:rgba(251,191,36,.22); border-color:var(--amber); }
   .qe-btn.fire{ border-color:var(--rose); }
   .qe-btn.fire:active, .qe-btn.fire.active{ background:rgba(251,113,133,.22); border-color:var(--rose); }
-  /* Biến thể cho các nút được sinh động theo vkeyMap của từng game (vd xoay nòng/tăng-giảm lực của Angry Bird) */
   .qe-btn.extra-cyan{ border-color:var(--cyan); }
   .qe-btn.extra-cyan:active, .qe-btn.extra-cyan.active{ background:rgba(34,211,238,.22); border-color:var(--cyan); }
   .qe-btn.extra-amber{ border-color:var(--amber); }
@@ -276,6 +302,8 @@
   .qe-btn.extra-rose{ border-color:var(--rose); }
   .qe-btn.extra-rose:active, .qe-btn.extra-rose.active{ background:rgba(251,113,133,.22); border-color:var(--rose); }
   .vctrl-right{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .vctrl-bar.pos-left .vctrl-right, .vctrl-bar.pos-right .vctrl-right { flex-direction: column; align-items: center; }
+  
   .cam-toggle-btn{
     font-family:var(--font-mono); font-size:12px; padding:10px 14px; border-radius:10px; cursor:pointer;
     background:var(--panel-solid); border:1px solid var(--border-hi); color:var(--cyan);
@@ -286,7 +314,6 @@
   }
   .vcam-preview.show{ display:block; }
   .vcam-preview video, .vcam-preview canvas{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; transform:scaleX(-1); }
-  /* Camera sau (environment) không phải soi gương -> không lật ngang, giữ đúng góc nhìn ra thế giới */
   .vcam-preview.facing-env video, .vcam-preview.facing-env canvas{ transform:none; }
   .vcam-hint{ font-family:var(--font-mono); font-size:10.5px; color:var(--text-faint); max-width:220px; line-height:1.4; }
 
@@ -398,9 +425,13 @@
     .icon-btn{ padding:7px 9px; font-size:12px; }
 
     /* ---- Virtual controls bar ---- */
-    .vctrl-inner{ padding:8px 8px; gap:8px; max-height:340px; }
-    .dpad{ grid-template-columns:38px 38px 38px; grid-template-rows:38px 38px 38px; gap:3px; }
+    .vctrl-bar.pos-bottom .vctrl-inner, .vctrl-bar.pos-top .vctrl-inner{ padding:8px 8px; gap:8px; max-height:340px; }
+    .vctrl-bar.pos-left .vctrl-inner, .vctrl-bar.pos-right .vctrl-inner{ padding:8px; gap:8px; max-width:160px; }
+
+    .dpad{ grid-template-columns:38px 38px 38px; grid-template-rows:38px 38px 38px 30px; gap:3px; }
     .dpad button{ font-size:13px; }
+    .dpad .space{ font-size:11px; }
+    
     .action-btn{ width:54px; height:54px; font-size:19px; }
     .qe-btn{ width:44px; height:44px; border-radius:11px; }
     .qe-btn span{ font-size:7px; }
@@ -498,9 +529,11 @@
       </div>
     </div>
 
-    <div class="vctrl-bar" id="vctrlBar">
+    <!-- Toggle Controls Menu (Can be docked Top/Bottom/Left/Right) -->
+    <div class="vctrl-bar pos-bottom" id="vctrlBar">
       <div class="vctrl-toggle-row">
         <button class="vctrl-toggle" id="vctrlToggleBtn" type="button">▾ Ẩn điều khiển</button>
+        <button class="vctrl-toggle-pos" id="posCycleBtn" type="button">📍 Cạnh: Dưới</button>
       </div>
       <div class="vctrl-inner" id="vctrlInner">
         <div class="dpad" id="vDpad">
@@ -508,13 +541,14 @@
           <button class="l" data-dir="left">◀</button>
           <button class="r" data-dir="right">▶</button>
           <button class="d" data-dir="down">▼</button>
+          <button class="space" data-dir="action">SPACE</button>
         </div>
         <div class="vcam-preview" id="vcamPreview">
           <video id="vcamVideo" autoplay playsinline muted></video>
           <canvas id="vcamCanvas"></canvas>
           <button class="vcam-flip-btn" id="vcamFlipBtn" type="button" title="Đổi Camera Trước/Sau">🔄</button>
         </div>
-        <div class="qe-group" id="vExtraGroup"><!-- Sinh động: nút phụ theo vkeyMap của game đang mở (Kéo/Bắn, hoặc Xoay/Lực...) --></div>
+        <div class="qe-group" id="vExtraGroup"></div>
         <div class="vctrl-right">
           <div class="vcam-hint" id="vcamHint"></div>
           <button class="cam-toggle-btn" id="camToggleBtn">🖐️ Bật Camera Cử Chỉ (Beta)</button>
@@ -621,26 +655,16 @@
       category:"external", scoring:"none", external:true,
       embedUrl:"https://angry-bird-nft-khanh.vercel.app/",
       vkeyMap:{
-        // Trong controller.lua của game: left/right/up/down (_M.keys) chỉ pan camera/map (type='motion'), KHÔNG xoay đại bác.
         up:    { key:"ArrowUp",    code:"ArrowUp",    keyCode:38 },
         down:  { key:"ArrowDown",  code:"ArrowDown",  keyCode:40 },
         left:  { key:"ArrowLeft",  code:"ArrowLeft",  keyCode:37 },
         right: { key:"ArrowRight", code:"ArrowRight", keyCode:39 },
-        // space/enter/numPadEnter đều là type='action' → bắn đại bác (cannon:engageForce()).
         action:{ key:" ",          code:"Space",      keyCode:32 },
-        // q/e/w/s trong controller.lua là type='rotation': q/e xoay góc nòng (CCW/CW), w/s tăng/giảm lực bắn.
-        // Đây là các phím giữ (held) — engine tự bắn lại processRotation() mỗi khung hình trong lúc còn giữ,
-        // nên chỉ cần bridge gửi đúng 1 cặp keydown/keyup (xem index-AngryBird.html) là đủ, không cần lặp lại.
-        rotateLeft:  { key:"q", code:"KeyQ", keyCode:81 }, // xoay nòng ngược chiều kim đồng hồ
-        rotateRight: { key:"e", code:"KeyE", keyCode:69 }, // xoay nòng theo chiều kim đồng hồ
-        forceUp:     { key:"w", code:"KeyW", keyCode:87 }, // tăng lực bắn
-        forceDown:   { key:"s", code:"KeyS", keyCode:83 }  // giảm lực bắn
+        rotateLeft:  { key:"q", code:"KeyQ", keyCode:81 }, 
+        rotateRight: { key:"e", code:"KeyE", keyCode:69 }, 
+        forceUp:     { key:"w", code:"KeyW", keyCode:87 }, 
+        forceDown:   { key:"s", code:"KeyS", keyCode:83 }  
       },
-      // Game này không cần lia camera qua trái/phải/lên/xuống bằng cử chỉ tay, nên gán CỐ ĐỊNH ✊/✋/👆
-      // riêng cho game này thay vì dùng gestureActionMap chung + angleToDirs (8 hướng pan camera):
-      //   ✊ Nắm tay          -> forceUp   (giữ phím W, tăng lực bắn)
-      //   ✋ Xoè tay (≥3 ngón) -> action    (giữ phím Space, khai hoả đại bác)
-      //   👆 1 ngón trỏ theo 4 hướng ◀▶▲▼ -> ánh xạ THẲNG sang 4 nút ảo Q/E/W/S (không lia camera 8 hướng)
       gestureOverride: {
         fist: "forceUp",
         palm: "action",
@@ -815,22 +839,33 @@
 
   const vctrlBar = document.getElementById('vctrlBar');
   const vctrlToggleBtn = document.getElementById('vctrlToggleBtn');
+  const posCycleBtn = document.getElementById('posCycleBtn');
   const camToggleBtn = document.getElementById('camToggleBtn');
   const vcamPreview = document.getElementById('vcamPreview');
   const vActionBtn = document.getElementById('vActionBtn');
 
-  function setVctrlCollapsed(collapsed){
-    vctrlBar.classList.toggle('collapsed', collapsed);
-    vctrlToggleBtn.textContent = collapsed ? '▲ Hiện điều khiển' : '▾ Ẩn điều khiển';
+  // ---------- TOGGLE & POSITION CYCLE ----------
+  const POS_CLASSES = ['pos-bottom', 'pos-top', 'pos-left', 'pos-right'];
+  const POS_LABELS = ['Dưới', 'Trên', 'Trái', 'Phải'];
+  let currentPosIdx = 0;
+
+  function updateToggleUI(){
+    const col = vctrlBar.classList.contains('collapsed');
+    const isVert = (currentPosIdx === 2 || currentPosIdx === 3); // Left or Right
+    
+    if (isVert) {
+      vctrlToggleBtn.textContent = col ? (currentPosIdx === 2 ? '▶ Hiện' : '◀ Hiện') : (currentPosIdx === 2 ? '◀ Ẩn' : '▶ Ẩn');
+    } else {
+      vctrlToggleBtn.textContent = col ? (currentPosIdx === 0 ? '▲ Hiện' : '▼ Hiện') : (currentPosIdx === 0 ? '▾ Ẩn' : '▴ Ẩn');
+    }
+    posCycleBtn.textContent = '📍 Cạnh: ' + POS_LABELS[currentPosIdx];
   }
 
-  // ---------- CHỐNG MẤT FOCUS IFRAME (nguyên nhân gây pause game khi bấm nút Toggle) ----------
-  // Game nhúng ngoài (Solar2D/Corona) tự pause khi cửa sổ/iframe của nó bị blur. Bấm 1 nút HTML
-  // bình thường trên trang portal sẽ cướp focus từ iframe -> gây blur -> game bị pause, kể cả
-  // khi người dùng không có ý định tạm dừng. Áp dụng 2 lớp phòng vệ cho các nút thuộc "khung" của
-  // overlay (không phải nút gửi phím ảo, những nút đó đã tự preventDefault ở nơi khác):
-  //   1) preventDefault trên mousedown/touchstart để nút không nhận focus ngay từ đầu.
-  //   2) sau khi xử lý click xong, trả focus lại cho iframe đang chứa game.
+  function setVctrlCollapsed(collapsed){
+    vctrlBar.classList.toggle('collapsed', collapsed);
+    updateToggleUI();
+  }
+
   function refocusGameFrame(){
     try{
       if(overlay.classList.contains('open') && ovFrame && ovFrame.contentWindow){
@@ -838,20 +873,13 @@
       }
     }catch(e){}
   }
-  // LƯU Ý: trước đây hàm này chỉ gọi preventDefault() trên 'touchstart' rồi dựa vào sự kiện
-  // 'click' phát sinh sau đó để chạy hành động. Trên iOS (Safari lẫn Chrome — cả hai đều chạy
-  // trên engine WebKit theo quy định của Apple), preventDefault() trong 'touchstart' khiến
-  // WebKit KHÔNG bao giờ phát sinh 'click' nữa => nút bấm không phản hồi trên iPhone dù vẫn
-  // hoạt động bình thường trên desktop (chuột). Đây chính là lý do nút Toggle, nút Camera và
-  // nút Ánh xạ điều khiển "im re" trên Chrome iPhone.
-  // Cách sửa: chạy hành động ngay trong 'touchend' (không phụ thuộc 'click' của WebKit),
-  // đồng thời vẫn giữ 'click' cho chuột/desktop, có khoá chống gọi 2 lần.
+
   function bindTapAction(el, handler){
     if(!el) return;
     let lastFireTs = 0;
     function fire(ev){
       const now = Date.now();
-      if(now - lastFireTs < 400) return; // chặn click "ma" gọi lại lần 2
+      if(now - lastFireTs < 400) return; 
       lastFireTs = now;
       if(ev) ev.preventDefault();
       handler();
@@ -865,6 +893,13 @@
 
   bindTapAction(vctrlToggleBtn, () => {
     setVctrlCollapsed(!vctrlBar.classList.contains('collapsed'));
+  });
+
+  bindTapAction(posCycleBtn, () => {
+    vctrlBar.classList.remove(POS_CLASSES[currentPosIdx]);
+    currentPosIdx = (currentPosIdx + 1) % POS_CLASSES.length;
+    vctrlBar.classList.add(POS_CLASSES[currentPosIdx]);
+    updateToggleUI();
   });
 
   function openGame(game){
@@ -884,9 +919,8 @@
     if(game.external){
       vctrlBar.classList.add('show');
       setVctrlCollapsed(false);
-      renderExtraButtons(game); // sinh nút ảo Q/E/W/S (hoặc ◀▶▲▼) theo đúng vkeyMap của game vừa mở
+      renderExtraButtons(game); 
       updateVcamHint();
-      // Game ngoài không gửi PORTAL_GAME_READY, nên tự ẩn loading sau thời gian ngắn
       readyTimeout = setTimeout(() => {
         ovLoading.style.display = 'none';
         ovStatus.textContent = '🟢 Đang chơi (nhúng ngoài)';
@@ -894,7 +928,7 @@
       }, 3500);
     } else {
       vctrlBar.classList.remove('show');
-      renderExtraButtons(null); // dọn nút ảo phụ còn sót lại từ game ngoài trước đó (nếu có)
+      renderExtraButtons(null); 
       readyTimeout = setTimeout(() => { ovLoading.style.display = 'none'; }, 6000);
     }
   }
@@ -914,7 +948,7 @@
   document.getElementById('ovReload').addEventListener('click', () => { if(currentGame) openGame(currentGame); });
   document.addEventListener('keydown', e => { if(e.key === 'Escape' && overlay.classList.contains('open')) closeOverlay(); });
 
-  // ---------- VIRTUAL KEY BRIDGE (postMessage sang iframe ngoài domain) ----------
+  // ---------- VIRTUAL KEY BRIDGE ----------
   const VKEY_STORE_PREFIX = 'portalVkeyMapOverride_v1__';
   function getEffectiveVkeyMap(game){
     if(!game || !game.vkeyMap) return null;
@@ -942,16 +976,14 @@
     btn.addEventListener('mousedown', down); btn.addEventListener('mouseup', up); btn.addEventListener('mouseleave', up);
     btn.addEventListener('touchstart', down, {passive:false}); btn.addEventListener('touchend', up); btn.addEventListener('touchcancel', up);
   });
+  
   (function(){
     const down = ev => { ev.preventDefault(); vActionBtn.classList.add('active'); sendVKey('action', 'down'); };
     const up = ev => { if(ev) ev.preventDefault(); vActionBtn.classList.remove('active'); sendVKey('action', 'up'); };
     vActionBtn.addEventListener('mousedown', down); vActionBtn.addEventListener('mouseup', up); vActionBtn.addEventListener('mouseleave', up);
     vActionBtn.addEventListener('touchstart', down, {passive:false}); vActionBtn.addEventListener('touchend', up); vActionBtn.addEventListener('touchcancel', up);
   })();
-  // ---------- NÚT ẢO PHỤ (Q/E/W/S...) SINH ĐỘNG THEO vkeyMap CỦA TỪNG GAME ----------
-  // captain-khanh dùng Q=kéo lực / E=bắn. angry-bird-nft-khanh dùng Q/E=xoay nòng, W/S=tăng-giảm lực.
-  // Container #vExtraGroup được render lại mỗi khi mở game (xem openGame()) và dùng 1 bộ listener
-  // ủy quyền (delegation) duy nhất nên không phụ thuộc vào id cố định của từng nút.
+
   const vExtraGroup = document.getElementById('vExtraGroup');
   const EXTRA_BTN_META = {
     pull:        { label:'Q', sub:'Kéo lực',   color:'pull' },
@@ -990,17 +1022,14 @@
   vExtraGroup.addEventListener('touchend', extraBtnUp);
   vExtraGroup.addEventListener('touchcancel', extraBtnUp);
 
-  // ---------- GESTURE CAMERA (beta) — chạy trong Portal, gửi phím ảo vào iframe ----------
+  // ---------- GESTURE CAMERA (beta) ----------
   let gestureActive = false;
   let gestureStream = null;
   let gestureHands = null;
   let gestureCameraUtil = null;
   let gestureLibsLoaded = false;
-  let currentFacingMode = 'user'; // 'user' = camera trước, 'environment' = camera sau
+  let currentFacingMode = 'user'; 
   let activeDirs = { up:false, down:false, left:false, right:false };
-  // Trạng thái "đang giữ" dùng chung cho cả bàn phím vật lý lẫn cử chỉ tay, cho MỌI hành động giữ
-  // (pull/fire/action/rotateLeft/rotateRight/forceUp/forceDown) — tránh gửi lặp postMessage khi
-  // trạng thái không đổi, và cho phép mở rộng thêm hành động mới mà không phải sửa lại logic.
   let activeHold = {};
 
   function loadScriptOnce(src){
@@ -1032,7 +1061,7 @@
     });
   }
   const NO_DIRS = { up:false, down:false, left:false, right:false };
-  // Hàm giữ/nhả dùng chung cho pull, fire, action, rotateLeft, rotateRight, forceUp, forceDown.
+  
   function setHold(action, on){
     if(!!activeHold[action] === on) return;
     activeHold[action] = on;
@@ -1042,14 +1071,11 @@
     Object.keys(activeHold).forEach(a => { if(activeHold[a]) setHold(a, false); });
   }
 
-  // ---------- ÁNH XẠ (MAPPING) CÓ THỂ TUỲ CHỈNH: bàn phím vật lý & cử chỉ tay → hành động trừu tượng ----------
-  // "action trừu tượng" ở đây là 1 trong các dir mà sendVKey() nhận: up/down/left/right/action/pull/fire
   const ABSTRACT_ACTIONS = ['up','down','left','right','action','pull','fire','rotateLeft','rotateRight','forceUp','forceDown'];
   const ACTION_LABELS = { up:'Lên (▲)', down:'Xuống (▼)', left:'Trái (◀)', right:'Phải (▶)', action:'Hành động / Bắn chính', pull:'Kéo lực (giữ)', fire:'Bắn tại lực hiện tại', rotateLeft:'Xoay nòng trái (◀)', rotateRight:'Xoay nòng phải (▶)', forceUp:'Tăng lực bắn (▲)', forceDown:'Giảm lực bắn (▼)' };
   const defaultPhysicalKeyMap = { up:'arrowup', down:'arrowdown', left:'arrowleft', right:'arrowright', action:' ', pull:'q', fire:'e', rotateLeft:'z', rotateRight:'x', forceUp:'c', forceDown:'v' };
-  // Mọi hành động "giữ" (không phải hướng point) đều có thể được gán cho ✊ Nắm tay / ✋ Xoè tay trong modal cài đặt.
   const HOLDABLE_ACTIONS = ABSTRACT_ACTIONS.filter(a => !['up','down','left','right'].includes(a));
-  const defaultGestureActionMap = { fist:'pull', palm:'fire' }; // 👆 point luôn dành riêng cho hướng (up/down/left/right)
+  const defaultGestureActionMap = { fist:'pull', palm:'fire' }; 
   const PHYS_KEY_STORE = 'portalPhysicalKeyMap_v1';
   const GEST_ACTION_STORE = 'portalGestureActionMap_v1';
 
@@ -1065,9 +1091,6 @@
     return k.toUpperCase();
   }
 
-  // Nhãn phím thật sự sẽ được gửi cho 1 hành động trừu tượng (pull/fire/action/...),
-  // ưu tiên lấy từ vkeyMap (đã áp override nếu có) của game ngoài đang mở, để hint luôn khớp
-  // với phím thực sự bắn ra — nếu chưa mở game nào thì dùng phím mặc định làm dự phòng.
   const FALLBACK_OUTPUT_KEY = { up:'▲', down:'▼', left:'◀', right:'▶', action:'SPACE', pull:'Q', fire:'E', rotateLeft:'Q', rotateRight:'E', forceUp:'W', forceDown:'S' };
   function outputKeyLabelFor(actionName){
     if(currentGame && currentGame.vkeyMap){
@@ -1077,28 +1100,25 @@
     return FALLBACK_OUTPUT_KEY[actionName] || actionName.toUpperCase();
   }
 
-  // Sinh lại dòng hint cử chỉ tay theo đúng gestureActionMap hiện tại (✊/✋ có thể được người dùng
-  // đổi sang hành động khác trong modal Ánh xạ điều khiển), thay vì để cứng "kéo lực (Q)/bắn (E)".
   function updateVcamHint(){
     const vcamHint = document.getElementById('vcamHint');
     if(!vcamHint) return;
     const fistAction = gestureActionMap.fist;
     const palmAction = gestureActionMap.palm;
-    const fistLabel = (ACTION_LABELS[fistAction] || fistAction).replace(/\s*\([^)]*\)\s*$/, ''); // bỏ phần (▲) v.v nếu có trong nhãn gốc
+    const fistLabel = (ACTION_LABELS[fistAction] || fistAction).replace(/\s*\([^)]*\)\s*$/, ''); 
     const palmLabel = (ACTION_LABELS[palmAction] || palmAction).replace(/\s*\([^)]*\)\s*$/, '');
     vcamHint.textContent = `✊ Nắm tay = ${fistLabel} (${outputKeyLabelFor(fistAction)}) · 👆 Chỉ ngón trỏ = đổi hướng · ✋ Xoè tay = ${palmLabel} (${outputKeyLabelFor(palmAction)})`;
   }
 
-  // Bàn phím vật lý → hành động (chỉ hoạt động khi đang mở 1 game ngoài có vkeyMap)
   let physKeysHeld = {};
   document.addEventListener('keydown', e => {
-    if(cmapListeningTarget) return; // đang trong lúc bấm-để-đổi-phím trong modal cài đặt, bỏ qua điều khiển game
+    if(cmapListeningTarget) return; 
     if(!currentGame || !currentGame.external) return;
     const k = e.key.toLowerCase();
     const action = Object.keys(physicalKeyMap).find(a => physicalKeyMap[a] === k);
     if(!action) return;
     e.preventDefault();
-    if(physKeysHeld[k]) return; // tránh lặp lại do key-repeat của trình duyệt
+    if(physKeysHeld[k]) return; 
     physKeysHeld[k] = true;
     applyAbstractAction(action, true);
   });
@@ -1117,9 +1137,7 @@
     }
   }
 
-  // Phân loại cử chỉ: ✊ Nắm tay = kéo lực (Q) · ✋ Xoè tay (≥3/4 ngón) = bắn (E) · còn lại = hướng theo đầu ngón trỏ (8 góc)
   function angleToDirs(deg){
-    // 8 cung 45°, tâm tại 0°=phải, 90°=xuống, ±180°=trái, -90°=lên (mỗi góc chéo bật đồng thời 2 hướng, như giữ 2 phím mũi tên)
     if(deg > -22.5 && deg <= 22.5)   return { right:true };
     if(deg > 22.5 && deg <= 67.5)    return { down:true, right:true };
     if(deg > 67.5 && deg <= 112.5)   return { down:true };
@@ -1127,16 +1145,14 @@
     if(deg > 157.5 || deg <= -157.5) return { left:true };
     if(deg > -157.5 && deg <= -112.5)return { up:true, left:true };
     if(deg > -112.5 && deg <= -67.5) return { up:true };
-    return { up:true, right:true }; // (-67.5, -22.5]
+    return { up:true, right:true }; 
   }
 
-  // 4 cung 90° (không chéo) — dùng cho game có gestureOverride.point, nơi 1 ngón trỏ ánh xạ THẲNG
-  // sang 1 trong 4 nút ảo (vd Q/E/W/S) thay vì lia camera theo 8 hướng như angleToDirs() ở trên.
   function angleToQuadrantAction(deg, map){
     if(deg > -45 && deg <= 45)   return map.right;
     if(deg > 45 && deg <= 135)   return map.down;
     if(deg > 135 || deg <= -135) return map.left;
-    return map.up; // (-135, -45]
+    return map.up;
   }
 
   function classifyGesture(lm){
@@ -1147,17 +1163,8 @@
     if(upCount === 0) return { gesture:'fist' };
     if(upCount >= 3) return { gesture:'palm' };
 
-    // Toạ độ landmark từ MediaPipe luôn lấy từ khung hình GỐC (chưa lật gương) của camera, bất kể
-    // camera trước/sau. Nhưng khung xem trước (vcamVideo/vcamCanvas) chỉ lật gương (scaleX(-1)) khi
-    // đang dùng camera TRƯỚC (để giống soi gương tự nhiên) — camera SAU thì không lật (xem CSS
-    // .vcam-preview.facing-env). Vì vậy trục X phải được đảo dấu tương ứng để hướng ◀▶ nhận diện được
-    // luôn khớp đúng với hướng người chơi ĐANG THẤY trên preview, dù đang dùng camera nào.
     const mirrored = currentFacingMode === 'user';
     const dx = mirrored ? -(indexTip.x - indexBase.x) : (indexTip.x - indexBase.x);
-    // QUAN TRỌNG: angleToDirs()/angleToQuadrantAction() bên dưới dùng quy ước toạ độ ẢNH gốc
-    // (0°=phải, 90°=xuống, -90°=lên — giống hệ trục ảnh, KHÔNG phải hệ trục toán học y-lên-dương).
-    // Vì vậy dy phải giữ nguyên dấu gốc (tip.y - base.y): trỏ xuống -> tip.y > base.y -> dy dương -> 90° -> "xuống".
-    // (Trước đây có đảo dấu dy ở đây khiến lên/xuống — và cả 4 hướng chéo liên quan — bị NGƯỢC.)
     const dy = (indexTip.y - indexBase.y);
     const deg = Math.atan2(dy, dx) * 180 / Math.PI;
     return { gesture:'point', dirs: angleToDirs(deg), deg };
@@ -1170,9 +1177,6 @@
     const override = currentGame && currentGame.gestureOverride;
 
     if(override){
-      // Chế độ riêng cho game này: game không cần lia camera bằng cử chỉ tay, nên ✊/✋ được gán CỐ ĐỊNH
-      // (không qua gestureActionMap chung), và 1 ngón trỏ theo 4 hướng ◀▶▲▼ ánh xạ THẲNG sang 4 nút ảo
-      // (vd Q/E/W/S) thay vì lia camera lên/xuống/trái/phải như các game khác.
       const pointAction = isPoint ? angleToQuadrantAction(g.deg, override.point) : null;
       HOLDABLE_ACTIONS.forEach(a => {
         setHold(a, (isFist && override.fist === a) || (isPalm && override.palm === a) || (isPoint && pointAction === a));
@@ -1181,9 +1185,6 @@
       return;
     }
 
-    // fist/palm giờ tra qua gestureActionMap (mặc định fist=pull, palm=fire) để có thể đổi trong modal cài đặt
-    // sang BẤT KỲ hành động giữ nào (pull/fire/action/rotateLeft/rotateRight/forceUp/forceDown) — nhờ vậy
-    // game Angry Bird có thể xoay nòng / tăng-giảm lực hoàn toàn bằng cử chỉ tay, không chỉ Bảo Vệ Cơ Thể.
     const fistAction = gestureActionMap.fist;
     const palmAction = gestureActionMap.palm;
     HOLDABLE_ACTIONS.forEach(a => {
@@ -1192,11 +1193,6 @@
     setDirs(isPoint ? g.dirs : NO_DIRS);
   }
 
-
-  // Tạo instance Hands DUY NHẤT một lần cho toàn bộ vòng đời trang, không bao giờ đóng/tạo lại nó nữa.
-  // (Lần trước dùng cách "close() rồi new Hands() mỗi lần bật lại" nhưng vẫn còn tái diễn mất cử chỉ tay sau khi
-  // tắt/mở lại — việc đóng rồi khởi tạo lại context WASM/WebGL của MediaPipe nhiều lần trong 1 trang không ổn định.
-  // Chỉ start/stop vòng lặp lấy khung hình (Camera) xung quanh 1 Hands sống mãi là cách chắc chắn hơn.)
   let gestureHandsReady = false;
   function ensureGestureHandsInstance(){
     if(gestureHandsReady) return;
@@ -1218,13 +1214,6 @@
     gestureHandsReady = true;
   }
 
-  // Bật/tắt class 'facing-env' trên khung xem trước (vcamPreview) theo đúng currentFacingMode.
-  // CSS: .vcam-preview mặc định luôn lật gương (scaleX(-1)) — đúng cho camera TRƯỚC (giống soi gương).
-  // .vcam-preview.facing-env bỏ lật gương — dùng cho camera SAU (không soi gương).
-  // (Bug trước đây: class này được định nghĩa trong CSS nhưng KHÔNG bao giờ được gán trong JS, nên
-  // khung xem trước luôn bị lật gương kể cả khi dùng camera sau — làm hướng ◀▶ nhận diện được trong
-  // classifyGesture() [đã tính dx dựa trên giả định camera sau KHÔNG lật gương] bị ngược với những gì
-  // người chơi thấy trên preview.)
   function updateVcamPreviewFacingClass(){
     vcamPreview.classList.toggle('facing-env', currentFacingMode === 'environment');
   }
@@ -1262,8 +1251,7 @@
     if(!gestureActive) return;
     try{ if(gestureCameraUtil) gestureCameraUtil.stop(); }catch(e){}
     try{ if(gestureStream) gestureStream.getTracks().forEach(t => t.stop()); }catch(e){}
-    // KHÔNG đóng/nil gestureHands nữa — chỉ dọn Camera + track video. Hands instance giữ nguyên,
-    // sống xuyên suốt để lần bật lại không phải khởi tạo lại WASM/WebGL context (nguồn gây mất cử chỉ tay).
+    
     gestureCameraUtil = null;
     gestureStream = null;
     const video = document.getElementById('vcamVideo');
@@ -1276,7 +1264,6 @@
     updateCmapCameraUI();
   }
 
-  // Đổi camera trước/sau: dừng Camera hiện tại rồi bật lại với facingMode ngược lại (Hands instance không đổi).
   async function flipGestureCamera(){
     if(!gestureActive) return;
     currentFacingMode = (currentFacingMode === 'user') ? 'environment' : 'user';
@@ -1287,8 +1274,8 @@
 
   bindTapAction(camToggleBtn, () => { gestureActive ? stopGestureCamera() : startGestureCamera(); });
 
-  // ---------- MODAL CÀI ĐẶT: QUẢN LÝ CAMERA & ÁNH XẠ ĐIỀU KHIỂN ----------
-  let cmapListeningTarget = null; // { type:'phys'|'output', action, btn } | null
+  // ---------- MODAL CÀI ĐẶT ----------
+  let cmapListeningTarget = null; 
   const cmapOverlay = document.getElementById('cmapOverlay');
   const cmapOpenBtn = document.getElementById('cmapOpenBtn');
   const cmapCloseBtn = document.getElementById('cmapCloseBtn');
@@ -1441,7 +1428,6 @@
       list.push(entry);
       saveLB(list);
 
-      // toast
       document.getElementById('toastMedal').textContent = entry.status === 'win' ? '🏆' : '💀';
       document.getElementById('toastTitle').textContent = entry.status === 'win' ? 'Chiến thắng! Đã ghi điểm vào Leader Board' : 'Thất bại — đã ghi nhận thời gian trụ vững';
       const detail = document.getElementById('toastDetail');
