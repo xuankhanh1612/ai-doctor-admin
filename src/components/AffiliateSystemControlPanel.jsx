@@ -16,7 +16,7 @@ import {
 import { createPublicClient, http, encodeFunctionData } from 'viem';
 import { bscTestnet } from 'viem/chains';
 import { createSmartAccountClient } from 'permissionless';
-import { signerToSimpleSmartAccount } from 'permissionless/accounts';
+import { toSimpleSmartAccount } from 'permissionless/accounts';
 import { privateKeyToAccount } from 'viem/accounts';
 
 // Lấy từ .env (Đảm bảo file .env của Vite dùng tiền tố VITE_)
@@ -183,12 +183,10 @@ export default function AffiliateSystem() {
   // --- USER BALANCE & STATS CALCULATION ---
   const userStats = useMemo(() => {
     return users.map(user => {
-      // Tìm hoa hồng người này nhận được từ MLM
       const userCommissions = commissions.filter(c => c.referrerId === user.id);
       const commissionEarnedVND = userCommissions.reduce((sum, c) => sum + c.amount, 0);
       const directF1 = users.filter(u => u.parentId === user.id);
       
-      // Tính số dư ví = Ví cơ bản (nhận từ task) + Hoa hồng MLM
       const realBalances = { ...user.balances };
       realBalances.VND += commissionEarnedVND;
 
@@ -229,21 +227,21 @@ export default function AffiliateSystem() {
     try {
       showToast("Đang xử lý Web3", "Đang đóng gói giao dịch và xin cấp phí Gas...", "success");
 
-      // 1. Lấy Private Key ẩn danh
       const mockPrivateKey = "0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"; 
       
-      // 2. Tạo Signer từ viem và Khởi tạo Smart Account
-      const signer = privateKeyToAccount(mockPrivateKey);
-      const smartAccount = await signerToSimpleSmartAccount(publicClient, {
-        signer: signer,
+      const owner = privateKeyToAccount(mockPrivateKey);
+      const smartAccount = await toSimpleSmartAccount({
+        client: publicClient,
+        owner: owner,
         factoryAddress: "0x9406Cc6185a346906296ED927B7f54229C8f08bd",
-        entryPoint: "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789",
+        entryPoint: {
+          address: "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789",
+          version: "0.6"
+        }
       });
 
-      // 3. Khởi tạo Smart Account Client
       const smartAccountClient = createSmartAccountClient({
         account: smartAccount,
-        entryPoint: "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789",
         chain: bscTestnet,
         bundlerTransport: http(BUNDLER_URL),
         middleware: {
@@ -254,14 +252,12 @@ export default function AffiliateSystem() {
         }
       });
 
-      // 4. Mã hóa lệnh gọi hàm Affiliate Contract
       const callData = encodeFunctionData({
         abi: [{ type: "function", name: functionName, inputs: [{ type: "uint256" }] }],
         functionName: functionName,
         args: args,
       });
 
-      // 5. Gửi lên Blockchain
       const txHash = await smartAccountClient.sendTransaction({
         to: AFFILIATE_CONTRACT,
         data: callData,
@@ -287,11 +283,9 @@ export default function AffiliateSystem() {
   const handleAdSuccess = async () => {
     setIsWatchingAd(false);
     
-    // --- KÍCH HOẠT BLOCKCHAIN ON-CHAIN ---
     const txHash = await executeGaslessTask(viewingUserId, "rewardTask", [5000n]);
     
     if (txHash) {
-      // Chỉ khi Smart Contract chạy thành công, mới cập nhật giao diện
       updateUserBalance(viewingUserId, 'VND', 5000);
       updateUserBalance(viewingUserId, 'PI', 0.1);
       
