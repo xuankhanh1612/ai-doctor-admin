@@ -1,44 +1,47 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { ShieldCheck, Maximize2, Minimize2, Hand } from 'lucide-react'
+import { ShieldCheck, Maximize2, Minimize2, Hand, Gamepad2 } from 'lucide-react'
 import NavButtons from './NavButtons.jsx'
 import { useApp } from '../context/AppContext'
 import TouchlessHandCam from './webcam/TouchlessHandCam.jsx'
 import { classifyGestureKey, expandUser1GestureKeys, GESTURE_KEY_LABELS } from './webcam/gestureToKey.js'
 
 // ============================================================================
-// BodyProtectionJourneyPanel — "Hành Trình Bảo Vệ Cơ Thể"
-// Nhúng mini-game Y tế PvP/PvE/Co-op "Bảo Vệ Cơ Thể" (file HTML độc lập,
-// canvas + vanilla JS) qua <iframe> tới file tĩnh đặt tại /public/games/,
-// tương tự cách project đã nhúng src/mediapipe-khanh/index.html ở nơi khác.
-// Dùng iframe (thay vì dán thẳng JS vào component) vì file game dùng rất
-// nhiều hàm global (window.toggleAIMode, window.selectOrgan, window.setKey,
-// ...) và các thẻ <style>/<script> nội tuyến — nhúng trực tiếp vào cây React
-// sẽ dễ đụng độ tên biến/DOM với phần còn lại của app.
-//
-// CAMERA CỬ CHỈ (giống "Medical 3D Lab" — MedicalVisualPlayground.jsx):
-// tái sử dụng NGUYÊN component TouchlessHandCam + useHandTracking (MediaPipe
-// Hand Landmarker, 1 tay) đã có sẵn trong dự án. Khác với Medical 3D Lab
-// (dùng landmark để tính góc xoay/pinch-zoom mô hình 3D), ở đây landmark mỗi
-// khung hình được phân loại (xem gestureToKey.js) thành 1 trong 5 cử chỉ rồi
-// ánh xạ trực tiếp sang phím của Player 1 (User 1) trong game:
-//   👆 chỉ lên -> W (Nhảy) · 👈 chỉ trái -> A (Trái) · 🖐 xoè ≥3 ngón -> S (Khiên)
-//   👉 chỉ phải -> D (Phải) · ✊ nắm đấm -> E (Bắn Lợi Khuẩn)
-// Vì iframe game cùng-origin (file tĩnh trong public/games/) và bản thân
-// game đã tự expose sẵn hàm global `setKey(key, boolean)` (dùng cho các nút
-// bấm ảo P1/P2/Boss có sẵn trong game), nên component gọi thẳng
-// `iframe.contentWindow.setKey(...)` thay vì phải giả lập KeyboardEvent.
+// DANH SÁCH GAME & CẤU HÌNH CAMERA
+// Best Practice: Phân loại game tự quản lý camera và game cần Portal hỗ trợ AI.
 // ============================================================================
+const GAMES_LIST = [
+  {
+    id: 1,
+    title: "Portal Game (Tích hợp AI Camera)",
+    url: "/games/bao-ve-co-the-camera-key.html", // Đường dẫn tới game có sẵn camera
+    hasLocalCamera: true, // Trình duyệt sẽ tắt camera ngoài, cho phép iFrame tự xử lý
+    external: false
+  },
+  {
+    id: 2,
+    title: "Portal Game (Không Camera)",
+    url: "/games/portal-index.html", 
+    hasLocalCamera: false, // Portal bên ngoài sẽ bật camera AI và postMessage vào
+    external: false
+  },
+  {
+    id: 3,
+    title: "Angry Bird NFT (Vercel)",
+    url: "https://your-vercel-game-url.vercel.app", // Thay bằng URL thật của bạn
+    hasLocalCamera: false, 
+    external: true // Bắt buộc dùng postMessage vì khác Domain (CORS)
+  }
+];
 
-const GAME_SRC = '/games/portal-index.html'
-
-// Giữ cử chỉ ổn định qua vài khung hình liên tiếp trước khi đổi phím, tránh
-// nhận nhầm do rung tay / MediaPipe nhảy nhấp nháy giữa các khung hình.
 const HOLD_FRAMES_TO_ACTIVATE = 3
 const HOLD_FRAMES_TO_RELEASE = 5
 
 export default function BodyProtectionJourneyPanel({ onNext, nextLabel, onPrev, prevLabel, onFullscreenChange }) {
   const { theme } = useApp()
   const isDark = theme === 'dark'
+  
+  // State quản lý Game đang được chọn
+  const [activeGame, setActiveGame] = useState(GAMES_LIST[0])
   const [fullscreen, setFullscreen] = useState(false)
   const [gestureOn, setGestureOn] = useState(false)
   const [activeGestureKey, setActiveGestureKey] = useState(null)
@@ -54,18 +57,38 @@ export default function BodyProtectionJourneyPanel({ onNext, nextLabel, onPrev, 
   const textMain = isDark ? 'text-gray-100' : 'text-gray-900'
   const textSub = isDark ? 'text-gray-400' : 'text-gray-500'
 
-  // Gọi hàm global `setKey` bên trong iframe game (chỉ hoạt động vì iframe
-  // cùng-origin — file tĩnh trong public/games/ của cùng ứng dụng).
+  // ============================================================================
+  // XỬ LÝ GỬI LỆNH PHÍM XUỐNG IFRAME
+  // ============================================================================
   const sendKeyToGame = useCallback((key, isDown) => {
     if (!key) return
     try {
       expandUser1GestureKeys(key).forEach((mappedKey) => {
-        iframeRef.current?.contentWindow?.setKey?.(mappedKey, isDown)
+        if (activeGame.external) {
+          // Xử lý Cross-Origin (Ví dụ: Game nhúng từ Vercel)
+          iframeRef.current?.contentWindow?.postMessage({
+            type: 'PORTAL_VKEY',
+            key: mappedKey,
+            isDown: isDown
+          }, '*')
+        } else {
+          // Xử lý Same-Origin (File tĩnh trong project)
+          if (iframeRef.current?.contentWindow?.setKey) {
+            iframeRef.current.contentWindow.setKey(mappedKey, isDown)
+          } else {
+            // Fallback gửi postMessage nếu iFrame đã được code để lắng nghe
+            iframeRef.current?.contentWindow?.postMessage({
+              type: 'PORTAL_VKEY',
+              key: mappedKey,
+              isDown: isDown
+            }, '*')
+          }
+        }
       })
     } catch (err) {
-      console.warn('[BodyProtectionJourneyPanel] Không gọi được setKey() trong game iframe:', err)
+      console.warn('[BodyProtectionJourneyPanel] Lỗi gửi lệnh điều khiển:', err)
     }
-  }, [])
+  }, [activeGame])
 
   const releaseActiveKey = useCallback(() => {
     if (activeKeyRef.current) sendKeyToGame(activeKeyRef.current, false)
@@ -78,8 +101,6 @@ export default function BodyProtectionJourneyPanel({ onNext, nextLabel, onPrev, 
     handMappingRef.current = nextMapping
   }, [])
 
-  // Mỗi khung hình MediaPipe: phân loại cử chỉ -> yêu cầu giữ ổn định vài
-  // khung hình -> nếu khác phím đang giữ thì nhả phím cũ + bấm phím mới.
   const handleHandTrack = useCallback((landmarksArr) => {
     const hand = landmarksArr?.[0]
     const candidate = classifyGestureKey(hand, { mirrored: handMappingRef.current.mirrored })
@@ -106,8 +127,6 @@ export default function BodyProtectionJourneyPanel({ onNext, nextLabel, onPrev, 
     releaseActiveKey()
   }, [releaseActiveKey])
 
-  // Bật "Toàn màn hình" -> báo lên App.jsx để ẩn menu chính (Sidebar) bên
-  // trái, nhường toàn bộ chiều ngang cho khung game. Tắt lại -> hiện menu.
   const toggleFullscreen = useCallback(() => {
     setFullscreen((v) => {
       const next = !v
@@ -116,12 +135,18 @@ export default function BodyProtectionJourneyPanel({ onNext, nextLabel, onPrev, 
     })
   }, [onFullscreenChange])
 
-  // Rời khỏi trang này khi đang ở chế độ toàn màn hình -> luôn trả lại
-  // Sidebar cho App.jsx, tránh trường hợp bị ẩn menu vĩnh viễn.
+  // ============================================================================
+  // QUẢN LÝ LUỒNG CAMERA
+  // Tự động tắt luồng Camera ở Portal bên ngoài nếu Game tự có Camera
+  // ============================================================================
+  useEffect(() => {
+    if (activeGame?.hasLocalCamera) {
+      setGestureOn(false) // Buộc tắt camera của cha để tránh giành giật phần cứng
+    }
+  }, [activeGame])
+
   useEffect(() => () => onFullscreenChange?.(false), [onFullscreenChange])
 
-  // Tắt camera cử chỉ (toggle off hoặc rời trang) -> luôn nhả phím đang giữ,
-  // tránh trường hợp game bị "kẹt phím" (ví dụ Khiên bật mãi không tắt).
   useEffect(() => {
     if (!gestureOn) releaseActiveKey()
   }, [gestureOn, releaseActiveKey])
@@ -131,12 +156,7 @@ export default function BodyProtectionJourneyPanel({ onNext, nextLabel, onPrev, 
   return (
     <div className={`animate-fade min-h-full w-full ${fullscreen ? 'px-0 py-0' : 'px-4 py-6 sm:px-8'} ${pageBg}`}>
       <div className={`${fullscreen ? 'h-[calc(100dvh-58px)] max-w-none gap-0' : 'mx-auto h-[calc(100svh-112px)] min-h-[720px] max-w-6xl gap-5 max-lg:h-[calc(100svh-96px)] max-lg:min-h-[640px] max-sm:h-[calc(100svh-80px)] max-sm:min-h-[560px]'} flex flex-col`}>
-        {/* Chế độ THƯỜNG: header đầy đủ (tiêu đề + mô tả + nút) nằm trong flex
-        layout, chiếm chỗ như cũ. Chế độ TOÀN MÀN HÌNH: KHÔNG render header
-        này nữa — 2 nút điều khiển được chuyển thành overlay nổi `absolute`
-        đè lên góc trên-phải của iframe (xem ngay dưới), để khung game chiếm
-        trọn 100% chiều cao còn lại (100dvh - 58px của Topbar) thay vì bị trừ
-        thêm phần header + NavButtons như trước. */}
+        
         {!fullscreen && (
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
@@ -148,27 +168,30 @@ export default function BodyProtectionJourneyPanel({ onNext, nextLabel, onPrev, 
                   🛡️ Hành Trình Bảo Vệ Cơ Thể
                 </h1>
                 <p className={`text-xs sm:text-sm ${textSub}`}>
-                  Mini-game PvP/PvE/Co-op: chọn hệ cơ quan, chiến đấu với BOSS UNG THƯ, thu thập Lợi Khuẩn và né Virus.
+                  Mini-game PvP/PvE/Co-op: Chọn hệ cơ quan, chiến đấu với BOSS UNG THƯ.
                 </p>
               </div>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setGestureOn((v) => !v)}
-                className={`inline-flex w-fit items-center gap-2 rounded-2xl border px-4 py-2 text-sm font-semibold shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md ${
-                  gestureOn
-                    ? 'border-emerald-400/60 bg-emerald-500/15 text-emerald-300'
-                    : isDark
-                      ? 'border-white/15 bg-white/5 text-gray-200 hover:bg-white/10'
-                      : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
-                }`}
-                title="Điều khiển User 1 bằng cử chỉ tay qua camera (giống Medical 3D Lab)"
-              >
-                <Hand size={16} />
-                {gestureOn ? '🔴 Tắt Camera Cử Chỉ' : '🖐️ Bật Camera Cử Chỉ (User 1)'}
-              </button>
+              {/* CHỈ hiển thị nút bật Camera Portal nếu game KHÔNG tự quản lý camera */}
+              {!activeGame.hasLocalCamera && (
+                <button
+                  type="button"
+                  onClick={() => setGestureOn((v) => !v)}
+                  className={`inline-flex w-fit items-center gap-2 rounded-2xl border px-4 py-2 text-sm font-semibold shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md ${
+                    gestureOn
+                      ? 'border-emerald-400/60 bg-emerald-500/15 text-emerald-300'
+                      : isDark
+                        ? 'border-white/15 bg-white/5 text-gray-200 hover:bg-white/10'
+                        : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                  }`}
+                  title="Điều khiển User 1 bằng cử chỉ tay qua camera"
+                >
+                  <Hand size={16} />
+                  {gestureOn ? '🔴 Tắt Camera Cử Chỉ' : '🖐️ Bật Camera AI (Portal)'}
+                </button>
+              )}
 
               <button
                 type="button"
@@ -186,23 +209,41 @@ export default function BodyProtectionJourneyPanel({ onNext, nextLabel, onPrev, 
           </div>
         )}
 
+        {/* MENU CHỌN GAME */}
+        {!fullscreen && (
+           <div className="flex flex-wrap gap-2 mb-1">
+             {GAMES_LIST.map(game => (
+                <button
+                  key={game.id}
+                  onClick={() => setActiveGame(game)}
+                  className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-sm font-semibold transition-all ${
+                      activeGame.id === game.id 
+                        ? 'bg-gradient-to-r from-emerald-500 to-cyan-500 text-white shadow-md' 
+                        : isDark ? 'bg-slate-800 text-gray-400 hover:bg-slate-700' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                  }`}
+                >
+                  <Gamepad2 size={16} />
+                  {game.title}
+                </button>
+             ))}
+           </div>
+        )}
+
         <div
           className={`relative min-h-0 flex-1 overflow-hidden border shadow-2xl ${fullscreen ? 'rounded-none' : 'rounded-3xl'} ${cardBg}`}
           style={{ height: 'auto' }}
         >
           <iframe
             ref={iframeRef}
-            title="Hành Trình Bảo Vệ Cơ Thể — Bảo Vệ Cơ Thể PvP/PvE/Co-op"
-            src={GAME_SRC}
-            className="h-full min-h-full w-full"
+            title={activeGame.title}
+            src={activeGame.url}
+            className="h-full min-h-full w-full bg-black"
             style={{ border: 'none', display: 'block' }}
-            allow="autoplay; fullscreen"
+            // BẮT BUỘC: Thêm "camera" để iFrame được phép chiếm quyền
+            allow="camera; microphone; autoplay; fullscreen; display-capture"
           />
 
-          {/* Overlay nổi CHỈ hiện khi toàn màn hình: thay thế header/NavButtons
-          bằng 2 nút gọn ở góc trên-phải, không chiếm chỗ trong layout nên
-          iframe phía dưới được cao tối đa. */}
-          {fullscreen && (
+          {fullscreen && !activeGame.hasLocalCamera && (
             <div className="absolute right-2 top-2 z-40 flex flex-wrap items-center justify-end gap-2 sm:right-3 sm:top-3">
               <button
                 type="button"
@@ -212,7 +253,6 @@ export default function BodyProtectionJourneyPanel({ onNext, nextLabel, onPrev, 
                     ? 'border-emerald-400/60 bg-emerald-500/20 text-emerald-200'
                     : 'border-white/20 bg-black/60 text-gray-100 hover:bg-black/80'
                 }`}
-                title="Điều khiển User 1 bằng cử chỉ tay qua camera"
               >
                 <Hand size={14} />
                 <span className="hidden sm:inline">{gestureOn ? '🔴 Tắt Camera Cử Chỉ' : '🖐️ Bật Camera Cử Chỉ'}</span>
@@ -221,7 +261,6 @@ export default function BodyProtectionJourneyPanel({ onNext, nextLabel, onPrev, 
                 type="button"
                 onClick={toggleFullscreen}
                 className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-black/60 px-3 py-1.5 text-xs font-semibold text-gray-100 shadow-lg backdrop-blur-md transition-all hover:-translate-y-0.5 hover:bg-black/80"
-                title="Thoát toàn màn hình"
               >
                 <Minimize2 size={14} />
                 <span className="hidden sm:inline">Thu nhỏ</span>
@@ -229,7 +268,8 @@ export default function BodyProtectionJourneyPanel({ onNext, nextLabel, onPrev, 
             </div>
           )}
 
-          {gestureOn && (
+          {/* CHỈ render Camera Portal nếu game yêu cầu điều khiển từ bên ngoài */}
+          {gestureOn && !activeGame.hasLocalCamera && (
             <div className="fixed bottom-6 left-6 z-50 w-56 overflow-hidden rounded-xl border border-white/20 bg-black shadow-2xl sm:w-64">
               <div className="aspect-video">
                 <TouchlessHandCam
@@ -263,10 +303,6 @@ export default function BodyProtectionJourneyPanel({ onNext, nextLabel, onPrev, 
           )}
         </div>
 
-        {/* Ẩn hẳn NavButtons khi toàn màn hình — cũng giống header, nó không
-        còn chiếm chỗ trong flex layout nữa nên iframe phía trên được cao
-        tối đa. Người dùng thoát toàn màn hình (nút "Thu nhỏ" nổi) để thấy
-        lại NavButtons điều hướng trang kế tiếp. */}
         {!fullscreen && (
           <NavButtons
             onNext={onNext}
