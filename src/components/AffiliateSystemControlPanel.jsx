@@ -17,7 +17,6 @@ import { createPublicClient, http, encodeFunctionData } from 'viem';
 import { bscTestnet } from 'viem/chains';
 import { createSmartAccountClient } from 'permissionless';
 import { privateKeyToSimpleSmartAccount } from 'permissionless/accounts';
-import { createPimlicoBundlerClient } from 'permissionless/clients/pimlico';
 
 // Lấy từ .env (Đảm bảo file .env của Vite dùng tiền tố VITE_)
 const BUNDLER_URL = import.meta.env.VITE_BUNDLER_URL || "https://api.pimlico.io/v2/97/rpc?apikey=YOUR_PIMLICO_API_KEY";
@@ -27,11 +26,6 @@ const AFFILIATE_CONTRACT = import.meta.env.VITE_AFFILIATE_CONTRACT || "0x44f787D
 const publicClient = createPublicClient({
   chain: bscTestnet,
   transport: http("https://data-seed-prebsc-1-s1.binance.org:8545")
-});
-
-const bundlerClient = createPimlicoBundlerClient({
-  transport: http(BUNDLER_URL),
-  entryPoint: "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789", // EIP-4337 v0.6
 });
 
 // --- MOCK DATA BAN ĐẦU ---
