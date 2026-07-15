@@ -29,7 +29,7 @@ import { classifyGestureKey, expandUser1GestureKeys, GESTURE_KEY_LABELS } from '
 // `iframe.contentWindow.setKey(...)` thay vì phải giả lập KeyboardEvent.
 // ============================================================================
 
-const GAME_SRC = '/games/bao-ve-co-the-camera-key.html'
+const GAME_SRC = 'games/portal-index.html'
 
 // Giữ cử chỉ ổn định qua vài khung hình liên tiếp trước khi đổi phím, tránh
 // nhận nhầm do rung tay / MediaPipe nhảy nhấp nháy giữa các khung hình.
