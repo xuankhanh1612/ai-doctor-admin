@@ -16,10 +16,11 @@ import {
 import { createPublicClient, http, encodeFunctionData } from 'viem';
 import { bscTestnet } from 'viem/chains';
 import { createSmartAccountClient } from 'permissionless';
-import { privateKeyToSimpleSmartAccount } from 'permissionless/accounts';
+import { signerToSimpleSmartAccount } from 'permissionless/accounts';
+import { privateKeyToAccount } from 'viem/accounts';
 
 // Lấy từ .env (Đảm bảo file .env của Vite dùng tiền tố VITE_)
-const BUNDLER_URL = import.meta.env.VITE_BUNDLER_URL || "https://api.pimlico.io/v2/97/rpc?apikey=YOUR_PIMLICO_API_KEY";
+const BUNDLER_URL = import.meta.env.VITE_BUNDLER_URL || "https://api.pimlico.io/v2/97/rpc?apikey=YOUR_API_KEY";
 const PAYMASTER_ADDRESS = import.meta.env.VITE_PAYMASTER_ADDRESS || "0x177858e3450ff286E7d301100363567A555E435f";
 const AFFILIATE_CONTRACT = import.meta.env.VITE_AFFILIATE_CONTRACT || "0x44f787D670Ff4Ef65334D6637960bb7Fe5E1231c";
 
@@ -228,17 +229,18 @@ export default function AffiliateSystem() {
     try {
       showToast("Đang xử lý Web3", "Đang đóng gói giao dịch và xin cấp phí Gas...", "success");
 
-      // 1. Ví ẩn danh (Mô phỏng 1 Private Key ngẫu nhiên cho user)
+      // 1. Lấy Private Key ẩn danh
       const mockPrivateKey = "0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"; 
       
-      // 2. Khởi tạo Smart Account ẩn danh
-      const smartAccount = await privateKeyToSimpleSmartAccount(publicClient, {
-        privateKey: mockPrivateKey,
+      // 2. Tạo Signer từ viem và Khởi tạo Smart Account
+      const signer = privateKeyToAccount(mockPrivateKey);
+      const smartAccount = await signerToSimpleSmartAccount(publicClient, {
+        signer: signer,
         factoryAddress: "0x9406Cc6185a346906296ED927B7f54229C8f08bd",
         entryPoint: "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789",
       });
 
-      // 3. Ép Bundler dùng tiền từ Paymaster của bạn!
+      // 3. Khởi tạo Smart Account Client
       const smartAccountClient = createSmartAccountClient({
         account: smartAccount,
         entryPoint: "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789",
@@ -252,18 +254,18 @@ export default function AffiliateSystem() {
         }
       });
 
-      // 4. Mã hóa lệnh gọi hàm Affiliate Contract (Hàm rewardTask)
+      // 4. Mã hóa lệnh gọi hàm Affiliate Contract
       const callData = encodeFunctionData({
         abi: [{ type: "function", name: functionName, inputs: [{ type: "uint256" }] }],
         functionName: functionName,
         args: args,
       });
 
-      // 5. Gửi lên Blockchain!
+      // 5. Gửi lên Blockchain
       const txHash = await smartAccountClient.sendTransaction({
         to: AFFILIATE_CONTRACT,
         data: callData,
-        value: 0n, // Không gửi kèm BNB
+        value: 0n,
       });
 
       showToast("Thành công Web3!", `TxHash: ${txHash.substring(0, 15)}...`, "success");
@@ -279,14 +281,13 @@ export default function AffiliateSystem() {
   // --- TASK HANDLERS ---
   const handleStartAd = () => {
     setIsWatchingAd(true);
-    setAdTimer(15); // Đổi thành 15 giây xem quảng cáo
+    setAdTimer(15); 
   };
 
   const handleAdSuccess = async () => {
     setIsWatchingAd(false);
     
     // --- KÍCH HOẠT BLOCKCHAIN ON-CHAIN ---
-    // Gọi hàm rewardTask trên Smart Contract với phần thưởng cơ bản là 5000 (điền kèm hậu tố 'n' cho BigInt)
     const txHash = await executeGaslessTask(viewingUserId, "rewardTask", [5000n]);
     
     if (txHash) {
@@ -297,7 +298,7 @@ export default function AffiliateSystem() {
       setAdCooldowns(prev => ({ ...prev, [viewingUserId]: Date.now() + 14400 * 1000 }));
       
       const newTx = {
-        id: txHash, // Lấy mã Hash thật từ Blockchain làm ID giao dịch!
+        id: txHash, 
         userId: viewingUserId,
         amount: 5000,
         date: new Date().toISOString().split('T')[0],
@@ -321,7 +322,7 @@ export default function AffiliateSystem() {
       const newTx = {
         id: `t_qz_${Date.now()}`,
         userId: viewingUserId,
-        amount: 10000, // Base value để chia hoa hồng tuyến trên
+        amount: 10000, 
         date: new Date().toISOString().split('T')[0],
         note: 'Hoàn thành khóa học y khoa',
         type: 'TASK_QUIZ'
