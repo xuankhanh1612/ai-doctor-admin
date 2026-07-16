@@ -10,6 +10,7 @@ if (!process.env.MONGODB_URI) {
   throw new Error('Vui lòng thêm MONGODB_URI vào Environment Variables');
 }
 
+// Tối ưu hoá kết nối cho môi trường Serverless
 if (process.env.NODE_ENV === 'development') {
   if (!global._mongoClientPromise) {
     client = new MongoClient(uri, options);
@@ -27,58 +28,61 @@ export default async function handler(req, res) {
   }
 
   try {
-    // PHÒNG THỦ 1: Ép kiểu Object an toàn nếu req.body truyền tới ở dạng Chuỗi (String)
+    // PHÒNG THỦ 1: Tự động ép kiểu Object nếu payload truyền tới ở dạng string thô
     let payload = req.body;
     if (typeof payload === 'string') {
       payload = JSON.parse(payload);
     }
 
-    // Log kiểm tra gói tin thô trên Vercel để phục vụ debug
-    console.log("--- WEBHOOK RECEIVED ---");
+    // In log chẩn đoán lên Vercel để ông theo dõi trực tiếp luồng đi
+    console.log("=== ALCHEMY WEBHOOK RECEIVED ===");
     console.log("Webhook ID:", payload?.webhookId);
     
     const block = payload?.event?.data?.block; 
 
-    // PHÒNG THỦ 2: Kiểm tra sự tồn tại của block và mảng logs bên trong
-    if (block && block.logs && block.logs.length > 0) {
-      console.log(`Phát hiện có ${block.logs.length} logs sự kiện khớp điều kiện filter!`);
+    if (block && block.logs) {
+      console.log(`Block số [${block.number}] đang chứa: ${block.logs.length} logs sự kiện.`);
 
-      const mongoClient = await clientPromise;
-      const db = mongoClient.db("ai-doctor-db"); 
-      const collection = db.collection("webhook_logs"); 
+      // Nếu mảng logs có chứa dữ liệu thực tế khớp filter contract
+      if (block.logs.length > 0) {
+        const mongoClient = await clientPromise;
+        const db = mongoClient.db("ai-doctor-db"); 
+        const collection = db.collection("webhook_logs"); 
 
-      const logsToInsert = [];
+        const logsToInsert = [];
 
-      for (const log of block.logs) {
-        const txHash = log.transaction?.hash;
-        const from = log.transaction?.from?.address || log.account?.address;
-        
-        logsToInsert.push({
-          txHash: txHash || "0xUnknown",
-          wallet: from || "0xUnknown",
-          type: payload.webhookId || 'alchemy_webhook_event',
-          createdAt: new Date(),
-          rawLog: log 
-        });
+        for (const log of block.logs) {
+          const txHash = log.transaction?.hash;
+          // Lấy địa chỉ ví gửi giao dịch (from) hoặc địa chỉ tài khoản sinh log
+          const fromWallet = log.transaction?.from?.address || log.account?.address;
+          
+          logsToInsert.push({
+            txHash: txHash || "0xUnknown",
+            wallet: fromWallet || "0xUnknown",
+            type: payload.webhookId || 'alchemy_webhook_event',
+            createdAt: new Date(),
+            rawLog: log 
+          });
+        }
+
+        if (logsToInsert.length > 0) {
+          const result = await collection.insertMany(logsToInsert);
+          console.log(`🎉 Đã lưu thành công ${result.insertedCount} logs giao dịch thực tế vào MongoDB!`);
+          return res.status(200).json({ success: true, insertedCount: result.insertedCount });
+        }
+      } else {
+        // Trường hợp Alchemy gửi ping block trống định kỳ
+        console.log(`Nhận ping block trống từ Alchemy (Block ${block.number} không có giao dịch nào khớp hợp đồng).`);
       }
-
-      if (logsToInsert.length > 0) {
-        const result = await collection.insertMany(logsToInsert);
-        console.log(`Đã ghi thành công ${result.insertedCount} logs vào MongoDB.`);
-        return res.status(200).json({ success: true, insertedCount: result.insertedCount });
-      }
-    } else {
-      // Trường hợp block.logs rỗng (Alchemy quét block định kỳ nhưng không có giao dịch)
-      console.log("Gói tin nhận được thành công, nhưng mảng logs trống (Không có Tx nào khớp filter).");
     }
 
     return res.status(200).json({ 
       success: true, 
-      message: "Webhook processed successfully but no matching logs found in this block." 
+      message: "Webhook processed successfully (No matching logs in this block)." 
     });
 
   } catch (error) {
-    console.error("CRITICAL ERROR trong Webhook Handler:", error);
+    console.error("LỖI HỆ THỐNG WEBHOOK:", error);
     return res.status(500).json({ success: false, error: error.message });
   }
 }
