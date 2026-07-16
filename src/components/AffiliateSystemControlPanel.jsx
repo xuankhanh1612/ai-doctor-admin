@@ -20,7 +20,7 @@ import { toSimpleSmartAccount } from 'permissionless/accounts';
 import { privateKeyToAccount } from 'viem/accounts';
 
 // Lấy từ .env (Đảm bảo file .env của Vite dùng tiền tố VITE_)
-const BUNDLER_URL = import.meta.env.VITE_BUNDLER_URL || "https://api.pimlico.io/v2/97/rpc?apikey=YOUR_PIMLICO_API_KEY";
+const BUNDLER_URL = import.meta.env.VITE_BUNDLER_URL || "https://api.pimlico.io/v2/97/rpc?apikey=YOUR_API_KEY";
 const PAYMASTER_ADDRESS = import.meta.env.VITE_PAYMASTER_ADDRESS || "0x177858e3450ff286E7d301100363567A555E435f";
 const AFFILIATE_CONTRACT = import.meta.env.VITE_AFFILIATE_CONTRACT || "0x44f787D670Ff4Ef65334D6637960bb7Fe5E1231c";
 
@@ -35,16 +35,16 @@ const defaultBalances = { VND: 0, VIET: 0, PI: 0, BTC: 0, ETH: 0, BNB: 0, USDT: 
 const INITIAL_USERS = [
   { id: 'u1', name: 'Admin (Hệ Thống)', parentId: null, balances: { ...defaultBalances } },
   { id: 'u2', name: 'Nguyễn Văn A', parentId: 'u1', balances: { ...defaultBalances } },
-  { id: 'u3', name: 'Trần Thị B', parentId: 'u2', balances: { ...defaultBalances } }, // F1 của A
-  { id: 'u4', name: 'Lê Văn C', parentId: 'u3', balances: { ...defaultBalances } }, // F1 của B, F2 của A
-  { id: 'u5', name: 'Phạm Thị D', parentId: 'u4', balances: { ...defaultBalances } }, // F1 của C, F3 của A
-  { id: 'u6', name: 'Hoàng Văn E', parentId: 'u2', balances: { ...defaultBalances } }, // F1 của A
+  { id: 'u3', name: 'Trần Thị B', parentId: 'u2', balances: { ...defaultBalances } },
+  { id: 'u4', name: 'Lê Văn C', parentId: 'u3', balances: { ...defaultBalances } },
+  { id: 'u5', name: 'Phạm Thị D', parentId: 'u4', balances: { ...defaultBalances } },
+  { id: 'u6', name: 'Hoàng Văn E', parentId: 'u2', balances: { ...defaultBalances } },
 ];
 
 const INITIAL_POLICY = [
-  { level: 1, rate: 10 }, // Trực tiếp (F1)
-  { level: 2, rate: 5 },  // Gián tiếp (F2)
-  { level: 3, rate: 2 },  // Gián tiếp (F3)
+  { level: 1, rate: 10 },
+  { level: 2, rate: 5 },
+  { level: 3, rate: 2 },
 ];
 
 const INITIAL_TRANSACTIONS = [
@@ -93,11 +93,11 @@ const callGeminiAPI = async (prompt) => {
 };
 
 export default function AffiliateSystem() {
-  const [activeTab, setActiveTab] = useState('user'); // 'admin' | 'stats' | 'user'
+  const [activeTab, setActiveTab] = useState('user'); 
   const [users, setUsers] = useState(INITIAL_USERS);
   const [policy, setPolicy] = useState(INITIAL_POLICY);
   const [transactions, setTransactions] = useState(INITIAL_TRANSACTIONS);
-  const [viewingUserId, setViewingUserId] = useState('u2'); // Mặc định xem account u2
+  const [viewingUserId, setViewingUserId] = useState('u2'); 
 
   // --- CUSTOM TOAST STATE ---
   const [toast, setToast] = useState({ show: false, title: '', message: '', type: 'success' });
@@ -105,6 +105,22 @@ export default function AffiliateSystem() {
   const showToast = (title, message, type = 'success') => {
     setToast({ show: true, title, message, type });
     setTimeout(() => setToast(prev => ({ ...prev, show: false })), 3000);
+  };
+
+  // --- HELPER: SINH VÀ LƯU PRIVATE KEY ẨN DANH VÀO TRÌNH DUYỆT ---
+  const getOrGeneratePrivateKey = (userId) => {
+    const storageKey = `web3_pk_${userId}`;
+    let pk = localStorage.getItem(storageKey);
+    
+    if (!pk) {
+      const array = new Uint8Array(32);
+      window.crypto.getRandomValues(array);
+      pk = '0x' + Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+      localStorage.setItem(storageKey, pk);
+      console.log(`[Web3] Đã tạo ví mới cho user ${userId}:`, pk);
+    }
+    
+    return pk;
   };
 
   // --- AI STATES ---
@@ -123,13 +139,11 @@ export default function AffiliateSystem() {
   const [quizCompleted, setQuizCompleted] = useState({});
   const [selectedAnswer, setSelectedAnswer] = useState(null);
 
-  // --- CLOCK TICKER FOR COOLDOWN ---
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(Date.now()), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  // --- ADSENSE TIMER LOGIC ---
   useEffect(() => {
     let interval;
     if (isWatchingAd && adTimer > 0) {
@@ -140,7 +154,6 @@ export default function AffiliateSystem() {
     return () => clearInterval(interval);
   }, [isWatchingAd, adTimer]);
 
-  // --- CORE LOGIC: THUẬT TOÁN TÍNH HOA HỒNG MLM ---
   const commissions = useMemo(() => {
     let result = [];
     
@@ -180,7 +193,6 @@ export default function AffiliateSystem() {
     return result;
   }, [transactions, users, policy]);
 
-  // --- USER BALANCE & STATS CALCULATION ---
   const userStats = useMemo(() => {
     return users.map(user => {
       const userCommissions = commissions.filter(c => c.referrerId === user.id);
@@ -209,7 +221,6 @@ export default function AffiliateSystem() {
 
   const viewingUserStat = userStats.find(u => u.id === viewingUserId);
 
-  // --- HELPER: UPDATE BALANCE ---
   const updateUserBalance = (userId, currency, amount) => {
     setUsers(prev => prev.map(u => {
       if (u.id === userId) {
@@ -222,16 +233,16 @@ export default function AffiliateSystem() {
     }));
   };
 
-// --- CORE WEB3: GỬI GIAO DỊCH KHÔNG TỐN PHÍ (GASLESS) ---
+  // --- CORE WEB3: GỬI GIAO DỊCH KHÔNG TỐN PHÍ (GASLESS) ---
   const executeGaslessTask = async (userId, functionName, args) => {
     try {
       showToast("Đang xử lý Web3", "Đang đóng gói giao dịch và xin cấp phí Gas...", "success");
 
-      // 1. Lấy Private Key ẩn danh
-      const mockPrivateKey = "0x9999456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
-      const owner = privateKeyToAccount(mockPrivateKey);
+      // 1. Lấy Private Key ẩn danh từ LocalStorage
+      const userPrivateKey = getOrGeneratePrivateKey(userId); 
+      const owner = privateKeyToAccount(userPrivateKey);
       
-      // 2. Khởi tạo Smart Account
+      // 2. Khởi tạo Smart Account (Tự động nội suy Factory Address)
       const smartAccount = await toSimpleSmartAccount({
         client: publicClient,
         owner: owner,
@@ -259,12 +270,11 @@ export default function AffiliateSystem() {
         args: args,
       });
 
-      // 5. Gửi lên Blockchain (FIX LỖI BigInt BẰNG CÁCH SET CỨNG PHÍ GAS)
+      // 5. Gửi lên Blockchain (Khóa BaseFee để tránh lỗi BigInt trên BSC Testnet)
       const txHash = await smartAccountClient.sendTransaction({
         to: AFFILIATE_CONTRACT,
         data: callData,
         value: 0n,
-        // Set cứng phí Gas là 5 Gwei (5 tỷ wei) để tránh lỗi Undefined của BSC Testnet
         maxFeePerGas: 5000000000n,
         maxPriorityFeePerGas: 5000000000n,
       });
@@ -301,7 +311,7 @@ export default function AffiliateSystem() {
         userId: viewingUserId,
         amount: 5000,
         date: new Date().toISOString().split('T')[0],
-        note: 'Xem Quảng Cáo AdSense (On-chain Web3)',
+        note: 'Xem Quảng Cáo (On-chain Web3)',
         type: 'TASK_AD'
       };
       setTransactions(prev => [...prev, newTx]);
@@ -330,7 +340,7 @@ export default function AffiliateSystem() {
       
       showToast("Chính xác!", `Bạn nhận được +${currentQuiz.reward.VIET} VIET.`, "success");
     } else {
-      showToast("Chưa đúng", "Sai rồi, hãy đọc kỹ lại kiến thức và chọn lại nhé!", "error");
+      showToast("Chưa đúng", "Sai rồi, hãy chọn lại nhé!", "error");
     }
     setSelectedAnswer(null);
   };
@@ -842,7 +852,7 @@ export default function AffiliateSystem() {
 
       </main>
 
-      {/* --- CUSTOM TOAST COMPONENT (Thay thế Alert) --- */}
+      {/* --- CUSTOM TOAST COMPONENT --- */}
       <div className={`fixed bottom-6 right-6 bg-[#141414] border p-4 rounded-xl shadow-2xl transition-all duration-300 z-[100] flex items-start gap-3 max-w-sm pointer-events-none ${toast.show ? 'translate-y-0 opacity-100' : 'translate-y-20 opacity-0'} ${toast.type === 'success' ? 'border-emerald-500/30' : 'border-red-500/30'}`}>
         <div className="mt-1">
           {toast.type === 'success' ? (
