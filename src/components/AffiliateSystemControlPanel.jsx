@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Users, DollarSign, Activity, Sparkles, Loader2, 
   UserCircle, Copy, CheckCircle2, Wallet, History, 
-  AlertTriangle, ServerCog, Terminal, RefreshCw, Link2, Check, Send, ArrowRight
+  AlertTriangle, ServerCog, Terminal, RefreshCw, Link2, Check, Send, ArrowRight, ShieldCheck
 } from 'lucide-react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer 
@@ -50,11 +50,30 @@ export default function AffiliateSystemControlPanel() {
   const [isExecutingTx, setIsExecutingTx] = useState(false);
   const [referralInput, setReferralInput] = useState({ referrer: '', referee: '' });
 
-  // States dành cho phân hệ quản lý Alchemy Webhook mới
+  // States dành cho phân hệ quản lý các Alchemy Webhook (Đã nâng cấp đa cấu hình)
+  const [activeWebhookIndex, setActiveWebhookIndex] = useState(0); 
   const [webhookLogs, setWebhookLogs] = useState([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
   const [copiedText, setCopiedText] = useState('');
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+
+  // Danh sách cấu hình chi tiết của các Webhook trên hệ thống
+  const webhooksList = [
+    {
+      name: "Affiliate Tracker Webhook",
+      id: "wh_pqra43npyunzk8w7",
+      dashboardUrl: "https://dashboard.alchemy.com/apps/xo4ut1zr4j2ut5qk/webhooks/wh_pqra43npyunzk8w7",
+      targetAddress: AFFILIATE_CONTRACT,
+      description: "Giám sát thời gian thực các sự kiện log giao dịch và đăng ký liên kết F0/F1."
+    },
+    {
+      name: "HienMauPaymasterContract",
+      id: "wh_ck5mia12huh25nvp",
+      dashboardUrl: "https://dashboard.alchemy.com/apps/xo4ut1zr4j2ut5qk/webhooks/wh_ck5mia12huh25nvp",
+      targetAddress: "0x177858e3450ff286E7d301100363567A555E435f",
+      description: "Giám sát luồng phí giao dịch tài trợ gas và các log phát sinh từ Paymaster Contract."
+    }
+  ];
 
   // Dữ liệu mockup thống kê doanh thu
   const [userStats] = useState([
@@ -167,7 +186,7 @@ export default function AffiliateSystemControlPanel() {
         {
           _id: 'mock_1',
           txHash: '0x71c7656ec7ab88b098defb751b7401b5f6d8976f58f6d34b93475a8947b41e82',
-          wallet: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48',
+          wallet: '0x177858e3450ff286E7d301100363567A555E435f',
           type: 'alchemy_webhook_event',
           createdAt: new Date().toISOString()
         }
@@ -183,13 +202,13 @@ export default function AffiliateSystemControlPanel() {
     }
   }, [activeTab]);
 
-  // ĐỊNH NGHĨA CHÍNH XÁC SCHEMA GRAPHQL THEO YÊU CẦU ĐỂ DÁN VÀO DASHBOARD ALCHEMY
-  const alchemyGraphQLSchema = `{
+  // HÀM TẠO SCHEMA GRAPHQL DỰA TRÊN ĐỊA CHỈ HỢP ĐỒNG ĐANG ĐƯỢC CHỌN TRÊN TAB TƯƠNG TÁC
+  const generateAlchemyGraphQLSchema = (contractAddress) => `{
   block {
     hash,
     number,
     timestamp,
-    logs(filter: {addresses: ["${AFFILIATE_CONTRACT}"]}) { 
+    logs(filter: {addresses: ["${contractAddress}"]}) { 
       data,
       topics,
       index,
@@ -233,10 +252,10 @@ export default function AffiliateSystemControlPanel() {
             <ServerCog className="w-6 h-6 text-black font-bold" />
           </div>
           <div>
-            <h1 className="text-lg font-bold tracking-wider uppercase text-white">Affiliate Control Panel v2</h1>
+            <h1 className="text-lg font-bold tracking-wider uppercase text-white">Affiliate Control Panel v2.5</h1>
             <p className="text-xs text-slate-400 flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              Paymaster Gasless & Alchemy Automations Active
+              Paymaster Gasless & Multi-Webhook Active
             </p>
           </div>
         </div>
@@ -259,8 +278,8 @@ export default function AffiliateSystemControlPanel() {
             onClick={() => setActiveTab('webhooks')}
             className={`px-4 py-2 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all duration-200 flex items-center gap-2 ${activeTab === 'webhooks' ? 'bg-emerald-500 text-black shadow-lg shadow-emerald-500/20' : 'text-slate-400 hover:text-white hover:bg-[#202020]'}`}
           >
-            <Terminal className="w-3.5 h-3.5" /> Alchemy Webhook
-            <span className="text-[9px] bg-red-500/20 text-red-400 border border-red-500/30 px-1.5 py-0.5 rounded-full lowercase font-mono">live</span>
+            <Terminal className="w-3.5 h-3.5" /> Alchemy Webhooks
+            <span className="text-[9px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 rounded-full font-mono">2 Active</span>
           </button>
         </nav>
       </header>
@@ -409,22 +428,47 @@ export default function AffiliateSystemControlPanel() {
           </div>
         )}
 
-        {/* TAB 3: QUẢN LÝ ALCHEMY WEBHOOK */}
+        {/* TAB 3: QUẢN LÝ ĐA WEBHOOK ALCHEMY */}
         {activeTab === 'webhooks' && (
           <div className="space-y-6 animate-fadeIn">
+            
+            {/* THÀNH PHẦN CHỌN WEBHOOK CẦN CẤU HÌNH */}
+            <div className="flex flex-wrap gap-3">
+              {webhooksList.map((wh, idx) => (
+                <button
+                  key={wh.id}
+                  onClick={() => setActiveWebhookIndex(idx)}
+                  className={`px-5 py-3 rounded-xl border text-left transition-all max-w-sm flex-1 min-w-[280px] ${
+                    activeWebhookIndex === idx 
+                      ? 'bg-[#15291e] border-emerald-500 text-white shadow-lg' 
+                      : 'bg-[#121212] border-[#222] text-slate-400 hover:border-[#333]'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-bold uppercase tracking-wider block text-white">{wh.name}</span>
+                    <ShieldCheck className={`w-4 h-4 ${activeWebhookIndex === idx ? 'text-emerald-400' : 'text-slate-600'}`} />
+                  </div>
+                  <p className="text-[11px] font-mono opacity-80 truncate">{wh.id}</p>
+                  <p className="text-[11px] text-slate-400 mt-2 line-clamp-1">{wh.description}</p>
+                </button>
+              ))}
+            </div>
+
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               
-              {/* CARD THÔNG TIN CẤU HÌNH LIÊN KẾT ENDPOINT */}
+              {/* CARD THÔNG TIN CẤU HÌNH LIÊN KẾT ENDPOINT CỦA WEBHOOK ĐANG CHỌN */}
               <div className="lg:col-span-2 bg-[#121212] border border-[#222] p-6 rounded-2xl space-y-5">
                 <div className="flex items-center gap-2 pb-2 border-b border-[#222]">
                   <Link2 className="w-5 h-5 text-emerald-400" />
-                  <h3 className="text-sm font-bold uppercase tracking-wider text-white">Cấu Hình Kết Nối Alchemy Custom Webhook</h3>
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-white">
+                    Thông Tin Kết Nối: {webhooksList[activeWebhookIndex].name}
+                  </h3>
                 </div>
 
                 <div className="space-y-4">
                   <div>
                     <label className="block text-[11px] text-slate-400 uppercase tracking-wider mb-1.5 font-semibold">
-                      1. Vercel Production Endpoint URL (Target URL):
+                      1. Vercel Production Endpoint URL (Target URL nhận POST request):
                     </label>
                     <div className="flex items-center gap-2 bg-[#181818] border border-[#2d2d2d] rounded-xl p-3 font-mono text-xs text-slate-300">
                       <span className="flex-1 truncate select-all">https://hien-mau-nhan-van.vercel.app/api/alchemy-webhook</span>
@@ -439,12 +483,12 @@ export default function AffiliateSystemControlPanel() {
 
                   <div>
                     <label className="block text-[11px] text-slate-400 uppercase tracking-wider mb-1.5 font-semibold">
-                      2. Quản lý trực tiếp Webhook App ứng dụng trên Alchemy Dashboard:
+                      2. Link cấu hình & Quản lý trực tiếp trên Alchemy Dashboard:
                     </label>
                     <div className="flex items-center gap-2 bg-[#181818] border border-[#2d2d2d] rounded-xl p-3 font-mono text-xs text-slate-300">
-                      <span className="flex-1 truncate select-all">https://dashboard.alchemy.com/apps/xo4ut1zr4j2ut5qk/webhooks/wh_pqra43npyunzk8w7</span>
+                      <span className="flex-1 truncate select-all">{webhooksList[activeWebhookIndex].dashboardUrl}</span>
                       <a 
-                        href="https://dashboard.alchemy.com/apps/xo4ut1zr4j2ut5qk/webhooks/wh_pqra43npyunzk8w7" 
+                        href={webhooksList[activeWebhookIndex].dashboardUrl} 
                         target="_blank" 
                         rel="noopener noreferrer"
                         className="p-1.5 hover:bg-[#282828] rounded-lg transition-colors text-emerald-400 flex items-center gap-1"
@@ -456,39 +500,37 @@ export default function AffiliateSystemControlPanel() {
 
                   <div>
                     <label className="block text-[11px] text-slate-400 uppercase tracking-wider mb-1.5 font-semibold">
-                      3. Tài liệu hướng dẫn kết nối chuẩn của Alchemy Notify API:
+                      3. Địa chỉ ví hợp đồng lọc dữ liệu (Target Filter Address):
                     </label>
                     <div className="flex items-center gap-2 bg-[#181818] border border-[#2d2d2d] rounded-xl p-3 font-mono text-xs text-slate-300">
-                      <span className="flex-1 truncate select-all">https://www.alchemy.com/docs/reference/notify-api-quickstart</span>
-                      <a 
-                        href="https://www.alchemy.com/docs/reference/notify-api-quickstart" 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="p-1.5 hover:bg-[#282828] rounded-lg transition-colors text-blue-400 flex items-center gap-1"
+                      <span className="flex-1 text-purple-400 truncate select-all">{webhooksList[activeWebhookIndex].targetAddress}</span>
+                      <button 
+                        onClick={() => handleCopy(webhooksList[activeWebhookIndex].targetAddress, 'Target Address')}
+                        className="p-1.5 hover:bg-[#282828] rounded-lg transition-colors text-slate-400 hover:text-white"
                       >
-                        <ArrowRight className="w-3.5 h-3.5" />
-                      </a>
+                        <Copy className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* CARD GRAPHQL SCHEMA LỌC DỮ LIỆU ĐỊA CHỈ HỢP ĐỒNG */}
+              {/* CARD GRAPHQL SCHEMA LỌC DỮ LIỆU TỰ ĐỘNG CẬP NHẬT DỰA TRÊN WEBHOOK ĐANG CHỌN */}
               <div className="bg-[#121212] border border-[#222] p-6 rounded-2xl flex flex-col">
                 <div className="flex items-center justify-between pb-2 border-b border-[#222] mb-4">
                   <div className="flex items-center gap-2">
                     <Terminal className="w-5 h-5 text-teal-400" />
-                    <h3 className="text-sm font-bold uppercase tracking-wider text-white">GraphQL Filter Schema</h3>
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-white">GraphQL Custom Schema</h3>
                   </div>
                   <button 
-                    onClick={() => handleCopy(alchemyGraphQLSchema, 'GraphQL Query Schema')}
+                    onClick={() => handleCopy(generateAlchemyGraphQLSchema(webhooksList[activeWebhookIndex].targetAddress), 'GraphQL Query Schema')}
                     className="text-[11px] text-emerald-400 hover:underline flex items-center gap-1"
                   >
                     <Copy className="w-3 h-3" /> Copy Code
                   </button>
                 </div>
                 <div className="flex-1 bg-[#161616] border border-[#2d2d2d] rounded-xl p-3 font-mono text-[11px] text-slate-400 overflow-y-auto max-h-64 select-all whitespace-pre">
-                  {alchemyGraphQLSchema}
+                  {generateAlchemyGraphQLSchema(webhooksList[activeWebhookIndex].targetAddress)}
                 </div>
               </div>
             </div>
@@ -515,7 +557,7 @@ export default function AffiliateSystemControlPanel() {
                   <thead>
                     <tr className="border-b border-[#222] bg-[#181818] text-[11px] uppercase tracking-wider text-slate-400">
                       <th className="p-4 font-bold">Transaction Hash</th>
-                      <th className="p-4 font-bold">Wallet Gửi (From)</th>
+                      <th className="p-4 font-bold">Wallet Lọc (Contract/From)</th>
                       <th className="p-4 font-bold">Loại Sự Kiện</th>
                       <th className="p-4 font-bold">Thời gian nhận</th>
                       <th className="p-4 font-bold text-center">Trạng thái lưu DB</th>
