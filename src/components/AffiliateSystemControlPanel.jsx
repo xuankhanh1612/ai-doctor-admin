@@ -235,7 +235,7 @@ export default function AffiliateSystem() {
       const smartAccount = await toSimpleSmartAccount({
         client: publicClient,
         owner: owner,
-        factoryAddress: "0x9406Cc6185a346906296ED927B7f54229C8f08bd",
+        // TUYỆT ĐỐI KHÔNG ĐIỀN factoryAddress VÀO ĐÂY (Để thư viện tự động nội suy)
         entryPoint: {
           address: "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789",
           version: "0.6"
