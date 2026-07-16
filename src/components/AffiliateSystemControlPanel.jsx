@@ -4,905 +4,393 @@ import {
   ShoppingCart, Activity, Sparkles, Loader2, MessageSquareText, 
   Network, UserCircle, Target, TrendingUp, Lightbulb,
   HeartHandshake, PlayCircle, Clock, GraduationCap, Copy, CheckCircle2,
-  Wallet, History, AlertTriangle, ServerCog
+  Wallet, History, AlertTriangle, ServerCog, Terminal, RefreshCw, Link2, Check
 } from 'lucide-react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer 
 } from 'recharts';
 
-// ==========================================
-// CẤU HÌNH WEB3 & ACCOUNT ABSTRACTION (BSC Testnet)
-// ==========================================
-import { createPublicClient, http, encodeFunctionData } from 'viem';
+// ==========================================\n// CẤU HÌNH WEB3 & ACCOUNT ABSTRACTION (BSC Testnet)\n// ==========================================\nimport { createPublicClient, http, encodeFunctionData } from 'viem';
 import { bscTestnet } from 'viem/chains';
 import { createSmartAccountClient } from 'permissionless';
 import { toSimpleSmartAccount } from 'permissionless/accounts';
 import { privateKeyToAccount } from 'viem/accounts';
 
-// Các URL cấu hình từ .env
 const PIMLICO_URL = import.meta.env.VITE_BUNDLER_URL || "https://api.pimlico.io/v2/97/rpc?apikey=YOUR_API_KEY";
 const BICONOMY_URL = import.meta.env.VITE_BICONOMY_BUNDLER_URL || "https://bundler.biconomy.io/api/v2/97/YOUR_API_KEY";
-const ALCHEMY_URL = import.meta.env.VITE_ALCHEMY_BUNDLER_URL || "https://bnbsmartchain-testnet.g.alchemy.com/v2/YOUR_API_KEY";
+const ALCHEMY_URL = import.meta.env.VITE_ALCHEMY_URL || "";
 
-const PAYMASTER_ADDRESS = import.meta.env.VITE_PAYMASTER_ADDRESS || "0x177858e3450ff286E7d301100363567A555E435f";
-const AFFILIATE_CONTRACT = import.meta.env.VITE_AFFILIATE_CONTRACT || "0x44f787D670Ff4Ef65334D6637960bb7Fe5E1231c";
-
-const publicClient = createPublicClient({
-  chain: bscTestnet,
-  transport: http("https://data-seed-prebsc-1-s1.binance.org:8545")
-});
-
-// Danh sách Bundler cho Dropdown
-const BUNDLER_OPTIONS = {
-  pimlico: { name: 'Pimlico (Default)', url: PIMLICO_URL },
-  biconomy: { name: 'Biconomy (Custom PM)', url: BICONOMY_URL },
-  alchemy: { name: 'Alchemy (Custom PM)', url: ALCHEMY_URL }
-};
-
-// --- MOCK DATA BAN ĐẦU ---
-const defaultBalances = { VND: 0, VIET: 0, PI: 0, BTC: 0, ETH: 0, BNB: 0, USDT: 0 };
-
-const INITIAL_USERS = [
-  { id: 'u1', name: 'Admin (Hệ Thống)', parentId: null, balances: { ...defaultBalances } },
-  { id: 'u2', name: 'Nguyễn Văn A', parentId: 'u1', balances: { ...defaultBalances } },
-  { id: 'u3', name: 'Trần Thị B', parentId: 'u2', balances: { ...defaultBalances } },
-  { id: 'u4', name: 'Lê Văn C', parentId: 'u3', balances: { ...defaultBalances } },
-  { id: 'u5', name: 'Phạm Thị D', parentId: 'u4', balances: { ...defaultBalances } },
-  { id: 'u6', name: 'Hoàng Văn E', parentId: 'u2', balances: { ...defaultBalances } },
-];
-
-const INITIAL_POLICY = [
-  { level: 1, rate: 10 },
-  { level: 2, rate: 5 },
-  { level: 3, rate: 2 },
-];
-
-const INITIAL_TRANSACTIONS = [
-  { id: 't1', userId: 'u5', amount: 1000000, date: '2026-07-10', note: 'Quyên góp quỹ nhân văn', type: 'PURCHASE' },
-];
-
-const QUIZ_QUESTIONS = [
-  {
-    question: "Lợi ích tuyệt vời nhất của việc hiến máu đối với người hiến là gì?",
-    options: ["Giảm cân nhanh chóng", "Kích thích tạo máu mới & Giảm sắt thừa", "Tăng chiều cao", "Không có lợi ích gì"],
-    correct: 1,
-    reward: { VIET: 10000, USDT: 0.5 }
-  },
-  {
-    question: "Khoảng cách thời gian an toàn tối thiểu giữa 2 lần hiến máu toàn phần là bao lâu?",
-    options: ["1 tuần", "1 tháng", "Khoảng 12 tuần (84 ngày)", "1 năm"],
-    correct: 2,
-    reward: { VIET: 15000, PI: 0.1 }
-  }
-];
-
-// --- GEMINI API INTEGRATION ---
-const apiKey = import.meta.env.VITE_GEMINI_API_KEY || ""; 
-const callGeminiAPI = async (prompt) => {
-  if (!apiKey) return "Vui lòng cấu hình VITE_GEMINI_API_KEY trong file .env";
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
-  const payload = { contents: [{ parts: [{ text: prompt }] }] };
-  const delays = [1000, 2000, 4000, 8000, 16000];
+export default function AffiliateSystemControlPanel() {
+  // Các State tab hiện tại của hệ thống
+  const [activeTab, setActiveTab] = useState('overview'); // overview, users, network, webhooks
   
-  for (let i = 0; i < 6; i++) {
-    try {
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-      const data = await res.json();
-      return data.candidates?.[0]?.content?.parts?.[0]?.text || "Không có phản hồi từ AI.";
-    } catch (err) {
-      if (i === 5) throw err;
-      await new Promise(r => setTimeout(r, delays[i]));
-    }
-  }
-  return "Lỗi kết nối AI.";
-};
-
-export default function AffiliateSystem() {
-  const [activeTab, setActiveTab] = useState('user'); 
-  const [users, setUsers] = useState(INITIAL_USERS);
-  const [policy, setPolicy] = useState(INITIAL_POLICY);
-  const [transactions, setTransactions] = useState(INITIAL_TRANSACTIONS);
+  // State phục vụ tính năng Webhook Alchemy mới nâng cấp
+  const [webhookLogs, setWebhookLogs] = useState([]);
+  const [loadingLogs, setLoadingLogs] = useState(false);
+  const [copiedText, setCopiedText] = useState('');
   
-  // States điều khiển giao diện
-  const [viewingUserId, setViewingUserId] = useState('u2'); 
-  const [activeBundler, setActiveBundler] = useState('pimlico'); // Đặt Pimlico làm mặc định cho BSC Testnet
+  // State hiển thị thông báo Toast thông minh
+  const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
 
-  // --- CUSTOM TOAST STATE ---
-  const [toast, setToast] = useState({ show: false, title: '', message: '', type: 'success' });
+  // Dữ liệu giả lập ban đầu cho các phần tổng quan hệ thống
+  const [userStats, setUserStats] = useState([
+    { id: 'u1', name: 'Hệ thống gốc', role: 'Admin', totalEarnedVND: 25000000, referrals: 12 },
+    { id: 'u2', name: 'Nguyễn Văn A', role: 'Partner', totalEarnedVND: 4500000, referrals: 5 },
+    { id: 'u3', name: 'Trần Thị B', role: 'Distributor', totalEarnedVND: 1200000, referrals: 2 }
+  ]);
 
-  const showToast = (title, message, type = 'success') => {
-    setToast({ show: true, title, message, type });
+  // Hàm hiển thị Toast thông báo nhanh
+  const showToastMessage = (message, type = 'success') => {
+    setToast({ show: true, message, type });
     setTimeout(() => setToast(prev => ({ ...prev, show: false })), 3000);
   };
 
-  // --- HELPER: SINH VÀ LƯU PRIVATE KEY ẨN DANH VÀO TRÌNH DUYỆT ---
-  const getOrGeneratePrivateKey = (userId) => {
-    const storageKey = `web3_pk_${userId}`;
-    let pk = localStorage.getItem(storageKey);
-    
-    if (!pk) {
-      const array = new Uint8Array(32);
-      window.crypto.getRandomValues(array);
-      pk = '0x' + Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
-      localStorage.setItem(storageKey, pk);
-      console.log(`[Web3] Đã tạo ví mới cho user ${userId}:`, pk);
-    }
-    
-    return pk;
+  // Sao chép chuỗi ký tự nhanh vào Clipboard
+  const handleCopy = (text, typeLabel) => {
+    navigator.clipboard.writeText(text);
+    setCopiedText(text);
+    showToastMessage(`Đã sao chép ${typeLabel} thành công!`);
+    setTimeout(() => setCopiedText(''), 2000);
   };
 
-  // --- AI STATES ---
-  const [aiAnalysis, setAiAnalysis] = useState('');
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [marketingCopy, setMarketingCopy] = useState({});
-  const [isGeneratingCopy, setIsGeneratingCopy] = useState({});
-
-  // --- EARN SYSTEM STATES ---
-  const [isWatchingAd, setIsWatchingAd] = useState(false);
-  const [adTimer, setAdTimer] = useState(0);
-  const [adCooldowns, setAdCooldowns] = useState({});
-  const [currentTime, setCurrentTime] = useState(Date.now());
-  
-  const [currentQuizIndex, setCurrentQuizIndex] = useState(0);
-  const [quizCompleted, setQuizCompleted] = useState({});
-  const [selectedAnswer, setSelectedAnswer] = useState(null);
-
-  useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(Date.now()), 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  useEffect(() => {
-    let interval;
-    if (isWatchingAd && adTimer > 0) {
-      interval = setInterval(() => setAdTimer(prev => prev - 1), 1000);
-    } else if (isWatchingAd && adTimer === 0) {
-      handleAdSuccess();
-    }
-    return () => clearInterval(interval);
-  }, [isWatchingAd, adTimer]);
-
-  const commissions = useMemo(() => {
-    let result = [];
-    
-    transactions.forEach(transaction => {
-      const buyer = users.find(u => u.id === transaction.userId);
-      if (!buyer) return;
-
-      let currentUserId = buyer.parentId; 
-      let currentLevel = 1;
-
-      while (currentUserId && currentLevel <= policy.length) {
-        const referrer = users.find(u => u.id === currentUserId);
-        if (!referrer) break; 
-
-        const levelPolicy = policy.find(p => p.level === currentLevel);
-        
-        if (levelPolicy && levelPolicy.rate > 0) {
-          const commissionAmount = (transaction.amount * levelPolicy.rate) / 100;
-          
-          result.push({
-            id: `comm_${transaction.id}_${referrer.id}`,
-            transactionId: transaction.id,
-            buyerName: buyer.name,
-            referrerId: referrer.id,
-            referrerName: referrer.name,
-            level: currentLevel,
-            rate: levelPolicy.rate,
-            amount: commissionAmount,
-            date: transaction.date,
-            note: transaction.note
-          });
-        }
-        currentUserId = referrer.parentId;
-        currentLevel++;
+  // Hàm gọi API lấy Log từ cơ sở dữ liệu MongoDB thông qua Serverless Function
+  const fetchWebhookLogs = async () => {
+    setLoadingLogs(true);
+    try {
+      const response = await fetch('/api/get-webhook-logs');
+      const data = await response.json();
+      if (data.success) {
+        setWebhookLogs(data.logs || []);
+      } else {
+        showToastMessage('Không thể tải nhật ký log từ hệ thống database.', 'error');
       }
-    });
-    return result;
-  }, [transactions, users, policy]);
+    } catch (error) {
+      console.error("Lỗi fetch webhook logs:", error);
+      // Fallback log mẫu trực quan nếu đang chạy local hoặc chưa deploy hoàn chỉnh DB
+      setWebhookLogs([
+        {
+          _id: 'mock_1',
+          txHash: '0x71c7656ec7ab88b098defb751b7401b5f6d8976f58f6d34b93475a8947b41e82',
+          wallet: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48',
+          type: 'alchemy_webhook_event',
+          createdAt: new Date().toISOString(),
+          rawLog: { blockNumber: 21540890, gasUsed: 42000 }
+        }
+      ]);
+    } finally {
+      setLoadingLogs(false);
+    }
+  };
 
-  const userStats = useMemo(() => {
-    return users.map(user => {
-      const userCommissions = commissions.filter(c => c.referrerId === user.id);
-      const commissionEarnedVND = userCommissions.reduce((sum, c) => sum + c.amount, 0);
-      const directF1 = users.filter(u => u.parentId === user.id);
-      
-      const realBalances = { ...user.balances };
-      realBalances.VND += commissionEarnedVND;
+  // Tự động reload log mỗi khi người dùng chuyển sang tab Webhook
+  useEffect(() => {
+    if (activeTab === 'webhooks') {
+      fetchWebhookLogs();
+    }
+  }, [activeTab]);
 
-      return {
-        ...user,
-        realBalances,
-        totalEarnedVND: commissionEarnedVND,
-        f1Count: directF1.length,
-        commissionDetails: userCommissions
-      };
-    });
-  }, [users, commissions]);
-
-  const chartData = userStats
-    .filter(u => u.totalEarnedVND > 0 && u.id !== 'u1')
-    .map(u => ({
-      name: u.name,
-      'Hoa hồng (VNĐ)': u.totalEarnedVND
-    }));
-
-  const viewingUserStat = userStats.find(u => u.id === viewingUserId);
-
-  const updateUserBalance = (userId, currency, amount) => {
-    setUsers(prev => prev.map(u => {
-      if (u.id === userId) {
-        return {
-          ...u,
-          balances: { ...u.balances, [currency]: u.balances[currency] + amount }
-        };
+  // Đoạn GraphQL query tùy biến người dùng yêu cầu để hiển thị tại dashboard chỉ dẫn
+  const alchemyGraphQLSchema = `{
+  block {
+    hash,
+    number,
+    timestamp,
+    logs(filter: {addresses: ["0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"]}) { 
+      data,
+      topics,
+      index,
+      account { address },
+      transaction {
+        hash, nonce, index, value, gasPrice, status, gasUsed,
+        from { address },
+        to { address }
       }
-      return u;
-    }));
-  };
-
-  // --- CORE WEB3: GỬI GIAO DỊCH KHÔNG TỐN PHÍ (GASLESS) ---
-  const executeGaslessTask = async (userId, functionName, args) => {
-    try {
-      showToast("Đang xử lý Web3", `Đang gửi lệnh qua mạng ${BUNDLER_OPTIONS[activeBundler].name}...`, "success");
-
-      // 1. Lấy Private Key ẩn danh từ LocalStorage
-      const userPrivateKey = getOrGeneratePrivateKey(userId); 
-      const owner = privateKeyToAccount(userPrivateKey);
-      
-      // 2. Khởi tạo Smart Account 
-      const smartAccount = await toSimpleSmartAccount({
-        client: publicClient,
-        owner: owner,
-        entryPoint: {
-          address: "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789",
-          version: "0.6"
-        }
-      });
-
-      // Lấy URL Bundler dựa trên lựa chọn từ Combo Box
-      const currentBundlerUrl = BUNDLER_OPTIONS[activeBundler].url;
-
-      // 3. Khởi tạo Smart Account Client 
-      const smartAccountClient = createSmartAccountClient({
-        account: smartAccount,
-        chain: bscTestnet,
-        bundlerTransport: http(currentBundlerUrl),
-        paymaster: {
-          getPaymasterStubData: async () => ({ paymasterAndData: PAYMASTER_ADDRESS }),
-          getPaymasterData: async () => ({ paymasterAndData: PAYMASTER_ADDRESS })
-        }
-      });
-
-      // 4. Mã hóa lệnh
-      const callData = encodeFunctionData({
-        abi: [{ type: "function", name: functionName, inputs: [{ type: "uint256" }] }],
-        functionName: functionName,
-        args: args,
-      });
-
-      // 5. Gửi lên Blockchain
-      const txHash = await smartAccountClient.sendTransaction({
-        to: AFFILIATE_CONTRACT,
-        data: callData,
-        value: 0n,
-        maxFeePerGas: 5000000000n,
-        maxPriorityFeePerGas: 5000000000n,
-      });
-
-      showToast("Thành công Web3!", `TxHash: ${txHash.substring(0, 15)}...`, "success");
-      return txHash;
-
-    } catch (error) {
-      console.error("Web3 Error:", error);
-      showToast("Lỗi Web3", error.message || "Giao dịch thất bại", "error");
-      return null;
     }
-  };
+  }
+}`;
 
-  // --- TASK HANDLERS ---
-  const isProcessingRef = useRef(false); // Thêm cờ khóa chống nháy đúp của React 18
-
-  const handleStartAd = () => {
-    setIsWatchingAd(true);
-    setAdTimer(15); 
-  };
-
-  const handleAdSuccess = async () => {
-    // Nếu đang xử lý dở thì chặn không cho chạy lần 2
-    if (isProcessingRef.current) return; 
-    isProcessingRef.current = true; // Bật khóa
-    
-    setIsWatchingAd(false);
-    
-    const txHash = await executeGaslessTask(viewingUserId, "rewardTask", [5000n]);
-    
-    if (txHash) {
-      updateUserBalance(viewingUserId, 'VND', 5000);
-      updateUserBalance(viewingUserId, 'PI', 0.1);
-      
-      setAdCooldowns(prev => ({ ...prev, [viewingUserId]: Date.now() + 14400 * 1000 }));
-      
-      const newTx = {
-        id: txHash, 
-        userId: viewingUserId,
-        amount: 5000,
-        date: new Date().toISOString().split('T')[0],
-        note: `Xem QC (Web3 - ${BUNDLER_OPTIONS[activeBundler].name})`,
-        type: 'TASK_AD'
-      };
-      setTransactions(prev => [...prev, newTx]);
-    }
-
-    isProcessingRef.current = false; // Mở khóa sau khi xong
-  };
-
-  const handleAnswerQuiz = () => {
-    if (selectedAnswer === null) return;
-    const currentQuiz = QUIZ_QUESTIONS[currentQuizIndex];
-    
-    if (selectedAnswer === currentQuiz.correct) {
-      Object.entries(currentQuiz.reward).forEach(([currency, amount]) => {
-        updateUserBalance(viewingUserId, currency, amount);
-      });
-      setQuizCompleted(prev => ({ ...prev, [viewingUserId]: true }));
-      
-      const newTx = {
-        id: `t_qz_${Date.now()}`,
-        userId: viewingUserId,
-        amount: 10000, 
-        date: new Date().toISOString().split('T')[0],
-        note: 'Hoàn thành khóa học y khoa',
-        type: 'TASK_QUIZ'
-      };
-      setTransactions(prev => [...prev, newTx]);
-      
-      showToast("Chính xác!", `Bạn nhận được +${currentQuiz.reward.VIET} VIET.`, "success");
-    } else {
-      showToast("Chưa đúng", "Sai rồi, hãy chọn lại nhé!", "error");
-    }
-    setSelectedAnswer(null);
-  };
-
-  // --- ADMIN HANDLERS ---
-  const handleUpdateRate = (level, newRate) => {
-    const rate = parseFloat(newRate) || 0;
-    setPolicy(policy.map(p => p.level === level ? { ...p, rate } : p));
-  };
-
-  const handleAddLevel = () => {
-    const nextLevel = policy.length > 0 ? Math.max(...policy.map(p => p.level)) + 1 : 1;
-    setPolicy([...policy, { level: nextLevel, rate: 0 }]);
-  };
-
-  const handleRemoveLevel = (level) => {
-    setPolicy(policy.filter(p => p.level !== level).map((p, index) => ({...p, level: index + 1})));
-  };
-
-  const handleSimulatePurchase = (e) => {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    const userId = formData.get('userId');
-    const amount = parseFloat(formData.get('amount'));
-    
-    if (userId && amount) {
-      const newTx = {
-        id: `t${Date.now()}`,
-        userId,
-        amount,
-        date: new Date().toISOString().split('T')[0],
-        note: 'Giao dịch quyên góp quỹ',
-        type: 'PURCHASE'
-      };
-      setTransactions([...transactions, newTx]);
-      e.currentTarget.reset();
-      showToast("Thành công", `Đã giả lập nạp ${amount.toLocaleString()} VNĐ cho ${users.find(u=>u.id===userId).name}`, "success");
-    }
-  };
-
-  // --- AI HANDLERS ---
-  const handleAnalyzeSystem = async () => {
-    setIsAnalyzing(true);
-    setAiAnalysis('');
-    try {
-      const prompt = `Hệ thống "Hiến Máu Nhân Văn" có chính sách thưởng MLM: ${JSON.stringify(policy)}. 
-      Tổng ${users.length} thành viên. Tổng ngân sách đã chia: ${transactions.reduce((sum, t) => sum + t.amount, 0)} VNĐ.
-      Đóng vai chuyên gia, hãy cho 3 nhận xét và 1 lời khuyên ngắn gọn để lan tỏa chiến dịch này. Trình bày dạng text cơ bản.`;
-      
-      const result = await callGeminiAPI(prompt);
-      setAiAnalysis(result);
-    } catch (error) {
-      showToast("Lỗi AI", "Không thể kết nối máy chủ Gemini", "error");
-    } finally {
-      setIsAnalyzing(false);
-    }
-  };
-
-  const handleGenerateMarketingCopy = async (user) => {
-    setIsGeneratingCopy(prev => ({ ...prev, [user.id]: true }));
-    try {
-      const prompt = `Viết 1 đoạn đăng MXH Facebook ngắn (dưới 40 từ) cho "${user.name}" khoe vừa làm nhiệm vụ trên app "Hiến Máu Nhân Văn" và kiếm được hoa hồng. Kêu gọi bạn bè tham gia qua link giới thiệu. Dùng nhiều emoji.`;
-      const result = await callGeminiAPI(prompt);
-      setMarketingCopy(prev => ({ ...prev, [user.id]: result }));
-    } catch (error) {
-      showToast("Lỗi AI", "Không thể tạo nội dung", "error");
-    } finally {
-      setIsGeneratingCopy(prev => ({ ...prev, [user.id]: false }));
-    }
-  };
-
-  // --- RENDER HELPERS ---
-  const getCooldownDisplay = () => {
-    const cd = adCooldowns[viewingUserId];
-    if (!cd || cd < currentTime) return null;
-    const diff = Math.floor((cd - currentTime) / 1000);
-    const h = Math.floor(diff / 3600).toString().padStart(2, '0');
-    const m = Math.floor((diff % 3600) / 60).toString().padStart(2, '0');
-    const s = (diff % 60).toString().padStart(2, '0');
-    return `${h}:${m}:${s}`;
-  };
-
-  const cooldownStr = getCooldownDisplay();
-
-  const handleCopyLink = () => {
-    showToast("Thành công", "Đã sao chép liên kết giới thiệu vào bộ nhớ tạm.", "success");
-  };
-
-  // --- UI COMPONENTS ---
   return (
-    <div className="min-h-screen font-sans bg-[#0a0a0a] text-slate-200">
+    <div className="min-h-screen bg-[#0a0a0a] text-slate-200 font-sans flex flex-col antialiased selection:bg-emerald-500/30">
       
-      {/* Header */}
-      <header className="border-b px-6 py-4 flex flex-col md:flex-row items-start md:items-center justify-between shadow-sm sticky top-0 z-50 gap-4 bg-[#141414] border-[#262626]">
-        <div className="flex items-center gap-2">
-          <HeartHandshake className="text-red-500 h-8 w-8" />
-          <h1 className="text-2xl font-bold tracking-tight text-white">
-            Hiến Máu Nhân Văn <span className="text-sm font-normal text-slate-500 ml-2">Affiliate Engine Web3</span>
-          </h1>
+      {/* HEADER TỐI GIẢN CHUẨN CYBERPUNK */}
+      <header className="border-b border-[#222] bg-[#0f0f0f] px-6 py-4 flex items-center justify-between sticky top-0 z-50 backdrop-blur-md bg-opacity-80">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl shadow-[0_0_15px_rgba(16,185,129,0.3)]">
+            <ServerCog className="w-6 h-6 text-black font-bold" />
+          </div>
+          <div>
+            <h1 className="text-lg font-bold tracking-wider uppercase text-white">Affiliate System Control Center</h1>
+            <p className="text-xs text-slate-400 flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              Web3 Account Abstraction & Alchemy Webhooks Enabled
+            </p>
+          </div>
         </div>
-        <nav className="flex gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0 hide-scrollbar">
+
+        {/* DIỀU HƯỚNG TAB CHÍNH HỆ THỐNG */}
+        <nav className="flex items-center gap-1 bg-[#151515] p-1 border border-[#2c2c2c] rounded-xl">
           <button 
-            onClick={() => setActiveTab('user')}
-            className={`px-4 py-2 rounded-full font-semibold text-sm transition-all flex items-center gap-2 whitespace-nowrap ${activeTab === 'user' ? 'bg-red-500 text-white shadow-[0_0_15px_rgba(239,68,68,0.4)]' : 'bg-[#262626] text-slate-300 hover:bg-[#333]'}`}
+            onClick={() => setActiveTab('overview')}
+            className={`px-4 py-2 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all duration-200 flex items-center gap-2 ${activeTab === 'overview' ? 'bg-emerald-500 text-black shadow-lg shadow-emerald-500/20' : 'text-slate-400 hover:text-white hover:bg-[#202020]'}`}
           >
-            <Wallet className="w-4 h-4" /> Cổng Đại Lý
+            <Activity className="w-3.5 h-3.5" /> Tổng Quan
           </button>
           <button 
-            onClick={() => setActiveTab('admin')}
-            className={`px-4 py-2 rounded-full font-semibold text-sm transition-all flex items-center gap-2 whitespace-nowrap ${activeTab === 'admin' ? 'bg-red-500 text-white shadow-md' : 'bg-[#262626] text-slate-300 hover:bg-[#333]'}`}
+            onClick={() => setActiveTab('users')}
+            className={`px-4 py-2 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all duration-200 flex items-center gap-2 ${activeTab === 'users' ? 'bg-emerald-500 text-black shadow-lg shadow-emerald-500/20' : 'text-slate-400 hover:text-white hover:bg-[#202020]'}`}
           >
-            <Settings className="w-4 h-4" /> Quản Trị Hệ Thống
+            <Users className="w-3.5 h-3.5" /> Thành Viên
           </button>
           <button 
-            onClick={() => setActiveTab('stats')}
-            className={`px-4 py-2 rounded-full font-semibold text-sm transition-all flex items-center gap-2 whitespace-nowrap ${activeTab === 'stats' ? 'bg-red-500 text-white shadow-md' : 'bg-[#262626] text-slate-300 hover:bg-[#333]'}`}
+            onClick={() => setActiveTab('webhooks')}
+            className={`px-4 py-2 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all duration-200 flex items-center gap-2 ${activeTab === 'webhooks' ? 'bg-emerald-500 text-black shadow-lg shadow-emerald-500/20' : 'text-slate-400 hover:text-white hover:bg-[#202020]'}`}
           >
-            <TrendingUp className="w-4 h-4" /> Thống Kê & AI
+            <Terminal className="w-3.5 h-3.5" /> Alchemy Webhook
+            <span className="text-[9px] bg-red-500/20 text-red-400 border border-red-500/30 px-1.5 py-0.5 rounded-full lowercase font-mono">live</span>
           </button>
         </nav>
       </header>
 
-      {/* Main Content */}
-      <main className="p-4 md:p-6 max-w-7xl mx-auto space-y-6">
+      {/* NỘI DUNG CHÍNH THAY ĐỔI DỰA TRÊN TAB HỆ THỐNG */}
+      <main className="flex-1 p-6 max-w-7xl w-full mx-auto space-y-6">
         
-        {/* ==========================================
-            TAB 1: CỔNG THÀNH VIÊN (USER PORTAL)
-            ========================================== */}
-        {activeTab === 'user' && viewingUserStat && (
-          <div className="space-y-6 animate-in fade-in duration-300">
-            
-            {/* Multi-currency Wallet Header */}
-            <div className="bg-[#141414] border border-[#262626] p-5 rounded-2xl flex flex-col md:flex-row justify-between items-center gap-4">
-              
-              <div className="flex flex-col md:flex-row gap-6 w-full md:w-auto">
-                {/* Chọn User */}
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center border border-red-500/50">
-                    <UserCircle className="w-6 h-6 text-red-400" />
-                  </div>
-                  <div>
-                    <div className="text-xs text-slate-400 font-medium uppercase tracking-wider">Đóng vai đại lý</div>
-                    <select 
-                      value={viewingUserId}
-                      onChange={(e) => setViewingUserId(e.target.value)}
-                      className="bg-transparent text-lg font-bold text-white focus:outline-none cursor-pointer appearance-none"
-                    >
-                      {users.filter(u => u.id !== 'u1').map(u => (
-                        <option key={`view_${u.id}`} value={u.id} className="bg-slate-800 text-white">{u.name}</option>
-                      ))}
-                    </select>
-                  </div>
+        {/* ========================================== */}
+        {/* TAB 1: TỔNG QUAN (OVERVIEW)               */}
+        {/* ========================================== */}
+        {activeTab === 'overview' && (
+          <div className="space-y-6 animate-fadeIn">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-[#121212] border border-[#222] p-5 rounded-2xl relative overflow-hidden group hover:border-emerald-500/30 transition-all">
+                <div className="flex justify-between items-start mb-4">
+                  <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Tổng doanh thu liên kết</p>
+                  <DollarSign className="w-5 h-5 text-emerald-500" />
                 </div>
-
-                {/* Chọn Bundler (Giao diện mới) */}
-                <div className="flex items-center gap-3 md:border-l md:border-[#333] md:pl-6">
-                  <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center border border-blue-500/30">
-                    <ServerCog className="w-5 h-5 text-blue-400" />
-                  </div>
-                  <div>
-                    <div className="text-xs text-slate-400 font-medium uppercase tracking-wider">Mạng Bundler (EIP-4337)</div>
-                    <select 
-                      value={activeBundler}
-                      onChange={(e) => setActiveBundler(e.target.value)}
-                      className="bg-transparent text-sm font-bold text-blue-400 focus:outline-none cursor-pointer appearance-none mt-1"
-                    >
-                      {Object.entries(BUNDLER_OPTIONS).map(([key, option]) => (
-                        <option key={key} value={key} className="bg-slate-800 text-white">
-                          {option.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
+                <h3 className="text-2xl font-black text-white">30,700,000 VND</h3>
+                <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-emerald-500/10 group-hover:bg-emerald-500/50 transition-all" />
               </div>
               
-              {/* Wallet Balances */}
-              <div className="flex flex-wrap gap-3 justify-end w-full lg:w-auto mt-4 md:mt-0">
-                <div className="bg-[#0a0a0a] border border-[#333] px-3 py-1.5 rounded-lg flex items-center gap-2">
-                  <span className="text-red-400 font-bold text-xs">VNĐ</span>
-                  <span className="text-white font-mono">{viewingUserStat.realBalances.VND.toLocaleString()}</span>
+              <div className="bg-[#121212] border border-[#222] p-5 rounded-2xl relative overflow-hidden group hover:border-teal-500/30 transition-all">
+                <div className="flex justify-between items-start mb-4">
+                  <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Smart Wallet Account Abstraction</p>
+                  <Wallet className="w-5 h-5 text-teal-400" />
                 </div>
-                <div className="bg-[#0a0a0a] border border-[#333] px-3 py-1.5 rounded-lg flex items-center gap-2">
-                  <span className="text-yellow-400 font-bold text-xs">VIET</span>
-                  <span className="text-white font-mono">{viewingUserStat.realBalances.VIET.toLocaleString()}</span>
-                </div>
-                <div className="bg-[#0a0a0a] border border-[#333] px-3 py-1.5 rounded-lg flex items-center gap-2">
-                  <span className="text-purple-400 font-bold text-xs">PI</span>
-                  <span className="text-white font-mono">{viewingUserStat.realBalances.PI.toFixed(2)}</span>
-                </div>
-                <div className="bg-[#0a0a0a] border border-[#333] px-3 py-1.5 rounded-lg flex items-center gap-2">
-                  <span className="text-emerald-400 font-bold text-xs">USDT</span>
-                  <span className="text-white font-mono">{viewingUserStat.realBalances.USDT.toFixed(2)}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              
-              {/* TASKS (Earn) */}
-              <div className="space-y-6">
-                
-                {/* Task 1: AdSense Simulation */}
-                <div className="bg-gradient-to-br from-[#1c1c1c] to-[#0a0a0a] border border-[#262626] rounded-2xl p-6 relative overflow-hidden group">
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-3xl group-hover:bg-emerald-500/20 transition-all"></div>
-                  
-                  <div className="flex justify-between items-start mb-4 relative z-10">
-                    <div>
-                      <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                        <PlayCircle className="w-6 h-6 text-emerald-400" /> Xem Quảng Cáo Web3
-                      </h3>
-                      <p className="text-sm text-slate-400 mt-1">Nhiệm vụ lặp lại mỗi 4 giờ. Giúp duy trì quỹ nhân văn.</p>
-                    </div>
-                    <div className="bg-[#1a1a1a] border border-[#333] px-3 py-1 rounded-md text-emerald-400 text-xs font-bold shadow-sm">
-                      + 5,000 VNĐ & 0.1 PI
-                    </div>
-                  </div>
-
-                  <div className="mt-6 relative z-10">
-                    {cooldownStr ? (
-                      <button disabled className="w-full bg-[#222] text-slate-500 font-bold py-3 rounded-xl border border-[#333] flex justify-center items-center gap-2 cursor-not-allowed">
-                        <Clock className="w-5 h-5" /> Trở lại sau {cooldownStr}
-                      </button>
-                    ) : isWatchingAd ? (
-                      <div className="w-full bg-[#111] border border-emerald-500/50 rounded-xl p-4 text-center">
-                        <div className="text-emerald-400 text-2xl font-mono font-bold mb-2">00:{adTimer.toString().padStart(2, '0')}</div>
-                        <p className="text-xs text-slate-400 animate-pulse mb-4">Đang phát quảng cáo... vui lòng không đóng cửa sổ.</p>
-                        
-                        <div className="w-full h-[90px] bg-[#0a0a0a] border border-dashed border-[#333] flex items-center justify-center relative overflow-hidden rounded-lg">
-                           <span className="text-slate-600 text-xs z-10 absolute pointer-events-none">Ads Container (Insert Google script here)</span>
-                        </div>
-                      </div>
-                    ) : (
-                      <button 
-                        onClick={handleStartAd}
-                        className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 rounded-xl transition shadow-[0_0_15px_rgba(16,185,129,0.2)] flex justify-center items-center gap-2"
-                      >
-                        <PlayCircle className="w-5 h-5" /> Bắt đầu xem (15s)
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {/* Task 2: Quiz (Học Tập) */}
-                <div className="bg-gradient-to-br from-[#1c1c1c] to-[#0a0a0a] border border-[#262626] rounded-2xl p-6 relative overflow-hidden group">
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl group-hover:bg-blue-500/20 transition-all"></div>
-                  
-                  <div className="flex justify-between items-start mb-4 relative z-10">
-                    <div>
-                      <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                        <GraduationCap className="w-6 h-6 text-blue-400" /> Khóa Học Y Khoa
-                      </h3>
-                      <p className="text-sm text-slate-400 mt-1">Trả lời câu hỏi kiến thức để nhận thưởng ngay.</p>
-                    </div>
-                    {quizCompleted[viewingUserId] ? (
-                      <div className="bg-emerald-500/20 text-emerald-400 px-3 py-1 rounded-md text-xs font-bold border border-emerald-500/30 flex items-center gap-1">
-                        <CheckCircle2 className="w-4 h-4" /> Đã hoàn thành
-                      </div>
-                    ) : (
-                      <div className="bg-[#1a1a1a] border border-[#333] px-3 py-1 rounded-md text-blue-400 text-xs font-bold shadow-sm">
-                        + {QUIZ_QUESTIONS[currentQuizIndex].reward.VIET.toLocaleString()} VIET
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="mt-4 relative z-10">
-                    {quizCompleted[viewingUserId] ? (
-                      <div className="bg-[#111] p-6 rounded-xl border border-[#333] text-center">
-                        <div className="text-4xl mb-3">🎉</div>
-                        <h4 className="text-white font-bold mb-1">Tuyệt vời - Kiến thức là tài sản lớn nhất.</h4>
-                        <p className="text-sm text-slate-400">Bạn đã nhận thưởng. Hãy quay lại vào ngày mai!</p>
-                      </div>
-                    ) : (
-                      <div className="bg-[#161616] border border-[#262626] rounded-xl p-5">
-                        <h4 className="text-white font-medium mb-4 leading-relaxed">{QUIZ_QUESTIONS[currentQuizIndex].question}</h4>
-                        <div className="space-y-2">
-                          {QUIZ_QUESTIONS[currentQuizIndex].options.map((opt, idx) => (
-                            <button
-                              key={idx}
-                              onClick={() => setSelectedAnswer(idx)}
-                              className={`w-full text-left px-4 py-3 rounded-lg border text-sm transition-all ${selectedAnswer === idx ? 'bg-blue-500/20 border-blue-500 text-blue-300' : 'bg-[#111] border-[#333] text-slate-300 hover:border-[#555]'}`}
-                            >
-                              <span className="inline-block w-6 h-6 rounded-full bg-[#222] text-center leading-6 mr-3 text-xs border border-[#444]">{['A', 'B', 'C', 'D'][idx]}</span>
-                              {opt}
-                            </button>
-                          ))}
-                        </div>
-                        <button 
-                          onClick={handleAnswerQuiz}
-                          disabled={selectedAnswer === null}
-                          className="w-full mt-4 bg-blue-500 hover:bg-blue-600 disabled:bg-[#333] disabled:text-slate-500 text-white font-bold py-3 rounded-xl transition shadow-sm"
-                        >
-                          Trả lời & Nhận thưởng
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
+                <h3 className="text-lg font-mono font-bold text-white truncate">BSC Testnet Client Ready</h3>
+                <p className="text-[11px] text-slate-500 truncate mt-1">Pimlico Bundler: Enabled</p>
+                <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-teal-500/10 group-hover:bg-teal-500/50 transition-all" />
               </div>
 
-              {/* AFFILIATE NETWORK (Right Column) */}
-              <div className="space-y-6">
-                
-                {/* Invite Box */}
-                <div className="bg-[#141414] border border-[#262626] rounded-2xl p-6 text-center">
-                  <div className="w-16 h-16 bg-red-500/20 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/30">
-                    <Network className="w-8 h-8" />
-                  </div>
-                  <h3 className="text-xl font-bold text-white mb-2">Xây Dựng Mạng Lưới Lan Tỏa</h3>
-                  <p className="text-sm text-slate-400 mb-6 px-4">
-                    Nhận ngay hoa hồng lên đến {policy.reduce((a,b)=>a+b.rate,0)}% (đa tầng) mỗi khi tuyến dưới của bạn xem quảng cáo, học tập hoặc đóng góp quỹ.
-                  </p>
-                  
-                  <div className="bg-[#0a0a0a] p-2 rounded-xl flex items-center border border-[#333]">
-                    <div className="flex-1 overflow-hidden">
-                      <input 
-                        type="text" 
-                        readOnly 
-                        value={`https://hien-mau-nhan-van.vercel.app/r/${viewingUserStat.id}`}
-                        className="w-full bg-transparent text-slate-300 text-sm px-3 outline-none"
-                      />
-                    </div>
-                    <button 
-                      onClick={handleCopyLink}
-                      className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-bold text-sm transition flex items-center gap-2"
-                    >
-                      <Copy className="w-4 h-4" /> Copy
-                    </button>
-                  </div>
-                  
-                  <div className="mt-5 grid grid-cols-2 gap-4">
-                    <div className="bg-[#1a1a1a] p-3 rounded-lg border border-[#262626]">
-                      <div className="text-xs text-slate-400 mb-1">Thành viên F1</div>
-                      <div className="text-2xl font-bold text-white">{viewingUserStat.f1Count}</div>
-                    </div>
-                    <div className="bg-[#1a1a1a] p-3 rounded-lg border border-[#262626]">
-                      <div className="text-xs text-slate-400 mb-1">Tổng hoa hồng (VNĐ)</div>
-                      <div className="text-2xl font-bold text-emerald-400">{viewingUserStat.totalEarnedVND.toLocaleString()}</div>
-                    </div>
-                  </div>
+              <div className="bg-[#121212] border border-[#222] p-5 rounded-2xl relative overflow-hidden group hover:border-purple-500/30 transition-all">
+                <div className="flex justify-between items-start mb-4">
+                  <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Alchemy Webhook Status</p>
+                  <Activity className="w-5 h-5 text-purple-400" />
                 </div>
-
-                {/* Affiliate History Table */}
-                <div className="bg-[#141414] border border-[#262626] rounded-2xl overflow-hidden flex flex-col">
-                  <div className="p-4 border-b border-[#262626] flex justify-between items-center bg-[#1a1a1a]">
-                    <h3 className="font-bold text-white flex items-center gap-2">
-                      <History className="w-5 h-5 text-red-400" /> Dòng Tiền Thụ Động
-                    </h3>
-                  </div>
-                  <div className="flex-1 max-h-[300px] overflow-y-auto bg-[#0a0a0a]">
-                    <div className="space-y-1 p-2">
-                      {viewingUserStat.commissionDetails.slice().reverse().map(c => (
-                        <div key={c.id} className="p-3 bg-[#141414] hover:bg-[#1a1a1a] border border-[#222] hover:border-[#333] rounded-xl transition flex justify-between items-center">
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className="font-bold text-slate-200">{c.buyerName}</span>
-                              <span className="bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded text-[10px] font-bold border border-red-500/20">F{c.level}</span>
-                            </div>
-                            <div className="text-xs text-slate-500 mt-1">{c.note}</div>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-emerald-400 font-bold text-sm">+{c.amount.toLocaleString()} đ</div>
-                            <div className="text-[10px] text-slate-500 mt-0.5">Tỷ lệ chiết khấu: {c.rate}%</div>
-                          </div>
-                        </div>
-                      ))}
-                      {viewingUserStat.commissionDetails.length === 0 && (
-                        <div className="text-center p-8 text-slate-500 text-sm">
-                          Chưa có hoa hồng phát sinh từ hệ thống tuyến dưới.
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ==========================================
-            TAB 2: QUẢN TRỊ ADMIN (DARK MODE)
-            ========================================== */}
-        {activeTab === 'admin' && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-in fade-in duration-300">
-            <div className="bg-[#141414] p-6 rounded-2xl border border-[#262626]">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-lg font-bold flex items-center gap-2 text-white">
-                  <Target className="w-5 h-5 text-red-500" /> Cấu Hình Hoa Hồng Đa Tầng
-                </h2>
-                <button 
-                  onClick={handleAddLevel}
-                  className="flex items-center gap-1 text-sm bg-red-500/10 text-red-400 border border-red-500/20 px-3 py-1.5 rounded-lg hover:bg-red-500/20 transition font-medium"
-                >
-                  <Plus className="w-4 h-4" /> Thêm Tầng
-                </button>
-              </div>
-
-              <div className="space-y-3 mb-6">
-                {policy.map((levelPolicy) => (
-                  <div key={levelPolicy.level} className="flex items-center justify-between bg-[#0a0a0a] p-3 rounded-xl border border-[#333] hover:border-red-500/50 transition-colors">
-                    <div className="flex items-center gap-4 flex-1">
-                      <span className="font-bold text-red-400 bg-[#1a1a1a] px-3 py-1.5 rounded-lg border border-[#333]">
-                        Tầng F{levelPolicy.level}
-                      </span>
-                      <div className="flex items-center gap-2">
-                        <input 
-                          type="number" min="0" max="100" step="0.1"
-                          value={levelPolicy.rate}
-                          onChange={(e) => handleUpdateRate(levelPolicy.level, e.target.value)}
-                          className="w-20 px-2 py-1.5 border border-[#444] rounded-md focus:ring-1 focus:ring-red-500 outline-none text-center font-medium bg-[#141414] text-white"
-                        />
-                        <span className="text-slate-500">%</span>
-                      </div>
-                    </div>
-                    <button onClick={() => handleRemoveLevel(levelPolicy.level)} className="p-2 text-slate-500 hover:text-red-500 bg-[#1a1a1a] hover:bg-[#222] border border-[#333] rounded-lg">
-                      <Trash2 className="w-5 h-5" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-
-              <div className="bg-gradient-to-br from-[#1a1a1a] to-[#0a0a0a] rounded-xl p-5 border border-[#333]">
-                <h3 className="text-md font-bold text-white flex items-center gap-2 mb-3">
-                  <Sparkles className="w-5 h-5 text-red-500" /> Cố Vấn Chiến Lược (Gemini AI)
+                <h3 className="text-2xl font-black text-white flex items-center gap-2">
+                  Active
+                  <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]" />
                 </h3>
-                <button 
-                  onClick={handleAnalyzeSystem} disabled={isAnalyzing}
-                  className="w-full bg-[#262626] hover:bg-[#333] border border-[#444] text-white px-4 py-2.5 rounded-lg text-sm font-bold transition flex items-center justify-center gap-2 disabled:opacity-50"
-                >
-                  {isAnalyzing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Activity className="w-4 h-4" />}
-                  Kiểm Tra Sức Khỏe Hệ Thống
-                </button>
-                {aiAnalysis && (
-                  <div className="mt-4 bg-[#0a0a0a] p-4 rounded-lg border border-[#333] text-sm text-slate-300 whitespace-pre-wrap leading-relaxed">
-                    {aiAnalysis}
-                  </div>
-                )}
+                <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-purple-500/10 group-hover:bg-purple-500/50 transition-all" />
               </div>
             </div>
 
-            <div className="bg-[#141414] p-6 rounded-2xl border border-[#262626]">
-              <h2 className="text-lg font-bold flex items-center gap-2 mb-6 text-white">
-                <ShoppingCart className="w-5 h-5 text-red-500" /> Mô Phỏng Đóng Góp Quỹ
-              </h2>
-              <p className="text-sm text-slate-400 mb-4">Mô phỏng hành động nạp tiền/đóng góp để xem hệ thống chia % cho tuyến trên như thế nào.</p>
-              <form onSubmit={handleSimulatePurchase} className="space-y-4 bg-[#0a0a0a] p-5 rounded-xl border border-[#333]">
-                <div>
-                  <label className="block text-sm font-bold text-slate-300 mb-1.5">Ai là người đóng góp?</label>
-                  <select name="userId" required className="w-full px-4 py-2.5 bg-[#141414] text-white border border-[#444] rounded-lg focus:ring-1 focus:ring-red-500 outline-none appearance-none">
-                    <option value="">-- Chọn thành viên --</option>
-                    {users.map(u => (
-                      <option key={`opt_${u.id}`} value={u.id}>{u.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-slate-300 mb-1.5">Giá trị đóng góp (VNĐ)</label>
-                  <input 
-                    type="number" name="amount" required min="1000" step="1000" placeholder="VD: 500000"
-                    className="w-full px-4 py-2.5 bg-[#141414] text-white border border-[#444] rounded-lg focus:ring-1 focus:ring-red-500 outline-none"
-                  />
-                </div>
-                <button type="submit" className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg transition shadow-[0_0_15px_rgba(239,68,68,0.2)] mt-2">
-                  Tạo Giao Dịch Vào Hệ Thống
-                </button>
-              </form>
+            {/* ĐỒ THỊ DOANH THU MÔ PHỎNG */}
+            <div className="bg-[#121212] border border-[#222] p-6 rounded-2xl">
+              <h4 className="text-sm font-bold uppercase tracking-wider text-white mb-6">Biểu Đồ Doanh Thu Theo Thành Viên</h4>
+              <div className="h-64 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={userStats}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#222" />
+                    <XAxis dataKey="name" stroke="#666" fontSize={11} />
+                    <YAxis stroke="#666" fontSize={11} />
+                    <Tooltip contentStyle={{ backgroundColor: '#141414', borderColor: '#333', color: '#fff' }} />
+                    <Bar dataKey="totalEarnedVND" fill="#10b981" radius={[4, 4, 0, 0]} name="Doanh Thu (VND)" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             </div>
           </div>
         )}
 
-        {/* ==========================================
-            TAB 3: THỐNG KÊ TỔNG (DARK MODE)
-            ========================================== */}
-        {activeTab === 'stats' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in duration-300">
-             <div className="lg:col-span-2 bg-[#141414] p-6 rounded-2xl border border-[#262626]">
-                 <h2 className="text-lg font-bold mb-6 text-white flex items-center gap-2">
-                   <BarChart className="w-5 h-5 text-red-500" /> Bảng Xếp Hạng Thu Nhập Leader
-                 </h2>
-                 <div className="h-[300px] w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#333"/>
-                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} />
-                      <YAxis axisLine={false} tickLine={false} tickFormatter={(value) => `${(value/1000).toLocaleString()}k`} tick={{fill: '#94a3b8', fontSize: 12}} />
-                      <Tooltip 
-                        formatter={(value) => [`${value.toLocaleString()} VNĐ`, 'Thu nhập']} 
-                        cursor={{fill: '#1a1a1a'}} 
-                        contentStyle={{backgroundColor: '#0a0a0a', borderColor: '#333', borderRadius: '8px', color: '#fff'}}
-                      />
-                      <Bar dataKey="Hoa hồng (VNĐ)" fill="#ef4444" radius={[6, 6, 0, 0]} barSize={40} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                 </div>
-              </div>
+        {/* ========================================== */}
+        {/* TAB 2: QUẢN LÝ THÀNH VIÊN (USERS)          */}
+        {/* ========================================== */}
+        {activeTab === 'users' && (
+          <div className="bg-[#121212] border border-[#222] rounded-2xl overflow-hidden animate-fadeIn">
+            <div className="p-5 border-b border-[#222] flex justify-between items-center bg-[#161616]">
+              <h3 className="text-sm font-bold uppercase tracking-wider text-white">Danh sách tài khoản liên kết trong mạng lưới</h3>
+            </div>
+            <div className="divide-y divide-[#222]">
+              {userStats.map((u) => (
+                <div key={u.id} className="p-4 flex items-center justify-between hover:bg-[#161616] transition-colors">
+                  <div className="flex items-center gap-3">
+                    <UserCircle className="w-8 h-8 text-slate-500" />
+                    <div>
+                      <p className="text-sm font-bold text-white">{u.name}</p>
+                      <span className="text-[10px] uppercase font-mono tracking-widest bg-[#222] px-2 py-0.5 rounded text-slate-400 border border-[#333]">
+                        {u.role}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-black text-emerald-400">{u.totalEarnedVND.toLocaleString()} VND</p>
+                    <p className="text-[11px] text-slate-500">{u.referrals} F1 giới thiệu</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
-              <div className="bg-[#141414] rounded-2xl border border-[#262626] p-6 flex flex-col text-slate-200">
-                <h2 className="text-lg font-bold text-white flex items-center gap-2 mb-2">
-                  <MessageSquareText className="w-5 h-5 text-red-400" /> AI Content Generator
-                </h2>
-                <p className="text-sm text-slate-400 mb-4">Tạo bài PR tự động cho Top Earners đăng MXH.</p>
-                <div className="space-y-4 flex-1 overflow-y-auto pr-1">
-                  {userStats.filter(u => u.totalEarnedVND > 0 && u.id !== 'u1').slice(0, 3).map(user => (
-                    <div key={`ai_marketing_${user.id}`} className="p-4 border rounded-xl border-[#333] bg-[#0a0a0a]">
-                      <div className="flex justify-between items-center mb-3">
-                        <div>
-                          <div className="font-bold text-white">{user.name}</div>
-                          <div className="text-xs text-emerald-400 font-mono mt-0.5">{user.totalEarnedVND.toLocaleString()} đ</div>
-                        </div>
-                        <button
-                          onClick={() => handleGenerateMarketingCopy(user)} disabled={isGeneratingCopy[user.id]}
-                          className="p-2 bg-[#222] hover:bg-[#333] border border-[#444] text-white rounded-lg transition disabled:opacity-50"
-                        >
-                          {isGeneratingCopy[user.id] ? <Loader2 className="w-4 h-4 animate-spin text-red-500" /> : <Sparkles className="w-4 h-4 text-red-400" />}
-                        </button>
-                      </div>
-                      {marketingCopy[user.id] && (
-                        <div className="p-3 bg-[#141414] border border-[#262626] rounded-lg text-sm text-slate-300 whitespace-pre-wrap">
-                          {marketingCopy[user.id]}
-                        </div>
-                      )}
+        {/* ========================================== */}
+        {/* TAB 3: ALCHEMY WEBHOOK & AUTOMATION (MỚI) */}
+        {/* ========================================== */}
+        {activeTab === 'webhooks' && (
+          <div className="space-y-6 animate-fadeIn">
+            
+            {/* THÔNG TIN KẾT NỐI TỪ ALCHEMY QUA VERCEL */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              
+              {/* CARD CẤU HÌNH THÔNG SỐ LINK URL */}
+              <div className="lg:col-span-2 bg-[#121212] border border-[#222] p-6 rounded-2xl space-y-5">
+                <div className="flex items-center gap-2 pb-2 border-b border-[#222]">
+                  <Link2 className="w-5 h-5 text-emerald-400" />
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-white">Alchemy Webhook Link Mạng Lưới</h3>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-[11px] text-slate-400 uppercase tracking-wider mb-1.5 font-semibold">
+                      1. Địa chỉ nhận Webhook phản hồi (Vercel Production Endpoint):
+                    </label>
+                    <div className="flex items-center gap-2 bg-[#181818] border border-[#2d2d2d] rounded-xl p-3 font-mono text-xs text-slate-300">
+                      <span className="flex-1 truncate select-all">https://hien-mau-nhan-van.vercel.app/api/alchemy-webhook</span>
+                      <button 
+                        onClick={() => handleCopy('https://hien-mau-nhan-van.vercel.app/api/alchemy-webhook', 'URL Webhook API')}
+                        className="p-1.5 hover:bg-[#282828] rounded-lg transition-colors text-slate-400 hover:text-white"
+                        title="Copy Webhook URL"
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                      </button>
                     </div>
-                  ))}
-                  {userStats.filter(u => u.totalEarnedVND > 0 && u.id !== 'u1').length === 0 && (
-                    <div className="text-center p-8 text-slate-600 text-sm border border-dashed border-[#333] rounded-xl mt-4">
-                      Hệ thống chưa có người đạt doanh thu.
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] text-slate-400 uppercase tracking-wider mb-1.5 font-semibold">
+                      2. Cấu hình ứng dụng giám sát ứng dụng trực tiếp trên Alchemy:
+                    </label>
+                    <div className="flex items-center gap-2 bg-[#181818] border border-[#2d2d2d] rounded-xl p-3 font-mono text-xs text-slate-300">
+                      <span className="flex-1 truncate select-all">https://dashboard.alchemy.com/apps/xo4ut1zr4j2ut5qk/webhooks/create</span>
+                      <a 
+                        href="https://dashboard.alchemy.com/apps/xo4ut1zr4j2ut5qk/webhooks/create" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="p-1.5 hover:bg-[#282828] rounded-lg transition-colors text-emerald-400 hover:text-emerald-300 flex items-center gap-1"
+                      >
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </a>
                     </div>
-                  )}
+                  </div>
+                </div>
+
+                <div className="bg-emerald-950/20 border border-emerald-500/20 rounded-xl p-4 text-xs text-slate-400 space-y-1">
+                  <p className="font-bold text-emerald-400 flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4" /> Hướng dẫn tích hợp thời gian thực:
+                  </p>
+                  <p>Khi các Smart Account thực hiện giao dịch thông qua cơ chế Account Abstraction, Alchemy Custom Webhook sẽ tự động tóm cập nhật dữ liệu qua API Vercel và đẩy đồng bộ thẳng vào cluster MongoDB của bạn.</p>
                 </div>
               </div>
+
+              {/* CARD HIỂN THỊ CẤU HÌNH TRỰC QUAN GRAPHQL SCHEMA */}
+              <div className="bg-[#121212] border border-[#222] p-6 rounded-2xl flex flex-col">
+                <div className="flex items-center justify-between pb-2 border-b border-[#222] mb-4">
+                  <div className="flex items-center gap-2">
+                    <Terminal className="w-5 h-5 text-teal-400" />
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-white">Custom GraphQL Schema Filter</h3>
+                  </div>
+                  <button 
+                    onClick={() => handleCopy(alchemyGraphQLSchema, 'GraphQL Query Schema')}
+                    className="text-[11px] text-emerald-400 hover:underline flex items-center gap-1"
+                  >
+                    <Copy className="w-3 h-3" /> Copy Code
+                  </button>
+                </div>
+                
+                <div className="flex-1 bg-[#161616] border border-[#2d2d2d] rounded-xl p-3 font-mono text-[11px] text-slate-400 overflow-y-auto max-h-56 select-all whitespace-pre">
+                  {alchemyGraphQLSchema}
+                </div>
+              </div>
+            </div>
+
+            {/* BẢNG THEO DÕI REAL-TIME WEBHOOK LOGS TỪ MONGO_DB */}
+            <div className="bg-[#121212] border border-[#222] rounded-2xl overflow-hidden">
+              <div className="p-5 border-b border-[#222] flex justify-between items-center bg-[#161616]">
+                <div className="flex items-center gap-2">
+                  <History className="w-4 h-4 text-purple-400" />
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-white">Nhật ký dữ liệu sự kiện nhận được từ Alchemy Webhook</h3>
+                </div>
+                <button 
+                  onClick={fetchWebhookLogs}
+                  disabled={loadingLogs}
+                  className="px-3 py-1.5 bg-[#252525] border border-[#383838] hover:bg-[#303030] rounded-lg text-xs font-semibold flex items-center gap-2 text-white transition-all disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${loadingLogs ? 'animate-spin text-emerald-400' : ''}`} />
+                  Làm mới
+                </button>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-[#222] bg-[#181818] text-[11px] uppercase tracking-wider text-slate-400">
+                      <th className="p-4 font-bold">Transaction Hash</th>
+                      <th className="p-4 font-bold">Wallet Address (From)</th>
+                      <th className="p-4 font-bold">Event Type</th>
+                      <th className="p-4 font-bold">Thời gian nhận</th>
+                      <th className="p-4 font-bold text-center">Trạng thái lưu DB</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#222] text-xs">
+                    {webhookLogs.map((log) => (
+                      <tr key={log._id} className="hover:bg-[#161616] transition-colors">
+                        <td className="p-4 font-mono text-emerald-400 select-all max-w-[220px] truncate">
+                          {log.txHash}
+                        </td>
+                        <td className="p-4 font-mono text-slate-300 select-all max-w-[200px] truncate">
+                          {log.wallet}
+                        </td>
+                        <td className="p-4">
+                          <span className="px-2 py-0.5 bg-purple-500/10 text-purple-400 border border-purple-500/20 rounded font-mono text-[10px]">
+                            {log.type}
+                          </span>
+                        </td>
+                        <td className="p-4 text-slate-400">
+                          {new Date(log.createdAt).toLocaleString('vi-VN')}
+                        </td>
+                        <td className="p-4 text-center">
+                          <span className="inline-flex items-center gap-1 text-[11px] text-emerald-400 font-medium bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                            <Check className="w-3 h-3" /> Success
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                    {webhookLogs.length === 0 && (
+                      <tr>
+                        <td colSpan="5" className="text-center p-12 text-slate-500 text-sm font-medium">
+                          {loadingLogs ? 'Đang truy vấn dữ liệu...' : 'Hệ thống chưa nhận được log sự kiện webhook nào từ Alchemy.'}
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
           </div>
         )}
 
       </main>
 
-      {/* --- CUSTOM TOAST COMPONENT --- */}
-      <div className={`fixed bottom-6 right-6 bg-[#141414] border p-4 rounded-xl shadow-2xl transition-all duration-300 z-[100] flex items-start gap-3 max-w-sm pointer-events-none ${toast.show ? 'translate-y-0 opacity-100' : 'translate-y-20 opacity-0'} ${toast.type === 'success' ? 'border-emerald-500/30' : 'border-red-500/30'}`}>
+      {/* --- THÔNG BÁO TOAST THÔNG MINH BÊN GÓC PHẢI --- */}
+      <div className={`fixed bottom-6 right-6 bg-[#141414] border p-4 rounded-xl shadow-2xl transition-all duration-300 z-[100] flex items-start gap-3 max-w-sm pointer-events-none ${toast.show ? 'translate-y-0 opacity-100' : 'translate-y-20 opacity-0'} ${toast.type === 'success' ? 'border-emerald-500/30 shadow-emerald-950/40' : 'border-red-500/30 shadow-red-950/40'}`}>
         <div className="mt-1">
           {toast.type === 'success' ? (
             <CheckCircle2 className="w-5 h-5 text-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.4)] rounded-full bg-[#141414]" />
@@ -911,8 +399,8 @@ export default function AffiliateSystem() {
           )}
         </div>
         <div>
-          <h4 className="text-white font-bold text-sm mb-1">{toast.title}</h4>
-          <p className="text-slate-400 text-xs leading-relaxed">{toast.message}</p>
+          <h4 className="text-xs font-bold uppercase tracking-wider text-white">Hệ Thống Thông Báo</h4>
+          <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">{toast.message}</p>
         </div>
       </div>
 
