@@ -19,8 +19,6 @@ import { createSmartAccountClient } from 'permissionless';
 import { toSimpleSmartAccount } from 'permissionless/accounts';
 import { privateKeyToAccount } from 'viem/accounts';
 
-import { createPimlicoPaymasterClient } from 'permissionless/clients/pimlico';
-
 // Lấy từ .env (Đảm bảo file .env của Vite dùng tiền tố VITE_)
 const BUNDLER_URL = import.meta.env.VITE_BUNDLER_URL || "https://api.pimlico.io/v2/97/rpc?apikey=YOUR_PIMLICO_API_KEY";
 const PAYMASTER_ADDRESS = import.meta.env.VITE_PAYMASTER_ADDRESS || "0x177858e3450ff286E7d301100363567A555E435f";
@@ -29,11 +27,6 @@ const AFFILIATE_CONTRACT = import.meta.env.VITE_AFFILIATE_CONTRACT || "0x44f787D
 const publicClient = createPublicClient({
   chain: bscTestnet,
   transport: http("https://data-seed-prebsc-1-s1.binance.org:8545")
-});
-
-const paymasterClient = createPimlicoPaymasterClient({
-  transport: http(BUNDLER_URL),
-  entryPoint: "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789",
 });
 
 // --- MOCK DATA BAN ĐẦU ---
@@ -248,14 +241,19 @@ export default function AffiliateSystem() {
         }
       });
 
-      // 3. Khởi tạo Smart Account Client với Middleware chuẩn của Pimlico
+      // 3. Khởi tạo Smart Account Client
       const smartAccountClient = createSmartAccountClient({
         account: smartAccount,
         chain: bscTestnet,
         bundlerTransport: http(BUNDLER_URL),
         middleware: {
-          // Ủy quyền việc cấp Gas cho Pimlico Paymaster Client
-          sponsorUserOperation: paymasterClient.sponsorUserOperation,
+          sponsorUserOperation: async ({ userOperation }) => {
+            // Tự động chèn Custom Paymaster của bạn vào giao dịch
+            return {
+              ...userOperation,
+              paymasterAndData: PAYMASTER_ADDRESS
+            };
+          }
         }
       });
 
