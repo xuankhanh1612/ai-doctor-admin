@@ -241,19 +241,20 @@ export default function AffiliateSystem() {
         }
       });
 
-      // 3. Khởi tạo Smart Account Client
+      // 3. Khởi tạo Smart Account Client (Sửa lỗi AA21 Estimate Gas)
       const smartAccountClient = createSmartAccountClient({
         account: smartAccount,
         chain: bscTestnet,
         bundlerTransport: http(BUNDLER_URL),
         middleware: {
-          sponsorUserOperation: async ({ userOperation }) => {
-            // Tự động chèn Custom Paymaster của bạn vào giao dịch
-            return {
-              ...userOperation,
-              paymasterAndData: PAYMASTER_ADDRESS
-            };
-          }
+          // BƯỚC QUAN TRỌNG: Nói với Bundler dùng Paymaster này để mô phỏng tính Gas
+          dummyPaymasterAndData: async () => PAYMASTER_ADDRESS,
+          
+          // Sau khi tính Gas xong, đính kèm Paymaster vào giao dịch thật
+          sponsorUserOperation: async ({ userOperation }) => ({
+            ...userOperation,
+            paymasterAndData: PAYMASTER_ADDRESS
+          })
         }
       });
 
