@@ -4,7 +4,7 @@ import {
   ShoppingCart, Activity, Sparkles, Loader2, MessageSquareText, 
   Network, UserCircle, Target, TrendingUp, Lightbulb,
   HeartHandshake, PlayCircle, Clock, GraduationCap, Copy, CheckCircle2,
-  Wallet, History, AlertTriangle
+  Wallet, History, AlertTriangle, ServerCog
 } from 'lucide-react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer 
@@ -19,8 +19,11 @@ import { createSmartAccountClient } from 'permissionless';
 import { toSimpleSmartAccount } from 'permissionless/accounts';
 import { privateKeyToAccount } from 'viem/accounts';
 
-// Lấy từ .env (Đảm bảo file .env của Vite dùng tiền tố VITE_)
-const BUNDLER_URL = import.meta.env.VITE_BUNDLER_URL || "https://api.pimlico.io/v2/97/rpc?apikey=YOUR_API_KEY";
+// Các URL cấu hình từ .env
+const PIMLICO_URL = import.meta.env.VITE_BUNDLER_URL || "https://api.pimlico.io/v2/97/rpc?apikey=YOUR_API_KEY";
+const BICONOMY_URL = import.meta.env.VITE_BICONOMY_BUNDLER_URL || "https://bundler.biconomy.io/api/v2/97/YOUR_API_KEY";
+const ALCHEMY_URL = import.meta.env.VITE_ALCHEMY_BUNDLER_URL || "https://bnbsmartchain-testnet.g.alchemy.com/v2/YOUR_API_KEY";
+
 const PAYMASTER_ADDRESS = import.meta.env.VITE_PAYMASTER_ADDRESS || "0x177858e3450ff286E7d301100363567A555E435f";
 const AFFILIATE_CONTRACT = import.meta.env.VITE_AFFILIATE_CONTRACT || "0x44f787D670Ff4Ef65334D6637960bb7Fe5E1231c";
 
@@ -28,6 +31,13 @@ const publicClient = createPublicClient({
   chain: bscTestnet,
   transport: http("https://data-seed-prebsc-1-s1.binance.org:8545")
 });
+
+// Danh sách Bundler cho Dropdown
+const BUNDLER_OPTIONS = {
+  pimlico: { name: 'Pimlico (Default)', url: PIMLICO_URL },
+  biconomy: { name: 'Biconomy (Custom PM)', url: BICONOMY_URL },
+  alchemy: { name: 'Alchemy (Custom PM)', url: ALCHEMY_URL }
+};
 
 // --- MOCK DATA BAN ĐẦU ---
 const defaultBalances = { VND: 0, VIET: 0, PI: 0, BTC: 0, ETH: 0, BNB: 0, USDT: 0 };
@@ -97,7 +107,10 @@ export default function AffiliateSystem() {
   const [users, setUsers] = useState(INITIAL_USERS);
   const [policy, setPolicy] = useState(INITIAL_POLICY);
   const [transactions, setTransactions] = useState(INITIAL_TRANSACTIONS);
+  
+  // States điều khiển giao diện
   const [viewingUserId, setViewingUserId] = useState('u2'); 
+  const [activeBundler, setActiveBundler] = useState('biconomy'); // Mặc định chọn Biconomy cho Custom Paymaster
 
   // --- CUSTOM TOAST STATE ---
   const [toast, setToast] = useState({ show: false, title: '', message: '', type: 'success' });
@@ -236,13 +249,13 @@ export default function AffiliateSystem() {
   // --- CORE WEB3: GỬI GIAO DỊCH KHÔNG TỐN PHÍ (GASLESS) ---
   const executeGaslessTask = async (userId, functionName, args) => {
     try {
-      showToast("Đang xử lý Web3", "Đang đóng gói giao dịch và xin cấp phí Gas...", "success");
+      showToast("Đang xử lý Web3", `Đang gửi lệnh qua mạng ${BUNDLER_OPTIONS[activeBundler].name}...`, "success");
 
       // 1. Lấy Private Key ẩn danh từ LocalStorage
       const userPrivateKey = getOrGeneratePrivateKey(userId); 
       const owner = privateKeyToAccount(userPrivateKey);
       
-      // 2. Khởi tạo Smart Account (Tự động nội suy Factory Address)
+      // 2. Khởi tạo Smart Account 
       const smartAccount = await toSimpleSmartAccount({
         client: publicClient,
         owner: owner,
@@ -252,25 +265,28 @@ export default function AffiliateSystem() {
         }
       });
 
-      // 3. Khởi tạo Smart Account Client với Custom Paymaster
+      // Lấy URL Bundler dựa trên lựa chọn từ Combo Box
+      const currentBundlerUrl = BUNDLER_OPTIONS[activeBundler].url;
+
+      // 3. Khởi tạo Smart Account Client 
       const smartAccountClient = createSmartAccountClient({
         account: smartAccount,
         chain: bscTestnet,
-        bundlerTransport: http(BUNDLER_URL),
+        bundlerTransport: http(currentBundlerUrl),
         paymaster: {
           getPaymasterStubData: async () => ({ paymasterAndData: PAYMASTER_ADDRESS }),
           getPaymasterData: async () => ({ paymasterAndData: PAYMASTER_ADDRESS })
         }
       });
 
-      // 4. Mã hóa lệnh gọi hàm Affiliate Contract
+      // 4. Mã hóa lệnh
       const callData = encodeFunctionData({
         abi: [{ type: "function", name: functionName, inputs: [{ type: "uint256" }] }],
         functionName: functionName,
         args: args,
       });
 
-      // 5. Gửi lên Blockchain (Khóa BaseFee để tránh lỗi BigInt trên BSC Testnet)
+      // 5. Gửi lên Blockchain
       const txHash = await smartAccountClient.sendTransaction({
         to: AFFILIATE_CONTRACT,
         data: callData,
@@ -311,7 +327,7 @@ export default function AffiliateSystem() {
         userId: viewingUserId,
         amount: 5000,
         date: new Date().toISOString().split('T')[0],
-        note: 'Xem Quảng Cáo (On-chain Web3)',
+        note: `Xem QC (Web3 - ${BUNDLER_OPTIONS[activeBundler].name})`,
         type: 'TASK_AD'
       };
       setTransactions(prev => [...prev, newTx]);
@@ -474,26 +490,51 @@ export default function AffiliateSystem() {
             
             {/* Multi-currency Wallet Header */}
             <div className="bg-[#141414] border border-[#262626] p-5 rounded-2xl flex flex-col md:flex-row justify-between items-center gap-4">
-              <div className="flex items-center gap-3 w-full md:w-auto">
-                <div className="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center border border-red-500/50">
-                  <UserCircle className="w-6 h-6 text-red-400" />
+              
+              <div className="flex flex-col md:flex-row gap-6 w-full md:w-auto">
+                {/* Chọn User */}
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center border border-red-500/50">
+                    <UserCircle className="w-6 h-6 text-red-400" />
+                  </div>
+                  <div>
+                    <div className="text-xs text-slate-400 font-medium uppercase tracking-wider">Đóng vai đại lý</div>
+                    <select 
+                      value={viewingUserId}
+                      onChange={(e) => setViewingUserId(e.target.value)}
+                      className="bg-transparent text-lg font-bold text-white focus:outline-none cursor-pointer appearance-none"
+                    >
+                      {users.filter(u => u.id !== 'u1').map(u => (
+                        <option key={`view_${u.id}`} value={u.id} className="bg-slate-800 text-white">{u.name}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
-                <div>
-                  <div className="text-xs text-slate-400 font-medium uppercase tracking-wider">Đóng vai đại lý</div>
-                  <select 
-                    value={viewingUserId}
-                    onChange={(e) => setViewingUserId(e.target.value)}
-                    className="bg-transparent text-lg font-bold text-white focus:outline-none cursor-pointer appearance-none"
-                  >
-                    {users.filter(u => u.id !== 'u1').map(u => (
-                      <option key={`view_${u.id}`} value={u.id} className="bg-slate-800 text-white">{u.name}</option>
-                    ))}
-                  </select>
+
+                {/* Chọn Bundler (Giao diện mới) */}
+                <div className="flex items-center gap-3 md:border-l md:border-[#333] md:pl-6">
+                  <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center border border-blue-500/30">
+                    <ServerCog className="w-5 h-5 text-blue-400" />
+                  </div>
+                  <div>
+                    <div className="text-xs text-slate-400 font-medium uppercase tracking-wider">Mạng Bundler (EIP-4337)</div>
+                    <select 
+                      value={activeBundler}
+                      onChange={(e) => setActiveBundler(e.target.value)}
+                      className="bg-transparent text-sm font-bold text-blue-400 focus:outline-none cursor-pointer appearance-none mt-1"
+                    >
+                      {Object.entries(BUNDLER_OPTIONS).map(([key, option]) => (
+                        <option key={key} value={key} className="bg-slate-800 text-white">
+                          {option.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               </div>
               
               {/* Wallet Balances */}
-              <div className="flex flex-wrap gap-3 justify-end w-full md:w-auto">
+              <div className="flex flex-wrap gap-3 justify-end w-full lg:w-auto mt-4 md:mt-0">
                 <div className="bg-[#0a0a0a] border border-[#333] px-3 py-1.5 rounded-lg flex items-center gap-2">
                   <span className="text-red-400 font-bold text-xs">VNĐ</span>
                   <span className="text-white font-mono">{viewingUserStat.realBalances.VND.toLocaleString()}</span>
