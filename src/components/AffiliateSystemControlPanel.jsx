@@ -222,49 +222,45 @@ export default function AffiliateSystem() {
     }));
   };
 
-  // --- CORE WEB3: GỬI GIAO DỊCH KHÔNG TỐN PHÍ (GASLESS) ---
+// --- CORE WEB3: GỬI GIAO DỊCH KHÔNG TỐN PHÍ (GASLESS) ---
   const executeGaslessTask = async (userId, functionName, args) => {
     try {
-      showToast("Đang xử lý Web3", "Đang tạo ví ẩn danh và xin cấp phí Gas...", "success");
+      showToast("Đang xử lý Web3", "Đang đóng gói giao dịch và xin cấp phí Gas...", "success");
 
-      // 1. Tạo Signer từ Private Key ảo
+      // 1. Lấy Private Key ẩn danh
       const mockPrivateKey = "0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"; 
       const owner = privateKeyToAccount(mockPrivateKey);
       
-      // 2. Khởi tạo Smart Account (Xóa factoryAddress để thư viện tự tìm đúng bản v0.6)
+      // 2. Khởi tạo Smart Account
       const smartAccount = await toSimpleSmartAccount({
         client: publicClient,
         owner: owner,
+        factoryAddress: "0x9406Cc6185a346906296ED927B7f54229C8f08bd",
         entryPoint: {
           address: "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789",
           version: "0.6"
         }
       });
 
-      // 3. Khởi tạo Smart Account Client (Sửa lỗi AA21 Estimate Gas)
+      // 3. Khởi tạo Smart Account Client với Custom Paymaster
       const smartAccountClient = createSmartAccountClient({
         account: smartAccount,
         chain: bscTestnet,
         bundlerTransport: http(BUNDLER_URL),
-        middleware: {
-          // BƯỚC QUAN TRỌNG: Nói với Bundler dùng Paymaster này để mô phỏng tính Gas
-          dummyPaymasterAndData: async () => PAYMASTER_ADDRESS,
-          
-          // Sau khi tính Gas xong, đính kèm Paymaster vào giao dịch thật
-          sponsorUserOperation: async ({ userOperation }) => ({
-            ...userOperation,
-            paymasterAndData: PAYMASTER_ADDRESS
-          })
+        paymaster: {
+          getPaymasterStubData: async () => ({ paymasterAndData: PAYMASTER_ADDRESS }),
+          getPaymasterData: async () => ({ paymasterAndData: PAYMASTER_ADDRESS })
         }
       });
 
-      // 4. Mã hóa lệnh & Gửi đi
+      // 4. Mã hóa lệnh gọi hàm Affiliate Contract
       const callData = encodeFunctionData({
         abi: [{ type: "function", name: functionName, inputs: [{ type: "uint256" }] }],
         functionName: functionName,
         args: args,
       });
 
+      // 5. Gửi lên Blockchain
       const txHash = await smartAccountClient.sendTransaction({
         to: AFFILIATE_CONTRACT,
         data: callData,
@@ -276,8 +272,7 @@ export default function AffiliateSystem() {
 
     } catch (error) {
       console.error("Web3 Error:", error);
-      // Hiển thị lỗi rõ ràng hơn để dễ debug
-      showToast("Lỗi Web3", "Không thể gửi giao dịch: " + (error.shortMessage || error.message.substring(0, 50)), "error");
+      showToast("Lỗi Web3", error.message || "Giao dịch thất bại", "error");
       return null;
     }
   };
