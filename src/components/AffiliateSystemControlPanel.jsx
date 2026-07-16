@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { 
   Users, Settings, DollarSign, Plus, Trash2, ArrowRight, 
   ShoppingCart, Activity, Sparkles, Loader2, MessageSquareText, 
@@ -110,7 +110,7 @@ export default function AffiliateSystem() {
   
   // States điều khiển giao diện
   const [viewingUserId, setViewingUserId] = useState('u2'); 
-  const [activeBundler, setActiveBundler] = useState('biconomy'); // Mặc định chọn Biconomy cho Custom Paymaster
+  const [activeBundler, setActiveBundler] = useState('pimlico'); // Đặt Pimlico làm mặc định cho BSC Testnet
 
   // --- CUSTOM TOAST STATE ---
   const [toast, setToast] = useState({ show: false, title: '', message: '', type: 'success' });
@@ -306,12 +306,18 @@ export default function AffiliateSystem() {
   };
 
   // --- TASK HANDLERS ---
+  const isProcessingRef = useRef(false); // Thêm cờ khóa chống nháy đúp của React 18
+
   const handleStartAd = () => {
     setIsWatchingAd(true);
     setAdTimer(15); 
   };
 
   const handleAdSuccess = async () => {
+    // Nếu đang xử lý dở thì chặn không cho chạy lần 2
+    if (isProcessingRef.current) return; 
+    isProcessingRef.current = true; // Bật khóa
+    
     setIsWatchingAd(false);
     
     const txHash = await executeGaslessTask(viewingUserId, "rewardTask", [5000n]);
@@ -332,6 +338,8 @@ export default function AffiliateSystem() {
       };
       setTransactions(prev => [...prev, newTx]);
     }
+
+    isProcessingRef.current = false; // Mở khóa sau khi xong
   };
 
   const handleAnswerQuiz = () => {
