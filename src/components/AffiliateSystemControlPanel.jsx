@@ -115,7 +115,7 @@ export default function AffiliateSystemControlPanel() {
     } catch (error) {
       console.error(error);
       showToastMessage('Khởi tạo ví AA thất bại.', 'error');
-    } finaly {
+    } finally {
       setIsInitializingWallet(false);
     }
   };
