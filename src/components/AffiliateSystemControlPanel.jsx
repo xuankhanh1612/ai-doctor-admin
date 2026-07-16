@@ -235,7 +235,6 @@ export default function AffiliateSystem() {
       const smartAccount = await toSimpleSmartAccount({
         client: publicClient,
         owner: owner,
-        // TUYỆT ĐỐI KHÔNG ĐIỀN factoryAddress VÀO ĐÂY (Để thư viện tự động nội suy)
         entryPoint: {
           address: "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789",
           version: "0.6"
@@ -260,11 +259,14 @@ export default function AffiliateSystem() {
         args: args,
       });
 
-      // 5. Gửi lên Blockchain
+      // 5. Gửi lên Blockchain (FIX LỖI BigInt BẰNG CÁCH SET CỨNG PHÍ GAS)
       const txHash = await smartAccountClient.sendTransaction({
         to: AFFILIATE_CONTRACT,
         data: callData,
         value: 0n,
+        // Set cứng phí Gas là 5 Gwei (5 tỷ wei) để tránh lỗi Undefined của BSC Testnet
+        maxFeePerGas: 5000000000n,
+        maxPriorityFeePerGas: 5000000000n,
       });
 
       showToast("Thành công Web3!", `TxHash: ${txHash.substring(0, 15)}...`, "success");
