@@ -228,7 +228,7 @@ export default function AffiliateSystem() {
       showToast("Đang xử lý Web3", "Đang đóng gói giao dịch và xin cấp phí Gas...", "success");
 
       // 1. Lấy Private Key ẩn danh
-      const mockPrivateKey = "0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"; 
+      const mockPrivateKey = "0x9999456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
       const owner = privateKeyToAccount(mockPrivateKey);
       
       // 2. Khởi tạo Smart Account
