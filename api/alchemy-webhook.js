@@ -10,7 +10,6 @@ if (!process.env.MONGODB_URI) {
   throw new Error('Vui lòng thêm MONGODB_URI vào Environment Variables');
 }
 
-// Tối ưu hoá kết nối cho môi trường Serverless
 if (process.env.NODE_ENV === 'development') {
   if (!global._mongoClientPromise) {
     client = new MongoClient(uri, options);
@@ -28,42 +27,58 @@ export default async function handler(req, res) {
   }
 
   try {
-    const payload = req.body;
+    // PHÒNG THỦ 1: Ép kiểu Object an toàn nếu req.body truyền tới ở dạng Chuỗi (String)
+    let payload = req.body;
+    if (typeof payload === 'string') {
+      payload = JSON.parse(payload);
+    }
+
+    // Log kiểm tra gói tin thô trên Vercel để phục vụ debug
+    console.log("--- WEBHOOK RECEIVED ---");
+    console.log("Webhook ID:", payload?.webhookId);
+    
     const block = payload?.event?.data?.block; 
 
-    if (block && block.logs) {
-      // 1. Kết nối DB
+    // PHÒNG THỦ 2: Kiểm tra sự tồn tại của block và mảng logs bên trong
+    if (block && block.logs && block.logs.length > 0) {
+      console.log(`Phát hiện có ${block.logs.length} logs sự kiện khớp điều kiện filter!`);
+
       const mongoClient = await clientPromise;
-      const db = mongoClient.db("ai-doctor-db"); // Tên DB của bạn
-      const collection = db.collection("webhook_logs"); // Tên bảng (collection)
+      const db = mongoClient.db("ai-doctor-db"); 
+      const collection = db.collection("webhook_logs"); 
 
       const logsToInsert = [];
 
-      // 2. Lặp qua các log giao dịch Alchemy gửi tới
       for (const log of block.logs) {
         const txHash = log.transaction?.hash;
-        const from = log.transaction?.from?.address;
+        const from = log.transaction?.from?.address || log.account?.address;
         
         logsToInsert.push({
-          txHash: txHash,
-          wallet: from,
-          type: 'alchemy_webhook_event',
+          txHash: txHash || "0xUnknown",
+          wallet: from || "0xUnknown",
+          type: payload.webhookId || 'alchemy_webhook_event',
           createdAt: new Date(),
-          rawLog: log // Lưu cả cục data gốc phòng khi cần phân tích sau
+          rawLog: log 
         });
       }
 
-      // 3. Lưu vào MongoDB
       if (logsToInsert.length > 0) {
-        await collection.insertMany(logsToInsert);
-        console.log(`Đã lưu ${logsToInsert.length} giao dịch vào MongoDB`);
+        const result = await collection.insertMany(logsToInsert);
+        console.log(`Đã ghi thành công ${result.insertedCount} logs vào MongoDB.`);
+        return res.status(200).json({ success: true, insertedCount: result.insertedCount });
       }
+    } else {
+      // Trường hợp block.logs rỗng (Alchemy quét block định kỳ nhưng không có giao dịch)
+      console.log("Gói tin nhận được thành công, nhưng mảng logs trống (Không có Tx nào khớp filter).");
     }
 
-    return res.status(200).json({ success: true, message: "Webhook received and saved successfully" });
+    return res.status(200).json({ 
+      success: true, 
+      message: "Webhook processed successfully but no matching logs found in this block." 
+    });
 
   } catch (error) {
-    console.error("Lỗi xử lý webhook:", error);
-    return res.status(500).json({ error: 'Internal Server Error' });
+    console.error("CRITICAL ERROR trong Webhook Handler:", error);
+    return res.status(500).json({ success: false, error: error.message });
   }
 }
