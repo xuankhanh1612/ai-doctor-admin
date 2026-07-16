@@ -225,33 +225,39 @@ export default function AffiliateSystem() {
   // --- CORE WEB3: GỬI GIAO DỊCH KHÔNG TỐN PHÍ (GASLESS) ---
   const executeGaslessTask = async (userId, functionName, args) => {
     try {
-      showToast("Đang xử lý Web3", "Đang đóng gói giao dịch và xin cấp phí Gas...", "success");
+      showToast("Đang xử lý Web3", "Đang tạo ví ẩn danh và xin cấp phí Gas...", "success");
 
+      // 1. Tạo Signer từ Private Key ảo
       const mockPrivateKey = "0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"; 
-      
       const owner = privateKeyToAccount(mockPrivateKey);
+      
+      // 2. Khởi tạo Smart Account (Xóa factoryAddress để thư viện tự tìm đúng bản v0.6)
       const smartAccount = await toSimpleSmartAccount({
         client: publicClient,
         owner: owner,
-        factoryAddress: "0x9406Cc6185a346906296ED927B7f54229C8f08bd",
         entryPoint: {
           address: "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789",
           version: "0.6"
         }
       });
 
+      // 3. Khởi tạo Client & Sponsor Gas
       const smartAccountClient = createSmartAccountClient({
         account: smartAccount,
         chain: bscTestnet,
         bundlerTransport: http(BUNDLER_URL),
         middleware: {
-          sponsorUserOperation: async ({ userOperation }) => ({
-            ...userOperation,
-            paymasterAndData: PAYMASTER_ADDRESS
-          })
+          sponsorUserOperation: async (args) => {
+            // Cú pháp sponsor chuẩn xác của permissionless v0.2
+            return {
+              ...args.userOperation,
+              paymasterAndData: PAYMASTER_ADDRESS
+            }
+          }
         }
       });
 
+      // 4. Mã hóa lệnh & Gửi đi
       const callData = encodeFunctionData({
         abi: [{ type: "function", name: functionName, inputs: [{ type: "uint256" }] }],
         functionName: functionName,
@@ -269,7 +275,8 @@ export default function AffiliateSystem() {
 
     } catch (error) {
       console.error("Web3 Error:", error);
-      showToast("Lỗi Web3", error.message || "Giao dịch thất bại", "error");
+      // Hiển thị lỗi rõ ràng hơn để dễ debug
+      showToast("Lỗi Web3", "Không thể gửi giao dịch: " + (error.shortMessage || error.message.substring(0, 50)), "error");
       return null;
     }
   };
