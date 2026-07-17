@@ -20,12 +20,15 @@ export default function AffiliateWebhookAdmin() {
   const [copied, setCopied] = useState(false);
   const [webhookLogs, setWebhookLogs] = useState([]);
   const [selectedWebhookLog, setSelectedWebhookLog] = useState(null);
+  
+  // State quản lý phần tương tác Node RPC Sandbox thực tế
+  const [selectedRpcMethod, setSelectedRpcMethod] = useState('eth_blockNumber');
+  const [blockParam, setBlockParam] = useState('0x7225208'); // Khối mặc định từ dữ liệu của bồ
   const [isLoadingRpc, setIsLoadingRpc] = useState(false);
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
-  
-  // State lưu trữ phản hồi JSON-RPC thực tế từ Alchemy Node
   const [rawRpcResponse, setRawRpcResponse] = useState(null);
   const [latestLiveBlock, setLatestBlock] = useState('0x0');
+  const [rpcStatus, setRpcStatus] = useState('connecting');
 
   const ALCHEMY_RPC_URL = "https://bnb-testnet.g.alchemy.com/v2/3P6Sj-7RXbrD7znG4t8f8";
   const targetEndpoint = "https://hien-mau-nhan-van.vercel.app/api/alchemy-webhook";
@@ -66,35 +69,55 @@ export default function AffiliateWebhookAdmin() {
     }
   };
 
-  // 1. HÀM GỌI RPC THẬT: Thực hiện POST request chuẩn mã nguồn JSON-RPC lên Alchemy Node
+  // Hàm gọi RPC chạy thật: Thiết lập cấu trúc JSON-RPC động tùy biến theo Method bồ chọn
   const handleCallAlchemyRpc = async () => {
     setIsLoadingRpc(true);
+    setRawRpcResponse(null);
+    
+    // Khởi dựng cấu trúc gói tin JSON-RPC gửi đi
+    const rpcBody = {
+      jsonrpc: "2.0",
+      id: 1,
+      method: selectedRpcMethod
+    };
+
+    // Nếu chọn phương thức lấy receipts của block thì truyền mảng params chứa mã Hex của khối vào
+    if (selectedRpcMethod === 'eth_getBlockReceipts') {
+      // Đảm bảo tham số luôn có tiền tố 0x chuẩn chỉ cấu trúc chuỗi khối
+      const formattedBlock = blockParam.startsWith('0x') ? blockParam : `0x${blockParam}`;
+      rpcBody.params = [formattedBlock];
+    }
+
     try {
       const response = await fetch(ALCHEMY_RPC_URL, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          jsonrpc: "2.0",
-          id: 1,
-          method: "eth_blockNumber"
-        })
+        body: JSON.stringify(rpcBody)
       });
       
       const resData = await response.json();
-      setRawRpcResponse(resData); // Lưu lại cục JSON phản hồi thô từ node
-      if (resData.result) {
+      setRawRpcResponse(resData);
+      
+      // Nếu gọi eth_blockNumber thành công thì cập nhật nhanh lên khung tổng quan trạng thái
+      if (selectedRpcMethod === 'eth_blockNumber' && resData.result) {
         setLatestBlock(resData.result);
+        setRpcStatus('connected');
       }
     } catch (error) {
-      setRawRpcResponse({ error: "Lỗi kết nối mạng hoặc CORS cấu hình ví", details: error.message });
+      setRawRpcResponse({ 
+        error: "Lỗi kết nối RPC mạng lưới", 
+        message: "Hãy kiểm tra lại gói tin Header hoặc chính sách bảo mật CORS của trình duyệt.",
+        details: error.message 
+      });
+      setRpcStatus('error');
     } finally {
       setIsLoadingRpc(false);
     }
   };
 
-  // 2. HÀM LẤY WEBHOOK LOGS THẬT: Đọc dữ liệu lưu trữ từ server Vercel của dự án
+  // Đọc dữ liệu lịch sử Webhook Logs thực tế đổ bộ về hệ thống
   const handleFetchLiveWebhookLogs = async () => {
     setIsLoadingLogs(true);
     try {
@@ -105,14 +128,17 @@ export default function AffiliateWebhookAdmin() {
         if(data.length > 0) setSelectedWebhookLog(data[0]);
       }
     } catch (error) {
-      console.error("Không thể kết nối API nội bộ hoặc chưa có log thực tế:", error);
+      console.error("Không thể kết nối API nội bộ:", error);
     } finally {
       setIsLoadingLogs(false);
     }
   };
 
   useEffect(() => {
-    handleCallAlchemyRpc();
+    // Tự động kích hoạt lấy số khối mới nhất khi tải trang
+    if (selectedRpcMethod === 'eth_blockNumber') {
+      handleCallAlchemyRpc();
+    }
     handleFetchLiveWebhookLogs();
   }, [activeWebhookTab]);
 
@@ -145,42 +171,68 @@ export default function AffiliateWebhookAdmin() {
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 flex items-center justify-between">
           <div>
             <p className="text-xs text-slate-400 font-medium uppercase">Alchemy Node Status</p>
-            <p className="text-sm font-bold text-emerald-400 mt-1 flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-              Đang đồng bộ mạng lưới
+            <p className={`text-sm font-bold mt-1 flex items-center gap-1.5 ${rpcStatus === 'connected' ? 'text-emerald-400' : 'text-rose-400'}`}>
+              <span className={`w-2 h-2 rounded-full ${rpcStatus === 'connected' ? 'bg-emerald-400 animate-pulse' : 'bg-rose-500'}`}></span>
+              {rpcStatus === 'connected' ? 'CONNECTED (BSC TESTNET)' : rpcStatus === 'connecting' ? 'CONNECTING...' : 'NODE DISCONNECTED'}
             </p>
           </div>
-          <button 
-            onClick={handleCallAlchemyRpc}
-            disabled={isLoadingRpc}
-            className="p-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs font-semibold border border-slate-700"
-          >
-            {isLoadingRpc ? '...' : 'Re-ping'}
-          </button>
         </div>
       </div>
 
-      {/* KHU VỰC 1: TRÌNH THÁM MÃ JSON-RPC THỰC TẾ (GIỐNG SANDBOX ALCHEMY) */}
+      {/* KHU VỰC 1: TRÌNH THÁM MÃ ĐỘNG - ALCHEMY SANDBOX (HỖ TRỢ THÊM ETH_GETBLOCKRECEIPTS) */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 mb-8 shadow-xl">
         <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-800">
           <h2 className="text-sm font-bold uppercase text-slate-300 tracking-wider flex items-center gap-1.5">
             <Code className="w-4 h-4 text-blue-400" />
-            Màn hình tương tác Alchemy Sandbox (`eth_blockNumber`)
+            Màn hình tương tác Alchemy Sandbox (Chạy thật 100%)
           </h2>
-          <button
-            onClick={handleCallAlchemyRpc}
-            disabled={isLoadingRpc}
-            className="flex items-center gap-2 px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold transition-all disabled:opacity-50"
-          >
-            <Play className={`w-3.5 h-3.5 ${isLoadingRpc ? 'animate-spin' : ''}`} />
-            {isLoadingRpc ? 'Đang gửi JSON-RPC...' : 'Send Request On-chain'}
-          </button>
         </div>
-        <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 font-mono text-xs max-h-40 overflow-y-auto">
+        
+        {/* Khung cấu hình các thông số gọi RPC giống cấu trúc Sandbox */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 items-end">
+          <div>
+            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Method</label>
+            <select 
+              value={selectedRpcMethod} 
+              onChange={(e) => setSelectedRpcMethod(e.target.value)}
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-300 font-mono focus:outline-none focus:border-blue-500"
+            >
+              <option value="eth_blockNumber">eth_blockNumber - Lấy số khối mới nhất</option>
+              <option value="eth_getBlockReceipts">eth_getBlockReceipts - Lấy biên lai khối</option>
+            </select>
+          </div>
+
+          {/* Ô nhập tham số khối: Chỉ hiển thị khi chọn eth_getBlockReceipts */}
+          <div className={selectedRpcMethod === 'eth_getBlockReceipts' ? 'block' : 'opacity-30 pointer-events-none'}>
+            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Block Number (Hex string)</label>
+            <input 
+              type="text" 
+              value={blockParam}
+              onChange={(e) => setBlockParam(e.target.value)}
+              disabled={selectedRpcMethod !== 'eth_getBlockReceipts'}
+              placeholder="Ví dụ: 0x7225208"
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-blue-400 font-mono focus:outline-none focus:border-blue-500"
+            />
+          </div>
+
+          <div>
+            <button
+              onClick={handleCallAlchemyRpc}
+              disabled={isLoadingRpc}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-semibold transition-all disabled:opacity-50 h-[38px]"
+            >
+              <Play className={`w-4 h-4 ${isLoadingRpc ? 'animate-spin' : ''}`} />
+              {isLoadingRpc ? 'Đang thực thi lệnh...' : 'Send Request'}
+            </button>
+          </div>
+        </div>
+
+        {/* Khung Console hiển thị log kết quả JSON trả về từ node mạng */}
+        <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 font-mono text-xs max-h-64 overflow-y-auto custom-scrollbar">
           {rawRpcResponse ? (
-            <pre className="text-emerald-400">{JSON.stringify(rawRpcResponse, null, 2)}</pre>
+            <pre className="text-emerald-400 whitespace-pre">{JSON.stringify(rawRpcResponse, null, 2)}</pre>
           ) : (
-            <span className="text-slate-600">Bấm "Send Request On-chain" để nhận phản hồi JSON-RPC gốc từ Alchemy...</span>
+            <span className="text-slate-600">Cấu hình tham số và bấm "Send Request" để nhận kết quả JSON-RPC trả về từ chuỗi khối...</span>
           )}
         </div>
       </div>
