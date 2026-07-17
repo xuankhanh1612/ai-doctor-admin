@@ -12,7 +12,8 @@ import {
   RefreshCw,
   Cpu,
   Wifi,
-  Code
+  Code,
+  Filter
 } from 'lucide-react';
 
 export default function AffiliateWebhookAdmin() {
@@ -35,11 +36,11 @@ export default function AffiliateWebhookAdmin() {
   const [feeNewestBlock, setFeeNewestBlock] = useState('latest');
   const [feePercentiles, setFeePercentiles] = useState('20, 30');
 
-  // CẤU HÌNH MỚI: State cho tham số truy vấn Logs (eth_getLogs)
+  // State cho tham số truy vấn Logs (eth_getLogs)
   const [logsFromBlock, setLogsFromBlock] = useState('0x137d3c2');
   const [logsToBlock, setLogsToBlock] = useState('0x137d3c3');
-  const [logsAddress, setLogsAddress] = useState('0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2');
-  const [logsTopics, setLogsTopics] = useState(''); // Định dạng chuỗi phân cách bởi dấu phẩy nếu có
+  const [logsAddress, setLogsAddress] = useState('0x44f787D670Ff4Ef65334D6637960bb7Fe5E1231c');
+  const [logsTopics, setLogsTopics] = useState('');
 
   const [isLoadingRpc, setIsLoadingRpc] = useState(false);
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
@@ -47,9 +48,7 @@ export default function AffiliateWebhookAdmin() {
   const [latestLiveBlock, setLatestBlock] = useState('0x0');
   const [rpcStatus, setRpcStatus] = useState('connecting');
 
-  const ALCHEMY_RPC_URL = "https://bnb-testnet.g.alchemy.com/v2/3P6Sj-7RXbrD7znG4t8f8";
-  const targetEndpoint = "https://hien-mau-nhan-van.vercel.app/api/alchemy-webhook";
-
+  // Khai báo biến môi trường Contract chuẩn từ dự án
   const webhookData = {
     affiliate: {
       name: 'AFFILIATE TRACKER WEBHOOK',
@@ -86,7 +85,10 @@ export default function AffiliateWebhookAdmin() {
     }
   };
 
-  // Hàm gọi RPC chạy thật: Tự động cấu trúc params dựa vào method được bồ lựa chọn
+  const ALCHEMY_RPC_URL = "https://bnb-testnet.g.alchemy.com/v2/3P6Sj-7RXbrD7znG4t8f8";
+  const targetEndpoint = "https://hien-mau-nhan-van.vercel.app/api/alchemy-webhook";
+
+  // Hàm xử lý gọi RPC lên Node mạng
   const handleCallAlchemyRpc = async () => {
     setIsLoadingRpc(true);
     setRawRpcResponse(null);
@@ -97,48 +99,23 @@ export default function AffiliateWebhookAdmin() {
       method: selectedRpcMethod
     };
 
-    // Định tuyến tham số đầu vào động cho mảng params
     if (selectedRpcMethod === 'eth_getBlockReceipts') {
       const formattedBlock = blockParam.startsWith('0x') ? blockParam : `0x${blockParam}`;
       rpcBody.params = [formattedBlock];
     } else if (selectedRpcMethod === 'eth_estimateGas') {
-      rpcBody.params = [{
-        from: txFrom,
-        to: txTo,
-        value: txValue
-      }];
+      rpcBody.params = [{ from: txFrom, to: txTo, value: txValue }];
     } else if (selectedRpcMethod === 'eth_feeHistory') {
-      const percentileArray = feePercentiles
-        .split(',')
-        .map(p => parseFloat(p.trim()))
-        .filter(p => !isNaN(p));
-
-      rpcBody.params = [
-        feeBlockCount,
-        feeNewestBlock,
-        percentileArray
-      ];
+      const percentileArray = feePercentiles.split(',').map(p => parseFloat(p.trim())).filter(p => !isNaN(p));
+      rpcBody.params = [feeBlockCount, feeNewestBlock, percentileArray];
     } else if (selectedRpcMethod === 'eth_getLogs') {
-      // Chuyển đổi chuỗi topics phân tách bằng dấu phẩy thành một mảng, nếu trống thì trả về mảng rỗng []
-      const topicsArray = logsTopics.trim() 
-        ? logsTopics.split(',').map(t => t.trim()) 
-        : [];
-
-      rpcBody.params = [{
-        fromBlock: logsFromBlock,
-        toBlock: logsToBlock,
-        address: logsAddress,
-        topics: topicsArray
-      }];
+      const topicsArray = logsTopics.trim() ? logsTopics.split(',').map(t => t.trim()) : [];
+      rpcBody.params = [{ fromBlock: logsFromBlock, toBlock: logsToBlock, address: logsAddress, topics: topicsArray }];
     }
 
     try {
       const response = await fetch(ALCHEMY_RPC_URL, {
         method: 'POST',
-        headers: { 
-          'accept': 'application/json',
-          'content-type': 'application/json'
-        },
+        headers: { 'accept': 'application/json', 'content-type': 'application/json' },
         body: JSON.stringify(rpcBody)
       });
       
@@ -150,13 +127,9 @@ export default function AffiliateWebhookAdmin() {
         setRpcStatus('connected');
       }
     } catch (error) {
-      setRawRpcResponse({ 
-        error: "Lỗi kết nối RPC mạng lưới", 
-        message: "Yêu cầu không thể thực thi. Hãy kiểm tra endpoint.",
-        details: error.message 
-      });
+      setRawRpcResponse({ error: "Lỗi kết nối RPC mạng lưới", details: error.message });
       setRpcStatus('error');
-    } finally {
+    } relativeFinally: {
       setIsLoadingRpc(false);
     }
   };
@@ -177,7 +150,12 @@ export default function AffiliateWebhookAdmin() {
     }
   };
 
+  // Vừa nạp tab mới vừa tự động ghi địa chỉ Contract tương ứng vào Form lọc để tránh gõ tay lỗi
   useEffect(() => {
+    const currentContract = webhookData[activeWebhookTab].contract;
+    setLogsAddress(currentContract);
+    setTxTo(currentContract);
+    
     if (selectedRpcMethod === 'eth_blockNumber') {
       handleCallAlchemyRpc();
     }
@@ -189,6 +167,21 @@ export default function AffiliateWebhookAdmin() {
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
+
+  // HÀM MỚI NÂNG CẤP: Bộ lọc sâu Client-side bóc tách các Tx thuộc riêng về Contract đang chọn
+  const getFilteredTransactions = () => {
+    if (!rawRpcResponse || !rawRpcResponse.result || !Array.isArray(rawRpcResponse.result)) return [];
+    
+    const targetContractLower = webhookData[activeWebhookTab].contract.toLowerCase();
+
+    return rawRpcResponse.result.filter(receipt => {
+      const directMatch = receipt.to && receipt.to.toLowerCase() === targetContractLower;
+      const logMatch = receipt.logs && receipt.logs.some(log => log.address && log.address.toLowerCase() === targetContractLower);
+      return directMatch || logMatch;
+    });
+  };
+
+  const filteredTxList = getFilteredTransactions();
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 p-6">
@@ -247,7 +240,6 @@ export default function AffiliateWebhookAdmin() {
             </select>
           </div>
 
-          {/* Ô nhập block: Chỉ sáng lên khi chọn eth_getBlockReceipts */}
           <div className={selectedRpcMethod === 'eth_getBlockReceipts' ? 'md:col-span-1 block' : 'md:col-span-1 opacity-25 pointer-events-none'}>
             <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Block Number (Hex)</label>
             <input 
@@ -271,122 +263,105 @@ export default function AffiliateWebhookAdmin() {
           </div>
         </div>
 
-        {/* Khung tham số mở rộng: Xuất hiện khi chọn cấu hình eth_estimateGas */}
+        {/* Khung tham số mở rộng cho eth_estimateGas */}
         {selectedRpcMethod === 'eth_estimateGas' && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 p-4 bg-slate-950/40 border border-slate-800/80 rounded-xl animate-fadeIn">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 p-4 bg-slate-950/40 border border-slate-800/80 rounded-xl">
             <div>
               <label className="block text-[11px] font-mono text-slate-400 mb-1.5">Transaction "from" Address</label>
-              <input 
-                type="text" 
-                value={txFrom} 
-                onChange={(e) => setTxFrom(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-300 focus:outline-none focus:border-blue-500"
-              />
+              <input type="text" value={txFrom} onChange={(e) => setTxFrom(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-300 focus:outline-none focus:border-blue-500" />
             </div>
             <div>
-              <label className="block text-[11px] font-mono text-slate-400 mb-1.5">Transaction "to" Address</label>
-              <input 
-                type="text" 
-                value={txTo} 
-                onChange={(e) => setTxTo(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-300 focus:outline-none focus:border-blue-500"
-              />
+              <label className="block text-[11px] font-mono text-slate-400 mb-1.5">Transaction "to" Address (Auto-sync)</label>
+              <input type="text" value={txTo} onChange={(e) => setTxTo(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs font-mono text-emerald-400 focus:outline-none focus:border-blue-500" />
             </div>
             <div>
               <label className="block text-[11px] font-mono text-slate-400 mb-1.5">Transaction "value" (Hex Wei)</label>
-              <input 
-                type="text" 
-                value={txValue} 
-                onChange={(e) => setTxValue(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-300 focus:outline-none focus:border-blue-500"
-              />
+              <input type="text" value={txValue} onChange={(e) => setTxValue(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-300 focus:outline-none focus:border-blue-500" />
             </div>
           </div>
         )}
 
         {/* Khung tham số mở rộng cho eth_feeHistory */}
         {selectedRpcMethod === 'eth_feeHistory' && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 p-4 bg-slate-950/40 border border-slate-800/80 rounded-xl animate-fadeIn">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 p-4 bg-slate-950/40 border border-slate-800/80 rounded-xl">
             <div>
-              <label className="block text-[11px] font-mono text-slate-400 mb-1.5">Block Count (Hex string/Integer)</label>
-              <input 
-                type="text" 
-                value={feeBlockCount} 
-                onChange={(e) => setFeeBlockCount(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-300 focus:outline-none focus:border-blue-500"
-              />
+              <label className="block text-[11px] font-mono text-slate-400 mb-1.5">Block Count</label>
+              <input type="text" value={feeBlockCount} onChange={(e) => setFeeBlockCount(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-300 focus:outline-none focus:border-blue-500" />
             </div>
             <div>
-              <label className="block text-[11px] font-mono text-slate-400 mb-1.5">Newest Block (Mã Hex hoặc 'latest')</label>
-              <input 
-                type="text" 
-                value={feeNewestBlock} 
-                onChange={(e) => setFeeNewestBlock(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-300 focus:outline-none focus:border-blue-500"
-              />
+              <label className="block text-[11px] font-mono text-slate-400 mb-1.5">Newest Block</label>
+              <input type="text" value={feeNewestBlock} onChange={(e) => setFeeNewestBlock(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-300 focus:outline-none focus:border-blue-500" />
             </div>
             <div>
-              <label className="block text-[11px] font-mono text-slate-400 mb-1.5">Reward Percentiles (Dấu phẩy ngăn cách)</label>
-              <input 
-                type="text" 
-                value={feePercentiles} 
-                onChange={(e) => setFeePercentiles(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-300 focus:outline-none focus:border-blue-500"
-              />
+              <label className="block text-[11px] font-mono text-slate-400 mb-1.5">Reward Percentiles</label>
+              <input type="text" value={feePercentiles} onChange={(e) => setFeePercentiles(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-300 focus:outline-none focus:border-blue-500" />
             </div>
           </div>
         )}
 
-        {/* CẤU HÌNH MỚI: Khung tham số cấu hình cho bộ lọc eth_getLogs */}
+        {/* Khung tham số cấu hình cho bộ lọc eth_getLogs */}
         {selectedRpcMethod === 'eth_getLogs' && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4 p-4 bg-slate-950/40 border border-slate-800/80 rounded-xl animate-fadeIn">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4 p-4 bg-slate-950/40 border border-slate-800/80 rounded-xl">
             <div>
-              <label className="block text-[11px] font-mono text-slate-400 mb-1.5">fromBlock (Hex block)</label>
-              <input 
-                type="text" 
-                value={logsFromBlock} 
-                onChange={(e) => setLogsFromBlock(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-300 focus:outline-none focus:border-blue-500"
-              />
+              <label className="block text-[11px] font-mono text-slate-400 mb-1.5">fromBlock</label>
+              <input type="text" value={logsFromBlock} onChange={(e) => setLogsFromBlock(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-300 focus:outline-none focus:border-blue-500" />
             </div>
             <div>
-              <label className="block text-[11px] font-mono text-slate-400 mb-1.5">toBlock (Hex block)</label>
-              <input 
-                type="text" 
-                value={logsToBlock} 
-                onChange={(e) => setLogsToBlock(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-300 focus:outline-none focus:border-blue-500"
-              />
+              <label className="block text-[11px] font-mono text-slate-400 mb-1.5">toBlock</label>
+              <input type="text" value={logsToBlock} onChange={(e) => setLogsToBlock(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-300 focus:outline-none focus:border-blue-500" />
             </div>
             <div>
-              <label className="block text-[11px] font-mono text-slate-400 mb-1.5">address (Smart Contract)</label>
-              <input 
-                type="text" 
-                value={logsAddress} 
-                onChange={(e) => setLogsAddress(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-300 focus:outline-none focus:border-blue-500"
-              />
+              <label className="block text-[11px] font-mono text-slate-400 mb-1.5">address (Auto-sync Contract ví)</label>
+              <input type="text" value={logsAddress} onChange={(e) => setLogsAddress(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs font-mono text-emerald-400 focus:outline-none focus:border-blue-500" />
             </div>
             <div>
-              <label className="block text-[11px] font-mono text-slate-400 mb-1.5">topics (Ngăn cách bởi dấu phẩy)</label>
-              <input 
-                type="text" 
-                value={logsTopics} 
-                onChange={(e) => setLogsTopics(e.target.value)}
-                placeholder="Để trống nếu lấy tất cả"
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-300 focus:outline-none focus:border-blue-500"
-              />
+              <label className="block text-[11px] font-mono text-slate-400 mb-1.5">topics</label>
+              <input type="text" value={logsTopics} onChange={(e) => setLogsTopics(e.target.value)} placeholder="Để trống nếu lấy tất cả" className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-300 focus:outline-none focus:border-blue-500" />
             </div>
           </div>
         )}
 
-        {/* Khung Console hiển thị log kết quả JSON */}
-        <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 font-mono text-xs max-h-64 overflow-y-auto custom-scrollbar">
-          {rawRpcResponse ? (
-            <pre className="text-emerald-400 whitespace-pre">{JSON.stringify(rawRpcResponse, null, 2)}</pre>
-          ) : (
-            <span className="text-slate-600">Cấu hình tham số và bấm "Send Request" để nhận kết quả JSON-RPC trả về từ chuỗi khối...</span>
-          )}
+        {/* Khung hiển thị JSON và Bảng lọc nâng cao song song */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div>
+            <div className="text-[11px] text-slate-500 uppercase font-bold tracking-wider mb-1.5">Phản hồi thô JSON-RPC từ Node:</div>
+            <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 font-mono text-xs h-64 overflow-y-auto custom-scrollbar">
+              {rawRpcResponse ? (
+                <pre className="text-blue-400 whitespace-pre">{JSON.stringify(rawRpcResponse, null, 2)}</pre>
+              ) : (
+                <span className="text-slate-600">Bấm "Send Request" để gọi mạng lưới...</span>
+              )}
+            </div>
+          </div>
+
+          {/* MÀN HÌNH LỌC DATA CHO RIÊNG CONTRACT DỰ ÁN */}
+          <div>
+            <div className="text-[11px] text-emerald-400 uppercase font-bold tracking-wider mb-1.5 flex items-center gap-1">
+              <Filter className="w-3.5 h-3.5" />
+              Kết quả thám mã & Lọc riêng cho Contract hiện tại:
+            </div>
+            <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 h-64 overflow-y-auto custom-scrollbar text-xs">
+              {selectedRpcMethod === 'eth_getBlockReceipts' && rawRpcResponse?.result ? (
+                <div className="space-y-3">
+                  <div className="p-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-lg font-semibold">
+                    Phát hiện {filteredTxList.length} giao dịch tương tác trực tiếp/gián tiếp với Contract này.
+                  </div>
+                  {filteredTxList.map((tx, i) => (
+                    <div key={i} className="p-2.5 bg-slate-900 border border-slate-800 rounded-lg font-mono space-y-1">
+                      <div className="text-slate-300 truncate"><span className="text-slate-500">Hash:</span> {tx.transactionHash}</div>
+                      <div className="text-slate-400 truncate"><span className="text-slate-500">From:</span> {tx.from}</div>
+                      <div className="text-slate-400 truncate"><span className="text-slate-500">To:</span> {tx.to}</div>
+                      <div className="text-slate-500">Logs triggered: {tx.logs?.length || 0} events</div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="h-full flex items-center justify-center text-slate-600 leading-relaxed text-center p-6">
+                  Chọn method "eth_getBlockReceipts", bấm Send Request để kích hoạt bộ lọc thám mã giao dịch độc quyền cho địa chỉ contract này.
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -417,7 +392,7 @@ export default function AffiliateWebhookAdmin() {
         <div className="space-y-6">
           <div>
             <label className="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-2">
-              Vercel Production Endpoint URL (Target URL cấu hình trên Alchemy Dashboard):
+              Vercel Production Endpoint URL:
             </label>
             <div className="flex gap-2">
               <div className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm font-mono text-slate-300 overflow-x-auto">
