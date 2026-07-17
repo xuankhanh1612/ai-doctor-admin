@@ -23,7 +23,13 @@ export default function AffiliateWebhookAdmin() {
   
   // State quản lý phần tương tác Node RPC Sandbox thực tế
   const [selectedRpcMethod, setSelectedRpcMethod] = useState('eth_blockNumber');
-  const [blockParam, setBlockParam] = useState('0x7225208'); // Khối mặc định từ dữ liệu của bồ
+  const [blockParam, setBlockParam] = useState('0x7225208'); 
+  
+  // State mới cho các tham số ước tính Gas (eth_estimateGas)
+  const [txFrom, setTxFrom] = useState('0x60d492288df05122a47421b91cd94df5016c2b9d');
+  const [txTo, setTxTo] = useState('0x44f787D670Ff4Ef65334D6637960bb7Fe5E1231c'); // Mặc định ví Contract Affiliate
+  const [txValue, setTxValue] = useState('0x0');
+
   const [isLoadingRpc, setIsLoadingRpc] = useState(false);
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
   const [rawRpcResponse, setRawRpcResponse] = useState(null);
@@ -69,23 +75,27 @@ export default function AffiliateWebhookAdmin() {
     }
   };
 
-  // Hàm gọi RPC chạy thật: Thiết lập cấu trúc JSON-RPC động tùy biến theo Method bồ chọn
+  // Hàm gọi RPC chạy thật: Tự động đóng gói cấu trúc mảng Params tương ứng với từng Method
   const handleCallAlchemyRpc = async () => {
     setIsLoadingRpc(true);
     setRawRpcResponse(null);
     
-    // Khởi dựng cấu trúc gói tin JSON-RPC gửi đi
     const rpcBody = {
       jsonrpc: "2.0",
       id: 1,
       method: selectedRpcMethod
     };
 
-    // Nếu chọn phương thức lấy receipts của block thì truyền mảng params chứa mã Hex của khối vào
+    // Điều hướng tham số động dựa trên phương thức được chọn
     if (selectedRpcMethod === 'eth_getBlockReceipts') {
-      // Đảm bảo tham số luôn có tiền tố 0x chuẩn chỉ cấu trúc chuỗi khối
       const formattedBlock = blockParam.startsWith('0x') ? blockParam : `0x${blockParam}`;
       rpcBody.params = [formattedBlock];
+    } else if (selectedRpcMethod === 'eth_estimateGas') {
+      rpcBody.params = [{
+        from: txFrom,
+        to: txTo,
+        value: txValue
+      }];
     }
 
     try {
@@ -100,15 +110,14 @@ export default function AffiliateWebhookAdmin() {
       const resData = await response.json();
       setRawRpcResponse(resData);
       
-      // Nếu gọi eth_blockNumber thành công thì cập nhật nhanh lên khung tổng quan trạng thái
       if (selectedRpcMethod === 'eth_blockNumber' && resData.result) {
         setLatestBlock(resData.result);
         setRpcStatus('connected');
       }
     } catch (error) {
       setRawRpcResponse({ 
-        error: "Lỗi kết nối RPC mạng lưới", 
-        message: "Hãy kiểm tra lại gói tin Header hoặc chính sách bảo mật CORS của trình duyệt.",
+        error: "Lỗi kết nối mạng lưới", 
+        message: "Yêu cầu không thể thực thi. Hãy kiểm tra gói tin.",
         details: error.message 
       });
       setRpcStatus('error');
@@ -117,7 +126,6 @@ export default function AffiliateWebhookAdmin() {
     }
   };
 
-  // Đọc dữ liệu lịch sử Webhook Logs thực tế đổ bộ về hệ thống
   const handleFetchLiveWebhookLogs = async () => {
     setIsLoadingLogs(true);
     try {
@@ -135,7 +143,6 @@ export default function AffiliateWebhookAdmin() {
   };
 
   useEffect(() => {
-    // Tự động kích hoạt lấy số khối mới nhất khi tải trang
     if (selectedRpcMethod === 'eth_blockNumber') {
       handleCallAlchemyRpc();
     }
@@ -158,7 +165,7 @@ export default function AffiliateWebhookAdmin() {
         </h1>
       </div>
 
-      {/* TỔNG QUAN TRẠNG THÁI NODE (Kéo dữ liệu thật) */}
+      {/* TỔNG QUAN TRẠNG THÁI NODE */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
           <p className="text-xs text-slate-400 font-medium uppercase">Alchemy RPC Endpoint URL</p>
@@ -179,7 +186,7 @@ export default function AffiliateWebhookAdmin() {
         </div>
       </div>
 
-      {/* KHU VỰC 1: TRÌNH THÁM MÃ ĐỘNG - ALCHEMY SANDBOX (HỖ TRỢ THÊM ETH_GETBLOCKRECEIPTS) */}
+      {/* KHU VỰC 1: TRÌNH THÁM MÃ ĐỘNG - ALCHEMY SANDBOX */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 mb-8 shadow-xl">
         <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-800">
           <h2 className="text-sm font-bold uppercase text-slate-300 tracking-wider flex items-center gap-1.5">
@@ -188,9 +195,9 @@ export default function AffiliateWebhookAdmin() {
           </h2>
         </div>
         
-        {/* Khung cấu hình các thông số gọi RPC giống cấu trúc Sandbox */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 items-end">
-          <div>
+        {/* Form lựa chọn Method */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4 items-end">
+          <div className="md:col-span-2">
             <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Method</label>
             <select 
               value={selectedRpcMethod} 
@@ -199,35 +206,68 @@ export default function AffiliateWebhookAdmin() {
             >
               <option value="eth_blockNumber">eth_blockNumber - Lấy số khối mới nhất</option>
               <option value="eth_getBlockReceipts">eth_getBlockReceipts - Lấy biên lai khối</option>
+              <option value="eth_estimateGas">eth_estimateGas - Ước tính Gas tiêu thụ</option>
             </select>
           </div>
 
-          {/* Ô nhập tham số khối: Chỉ hiển thị khi chọn eth_getBlockReceipts */}
-          <div className={selectedRpcMethod === 'eth_getBlockReceipts' ? 'block' : 'opacity-30 pointer-events-none'}>
-            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Block Number (Hex string)</label>
+          {/* Ô nhập block: Chỉ sáng lên khi chọn eth_getBlockReceipts */}
+          <div className={selectedRpcMethod === 'eth_getBlockReceipts' ? 'md:col-span-1 block' : 'md:col-span-1 opacity-25 pointer-events-none'}>
+            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Block Number (Hex)</label>
             <input 
               type="text" 
               value={blockParam}
               onChange={(e) => setBlockParam(e.target.value)}
-              disabled={selectedRpcMethod !== 'eth_getBlockReceipts'}
-              placeholder="Ví dụ: 0x7225208"
+              placeholder="0x7225208"
               className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-blue-400 font-mono focus:outline-none focus:border-blue-500"
             />
           </div>
 
-          <div>
+          <div className="md:col-span-1">
             <button
               onClick={handleCallAlchemyRpc}
               disabled={isLoadingRpc}
               className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-semibold transition-all disabled:opacity-50 h-[38px]"
             >
               <Play className={`w-4 h-4 ${isLoadingRpc ? 'animate-spin' : ''}`} />
-              {isLoadingRpc ? 'Đang thực thi lệnh...' : 'Send Request'}
+              {isLoadingRpc ? 'Đang gọi RPC...' : 'Send Request'}
             </button>
           </div>
         </div>
 
-        {/* Khung Console hiển thị log kết quả JSON trả về từ node mạng */}
+        {/* Khung tham số mở rộng: Chỉ xuất hiện khi chọn cấu hình eth_estimateGas */}
+        {selectedRpcMethod === 'eth_estimateGas' && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 p-4 bg-slate-950/40 border border-slate-800/80 rounded-xl animate-fadeIn">
+            <div>
+              <label className="block text-[11px] font-mono text-slate-400 mb-1.5">Transaction "from" Address</label>
+              <input 
+                type="text" 
+                value={txFrom} 
+                onChange={(e) => setTxFrom(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-300 focus:outline-none focus:border-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-mono text-slate-400 mb-1.5">Transaction "to" Address</label>
+              <input 
+                type="text" 
+                value={txTo} 
+                onChange={(e) => setTxTo(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-300 focus:outline-none focus:border-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-mono text-slate-400 mb-1.5">Transaction "value" (Hex Wei)</label>
+              <input 
+                type="text" 
+                value={txValue} 
+                onChange={(e) => setTxValue(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-300 focus:outline-none focus:border-blue-500"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Khung Console hiển thị log kết quả JSON */}
         <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 font-mono text-xs max-h-64 overflow-y-auto custom-scrollbar">
           {rawRpcResponse ? (
             <pre className="text-emerald-400 whitespace-pre">{JSON.stringify(rawRpcResponse, null, 2)}</pre>
@@ -278,7 +318,7 @@ export default function AffiliateWebhookAdmin() {
 
           <div>
             <label className="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-2">
-              Link quản lý đồ thị dòng dữ liệu trên Alchemy Dashboard:
+              Link quản lý trực tiếp trên Alchemy Dashboard:
             </label>
             <a href={webhookData[activeWebhookTab].dashboardUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-5 py-3 bg-slate-950 border border-slate-800 text-emerald-400 font-mono text-sm rounded-xl">
               <span>{webhookData[activeWebhookTab].dashboardUrl}</span>
