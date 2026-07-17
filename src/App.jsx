@@ -64,6 +64,7 @@ import MyImageToVideoPanel from './components/MyImageToVideoPanel.jsx'
 import AffiliateSystemControlPanel from './components/AffiliateSystemControlPanel.jsx'
 import AffiliateSystemPanel from './components/AffiliateSystemPanel.jsx'
 import AffiliateReferralLandingPage from './components/AffiliateReferralLandingPage.jsx'
+import AffiliateWebhookAdmin from './components/AffiliateWebhookAdmin.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 import { addNotification } from './lib/notifications.js'
 import { useTTS } from './lib/groqAiClient.js'
@@ -164,6 +165,7 @@ export default function App() {
     myRewardHealth: 'My Reward Health',
     affiliateControl: 'Affiliate Control Panel',
     affiliate: 'Affiliate & Earn Đa Tầng',
+    affiliateWebhookAdmin: 'Affiliate Webhook Admin',
     healthJourney: t('healthJourney'),
     lunchJourney: t('lunchJourney'),
     dinnerJourney: t('dinnerJourney'),
@@ -229,7 +231,7 @@ export default function App() {
     window.setTimeout(() => setSidebarOpenSignal(signal => signal + 1), 0)
   }, [])
 
-  const ADMIN_ONLY_PANELS = ['adminConcept', 'myImageToVideo', 'make3DModel', 'my3dAsset', 'twoDTo3DAsset', 'xyzCameraAngle']
+  const ADMIN_ONLY_PANELS = ['adminConcept', 'affiliateWebhookAdmin', 'myImageToVideo', 'make3DModel', 'my3dAsset', 'twoDTo3DAsset', 'xyzCameraAngle']
   const visiblePanels = user?.isAdmin ? PANELS : PANELS.filter(id => !ADMIN_ONLY_PANELS.includes(id))
 
   useEffect(() => {
@@ -434,6 +436,10 @@ export default function App() {
             {active === 'myRewardHealth' && <MyRewardHealthPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} onOpenFoodToday={() => setActive('organConnection')} />}
             {active === 'affiliateControl' && <AffiliateSystemControlPanel />}
             {active === 'affiliate' && <AffiliateSystemPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} />}
+            {active === 'affiliateWebhookAdmin' && user?.isAdmin && <AffiliateWebhookAdmin />}
+            {active === 'affiliateWebhookAdmin' && !user?.isAdmin && (
+              <div style={{ padding: 40, textAlign: 'center', color: '#ff5252' }}>🔒 Admin only</div>
+            )}
             {active === 'healthJourney' && <HealthJourneyPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} onOpenStressRelief={() => setActive('stressRelief')} onOpenInBody={() => setActive('aiInbodyPortal')} onViewMedicalRecord={() => setActive('upload')} />}
             {active === 'lunchJourney' && <LunchJourneyPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} onOpenStressRelief={() => setActive('stressRelief')} onOpenInBody={() => setActive('aiInbodyPortal')} onViewMedicalRecord={() => setActive('upload')} />}
             {active === 'dinnerJourney' && <DinnerJourneyPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} onOpenStressRelief={() => setActive('stressRelief')} onOpenInBody={() => setActive('aiInbodyPortal')} onViewMedicalRecord={() => setActive('upload')} />}
