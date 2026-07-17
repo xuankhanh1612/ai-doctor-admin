@@ -30,10 +30,16 @@ export default function AffiliateWebhookAdmin() {
   const [txTo, setTxTo] = useState('0x44f787D670Ff4Ef65334D6637960bb7Fe5E1231c'); 
   const [txValue, setTxValue] = useState('0x0');
 
-  // State MỚI cho tham số lịch sử phí (eth_feeHistory)
+  // State cho tham số lịch sử phí (eth_feeHistory)
   const [feeBlockCount, setFeeBlockCount] = useState('0x5');
   const [feeNewestBlock, setFeeNewestBlock] = useState('latest');
   const [feePercentiles, setFeePercentiles] = useState('20, 30');
+
+  // CẤU HÌNH MỚI: State cho tham số truy vấn Logs (eth_getLogs)
+  const [logsFromBlock, setLogsFromBlock] = useState('0x137d3c2');
+  const [logsToBlock, setLogsToBlock] = useState('0x137d3c3');
+  const [logsAddress, setLogsAddress] = useState('0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2');
+  const [logsTopics, setLogsTopics] = useState(''); // Định dạng chuỗi phân cách bởi dấu phẩy nếu có
 
   const [isLoadingRpc, setIsLoadingRpc] = useState(false);
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
@@ -80,7 +86,7 @@ export default function AffiliateWebhookAdmin() {
     }
   };
 
-  // Hàm gọi RPC chạy thật: Xử lý đóng gói mảng params tương thích hoàn toàn với cấu trúc Alchemy Sandbox
+  // Hàm gọi RPC chạy thật: Tự động cấu trúc params dựa vào method được bồ lựa chọn
   const handleCallAlchemyRpc = async () => {
     setIsLoadingRpc(true);
     setRawRpcResponse(null);
@@ -91,7 +97,7 @@ export default function AffiliateWebhookAdmin() {
       method: selectedRpcMethod
     };
 
-    // Điều hướng tham số động dựa trên phương thức được chọn
+    // Định tuyến tham số đầu vào động cho mảng params
     if (selectedRpcMethod === 'eth_getBlockReceipts') {
       const formattedBlock = blockParam.startsWith('0x') ? blockParam : `0x${blockParam}`;
       rpcBody.params = [formattedBlock];
@@ -102,7 +108,6 @@ export default function AffiliateWebhookAdmin() {
         value: txValue
       }];
     } else if (selectedRpcMethod === 'eth_feeHistory') {
-      // Chuyển đổi chuỗi chuỗi "20, 30" thành mảng số [20, 30]
       const percentileArray = feePercentiles
         .split(',')
         .map(p => parseFloat(p.trim()))
@@ -113,6 +118,18 @@ export default function AffiliateWebhookAdmin() {
         feeNewestBlock,
         percentileArray
       ];
+    } else if (selectedRpcMethod === 'eth_getLogs') {
+      // Chuyển đổi chuỗi topics phân tách bằng dấu phẩy thành một mảng, nếu trống thì trả về mảng rỗng []
+      const topicsArray = logsTopics.trim() 
+        ? logsTopics.split(',').map(t => t.trim()) 
+        : [];
+
+      rpcBody.params = [{
+        fromBlock: logsFromBlock,
+        toBlock: logsToBlock,
+        address: logsAddress,
+        topics: topicsArray
+      }];
     }
 
     try {
@@ -226,6 +243,7 @@ export default function AffiliateWebhookAdmin() {
               <option value="eth_getBlockReceipts">eth_getBlockReceipts - Lấy biên lai khối</option>
               <option value="eth_estimateGas">eth_estimateGas - Ước tính Gas tiêu thụ</option>
               <option value="eth_feeHistory">eth_feeHistory - Xem lịch sử cấu trúc phí</option>
+              <option value="eth_getLogs">eth_getLogs - Truy vấn bộ lọc nhật ký Event Logs</option>
             </select>
           </div>
 
@@ -286,7 +304,7 @@ export default function AffiliateWebhookAdmin() {
           </div>
         )}
 
-        {/* CẤU HÌNH MỚI: Khung tham số mở rộng cho eth_feeHistory */}
+        {/* Khung tham số mở rộng cho eth_feeHistory */}
         {selectedRpcMethod === 'eth_feeHistory' && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 p-4 bg-slate-950/40 border border-slate-800/80 rounded-xl animate-fadeIn">
             <div>
@@ -313,6 +331,49 @@ export default function AffiliateWebhookAdmin() {
                 type="text" 
                 value={feePercentiles} 
                 onChange={(e) => setFeePercentiles(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-300 focus:outline-none focus:border-blue-500"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* CẤU HÌNH MỚI: Khung tham số cấu hình cho bộ lọc eth_getLogs */}
+        {selectedRpcMethod === 'eth_getLogs' && (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4 p-4 bg-slate-950/40 border border-slate-800/80 rounded-xl animate-fadeIn">
+            <div>
+              <label className="block text-[11px] font-mono text-slate-400 mb-1.5">fromBlock (Hex block)</label>
+              <input 
+                type="text" 
+                value={logsFromBlock} 
+                onChange={(e) => setLogsFromBlock(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-300 focus:outline-none focus:border-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-mono text-slate-400 mb-1.5">toBlock (Hex block)</label>
+              <input 
+                type="text" 
+                value={logsToBlock} 
+                onChange={(e) => setLogsToBlock(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-300 focus:outline-none focus:border-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-mono text-slate-400 mb-1.5">address (Smart Contract)</label>
+              <input 
+                type="text" 
+                value={logsAddress} 
+                onChange={(e) => setLogsAddress(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-300 focus:outline-none focus:border-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-mono text-slate-400 mb-1.5">topics (Ngăn cách bởi dấu phẩy)</label>
+              <input 
+                type="text" 
+                value={logsTopics} 
+                onChange={(e) => setLogsTopics(e.target.value)}
+                placeholder="Để trống nếu lấy tất cả"
                 className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-300 focus:outline-none focus:border-blue-500"
               />
             </div>
