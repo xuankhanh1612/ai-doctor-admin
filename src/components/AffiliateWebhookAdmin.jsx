@@ -25,10 +25,15 @@ export default function AffiliateWebhookAdmin() {
   const [selectedRpcMethod, setSelectedRpcMethod] = useState('eth_blockNumber');
   const [blockParam, setBlockParam] = useState('0x7225208'); 
   
-  // State mới cho các tham số ước tính Gas (eth_estimateGas)
+  // State cho tham số ước tính Gas (eth_estimateGas)
   const [txFrom, setTxFrom] = useState('0x60d492288df05122a47421b91cd94df5016c2b9d');
-  const [txTo, setTxTo] = useState('0x44f787D670Ff4Ef65334D6637960bb7Fe5E1231c'); // Mặc định ví Contract Affiliate
+  const [txTo, setTxTo] = useState('0x44f787D670Ff4Ef65334D6637960bb7Fe5E1231c'); 
   const [txValue, setTxValue] = useState('0x0');
+
+  // State MỚI cho tham số lịch sử phí (eth_feeHistory)
+  const [feeBlockCount, setFeeBlockCount] = useState('0x5');
+  const [feeNewestBlock, setFeeNewestBlock] = useState('latest');
+  const [feePercentiles, setFeePercentiles] = useState('20, 30');
 
   const [isLoadingRpc, setIsLoadingRpc] = useState(false);
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
@@ -75,7 +80,7 @@ export default function AffiliateWebhookAdmin() {
     }
   };
 
-  // Hàm gọi RPC chạy thật: Tự động đóng gói cấu trúc mảng Params tương ứng với từng Method
+  // Hàm gọi RPC chạy thật: Xử lý đóng gói mảng params tương thích hoàn toàn với cấu trúc Alchemy Sandbox
   const handleCallAlchemyRpc = async () => {
     setIsLoadingRpc(true);
     setRawRpcResponse(null);
@@ -96,13 +101,26 @@ export default function AffiliateWebhookAdmin() {
         to: txTo,
         value: txValue
       }];
+    } else if (selectedRpcMethod === 'eth_feeHistory') {
+      // Chuyển đổi chuỗi chuỗi "20, 30" thành mảng số [20, 30]
+      const percentileArray = feePercentiles
+        .split(',')
+        .map(p => parseFloat(p.trim()))
+        .filter(p => !isNaN(p));
+
+      rpcBody.params = [
+        feeBlockCount,
+        feeNewestBlock,
+        percentileArray
+      ];
     }
 
     try {
       const response = await fetch(ALCHEMY_RPC_URL, {
         method: 'POST',
         headers: { 
-          'Content-Type': 'application/json'
+          'accept': 'application/json',
+          'content-type': 'application/json'
         },
         body: JSON.stringify(rpcBody)
       });
@@ -116,8 +134,8 @@ export default function AffiliateWebhookAdmin() {
       }
     } catch (error) {
       setRawRpcResponse({ 
-        error: "Lỗi kết nối mạng lưới", 
-        message: "Yêu cầu không thể thực thi. Hãy kiểm tra gói tin.",
+        error: "Lỗi kết nối RPC mạng lưới", 
+        message: "Yêu cầu không thể thực thi. Hãy kiểm tra endpoint.",
         details: error.message 
       });
       setRpcStatus('error');
@@ -207,6 +225,7 @@ export default function AffiliateWebhookAdmin() {
               <option value="eth_blockNumber">eth_blockNumber - Lấy số khối mới nhất</option>
               <option value="eth_getBlockReceipts">eth_getBlockReceipts - Lấy biên lai khối</option>
               <option value="eth_estimateGas">eth_estimateGas - Ước tính Gas tiêu thụ</option>
+              <option value="eth_feeHistory">eth_feeHistory - Xem lịch sử cấu trúc phí</option>
             </select>
           </div>
 
@@ -234,7 +253,7 @@ export default function AffiliateWebhookAdmin() {
           </div>
         </div>
 
-        {/* Khung tham số mở rộng: Chỉ xuất hiện khi chọn cấu hình eth_estimateGas */}
+        {/* Khung tham số mở rộng: Xuất hiện khi chọn cấu hình eth_estimateGas */}
         {selectedRpcMethod === 'eth_estimateGas' && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 p-4 bg-slate-950/40 border border-slate-800/80 rounded-xl animate-fadeIn">
             <div>
@@ -261,6 +280,39 @@ export default function AffiliateWebhookAdmin() {
                 type="text" 
                 value={txValue} 
                 onChange={(e) => setTxValue(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-300 focus:outline-none focus:border-blue-500"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* CẤU HÌNH MỚI: Khung tham số mở rộng cho eth_feeHistory */}
+        {selectedRpcMethod === 'eth_feeHistory' && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 p-4 bg-slate-950/40 border border-slate-800/80 rounded-xl animate-fadeIn">
+            <div>
+              <label className="block text-[11px] font-mono text-slate-400 mb-1.5">Block Count (Hex string/Integer)</label>
+              <input 
+                type="text" 
+                value={feeBlockCount} 
+                onChange={(e) => setFeeBlockCount(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-300 focus:outline-none focus:border-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-mono text-slate-400 mb-1.5">Newest Block (Mã Hex hoặc 'latest')</label>
+              <input 
+                type="text" 
+                value={feeNewestBlock} 
+                onChange={(e) => setFeeNewestBlock(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-300 focus:outline-none focus:border-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-mono text-slate-400 mb-1.5">Reward Percentiles (Dấu phẩy ngăn cách)</label>
+              <input 
+                type="text" 
+                value={feePercentiles} 
+                onChange={(e) => setFeePercentiles(e.target.value)}
                 className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-300 focus:outline-none focus:border-blue-500"
               />
             </div>
