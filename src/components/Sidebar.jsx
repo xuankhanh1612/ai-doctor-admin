@@ -90,6 +90,7 @@ export default function Sidebar({ active, onNavigate, openSignal = 0 }) {
     { id: 'aiHealthcareVisionControl', label: t('aiHealthcareVisionControl'), step: '24b' },
     { id: 'admin', label: t('adminPanel'), step: '★', icon: '🛡️' },
     { id: 'affiliateAdmin', label: 'Quản Trị Affiliate', step: 'AFF', icon: '🤝' },
+    { id: 'moralisPlaygroundAdmin', label: 'Moralis Playground Admin', step: 'MORALIS', icon: '🧪' },
     { id: 'affiliateWebhookAdmin', label: 'Affiliate Webhook Admin', step: 'WEBHOOK', icon: '🔗' },
     { id: 'myAiAvatar', label: 'My AI Avatar', step: 'LAM', icon: '🪄' },
     { id: 'create3DVideoFrom2D', label: 'Create 3D Video From 2D', step: '3D2D', icon: '🎥' },
