@@ -1,12 +1,11 @@
 import React, { useState } from 'react'
 import {
   Sparkles, Github, ExternalLink, FileText, Copy, Check,
-  UploadCloud, Video, Wand2, Zap, Smartphone, Mic, Terminal, MessageSquareText,
+  UploadCloud, Video, Wand2, Smartphone, Mic, Terminal, MessageSquareText,
 } from 'lucide-react'
 import { useApp } from '../context/AppContext'
 import OpenAvatarChatPanel from './OpenAvatarChatPanel'
 import OpenAvatarChatVideoPanel from './OpenAvatarChatVideoPanel'
-import LamGeneratePanel from './LamGeneratePanel'
 import LhmGeneratePanel from './LhmGeneratePanel'
 
 const LINKS = {
@@ -233,16 +232,6 @@ export default function MyAIAvatarPanel() {
         </div>
       </div>
 
-      {/* Real photo -> 3D avatar generation, calling the actual LAM model server-side */}
-      <div style={{ marginBottom: 20 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-          <Zap size={16} color={isDark ? '#00e5ff' : '#00b8cc'} />
-          <div style={{ fontSize: 14, fontWeight: 800, color: text }}>
-            {vi ? 'Chạy model LAM thật ngay trong app' : 'Run the real LAM model right in this app'}
-          </div>
-        </div>
-        <LamGeneratePanel isDark={isDark} vi={vi} border={border} surface={surface} text={text} text2={text2} text3={text3} />
-      </div>
 
       {/* Alternative: LHM++ (aigc3d/LHM-plusplus), the faster successor to
           LHM whose HF Space is actually alive, unlike the original 3DAIGC/LHM */}
