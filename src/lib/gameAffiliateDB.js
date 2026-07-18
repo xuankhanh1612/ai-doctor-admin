@@ -139,6 +139,12 @@ export async function markReferralSynced(id, txHash) {
   await tx('referrals', 'readwrite', s => s.put({ ...row, chainStatus: 'synced', txHash }))
 }
 
+export async function markReferralFailed(id, errorMessage) {
+  const row = await tx('referrals', 'readonly', s => s.get(id))
+  if (!row) return
+  await tx('referrals', 'readwrite', s => s.put({ ...row, chainStatus: 'failed', error: errorMessage }))
+}
+
 // ─── Game progress (from PORTAL_GAME_RESULT postMessage) ─────────────────
 export async function recordGameProgress({ uuid, gameId, gameTitle, status, score, timeSec, meta }) {
   if (!uuid) return null
@@ -189,6 +195,13 @@ export async function markRewardFailed(id, errorMessage) {
 // Ghi thưởng cho người chơi (uuid) và, nếu người này là F1 của ai đó (đã
 // vào game qua link giới thiệu), tự động cộng thêm hoa hồng cho người giới
 // thiệu (referrerUuid) — đây chính là phần "nhận thưởng" của Affiliate.
+//
+// LƯU Ý ON-CHAIN: contract HienMauAffiliate.rewardTask() đã tự động chia
+// hoa hồng lên toàn bộ tuyến trên NGAY TRONG CÙNG 1 giao dịch của người
+// chơi (uuid) — dòng "commission" trả về bên dưới CHỈ để hiển thị local,
+// KHÔNG được gửi thành 1 giao dịch on-chain riêng. Sau khi giao dịch
+// rewardTask() của `primaryId` thành công, gọi markRewardSynced(commissionId,
+// cùng txHash đó) — xem gameAffiliateChain.js.
 export async function addRewardWithReferralCommission({ uuid, kind, amount, currency = 'VIET', gameId = null, note = null, commissionRate = 0.1 }) {
   const primaryId = await addReward({ uuid, kind, amount, currency, gameId, note })
   const referral = await getReferralFor(uuid)

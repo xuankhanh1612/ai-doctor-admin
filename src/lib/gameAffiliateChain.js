@@ -1,17 +1,32 @@
 /**
  * gameAffiliateChain.js — Ghi quan hệ Affiliate + phần thưởng game lên
  * blockchain (BSC Testnet), dùng Account Abstraction (ERC-4337) gasless qua
- * Pimlico bundler + Paymaster, giống hệt kiến trúc đã dùng trong
+ * Pimlico bundler + `HienMauPaymaster`, giống kiến trúc đã dùng trong
  * `AffiliateSystemControlPanel.jsx` (executeGaslessTask).
  *
- * QUAN TRỌNG — ABI: hợp đồng Affiliate thật (VITE_AFFILIATE_CONTRACT_ADDRESS)
- * chưa có ABI đầy đủ được cung cấp trong dự án. Các hàm bên dưới encode lệnh
- * gọi contract bằng chữ ký hàm tối giản (functionName + kiểu tham số) theo
- * đúng quy ước đã có sẵn trong AffiliateSystemControlPanel.jsx. Trước khi
- * lên production, hãy đối chiếu lại `functionName`/kiểu tham số dưới đây với
- * ABI thật đã deploy (Solidity) và chỉnh cho khớp — hiện tại:
- *   - registerReferral(address referee, address referrer)
- *   - recordGameReward(address player, uint256 gameIdHash, uint256 amount)
+ * ABI thật của `HienMauAffiliate.sol` (đã xác nhận với người dùng):
+ *   - registerReferral(address _referrer) external
+ *       msg.sender tự trở thành referee, chỉ cần truyền địa chỉ referrer.
+ *       Revert nếu: referrer == address(0), referrer == msg.sender, hoặc
+ *       msg.sender đã có referrer từ trước ("Already registered").
+ *   - rewardTask(uint256 _baseAmount) external
+ *       Cộng _baseAmount vào balances[msg.sender] RỒI TỰ ĐỘNG chia hoa hồng
+ *       đa tầng (levelRates = [10,5,2]%) ngược lên toàn bộ tuyến trên —
+ *       KHÔNG cần gọi thêm giao dịch nào khác để trả hoa hồng.
+ *       Revert nếu chưa đủ 4 giờ kể từ lần gọi trước của CHÍNH msg.sender
+ *       ("Task cooldown active: come back later") — cooldown tính theo VÍ,
+ *       dùng chung cho mọi loại thưởng (ad_watch/game_complete) vì cả 2 đều
+ *       gọi cùng 1 hàm rewardTask.
+ *
+ * → Hệ quả cho game affiliate: 1 lần gọi rewardTask() là đủ để vừa cộng
+ * điểm cho người chơi vừa trả hoa hồng cho F1/F2/F3 NGAY TRONG CÙNG 1 giao
+ * dịch — không cần (và không nên) gửi thêm giao dịch on-chain riêng cho
+ * phần hoa hồng của người giới thiệu.
+ *
+ * Paymaster (`HienMauPaymaster.sol`) chỉ tài trợ gas cho các cuộc gọi có
+ * dest == affiliateContract && value == 0 qua hàm chuẩn `execute(...)` của
+ * Simple Smart Account — đúng với cách `permissionless` gửi transaction ở
+ * dưới, không cần chỉnh gì thêm.
  *
  * Mỗi user (uuid) có 1 smart-account ví ẩn danh riêng, private key sinh 1
  * lần và lưu trong localStorage (giống getOrGeneratePrivateKey trong
@@ -19,13 +34,14 @@
  * ký các userOperation gasless.
  */
 
-import { createPublicClient, http, encodeFunctionData, keccak256, stringToBytes } from 'viem'
+import { createPublicClient, http, encodeFunctionData } from 'viem'
 import { bscTestnet } from 'viem/chains'
 import { createSmartAccountClient } from 'permissionless'
 import { toSimpleSmartAccount } from 'permissionless/accounts'
 import { privateKeyToAccount } from 'viem/accounts'
 import {
   markReferralSynced,
+  markReferralFailed,
   markRewardSynced,
   markRewardFailed,
 } from './gameAffiliateDB'
@@ -39,6 +55,22 @@ const AFFILIATE_CONTRACT = import.meta.env.VITE_AFFILIATE_CONTRACT_ADDRESS
   || '0x44f787D670Ff4Ef65334D6637960bb7Fe5E1231c'
 
 const ENTRY_POINT = { address: '0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789', version: '0.6' }
+
+// ABI thật, lấy nguyên văn từ artifact đã compile của HienMauAffiliate.sol
+const AFFILIATE_ABI = [
+  { inputs: [], stateMutability: 'nonpayable', type: 'constructor' },
+  { anonymous: false, inputs: [{ indexed: true, internalType: 'address', name: 'from', type: 'address' }, { indexed: true, internalType: 'address', name: 'to', type: 'address' }, { indexed: false, internalType: 'uint256', name: 'level', type: 'uint256' }, { indexed: false, internalType: 'uint256', name: 'amount', type: 'uint256' }], name: 'CommissionPaid', type: 'event' },
+  { anonymous: false, inputs: [{ indexed: true, internalType: 'address', name: 'user', type: 'address' }, { indexed: true, internalType: 'address', name: 'referrer', type: 'address' }], name: 'ReferralRegistered', type: 'event' },
+  { anonymous: false, inputs: [{ indexed: true, internalType: 'address', name: 'user', type: 'address' }, { indexed: false, internalType: 'uint256', name: 'amount', type: 'uint256' }], name: 'TaskRewarded', type: 'event' },
+  { inputs: [{ internalType: 'address', name: '', type: 'address' }], name: 'balances', outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }], stateMutability: 'view', type: 'function' },
+  { inputs: [{ internalType: 'address', name: '', type: 'address' }], name: 'lastTaskTime', outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }], stateMutability: 'view', type: 'function' },
+  { inputs: [{ internalType: 'uint256', name: '', type: 'uint256' }], name: 'levelRates', outputs: [{ internalType: 'uint256', name: '', type: 'uint256' }], stateMutability: 'view', type: 'function' },
+  { inputs: [], name: 'owner', outputs: [{ internalType: 'address', name: '', type: 'address' }], stateMutability: 'view', type: 'function' },
+  { inputs: [{ internalType: 'address', name: '', type: 'address' }], name: 'referrers', outputs: [{ internalType: 'address', name: '', type: 'address' }], stateMutability: 'view', type: 'function' },
+  { inputs: [{ internalType: 'address', name: '_referrer', type: 'address' }], name: 'registerReferral', outputs: [], stateMutability: 'nonpayable', type: 'function' },
+  { inputs: [{ internalType: 'uint256', name: '_baseAmount', type: 'uint256' }], name: 'rewardTask', outputs: [], stateMutability: 'nonpayable', type: 'function' },
+  { inputs: [{ internalType: 'uint256[]', name: '_newRates', type: 'uint256[]' }], name: 'setLevelRates', outputs: [], stateMutability: 'nonpayable', type: 'function' },
+]
 
 const publicClient = createPublicClient({
   chain: bscTestnet,
@@ -82,12 +114,6 @@ async function getSmartAccountClient(uuid) {
   })
 }
 
-// uint256 hash ổn định cho 1 chuỗi id (vd gameId "camera-key") — dùng khi
-// contract chỉ nhận uint256 chứ không nhận string trực tiếp.
-function idToUint256(id) {
-  return BigInt(keccak256(stringToBytes(String(id || ''))))
-}
-
 // Cache 1 smart-account-client theo uuid trong phiên hiện tại để tránh khởi
 // tạo lại (và gọi getPaymasterStubData) mỗi lần gửi transaction.
 const clientCache = new Map()
@@ -98,9 +124,9 @@ async function getCachedSmartAccountClient(uuid) {
   return client
 }
 
-async function sendGaslessCall(uuid, { abi, functionName, args }) {
+async function sendGaslessCall(uuid, { functionName, args }) {
   const smartAccountClient = await getCachedSmartAccountClient(uuid)
-  const callData = encodeFunctionData({ abi, functionName, args })
+  const callData = encodeFunctionData({ abi: AFFILIATE_ABI, functionName, args })
   const txHash = await smartAccountClient.sendTransaction({
     to: AFFILIATE_CONTRACT,
     data: callData,
@@ -111,72 +137,67 @@ async function sendGaslessCall(uuid, { abi, functionName, args }) {
   return txHash
 }
 
-// ─── Ghi quan hệ referral lên chain ────────────────────────────────────────
-const REGISTER_REFERRAL_ABI = [{
-  type: 'function',
-  name: 'registerReferral',
-  inputs: [{ type: 'address', name: 'referee' }, { type: 'address', name: 'referrer' }],
-  outputs: [],
-  stateMutability: 'nonpayable',
-}]
+function isCooldownError(error) {
+  return /cooldown/i.test(error?.message || String(error))
+}
 
+function isAlreadyRegisteredError(error) {
+  return /Already registered/i.test(error?.message || String(error))
+}
+
+// ─── 1) Ghi quan hệ referral lên chain ─────────────────────────────────────
+// msg.sender (= ví của refereeUuid) tự trở thành người được giới thiệu, chỉ
+// cần truyền địa chỉ ví của referrerUuid.
 export async function registerReferralOnChain({ id, referrerUuid, refereeUuid }) {
   try {
-    const refereeAddress = getGameAffiliateWalletAddress(refereeUuid)
     const referrerAddress = getGameAffiliateWalletAddress(referrerUuid)
     const txHash = await sendGaslessCall(refereeUuid, {
-      abi: REGISTER_REFERRAL_ABI,
       functionName: 'registerReferral',
-      args: [refereeAddress, referrerAddress],
+      args: [referrerAddress],
     })
     if (id) await markReferralSynced(id, txHash)
     return { ok: true, txHash }
   } catch (error) {
+    // "Already registered" trên chain không phải lỗi thật — nghĩa là quan hệ
+    // này đã tồn tại từ trước (vd gọi lại sau khi mất mạng lần trước), coi
+    // như thành công để không chặn UI với thông báo lỗi vô nghĩa.
+    if (isAlreadyRegisteredError(error)) {
+      if (id) await markReferralSynced(id, null)
+      return { ok: true, txHash: null, note: 'already_registered_onchain' }
+    }
     console.error('[gameAffiliateChain] registerReferralOnChain lỗi:', error)
+    if (id) await markReferralFailed(id, error?.message || String(error))
     return { ok: false, error: error?.message || String(error) }
   }
 }
 
-// ─── Ghi thưởng (xem QC / hoàn thành game / hoa hồng) lên chain ───────────
-const RECORD_REWARD_ABI = [{
-  type: 'function',
-  name: 'recordGameReward',
-  inputs: [
-    { type: 'address', name: 'player' },
-    { type: 'uint256', name: 'gameIdHash' },
-    { type: 'uint256', name: 'amount' },
-  ],
-  outputs: [],
-  stateMutability: 'nonpayable',
-}]
-
-export async function recordRewardOnChain({ id, uuid, gameId, amount }) {
+// ─── 2) Ghi thưởng (xem QC / hoàn thành game) lên chain ───────────────────
+// rewardTask() TỰ ĐỘNG chia hoa hồng lên toàn bộ tuyến trên trong CÙNG 1
+// giao dịch — không gọi thêm giao dịch nào khác cho phần hoa hồng.
+export async function recordRewardOnChain({ id, uuid, amount }) {
   try {
-    const playerAddress = getGameAffiliateWalletAddress(uuid)
-    // amount lưu local có thể là số thập phân (VIET/PI) — quy đổi ra số
-    // nguyên nhỏ nhất (x1000) để truyền uint256, tuỳ chỉnh lại theo đúng
-    // decimals thật của token thưởng khi có ABI chính thức.
-    const amountUint = BigInt(Math.round((Number(amount) || 0) * 1000))
+    const amountUint = BigInt(Math.max(0, Math.round(Number(amount) || 0)))
     const txHash = await sendGaslessCall(uuid, {
-      abi: RECORD_REWARD_ABI,
-      functionName: 'recordGameReward',
-      args: [playerAddress, idToUint256(gameId), amountUint],
+      functionName: 'rewardTask',
+      args: [amountUint],
     })
     if (id) await markRewardSynced(id, txHash)
     return { ok: true, txHash }
   } catch (error) {
+    const cooldown = isCooldownError(error)
     console.error('[gameAffiliateChain] recordRewardOnChain lỗi:', error)
-    if (id) await markRewardFailed(id, error?.message || String(error))
-    return { ok: false, error: error?.message || String(error) }
+    if (id) await markRewardFailed(id, cooldown ? 'Đang trong thời gian chờ (cooldown 4h/ví) — sẽ tự đồng bộ lại sau.' : (error?.message || String(error)))
+    return { ok: false, error: error?.message || String(error), cooldown }
   }
 }
 
-// ─── Đồng bộ lại toàn bộ reward đang "pending" (vd sau khi mất mạng) ──────
+// ─── Đồng bộ lại toàn bộ reward đang "pending"/"failed" (vd sau khi mất
+// mạng hoặc hết cooldown) ───────────────────────────────────────────────
 export async function retryPendingRewards(pendingRows) {
   const results = []
   for (const row of pendingRows) {
     // eslint-disable-next-line no-await-in-loop
-    const res = await recordRewardOnChain({ id: row.id, uuid: row.uuid, gameId: row.gameId, amount: row.amount })
+    const res = await recordRewardOnChain({ id: row.id, uuid: row.uuid, amount: row.amount })
     results.push({ id: row.id, ...res })
   }
   return results

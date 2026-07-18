@@ -5,6 +5,8 @@ import {
   getReferralsByReferrer,
   getRewards,
   addRewardWithReferralCommission,
+  markRewardSynced,
+  markRewardFailed,
 } from '../lib/gameAffiliateDB'
 import { recordRewardOnChain } from '../lib/gameAffiliateChain'
 
@@ -13,6 +15,22 @@ import { recordRewardOnChain } from '../lib/gameAffiliateChain'
 // (vd googletag.pubads() rewarded ad) khi có ad unit chính thức.
 const AD_WATCH_SECONDS = 15
 const AD_REWARD = { amount: 5000, currency: 'VIET' }
+
+// Ghi 1 khoản thưởng cho `uuid` + hoa hồng local cho tuyến trên (nếu có),
+// rồi gửi ĐÚNG 1 giao dịch rewardTask() lên chain — vì contract đã tự chia
+// hoa hồng ngược lên toàn bộ tuyến trên trong CÙNG giao dịch đó, dòng hoa
+// hồng local chỉ cần "ăn theo" cùng 1 txHash, không gửi giao dịch riêng.
+async function submitReward({ uuid, kind, amount, currency, gameId, note }) {
+  const { primaryId, commissionId } = await addRewardWithReferralCommission({
+    uuid, kind, amount, currency, gameId, note,
+  })
+  const result = await recordRewardOnChain({ id: primaryId, uuid, amount })
+  if (commissionId) {
+    if (result.ok) await markRewardSynced(commissionId, result.txHash)
+    else await markRewardFailed(commissionId, result.cooldown ? 'Chưa đồng bộ — chờ giao dịch chính của người được giới thiệu.' : (result.error || 'Lỗi không xác định'))
+  }
+  return result
+}
 
 export default function GameAffiliateRewardWidget({ uuid, lastGameResult }) {
   const [code, setCode] = useState('')
@@ -43,7 +61,7 @@ export default function GameAffiliateRewardWidget({ uuid, lastGameResult }) {
     if (!uuid || !lastGameResult) return
     if (lastGameResult.status !== 'win' && lastGameResult.status !== 'freeplay') return
     ;(async () => {
-      const { primaryId, commissionId, commissionReferrerUuid } = await addRewardWithReferralCommission({
+      await submitReward({
         uuid,
         kind: 'game_complete',
         amount: 2000,
@@ -51,11 +69,6 @@ export default function GameAffiliateRewardWidget({ uuid, lastGameResult }) {
         gameId: lastGameResult.gameId,
         note: `Hoàn thành ${lastGameResult.gameTitle || lastGameResult.gameId}`,
       })
-      await refresh()
-      await recordRewardOnChain({ id: primaryId, uuid, gameId: lastGameResult.gameId, amount: 2000 })
-      if (commissionId && commissionReferrerUuid) {
-        await recordRewardOnChain({ id: commissionId, uuid: commissionReferrerUuid, gameId: lastGameResult.gameId, amount: 200 })
-      }
       await refresh()
     })()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -77,14 +90,10 @@ export default function GameAffiliateRewardWidget({ uuid, lastGameResult }) {
       (async () => {
         setWatchingAd(false)
         setClaiming(true)
-        const { primaryId, commissionId, commissionReferrerUuid } = await addRewardWithReferralCommission({
-          uuid, kind: 'ad_watch', ...AD_REWARD, gameId: 'ad_watch', note: 'Xem quảng cáo nhận thưởng',
+        await submitReward({
+          uuid, kind: 'ad_watch', amount: AD_REWARD.amount, currency: AD_REWARD.currency,
+          gameId: 'ad_watch', note: 'Xem quảng cáo nhận thưởng',
         })
-        await refresh()
-        await recordRewardOnChain({ id: primaryId, uuid, gameId: 'ad_watch', amount: AD_REWARD.amount })
-        if (commissionId && commissionReferrerUuid) {
-          await recordRewardOnChain({ id: commissionId, uuid: commissionReferrerUuid, gameId: 'ad_watch', amount: Math.round(AD_REWARD.amount * 0.1) })
-        }
         await refresh()
         setClaiming(false)
       })()
@@ -180,7 +189,7 @@ export default function GameAffiliateRewardWidget({ uuid, lastGameResult }) {
                           : r.chainStatus === 'failed' ? 'bg-red-500/20 text-red-300'
                           : 'bg-amber-500/20 text-amber-300'
                         }`}
-                        title={r.chainStatus === 'synced' ? r.txHash : ''}
+                        title={r.chainStatus === 'synced' ? (r.txHash || '') : r.chainStatus === 'failed' ? (r.error || '') : ''}
                       >
                         {r.chainStatus === 'synced' ? 'On-chain' : r.chainStatus === 'failed' ? 'Lỗi' : 'Đang gửi'}
                       </span>
