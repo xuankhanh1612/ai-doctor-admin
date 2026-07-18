@@ -10,7 +10,7 @@
 export const DEFAULT_ORGAN_ID = 'gan';
 
 const ORGANS = [
-  { id: 'mauhiem', vi: 'Hiến Máu', en: 'Blood Donation', emoji: '🩸', anatomyAnnotationId: 'blood-vessels' },
+  { id: 'mauhiem', vi: 'Hiến Máu Nhân Văn / Máu Hiếm', en: 'Blood Donation / Rare Blood', emoji: '🩸', anatomyAnnotationId: 'blood-vessels' },
   { id: 'gan', vi: 'Gan', en: 'Liver', emoji: '🫘', anatomyAnnotationId: 'liver' },
   { id: 'tim', vi: 'Tim', en: 'Heart', emoji: '❤️', anatomyAnnotationId: 'heart' },
   { id: 'phoi', vi: 'Phổi', en: 'Lungs', emoji: '🫁', anatomyAnnotationId: 'lungs' },
@@ -20,7 +20,7 @@ const ORGANS = [
   { id: 'da', vi: 'Da', en: 'Skin', emoji: '🧴', anatomyAnnotationId: 'skin' },
   { id: 'tuy', vi: 'Tụy', en: 'Pancreas', emoji: '🟠', anatomyAnnotationId: 'pancreas' },
   { id: 'ruot', vi: 'Ruột', en: 'Intestine', emoji: '🌀', anatomyAnnotationId: 'small-intestine' },
-  { id: 'all-after-death', vi: 'Hiến tất cả sau khi tôi mất', en: 'Donate everything after I die', emoji: '🕊️', anatomyAnnotationId: null },
+  { id: 'all-after-death', vi: 'Hiến tặng tất cả Nội Tạng sau khi tôi mất', en: 'Donate everything after I die', emoji: '🕊️', anatomyAnnotationId: null },
 ];
 
 export default ORGANS;
