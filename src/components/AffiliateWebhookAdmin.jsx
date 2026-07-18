@@ -22,7 +22,8 @@ import {
   ChevronRight,
   ArrowRightLeft,
   Database,
-  ArrowRight
+  ArrowRight,
+  Wallet
 } from 'lucide-react';
 
 // Hàm định dạng số hiển thị số dư coin/token
@@ -47,6 +48,9 @@ export default function AffiliateWebhookAdmin() {
   const [dataEngine, setDataEngine] = useState('alchemy'); 
   const [moralisApiKey, setMoralisApiKey] = useState('vM7xza5AGzWH4ugv4vDQsXrPAYuP9gred2lNE7BJnKwB4D2QNuNs2Eso6Zk5pUMT');
 
+  // MỚI: State quản lý địa chỉ ví tùy chỉnh linh hoạt cho người dùng nhập liệu tự do
+  const [customAddress, setCustomAddress] = useState('0x44f787D670Ff4Ef65334D6637960bb7Fe5E1231c');
+
   // State Sandbox RPC & Enhanced API
   const [selectedRpcMethod, setSelectedRpcMethod] = useState('alchemy_getAssetTransfers');
   const [blockParam, setBlockParam] = useState('0x7226a16'); 
@@ -62,20 +66,17 @@ export default function AffiliateWebhookAdmin() {
   const [logsAddress, setLogsAddress] = useState('0x44f787D670Ff4Ef65334D6637960bb7Fe5E1231c');
   const [logsTopics, setLogsTopics] = useState('');
 
+  // STATE BỘ LỌC ĐỘNG VÀ PHÂN TRANG
   const [isLoadingRpc, setIsLoadingRpc] = useState(false);
   const [rawRpcResponse, setRawRpcResponse] = useState(null);
   const [latestLiveBlock, setLatestBlock] = useState('0x0');
   const [rpcStatus, setRpcStatus] = useState('connected');
-
-  // STATE BỘ LỌC ĐỘNG
   const [activeDropdown, setActiveDropdown] = useState(null); 
   const [selectedTimeFilter, setSelectedTimeFilter] = useState('hour'); 
   const [selectedMethods, setSelectedMethods] = useState([]);
   const [selectedHttpCodes, setSelectedHttpCodes] = useState([]);
   const [selectedErrorCodes, setSelectedErrorCodes] = useState([]);
   const [selectedResponseTimes, setSelectedResponseTimes] = useState([]); 
-
-  // STATE PHÂN TRANG
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10); 
   
@@ -115,6 +116,7 @@ export default function AffiliateWebhookAdmin() {
     { key: 'year', label: 'Last year' }
   ];
 
+  // Đồng bộ hóa Engine method tương thích
   useEffect(() => {
     if (dataEngine === 'moralis') {
       setSelectedRpcMethod('moralis_getUnifiedHistory');
@@ -124,27 +126,48 @@ export default function AffiliateWebhookAdmin() {
     setRawRpcResponse(null);
   }, [dataEngine]);
 
+  // Cập nhật địa chỉ đích tự động khi người dùng chuyển đổi Tab Hợp đồng
+  useEffect(() => {
+    const currentContract = webhookData[activeWebhookTab].contract;
+    setCustomAddress(currentContract);
+    setLogsAddress(currentContract);
+    setTxTo(currentContract);
+  }, [activeWebhookTab]);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setActiveDropdown(null);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   const handleExecuteDataEngineCall = async () => {
     setIsLoadingRpc(true);
     setRawRpcResponse(null);
     const startTime = performance.now();
-    const currentContract = webhookData[activeWebhookTab].contract;
+    
+    // Sử dụng địa chỉ tùy chọn từ hộp Textbox thay vì địa chỉ Tab tĩnh
+    const targetQueryAddress = customAddress.trim() || webhookData[activeWebhookTab].contract;
 
+    // NHÁNH 1: MORALIS PLAYGROUND ENGINE (SỬ DỤNG TARGET WALLET TÙY BIẾN)
     if (dataEngine === 'moralis') {
       const headers = { accept: 'application/json', 'X-API-Key': moralisApiKey };
-      const chain = '0x61'; 
+      const chain = '0x61'; // BSC Testnet
       
       try {
-        const nativeTransactions = await (await fetch(`https://deep-index.moralis.io/api/v2/${currentContract}?chain=${chain}&limit=5`, { headers })).json();
-        const erc20Transactions = await (await fetch(`https://deep-index.moralis.io/api/v2/${currentContract}/erc20/transfers?chain=${chain}&limit=5`, { headers })).json();
-        const nftTransactions = await (await fetch(`https://deep-index.moralis.io/api/v2/${currentContract}/nft/transfers?chain=${chain}&limit=5`, { headers })).json();
+        const nativeTransactions = await (await fetch(`https://deep-index.moralis.io/api/v2/${targetQueryAddress}?chain=${chain}&limit=5`, { headers })).json();
+        const erc20Transactions = await (await fetch(`https://deep-index.moralis.io/api/v2/${targetQueryAddress}/erc20/transfers?chain=${chain}&limit=5`, { headers })).json();
+        const nftTransactions = await (await fetch(`https://deep-index.moralis.io/api/v2/${targetQueryAddress}/nft/transfers?chain=${chain}&limit=5`, { headers })).json();
         
         let unifiedResult = [];
         
         if (nativeTransactions?.result && Array.isArray(nativeTransactions.result)) {
           nativeTransactions.result.forEach((tx) => {
             const { from_address, to_address, value, hash, block_timestamp, block_number } = tx;
-            const type = from_address.toLowerCase() === currentContract.toLowerCase() ? 'sent' : 'received';
+            const type = from_address.toLowerCase() === targetQueryAddress.toLowerCase() ? 'sent' : 'received';
             unifiedResult.push({
               type,
               from: from_address,
@@ -163,7 +186,7 @@ export default function AffiliateWebhookAdmin() {
         if (erc20Transactions?.result && Array.isArray(erc20Transactions.result)) {
           erc20Transactions.result.forEach((tx) => {
             const { from_address, to_address, value, transaction_hash, block_timestamp, address, block_number } = tx;
-            const type = from_address.toLowerCase() === currentContract.toLowerCase() ? 'sent' : 'received';
+            const type = from_address.toLowerCase() === targetQueryAddress.toLowerCase() ? 'sent' : 'received';
             unifiedResult.push({
               type,
               from: from_address,
@@ -202,7 +225,7 @@ export default function AffiliateWebhookAdmin() {
         if (nftTransactions?.result && Array.isArray(nftTransactions.result)) {
           for (const tx of nftTransactions.result) {
             const { from_address, to_address, amount, block_timestamp, contract_type, transaction_hash, token_id, token_address, block_number } = tx;
-            const type = from_address.toLowerCase() === currentContract.toLowerCase() ? 'sent' : 'received';
+            const type = from_address.toLowerCase() === targetQueryAddress.toLowerCase() ? 'sent' : 'received';
             
             let resolvedNftName = `${contract_type || 'NFT'} #${token_id}`;
             try {
@@ -230,7 +253,6 @@ export default function AffiliateWebhookAdmin() {
         const endTime = performance.now();
         const duration = Math.round(endTime - startTime);
         
-        // Sắp xếp các transaction thống nhất theo thời gian khối giảm dần (Mới nhất lên đầu)
         unifiedResult.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         setRawRpcResponse(unifiedResult); 
 
@@ -244,7 +266,7 @@ export default function AffiliateWebhookAdmin() {
           responseTime: `${duration} ms`,
           timeSent: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           timestamp: Date.now(),
-          requestBody: { engine: "moralis_playground_unified", contract: currentContract },
+          requestBody: { engine: "moralis_playground_unified", wallet: targetQueryAddress },
           responseBody: unifiedResult
         };
         setRequestLogs(prev => [newLogEntry, ...prev]);
@@ -252,20 +274,20 @@ export default function AffiliateWebhookAdmin() {
         
       } catch (error) {
         setRawRpcResponse({ error: "Lỗi luồng xử lý liên hợp Moralis API", details: error.message });
-      } finally {
+      } relativeFinally: {
         setIsLoadingRpc(false);
       }
       return;
     }
 
-    // HẠ TẦNG ALCHEMY JSON-RPC NODE
+    // NHÁNH 2: ALCHEMY JSON-RPC NODE ENGINE (SỬ DỤNG TARGET WALLET TÙY BIẾN)
     const rpcBody = { jsonrpc: "2.0", id: 1, method: selectedRpcMethod };
 
     if (selectedRpcMethod === 'alchemy_getAssetTransfers') {
       rpcBody.params = [{
         fromBlock: "0x0",
         toBlock: "latest",
-        toAddress: currentContract,
+        toAddress: targetQueryAddress,
         category: ["external", "erc20"], 
         excludeZeroValue: false,
         withMetadata: true
@@ -273,21 +295,17 @@ export default function AffiliateWebhookAdmin() {
     } 
     else if (selectedRpcMethod === 'eth_getLogs') {
       const filterObj = { fromBlock: logsFromBlock, toBlock: logsToBlock };
-      if (activeWebhookTab === 'paymaster' && !logsTopics.trim()) {
-        const paddedPaymaster = "0x" + currentContract.replace("0x", "").toLowerCase().padStart(64, '0');
-        filterObj.topics = [
-          "0x49628e100ac341d24a3e6da50b589cffa6a6c42aabf49b9d4abcb32e65c9535b", 
-          null,
-          paddedPaymaster 
-        ];
+      if (targetQueryAddress.toLowerCase() === webhookData.paymaster.contract.toLowerCase() && !logsTopics.trim()) {
+        const paddedPaymaster = "0x" + targetQueryAddress.replace("0x", "").toLowerCase().padStart(64, '0');
+        filterObj.topics = ["0x49628e100ac341d24a3e6da50b589cffa6a6c42aabf49b9d4abcb32e65c9535b", null, paddedPaymaster];
       } else {
-        filterObj.address = logsAddress;
+        filterObj.address = targetQueryAddress;
         if (logsTopics.trim()) filterObj.topics = logsTopics.split(',').map(t => t.trim());
       }
       rpcBody.params = [filterObj];
     } 
     else if (selectedRpcMethod === 'eth_getBlockReceipts') rpcBody.params = [blockParam];
-    else if (selectedRpcMethod === 'eth_estimateGas') rpcBody.params = [{ from: txFrom, to: txTo, value: txValue }];
+    else if (selectedRpcMethod === 'eth_estimateGas') rpcBody.params = [{ from: txFrom, to: targetQueryAddress, value: txValue }];
     else if (selectedRpcMethod === 'eth_feeHistory') rpcBody.params = [feeBlockCount, feeNewestBlock, feePercentiles.split(',').map(p => parseFloat(p.trim()))];
     else if (selectedRpcMethod === 'eth_blockNumber') rpcBody.params = [];
 
@@ -327,15 +345,6 @@ export default function AffiliateWebhookAdmin() {
     }
   };
 
-  useEffect(() => {
-    const currentContract = webhookData[activeWebhookTab].contract;
-    setLogsAddress(currentContract);
-    setTxTo(currentContract);
-    if (selectedRpcMethod === 'eth_blockNumber' || selectedRpcMethod === 'alchemy_getAssetTransfers' || selectedRpcMethod === 'moralis_getUnifiedHistory') {
-      handleExecuteDataEngineCall();
-    }
-  }, [activeWebhookTab]);
-
   const toggleFilter = (item, list, setList) => {
     setCurrentPage(1);
     if (list.includes(item)) setList(list.filter(i => i !== item));
@@ -348,10 +357,6 @@ export default function AffiliateWebhookAdmin() {
     if (selectedTimeFilter === 'hour' && diffMs > 60 * 60 * 1000) return false;
     if (selectedTimeFilter === 'day' && diffMs > 24 * 60 * 60 * 1000) return false;
     if (selectedTimeFilter === '7days' && diffMs > 7 * 24 * 60 * 60 * 1000) return false;
-    if (selectedTimeFilter === 'month' && diffMs > 30 * 24 * 60 * 60 * 1000) return false;
-    if (selectedTimeFilter === '3months' && diffMs > 90 * 24 * 60 * 60 * 1000) return false;
-    if (selectedTimeFilter === '6months' && diffMs > 180 * 24 * 60 * 60 * 1000) return false;
-    if (selectedTimeFilter === 'year' && diffMs > 365 * 24 * 60 * 60 * 1000) return false;
 
     if (selectedMethods.length > 0 && !selectedMethods.includes(log.method)) return false;
     if (selectedHttpCodes.length > 0) {
@@ -359,8 +364,6 @@ export default function AffiliateWebhookAdmin() {
       if (selectedHttpCodes.includes('200') && !isSuccess) return false;
       if (selectedHttpCodes.includes('error') && isSuccess) return false;
     }
-    if (selectedErrorCodes.length > 0 && !selectedErrorCodes.includes(log.errorCode)) return false;
-
     if (selectedResponseTimes.length > 0) {
       const timeNum = parseInt(log.responseTime) || 0;
       let cat = '';
@@ -386,7 +389,6 @@ export default function AffiliateWebhookAdmin() {
     setSelectedTimeFilter('hour');
     setSelectedMethods([]);
     setSelectedHttpCodes([]);
-    setSelectedErrorCodes([]);
     setSelectedResponseTimes([]);
     setCurrentPage(1);
   };
@@ -410,7 +412,7 @@ export default function AffiliateWebhookAdmin() {
       {/* TỔNG QUAN HẠ TẦNG */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
-          <p className="text-xs text-slate-400 font-medium uppercase">Active Contract Target Address</p>
+          <p className="text-xs text-slate-400 font-medium uppercase">Tab Contract Active Address</p>
           <p className="text-xs font-mono text-emerald-400 mt-2 truncate select-all">{webhookData[activeWebhookTab].contract}</p>
         </div>
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
@@ -427,11 +429,11 @@ export default function AffiliateWebhookAdmin() {
         </div>
       </div>
 
-      {/* KHU VỰC 1: TRÌNH THÁM MÃ ĐỘNG - DUAL ENGINE SANDBOX VỚI BSCSCAN VISUALIZER */}
+      {/* KHU VỰC 1: TRÌNH THÁM MÃ ĐỘNG - DUAL ENGINE SANDBOX CÓ TEXTBOX ĐỊA CHỈ TÙY BIẾN */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-slate-800">
           <h2 className="text-sm font-bold uppercase text-slate-300 tracking-wider flex items-center gap-1.5">
-            <Code className="w-4 h-4 text-blue-400" /> Sandbox Studio - Bộ điều khiển gọi dữ liệu
+            <Code className="w-4 h-4 text-blue-400" /> Sandbox Studio - Trình phân tích chuỗi khối liên hợp
           </h2>
           
           <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs">
@@ -444,26 +446,43 @@ export default function AffiliateWebhookAdmin() {
           </div>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-          <div className="md:col-span-2">
+        {/* TÁI CẤU TRÚC: Grid 12 cột nâng cấp hỗ trợ Textbox địa chỉ ví riêng biệt */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-end">
+          {/* Cột 1: Select Method (col-span-3) */}
+          <div className="lg:col-span-3">
             <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Select Engine Method</label>
             {dataEngine === 'moralis' ? (
               <select value={selectedRpcMethod} onChange={(e) => { setSelectedRpcMethod(e.target.value); setRawRpcResponse(null); }} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-purple-400 font-mono focus:outline-none focus:border-purple-500">
-                <option value="moralis_getUnifiedHistory">moralis_getUnifiedHistory - Quét liên hợp lịch sử giống BscScan Explorer</option>
+                <option value="moralis_getUnifiedHistory">moralis_getUnifiedHistory - Quét lịch sử ví (BscScan Mode)</option>
               </select>
             ) : (
               <select value={selectedRpcMethod} onChange={(e) => { setSelectedRpcMethod(e.target.value); setRawRpcResponse(null); }} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-300 font-mono focus:outline-none focus:border-blue-500">
-                <option value="alchemy_getAssetTransfers">alchemy_getAssetTransfers - Quét lịch sử ví (Alchemy Enhanced API)</option>
+                <option value="alchemy_getAssetTransfers">alchemy_getAssetTransfers - Quét lịch sử ví (Alchemy Enhanced)</option>
                 <option value="eth_getLogs">eth_getLogs - Tra cứu Event Logs (Phòng vệ 10 blocks)</option>
-                <option value="eth_getBlockReceipts">eth_getBlockReceipts - Lấy toàn bộ biên lai khối</option>
+                <option value="eth_getBlockReceipts">eth_getBlockReceipts - Lấy biên lai khối</option>
                 <option value="eth_estimateGas">eth_estimateGas - Ước tính Gas giao dịch</option>
-                <option value="eth_feeHistory">eth_feeHistory - Xem lịch sử cấu trúc phí</option>
-                <option value="eth_blockNumber">eth_blockNumber - Lấy số khối mới nhất</option>
+                <option value="eth_feeHistory">eth_feeHistory - Xem cấu trúc phí</option>
+                <option value="eth_blockNumber">eth_blockNumber - Số khối mới nhất</option>
               </select>
             )}
           </div>
 
-          <div className="md:col-span-1">
+          {/* MỚI: Cột 2: Textbox nhập Wallet Address tự do giống Moralis Playground (col-span-4) */}
+          <div className="lg:col-span-4">
+            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2 flex items-center gap-1">
+              <Wallet className="w-3.5 h-3.5 text-slate-400" /> Wallet / Contract Address Address
+            </label>
+            <input 
+              type="text" 
+              value={customAddress} 
+              onChange={(e) => setCustomAddress(e.target.value)} 
+              placeholder="Nhập địa chỉ ví 0x... để tìm kiếm"
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-emerald-400 font-mono focus:outline-none focus:border-emerald-500 transition-all"
+            />
+          </div>
+
+          {/* Cột 3: Token bảo mật API Key hoặc Khối tham số (col-span-3) */}
+          <div className="lg:col-span-3">
             <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">
               {dataEngine === 'moralis' ? 'Moralis Web3 API Key' : 'Block Param (Hex)'}
             </label>
@@ -474,9 +493,10 @@ export default function AffiliateWebhookAdmin() {
             )}
           </div>
 
-          <div className="md:col-span-1">
+          {/* Cột 4: Nút chạy lệnh thực thi (col-span-2) */}
+          <div className="lg:col-span-2">
             <button onClick={handleExecuteDataEngineCall} disabled={isLoadingRpc} className={`w-full flex items-center justify-center gap-2 px-4 py-2 text-white rounded-xl text-sm font-semibold transition-all h-[38px] ${dataEngine === 'moralis' ? 'bg-purple-600 hover:bg-purple-500' : 'bg-blue-600 hover:bg-blue-500'}`}>
-              <Play className={`w-4 h-4 ${isLoadingRpc ? 'animate-spin' : ''}`} /> Run Request
+              <Play className={`w-4 h-4 ${isLoadingRpc ? 'animate-spin' : ''}`} /> Get History
             </button>
           </div>
         </div>
@@ -488,12 +508,12 @@ export default function AffiliateWebhookAdmin() {
               <input type="text" value={logsFromBlock} onChange={(e) => setLogsFromBlock(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-300 focus:outline-none" />
             </div>
             <div>
-              <label className="block text-[11px] font-mono text-slate-400 mb-1.5">toBlock (An toàn tối đa +10 khối)</label>
+              <label className="block text-[11px] font-mono text-slate-400 mb-1.5">toBlock (Phạm vi 10 khối Free)</label>
               <input type="text" value={logsToBlock} onChange={(e) => setLogsToBlock(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-300 focus:outline-none" />
             </div>
             <div>
               <label className="block text-[11px] font-mono text-slate-400 mb-1.5">address</label>
-              <input type="text" value={logsAddress} onChange={(e) => setLogsAddress(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs font-mono text-emerald-400" />
+              <input type="text" value={customAddress} disabled className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-500 cursor-not-allowed" />
             </div>
             <div>
               <label className="block text-[11px] font-mono text-slate-400 mb-1.5">topics</label>
@@ -502,13 +522,13 @@ export default function AffiliateWebhookAdmin() {
           </div>
         )}
 
-        {/* MỚI: DÀNH TOÀN BỘ KHÔNG GIAN BÊN DƯỚI ĐỂ THIẾT KẾ BẢNG VISUALIZER ĐẬM CHẤT BSCSCAN */}
+        {/* BẢNG VISUALIZER ĐẬM CHẤT BSCSCAN TRÊN MẠNG LƯỚI THỰC TẾ */}
         <div className="border border-slate-800 bg-slate-950 rounded-xl overflow-hidden shadow-2xl">
           <div className="bg-slate-900/60 border-b border-slate-800 px-4 py-3 flex items-center justify-between">
             <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-300">
               <Database className="w-4 h-4 text-purple-400" /> BscScan Testnet Tracker Engine Output
             </div>
-            <span className="text-[11px] text-slate-500 font-medium">Real-time Node Stream Mapping</span>
+            <span className="text-[11px] text-slate-500 font-medium">Quét thực tế địa chỉ: <span className="text-emerald-400 font-mono">{shortenAddress(customAddress)}</span></span>
           </div>
 
           <div className="p-0 overflow-x-auto min-h-[220px]">
@@ -528,15 +548,9 @@ export default function AffiliateWebhookAdmin() {
                 <tbody className="divide-y divide-slate-900 text-[13px]">
                   {rawRpcResponse.map((tx, idx) => (
                     <tr key={idx} className="hover:bg-slate-900/30 transition-colors">
-                      {/* Cột Hash giao dịch */}
                       <td className="p-3 font-mono">
                         <div className="flex items-center gap-1.5">
-                          <a 
-                            href={`https://testnet.bscscan.com/tx/${tx.hash}`} 
-                            target="_blank" 
-                            rel="noopener noreferrer" 
-                            className="text-blue-400 hover:text-blue-300 hover:underline font-medium"
-                          >
+                          <a href={`https://testnet.bscscan.com/tx/${tx.hash}`} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 hover:underline font-medium">
                             {shortenAddress(tx.hash)}
                           </a>
                           <button onClick={() => handleCopyClipboard(tx.hash, `tx_${idx}`)} className="text-slate-600 hover:text-slate-400 transition-colors">
@@ -544,35 +558,22 @@ export default function AffiliateWebhookAdmin() {
                           </button>
                         </div>
                       </td>
-
-                      {/* Cột Block */}
                       <td className="p-3 font-mono">
-                        <a 
-                          href={`https://testnet.bscscan.com/block/${tx.block}`} 
-                          target="_blank" 
-                          rel="noopener noreferrer" 
-                          className="text-blue-400 hover:text-blue-300 hover:underline"
-                        >
+                        <a href={`https://testnet.bscscan.com/block/${tx.block}`} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 hover:underline">
                           {tx.block}
                         </a>
                       </td>
-
-                      {/* Cột Thời gian */}
                       <td className="p-3 text-slate-400 text-xs">
                         {tx.date ? new Date(tx.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'N/A'}
                       </td>
-
-                      {/* Cột From */}
                       <td className="p-3 font-mono">
                         <div className="flex items-center gap-1.5">
-                          <span className="text-slate-300" title={tx.from}>{shortenAddress(tx.from)}</span>
+                          <span className={tx.from.toLowerCase() === customAddress.toLowerCase() ? "text-emerald-400 font-semibold" : "text-slate-300"} title={tx.from}>{shortenAddress(tx.from)}</span>
                           <button onClick={() => handleCopyClipboard(tx.from, `from_${idx}`)} className="text-slate-600 hover:text-slate-400">
                             <Copy className="w-3 h-3" />
                           </button>
                         </div>
                       </td>
-
-                      {/* Cột Hướng chuyển ví (IN / OUT Badge) */}
                       <td className="p-3 text-center">
                         <span className={`inline-flex items-center justify-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${
                           tx.type === 'received' 
@@ -582,8 +583,6 @@ export default function AffiliateWebhookAdmin() {
                           {tx.type === 'received' ? 'IN' : 'OUT'}
                         </span>
                       </td>
-
-                      {/* Cột To */}
                       <td className="p-3 font-mono">
                         <div className="flex items-center gap-1.5">
                           <span className="text-slate-300" title={tx.to}>{shortenAddress(tx.to)}</span>
@@ -592,8 +591,6 @@ export default function AffiliateWebhookAdmin() {
                           </button>
                         </div>
                       </td>
-
-                      {/* Cột Giá trị/Số dư */}
                       <td className="p-3 text-right font-medium text-slate-100">
                         {tx.valueEth} <span className="text-xs text-slate-400 uppercase font-semibold">{tx.name}</span>
                       </td>
@@ -629,12 +626,11 @@ export default function AffiliateWebhookAdmin() {
             ) : (
               <div className="text-slate-600 text-center py-16 flex flex-col items-center justify-center gap-2">
                 <Terminal className="w-8 h-8 text-slate-700 animate-pulse" />
-                <span className="text-xs font-medium">Bấm lệnh "Run Request" để quét luồng giao dịch BscScan thu nhỏ.</span>
+                <span className="text-xs font-medium">Nhập địa chỉ ví đích mong muốn và nhấn nút "Get History" để bắt đầu kết nối.</span>
               </div>
             )}
           </div>
           
-          {/* Hộp debug thô ẩn giấu gọn gàng bên dưới chân trang phòng khi cần xem JSON gốc */}
           {rawRpcResponse && (
             <details className="border-t border-slate-800 bg-slate-950/60 transition-all">
               <summary className="px-4 py-2 text-[10px] uppercase font-bold tracking-wider text-slate-500 cursor-pointer hover:text-slate-300 select-none">
@@ -648,7 +644,7 @@ export default function AffiliateWebhookAdmin() {
         </div>
       </div>
 
-      {/* KHU VỰC 2: MÀN HÌNH THỐNG KÊ REQUEST LOGS VÀ BỘ LỌC ĐỘNG NÂNG CẤP */}
+      {/* KHU VỰC 2: REQUEST LOGS VÀ BỘ LỌC ĐỘNG NÂNG CẤP */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl relative" ref={dropdownRef}>
         <div className="mb-4">
           <h2 className="text-lg font-semibold text-white flex items-center gap-2">
@@ -841,6 +837,14 @@ export default function AffiliateWebhookAdmin() {
                           if (selectedRequestLog.method.startsWith('moralis_')) setDataEngine('moralis');
                           else setDataEngine('alchemy');
                           setSelectedRpcMethod(selectedRequestLog.method);
+                          
+                          // MỚI: Đồng bộ địa chỉ ví từ payload cũ vào textbox khi nhấn Retry
+                          if (selectedRequestLog.requestBody?.wallet) {
+                            setCustomAddress(selectedRequestLog.requestBody.wallet);
+                          } else if (selectedRequestLog.requestBody?.params?.[0]?.toAddress) {
+                            setCustomAddress(selectedRequestLog.requestBody.params[0].toAddress);
+                          }
+                          
                           window.scrollTo({ top: 180, behavior: 'smooth' });
                         }} 
                         className="text-[10px] bg-slate-900 border border-slate-800 hover:bg-slate-800 px-2 py-1 rounded text-blue-400 font-medium"
