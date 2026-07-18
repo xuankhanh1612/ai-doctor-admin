@@ -21,23 +21,30 @@ import {
   ChevronLeft,
   ChevronRight,
   ArrowRightLeft,
-  Database
+  Database,
+  ArrowRight
 } from 'lucide-react';
 
-// Hàm định dạng số chuẩn hóa hiển thị giao diện
+// Hàm định dạng số hiển thị số dư coin/token
 const formatNumber = (number) => {
   return new Intl.NumberFormat('en-US', { maximumFractionDigits: 6 }).format(number ?? 0);
+};
+
+// Hàm rút ngắn chuỗi địa chỉ ví và Tx Hash giống BscScan
+const shortenAddress = (addr) => {
+  if (!addr) return '0x...';
+  return `${addr.substring(0, 6)}...${addr.substring(addr.length - 4)}`;
 };
 
 export default function AffiliateWebhookAdmin() {
   const [activeWebhookTab, setActiveWebhookTab] = useState('affiliate');
   const [copiedType, setCopiedType] = useState(''); 
+  const [copiedText, setCopiedText] = useState('');
   const [webhookLogs, setWebhookLogs] = useState([]);
   const [selectedWebhookLog, setSelectedWebhookLog] = useState(null);
   
   // Quản lý Engine dữ liệu (alchemy = RPC Node | moralis = Cloud Indexer API)
   const [dataEngine, setDataEngine] = useState('alchemy'); 
-  // Đã cập nhật Web3 API Key chính xác từ Moralis Playground của bồ
   const [moralisApiKey, setMoralisApiKey] = useState('vM7xza5AGzWH4ugv4vDQsXrPAYuP9gred2lNE7BJnKwB4D2QNuNs2Eso6Zk5pUMT');
 
   // State Sandbox RPC & Enhanced API
@@ -62,7 +69,6 @@ export default function AffiliateWebhookAdmin() {
 
   // STATE BỘ LỌC ĐỘNG
   const [activeDropdown, setActiveDropdown] = useState(null); 
-  const [searchQuery, setSearchQuery] = useState('');
   const [selectedTimeFilter, setSelectedTimeFilter] = useState('hour'); 
   const [selectedMethods, setSelectedMethods] = useState([]);
   const [selectedHttpCodes, setSelectedHttpCodes] = useState([]);
@@ -124,46 +130,39 @@ export default function AffiliateWebhookAdmin() {
     const startTime = performance.now();
     const currentContract = webhookData[activeWebhookTab].contract;
 
-    // NHÁNH XỬ LÝ 1: ENGINE ĐỘC QUYỀN MORALIS PLAYGROUND (QUÉT LIÊN HỢP NATIVE + ERC20 + NFT)
     if (dataEngine === 'moralis') {
       const headers = { accept: 'application/json', 'X-API-Key': moralisApiKey };
-      const chain = '0x61'; // BSC Testnet
+      const chain = '0x61'; 
       
       try {
-        // 1. Gọi lịch sử giao dịch Native
-        const nativeTransactions = await (await fetch(`https://deep-index.moralis.io/api/v2/${currentContract}?chain=${chain}&limit=3`, { headers })).json();
-        
-        // 2. Gọi lịch sử chuyển token ERC-20
-        const erc20Transactions = await (await fetch(`https://deep-index.moralis.io/api/v2/${currentContract}/erc20/transfers?chain=${chain}&limit=3`, { headers })).json();
-        
-        // 3. Gọi lịch sử chuyển NFT
-        const nftTransactions = await (await fetch(`https://deep-index.moralis.io/api/v2/${currentContract}/nft/transfers?chain=${chain}&limit=3`, { headers })).json();
+        const nativeTransactions = await (await fetch(`https://deep-index.moralis.io/api/v2/${currentContract}?chain=${chain}&limit=5`, { headers })).json();
+        const erc20Transactions = await (await fetch(`https://deep-index.moralis.io/api/v2/${currentContract}/erc20/transfers?chain=${chain}&limit=5`, { headers })).json();
+        const nftTransactions = await (await fetch(`https://deep-index.moralis.io/api/v2/${currentContract}/nft/transfers?chain=${chain}&limit=5`, { headers })).json();
         
         let unifiedResult = [];
         
-        // Xử lý nạp mảng Native
         if (nativeTransactions?.result && Array.isArray(nativeTransactions.result)) {
           nativeTransactions.result.forEach((tx) => {
-            const { from_address, to_address, value, hash, block_timestamp } = tx;
+            const { from_address, to_address, value, hash, block_timestamp, block_number } = tx;
             const type = from_address.toLowerCase() === currentContract.toLowerCase() ? 'sent' : 'received';
             unifiedResult.push({
               type,
               from: from_address,
               to: to_address,
-              valueEth: String(parseFloat(value) / 10 ** 18), // Quy đổi Wei sang BNB
+              valueEth: String(parseFloat(value) / 10 ** 18),
               hash,
+              block: block_number,
               date: block_timestamp,
               tokenType: 'native',
-              name: 'BNB-TESTNET',
+              name: 'BNB',
               chain,
             });
           });
         }
         
-        // Xử lý nạp mảng ERC-20
         if (erc20Transactions?.result && Array.isArray(erc20Transactions.result)) {
           erc20Transactions.result.forEach((tx) => {
-            const { from_address, to_address, value, transaction_hash, block_timestamp, address } = tx;
+            const { from_address, to_address, value, transaction_hash, block_timestamp, address, block_number } = tx;
             const type = from_address.toLowerCase() === currentContract.toLowerCase() ? 'sent' : 'received';
             unifiedResult.push({
               type,
@@ -171,6 +170,7 @@ export default function AffiliateWebhookAdmin() {
               to: to_address,
               valueEth: value,
               hash: transaction_hash,
+              block: block_number,
               date: block_timestamp,
               tokenType: 'erc20',
               chain,
@@ -178,7 +178,6 @@ export default function AffiliateWebhookAdmin() {
             });
           });
           
-          // Thọc sâu lấy metadata ERC-20 để xử lý Decimals (Sửa lỗi hiển thị số thô)
           const erc20Addresses = [...new Set(erc20Transactions.result.map((r) => r.address))].filter(Boolean);
           if (erc20Addresses.length > 0) {
             const s = '&addresses=' + erc20Addresses.join('&addresses=');
@@ -200,21 +199,16 @@ export default function AffiliateWebhookAdmin() {
           }
         }
         
-        // Xử lý nạp mảng NFT
         if (nftTransactions?.result && Array.isArray(nftTransactions.result)) {
           for (const tx of nftTransactions.result) {
-            const { from_address, to_address, amount, block_timestamp, contract_type, transaction_hash, token_id, token_address } = tx;
+            const { from_address, to_address, amount, block_timestamp, contract_type, transaction_hash, token_id, token_address, block_number } = tx;
             const type = from_address.toLowerCase() === currentContract.toLowerCase() ? 'sent' : 'received';
             
             let resolvedNftName = `${contract_type || 'NFT'} #${token_id}`;
             try {
               const nftMeta = await (await fetch(`https://deep-index.moralis.io/api/v2/nft/${token_address}/${token_id}?chain=${chain}`, { headers })).json();
-              if (nftMeta?.name) {
-                resolvedNftName = `${nftMeta.name} #${token_id}`;
-              }
-            } catch (e) {
-              console.warn("Bỏ qua lỗi tải NFT Meta lẻ", e);
-            }
+              if (nftMeta?.name) resolvedNftName = `${nftMeta.name} #${token_id}`;
+            } catch (e) {}
             
             unifiedResult.push({
               type,
@@ -222,6 +216,7 @@ export default function AffiliateWebhookAdmin() {
               to: to_address,
               valueEth: amount,
               hash: transaction_hash,
+              block: block_number,
               date: block_timestamp,
               tokenType: contract_type?.toLowerCase() || 'nft',
               chain,
@@ -235,9 +230,10 @@ export default function AffiliateWebhookAdmin() {
         const endTime = performance.now();
         const duration = Math.round(endTime - startTime);
         
-        setRawRpcResponse(unifiedResult); // Đổ mảng liên hợp chuẩn ra màn hình hiển thị JSON
+        // Sắp xếp các transaction thống nhất theo thời gian khối giảm dần (Mới nhất lên đầu)
+        unifiedResult.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        setRawRpcResponse(unifiedResult); 
 
-        // Lưu bản ghi vào hệ thống Request Logs
         const newLogEntry = {
           id: `log_${Math.random().toString(36).substr(2, 5)}`,
           method: selectedRpcMethod,
@@ -248,7 +244,7 @@ export default function AffiliateWebhookAdmin() {
           responseTime: `${duration} ms`,
           timeSent: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           timestamp: Date.now(),
-          requestBody: { engine: "moralis_playground_unified", contract: currentContract, limits: "3 per type" },
+          requestBody: { engine: "moralis_playground_unified", contract: currentContract },
           responseBody: unifiedResult
         };
         setRequestLogs(prev => [newLogEntry, ...prev]);
@@ -262,7 +258,7 @@ export default function AffiliateWebhookAdmin() {
       return;
     }
 
-    // NHÁNH XỬ LÝ 2: HẠ TẦNG ALCHEMY JSON-RPC NODE
+    // HẠ TẦNG ALCHEMY JSON-RPC NODE
     const rpcBody = { jsonrpc: "2.0", id: 1, method: selectedRpcMethod };
 
     if (selectedRpcMethod === 'alchemy_getAssetTransfers') {
@@ -398,7 +394,8 @@ export default function AffiliateWebhookAdmin() {
   const handleCopyClipboard = (text, type) => {
     navigator.clipboard.writeText(text);
     setCopiedType(type);
-    setTimeout(() => setCopiedType(''), 2000);
+    setCopiedText(text);
+    setTimeout(() => { setCopiedType(''); setCopiedText(''); }, 2000);
   };
 
   return (
@@ -430,9 +427,9 @@ export default function AffiliateWebhookAdmin() {
         </div>
       </div>
 
-      {/* KHU VỰC 1: TRÌNH THÁM MÃ ĐỘNG - DUAL ENGINE SANDBOX */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 pb-3 border-b border-slate-800">
+      {/* KHU VỰC 1: TRÌNH THÁM MÃ ĐỘNG - DUAL ENGINE SANDBOX VỚI BSCSCAN VISUALIZER */}
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-slate-800">
           <h2 className="text-sm font-bold uppercase text-slate-300 tracking-wider flex items-center gap-1.5">
             <Code className="w-4 h-4 text-blue-400" /> Sandbox Studio - Bộ điều khiển gọi dữ liệu
           </h2>
@@ -447,12 +444,12 @@ export default function AffiliateWebhookAdmin() {
           </div>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4 items-end">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
           <div className="md:col-span-2">
             <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Select Engine Method</label>
             {dataEngine === 'moralis' ? (
               <select value={selectedRpcMethod} onChange={(e) => { setSelectedRpcMethod(e.target.value); setRawRpcResponse(null); }} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-purple-400 font-mono focus:outline-none focus:border-purple-500">
-                <option value="moralis_getUnifiedHistory">moralis_getUnifiedHistory - Quét liên hợp lịch sử (Native, ERC-20, NFT)</option>
+                <option value="moralis_getUnifiedHistory">moralis_getUnifiedHistory - Quét liên hợp lịch sử giống BscScan Explorer</option>
               </select>
             ) : (
               <select value={selectedRpcMethod} onChange={(e) => { setSelectedRpcMethod(e.target.value); setRawRpcResponse(null); }} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-300 font-mono focus:outline-none focus:border-blue-500">
@@ -485,7 +482,7 @@ export default function AffiliateWebhookAdmin() {
         </div>
 
         {selectedRpcMethod === 'eth_getLogs' && dataEngine === 'alchemy' && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4 p-4 bg-slate-950/40 border border-slate-800 rounded-xl animate-fadeIn">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-slate-950/40 border border-slate-800 rounded-xl animate-fadeIn">
             <div>
               <label className="block text-[11px] font-mono text-slate-400 mb-1.5">fromBlock</label>
               <input type="text" value={logsFromBlock} onChange={(e) => setLogsFromBlock(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-300 focus:outline-none" />
@@ -505,47 +502,149 @@ export default function AffiliateWebhookAdmin() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
-          <div>
-            <div className="text-[11px] text-slate-500 uppercase font-bold tracking-wider mb-1.5">Phản hồi JSON thô trả về:</div>
-            <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 font-mono text-xs h-48 overflow-y-auto custom-scrollbar">
-              {rawRpcResponse ? <pre className={`${dataEngine === 'moralis' ? 'text-purple-400' : 'text-blue-400'} whitespace-pre`}>{JSON.stringify(rawRpcResponse, null, 2)}</pre> : <span className="text-slate-600">Đang đợi yêu cầu lệnh từ bồ...</span>}
+        {/* MỚI: DÀNH TOÀN BỘ KHÔNG GIAN BÊN DƯỚI ĐỂ THIẾT KẾ BẢNG VISUALIZER ĐẬM CHẤT BSCSCAN */}
+        <div className="border border-slate-800 bg-slate-950 rounded-xl overflow-hidden shadow-2xl">
+          <div className="bg-slate-900/60 border-b border-slate-800 px-4 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-300">
+              <Database className="w-4 h-4 text-purple-400" /> BscScan Testnet Tracker Engine Output
             </div>
+            <span className="text-[11px] text-slate-500 font-medium">Real-time Node Stream Mapping</span>
           </div>
-          <div>
-            <div className="text-[11px] text-emerald-400 uppercase font-bold tracking-wider mb-1.5 flex items-center gap-1">
-              <Filter className="w-3.5 h-3.5" /> Bảng phân tích thám mã giao dịch thông minh:
-            </div>
-            <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 h-48 overflow-y-auto custom-scrollbar text-xs font-mono">
-              {dataEngine === 'moralis' && Array.isArray(rawRpcResponse) ? (
-                <div className="space-y-2">
-                  <div className="p-2 bg-purple-500/10 text-purple-400 border border-purple-500/20 rounded-lg text-[11px] font-semibold">
-                    Moralis Playground Engine bóc tách liên hợp thành công {rawRpcResponse.length} giao dịch.
-                  </div>
+
+          <div className="p-0 overflow-x-auto min-h-[220px]">
+            {dataEngine === 'moralis' && Array.isArray(rawRpcResponse) ? (
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-800/80 bg-slate-900/20 text-slate-400 font-semibold">
+                    <th className="p-3">Parent Transaction Hash</th>
+                    <th className="p-3">Block</th>
+                    <th className="p-3">Age/Time</th>
+                    <th className="p-3">From</th>
+                    <th className="p-3 text-center">Dir</th>
+                    <th className="p-3">To</th>
+                    <th className="p-3 text-right">Amount</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-900 text-[13px]">
                   {rawRpcResponse.map((tx, idx) => (
-                    <div key={idx} className="p-2.5 bg-slate-900 border border-slate-800 rounded-lg space-y-1 text-[11px]">
-                      <div className="flex justify-between items-center">
-                        <span className={`px-2 py-0.5 rounded font-bold text-[10px] uppercase ${tx.type === 'received' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'}`}>
-                          {tx.type === 'received' ? '⬇ Received' : '➔ Sent'}
+                    <tr key={idx} className="hover:bg-slate-900/30 transition-colors">
+                      {/* Cột Hash giao dịch */}
+                      <td className="p-3 font-mono">
+                        <div className="flex items-center gap-1.5">
+                          <a 
+                            href={`https://testnet.bscscan.com/tx/${tx.hash}`} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="text-blue-400 hover:text-blue-300 hover:underline font-medium"
+                          >
+                            {shortenAddress(tx.hash)}
+                          </a>
+                          <button onClick={() => handleCopyClipboard(tx.hash, `tx_${idx}`)} className="text-slate-600 hover:text-slate-400 transition-colors">
+                            <Copy className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </td>
+
+                      {/* Cột Block */}
+                      <td className="p-3 font-mono">
+                        <a 
+                          href={`https://testnet.bscscan.com/block/${tx.block}`} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className="text-blue-400 hover:text-blue-300 hover:underline"
+                        >
+                          {tx.block}
+                        </a>
+                      </td>
+
+                      {/* Cột Thời gian */}
+                      <td className="p-3 text-slate-400 text-xs">
+                        {tx.date ? new Date(tx.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'N/A'}
+                      </td>
+
+                      {/* Cột From */}
+                      <td className="p-3 font-mono">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-slate-300" title={tx.from}>{shortenAddress(tx.from)}</span>
+                          <button onClick={() => handleCopyClipboard(tx.from, `from_${idx}`)} className="text-slate-600 hover:text-slate-400">
+                            <Copy className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </td>
+
+                      {/* Cột Hướng chuyển ví (IN / OUT Badge) */}
+                      <td className="p-3 text-center">
+                        <span className={`inline-flex items-center justify-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${
+                          tx.type === 'received' 
+                            ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
+                            : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                        }`}>
+                          {tx.type === 'received' ? 'IN' : 'OUT'}
                         </span>
-                        <span className="text-slate-200 font-bold">{tx.valueEth} {tx.name}</span>
-                      </div>
-                      <div className="text-slate-500 truncate text-[10px]">Hash: {tx.hash}</div>
-                      <div className="text-slate-600 text-[10px] text-right">{tx.date ? new Date(tx.date).toLocaleString() : 'N/A'}</div>
-                    </div>
+                      </td>
+
+                      {/* Cột To */}
+                      <td className="p-3 font-mono">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-slate-300" title={tx.to}>{shortenAddress(tx.to)}</span>
+                          <button onClick={() => handleCopyClipboard(tx.to, `to_${idx}`)} className="text-slate-600 hover:text-slate-400">
+                            <Copy className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </td>
+
+                      {/* Cột Giá trị/Số dư */}
+                      <td className="p-3 text-right font-medium text-slate-100">
+                        {tx.valueEth} <span className="text-xs text-slate-400 uppercase font-semibold">{tx.name}</span>
+                      </td>
+                    </tr>
                   ))}
-                </div>
-              ) : dataEngine === 'alchemy' && selectedRpcMethod === 'alchemy_getAssetTransfers' && Array.isArray(rawRpcResponse?.result?.transfers) ? (
-                <div className="space-y-2">
+                </tbody>
+              </table>
+            ) : dataEngine === 'alchemy' && selectedRpcMethod === 'alchemy_getAssetTransfers' && Array.isArray(rawRpcResponse?.result?.transfers) ? (
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-800 bg-slate-900/20 text-slate-400 font-semibold">
+                    <th className="p-3">Transaction Hash</th>
+                    <th className="p-3">Asset</th>
+                    <th className="p-3">Category</th>
+                    <th className="p-3">From</th>
+                    <th className="p-3">To</th>
+                    <th className="p-3 text-right">Value</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-900 text-[13px]">
                   {rawRpcResponse.result.transfers.map((tx, idx) => (
-                    <div key={idx} className="p-2 bg-slate-900 border border-slate-800 rounded-lg text-[11px] truncate text-slate-300">
-                      Tx: {tx.hash} | Value: {tx.value} {tx.asset}
-                    </div>
+                    <tr key={idx} className="hover:bg-slate-900/30 transition-colors">
+                      <td className="p-3 font-mono text-blue-400 truncate max-w-[120px]">{tx.hash}</td>
+                      <td className="p-3 text-slate-200 uppercase font-bold text-xs">{tx.asset}</td>
+                      <td className="p-3 text-purple-400 uppercase text-[11px] font-semibold">[{tx.category}]</td>
+                      <td className="p-3 font-mono text-slate-400">{shortenAddress(tx.from)}</td>
+                      <td className="p-3 font-mono text-slate-400">{shortenAddress(tx.to)}</td>
+                      <td className="p-3 text-right font-bold text-slate-100">{tx.value}</td>
+                    </tr>
                   ))}
-                </div>
-              ) : <div className="text-slate-600 text-center pt-12">Chọn phương thức, cấu hình tham số tương thích và khởi chạy dữ liệu Engine.</div>}
-            </div>
+                </tbody>
+              </table>
+            ) : (
+              <div className="text-slate-600 text-center py-16 flex flex-col items-center justify-center gap-2">
+                <Terminal className="w-8 h-8 text-slate-700 animate-pulse" />
+                <span className="text-xs font-medium">Bấm lệnh "Run Request" để quét luồng giao dịch BscScan thu nhỏ.</span>
+              </div>
+            )}
           </div>
+          
+          {/* Hộp debug thô ẩn giấu gọn gàng bên dưới chân trang phòng khi cần xem JSON gốc */}
+          {rawRpcResponse && (
+            <details className="border-t border-slate-800 bg-slate-950/60 transition-all">
+              <summary className="px-4 py-2 text-[10px] uppercase font-bold tracking-wider text-slate-500 cursor-pointer hover:text-slate-300 select-none">
+                ➔ View raw JSON Response payload code
+              </summary>
+              <div className="p-4 max-h-40 overflow-y-auto font-mono text-[11px] text-blue-400 border-t border-slate-900">
+                <pre>{JSON.stringify(rawRpcResponse, null, 2)}</pre>
+              </div>
+            </details>
+          )}
         </div>
       </div>
 
@@ -562,7 +661,6 @@ export default function AffiliateWebhookAdmin() {
         <div className="flex flex-wrap items-center gap-2 mb-4 bg-slate-950/40 p-3 rounded-xl border border-slate-800/60 relative z-20">
           <span className="text-xs font-semibold text-slate-400 px-1">Filters</span>
           
-          {/* Lọc Time */}
           <div className="relative">
             <button onClick={() => setActiveDropdown(activeDropdown === 'time' ? null : 'time')} className="px-3 py-1.5 bg-slate-900 border border-slate-800 text-slate-300 rounded-lg text-xs flex items-center gap-1 font-medium">
               Time: <span className="text-blue-400">{timeFilterOptions.find(o => o.key === selectedTimeFilter)?.label}</span>
@@ -579,7 +677,6 @@ export default function AffiliateWebhookAdmin() {
             )}
           </div>
 
-          {/* Lọc Methods */}
           <div className="relative">
             <button onClick={() => setActiveDropdown(activeDropdown === 'methods' ? null : 'methods')} className={`px-3 py-1.5 border hover:border-slate-700 text-slate-300 rounded-lg text-xs flex items-center gap-1 font-medium ${selectedMethods.length > 0 ? 'bg-blue-500/10 border-blue-500 text-blue-400' : 'bg-slate-900 border-slate-800'}`}>
               Methods {selectedMethods.length > 0 && `(${selectedMethods.length})`}
@@ -597,7 +694,6 @@ export default function AffiliateWebhookAdmin() {
             )}
           </div>
 
-          {/* Lọc HTTP codes */}
           <div className="relative">
             <button onClick={() => setActiveDropdown(activeDropdown === 'http' ? null : 'http')} className={`px-3 py-1.5 border hover:border-slate-700 text-slate-300 rounded-lg text-xs flex items-center gap-1 font-medium ${selectedHttpCodes.length > 0 ? 'bg-blue-500/10 border-blue-500 text-blue-400' : 'bg-slate-900 border-slate-800'}`}>
               HTTP codes {selectedHttpCodes.length > 0 && `(${selectedHttpCodes.length})`}
@@ -617,7 +713,6 @@ export default function AffiliateWebhookAdmin() {
             )}
           </div>
 
-          {/* Lọc Response times */}
           <div className="relative">
             <button onClick={() => setActiveDropdown(activeDropdown === 'responseTime' ? null : 'responseTime')} className={`px-3 py-1.5 border hover:border-slate-700 text-slate-300 rounded-lg text-xs flex items-center gap-1 font-medium ${selectedResponseTimes.length > 0 ? 'bg-blue-500/10 border-blue-500 text-blue-400' : 'bg-slate-900 border-slate-800'}`}>
               Response times {selectedResponseTimes.length > 0 && `(${selectedResponseTimes.length})`}
@@ -641,7 +736,6 @@ export default function AffiliateWebhookAdmin() {
             )}
           </div>
 
-          {/* Reset button */}
           {(selectedTimeFilter !== 'hour' || selectedMethods.length > 0 || selectedHttpCodes.length > 0 || selectedResponseTimes.length > 0) && (
             <button onClick={handleResetFilters} className="ml-auto p-1.5 text-slate-500 hover:text-slate-300 rounded-lg hover:bg-slate-800">
               <RotateCcw className="w-4 h-4" />
