@@ -111,14 +111,14 @@ export default function AffiliateWebhookAdmin() {
   const [requestLogs, setRequestLogs] = useState([]);
   const [selectedRequestLog, setSelectedRequestLog] = useState(null);
 
-  // STATE BỘ LỌC ĐỘNG (GIỮ NGUYÊN BẢN GỐC)
+  // State Filters
   const [activeDropdown, setActiveDropdown] = useState(null); 
   const [selectedTimeFilter, setSelectedTimeFilter] = useState('hour'); 
   const [selectedMethods, setSelectedMethods] = useState([]);
   const [selectedHttpCodes, setSelectedHttpCodes] = useState([]);
   const [selectedResponseTimes, setSelectedResponseTimes] = useState([]); 
 
-  // STATE PHÂN TRANG (GIỮ NGUYÊN BẢN GỐC)
+  // State Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10); 
   
@@ -251,7 +251,25 @@ export default function AffiliateWebhookAdmin() {
     else setList([...list, item]);
   };
 
-  // LOGIC BỘ LỌC ĐỘNG CHUẨN KÉO VỀ 100%
+  const handlePageChange = (page) => {
+    if (page >= 1 && page <= totalPages) setCurrentPage(page);
+  };
+
+  const handleResetFilters = () => {
+    setSelectedTimeFilter('hour');
+    setSelectedMethods([]);
+    setSelectedHttpCodes([]);
+    setSelectedResponseTimes([]);
+    setCurrentPage(1);
+  };
+
+  const handleCopyClipboard = (text, type) => {
+    navigator.clipboard.writeText(text);
+    setCopiedType(type);
+    setTimeout(() => setCopiedType(''), 2000);
+  };
+
+  // LOGIC BỘ LỌC ĐỘNG
   const filteredRequestLogs = requestLogs.filter(log => {
     const diffMs = Date.now() - log.timestamp;
     if (selectedTimeFilter === '5min' && diffMs > 5 * 60 * 1000) return false;
@@ -308,7 +326,7 @@ export default function AffiliateWebhookAdmin() {
         <div className="space-y-3">
           <div className="flex gap-2">
             <div className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs font-mono text-slate-300 overflow-x-auto flex items-center">{targetEndpoint}</div>
-            <button onClick={() => navigator.clipboard.writeText(targetEndpoint)} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-medium">Copy Endpoint</button>
+            <button onClick={() => handleCopyClipboard(targetEndpoint, 'endpoint')} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-medium">{copiedType === 'endpoint' ? 'Đã copy' : 'Copy Endpoint'}</button>
           </div>
           <a href={webhookData[activeWebhookTab].dashboardUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-blue-400 hover:underline font-mono">Mở cấu hình trên Alchemy Dashboard <ExternalLink className="w-3.5 h-3.5" /></a>
         </div>
@@ -346,7 +364,7 @@ export default function AffiliateWebhookAdmin() {
                   <option value="eth_getLogs">eth_getLogs</option>
                   <option value="eth_getBlockReceipts">eth_getBlockReceipts</option>
                   <option value="eth_feeHistory">eth_feeHistory</option>
-                </select>
+                </>
               )}
             </select>
           </div>
