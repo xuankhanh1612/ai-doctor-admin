@@ -76,7 +76,6 @@ const getAllLogsFromIndexedDB = async () => {
       const request = store.getAll();
       
       request.onsuccess = (event) => {
-        // Sắp xếp các bản ghi persistent từ mới nhất đến cũ nhất
         const logs = event.target.result || [];
         logs.sort((a, b) => b.timestamp - a.timestamp);
         resolve(logs);
@@ -117,7 +116,6 @@ const shortenAddress = (addr) => {
   return `${addr.substring(0, 6)}...${addr.substring(addr.length - 4)}`;
 };
 
-// Hàm tự động biên dịch Request Payload thành câu lệnh cURL chuẩn để chạy Terminal
 const generateCurlCommand = (log) => {
   if (!log) return '';
   if (log.method.startsWith('moralis_')) {
@@ -194,7 +192,7 @@ export default function AffiliateWebhookAdmin() {
     { key: '7days', label: 'Last 7 days' }
   ];
 
-  // KHỞI TẢI BAN ĐẦU: ĐỌC TOÀN BỘ LỊCH SỬ LOG CŨ TỪ INDEXEDDB LÊN UI
+  // Khởi tải dữ liệu từ cục bộ IndexedDB lên View
   useEffect(() => {
     const loadPersistentLogs = async () => {
       const persistedLogs = await getAllLogsFromIndexedDB();
@@ -202,7 +200,6 @@ export default function AffiliateWebhookAdmin() {
         setRequestLogs(persistedLogs);
         setSelectedRequestLog(persistedLogs[0]);
       } else {
-        // Mock dữ liệu cơ bản nếu DB trống rỗng trong phiên chạy đầu tiên
         const baseTime = Date.now();
         const initialMock = [
           { id: "log_init_01", method: "alchemy_getAssetTransfers", app: "Khánh's First App", httpStatus: 200, errorCode: "-", errorMessage: "-", responseTime: "45 ms", timeSent: "11:33 AM", timestamp: baseTime - 60000, requestBody: { jsonrpc: "2.0", method: "alchemy_getAssetTransfers" }, responseBody: { jsonrpc: "2.0", result: { transfers: [] } } }
@@ -241,16 +238,13 @@ export default function AffiliateWebhookAdmin() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // HÀM XỬ LÝ GỌI LỆNH ĐA CƠ CHẾ NÂNG CẤP ĐỒNG BỘ INDEXEDDB
   const handleExecuteDataEngineCall = async () => {
     setIsLoadingRpc(true);
     setRawRpcResponse(null);
     const startTime = performance.now();
     const targetQueryAddress = customAddress.trim() || webhookData[activeWebhookTab].contract;
-    
     let newLogEntry = null;
 
-    // NHÁNH 1: HẠ TẦNG XỬ LÝ BẮT SỰ KIỆN LIÊN HỢP MORALIS PLAYGROUND
     if (dataEngine === 'moralis') {
       const headers = { accept: 'application/json', 'X-API-Key': moralisApiKey };
       const chain = '0x61';
@@ -258,7 +252,6 @@ export default function AffiliateWebhookAdmin() {
       try {
         const nativeTransactions = await (await fetch(`https://deep-index.moralis.io/api/v2/${targetQueryAddress}?chain=${chain}&limit=5`, { headers })).json();
         const erc20Transactions = await (await fetch(`https://deep-index.moralis.io/api/v2/${targetQueryAddress}/erc20/transfers?chain=${chain}&limit=5`, { headers })).json();
-        const nftTransactions = await (await fetch(`https://deep-index.moralis.io/api/v2/${targetQueryAddress}/nft/transfers?chain=${chain}&limit=5`, { headers })).json();
         
         let unifiedResult = [];
         
@@ -327,7 +320,6 @@ export default function AffiliateWebhookAdmin() {
         setRawRpcResponse({ error: "Lỗi kết nối liên hợp Moralis API", details: error.message });
       }
     } 
-    // NHÁNH 2: NÚT RPC NODE ALCHEMY STANDARD ENGINE
     else {
       const rpcBody = { jsonrpc: "2.0", id: 1, method: selectedRpcMethod };
       if (selectedRpcMethod === 'alchemy_getAssetTransfers') {
@@ -377,7 +369,6 @@ export default function AffiliateWebhookAdmin() {
       }
     }
 
-    // ĐỒNG BỘ PERSISTENT DỮ LIỆU LOG VÀO INDEXEDDB TRƯỚC KHI RENDER
     if (newLogEntry) {
       await saveLogToIndexedDB(newLogEntry);
       setRequestLogs(prev => [newLogEntry, ...prev]);
@@ -452,14 +443,53 @@ export default function AffiliateWebhookAdmin() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 p-6 space-y-8">
-      {/* Header */}
+      {/* Main Header */}
       <div className="border-b border-slate-800 pb-5">
         <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
           <Settings className="text-emerald-500 w-7 h-7" /> Hệ Thống Quản Trị On-Chain & Phân Tích Dữ Liệu Contract
         </h1>
       </div>
 
-      {/* TỔNG QUAN HẠ TẦNG */}
+      {/* ĐÃ DI CHUYỂN: KHU VỰC CẤU HÌNH WEBHOOK PRODUCTION INFO & CHỌN CONTRACT LÊN ĐẦU TRANG */}
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl animate-fadeIn">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          <button 
+            onClick={() => setActiveWebhookTab('affiliate')} 
+            className={`text-left p-5 rounded-xl border transition-all ${activeWebhookTab === 'affiliate' ? 'bg-slate-950/80 border-emerald-500 ring-1 ring-emerald-500/30 font-bold' : 'bg-slate-950/20 border-slate-800 text-slate-400'}`}
+          >
+            <span className="text-sm font-bold tracking-wide block mb-1">AFFILIATE TRACKER WEBHOOK</span>
+            <span className="text-xs font-mono text-slate-500 block truncate">{webhookData.affiliate.contract}</span>
+          </button>
+          <button 
+            onClick={() => setActiveWebhookTab('paymaster')} 
+            className={`text-left p-5 rounded-xl border transition-all ${activeWebhookTab === 'paymaster' ? 'bg-slate-950/80 border-emerald-500 ring-1 ring-emerald-500/30 font-bold' : 'bg-slate-950/20 border-slate-800 text-slate-400'}`}
+          >
+            <span className="text-sm font-bold tracking-wide block mb-1">HIENMAUPAYMASTERCONTRACT</span>
+            <span className="text-xs font-mono text-slate-500 block truncate">{webhookData.paymaster.contract}</span>
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Vercel Production Endpoint URL:</label>
+            <div className="flex gap-2">
+              <div className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs font-mono text-slate-300 overflow-x-auto flex items-center">{targetEndpoint}</div>
+              <button onClick={() => handleCopyClipboard(targetEndpoint, 'endpoint')} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-medium transition-colors">
+                {copiedType === 'endpoint' ? 'Đã lưu!' : 'Sao chép'}
+              </button>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Alchemy Configuration Panel:</span>
+            <a href={webhookData[activeWebhookTab].dashboardUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-emerald-400 hover:underline font-mono">
+              <span>Mở Alchemy App Webhooks Dashboard</span>
+              <ExternalLink className="w-3.5 h-3.5" />
+            </a>
+          </div>
+        </div>
+      </div>
+
+      {/* TỔNG QUAN HẠ TẦNG CARD STATS */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
           <p className="text-xs text-slate-400 font-medium uppercase">Custom Target Search Address</p>
@@ -567,7 +597,7 @@ export default function AffiliateWebhookAdmin() {
           </div>
         )}
 
-        {/* BẢNG VISUALIZER ĐẬM CHẤT BSCSCAN TRÊN MẠNG LƯỚI THỰC TẾ */}
+        {/* BẢNG VISUALIZER ĐẬM CHẤT BSCSCAN */}
         <div className="border border-slate-800 bg-slate-950 rounded-xl overflow-hidden shadow-2xl">
           <div className="bg-slate-900/60 border-b border-slate-800 px-4 py-3 flex items-center justify-between">
             <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-300">
@@ -675,6 +705,17 @@ export default function AffiliateWebhookAdmin() {
               </div>
             )}
           </div>
+          
+          {rawRpcResponse && (
+            <details className="border-t border-slate-800 bg-slate-950/60 transition-all">
+              <summary className="px-4 py-2 text-[10px] uppercase font-bold tracking-wider text-slate-500 cursor-pointer hover:text-slate-300 select-none">
+                ➔ View raw JSON Response payload code
+              </summary>
+              <div className="p-4 max-h-40 overflow-y-auto font-mono text-[11px] text-blue-400 border-t border-slate-900">
+                <pre>{JSON.stringify(rawRpcResponse, null, 2)}</pre>
+              </div>
+            </details>
+          )}
         </div>
       </div>
 
@@ -777,7 +818,7 @@ export default function AffiliateWebhookAdmin() {
           )}
         </div>
 
-        {/* MÀN HÌNH CHIA ĐÔI THÔNG TIN THEO HÌNH ẢNH MINH HỌA ALCHEMY CONSOLE */}
+        {/* Layout Log List + Chi tiết */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start relative z-10">
           <div className="lg:col-span-2 flex flex-col border border-slate-800/80 rounded-xl bg-slate-950/20 overflow-hidden">
             <table className="w-full text-left text-xs border-collapse">
@@ -854,9 +895,7 @@ export default function AffiliateWebhookAdmin() {
             </div>
           </div>
 
-          {/* ========================================================================= */}
-          {/* CHI TIẾT PHÍA PHẢI: BỘ ĐÔI HIỂN THỊ REQUEST & RESPONSE CHI TIẾT THEO HÌNH 1 */}
-          {/* ========================================================================= */}
+          {/* CHI TIẾT PHÍA PHẢI: REQUEST & RESPONSE LOGGER PAYLOAD DETAILED CONSOLE */}
           <div className="lg:col-span-1 bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-5 shadow-2xl">
             <div className="flex items-center justify-between pb-2 border-b border-slate-800">
               <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1">
@@ -871,12 +910,10 @@ export default function AffiliateWebhookAdmin() {
 
             {selectedRequestLog ? (
               <div className="space-y-4 text-xs">
-                {/* 1. KHUNG HIỂN THỊ REQUEST COMMAND BLOCK */}
+                {/* Request Content */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold uppercase text-slate-400 tracking-wide flex items-center gap-1">
-                      ➔ Request Payload
-                    </span>
+                    <span className="text-[11px] font-bold uppercase text-slate-400 tracking-wide">➔ Request Payload</span>
                     <div className="flex gap-1.5">
                       <button 
                         onClick={() => {
@@ -889,7 +926,7 @@ export default function AffiliateWebhookAdmin() {
                           } else if (selectedRequestLog.requestBody?.params?.[0]?.toAddress) {
                             setCustomAddress(selectedRequestLog.requestBody.params[0].toAddress);
                           }
-                          window.scrollTo({ top: 180, behavior: 'smooth' });
+                          window.scrollTo({ top: 320, behavior: 'smooth' }); // Cuộn mượt xuống khu vực Sandbox Studio sau khi đổi vị trí tabs
                         }} 
                         className="text-[10px] bg-slate-900 border border-slate-800 hover:bg-slate-800 px-2 py-1 rounded text-blue-400 font-semibold transition-all"
                       >
@@ -905,7 +942,7 @@ export default function AffiliateWebhookAdmin() {
                   </div>
                 </div>
 
-                {/* 2. KHUNG GIẢ LẬP LỆNH TERMINAL (TƯƠNG ĐƯƠNG HÌNH 2) */}
+                {/* cURL Generation block */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] font-bold uppercase text-slate-500 tracking-wide flex items-center gap-1">
@@ -920,7 +957,7 @@ export default function AffiliateWebhookAdmin() {
                   </div>
                 </div>
 
-                {/* 3. KHUNG HIỂN THỊ RESPONSE PAYLOAD (KHỚP HOÀN TOÀN HÌNH 1) */}
+                {/* Response payload output */}
                 <div className="space-y-2 pt-2 border-t border-slate-900">
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] font-bold uppercase text-slate-400 tracking-wide flex items-center gap-1">
@@ -938,37 +975,6 @@ export default function AffiliateWebhookAdmin() {
             ) : (
               <div className="text-center py-16 text-slate-600">Chọn một bản ghi log trong bảng để kiểm tra cấu trúc gói tin.</div>
             )}
-          </div>
-        </div>
-      </div>
-
-      {/* KHU VỰC 3: WEBHOOK PRODUCTION INFO */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-          <button onClick={() => setActiveWebhookTab('affiliate')} className={`text-left p-5 rounded-xl border transition-all ${activeWebhookTab === 'affiliate' ? 'bg-slate-900 border-emerald-500 ring-1 ring-emerald-500/30' : 'bg-slate-950/40 border-slate-800'}`}>
-            <span className="text-sm font-bold tracking-wide text-slate-200 block mb-1">AFFILIATE TRACKER WEBHOOK</span>
-          </button>
-          <button onClick={() => setActiveWebhookTab('paymaster')} className={`text-left p-5 rounded-xl border transition-all ${activeWebhookTab === 'paymaster' ? 'bg-slate-900 border-emerald-500 ring-1 ring-emerald-500/30' : 'bg-slate-950/40 border-slate-800'}`}>
-            <span className="text-sm font-bold tracking-wide text-slate-200 block mb-1">HIENMAUPAYMASTERCONTRACT</span>
-          </button>
-        </div>
-
-        <div className="space-y-6">
-          <div>
-            <label className="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-2">Vercel Production Endpoint URL:</label>
-            <div className="flex gap-2">
-              <div className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm font-mono text-slate-300 overflow-x-auto">{targetEndpoint}</div>
-              <button onClick={() => handleCopyClipboard(targetEndpoint, 'endpoint')} className="px-4 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-sm font-medium">
-                {copiedType === 'endpoint' ? 'Đã lưu!' : 'Sao chép'}
-              </button>
-            </div>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-2">Link quản lý trực tiếp trên Alchemy Dashboard:</label>
-            <a href={webhookData[activeWebhookTab].dashboardUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-5 py-3 bg-slate-950 border border-slate-800 text-emerald-400 font-mono text-sm rounded-xl">
-              <span>{webhookData[activeWebhookTab].dashboardUrl}</span>
-              <ExternalLink className="w-4 h-4" />
-            </a>
           </div>
         </div>
       </div>
