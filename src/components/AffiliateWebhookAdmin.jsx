@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   ShieldCheck, 
   Copy, 
@@ -15,8 +15,9 @@ import {
   Code,
   Filter,
   Clock,
-  AlertCircle,
-  X
+  X,
+  ChevronDown,
+  RotateCcw
 } from 'lucide-react';
 
 export default function AffiliateWebhookAdmin() {
@@ -50,7 +51,16 @@ export default function AffiliateWebhookAdmin() {
   const [latestLiveBlock, setLatestBlock] = useState('0x0');
   const [rpcStatus, setRpcStatus] = useState('connecting');
 
-  // MỚI: Quản lý danh sách Request Logs thực tế khớp hình ảnh của bồ
+  // STATE BỘ LỌC MỚI (FILTERS STATE)
+  const [activeDropdown, setActiveDropdown] = useState(null); // 'methods', 'http', 'errors'
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedMethods, setSelectedMethods] = useState([]);
+  const [selectedHttpCodes, setSelectedHttpCodes] = useState([]);
+  const [selectedErrorCodes, setSelectedErrorCodes] = useState([]);
+  
+  const dropdownRef = useRef(null);
+
+  // Danh sách Request Logs gốc hệ thống
   const [requestLogs, setRequestLogs] = useState([
     {
       id: "log_01",
@@ -104,16 +114,28 @@ export default function AffiliateWebhookAdmin() {
       id: "log_05",
       method: "eth_getBlockReceipts",
       app: "Khánh's First App",
-      httpStatus: 200, // HTTP thành công nhưng chứa lỗi mã RPC bên trong
+      httpStatus: 200,
       errorCode: "-32602",
       errorMessage: "invalid argument 0: hex string \"0x\"",
       responseTime: "2 ms",
       timeSent: "12:11 AM",
       requestBody: { jsonrpc: "2.0", id: 1, method: "eth_getBlockReceipts", params: ["0x"] },
       responseBody: { jsonrpc: "2.0", id: 1, error: { code: -32602, message: "invalid argument 0: hex string \"0x\"" } }
+    },
+    {
+      id: "log_06",
+      method: "eth_estimateGas",
+      app: "Khánh's First App",
+      httpStatus: 400,
+      errorCode: "-32016",
+      errorMessage: "execution reverted: 0x",
+      responseTime: "4 ms",
+      timeSent: "12:09 AM",
+      requestBody: { jsonrpc: "2.0", id: 1, method: "eth_estimateGas", params: [{ from: "0x60d4...", to: "0x44f7...", value: "0x0" }] },
+      responseBody: { jsonrpc: "2.0", id: 1, error: { code: -32016, message: "execution reverted: 0x" } }
     }
   ]);
-  const [selectedRequestLog, setSelectedRequestLog] = useState(requestLogs[2]); // Mặc định mở bản ghi biên lai khối
+  const [selectedRequestLog, setSelectedRequestLog] = useState(requestLogs[2]);
 
   const ALCHEMY_RPC_URL = "https://bnb-testnet.g.alchemy.com/v2/3P6Sj-7RXbrD7znG4t8f8";
   const targetEndpoint = "https://hien-mau-nhan-van.vercel.app/api/alchemy-webhook";
@@ -136,11 +158,22 @@ export default function AffiliateWebhookAdmin() {
     }
   };
 
-  // Hàm thực thi gọi RPC On-chain thực tế + Đo đạc hiệu năng chuyển tiếp Log tự động
+  // Đóng dropdown khi bấm ra ngoài vùng xử lý
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setActiveDropdown(null);
+        setSearchQuery('');
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   const handleCallAlchemyRpc = async () => {
     setIsLoadingRpc(true);
     setRawRpcResponse(null);
-    const startTime = performance.now(); // Bắt đầu tính toán thời gian phản hồi của mạng lưới
+    const startTime = performance.now();
     
     const rpcBody = { jsonrpc: "2.0", id: 1, method: selectedRpcMethod };
 
@@ -166,7 +199,7 @@ export default function AffiliateWebhookAdmin() {
       
       const resData = await response.json();
       const endTime = performance.now();
-      const duration = Math.round(endTime - startTime); // Số mili-giây phản hồi thực tế
+      const duration = Math.round(endTime - startTime);
 
       setRawRpcResponse(resData);
       
@@ -175,7 +208,6 @@ export default function AffiliateWebhookAdmin() {
         setRpcStatus('connected');
       }
 
-      // TỰ ĐỘNG ĐẨY LOG MỚI VÀO BẢNG CHẠY THẬT
       const newLogEntry = {
         id: `log_${Math.random().toString(36).substr(2, 5)}`,
         method: selectedRpcMethod,
@@ -211,7 +243,6 @@ export default function AffiliateWebhookAdmin() {
     }
   };
 
-  // Hàm xử lý khi ấn nút "Retry in Sandbox"
   const handleRetryInSandbox = (log) => {
     setSelectedRpcMethod(log.method);
     if (log.requestBody.params && log.requestBody.params.length > 0) {
@@ -233,23 +264,38 @@ export default function AffiliateWebhookAdmin() {
         setLogsTopics(firstParam.topics?.join(', ') || '');
       }
     }
-    // Cuộn mượt màn hình lên lại khu vực Sandbox phía trên để xem kết quả nhập liệu tự động
     window.scrollTo({ top: 180, behavior: 'smooth' });
   };
 
-  useEffect(() => {
-    const currentContract = webhookData[activeWebhookTab].contract;
-    setLogsAddress(currentContract);
-    setTxTo(currentContract);
-    if (selectedRpcMethod === 'eth_blockNumber') handleCallAlchemyRpc();
-    handleFetchLiveWebhookLogs();
-  }, [activeWebhookTab]);
-
-  const handleCopyClipboard = (text, type) => {
-    navigator.clipboard.writeText(text);
-    setCopiedType(type);
-    setTimeout(() => setCopiedType(''), 2000);
+  const handleResetFilters = () => {
+    setSelectedMethods([]);
+    setSelectedHttpCodes([]);
+    setSelectedErrorCodes([]);
+    setSearchQuery('');
   };
+
+  const toggleFilter = (item, list, setList) => {
+    if (list.includes(item)) {
+      setList(list.filter(i => i !== item));
+    } else {
+      setList([...list, item]);
+    }
+  };
+
+  // LOGIC BỘ LỌC ĐỘNG (Dùng cho bảng dữ liệu Request Logs bên dưới)
+  const filteredRequestLogs = requestLogs.filter(log => {
+    if (selectedMethods.length > 0 && !selectedMethods.includes(log.method)) return false;
+    
+    if (selectedHttpCodes.length > 0) {
+      const isSuccess = log.httpStatus === 200;
+      if (selectedHttpCodes.includes('200') && !isSuccess) return false;
+      if (selectedHttpCodes.includes('error') && isSuccess) return false;
+    }
+
+    if (selectedErrorCodes.length > 0 && !selectedErrorCodes.includes(log.errorCode)) return false;
+
+    return true;
+  });
 
   const getFilteredTransactions = () => {
     if (!rawRpcResponse || !rawRpcResponse.result || !Array.isArray(rawRpcResponse.result)) return [];
@@ -259,6 +305,12 @@ export default function AffiliateWebhookAdmin() {
       const logMatch = receipt.logs && receipt.logs.some(log => log.address && log.address.toLowerCase() === targetContractLower);
       return directMatch || logMatch;
     });
+  };
+
+  const handleCopyClipboard = (text, type) => {
+    navigator.clipboard.writeText(text);
+    setCopiedType(type);
+    setTimeout(() => setCopiedType(''), 2000);
   };
 
   return (
@@ -411,18 +463,122 @@ export default function AffiliateWebhookAdmin() {
         </div>
       </div>
 
-      {/* KHU VỰC 2 MỚI THÊM: MÀN HÌNH THỐNG KÊ REQUEST LOGS (ALCHEMY DESIGN) */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
-        <div className="mb-4">
+      {/* KHU VỰC 2: MÀN HÌNH THỐNG KÊ REQUEST LOGS VÀ BỘ LỌC ĐỘNG (INTERACTIVE FILTER BAR) */}
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl relative" ref={dropdownRef}>
+        <div className="mb-6">
           <h2 className="text-lg font-semibold text-white flex items-center gap-2">
             <Clock className="text-purple-400 w-5 h-5" /> Request Logs
           </h2>
           <p className="text-xs text-slate-400 mt-0.5">Inspect recent request activity for this app.</p>
         </div>
 
-        {/* Giao diện Chia Đôi Layout: Bảng danh sách bên trái + Thanh xem chi tiết bên phải */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-          {/* Bảng Logs */}
+        {/* CỤM THANH BỘ LỌC (INTERACTIVE FILTERS ELEMENT) */}
+        <div className="flex flex-wrap items-center gap-2 mb-4 bg-slate-950/40 p-3 rounded-xl border border-slate-800/60 relative z-20">
+          <span className="text-xs font-semibold text-slate-400 px-1">Filters</span>
+          
+          {/* Nút lọc Thời gian */}
+          <div className="relative">
+            <button className="px-3 py-1.5 bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-300 rounded-lg text-xs flex items-center gap-1 font-medium">
+              Time: <span className="text-blue-400">Last hour</span>
+              <ChevronDown className="w-3 h-3 text-slate-500" />
+            </button>
+          </div>
+
+          {/* Bộ lọc Phương thức (Methods Multi-Select) */}
+          <div className="relative">
+            <button 
+              onClick={() => setActiveDropdown(activeDropdown === 'methods' ? null : 'methods')}
+              className={`px-3 py-1.5 border hover:border-slate-700 text-slate-300 rounded-lg text-xs flex items-center gap-1 font-medium transition-all ${selectedMethods.length > 0 ? 'bg-blue-500/10 border-blue-500 text-blue-400' : 'bg-slate-900 border-slate-800'}`}
+            >
+              Methods {selectedMethods.length > 0 && `(${selectedMethods.length})`}
+              <ChevronDown className="w-3 h-3 text-slate-500" />
+            </button>
+            {activeDropdown === 'methods' && (
+              <div className="absolute left-0 mt-2 w-56 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl p-2 space-y-1 animate-fadeIn">
+                <input type="text" placeholder="Search methods..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1 text-xs font-mono text-slate-300 mb-1 focus:outline-none" />
+                {['eth_blockNumber', 'eth_estimateGas', 'eth_feeHistory', 'eth_getBlockReceipts', 'eth_getLogs'].filter(m => m.toLowerCase().includes(searchQuery.toLowerCase())).map(method => (
+                  <label key={method} className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-800 rounded-lg text-xs font-mono text-slate-300 cursor-pointer">
+                    <input type="checkbox" checked={selectedMethods.includes(method)} onChange={() => toggleFilter(method, selectedMethods, setSelectedMethods)} className="rounded border-slate-800 text-blue-500 focus:ring-0 bg-slate-950" />
+                    {method}
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Bộ lọc Mạng lưới */}
+          <div className="relative">
+            <button className="px-3 py-1.5 bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-300 rounded-lg text-xs flex items-center gap-1 font-medium">
+              Networks: <span className="text-amber-500">BSC Testnet</span>
+              <ChevronDown className="w-3 h-3 text-slate-500" />
+            </button>
+          </div>
+
+          {/* Bộ lọc Mã trạng thái HTTP codes */}
+          <div className="relative">
+            <button 
+              onClick={() => setActiveDropdown(activeDropdown === 'http' ? null : 'http')}
+              className={`px-3 py-1.5 border hover:border-slate-700 text-slate-300 rounded-lg text-xs flex items-center gap-1 font-medium transition-all ${selectedHttpCodes.length > 0 ? 'bg-blue-500/10 border-blue-500 text-blue-400' : 'bg-slate-900 border-slate-800'}`}
+            >
+              HTTP codes {selectedHttpCodes.length > 0 && `(${selectedHttpCodes.length})`}
+              <ChevronDown className="w-3 h-3 text-slate-500" />
+            </button>
+            {activeDropdown === 'http' && (
+              <div className="absolute left-0 mt-2 w-48 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl p-2 space-y-1 animate-fadeIn">
+                <label className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-800 rounded-lg text-xs text-slate-300 cursor-pointer">
+                  <input type="checkbox" checked={selectedHttpCodes.includes('200')} onChange={() => toggleFilter('200', selectedHttpCodes, setSelectedHttpCodes)} className="rounded border-slate-800 text-blue-500 bg-slate-950" />
+                  Success (200)
+                </label>
+                <label className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-800 rounded-lg text-xs text-slate-300 cursor-pointer">
+                  <input type="checkbox" checked={selectedHttpCodes.includes('error')} onChange={() => toggleFilter('error', selectedHttpCodes, setSelectedHttpCodes)} className="rounded border-slate-800 text-blue-500 bg-slate-950" />
+                  Failures / Errors
+                </label>
+              </div>
+            )}
+          </div>
+
+          {/* Bộ lọc Mã lỗi On-chain Error codes */}
+          <div className="relative">
+            <button 
+              onClick={() => setActiveDropdown(activeDropdown === 'errors' ? null : 'errors')}
+              className={`px-3 py-1.5 border hover:border-slate-700 text-slate-300 rounded-lg text-xs flex items-center gap-1 font-medium transition-all ${selectedErrorCodes.length > 0 ? 'bg-blue-500/10 border-blue-500 text-blue-400' : 'bg-slate-900 border-slate-800'}`}
+            >
+              Error codes {selectedErrorCodes.length > 0 && `(${selectedErrorCodes.length})`}
+              <ChevronDown className="w-3 h-3 text-slate-500" />
+            </button>
+            {activeDropdown === 'errors' && (
+              <div className="absolute left-0 mt-2 w-56 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl p-2 space-y-1 animate-fadeIn">
+                <label className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-800 rounded-lg text-xs text-slate-300 cursor-pointer">
+                  <input type="checkbox" checked={selectedErrorCodes.includes('-')} onChange={() => toggleFilter('-', selectedErrorCodes, setSelectedErrorCodes)} className="rounded border-slate-800 text-blue-500 bg-slate-950" />
+                  No Error (-)
+                </label>
+                <label className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-800 rounded-lg text-xs text-slate-300 cursor-pointer">
+                  <input type="checkbox" checked={selectedErrorCodes.includes('-32602')} onChange={() => toggleFilter('-32602', selectedErrorCodes, setSelectedErrorCodes)} className="rounded border-slate-800 text-blue-500 bg-slate-950" />
+                  Invalid Argument (-32602)
+                </label>
+                <label className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-800 rounded-lg text-xs text-slate-300 cursor-pointer">
+                  <input type="checkbox" checked={selectedErrorCodes.includes('-32016')} onChange={() => toggleFilter('-32016', selectedErrorCodes, setSelectedErrorCodes)} className="rounded border-slate-800 text-blue-500 bg-slate-950" />
+                  Execution Reverted (-32016)
+                </label>
+              </div>
+            )}
+          </div>
+
+          {/* Nút Khôi phục bộ lọc (Reset Action Button) */}
+          {(selectedMethods.length > 0 || selectedHttpCodes.length > 0 || selectedErrorCodes.length > 0) && (
+            <button 
+              onClick={handleResetFilters}
+              className="ml-auto p-1.5 text-slate-500 hover:text-slate-300 transition-colors rounded-lg hover:bg-slate-800"
+              title="Clear all filters"
+            >
+              <RotateCcw className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+
+        {/* Layout Danh Sách Đã Qua Bộ Lọc */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start relative z-10">
+          {/* Bảng Logs thực tế hiển thị các bản ghi đã lọc */}
           <div className="lg:col-span-2 overflow-x-auto border border-slate-800/80 rounded-xl bg-slate-950/20">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
@@ -437,7 +593,7 @@ export default function AffiliateWebhookAdmin() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-900">
-                {requestLogs.map((log) => (
+                {filteredRequestLogs.map((log) => (
                   <tr 
                     key={log.id} 
                     onClick={() => setSelectedRequestLog(log)}
@@ -452,8 +608,8 @@ export default function AffiliateWebhookAdmin() {
                     </td>
                     <td className="p-3">
                       <div className="flex items-center gap-1.5 font-medium">
-                        <span className={`w-1.5 h-1.5 rounded-full ${log.errorCode !== '-' ? 'bg-rose-500' : 'bg-emerald-400'}`}></span>
-                        <span className={log.errorCode !== '-' ? 'text-rose-400' : 'text-emerald-400'}>{log.httpStatus}</span>
+                        <span className={`w-1.5 h-1.5 rounded-full ${log.httpStatus !== 200 ? 'bg-rose-500' : 'bg-emerald-400'}`}></span>
+                        <span className={log.httpStatus !== 200 ? 'text-rose-400' : 'text-emerald-400'}>{log.httpStatus}</span>
                       </div>
                     </td>
                     <td className="p-3 font-mono text-slate-500">{log.errorCode}</td>
@@ -463,6 +619,11 @@ export default function AffiliateWebhookAdmin() {
                 ))}
               </tbody>
             </table>
+            {filteredRequestLogs.length === 0 && (
+              <div className="text-center py-12 text-slate-600 font-medium bg-slate-950/20">
+                Không tìm thấy request log nào khớp với cấu hình bộ lọc hiện tại.
+              </div>
+            )}
           </div>
 
           {/* Thanh Chi Tiết Request Log Details bên phải */}
@@ -470,7 +631,7 @@ export default function AffiliateWebhookAdmin() {
             <div className="flex items-center justify-between pb-2 border-b border-slate-800">
               <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300">Request Log Details</h3>
               {selectedRequestLog && (
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${selectedRequestLog.errorCode !== '-' ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'}`}>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${selectedRequestLog.httpStatus !== 200 ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'}`}>
                   HTTP {selectedRequestLog.httpStatus}
                 </span>
               )}
@@ -478,7 +639,6 @@ export default function AffiliateWebhookAdmin() {
 
             {selectedRequestLog ? (
               <div className="space-y-4 text-xs">
-                {/* Meta Fields */}
                 <div className="grid grid-cols-2 gap-y-2 text-slate-400 border-b border-slate-900 pb-3">
                   <div>Method:</div><div className="font-mono text-slate-200 text-right">{selectedRequestLog.method}</div>
                   <div>Response Time:</div><div className="text-emerald-400 text-right font-semibold">{selectedRequestLog.responseTime}</div>
@@ -493,22 +653,14 @@ export default function AffiliateWebhookAdmin() {
                   )}
                 </div>
 
-                {/* Request Code Block */}
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] font-bold uppercase text-slate-500 tracking-wide">➔ Request</span>
                     <div className="flex gap-1.5">
-                      {/* Nút Retry in Sandbox có chức năng truyền ngược dữ liệu thực tế */}
-                      <button 
-                        onClick={() => handleRetryInSandbox(selectedRequestLog)}
-                        className="text-[10px] bg-slate-900 border border-slate-800 hover:bg-slate-800 px-2 py-1 rounded text-blue-400 font-medium transition-all"
-                      >
+                      <button onClick={() => handleRetryInSandbox(selectedRequestLog)} className="text-[10px] bg-slate-900 border border-slate-800 hover:bg-slate-800 px-2 py-1 rounded text-blue-400 font-medium transition-all">
                         Retry in Sandbox
                       </button>
-                      <button 
-                        onClick={() => handleCopyClipboard(JSON.stringify(selectedRequestLog.requestBody, null, 2), 'req')}
-                        className="text-[10px] bg-slate-900 border border-slate-800 hover:bg-slate-800 px-2 py-1 rounded text-slate-300 flex items-center gap-1"
-                      >
+                      <button onClick={() => handleCopyClipboard(JSON.stringify(selectedRequestLog.requestBody, null, 2), 'req')} className="text-[10px] bg-slate-900 border border-slate-800 hover:bg-slate-800 px-2 py-1 rounded text-slate-300">
                         {copiedType === 'req' ? 'Copied!' : 'Copy'}
                       </button>
                     </div>
@@ -518,20 +670,16 @@ export default function AffiliateWebhookAdmin() {
                   </div>
                 </div>
 
-                {/* Response Code Block */}
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] font-bold uppercase text-slate-500 tracking-wide">🠔 Response</span>
-                    <button 
-                      onClick={() => handleCopyClipboard(JSON.stringify(selectedRequestLog.responseBody, null, 2), 'res')}
-                      className="text-[10px] bg-slate-900 border border-slate-800 hover:bg-slate-800 px-2 py-1 rounded text-slate-300"
-                    >
+                    <button onClick={() => handleCopyClipboard(JSON.stringify(selectedRequestLog.responseBody, null, 2), 'res')} className="text-[10px] bg-slate-900 border border-slate-800 hover:bg-slate-800 px-2 py-1 rounded text-slate-300">
                       {copiedType === 'res' ? 'Copied!' : 'Copy'}
                     </button>
                   </div>
                   <div className="bg-slate-900/60 border border-slate-800/80 rounded-lg p-3 max-h-32 overflow-auto custom-scrollbar font-mono text-[11px] text-slate-400">
-                    <pre className={selectedRequestLog.errorCode !== '-' ? 'text-rose-400/90' : 'text-emerald-400/90'}>
-                      {JSON.stringify(selectedWebhookLog?.responseBody || selectedRequestLog.responseBody, null, 2)}
+                    <pre className={selectedRequestLog.httpStatus !== 200 || selectedRequestLog.errorCode !== '-' ? 'text-rose-400/90' : 'text-emerald-400/90'}>
+                      {JSON.stringify(selectedRequestLog.responseBody, null, 2)}
                     </pre>
                   </div>
                 </div>
