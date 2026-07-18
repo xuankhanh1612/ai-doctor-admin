@@ -1,8 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { useAuth } from '../context/AuthContext';
-import AffiliateSystemAdminPanel from './admin/AffiliateSystemAdminPanel.jsx';
 import { 
-  Users, Settings, DollarSign, ArrowRight,
+  Users, DollarSign, ArrowRight,
   Sparkles, Loader2, MessageSquareText,
   Network, UserCircle, TrendingUp, Lightbulb,
   HeartHandshake, PlayCircle, Clock, GraduationCap, Copy, CheckCircle2,
@@ -105,8 +103,6 @@ const callGeminiAPI = async (prompt) => {
 };
 
 export default function AffiliateSystem() {
-  const { user } = useAuth();
-  const isAdmin = Boolean(user?.isAdmin);
   const [activeTab, setActiveTab] = useState('user'); 
   const [users, setUsers] = useState(INITIAL_USERS);
   const [policy, setPolicy] = useState(INITIAL_POLICY);
@@ -453,12 +449,6 @@ export default function AffiliateSystem() {
 
   const cooldownStr = getCooldownDisplay();
 
-  useEffect(() => {
-    if (!isAdmin && activeTab === 'admin') {
-      setActiveTab('user');
-    }
-  }, [activeTab, isAdmin]);
-
   const handleCopyLink = () => {
     showToast("Thành công", "Đã sao chép liên kết giới thiệu vào bộ nhớ tạm.", "success");
   };
@@ -482,14 +472,6 @@ export default function AffiliateSystem() {
           >
             <Wallet className="w-4 h-4" /> Cổng Đại Lý
           </button>
-          {isAdmin && (
-            <button
-              onClick={() => setActiveTab('admin')}
-              className={`px-4 py-2 rounded-full font-semibold text-sm transition-all flex items-center gap-2 whitespace-nowrap ${activeTab === 'admin' ? 'bg-red-500 text-white shadow-md' : 'bg-[#262626] text-slate-300 hover:bg-[#333]'}`}
-            >
-              <Settings className="w-4 h-4" /> Quản Trị Hệ Thống
-            </button>
-          )}
           <button 
             onClick={() => setActiveTab('stats')}
             className={`px-4 py-2 rounded-full font-semibold text-sm transition-all flex items-center gap-2 whitespace-nowrap ${activeTab === 'stats' ? 'bg-red-500 text-white shadow-md' : 'bg-[#262626] text-slate-300 hover:bg-[#333]'}`}
@@ -755,23 +737,6 @@ export default function AffiliateSystem() {
               </div>
             </div>
           </div>
-        )}
-
-        {/* ==========================================
-            TAB 2: QUẢN TRỊ ADMIN (DARK MODE)
-            ========================================== */}
-        {activeTab === 'admin' && isAdmin && (
-          <AffiliateSystemAdminPanel
-            aiAnalysis={aiAnalysis}
-            handleAddLevel={handleAddLevel}
-            handleAnalyzeSystem={handleAnalyzeSystem}
-            handleRemoveLevel={handleRemoveLevel}
-            handleSimulatePurchase={handleSimulatePurchase}
-            handleUpdateRate={handleUpdateRate}
-            isAnalyzing={isAnalyzing}
-            policy={policy}
-            users={users}
-          />
         )}
 
         {/* ==========================================
