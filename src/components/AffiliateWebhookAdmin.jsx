@@ -39,7 +39,7 @@ export default function AffiliateWebhookAdmin() {
   const [feeNewestBlock, setFeeNewestBlock] = useState('latest');
   const [feePercentiles, setFeePercentiles] = useState('20, 30');
   
-  // ĐÃ CẬP NHẬT: Đặt mặc định khoảng cách an toàn trong phạm vi 10 khối theo gợi ý lỗi của Alchemy
+  // Khoảng cách an toàn trong phạm vi 10 khối theo giới hạn gói Free của Alchemy
   const [logsFromBlock, setLogsFromBlock] = useState('0x137d3c2');
   const [logsToBlock, setLogsToBlock] = useState('0x137d3cb'); 
   const [logsAddress, setLogsAddress] = useState('0x44f787D670Ff4Ef65334D6637960bb7Fe5E1231c');
@@ -111,7 +111,6 @@ export default function AffiliateWebhookAdmin() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // XỬ LÝ LỌC THAM SỐ TRƯỚC KHI GỬI ĐỂ NÉ LỖI TIÊU CHUẨN CỦA NODE MẠNG
   const handleCallAlchemyRpc = async () => {
     setIsLoadingRpc(true);
     setRawRpcResponse(null);
@@ -120,7 +119,7 @@ export default function AffiliateWebhookAdmin() {
     const currentContract = webhookData[activeWebhookTab].contract;
     const rpcBody = { jsonrpc: "2.0", id: 1, method: selectedRpcMethod };
 
-    // 1. SỬA LỖI: Loại bỏ hoàn toàn category "internal" vì BSC không hỗ trợ
+    // Loại bỏ internal category để tránh lỗi đặc thù mạng BSC
     if (selectedRpcMethod === 'alchemy_getAssetTransfers') {
       rpcBody.params = [{
         fromBlock: "0x0",
@@ -131,7 +130,7 @@ export default function AffiliateWebhookAdmin() {
         withMetadata: true
       }];
     } 
-    // 2. SỬA LỖI: Đổi toBlock từ "latest" thành biến logsToBlock từ giao diện UI để kiểm soát giới hạn 10 khối của gói Free
+    // Gắn biến logsToBlock có kiểm soát giới hạn khối thay vì dùng "latest" diện rộng gói Free
     else if (selectedRpcMethod === 'eth_getLogs' && activeWebhookTab === 'paymaster' && !logsTopics.trim()) {
       const paddedPaymaster = "0x" + currentContract.replace("0x", "").toLowerCase().padStart(64, '0');
       rpcBody.params = [{
@@ -193,7 +192,7 @@ export default function AffiliateWebhookAdmin() {
     } catch (error) {
       setRawRpcResponse({ error: "Lỗi RPC Endpoint", details: error.message });
       setRpcStatus('error');
-    } relativeFinally: {
+    } finally {
       setIsLoadingRpc(false);
     }
   };
@@ -281,6 +280,16 @@ export default function AffiliateWebhookAdmin() {
     setTimeout(() => setCopiedType(''), 2000);
   };
 
+  const getFilteredTransactions = () => {
+    if (!rawRpcResponse || !rawRpcResponse.result || !Array.isArray(rawRpcResponse.result)) return [];
+    const targetContractLower = webhookData[activeWebhookTab].contract.toLowerCase();
+    return rawRpcResponse.result.filter(receipt => {
+      const directMatch = receipt.to && receipt.to.toLowerCase() === targetContractLower;
+      const logMatch = receipt.logs && receipt.logs.some(log => log.address && log.address.toLowerCase() === targetContractLower);
+      return directMatch || logMatch;
+    });
+  };
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 p-6 space-y-8">
       {/* Header */}
@@ -290,7 +299,7 @@ export default function AffiliateWebhookAdmin() {
         </h1>
       </div>
 
-      {/* TỔNG QUAN TRẠNG THÁI NODE */}
+      {/* TRẠNG THÁI NODE */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
           <p className="text-xs text-slate-400 font-medium uppercase">Alchemy RPC Endpoint URL</p>
@@ -309,7 +318,7 @@ export default function AffiliateWebhookAdmin() {
         </div>
       </div>
 
-      {/* KHU VỰC 1: TRÌNH THÁM MÃ ĐỘNG - ALCHEMY SANDBOX EXTENDED */}
+      {/* KHU VỰC 1: ALCHEMY SANDBOX EXTENDED */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl">
         <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-800">
           <h2 className="text-sm font-bold uppercase text-slate-300 tracking-wider flex items-center gap-1.5">
@@ -322,7 +331,10 @@ export default function AffiliateWebhookAdmin() {
             <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Method</label>
             <select 
               value={selectedRpcMethod} 
-              onChange={(e) => setSelectedRpcMethod(e.target.value)}
+              onChange={(e) => {
+                setSelectedRpcMethod(e.target.value);
+                setRawRpcResponse(null); // GIẢI PHÁP: Xoá sạch log cũ ngay lập tức khi đổi method để né lỗi sập trang
+              }}
               className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-300 font-mono focus:outline-none focus:border-blue-500"
             >
               <option value="alchemy_getAssetTransfers">alchemy_getAssetTransfers - Quét sâu lịch sử Contract (Alchemy Enhanced API)</option>
@@ -346,7 +358,6 @@ export default function AffiliateWebhookAdmin() {
           </div>
         </div>
 
-        {/* Khung cấu hình tham số cho getLogs giúp quản lý khoảng block range linh hoạt trên giao diện */}
         {selectedRpcMethod === 'eth_getLogs' && (
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4 p-4 bg-slate-950/40 border border-slate-800 rounded-xl animate-fadeIn">
             <div>
@@ -354,7 +365,7 @@ export default function AffiliateWebhookAdmin() {
               <input type="text" value={logsFromBlock} onChange={(e) => setLogsFromBlock(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-300 focus:outline-none focus:border-blue-500" />
             </div>
             <div>
-              <label className="block text-[11px] font-mono text-slate-400 mb-1.5">toBlock (Max +10 blocks cho Free)</label>
+              <label className="block text-[11px] font-mono text-slate-400 mb-1.5">toBlock (Giới hạn tối đa +10 khối)</label>
               <input type="text" value={logsToBlock} onChange={(e) => setLogsToBlock(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-300 focus:outline-none focus:border-blue-500" />
             </div>
             <div>
@@ -368,19 +379,20 @@ export default function AffiliateWebhookAdmin() {
           </div>
         )}
 
+        {/* Khung hiển thị JSON và Bảng thám mã sử dụng phòng vệ Array.isArray bảo mật cao */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
           <div>
-            <div className="text-[11px] text-slate-500 uppercase font-bold tracking-wider mb-1.5">Phản hồi thô JSON-RPC phản hồi từ Node:</div>
+            <div className="text-[11px] text-slate-500 uppercase font-bold tracking-wider mb-1.5">Phản hồi thô JSON-RPC từ Node:</div>
             <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 font-mono text-xs h-60 overflow-y-auto custom-scrollbar">
               {rawRpcResponse ? <pre className="text-blue-400 whitespace-pre">{JSON.stringify(rawRpcResponse, null, 2)}</pre> : <span className="text-slate-600">Bấm "Execute Call" để lấy dữ liệu...</span>}
             </div>
           </div>
           <div>
             <div className="text-[11px] text-emerald-400 uppercase font-bold tracking-wider mb-1.5 flex items-center gap-1">
-              <Filter className="w-3.5 h-3.5" /> Bảng phân tích thám mã giao dịch nâng cao:
+              <Filter className="w-3.5 h-3.5" /> Bảng phân tích thám mã giao dịch:
             </div>
             <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 h-60 overflow-y-auto custom-scrollbar text-xs font-mono">
-              {selectedRpcMethod === 'alchemy_getAssetTransfers' && rawRpcResponse?.result?.transfers ? (
+              {selectedRpcMethod === 'alchemy_getAssetTransfers' && Array.isArray(rawRpcResponse?.result?.transfers) ? (
                 <div className="space-y-2">
                   <div className="p-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-lg text-[11px] font-semibold">
                     Alchemy Asset Transfers API quét được {rawRpcResponse.result.transfers.length} giao dịch thành công.
@@ -395,7 +407,7 @@ export default function AffiliateWebhookAdmin() {
                     </div>
                   ))}
                 </div>
-              ) : selectedRpcMethod === 'eth_getLogs' && rawRpcResponse?.result ? (
+              ) : selectedRpcMethod === 'eth_getLogs' && Array.isArray(rawRpcResponse?.result) ? (
                 <div className="space-y-2">
                   <div className="p-2 bg-purple-500/10 text-purple-400 border border-purple-500/20 rounded-lg text-[11px] font-semibold">
                     Quét thấy {rawRpcResponse.result.length} bản ghi nhật ký sự kiện tương thích bộ lọc.
@@ -425,9 +437,9 @@ export default function AffiliateWebhookAdmin() {
         <div className="flex flex-wrap items-center gap-2 mb-4 bg-slate-950/40 p-3 rounded-xl border border-slate-800/60 relative z-20">
           <span className="text-xs font-semibold text-slate-400 px-1">Filters</span>
           
-          {/* 1. Lọc mốc thời gian */}
+          {/* Lọc mốc thời gian */}
           <div className="relative">
-            <button onClick={() => setActiveDropdown(activeDropdown === 'time' ? null : 'time')} className="px-3 py-1.5 bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-300 rounded-lg text-xs flex items-center gap-1 font-medium">
+            <button onClick={() => setActiveDropdown(activeDropdown === 'time' ? null : 'time')} className="px-3 py-1.5 bg-slate-900 border border-slate-800 text-slate-300 rounded-lg text-xs flex items-center gap-1 font-medium">
               Time: <span className="text-blue-400">{timeFilterOptions.find(o => o.key === selectedTimeFilter)?.label}</span>
               <ChevronDown className="w-3 h-3 text-slate-500" />
             </button>
@@ -442,7 +454,7 @@ export default function AffiliateWebhookAdmin() {
             )}
           </div>
 
-          {/* 2. Lọc Methods */}
+          {/* Lọc Methods */}
           <div className="relative">
             <button onClick={() => setActiveDropdown(activeDropdown === 'methods' ? null : 'methods')} className={`px-3 py-1.5 border hover:border-slate-700 text-slate-300 rounded-lg text-xs flex items-center gap-1 font-medium ${selectedMethods.length > 0 ? 'bg-blue-500/10 border-blue-500 text-blue-400' : 'bg-slate-900 border-slate-800'}`}>
               Methods {selectedMethods.length > 0 && `(${selectedMethods.length})`}
@@ -460,14 +472,7 @@ export default function AffiliateWebhookAdmin() {
             )}
           </div>
 
-          {/* 3. Lọc Networks */}
-          <div className="relative">
-            <button className="px-3 py-1.5 bg-slate-900 border border-slate-800 text-slate-300 rounded-lg text-xs flex items-center gap-1 font-medium">
-              Networks: <span className="text-amber-500">BSC Testnet</span>
-            </button>
-          </div>
-
-          {/* 4. Lọc HTTP codes */}
+          {/* Lọc HTTP codes */}
           <div className="relative">
             <button onClick={() => setActiveDropdown(activeDropdown === 'http' ? null : 'http')} className={`px-3 py-1.5 border hover:border-slate-700 text-slate-300 rounded-lg text-xs flex items-center gap-1 font-medium ${selectedHttpCodes.length > 0 ? 'bg-blue-500/10 border-blue-500 text-blue-400' : 'bg-slate-900 border-slate-800'}`}>
               HTTP codes {selectedHttpCodes.length > 0 && `(${selectedHttpCodes.length})`}
@@ -487,7 +492,7 @@ export default function AffiliateWebhookAdmin() {
             )}
           </div>
 
-          {/* 5. Lọc Response times */}
+          {/* Lọc Response times */}
           <div className="relative">
             <button onClick={() => setActiveDropdown(activeDropdown === 'responseTime' ? null : 'responseTime')} className={`px-3 py-1.5 border hover:border-slate-700 text-slate-300 rounded-lg text-xs flex items-center gap-1 font-medium ${selectedResponseTimes.length > 0 ? 'bg-blue-500/10 border-blue-500 text-blue-400' : 'bg-slate-900 border-slate-800'}`}>
               Response times {selectedResponseTimes.length > 0 && `(${selectedResponseTimes.length})`}
@@ -511,7 +516,7 @@ export default function AffiliateWebhookAdmin() {
             )}
           </div>
 
-          {/* Nút Reset bộ lọc */}
+          {/* Reset Filters */}
           {(selectedTimeFilter !== 'hour' || selectedMethods.length > 0 || selectedHttpCodes.length > 0 || selectedResponseTimes.length > 0) && (
             <button onClick={handleResetFilters} className="ml-auto p-1.5 text-slate-500 hover:text-slate-300 rounded-lg hover:bg-slate-800">
               <RotateCcw className="w-4 h-4" />
@@ -519,7 +524,7 @@ export default function AffiliateWebhookAdmin() {
           )}
         </div>
 
-        {/* Layout Log List + Chi tiết */}
+        {/* Layout Log List */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start relative z-10">
           <div className="lg:col-span-2 flex flex-col border border-slate-800/80 rounded-xl bg-slate-950/20 overflow-hidden">
             <table className="w-full text-left text-xs border-collapse">
@@ -562,7 +567,7 @@ export default function AffiliateWebhookAdmin() {
               <div className="text-center py-12 text-slate-600 font-medium bg-slate-950/20">Không có bản ghi log nào khớp bộ lọc.</div>
             )}
 
-            {/* THANH BỘ PHÂN TRANG */}
+            {/* PHÂN TRANG */}
             <div className="flex flex-col sm:flex-row items-center justify-between p-4 border-t border-slate-800/80 bg-slate-950/40 gap-4 text-xs text-slate-400">
               <div className="flex items-center gap-2">
                 <span>View</span>
@@ -598,7 +603,7 @@ export default function AffiliateWebhookAdmin() {
             </div>
           </div>
 
-          {/* Chi tiết bên phải (Thanh bên của Request Log) */}
+          {/* Chi tiết bên phải */}
           <div className="lg:col-span-1 bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-4">
             <div className="flex items-center justify-between pb-2 border-b border-slate-800">
               <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300">Request Log Details</h3>
@@ -624,37 +629,6 @@ export default function AffiliateWebhookAdmin() {
                 </div>
               </div>
             ) : <div className="text-center py-16 text-slate-600">Chọn một hàng trong bảng để xem chi tiết.</div>}
-          </div>
-        </div>
-      </div>
-
-      {/* KHU VỰC 3: CẤU HÌNH WEBHOOK PRODUCTION */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-          <button onClick={() => setActiveWebhookTab('affiliate')} className={`text-left p-5 rounded-xl border transition-all ${activeWebhookTab === 'affiliate' ? 'bg-slate-900 border-emerald-500 ring-1 ring-emerald-500/30' : 'bg-slate-950/40 border-slate-800'}`}>
-            <span className="text-sm font-bold tracking-wide text-slate-200 block mb-1">AFFILIATE TRACKER WEBHOOK</span>
-          </button>
-          <button onClick={() => setActiveWebhookTab('paymaster')} className={`text-left p-5 rounded-xl border transition-all ${activeWebhookTab === 'paymaster' ? 'bg-slate-900 border-emerald-500 ring-1 ring-emerald-500/30' : 'bg-slate-950/40 border-slate-800'}`}>
-            <span className="text-sm font-bold tracking-wide text-slate-200 block mb-1">HIENMAUPAYMASTERCONTRACT</span>
-          </button>
-        </div>
-
-        <div className="space-y-6">
-          <div>
-            <label className="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-2">Vercel Production Endpoint URL:</label>
-            <div className="flex gap-2">
-              <div className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm font-mono text-slate-300 overflow-x-auto">{targetEndpoint}</div>
-              <button onClick={() => handleCopyClipboard(targetEndpoint, 'endpoint')} className="px-4 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-sm font-medium">
-                {copiedType === 'endpoint' ? 'Đã lưu!' : 'Sao chép'}
-              </button>
-            </div>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-2">Link cấu hình nâng cao trên Alchemy Dashboard:</label>
-            <a href={webhookData[activeWebhookTab].dashboardUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-5 py-3 bg-slate-950 border border-slate-800 text-emerald-400 font-mono text-sm rounded-xl">
-              <span>{webhookData[activeWebhookTab].dashboardUrl}</span>
-              <ExternalLink className="w-4 h-4" />
-            </a>
           </div>
         </div>
       </div>
