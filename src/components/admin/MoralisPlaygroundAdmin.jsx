@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Settings, Play, Database, Copy, Clock, RotateCcw, FileCode, Terminal, AlertTriangle, Wallet, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
+import { 
+  Settings, Play, Database, Copy, Clock, RotateCcw, FileCode, 
+  Terminal, AlertTriangle, Wallet, ChevronLeft, ChevronRight, ChevronDown 
+} from 'lucide-react';
 import { fetchUnifiedHistory } from '../../services/moralisService';
 
 // =========================================================================
@@ -106,6 +109,7 @@ export default function MoralisPlaygroundAdmin() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // 1. HÀM THỰC THI QUÉT API MORALIS
   const handleExecuteMoralis = async () => {
     setIsLoading(true);
     setRawRpcResponse(null);
@@ -140,10 +144,26 @@ export default function MoralisPlaygroundAdmin() {
     }
   };
 
+  // 2. HÀM TẮT MỞ BỘ LỌC ĐỘNG
   const toggleFilter = (item, list, setList) => {
     setCurrentPage(1);
     if (list.includes(item)) setList(list.filter(i => i !== item));
     else setList([...list, item]);
+  };
+
+  // 3. ĐÃ BỔ SUNG: HÀM CHUYỂN TRANG LOGS
+  const handlePageChange = (page) => {
+    if (page >= 1 && page <= totalPages) setCurrentPage(page);
+  };
+
+  // 4. ĐÃ BỔ SUNG: HÀM XOÁ SẠCH LỊCH SỬ LOGS
+  const handleClearLogs = async () => {
+    if (window.confirm("Bồ có chắc chắn muốn xoá sạch lịch sử quét Moralis trong IndexedDB không?")) {
+      await clearAllLogsFromIndexedDB();
+      setRequestLogs([]);
+      setSelectedRequestLog(null);
+      setCurrentPage(1);
+    }
   };
 
   // LOGIC COMPUTE FILTER SẠCH SẼ CHO PHẦN LỊCH SỬ
