@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  Settings, Play, Database, Copy, Clock, RotateCcw, FileCode, 
+  Settings, Play, Database, Copy, Check, Clock, RotateCcw, FileCode, 
   Terminal, AlertTriangle, Wallet, ChevronLeft, ChevronRight, ChevronDown 
 } from 'lucide-react';
 import { fetchUnifiedHistory } from '../../services/moralisService';
@@ -109,7 +109,6 @@ export default function MoralisPlaygroundAdmin() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // 1. HÀM THỰC THI QUÉT API MORALIS
   const handleExecuteMoralis = async () => {
     setIsLoading(true);
     setRawRpcResponse(null);
@@ -144,19 +143,16 @@ export default function MoralisPlaygroundAdmin() {
     }
   };
 
-  // 2. HÀM TẮT MỞ BỘ LỌC ĐỘNG
   const toggleFilter = (item, list, setList) => {
     setCurrentPage(1);
     if (list.includes(item)) setList(list.filter(i => i !== item));
     else setList([...list, item]);
   };
 
-  // 3. ĐÃ BỔ SUNG: HÀM CHUYỂN TRANG LOGS
   const handlePageChange = (page) => {
     if (page >= 1 && page <= totalPages) setCurrentPage(page);
   };
 
-  // 4. ĐÃ BỔ SUNG: HÀM XOÁ SẠCH LỊCH SỬ LOGS
   const handleClearLogs = async () => {
     if (window.confirm("Bồ có chắc chắn muốn xoá sạch lịch sử quét Moralis trong IndexedDB không?")) {
       await clearAllLogsFromIndexedDB();
@@ -166,7 +162,13 @@ export default function MoralisPlaygroundAdmin() {
     }
   };
 
-  // LOGIC COMPUTE FILTER SẠCH SẼ CHO PHẦN LỊCH SỬ
+  const handleCopyClipboard = (text, type) => {
+    navigator.clipboard.writeText(text);
+    setCopiedType(type);
+    setTimeout(() => setCopiedType(''), 2000);
+  };
+
+  // LOGIC FILTER
   const filteredRequestLogs = requestLogs.filter(log => {
     const diffMs = Date.now() - log.timestamp;
     if (selectedTimeFilter === '5min' && diffMs > 5 * 60 * 1000) return false;
@@ -222,7 +224,7 @@ export default function MoralisPlaygroundAdmin() {
           <div className="flex items-center gap-2"><Database className="w-4 h-4 text-purple-400" /> BscScan Testnet Real-time Tracker Table</div>
           <span className="text-[11px] text-slate-500 font-mono">Ví đang quét: {shortenAddress(customAddress)}</span>
         </div>
-        <div className="overflow-x-auto min-h-[180px]">
+        <div className="overflow-x-auto">
           {Array.isArray(rawRpcResponse) ? (
             <table className="w-full text-left text-xs border-collapse">
               <thead className="bg-slate-950 border-b border-slate-800 text-slate-400">
@@ -231,12 +233,36 @@ export default function MoralisPlaygroundAdmin() {
               <tbody className="divide-y divide-slate-800 text-[13px]">
                 {rawRpcResponse.map((tx, idx) => (
                   <tr key={idx} className="hover:bg-slate-800/40">
-                    <td className="p-3 font-mono"><a href={`https://testnet.bscscan.com/tx/${tx.hash}`} target="_blank" rel="noreferrer" className="text-blue-400 hover:underline">{shortenAddress(tx.hash)}</a></td>
+                    {/* BUTTON COPY CHO PARENT TRANSACTION HASH */}
+                    <td className="p-3 font-mono">
+                      <div className="flex items-center gap-1.5">
+                        <a href={`https://testnet.bscscan.com/tx/${tx.hash}`} target="_blank" rel="noreferrer" className="text-blue-400 hover:underline">{shortenAddress(tx.hash)}</a>
+                        <button onClick={() => handleCopyClipboard(tx.hash, `tx_${idx}`)} className="text-slate-500 hover:text-slate-300 transition-colors">
+                          {copiedType === `tx_${idx}` ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                        </button>
+                      </div>
+                    </td>
                     <td className="p-3 font-mono text-slate-300">{tx.block}</td>
                     <td className="p-3 text-slate-500 text-xs">{new Date(tx.date).toLocaleTimeString()}</td>
-                    <td className="p-3 font-mono text-slate-300">{shortenAddress(tx.from)}</td>
+                    {/* BUTTON COPY CHO VÍ FROM */}
+                    <td className="p-3 font-mono text-slate-300">
+                      <div className="flex items-center gap-1.5">
+                        <span title={tx.from}>{shortenAddress(tx.from)}</span>
+                        <button onClick={() => handleCopyClipboard(tx.from, `from_${idx}`)} className="text-slate-500 hover:text-slate-300 transition-colors">
+                          {copiedType === `from_${idx}` ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                        </button>
+                      </div>
+                    </td>
                     <td className="p-3 text-center"><span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${tx.type === 'received' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'}`}>{tx.type === 'received' ? 'IN' : 'OUT'}</span></td>
-                    <td className="p-3 font-mono text-slate-300">{shortenAddress(tx.to)}</td>
+                    {/* BUTTON COPY CHO VÍ TO */}
+                    <td className="p-3 font-mono text-slate-300">
+                      <div className="flex items-center gap-1.5">
+                        <span title={tx.to}>{shortenAddress(tx.to)}</span>
+                        <button onClick={() => handleCopyClipboard(tx.to, `to_${idx}`)} className="text-slate-500 hover:text-slate-300 transition-colors">
+                          {copiedType === `to_${idx}` ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                        </button>
+                      </div>
+                    </td>
                     <td className="p-3 text-right font-medium text-slate-100">{tx.valueEth} <span className="text-xs text-slate-400 uppercase font-bold">{tx.name}</span></td>
                   </tr>
                 ))}
@@ -246,9 +272,31 @@ export default function MoralisPlaygroundAdmin() {
             <div className="text-center py-12 text-slate-600 font-medium"><Terminal className="w-8 h-8 mx-auto mb-1 opacity-40 animate-pulse" />Nhập API Key và bấm "Get History" để render bảng điện tử Explorer.</div>
           )}
         </div>
+
+        {/* CỤM RAW JSON RESPONSE PAYLOAD CODE NGAY DƯỚI CHÂN BẢNG CÓ NÚT COPY ĐỘC LẬP */}
+        {rawRpcResponse && (
+          <details className="border-t border-slate-800 bg-slate-950/40 transition-all" open>
+            <summary className="px-4 py-2.5 text-[11px] uppercase font-bold tracking-wider text-slate-400 cursor-pointer hover:text-slate-200 select-none flex items-center justify-between">
+              <span>➔ VIEW RAW JSON RESPONSE PAYLOAD CODE</span>
+              <button 
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleCopyClipboard(JSON.stringify(rawRpcResponse, null, 2), 'grid_raw_json');
+                }}
+                className="text-[10px] bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-300 px-3 py-1 rounded transition-all font-sans font-semibold"
+              >
+                {copiedType === 'grid_raw_json' ? 'Đã copy thành công!' : 'Copy Raw Response'}
+              </button>
+            </summary>
+            <div className="p-4 max-h-64 overflow-y-auto font-mono text-[11px] text-blue-400 border-t border-slate-950 custom-scrollbar">
+              <pre>{JSON.stringify(rawRpcResponse, null, 2)}</pre>
+            </div>
+          </details>
+        )}
       </div>
 
-      {/* FULL HISTORY LOGS LAYER WITH ALL FILTERS & SIDEBAR */}
+      {/* FULL HISTORY LOGS LAYER WITH SIDEBAR */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl relative" ref={dropdownRef}>
         <div className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
@@ -312,14 +360,20 @@ export default function MoralisPlaygroundAdmin() {
             </div>
           </div>
 
-          {/* SIDEBAR DETAILED CONSOLE */}
+          {/* SIDEBAR DETAILED CONSOLE WITH COPY BUTTONS */}
           <div className="lg:col-span-1 bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-4 shadow-2xl">
             <h3 className="text-xs font-bold uppercase text-slate-300 flex items-center gap-1 border-b border-slate-900 pb-2"><FileCode className="w-4 h-4 text-purple-400" /> Moralis Payload Inspector</h3>
             {selectedRequestLog ? (
               <div className="space-y-4 text-xs">
                 <div className="space-y-1.5">
-                  <div className="flex justify-between items-center"><span className="text-[11px] font-bold uppercase text-slate-400">➔ Request Config Payload</span>
-                    <button onClick={() => { if (selectedRequestLog.requestBody?.wallet) setCustomAddress(selectedRequestLog.requestBody.wallet); window.scrollTo({ top: 120, behavior: 'smooth' }); }} className="text-[10px] text-purple-400 hover:underline">Retry in Sandbox</button>
+                  <div className="flex justify-between items-center">
+                    <span className="text-[11px] font-bold uppercase text-slate-400">➔ Request Config Payload</span>
+                    <div className="flex gap-2">
+                      <button onClick={() => { if (selectedRequestLog.requestBody?.wallet) setCustomAddress(selectedRequestLog.requestBody.wallet); window.scrollTo({ top: 120, behavior: 'smooth' }); }} className="text-[10px] text-purple-400 hover:underline">Retry</button>
+                      <button onClick={() => handleCopyClipboard(JSON.stringify(selectedRequestLog.requestBody, null, 2), 'log_req')} className="text-[10px] text-slate-400 hover:text-white transition-colors">
+                        {copiedType === 'log_req' ? 'Copied' : 'Copy'}
+                      </button>
+                    </div>
                   </div>
                   <div className="bg-slate-900 border border-slate-800 rounded-lg p-2.5 max-h-36 overflow-auto font-mono text-[11px] text-pink-400"><pre>{JSON.stringify(selectedRequestLog.requestBody, null, 2)}</pre></div>
                 </div>
@@ -328,7 +382,12 @@ export default function MoralisPlaygroundAdmin() {
                   <div className="bg-slate-900 border border-slate-800 rounded-lg p-2.5 font-mono text-[10px] text-slate-400 overflow-x-auto whitespace-pre">curl "{selectedRequestLog.requestBody?.targetUrl}" -H "X-API-Key: YOUR_KEY"</div>
                 </div>
                 <div className="space-y-1.5">
-                  <span className="text-[11px] font-bold uppercase text-slate-400 block">⬇ Response Indexer Results</span>
+                  <div className="flex justify-between items-center">
+                    <span className="text-[11px] font-bold uppercase text-slate-400 block">⬇ Response Indexer Results</span>
+                    <button onClick={() => handleCopyClipboard(JSON.stringify(selectedRequestLog.responseBody, null, 2), 'log_res')} className="text-[10px] text-slate-400 hover:text-white transition-colors">
+                      {copiedType === 'log_res' ? 'Copied' : 'Copy Response'}
+                    </button>
+                  </div>
                   <div className="bg-slate-900 border border-slate-800 rounded-lg p-2.5 max-h-40 overflow-auto font-mono text-[11px] text-blue-400 custom-scrollbar"><pre>{JSON.stringify(selectedRequestLog.responseBody, null, 2)}</pre></div>
                 </div>
               </div>
