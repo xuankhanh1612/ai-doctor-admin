@@ -1603,6 +1603,14 @@
       setTimeout(() => resultToast.classList.remove('show'), 4200);
 
       renderStats();
+
+      // Forward lên app cha (nếu portal này đang được nhúng trong 1 iframe
+      // khác, vd BodyProtectionJourneyPanel.jsx của ai-doctor-admin) để hệ
+      // thống Affiliate ghi nhận thưởng — không forward nếu chính cửa sổ
+      // này đã là top-level (tránh vòng lặp postMessage vô hạn).
+      if(window.parent && window.parent !== window){
+        try { window.parent.postMessage(data, '*'); } catch(e) {}
+      }
     }
   });
 

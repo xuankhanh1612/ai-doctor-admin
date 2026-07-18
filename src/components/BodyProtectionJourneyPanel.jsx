@@ -2,8 +2,12 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { ShieldCheck, Maximize2, Minimize2, Hand, Gamepad2 } from 'lucide-react'
 import NavButtons from './NavButtons.jsx'
 import { useApp } from '../context/AppContext'
+import { useAuth } from '../context/AuthContext'
 import TouchlessHandCam from './webcam/TouchlessHandCam.jsx'
 import { classifyGestureKey, expandUser1GestureKeys, GESTURE_KEY_LABELS } from './webcam/gestureToKey.js'
+import GameAffiliateRewardWidget from './GameAffiliateRewardWidget.jsx'
+import { getReferralFor, resolveReferrerByCode, saveReferral, recordGameProgress } from '../lib/gameAffiliateDB'
+import { registerReferralOnChain } from '../lib/gameAffiliateChain'
 
 // ============================================================================
 // DANH SÁCH GAME & CẤU HÌNH CAMERA
@@ -38,6 +42,7 @@ const HOLD_FRAMES_TO_RELEASE = 5
 
 export default function BodyProtectionJourneyPanel({ onNext, nextLabel, onPrev, prevLabel, onFullscreenChange }) {
   const { theme } = useApp()
+  const { user } = useAuth()
   const isDark = theme === 'dark'
   
   // State quản lý Game đang được chọn
@@ -45,6 +50,7 @@ export default function BodyProtectionJourneyPanel({ onNext, nextLabel, onPrev, 
   const [fullscreen, setFullscreen] = useState(false)
   const [gestureOn, setGestureOn] = useState(false)
   const [activeGestureKey, setActiveGestureKey] = useState(null)
+  const [lastGameResult, setLastGameResult] = useState(null)
 
   const iframeRef = useRef(null)
   const touchlessCameraRef = useRef(null)
@@ -152,6 +158,53 @@ export default function BodyProtectionJourneyPanel({ onNext, nextLabel, onPrev, 
   }, [gestureOn, releaseActiveKey])
 
   useEffect(() => () => releaseActiveKey(), [releaseActiveKey])
+
+  // ============================================================================
+  // AFFILIATE: bắt mã giới thiệu ?ref=CODE trên URL (đúng 1 lần / thiết bị)
+  // ============================================================================
+  useEffect(() => {
+    if (!user?.uuid) return
+    const params = new URLSearchParams(window.location.search)
+    const refCode = params.get('ref')
+    if (!refCode) return
+    ;(async () => {
+      const already = await getReferralFor(user.uuid)
+      if (already) return
+      const referrerUuid = await resolveReferrerByCode(refCode)
+      if (!referrerUuid || referrerUuid === user.uuid) return
+      const saved = await saveReferral({ referrerUuid, refereeUuid: user.uuid, code: refCode, source: 'games' })
+      if (saved?.id) {
+        registerReferralOnChain({ id: saved.id, referrerUuid, refereeUuid: user.uuid }).catch((err) =>
+          console.warn('[BodyProtectionJourneyPanel] Không thể ghi referral lên chain ngay, sẽ thử lại sau:', err)
+        )
+      }
+    })()
+  }, [user?.uuid])
+
+  // ============================================================================
+  // AFFILIATE: nhận kết quả chơi game (PORTAL_GAME_RESULT) từ iframe cùng gốc
+  // và forward từ portal-index.html (game không camera, nhúng game ngoài)
+  // ============================================================================
+  useEffect(() => {
+    const handleGameMessage = (event) => {
+      const data = event.data
+      if (!data || typeof data !== 'object' || data.type !== 'PORTAL_GAME_RESULT') return
+      if (user?.uuid) {
+        recordGameProgress({
+          uuid: user.uuid,
+          gameId: data.gameId,
+          gameTitle: data.gameTitle,
+          status: data.status,
+          score: data.score,
+          timeSec: data.timeSec,
+          meta: data.meta,
+        }).catch(() => {})
+      }
+      setLastGameResult({ ...data, receivedAt: Date.now() })
+    }
+    window.addEventListener('message', handleGameMessage)
+    return () => window.removeEventListener('message', handleGameMessage)
+  }, [user?.uuid])
 
   return (
     <div className={`animate-fade min-h-full w-full ${fullscreen ? 'px-0 py-0' : 'px-4 py-6 sm:px-8'} ${pageBg}`}>
@@ -312,6 +365,8 @@ export default function BodyProtectionJourneyPanel({ onNext, nextLabel, onPrev, 
           />
         )}
       </div>
+
+      <GameAffiliateRewardWidget uuid={user?.uuid} lastGameResult={lastGameResult} />
     </div>
   )
 }
