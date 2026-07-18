@@ -1,58 +1,45 @@
-// api/moralis-webhook.js
 import crypto from 'crypto';
+import { connectToDatabase } from '../lib/db'; // Giả sử bồ có file helper kết nối DB sẵn
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+  if (req.method !== 'POST') return res.status(405).end();
 
-  // 1. Xác thực chữ ký bảo mật (X-Signature) chống giả mạo gói tin Webhook
+  // Xác thực bảo mật chữ ký Moralis
   const signature = req.headers['x-signature'];
-  const moralisSecret = process.env.MORALIS_STREAM_SECRET; // Cấu hình Key này trên Vercel Dashboard
-
+  const moralisSecret = process.env.MORALIS_STREAM_SECRET;
   if (moralisSecret && signature) {
-    const computedSignature = crypto
-      .createHmac('sha256', moralisSecret)
-      .update(JSON.stringify(req.body))
-      .digest('hex');
-
-    if (signature !== computedSignature) {
-      return res.status(401).json({ error: 'X-Signature verification failed.' });
-    }
+    const computed = crypto.createHmac('sha256', moralisSecret).update(JSON.stringify(req.body)).digest('hex');
+    if (signature !== computed) return res.status(401).json({ error: 'Invalid signature' });
   }
 
-  const { logs, confirmed, chainId } = req.body;
-
-  // Moralis sẽ bắn một gói tin rỗng khi bồ bấm kích hoạt kiểm tra webhook đầu tiên
-  if (!logs || logs.length === 0) {
-    return res.status(200).json({ status: 'Moralis Stream Hook Active!' });
-  }
+  const { logs } = req.body;
+  if (!logs || logs.length === 0) return res.status(200).json({ status: 'Active' });
 
   try {
-    // 2. Vòng lặp bóc tách Logs giao dịch thu được từ Block
+    const { db } = await connectToDatabase(); // Kết nối vào ai-doctor-db
+
     for (const log of logs) {
-      // Sử dụng tính năng Tự động giải mã cấu trúc Log (Auto-decoded event logs) của Moralis
-      if (log.decodedEvent) {
-        const eventName = log.decodedEvent.eventName;
-        const params = log.decodedEvent.params;
+      if (log.decodedEvent && log.decodedEvent.eventName === 'PartnerRegistered') {
+        
+        // Tạo object mẫu gói tin chuẩn để lưu trữ
+        const logEntry = {
+          eventId: `evt_${Math.random().toString(36).substr(2, 9)}`,
+          event: log.decodedEvent.eventName,
+          partner: log.decodedEvent.params.partner,
+          referrer: log.decodedEvent.params.referrer,
+          transactionHash: log.transactionHash,
+          blockNumber: parseInt(log.blockNumber),
+          timestamp: Date.now(),
+          rawPayload: log
+        };
 
-        if (eventName === 'PartnerRegistered') {
-          const partnerAddress = params.partner;
-          const referrerAddress = params.referrer;
-
-          console.log(`[HMNV REAL-TIME EVENT] Phát hiện tình nguyện viên mới: ${partnerAddress} - Người giới thiệu: ${referrerAddress} | Khối confirmed: ${confirmed}`);
-
-          // =========================================================================
-          // TODO: BỒ CHÈN LOGIC CẬP NHẬT DATABASE PRODUCTION (MongoDB/Postgres) TẠI ĐÂY
-          // Ví dụ: await db.collection('referrals').insertOne({ partner, referrer, chainId });
-          // =========================================================================
-        }
+        // Ghi thẳng vào ví - MongoDB tự tạo collection 'webhook_logs' nếu chưa có
+        await db.collection('webhook_logs').insertOne(logEntry);
       }
     }
 
-    return res.status(200).json({ success: true, processedLogs: logs.length });
+    return res.status(200).json({ success: true });
   } catch (error) {
-    console.error('[HMNV Stream System Error]:', error);
     return res.status(500).json({ error: error.message });
   }
 }
