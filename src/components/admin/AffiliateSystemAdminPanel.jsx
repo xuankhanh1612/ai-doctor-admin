@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Activity,
   Loader2,
@@ -9,17 +9,55 @@ import {
   Trash2,
 } from 'lucide-react';
 
+const DEFAULT_POLICY = [
+  { level: 1, rate: 10 },
+  { level: 2, rate: 5 },
+  { level: 3, rate: 2 },
+];
+
+const DEFAULT_USERS = [
+  { id: 'u1', name: 'Admin (Hệ Thống)' },
+  { id: 'u2', name: 'Nguyễn Văn A' },
+  { id: 'u3', name: 'Trần Thị B' },
+];
+
+
 export default function AffiliateSystemAdminPanel({
-  aiAnalysis,
+  aiAnalysis: controlledAiAnalysis,
   handleAddLevel,
   handleAnalyzeSystem,
   handleRemoveLevel,
   handleSimulatePurchase,
   handleUpdateRate,
-  isAnalyzing,
-  policy,
-  users,
+  isAnalyzing = false,
+  policy: controlledPolicy,
+  users = DEFAULT_USERS,
 }) {
+  const [localPolicy, setLocalPolicy] = useState(DEFAULT_POLICY);
+  const [localAiAnalysis, setLocalAiAnalysis] = useState('');
+  const policy = controlledPolicy || localPolicy;
+  const aiAnalysis = controlledAiAnalysis ?? localAiAnalysis;
+  const onUpdateRate = handleUpdateRate || ((level, newRate) => {
+    const rate = parseFloat(newRate) || 0;
+    setLocalPolicy(prev => prev.map(item => item.level === level ? { ...item, rate } : item));
+  });
+  const onAddLevel = handleAddLevel || (() => {
+    setLocalPolicy(prev => {
+      const nextLevel = prev.length > 0 ? Math.max(...prev.map(item => item.level)) + 1 : 1;
+      return [...prev, { level: nextLevel, rate: 0 }];
+    });
+  });
+  const onRemoveLevel = handleRemoveLevel || ((level) => {
+    setLocalPolicy(prev => prev.filter(item => item.level !== level).map((item, index) => ({ ...item, level: index + 1 })));
+  });
+  const onAnalyzeSystem = handleAnalyzeSystem || (() => {
+    setLocalAiAnalysis('Chính sách affiliate hiện có thể được cấu hình từ menu Quản Trị Affiliate. Kết nối Gemini sẽ chạy khi panel được truyền handler từ hệ thống chính.');
+  });
+  const onSimulatePurchase = handleSimulatePurchase || ((event) => {
+    event.preventDefault();
+    event.currentTarget.reset();
+  });
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-in fade-in duration-300">
       <div className="bg-[#141414] p-6 rounded-2xl border border-[#262626]">
@@ -28,7 +66,7 @@ export default function AffiliateSystemAdminPanel({
             <Target className="w-5 h-5 text-red-500" /> Cấu Hình Hoa Hồng Đa Tầng
           </h2>
           <button
-            onClick={handleAddLevel}
+            onClick={onAddLevel}
             className="flex items-center gap-1 text-sm bg-red-500/10 text-red-400 border border-red-500/20 px-3 py-1.5 rounded-lg hover:bg-red-500/20 transition font-medium"
           >
             <Plus className="w-4 h-4" /> Thêm Tầng
@@ -46,13 +84,13 @@ export default function AffiliateSystemAdminPanel({
                   <input
                     type="number" min="0" max="100" step="0.1"
                     value={levelPolicy.rate}
-                    onChange={(e) => handleUpdateRate(levelPolicy.level, e.target.value)}
+                    onChange={(e) => onUpdateRate(levelPolicy.level, e.target.value)}
                     className="w-20 px-2 py-1.5 border border-[#444] rounded-md focus:ring-1 focus:ring-red-500 outline-none text-center font-medium bg-[#141414] text-white"
                   />
                   <span className="text-slate-500">%</span>
                 </div>
               </div>
-              <button onClick={() => handleRemoveLevel(levelPolicy.level)} className="p-2 text-slate-500 hover:text-red-500 bg-[#1a1a1a] hover:bg-[#222] border border-[#333] rounded-lg">
+              <button onClick={() => onRemoveLevel(levelPolicy.level)} className="p-2 text-slate-500 hover:text-red-500 bg-[#1a1a1a] hover:bg-[#222] border border-[#333] rounded-lg">
                 <Trash2 className="w-5 h-5" />
               </button>
             </div>
@@ -64,7 +102,7 @@ export default function AffiliateSystemAdminPanel({
             <Sparkles className="w-5 h-5 text-red-500" /> Cố Vấn Chiến Lược (Gemini AI)
           </h3>
           <button
-            onClick={handleAnalyzeSystem} disabled={isAnalyzing}
+            onClick={onAnalyzeSystem} disabled={isAnalyzing}
             className="w-full bg-[#262626] hover:bg-[#333] border border-[#444] text-white px-4 py-2.5 rounded-lg text-sm font-bold transition flex items-center justify-center gap-2 disabled:opacity-50"
           >
             {isAnalyzing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Activity className="w-4 h-4" />}
@@ -83,7 +121,7 @@ export default function AffiliateSystemAdminPanel({
           <ShoppingCart className="w-5 h-5 text-red-500" /> Mô Phỏng Đóng Góp Quỹ
         </h2>
         <p className="text-sm text-slate-400 mb-4">Mô phỏng hành động nạp tiền/đóng góp để xem hệ thống chia % cho tuyến trên như thế nào.</p>
-        <form onSubmit={handleSimulatePurchase} className="space-y-4 bg-[#0a0a0a] p-5 rounded-xl border border-[#333]">
+        <form onSubmit={onSimulatePurchase} className="space-y-4 bg-[#0a0a0a] p-5 rounded-xl border border-[#333]">
           <div>
             <label className="block text-sm font-bold text-slate-300 mb-1.5">Ai là người đóng góp?</label>
             <select name="userId" required className="w-full px-4 py-2.5 bg-[#141414] text-white border border-[#444] rounded-lg focus:ring-1 focus:ring-red-500 outline-none appearance-none">

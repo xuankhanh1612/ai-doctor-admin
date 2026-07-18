@@ -65,12 +65,13 @@ import AffiliateSystemControlPanel from './components/AffiliateSystemControlPane
 import AffiliateSystemPanel from './components/AffiliateSystemPanel.jsx'
 import AffiliateReferralLandingPage from './components/AffiliateReferralLandingPage.jsx'
 import AffiliateWebhookAdmin from './components/AffiliateWebhookAdmin.jsx'
+import AffiliateSystemAdminPanel from './components/admin/AffiliateSystemAdminPanel.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 import { addNotification } from './lib/notifications.js'
 import { useTTS } from './lib/groqAiClient.js'
 
 // Thứ tự này đồng bộ menu chính và nút điều hướng qua/lại giữa các màn hình.
-const PANELS = ['bodyProtectionJourney', 'myPainPathBody', 'myPainPathBodyPixel', 'myPainPathNoiTang', 'myPainPathNoiTangPixel', 'healthJourneyGame', 'medicalAssetStore', 'medicalVisualPlayground', 'medicalVisualCameraAngle3D', 'myRewardHealth', 'affiliateControl', 'affiliate', 'rssPortal', 'waterDrinkChatBot', 'wikiMedVision', 'fullDocSummarization', 'documentOCR', 'cameraAngle3DStudio', 'organConnection', 'healthJourney', 'lunchJourney', 'dinnerJourney', 'upload', 'imaging', 'checkin', 'family', 'record', 'familyRelationship', 'matrix3dBody', 'omnidirectional3dBody', 'twin', 'telemedicine', 'statAnalysis', 'swarm', 'consensus', 'varCheck', 'protein3d', 'aiHealthcareVision', 'aiHealthcareVisionControl', 'stressRelief', 'aiInbodyPortal', 'printPortal', 'patientReflect', 'chatHistory', 'myImageToVideo', 'make3DModel', 'my3dAsset', 'twoDTo3DAsset', 'xyzCameraAngle']
+const PANELS = ['bodyProtectionJourney', 'myPainPathBody', 'myPainPathBodyPixel', 'myPainPathNoiTang', 'myPainPathNoiTangPixel', 'healthJourneyGame', 'medicalAssetStore', 'medicalVisualPlayground', 'medicalVisualCameraAngle3D', 'myRewardHealth', 'affiliateControl', 'affiliate', 'rssPortal', 'waterDrinkChatBot', 'wikiMedVision', 'fullDocSummarization', 'documentOCR', 'cameraAngle3DStudio', 'organConnection', 'healthJourney', 'lunchJourney', 'dinnerJourney', 'upload', 'imaging', 'checkin', 'family', 'record', 'familyRelationship', 'matrix3dBody', 'omnidirectional3dBody', 'twin', 'telemedicine', 'statAnalysis', 'swarm', 'consensus', 'varCheck', 'protein3d', 'aiHealthcareVision', 'aiHealthcareVisionControl', 'stressRelief', 'aiInbodyPortal', 'printPortal', 'patientReflect', 'chatHistory', 'affiliateAdmin', 'myImageToVideo', 'make3DModel', 'my3dAsset', 'twoDTo3DAsset', 'xyzCameraAngle']
 
 export default function App() {
   const { user, loading } = useAuth()
@@ -165,6 +166,7 @@ export default function App() {
     myRewardHealth: 'My Reward Health',
     affiliateControl: 'Affiliate Control Panel',
     affiliate: 'Affiliate & Earn Đa Tầng',
+    affiliateAdmin: 'Quản Trị Affiliate',
     affiliateWebhookAdmin: 'Affiliate Webhook Admin',
     healthJourney: t('healthJourney'),
     lunchJourney: t('lunchJourney'),
@@ -231,7 +233,7 @@ export default function App() {
     window.setTimeout(() => setSidebarOpenSignal(signal => signal + 1), 0)
   }, [])
 
-  const ADMIN_ONLY_PANELS = ['adminConcept', 'affiliateWebhookAdmin', 'myImageToVideo', 'make3DModel', 'my3dAsset', 'twoDTo3DAsset', 'xyzCameraAngle']
+  const ADMIN_ONLY_PANELS = ['adminConcept', 'affiliateAdmin', 'affiliateWebhookAdmin', 'myImageToVideo', 'make3DModel', 'my3dAsset', 'twoDTo3DAsset', 'xyzCameraAngle']
   const visiblePanels = user?.isAdmin ? PANELS : PANELS.filter(id => !ADMIN_ONLY_PANELS.includes(id))
 
   useEffect(() => {
@@ -436,6 +438,10 @@ export default function App() {
             {active === 'myRewardHealth' && <MyRewardHealthPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} onOpenFoodToday={() => setActive('organConnection')} />}
             {active === 'affiliateControl' && <AffiliateSystemControlPanel />}
             {active === 'affiliate' && <AffiliateSystemPanel onNext={goNext} nextLabel={nextLabel} onPrev={goPrev} prevLabel={prevLabel} />}
+            {active === 'affiliateAdmin' && user?.isAdmin && <AffiliateSystemAdminPanel />}
+            {active === 'affiliateAdmin' && !user?.isAdmin && (
+              <div style={{ padding: 40, textAlign: 'center', color: '#ff5252' }}>🔒 Admin only</div>
+            )}
             {active === 'affiliateWebhookAdmin' && user?.isAdmin && <AffiliateWebhookAdmin />}
             {active === 'affiliateWebhookAdmin' && !user?.isAdmin && (
               <div style={{ padding: 40, textAlign: 'center', color: '#ff5252' }}>🔒 Admin only</div>
