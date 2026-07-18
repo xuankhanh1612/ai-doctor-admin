@@ -23,32 +23,120 @@ import {
   ArrowRightLeft,
   Database,
   ArrowRight,
-  Wallet
+  Wallet,
+  AlertTriangle,
+  FileCode
 } from 'lucide-react';
 
-// Hàm định dạng số hiển thị số dư coin/token
+// =========================================================================
+// HẠ TẦNG CƠ SỞ DỮ LIỆU INDEXEDDB ENGINE (ĐỒNG BỘ PERSISTENT DỮ LIỆU LOGS)
+// =========================================================================
+const DB_NAME = 'HMNV_Developer_Logs_DB';
+const DB_VERSION = 1;
+const STORE_NAME = 'request_logs';
+
+const initIndexedDB = () => {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    
+    request.onupgradeneeded = (event) => {
+      const db = event.target.result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+      }
+    };
+    
+    request.onsuccess = (event) => resolve(event.target.result);
+    request.onerror = (event) => reject(event.target.error);
+  });
+};
+
+const saveLogToIndexedDB = async (logEntry) => {
+  try {
+    const db = await initIndexedDB();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(STORE_NAME, 'readwrite');
+      const store = transaction.objectStore(STORE_NAME);
+      const request = store.put(logEntry);
+      
+      request.onsuccess = () => resolve(true);
+      request.onerror = (event) => reject(event.target.error);
+    });
+  } catch (error) {
+    console.error("Lỗi ghi dữ liệu vào IndexedDB:", error);
+  }
+};
+
+const getAllLogsFromIndexedDB = async () => {
+  try {
+    const db = await initIndexedDB();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(STORE_NAME, 'readonly');
+      const store = transaction.objectStore(STORE_NAME);
+      const request = store.getAll();
+      
+      request.onsuccess = (event) => {
+        // Sắp xếp các bản ghi persistent từ mới nhất đến cũ nhất
+        const logs = event.target.result || [];
+        logs.sort((a, b) => b.timestamp - a.timestamp);
+        resolve(logs);
+      };
+      request.onerror = (event) => reject(event.target.error);
+    });
+  } catch (error) {
+    console.error("Lỗi lấy dữ liệu từ IndexedDB:", error);
+    return [];
+  }
+};
+
+const clearAllLogsFromIndexedDB = async () => {
+  try {
+    const db = await initIndexedDB();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(STORE_NAME, 'readwrite');
+      const store = transaction.objectStore(STORE_NAME);
+      const request = store.clear();
+      
+      request.onsuccess = () => resolve(true);
+      request.onerror = (event) => reject(event.target.error);
+    });
+  } catch (error) {
+    console.error("Lỗi xóa sạch dữ liệu IndexedDB:", error);
+  }
+};
+
+// =========================================================================
+// UTILS FORMATTER HỖ TRỢ
+// =========================================================================
 const formatNumber = (number) => {
   return new Intl.NumberFormat('en-US', { maximumFractionDigits: 6 }).format(number ?? 0);
 };
 
-// Hàm rút ngắn chuỗi địa chỉ ví và Tx Hash giống BscScan
 const shortenAddress = (addr) => {
   if (!addr) return '0x...';
   return `${addr.substring(0, 6)}...${addr.substring(addr.length - 4)}`;
 };
 
+// Hàm tự động biên dịch Request Payload thành câu lệnh cURL chuẩn để chạy Terminal
+const generateCurlCommand = (log) => {
+  if (!log) return '';
+  if (log.method.startsWith('moralis_')) {
+    return `curl "${log.requestBody?.targetUrl || ''}" \\\n  -X GET \\\n  -H "accept: application/json" \\\n  -H "X-API-Key: YOUR_MORALIS_API_KEY"`;
+  }
+  return `curl https://bnb-testnet.g.alchemy.com/v2/YOUR_ALCHEMY_KEY \\\n  -X POST \\\n  -H "accept: application/json" \\\n  -H "content-type: application/json" \\\n  --data '${JSON.stringify(log.requestBody)}'`;
+};
+
+// =========================================================================
+// COMPONENT CHÍNH
+// =========================================================================
 export default function AffiliateWebhookAdmin() {
   const [activeWebhookTab, setActiveWebhookTab] = useState('affiliate');
   const [copiedType, setCopiedType] = useState(''); 
   const [copiedText, setCopiedText] = useState('');
-  const [webhookLogs, setWebhookLogs] = useState([]);
-  const [selectedWebhookLog, setSelectedWebhookLog] = useState(null);
   
-  // Quản lý Engine dữ liệu (alchemy = RPC Node | moralis = Cloud Indexer API)
+  // Quản lý Engine dữ liệu & Security keys
   const [dataEngine, setDataEngine] = useState('alchemy'); 
   const [moralisApiKey, setMoralisApiKey] = useState('vM7xza5AGzWH4ugv4vDQsXrPAYuP9gred2lNE7BJnKwB4D2QNuNs2Eso6Zk5pUMT');
-
-  // MỚI: State quản lý địa chỉ ví tùy chỉnh linh hoạt cho người dùng nhập liệu tự do
   const [customAddress, setCustomAddress] = useState('0x44f787D670Ff4Ef65334D6637960bb7Fe5E1231c');
 
   // State Sandbox RPC & Enhanced API
@@ -66,16 +154,18 @@ export default function AffiliateWebhookAdmin() {
   const [logsAddress, setLogsAddress] = useState('0x44f787D670Ff4Ef65334D6637960bb7Fe5E1231c');
   const [logsTopics, setLogsTopics] = useState('');
 
-  // STATE BỘ LỌC ĐỘNG VÀ PHÂN TRANG
+  // STATE PHÂN TÍCH NHẬT KÝ & DỮ LIỆU PERSISTENT
   const [isLoadingRpc, setIsLoadingRpc] = useState(false);
   const [rawRpcResponse, setRawRpcResponse] = useState(null);
   const [latestLiveBlock, setLatestBlock] = useState('0x0');
-  const [rpcStatus, setRpcStatus] = useState('connected');
+  const [requestLogs, setRequestLogs] = useState([]);
+  const [selectedRequestLog, setSelectedRequestLog] = useState(null);
+
+  // STATE BỘ LỌC ĐỘNG & PHÂN TRANG
   const [activeDropdown, setActiveDropdown] = useState(null); 
   const [selectedTimeFilter, setSelectedTimeFilter] = useState('hour'); 
   const [selectedMethods, setSelectedMethods] = useState([]);
   const [selectedHttpCodes, setSelectedHttpCodes] = useState([]);
-  const [selectedErrorCodes, setSelectedErrorCodes] = useState([]);
   const [selectedResponseTimes, setSelectedResponseTimes] = useState([]); 
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10); 
@@ -83,14 +173,6 @@ export default function AffiliateWebhookAdmin() {
   const dropdownRef = useRef(null);
   const ALCHEMY_RPC_URL = "https://bnb-testnet.g.alchemy.com/v2/3P6Sj-7RXbrD7znG4t8f8";
   const targetEndpoint = "https://hien-mau-nhan-van.vercel.app/api/alchemy-webhook";
-  
-  const baseTime = Date.now();
-
-  const [requestLogs, setRequestLogs] = useState([
-    { id: "log_01", method: "alchemy_getAssetTransfers", app: "Khánh's First App", httpStatus: 200, errorCode: "-", errorMessage: "-", responseTime: "45 ms", timeSent: "11:33 AM", timestamp: baseTime - 1 * 60 * 1000, requestBody: { jsonrpc: "2.0", method: "alchemy_getAssetTransfers" }, responseBody: { jsonrpc: "2.0", result: { transfers: [] } } },
-    { id: "log_02", method: "moralis_getUnifiedHistory", app: "Khánh's First App", httpStatus: 200, errorCode: "-", errorMessage: "-", responseTime: "185 ms", timeSent: "11:28 AM", timestamp: baseTime - 4 * 60 * 1000, requestBody: { engine: "moralis_playground_unified", limit: 3 }, responseBody: [] }
-  ]);
-  const [selectedRequestLog, setSelectedRequestLog] = useState(requestLogs[0]);
 
   const webhookData = {
     affiliate: {
@@ -109,14 +191,30 @@ export default function AffiliateWebhookAdmin() {
     { key: '5min', label: 'Last 5 minutes' },
     { key: 'hour', label: 'Last hour' },
     { key: 'day', label: 'Last day' },
-    { key: '7days', label: 'Last 7 days' },
-    { key: 'month', label: 'Last month' },
-    { key: '3months', label: 'Last 3 months' },
-    { key: '6months', label: 'Last 6 months' },
-    { key: 'year', label: 'Last year' }
+    { key: '7days', label: 'Last 7 days' }
   ];
 
-  // Đồng bộ hóa Engine method tương thích
+  // KHỞI TẢI BAN ĐẦU: ĐỌC TOÀN BỘ LỊCH SỬ LOG CŨ TỪ INDEXEDDB LÊN UI
+  useEffect(() => {
+    const loadPersistentLogs = async () => {
+      const persistedLogs = await getAllLogsFromIndexedDB();
+      if (persistedLogs && persistedLogs.length > 0) {
+        setRequestLogs(persistedLogs);
+        setSelectedRequestLog(persistedLogs[0]);
+      } else {
+        // Mock dữ liệu cơ bản nếu DB trống rỗng trong phiên chạy đầu tiên
+        const baseTime = Date.now();
+        const initialMock = [
+          { id: "log_init_01", method: "alchemy_getAssetTransfers", app: "Khánh's First App", httpStatus: 200, errorCode: "-", errorMessage: "-", responseTime: "45 ms", timeSent: "11:33 AM", timestamp: baseTime - 60000, requestBody: { jsonrpc: "2.0", method: "alchemy_getAssetTransfers" }, responseBody: { jsonrpc: "2.0", result: { transfers: [] } } }
+        ];
+        setRequestLogs(initialMock);
+        setSelectedRequestLog(initialMock[0]);
+        await saveLogToIndexedDB(initialMock[0]);
+      }
+    };
+    loadPersistentLogs();
+  }, []);
+
   useEffect(() => {
     if (dataEngine === 'moralis') {
       setSelectedRpcMethod('moralis_getUnifiedHistory');
@@ -126,7 +224,6 @@ export default function AffiliateWebhookAdmin() {
     setRawRpcResponse(null);
   }, [dataEngine]);
 
-  // Cập nhật địa chỉ đích tự động khi người dùng chuyển đổi Tab Hợp đồng
   useEffect(() => {
     const currentContract = webhookData[activeWebhookTab].contract;
     setCustomAddress(currentContract);
@@ -144,18 +241,19 @@ export default function AffiliateWebhookAdmin() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // HÀM XỬ LÝ GỌI LỆNH ĐA CƠ CHẾ NÂNG CẤP ĐỒNG BỘ INDEXEDDB
   const handleExecuteDataEngineCall = async () => {
     setIsLoadingRpc(true);
     setRawRpcResponse(null);
     const startTime = performance.now();
-    
-    // Sử dụng địa chỉ tùy chọn từ hộp Textbox thay vì địa chỉ Tab tĩnh
     const targetQueryAddress = customAddress.trim() || webhookData[activeWebhookTab].contract;
+    
+    let newLogEntry = null;
 
-    // NHÁNH 1: MORALIS PLAYGROUND ENGINE (SỬ DỤNG TARGET WALLET TÙY BIẾN)
+    // NHÁNH 1: HẠ TẦNG XỬ LÝ BẮT SỰ KIỆN LIÊN HỢP MORALIS PLAYGROUND
     if (dataEngine === 'moralis') {
       const headers = { accept: 'application/json', 'X-API-Key': moralisApiKey };
-      const chain = '0x61'; // BSC Testnet
+      const chain = '0x61';
       
       try {
         const nativeTransactions = await (await fetch(`https://deep-index.moralis.io/api/v2/${targetQueryAddress}?chain=${chain}&limit=5`, { headers })).json();
@@ -167,18 +265,12 @@ export default function AffiliateWebhookAdmin() {
         if (nativeTransactions?.result && Array.isArray(nativeTransactions.result)) {
           nativeTransactions.result.forEach((tx) => {
             const { from_address, to_address, value, hash, block_timestamp, block_number } = tx;
-            const type = from_address.toLowerCase() === targetQueryAddress.toLowerCase() ? 'sent' : 'received';
             unifiedResult.push({
-              type,
-              from: from_address,
-              to: to_address,
+              type: from_address.toLowerCase() === targetQueryAddress.toLowerCase() ? 'sent' : 'received',
+              from: from_address, to: to_address,
               valueEth: String(parseFloat(value) / 10 ** 18),
-              hash,
-              block: block_number,
-              date: block_timestamp,
-              tokenType: 'native',
-              name: 'BNB',
-              chain,
+              hash, block: block_number, date: block_timestamp,
+              tokenType: 'native', name: 'BNB', chain,
             });
           });
         }
@@ -186,18 +278,11 @@ export default function AffiliateWebhookAdmin() {
         if (erc20Transactions?.result && Array.isArray(erc20Transactions.result)) {
           erc20Transactions.result.forEach((tx) => {
             const { from_address, to_address, value, transaction_hash, block_timestamp, address, block_number } = tx;
-            const type = from_address.toLowerCase() === targetQueryAddress.toLowerCase() ? 'sent' : 'received';
             unifiedResult.push({
-              type,
-              from: from_address,
-              to: to_address,
-              valueEth: value,
-              hash: transaction_hash,
-              block: block_number,
-              date: block_timestamp,
-              tokenType: 'erc20',
-              chain,
-              tokenAddress: address,
+              type: from_address.toLowerCase() === targetQueryAddress.toLowerCase() ? 'sent' : 'received',
+              from: from_address, to: to_address, valueEth: value,
+              hash: transaction_hash, block: block_number, date: block_timestamp,
+              tokenType: 'erc20', chain, tokenAddress: address,
             });
           });
           
@@ -205,16 +290,13 @@ export default function AffiliateWebhookAdmin() {
           if (erc20Addresses.length > 0) {
             const s = '&addresses=' + erc20Addresses.join('&addresses=');
             const erc20Metadata = await (await fetch(`https://deep-index.moralis.io/api/v2/erc20/metadata?chain=${chain}${s}`, { headers })).json();
-            
             if (Array.isArray(erc20Metadata)) {
               unifiedResult.forEach((item) => {
                 if (item.tokenType === 'erc20') {
                   const meta = erc20Metadata.find((m) => m.address?.toLowerCase() === item.tokenAddress?.toLowerCase());
                   if (meta) {
                     item.name = meta.symbol || 'ERC-20';
-                    if (meta.decimals) {
-                      item.valueEth = String(formatNumber(parseFloat(item.valueEth) / 10 ** parseInt(meta.decimals)));
-                    }
+                    if (meta.decimals) item.valueEth = String(formatNumber(parseFloat(item.valueEth) / 10 ** parseInt(meta.decimals)));
                   }
                 }
               });
@@ -222,126 +304,94 @@ export default function AffiliateWebhookAdmin() {
           }
         }
         
-        if (nftTransactions?.result && Array.isArray(nftTransactions.result)) {
-          for (const tx of nftTransactions.result) {
-            const { from_address, to_address, amount, block_timestamp, contract_type, transaction_hash, token_id, token_address, block_number } = tx;
-            const type = from_address.toLowerCase() === targetQueryAddress.toLowerCase() ? 'sent' : 'received';
-            
-            let resolvedNftName = `${contract_type || 'NFT'} #${token_id}`;
-            try {
-              const nftMeta = await (await fetch(`https://deep-index.moralis.io/api/v2/nft/${token_address}/${token_id}?chain=${chain}`, { headers })).json();
-              if (nftMeta?.name) resolvedNftName = `${nftMeta.name} #${token_id}`;
-            } catch (e) {}
-            
-            unifiedResult.push({
-              type,
-              from: from_address,
-              to: to_address,
-              valueEth: amount,
-              hash: transaction_hash,
-              block: block_number,
-              date: block_timestamp,
-              tokenType: contract_type?.toLowerCase() || 'nft',
-              chain,
-              tokenId: token_id,
-              tokenAddress: token_address,
-              name: resolvedNftName
-            });
-          }
-        }
-        
         const endTime = performance.now();
         const duration = Math.round(endTime - startTime);
-        
         unifiedResult.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        
         setRawRpcResponse(unifiedResult); 
 
-        const newLogEntry = {
-          id: `log_${Math.random().toString(36).substr(2, 5)}`,
+        newLogEntry = {
+          id: `log_${Math.random().toString(36).substr(2, 7)}`,
           method: selectedRpcMethod,
           app: "Khánh's First App",
           httpStatus: 200,
           errorCode: "-",
           errorMessage: "-",
           responseTime: `${duration} ms`,
-          timeSent: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          timeSent: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
           timestamp: Date.now(),
-          requestBody: { engine: "moralis_playground_unified", wallet: targetQueryAddress },
+          requestBody: { engine: "moralis_playground_unified", wallet: targetQueryAddress, targetUrl: `https://deep-index.moralis.io/api/v2/${targetQueryAddress}` },
           responseBody: unifiedResult
         };
-        setRequestLogs(prev => [newLogEntry, ...prev]);
-        setCurrentPage(1);
-        
       } catch (error) {
-        setRawRpcResponse({ error: "Lỗi luồng xử lý liên hợp Moralis API", details: error.message });
-      } relativeFinally: {
-        setIsLoadingRpc(false);
+        setRawRpcResponse({ error: "Lỗi kết nối liên hợp Moralis API", details: error.message });
       }
-      return;
+    } 
+    // NHÁNH 2: NÚT RPC NODE ALCHEMY STANDARD ENGINE
+    else {
+      const rpcBody = { jsonrpc: "2.0", id: 1, method: selectedRpcMethod };
+      if (selectedRpcMethod === 'alchemy_getAssetTransfers') {
+        rpcBody.params = [{ fromBlock: "0x0", toBlock: "latest", toAddress: targetQueryAddress, category: ["external", "erc20"], excludeZeroValue: false, withMetadata: true }];
+      } else if (selectedRpcMethod === 'eth_getLogs') {
+        const filterObj = { fromBlock: logsFromBlock, toBlock: logsToBlock };
+        if (targetQueryAddress.toLowerCase() === webhookData.paymaster.contract.toLowerCase() && !logsTopics.trim()) {
+          filterObj.topics = ["0x49628e100ac341d24a3e6da50b589cffa6a6c42aabf49b9d4abcb32e65c9535b", null, "0x" + targetQueryAddress.replace("0x", "").toLowerCase().padStart(64, '0')];
+        } else {
+          filterObj.address = targetQueryAddress;
+          if (logsTopics.trim()) filterObj.topics = logsTopics.split(',').map(t => t.trim());
+        }
+        rpcBody.params = [filterObj];
+      } else if (selectedRpcMethod === 'eth_getBlockReceipts') rpcBody.params = [blockParam];
+      else if (selectedRpcMethod === 'eth_estimateGas') rpcBody.params = [{ from: txFrom, to: targetQueryAddress, value: txValue }];
+      else if (selectedRpcMethod === 'eth_feeHistory') rpcBody.params = [feeBlockCount, feeNewestBlock, feePercentiles.split(',').map(p => parseFloat(p.trim()))];
+      else if (selectedRpcMethod === 'eth_blockNumber') rpcBody.params = [];
+
+      try {
+        const response = await fetch(ALCHEMY_RPC_URL, {
+          method: 'POST',
+          headers: { 'accept': 'application/json', 'content-type': 'application/json' },
+          body: JSON.stringify(rpcBody)
+        });
+        const resData = await response.json();
+        const endTime = performance.now();
+        const duration = Math.round(endTime - startTime);
+
+        setRawRpcResponse(resData);
+        if (selectedRpcMethod === 'eth_blockNumber' && resData.result) setLatestBlock(resData.result);
+
+        newLogEntry = {
+          id: `log_${Math.random().toString(36).substr(2, 7)}`,
+          method: selectedRpcMethod,
+          app: "Khánh's First App",
+          httpStatus: response.status,
+          errorCode: resData.error ? String(resData.error.code) : "-",
+          errorMessage: resData.error ? resData.error.message : "-",
+          responseTime: `${duration} ms`,
+          timeSent: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+          timestamp: Date.now(),
+          requestBody: rpcBody,
+          responseBody: resData
+        };
+      } catch (error) {
+        setRawRpcResponse({ error: "Lỗi kết nối RPC Node Alchemy", details: error.message });
+      }
     }
 
-    // NHÁNH 2: ALCHEMY JSON-RPC NODE ENGINE (SỬ DỤNG TARGET WALLET TÙY BIẾN)
-    const rpcBody = { jsonrpc: "2.0", id: 1, method: selectedRpcMethod };
-
-    if (selectedRpcMethod === 'alchemy_getAssetTransfers') {
-      rpcBody.params = [{
-        fromBlock: "0x0",
-        toBlock: "latest",
-        toAddress: targetQueryAddress,
-        category: ["external", "erc20"], 
-        excludeZeroValue: false,
-        withMetadata: true
-      }];
-    } 
-    else if (selectedRpcMethod === 'eth_getLogs') {
-      const filterObj = { fromBlock: logsFromBlock, toBlock: logsToBlock };
-      if (targetQueryAddress.toLowerCase() === webhookData.paymaster.contract.toLowerCase() && !logsTopics.trim()) {
-        const paddedPaymaster = "0x" + targetQueryAddress.replace("0x", "").toLowerCase().padStart(64, '0');
-        filterObj.topics = ["0x49628e100ac341d24a3e6da50b589cffa6a6c42aabf49b9d4abcb32e65c9535b", null, paddedPaymaster];
-      } else {
-        filterObj.address = targetQueryAddress;
-        if (logsTopics.trim()) filterObj.topics = logsTopics.split(',').map(t => t.trim());
-      }
-      rpcBody.params = [filterObj];
-    } 
-    else if (selectedRpcMethod === 'eth_getBlockReceipts') rpcBody.params = [blockParam];
-    else if (selectedRpcMethod === 'eth_estimateGas') rpcBody.params = [{ from: txFrom, to: targetQueryAddress, value: txValue }];
-    else if (selectedRpcMethod === 'eth_feeHistory') rpcBody.params = [feeBlockCount, feeNewestBlock, feePercentiles.split(',').map(p => parseFloat(p.trim()))];
-    else if (selectedRpcMethod === 'eth_blockNumber') rpcBody.params = [];
-
-    try {
-      const response = await fetch(ALCHEMY_RPC_URL, {
-        method: 'POST',
-        headers: { 'accept': 'application/json', 'content-type': 'application/json' },
-        body: JSON.stringify(rpcBody)
-      });
-      
-      const resData = await response.json();
-      const endTime = performance.now();
-      const duration = Math.round(endTime - startTime);
-
-      setRawRpcResponse(resData);
-      if (selectedRpcMethod === 'eth_blockNumber' && resData.result) setLatestBlock(resData.result);
-
-      const newLogEntry = {
-        id: `log_${Math.random().toString(36).substr(2, 5)}`,
-        method: selectedRpcMethod,
-        app: "Khánh's First App",
-        httpStatus: response.status,
-        errorCode: resData.error ? String(resData.error.code) : "-",
-        errorMessage: resData.error ? resData.error.message : "-",
-        responseTime: `${duration} ms`,
-        timeSent: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        timestamp: Date.now(),
-        requestBody: rpcBody,
-        responseBody: resData
-      };
+    // ĐỒNG BỘ PERSISTENT DỮ LIỆU LOG VÀO INDEXEDDB TRƯỚC KHI RENDER
+    if (newLogEntry) {
+      await saveLogToIndexedDB(newLogEntry);
       setRequestLogs(prev => [newLogEntry, ...prev]);
+      setSelectedRequestLog(newLogEntry);
       setCurrentPage(1);
-    } catch (error) {
-      setRawRpcResponse({ error: "Lỗi RPC Endpoint", details: error.message });
-    } finally {
-      setIsLoadingRpc(false);
+    }
+    setIsLoadingRpc(false);
+  };
+
+  const handleClearTerminalHistory = async () => {
+    if(window.confirm("Bồ có chắc chắn muốn xoá sạch toàn bộ lịch sử lưu trữ logs trong IndexedDB không?")) {
+      await clearAllLogsFromIndexedDB();
+      setRequestLogs([]);
+      setSelectedRequestLog(null);
     }
   };
 
@@ -412,24 +462,24 @@ export default function AffiliateWebhookAdmin() {
       {/* TỔNG QUAN HẠ TẦNG */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
-          <p className="text-xs text-slate-400 font-medium uppercase">Tab Contract Active Address</p>
-          <p className="text-xs font-mono text-emerald-400 mt-2 truncate select-all">{webhookData[activeWebhookTab].contract}</p>
+          <p className="text-xs text-slate-400 font-medium uppercase">Custom Target Search Address</p>
+          <p className="text-xs font-mono text-emerald-400 mt-2 truncate select-all">{customAddress}</p>
         </div>
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
-          <p className="text-xs text-slate-400 font-medium uppercase">Alchemy Testnet Node State</p>
-          <p className="text-sm font-bold text-blue-400 mt-1.5 flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse"></span> Endpoint Active
+          <p className="text-xs text-slate-400 font-medium uppercase">IndexedDB Engine Status</p>
+          <p className="text-sm font-bold text-blue-400 mt-1.5 flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse"></span> PERSISTENT LOGS ACTIVE ({requestLogs.length} Records)
           </p>
         </div>
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
           <p className="text-xs text-slate-400 font-medium uppercase">Moralis Cloud Playground Engine</p>
           <p className="text-sm font-bold text-purple-400 mt-1.5 flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-purple-400 animate-pulse"></span> Indexer Ready
+            <span className="w-2 h-2 rounded-full bg-purple-400 animate-pulse"></span> Deep-Index API Active
           </p>
         </div>
       </div>
 
-      {/* KHU VỰC 1: TRÌNH THÁM MÃ ĐỘNG - DUAL ENGINE SANDBOX CÓ TEXTBOX ĐỊA CHỈ TÙY BIẾN */}
+      {/* KHU VỰC 1: TRÌNH THÁM MÃ ĐỘNG - DUAL ENGINE SANDBOX VỚI BSCSCAN VISUALIZER */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-slate-800">
           <h2 className="text-sm font-bold uppercase text-slate-300 tracking-wider flex items-center gap-1.5">
@@ -446,9 +496,7 @@ export default function AffiliateWebhookAdmin() {
           </div>
         </div>
         
-        {/* TÁI CẤU TRÚC: Grid 12 cột nâng cấp hỗ trợ Textbox địa chỉ ví riêng biệt */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-end">
-          {/* Cột 1: Select Method (col-span-3) */}
           <div className="lg:col-span-3">
             <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Select Engine Method</label>
             {dataEngine === 'moralis' ? (
@@ -467,21 +515,19 @@ export default function AffiliateWebhookAdmin() {
             )}
           </div>
 
-          {/* MỚI: Cột 2: Textbox nhập Wallet Address tự do giống Moralis Playground (col-span-4) */}
           <div className="lg:col-span-4">
             <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2 flex items-center gap-1">
-              <Wallet className="w-3.5 h-3.5 text-slate-400" /> Wallet / Contract Address Address
+              <Wallet className="w-3.5 h-3.5 text-slate-400" /> Wallet / Contract Target Address
             </label>
             <input 
               type="text" 
               value={customAddress} 
               onChange={(e) => setCustomAddress(e.target.value)} 
-              placeholder="Nhập địa chỉ ví 0x... để tìm kiếm"
+              placeholder="Nhập địa chỉ ví 0x... để tra cứu"
               className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-emerald-400 font-mono focus:outline-none focus:border-emerald-500 transition-all"
             />
           </div>
 
-          {/* Cột 3: Token bảo mật API Key hoặc Khối tham số (col-span-3) */}
           <div className="lg:col-span-3">
             <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">
               {dataEngine === 'moralis' ? 'Moralis Web3 API Key' : 'Block Param (Hex)'}
@@ -493,7 +539,6 @@ export default function AffiliateWebhookAdmin() {
             )}
           </div>
 
-          {/* Cột 4: Nút chạy lệnh thực thi (col-span-2) */}
           <div className="lg:col-span-2">
             <button onClick={handleExecuteDataEngineCall} disabled={isLoadingRpc} className={`w-full flex items-center justify-center gap-2 px-4 py-2 text-white rounded-xl text-sm font-semibold transition-all h-[38px] ${dataEngine === 'moralis' ? 'bg-purple-600 hover:bg-purple-500' : 'bg-blue-600 hover:bg-blue-500'}`}>
               <Play className={`w-4 h-4 ${isLoadingRpc ? 'animate-spin' : ''}`} /> Get History
@@ -531,7 +576,7 @@ export default function AffiliateWebhookAdmin() {
             <span className="text-[11px] text-slate-500 font-medium">Quét thực tế địa chỉ: <span className="text-emerald-400 font-mono">{shortenAddress(customAddress)}</span></span>
           </div>
 
-          <div className="p-0 overflow-x-auto min-h-[220px]">
+          <div className="p-0 overflow-x-auto min-h-[180px]">
             {dataEngine === 'moralis' && Array.isArray(rawRpcResponse) ? (
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
@@ -624,33 +669,30 @@ export default function AffiliateWebhookAdmin() {
                 </tbody>
               </table>
             ) : (
-              <div className="text-slate-600 text-center py-16 flex flex-col items-center justify-center gap-2">
+              <div className="text-slate-600 text-center py-12 flex flex-col items-center justify-center gap-2">
                 <Terminal className="w-8 h-8 text-slate-700 animate-pulse" />
                 <span className="text-xs font-medium">Nhập địa chỉ ví đích mong muốn và nhấn nút "Get History" để bắt đầu kết nối.</span>
               </div>
             )}
           </div>
-          
-          {rawRpcResponse && (
-            <details className="border-t border-slate-800 bg-slate-950/60 transition-all">
-              <summary className="px-4 py-2 text-[10px] uppercase font-bold tracking-wider text-slate-500 cursor-pointer hover:text-slate-300 select-none">
-                ➔ View raw JSON Response payload code
-              </summary>
-              <div className="p-4 max-h-40 overflow-y-auto font-mono text-[11px] text-blue-400 border-t border-slate-900">
-                <pre>{JSON.stringify(rawRpcResponse, null, 2)}</pre>
-              </div>
-            </details>
-          )}
         </div>
       </div>
 
-      {/* KHU VỰC 2: REQUEST LOGS VÀ BỘ LỌC ĐỘNG NÂNG CẤP */}
+      {/* KHU VỰC 2: REQUEST LOGS LỊCH SỬ (KẾT NỐI INDEXEDDB TRỰC TIẾP) */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl relative" ref={dropdownRef}>
-        <div className="mb-4">
-          <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-            <Clock className="text-purple-400 w-5 h-5" /> Request Logs Lịch Sử
-          </h2>
-          <p className="text-xs text-slate-400 mt-0.5">Inspect recent request activity for this app.</p>
+        <div className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+              <Clock className="text-purple-400 w-5 h-5" /> Request Logs Lịch Sử (IndexedDB Database Layer)
+            </h2>
+            <p className="text-xs text-slate-400 mt-0.5">Nhật ký dữ liệu lưu trữ persistent an toàn trên bộ nhớ cục bộ trình duyệt.</p>
+          </div>
+          <button 
+            onClick={handleClearTerminalHistory}
+            className="px-3 py-1.5 bg-rose-950/40 border border-rose-900/60 text-rose-400 hover:bg-rose-900/30 text-xs font-semibold rounded-xl transition-all flex items-center gap-1.5 self-start sm:self-center"
+          >
+            <RotateCcw className="w-3.5 h-3.5" /> Clear DB Logs History
+          </button>
         </div>
 
         {/* CỤM FILTERS */}
@@ -659,7 +701,7 @@ export default function AffiliateWebhookAdmin() {
           
           <div className="relative">
             <button onClick={() => setActiveDropdown(activeDropdown === 'time' ? null : 'time')} className="px-3 py-1.5 bg-slate-900 border border-slate-800 text-slate-300 rounded-lg text-xs flex items-center gap-1 font-medium">
-              Time: <span className="text-blue-400">{timeFilterOptions.find(o => o.key === selectedTimeFilter)?.label}</span>
+              Time: <span className="text-blue-400">{timeFilterOptions.find(o => o.key === selectedTimeFilter)?.label || 'Last hour'}</span>
               <ChevronDown className="w-3 h-3 text-slate-500" />
             </button>
             {activeDropdown === 'time' && (
@@ -724,10 +766,6 @@ export default function AffiliateWebhookAdmin() {
                   <input type="checkbox" checked={selectedResponseTimes.includes('medium')} onChange={() => toggleFilter('medium', selectedResponseTimes, setSelectedResponseTimes)} className="rounded border-slate-800 text-blue-500 bg-slate-950" />
                   Medium (200 - 2000ms)
                 </label>
-                <label className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-800 rounded-lg text-xs text-slate-300 cursor-pointer">
-                  <input type="checkbox" checked={selectedResponseTimes.includes('heavy')} onChange={() => toggleFilter('heavy', selectedResponseTimes, setSelectedResponseTimes)} className="rounded border-slate-800 text-blue-500 bg-slate-950" />
-                  Heavy (&gt;2000ms)
-                </label>
               </div>
             )}
           </div>
@@ -739,7 +777,7 @@ export default function AffiliateWebhookAdmin() {
           )}
         </div>
 
-        {/* Layout Log List + Chi tiết */}
+        {/* MÀN HÌNH CHIA ĐÔI THÔNG TIN THEO HÌNH ẢNH MINH HỌA ALCHEMY CONSOLE */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start relative z-10">
           <div className="lg:col-span-2 flex flex-col border border-slate-800/80 rounded-xl bg-slate-950/20 overflow-hidden">
             <table className="w-full text-left text-xs border-collapse">
@@ -816,21 +854,29 @@ export default function AffiliateWebhookAdmin() {
             </div>
           </div>
 
-          {/* Chi tiết bên phải */}
-          <div className="lg:col-span-1 bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-4">
+          {/* ========================================================================= */}
+          {/* CHI TIẾT PHÍA PHẢI: BỘ ĐÔI HIỂN THỊ REQUEST & RESPONSE CHI TIẾT THEO HÌNH 1 */}
+          {/* ========================================================================= */}
+          <div className="lg:col-span-1 bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-5 shadow-2xl">
             <div className="flex items-center justify-between pb-2 border-b border-slate-800">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300">Request Log Details</h3>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1">
+                <FileCode className="w-4 h-4 text-emerald-400" /> Request Log Details
+              </h3>
+              {selectedRequestLog && (
+                <span className="text-[10px] bg-slate-900 border border-slate-800 text-slate-400 px-2 py-0.5 rounded font-mono">
+                  {selectedRequestLog.id}
+                </span>
+              )}
             </div>
+
             {selectedRequestLog ? (
               <div className="space-y-4 text-xs">
-                <div className="grid grid-cols-2 gap-y-2 text-slate-400 border-b border-slate-900 pb-3">
-                  <div>Method:</div><div className="font-mono text-slate-200 text-right">{selectedRequestLog.method}</div>
-                  <div>Response Time:</div><div className="text-emerald-400 text-right font-semibold">{selectedRequestLog.responseTime}</div>
-                  <div>Time Sent:</div><div className="text-slate-500 text-right">{selectedRequestLog.timeSent}</div>
-                </div>
-                <div className="space-y-1.5">
+                {/* 1. KHUNG HIỂN THỊ REQUEST COMMAND BLOCK */}
+                <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold uppercase text-slate-500 tracking-wide">➔ Request</span>
+                    <span className="text-[11px] font-bold uppercase text-slate-400 tracking-wide flex items-center gap-1">
+                      ➔ Request Payload
+                    </span>
                     <div className="flex gap-1.5">
                       <button 
                         onClick={() => {
@@ -838,28 +884,60 @@ export default function AffiliateWebhookAdmin() {
                           else setDataEngine('alchemy');
                           setSelectedRpcMethod(selectedRequestLog.method);
                           
-                          // MỚI: Đồng bộ địa chỉ ví từ payload cũ vào textbox khi nhấn Retry
                           if (selectedRequestLog.requestBody?.wallet) {
                             setCustomAddress(selectedRequestLog.requestBody.wallet);
                           } else if (selectedRequestLog.requestBody?.params?.[0]?.toAddress) {
                             setCustomAddress(selectedRequestLog.requestBody.params[0].toAddress);
                           }
-                          
                           window.scrollTo({ top: 180, behavior: 'smooth' });
                         }} 
-                        className="text-[10px] bg-slate-900 border border-slate-800 hover:bg-slate-800 px-2 py-1 rounded text-blue-400 font-medium"
+                        className="text-[10px] bg-slate-900 border border-slate-800 hover:bg-slate-800 px-2 py-1 rounded text-blue-400 font-semibold transition-all"
                       >
                         Retry in Sandbox
                       </button>
-                      <button onClick={() => handleCopyClipboard(JSON.stringify(selectedRequestLog.requestBody, null, 2), 'req')} className="text-[10px] bg-slate-900 border border-slate-800 hover:bg-slate-800 px-2 py-1 rounded text-slate-300">Copy</button>
+                      <button onClick={() => handleCopyClipboard(JSON.stringify(selectedRequestLog.requestBody, null, 2), 'req')} className="text-[10px] bg-slate-900 border border-slate-800 hover:bg-slate-800 px-2 py-1 rounded text-slate-300 transition-all">
+                        {copiedType === 'req' ? 'Copied' : 'Copy'}
+                      </button>
                     </div>
                   </div>
-                  <div className="bg-slate-900/60 border border-slate-800/80 rounded-lg p-3 max-h-40 overflow-auto font-mono text-[11px] text-slate-400">
+                  <div className="bg-slate-900 border border-slate-800 rounded-lg p-3 max-h-44 overflow-auto font-mono text-[11px] text-pink-400 custom-scrollbar">
                     <pre>{JSON.stringify(selectedRequestLog.requestBody, null, 2)}</pre>
                   </div>
                 </div>
+
+                {/* 2. KHUNG GIẢ LẬP LỆNH TERMINAL (TƯƠNG ĐƯƠNG HÌNH 2) */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold uppercase text-slate-500 tracking-wide flex items-center gap-1">
+                      <Terminal className="w-3 h-3" /> cURL Code Generator
+                    </span>
+                    <button onClick={() => handleCopyClipboard(generateCurlCommand(selectedRequestLog), 'curl')} className="text-[10px] bg-slate-900 border border-slate-800 hover:bg-slate-800 px-2 py-1 rounded text-slate-400">
+                      {copiedType === 'curl' ? 'Copied' : 'Copy cURL'}
+                    </button>
+                  </div>
+                  <div className="bg-slate-950 border border-slate-900 rounded-lg p-3 font-mono text-[10px] text-slate-400 overflow-x-auto select-all leading-relaxed whitespace-pre bg-opacity-40">
+                    {generateCurlCommand(selectedRequestLog)}
+                  </div>
+                </div>
+
+                {/* 3. KHUNG HIỂN THỊ RESPONSE PAYLOAD (KHỚP HOÀN TOÀN HÌNH 1) */}
+                <div className="space-y-2 pt-2 border-t border-slate-900">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold uppercase text-slate-400 tracking-wide flex items-center gap-1">
+                      ⬇ Response Output {selectedRequestLog.httpStatus !== 200 && <AlertTriangle className="w-3.5 h-3.5 text-rose-400" />}
+                    </span>
+                    <button onClick={() => handleCopyClipboard(JSON.stringify(selectedRequestLog.responseBody, null, 2), 'res')} className="text-[10px] bg-slate-900 border border-slate-800 hover:bg-slate-800 px-2 py-1 rounded text-slate-300">
+                      {copiedType === 'res' ? 'Copied' : 'Copy'}
+                    </button>
+                  </div>
+                  <div className="bg-slate-900 border border-slate-800 rounded-lg p-3 max-h-48 overflow-auto font-mono text-[11px] text-blue-400 custom-scrollbar">
+                    <pre>{JSON.stringify(selectedRequestLog.responseBody, null, 2)}</pre>
+                  </div>
+                </div>
               </div>
-            ) : <div className="text-center py-16 text-slate-600">Chọn một hàng trong bảng để xem chi tiết.</div>}
+            ) : (
+              <div className="text-center py-16 text-slate-600">Chọn một bản ghi log trong bảng để kiểm tra cấu trúc gói tin.</div>
+            )}
           </div>
         </div>
       </div>
