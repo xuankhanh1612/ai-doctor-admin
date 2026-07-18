@@ -38,8 +38,10 @@ export default function AffiliateWebhookAdmin() {
   const [feeBlockCount, setFeeBlockCount] = useState('0x5');
   const [feeNewestBlock, setFeeNewestBlock] = useState('latest');
   const [feePercentiles, setFeePercentiles] = useState('20, 30');
+  
+  // ĐÃ CẬP NHẬT: Đặt mặc định khoảng cách an toàn trong phạm vi 10 khối theo gợi ý lỗi của Alchemy
   const [logsFromBlock, setLogsFromBlock] = useState('0x137d3c2');
-  const [logsToBlock, setLogsToBlock] = useState('0x137d3c3');
+  const [logsToBlock, setLogsToBlock] = useState('0x137d3cb'); 
   const [logsAddress, setLogsAddress] = useState('0x44f787D670Ff4Ef65334D6637960bb7Fe5E1231c');
   const [logsTopics, setLogsTopics] = useState('');
 
@@ -48,7 +50,7 @@ export default function AffiliateWebhookAdmin() {
   const [latestLiveBlock, setLatestBlock] = useState('0x0');
   const [rpcStatus, setRpcStatus] = useState('connecting');
 
-  // STATE BỘ LỌC ĐỘNG (FILTERS STATE)
+  // STATE BỘ LỌC ĐỘNG
   const [activeDropdown, setActiveDropdown] = useState(null); 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTimeFilter, setSelectedTimeFilter] = useState('hour'); 
@@ -57,7 +59,7 @@ export default function AffiliateWebhookAdmin() {
   const [selectedErrorCodes, setSelectedErrorCodes] = useState([]);
   const [selectedResponseTimes, setSelectedResponseTimes] = useState([]); 
 
-  // STATE PHÂN TRANG (PAGINATION STATE)
+  // STATE PHÂN TRANG
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10); 
   
@@ -67,16 +69,10 @@ export default function AffiliateWebhookAdmin() {
   
   const baseTime = Date.now();
 
-  // MOCK DATA REQUEST LOGS DIỆN RỘNG (Đã bổ sung Enhanced API và AA filter vào danh sách)
   const [requestLogs, setRequestLogs] = useState([
     { id: "log_01", method: "alchemy_getAssetTransfers", app: "Khánh's First App", httpStatus: 200, errorCode: "-", errorMessage: "-", responseTime: "45 ms", timeSent: "11:33 AM", timestamp: baseTime - 1 * 60 * 1000, requestBody: { jsonrpc: "2.0", method: "alchemy_getAssetTransfers", params: [{ toAddress: "0x44f7..." }] }, responseBody: { jsonrpc: "2.0", result: { transfers: [] } } },
-    { id: "log_02", method: "eth_getLogs", app: "Khánh's First App", httpStatus: 200, errorCode: "-", errorMessage: "-", responseTime: "3 ms", timeSent: "11:25 AM", timestamp: baseTime - 5 * 60 * 1000, requestBody: { jsonrpc: "2.0", method: "eth_getLogs", params: [{ topics: ["0x4962...", null, "0x0000...1778..."] }] }, responseBody: { jsonrpc: "2.0", result: [] } },
-    { id: "log_03", method: "eth_feeHistory", app: "Khánh's First App", httpStatus: 200, errorCode: "-", errorMessage: "-", responseTime: "250 ms", timeSent: "11:10 AM", timestamp: baseTime - 25 * 60 * 1000, requestBody: { jsonrpc: "2.0", method: "eth_feeHistory" }, responseBody: { jsonrpc: "2.0", result: {} } },
-    { id: "log_04", method: "eth_getBlockReceipts", app: "Khánh's First App", httpStatus: 200, errorCode: "-", errorMessage: "-", responseTime: "2 ms", timeSent: "09:15 AM", timestamp: baseTime - 2 * 60 * 60 * 1000, requestBody: { jsonrpc: "2.0", method: "eth_getBlockReceipts" }, responseBody: { jsonrpc: "2.0", result: [] } },
-    { id: "log_05", method: "eth_blockNumber", app: "Khánh's First App", httpStatus: 200, errorCode: "-", errorMessage: "-", responseTime: "1 ms", timeSent: "Hôm qua", timestamp: baseTime - 28 * 60 * 60 * 1000, requestBody: { jsonrpc: "2.0", method: "eth_blockNumber" }, responseBody: { jsonrpc: "2.0", result: "0x7226a16" } },
-    { id: "log_06", method: "eth_getBlockReceipts", app: "Khánh's First App", httpStatus: 200, errorCode: "-32602", errorMessage: "invalid argument 0: hex string \"0x\"", responseTime: "2450 ms", timeSent: "4 ngày trước", timestamp: baseTime - 4 * 24 * 60 * 60 * 1000, requestBody: { jsonrpc: "2.0", method: "eth_getBlockReceipts" }, responseBody: { error: { code: -32602 } } },
-    { id: "log_07", method: "eth_estimateGas", app: "Khánh's First App", httpStatus: 400, errorCode: "-32016", errorMessage: "execution reverted: 0x", responseTime: "4 ms", timeSent: "15 ngày trước", timestamp: baseTime - 15 * 24 * 60 * 60 * 1000, requestBody: { jsonrpc: "2.0", method: "eth_estimateGas" }, responseBody: { error: { code: -32016 } } },
-    { id: "log_08", method: "alchemy_getAssetTransfers", app: "Khánh's First App", httpStatus: 200, errorCode: "-", errorMessage: "-", responseTime: "55 ms", timeSent: "2 tháng trước", timestamp: baseTime - 65 * 24 * 60 * 60 * 1000, requestBody: { jsonrpc: "2.0", method: "alchemy_getAssetTransfers" }, responseBody: { result: { transfers: [] } } }
+    { id: "log_02", method: "eth_getLogs", app: "Khánh's First App", httpStatus: 200, errorCode: "-", errorMessage: "-", responseTime: "3 ms", timeSent: "11:25 AM", timestamp: baseTime - 5 * 60 * 1000, requestBody: { jsonrpc: "2.0", method: "eth_getLogs" }, responseBody: { jsonrpc: "2.0", result: [] } },
+    { id: "log_03", method: "eth_feeHistory", app: "Khánh's First App", httpStatus: 200, errorCode: "-", errorMessage: "-", responseTime: "250 ms", timeSent: "11:10 AM", timestamp: baseTime - 25 * 60 * 1000, requestBody: { jsonrpc: "2.0", method: "eth_feeHistory" }, responseBody: { jsonrpc: "2.0", result: {} } }
   ]);
   const [selectedRequestLog, setSelectedRequestLog] = useState(requestLogs[0]);
 
@@ -115,7 +111,7 @@ export default function AffiliateWebhookAdmin() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // LỰC ĐỘNG ĐIỀU HƯỚNG RPC ENDPOINT (BAO GỒM NÂNG CẤP ALCHEMY APIS)
+  // XỬ LÝ LỌC THAM SỐ TRƯỚC KHI GỬI ĐỂ NÉ LỖI TIÊU CHUẨN CỦA NODE MẠNG
   const handleCallAlchemyRpc = async () => {
     setIsLoadingRpc(true);
     setRawRpcResponse(null);
@@ -124,31 +120,30 @@ export default function AffiliateWebhookAdmin() {
     const currentContract = webhookData[activeWebhookTab].contract;
     const rpcBody = { jsonrpc: "2.0", id: 1, method: selectedRpcMethod };
 
-    // 1. Cấu hình Parameter cho hàm tối ưu chuyên sâu Asset Transfers độc quyền từ tài liệu Alchemy
+    // 1. SỬA LỖI: Loại bỏ hoàn toàn category "internal" vì BSC không hỗ trợ
     if (selectedRpcMethod === 'alchemy_getAssetTransfers') {
       rpcBody.params = [{
         fromBlock: "0x0",
         toBlock: "latest",
         toAddress: currentContract,
-        category: ["external", "internal", "erc20"],
+        category: ["external", "erc20"], 
         excludeZeroValue: false,
         withMetadata: true
       }];
     } 
-    // 2. Cấu hình Parameter đặc quyền cho Paymaster bằng AA UserOperation Filter (Nếu chọn eth_getLogs ở tab Paymaster)
+    // 2. SỬA LỖI: Đổi toBlock từ "latest" thành biến logsToBlock từ giao diện UI để kiểm soát giới hạn 10 khối của gói Free
     else if (selectedRpcMethod === 'eth_getLogs' && activeWebhookTab === 'paymaster' && !logsTopics.trim()) {
       const paddedPaymaster = "0x" + currentContract.replace("0x", "").toLowerCase().padStart(64, '0');
       rpcBody.params = [{
         fromBlock: logsFromBlock,
-        toBlock: "latest",
+        toBlock: logsToBlock, 
         topics: [
-          "0x49628e100ac341d24a3e6da50b589cffa6a6c42aabf49b9d4abcb32e65c9535b", // UserOperationEvent Topic0
+          "0x49628e100ac341d24a3e6da50b589cffa6a6c42aabf49b9d4abcb32e65c9535b", 
           null,
-          paddedPaymaster // Lọc chính xác cột Paymaster ở Topic2
+          paddedPaymaster 
         ]
       }];
     } 
-    // 3. Các phương thức RPC Core truyền thống khác
     else if (selectedRpcMethod === 'eth_getBlockReceipts') {
       rpcBody.params = [blockParam];
     } else if (selectedRpcMethod === 'eth_estimateGas') {
@@ -179,7 +174,6 @@ export default function AffiliateWebhookAdmin() {
         setRpcStatus('connected');
       }
 
-      // TỰ ĐỘNG ĐẨY LOG MỚI VÀO BẢNG ĐIỀU KHIỂN
       const newLogEntry = {
         id: `log_${Math.random().toString(36).substr(2, 5)}`,
         method: selectedRpcMethod,
@@ -199,7 +193,7 @@ export default function AffiliateWebhookAdmin() {
     } catch (error) {
       setRawRpcResponse({ error: "Lỗi RPC Endpoint", details: error.message });
       setRpcStatus('error');
-    } finally {
+    } relativeFinally: {
       setIsLoadingRpc(false);
     }
   };
@@ -230,7 +224,6 @@ export default function AffiliateWebhookAdmin() {
     else setList([...list, item]);
   };
 
-  // TOÀN BỘ LOGIC LỌC DỮ LIỆU ĐỘNG (LỌC THEO THỜI GIAN VÀ HIỆU NĂNG RESPONSE TIME)
   const filteredRequestLogs = requestLogs.filter(log => {
     const diffMs = Date.now() - log.timestamp;
     if (selectedTimeFilter === '5min' && diffMs > 5 * 60 * 1000) return false;
@@ -263,12 +256,15 @@ export default function AffiliateWebhookAdmin() {
     return true;
   });
 
-  // TÍNH TOÁN DỮ LIỆU PHÂN TRANG (PAGINATION LOGIC)
   const totalItems = filteredRequestLogs.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
   const currentPagedLogs = filteredRequestLogs.slice(startIndex, endIndex);
+
+  const handlePageChange = (page) => {
+    if (page >= 1 && page <= totalPages) setCurrentPage(page);
+  };
 
   const handleResetFilters = () => {
     setSelectedTimeFilter('hour');
@@ -350,12 +346,33 @@ export default function AffiliateWebhookAdmin() {
           </div>
         </div>
 
-        {/* Màn hình hiển thị song song JSON phản hồi cùng Trình thám mã thông minh từ Enhanced API */}
+        {/* Khung cấu hình tham số cho getLogs giúp quản lý khoảng block range linh hoạt trên giao diện */}
+        {selectedRpcMethod === 'eth_getLogs' && (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4 p-4 bg-slate-950/40 border border-slate-800 rounded-xl animate-fadeIn">
+            <div>
+              <label className="block text-[11px] font-mono text-slate-400 mb-1.5">fromBlock</label>
+              <input type="text" value={logsFromBlock} onChange={(e) => setLogsFromBlock(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-300 focus:outline-none focus:border-blue-500" />
+            </div>
+            <div>
+              <label className="block text-[11px] font-mono text-slate-400 mb-1.5">toBlock (Max +10 blocks cho Free)</label>
+              <input type="text" value={logsToBlock} onChange={(e) => setLogsToBlock(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-300 focus:outline-none focus:border-blue-500" />
+            </div>
+            <div>
+              <label className="block text-[11px] font-mono text-slate-400 mb-1.5">address</label>
+              <input type="text" value={logsAddress} onChange={(e) => setLogsAddress(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs font-mono text-emerald-400" />
+            </div>
+            <div>
+              <label className="block text-[11px] font-mono text-slate-400 mb-1.5">topics</label>
+              <input type="text" value={logsTopics} onChange={(e) => setLogsTopics(e.target.value)} placeholder="Mặc định tự sinh AA filter nếu để trống" className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-300" />
+            </div>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
           <div>
             <div className="text-[11px] text-slate-500 uppercase font-bold tracking-wider mb-1.5">Phản hồi thô JSON-RPC phản hồi từ Node:</div>
             <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 font-mono text-xs h-60 overflow-y-auto custom-scrollbar">
-              {rawRpcResponse ? <pre className="text-blue-400 whitespace-pre">{JSON.stringify(rawRpcResponse, null, 2)}</pre> : <span className="text-slate-600">Bấm "Execute Call" để lấy dữ liệu blockchain...</span>}
+              {rawRpcResponse ? <pre className="text-blue-400 whitespace-pre">{JSON.stringify(rawRpcResponse, null, 2)}</pre> : <span className="text-slate-600">Bấm "Execute Call" để lấy dữ liệu...</span>}
             </div>
           </div>
           <div>
@@ -366,7 +383,7 @@ export default function AffiliateWebhookAdmin() {
               {selectedRpcMethod === 'alchemy_getAssetTransfers' && rawRpcResponse?.result?.transfers ? (
                 <div className="space-y-2">
                   <div className="p-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-lg text-[11px] font-semibold">
-                    Alchemy Asset Transfers API quét được {rawRpcResponse.result.transfers.length} giao dịch (Bao gồm cả Internal Call).
+                    Alchemy Asset Transfers API quét được {rawRpcResponse.result.transfers.length} giao dịch thành công.
                   </div>
                   {rawRpcResponse.result.transfers.map((tx, idx) => (
                     <div key={idx} className="p-2 bg-slate-900 border border-slate-800 rounded-lg space-y-1 text-[11px]">
@@ -389,7 +406,7 @@ export default function AffiliateWebhookAdmin() {
                     </div>
                   ))}
                 </div>
-              ) : <div className="text-slate-600 text-center pt-16">Chọn phương thức "alchemy_getAssetTransfers" hoặc "eth_getLogs" và chạy Sandbox để mổ xẻ sâu luồng dữ liệu.</div>}
+              ) : <div className="text-slate-600 text-center pt-16">Chọn phương thức nâng cao ở danh sách, chỉnh tham số và ấn nút chạy thử.</div>}
             </div>
           </div>
         </div>
@@ -408,7 +425,7 @@ export default function AffiliateWebhookAdmin() {
         <div className="flex flex-wrap items-center gap-2 mb-4 bg-slate-950/40 p-3 rounded-xl border border-slate-800/60 relative z-20">
           <span className="text-xs font-semibold text-slate-400 px-1">Filters</span>
           
-          {/* 1. Lọc mốc thời gian (Xoá Custom, thêm các mốc tháng/năm) */}
+          {/* 1. Lọc mốc thời gian */}
           <div className="relative">
             <button onClick={() => setActiveDropdown(activeDropdown === 'time' ? null : 'time')} className="px-3 py-1.5 bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-300 rounded-lg text-xs flex items-center gap-1 font-medium">
               Time: <span className="text-blue-400">{timeFilterOptions.find(o => o.key === selectedTimeFilter)?.label}</span>
@@ -425,7 +442,7 @@ export default function AffiliateWebhookAdmin() {
             )}
           </div>
 
-          {/* 2. Lọc Methods (Có hỗ trợ các hàm mở rộng) */}
+          {/* 2. Lọc Methods */}
           <div className="relative">
             <button onClick={() => setActiveDropdown(activeDropdown === 'methods' ? null : 'methods')} className={`px-3 py-1.5 border hover:border-slate-700 text-slate-300 rounded-lg text-xs flex items-center gap-1 font-medium ${selectedMethods.length > 0 ? 'bg-blue-500/10 border-blue-500 text-blue-400' : 'bg-slate-900 border-slate-800'}`}>
               Methods {selectedMethods.length > 0 && `(${selectedMethods.length})`}
@@ -470,7 +487,7 @@ export default function AffiliateWebhookAdmin() {
             )}
           </div>
 
-          {/* 5. Lọc Response times (Kích hoạt tính năng phân nhóm tốc độ phản hồi) */}
+          {/* 5. Lọc Response times */}
           <div className="relative">
             <button onClick={() => setActiveDropdown(activeDropdown === 'responseTime' ? null : 'responseTime')} className={`px-3 py-1.5 border hover:border-slate-700 text-slate-300 rounded-lg text-xs flex items-center gap-1 font-medium ${selectedResponseTimes.length > 0 ? 'bg-blue-500/10 border-blue-500 text-blue-400' : 'bg-slate-900 border-slate-800'}`}>
               Response times {selectedResponseTimes.length > 0 && `(${selectedResponseTimes.length})`}
@@ -502,7 +519,7 @@ export default function AffiliateWebhookAdmin() {
           )}
         </div>
 
-        {/* Cấu trúc Phân trang kết hợp Bảng hiển thị thông số */}
+        {/* Layout Log List + Chi tiết */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start relative z-10">
           <div className="lg:col-span-2 flex flex-col border border-slate-800/80 rounded-xl bg-slate-950/20 overflow-hidden">
             <table className="w-full text-left text-xs border-collapse">
@@ -545,7 +562,7 @@ export default function AffiliateWebhookAdmin() {
               <div className="text-center py-12 text-slate-600 font-medium bg-slate-950/20">Không có bản ghi log nào khớp bộ lọc.</div>
             )}
 
-            {/* THANH BỘ PHÂN TRANG (PAGINATION BAR CONFIGURED) */}
+            {/* THANH BỘ PHÂN TRANG */}
             <div className="flex flex-col sm:flex-row items-center justify-between p-4 border-t border-slate-800/80 bg-slate-950/40 gap-4 text-xs text-slate-400">
               <div className="flex items-center gap-2">
                 <span>View</span>
@@ -601,12 +618,12 @@ export default function AffiliateWebhookAdmin() {
                       <button onClick={() => handleCopyClipboard(JSON.stringify(selectedRequestLog.requestBody, null, 2), 'req')} className="text-[10px] bg-slate-900 border border-slate-800 hover:bg-slate-800 px-2 py-1 rounded text-slate-300">Copy</button>
                     </div>
                   </div>
-                  <div className="bg-slate-900/60 border border-slate-800/80 rounded-lg p-3 max-h-32 overflow-auto font-mono text-[11px] text-slate-400">
+                  <div className="bg-slate-900/60 border border-slate-800/80 rounded-lg p-3 max-h-40 overflow-auto font-mono text-[11px] text-slate-400">
                     <pre>{JSON.stringify(selectedRequestLog.requestBody, null, 2)}</pre>
                   </div>
                 </div>
               </div>
-            ) : <div className="text-center py-16 text-slate-600">Chọn một hàng trong bảng để thám mã chi tiết.</div>}
+            ) : <div className="text-center py-16 text-slate-600">Chọn một hàng trong bảng để xem chi tiết.</div>}
           </div>
         </div>
       </div>
