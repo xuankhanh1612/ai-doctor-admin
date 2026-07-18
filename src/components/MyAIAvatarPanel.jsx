@@ -1,33 +1,24 @@
 import React, { useState } from 'react'
 import {
   Sparkles, Github, ExternalLink, FileText, Copy, Check,
-  UploadCloud, Video, Wand2, Smartphone, Mic, Terminal, MessageSquareText,
+  UploadCloud, Video, Wand2, Smartphone, Mic, Terminal, MessageSquareText, Zap,
 } from 'lucide-react'
 import { useApp } from '../context/AppContext'
 import OpenAvatarChatPanel from './OpenAvatarChatPanel'
 import OpenAvatarChatVideoPanel from './OpenAvatarChatVideoPanel'
-import LhmGeneratePanel from './LhmGeneratePanel'
 
 const LINKS = {
-  space: 'https://huggingface.co/spaces/Lingteng/LHMPP',
-  spaceEmbed: 'https://lingteng-lhmpp.hf.space',
   github: 'https://github.com/aigc3d/LAM',
   project: 'https://aigc3d.github.io/projects/LAM/',
   paper: 'https://arxiv.org/abs/2502.17796',
   audio2exp: 'https://github.com/aigc3d/LAM_Audio2Expression',
   webRender: 'https://github.com/aigc3d/LAM_WebRender',
   openAvatarChat: 'https://github.com/HumanAIGC-Engineering/OpenAvatarChat',
-  // LHM++ — bản kế nhiệm LHM, nhanh hơn đáng kể (Encoder-Decoder Point-Image
-  // Transformer), Space HF đang "Running on Zero" (còn sống, khác với
-  // 3DAIGC/LHM cũ đang Build error)
-  lhmppGithub: 'https://github.com/aigc3d/LHM-plusplus',
-  lhmppSpace: 'https://huggingface.co/spaces/Lingteng/LHMPP',
-  lhmppProject: 'https://lingtengqiu.github.io/LHM++/',
   // OpenAvatarChat — bản demo CHÍNH THỨC do team tự host trên HF Space
   // (đang "Running"), dùng ngay được, không cần tự host nữa
   openAvatarChatSpace: 'https://huggingface.co/spaces/HumanAIGC-Engineering-Team/open-avatar-chat',
   openAvatarChatSpaceEmbed: 'https://humanaigc-engineering-team-open-avatar-chat.static.hf.space/index.html',
-  // Hi3DGen (Stable3DGen) — KHÁC nhóm với LAM/LHM: đây là mesh 3D chất lượng
+  // Hi3DGen (Stable3DGen) — KHÁC nhóm với LAM: đây là mesh 3D chất lượng
   // cao cho VẬT THỂ NÓI CHUNG (không chuyên avatar người), dùng normal-map
   // làm cầu nối trung gian giữa ảnh 2D và hình học 3D. Space đang "Running
   // on Zero" tại thời điểm viết.
@@ -50,25 +41,6 @@ python src/demo.py --config config/chat_with_openai_compatible_edge_tts.yaml
 # Server (kèm giao diện web gốc có avatar) chạy ở https://<host>:8282
 # -> dán địa chỉ đó vào ô "Video avatar thật" bên dưới.
 # Nếu client và server không cùng mạng, WebRTC cần thêm TURN server (xem ghi chú notebook Colab).`
-
-const LHM_SETUP_CMD = `# Yêu cầu: Linux + GPU NVIDIA (khuyến nghị >=16GB VRAM cho bản LHM-MINI), CUDA 11.8 hoặc 12.1
-git clone https://github.com/aigc3d/LHM.git
-cd LHM
-
-# Cách nhanh nhất: dùng Docker image dựng sẵn (khỏi tự cài CUDA/torch)
-wget -P ./lhm_cuda_dockers https://virutalbuy-public.oss-cn-hangzhou.aliyuncs.com/share/aigc3d/data/for_lingteng/LHM/LHM_Docker/lhm_cuda121.tar
-docker load -i ./lhm_cuda_dockers/lhm_cuda121.tar
-docker run -p 7860:7860 -v $(pwd):/workspace -it lhm:cuda_121 /bin/bash
-
-# Trong container: tải bản nhẹ nhất (chạy được trên GPU 16GB)
-python -c "from huggingface_hub import snapshot_download; \\
-snapshot_download(repo_id='3DAIGC/LHM-MINI', cache_dir='./pretrained_models/huggingface')"
-
-python app.py   # mặc định mở ở http://<host>:7860 (giao diện Gradio)
-# -> Trỏ LHM_GRADIO_URL trong .env Vercel về http://<host-cong-khai>:7860
-#    (cần expose ra Internet qua ngrok/Cloudflare Tunnel nếu chạy tại nhà,
-#    hoặc deploy thẳng container này lên máy chủ GPU có IP public như
-#    RunPod/Lambda/AWS/GCP.)`
 
 const CITATION = `@inproceedings{he2025lam,
   title={LAM: Large Avatar Model for One-shot Animatable Gaussian Head},
@@ -121,12 +93,10 @@ export default function MyAIAvatarPanel() {
   const isDark = theme === 'dark'
   const vi = lang === 'vi'
 
-  const [iframeLoaded, setIframeLoaded] = useState(false)
   const [oacIframeLoaded, setOacIframeLoaded] = useState(false)
   const [hi3dgenIframeLoaded, setHi3dgenIframeLoaded] = useState(false)
   const [copied, setCopied] = useState(false)
   const [copiedSetup, setCopiedSetup] = useState(false)
-  const [copiedLhmSetup, setCopiedLhmSetup] = useState(false)
 
   const border   = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'
   const surface  = isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)'
@@ -150,13 +120,6 @@ export default function MyAIAvatarPanel() {
     } catch { /* clipboard unavailable, ignore */ }
   }
 
-  const copyLhmSetupCmd = async () => {
-    try {
-      await navigator.clipboard.writeText(LHM_SETUP_CMD)
-      setCopiedLhmSetup(true)
-      setTimeout(() => setCopiedLhmSetup(false), 1800)
-    } catch { /* clipboard unavailable, ignore */ }
-  }
 
   return (
     <div style={{ maxWidth: 980, margin: '0 auto', padding: '4px 4px 40px' }}>
@@ -232,88 +195,6 @@ export default function MyAIAvatarPanel() {
         </div>
       </div>
 
-
-      {/* Alternative: LHM++ (aigc3d/LHM-plusplus), the faster successor to
-          LHM whose HF Space is actually alive, unlike the original 3DAIGC/LHM */}
-      <div style={{ marginBottom: 20 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-          <Zap size={16} color={isDark ? '#00e5ff' : '#00b8cc'} />
-          <div style={{ fontSize: 14, fontWeight: 800, color: text }}>
-            {vi ? 'Thay thế: LHM++ (nhanh hơn, Space đang sống)' : 'Alternative: LHM++ (faster, Space is alive)'}
-          </div>
-          <span style={{
-            fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 999,
-            background: isDark ? 'rgba(0,230,118,0.15)' : 'rgba(0,230,118,0.1)', color: '#00c46a',
-          }}>Lingteng/LHMPP</span>
-        </div>
-        <p style={{ margin: '0 0 12px', fontSize: 12.5, color: text2, lineHeight: 1.6 }}>
-          {vi
-            ? 'LHM++ (github.com/aigc3d/LHM-plusplus) là bản kế nhiệm LHM, tái thiết kế kiến trúc (Encoder-Decoder Point-Image Transformer) để nhanh hơn đáng kể, dựng người từ ảnh không cần tư thế chuẩn. Space demo "Lingteng/LHMPP" đang thực sự chạy — khác với 3DAIGC/LAM (lỗi driver GPU) và 3DAIGC/LHM gốc (lỗi build) đã gặp ở trên. (Mirror ModelScope thử trước đó bị chặn theo khu vực, chỉ nhận SĐT Trung Quốc đại lục, nên đã bỏ hướng đó.)'
-            : 'LHM++ (github.com/aigc3d/LHM-plusplus) is the successor to LHM, redesigned (Encoder-Decoder Point-Image Transformer architecture) to be substantially faster, reconstructing a person from images without needing a canonical pose. The "Lingteng/LHMPP" demo Space is actually running — unlike 3DAIGC/LAM (GPU driver error) and the original 3DAIGC/LHM (build error) hit earlier. (The ModelScope mirror tried first turned out to be geo-blocked to mainland China phone numbers only, so that route was dropped.)'}
-        </p>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
-          <LinkButton href={LINKS.lhmppGithub} icon={<Github size={13} />} label={vi ? 'Mã nguồn LHM++' : 'LHM++ source'} isDark={isDark} />
-          <LinkButton href={LINKS.lhmppSpace} icon={<ExternalLink size={13} />} label={vi ? 'Space demo (Lingteng/LHMPP)' : 'Demo Space (Lingteng/LHMPP)'} isDark={isDark} />
-          <LinkButton href={LINKS.lhmppProject} icon={<ExternalLink size={13} />} label={vi ? 'Trang dự án LHM++' : 'LHM++ project page'} isDark={isDark} />
-        </div>
-        <LhmGeneratePanel isDark={isDark} vi={vi} border={border} surface={surface} text={text} text2={text2} text3={text3} />
-
-        <div style={{ background: surface, border: `1px solid ${border}`, borderRadius: 14, padding: 16, marginTop: 14 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 700, color: text }}>
-              <Terminal size={14} /> {vi ? 'Tự host LHM/LHM++ (dự phòng nếu Space công khai lại sập)' : 'Self-host LHM/LHM++ (backup if the public Space goes down again)'}
-            </div>
-            <button onClick={copyLhmSetupCmd} style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11.5, fontWeight: 600,
-              padding: '6px 10px', borderRadius: 8, cursor: 'pointer',
-              border: `1px solid ${border}`, background: 'transparent', color: text2,
-            }}>
-              {copiedLhmSetup ? <Check size={13} color="#00e676" /> : <Copy size={13} />}
-              {copiedLhmSetup ? (vi ? 'Đã sao chép' : 'Copied') : (vi ? 'Sao chép lệnh' : 'Copy commands')}
-            </button>
-          </div>
-          <pre style={{
-            margin: 0, fontSize: 11, lineHeight: 1.65, color: text2, overflowX: 'auto',
-            fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', whiteSpace: 'pre',
-          }}>{LHM_SETUP_CMD}</pre>
-          <div style={{ marginTop: 10, fontSize: 11.5, color: text3 }}>
-            {vi
-              ? 'Panel phía trên giờ gọi thẳng Space "Lingteng/LHMPP" đang sống nên phần lớn trường hợp bạn không cần tự host nữa. Khối lệnh này chỉ để dự phòng nếu Space đó cũng sập hoặc quá tải — tự host xong thì khai báo LHM_GRADIO_URL trỏ tới server riêng của bạn (xem .env.example) để ghi đè, không cần đổi code.'
-              : 'The panel above now calls the live "Lingteng/LHMPP" Space directly, so in most cases you no longer need to self-host. Keep this command block as a backup for if that Space also goes down or gets overloaded — once self-hosted, set LHM_GRADIO_URL to your own server (see .env.example) to override, no code change needed.'}
-          </div>
-        </div>
-      </div>
-
-      {/* Embedded live demo */}
-      <div style={{ marginBottom: 20 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: text }}>
-            {vi ? 'Demo trực tiếp (LHM++, Hugging Face Space, tham khảo trực quan)' : 'Live demo (LHM++, Hugging Face Space, visual reference)'}
-          </div>
-          <LinkButton href={LINKS.space} icon={<ExternalLink size={13} />} label={vi ? 'Mở demo trong tab mới' : 'Open demo in new tab'} isDark={isDark} />
-        </div>
-        <div style={{
-          position: 'relative', width: '100%', height: 720, borderRadius: 14, overflow: 'hidden',
-          border: `1px solid ${border}`, background: isDark ? '#05070f' : '#f4f6fa',
-        }}>
-          {!iframeLoaded && (
-            <div style={{
-              position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column',
-              alignItems: 'center', justifyContent: 'center', gap: 8, color: text3, fontSize: 12.5,
-            }}>
-              <Sparkles size={20} className="spin" />
-              {vi ? 'Đang tải demo LHM++ từ Hugging Face...' : 'Loading LHM++ demo from Hugging Face...'}
-            </div>
-          )}
-          <iframe
-            title="LHM++ (Lingteng/LHMPP) - Hugging Face Space"
-            src={LINKS.spaceEmbed}
-            onLoad={() => setIframeLoaded(true)}
-            style={{ width: '100%', height: '100%', border: 'none', opacity: iframeLoaded ? 1 : 0, transition: 'opacity 0.3s' }}
-            allow="camera; microphone; fullscreen"
-          />
-        </div>
-      </div>
 
       {/* Real-time avatar chat powered by OpenAvatarChat */}
       <div style={{ marginBottom: 20 }}>
@@ -418,7 +299,7 @@ export default function MyAIAvatarPanel() {
       </div>
 
       {/* Bonus: Hi3DGen (Stable3DGen) — mesh 3D chất lượng cao cho VẬT THỂ
-          NÓI CHUNG, khác nhánh với LAM/LHM (chuyên avatar người). Dùng khi
+          NÓI CHUNG, khác nhánh với LAM. Dùng khi
           cần dựng mesh chi tiết từ 1 ảnh cho vật thể bất kỳ, không riêng
           người/mặt. */}
       <div style={{ marginBottom: 20 }}>
@@ -434,8 +315,8 @@ export default function MyAIAvatarPanel() {
         </div>
         <p style={{ margin: '0 0 12px', fontSize: 12.5, color: text2, lineHeight: 1.6 }}>
           {vi
-            ? 'Khác nhánh với LAM/LHM ở trên (chuyên avatar người có thể tạo dáng/animate): Hi3DGen (github.com/Stable-X/Stable3DGen) dựng mesh 3D độ chi tiết cao từ MỘT ảnh bất kỳ — dùng normal-map làm cầu nối trung gian giữa ảnh 2D và hình học 3D, cho biên/chi tiết sắc nét hơn các phương pháp đi thẳng ảnh→3D. Phù hợp khi bạn cần mesh (OBJ/GLB/PLY/STL) cho vật thể chung (mô hình giải phẫu, dụng cụ y tế, đồ vật...) chứ không phải avatar người có thể cử động. Space demo đang chạy — nhúng trực tiếp bên dưới.'
-            : 'A different branch from LAM/LHM above (which specialize in posable/animatable human avatars): Hi3DGen (github.com/Stable-X/Stable3DGen) builds a high-detail 3D mesh from a single arbitrary image — using a normal map as an intermediate bridge between the 2D image and 3D geometry, giving sharper edges/detail than direct image→3D methods. Good fit when you need a mesh (OBJ/GLB/PLY/STL) for a general object (anatomical models, medical instruments, everyday objects...) rather than a posable human avatar. The demo Space is live — embedded directly below.'}
+            ? 'Khác nhánh với LAM ở trên (chuyên avatar người có thể tạo dáng/animate): Hi3DGen (github.com/Stable-X/Stable3DGen) dựng mesh 3D độ chi tiết cao từ MỘT ảnh bất kỳ — dùng normal-map làm cầu nối trung gian giữa ảnh 2D và hình học 3D, cho biên/chi tiết sắc nét hơn các phương pháp đi thẳng ảnh→3D. Phù hợp khi bạn cần mesh (OBJ/GLB/PLY/STL) cho vật thể chung (mô hình giải phẫu, dụng cụ y tế, đồ vật...) chứ không phải avatar người có thể cử động. Space demo đang chạy — nhúng trực tiếp bên dưới.'
+            : 'A different branch from LAM above: Hi3DGen (github.com/Stable-X/Stable3DGen) builds a high-detail 3D mesh from a single arbitrary image — using a normal map as an intermediate bridge between the 2D image and 3D geometry, giving sharper edges/detail than direct image→3D methods. Good fit when you need a mesh (OBJ/GLB/PLY/STL) for a general object (anatomical models, medical instruments, everyday objects...) rather than a posable human avatar. The demo Space is live — embedded directly below.'}
         </p>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
           <LinkButton href={LINKS.stable3dgenGithub} icon={<Github size={13} />} label={vi ? 'Mã nguồn Stable3DGen' : 'Stable3DGen source'} isDark={isDark} />

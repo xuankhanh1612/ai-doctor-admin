@@ -2,14 +2,14 @@
 // Vercel Serverless Function — kiểm tra trạng thái thật của một hay nhiều
 // Hugging Face Space TRƯỚC KHI người dùng bấm "Generate", để hiện thông
 // báo rõ ràng ("Space đang lỗi build") thay vì để họ bấm rồi mới ăn lỗi 502
-// từ lam-generate.js / lhm-generate.js.
+// từ lam-generate.js.
 //
 // Dùng API công khai của Hugging Face: GET /api/spaces/{namespace}/{repo}
 // (không cần token cho Space công khai). Gọi từ SERVER (không phải trình
 // duyệt) vì 2 lý do: (1) tránh phát sinh thêm domain lạ mà CSP/CORS phía
 // client phải xử lý, (2) gom nhiều Space vào 1 lần round-trip từ client.
 //
-// GET /api/space-status?spaces=3DAIGC/LAM,3DAIGC/LHM
+// GET /api/space-status?spaces=3DAIGC/LAM
 // -> { results: [ { space, stage, ready, label, url } ] }
 //
 // "stage" là giá trị thô từ Hugging Face (RUNNING, BUILDING, RUNTIME_ERROR,
@@ -74,7 +74,7 @@ export default async function handler(req, res) {
   const spacesParam = req.query?.spaces || new URL(req.url, 'http://x').searchParams.get('spaces')
   const spaceIds = String(spacesParam || '').split(',').map(s => s.trim()).filter(Boolean)
   if (!spaceIds.length) {
-    return res.status(400).json({ error: 'Query param "spaces" is required, e.g. ?spaces=3DAIGC/LAM,3DAIGC/LHM' })
+    return res.status(400).json({ error: 'Query param "spaces" is required, e.g. ?spaces=3DAIGC/LAM' })
   }
   if (spaceIds.length > 5) {
     return res.status(400).json({ error: 'Too many spaces in one request (max 5).' })
