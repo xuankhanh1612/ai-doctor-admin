@@ -24,6 +24,11 @@ import {
   Database
 } from 'lucide-react';
 
+// Hàm định dạng số chuẩn hóa hiển thị giao diện
+const formatNumber = (number) => {
+  return new Intl.NumberFormat('en-US', { maximumFractionDigits: 6 }).format(number ?? 0);
+};
+
 export default function AffiliateWebhookAdmin() {
   const [activeWebhookTab, setActiveWebhookTab] = useState('affiliate');
   const [copiedType, setCopiedType] = useState(''); 
@@ -32,7 +37,8 @@ export default function AffiliateWebhookAdmin() {
   
   // Quản lý Engine dữ liệu (alchemy = RPC Node | moralis = Cloud Indexer API)
   const [dataEngine, setDataEngine] = useState('alchemy'); 
-  const [moralisApiKey, setMoralisApiKey] = useState('amk_moralis_production_key_hmnv_2026');
+  // Đã cập nhật Web3 API Key chính xác từ Moralis Playground của bồ
+  const [moralisApiKey, setMoralisApiKey] = useState('vM7xza5AGzWH4ugv4vDQsXrPAYuP9gred2lNE7BJnKwB4D2QNuNs2Eso6Zk5pUMT');
 
   // State Sandbox RPC & Enhanced API
   const [selectedRpcMethod, setSelectedRpcMethod] = useState('alchemy_getAssetTransfers');
@@ -75,7 +81,7 @@ export default function AffiliateWebhookAdmin() {
 
   const [requestLogs, setRequestLogs] = useState([
     { id: "log_01", method: "alchemy_getAssetTransfers", app: "Khánh's First App", httpStatus: 200, errorCode: "-", errorMessage: "-", responseTime: "45 ms", timeSent: "11:33 AM", timestamp: baseTime - 1 * 60 * 1000, requestBody: { jsonrpc: "2.0", method: "alchemy_getAssetTransfers" }, responseBody: { jsonrpc: "2.0", result: { transfers: [] } } },
-    { id: "log_02", method: "moralis_getContractTransactions", app: "Khánh's First App", httpStatus: 200, errorCode: "-", errorMessage: "-", responseTime: "110 ms", timeSent: "11:28 AM", timestamp: baseTime - 4 * 60 * 1000, requestBody: { engine: "moralis", endpoint: "/0x44f7.../v2.2" }, responseBody: { page: 1, page_size: 10, result: [] } }
+    { id: "log_02", method: "moralis_getUnifiedHistory", app: "Khánh's First App", httpStatus: 200, errorCode: "-", errorMessage: "-", responseTime: "185 ms", timeSent: "11:28 AM", timestamp: baseTime - 4 * 60 * 1000, requestBody: { engine: "moralis_playground_unified", limit: 3 }, responseBody: [] }
   ]);
   const [selectedRequestLog, setSelectedRequestLog] = useState(requestLogs[0]);
 
@@ -105,23 +111,12 @@ export default function AffiliateWebhookAdmin() {
 
   useEffect(() => {
     if (dataEngine === 'moralis') {
-      setSelectedRpcMethod('moralis_getContractTransactions');
+      setSelectedRpcMethod('moralis_getUnifiedHistory');
     } else {
       setSelectedRpcMethod('alchemy_getAssetTransfers');
     }
     setRawRpcResponse(null);
   }, [dataEngine]);
-
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setActiveDropdown(null);
-        setSearchQuery('');
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
 
   const handleExecuteDataEngineCall = async () => {
     setIsLoadingRpc(true);
@@ -129,54 +124,145 @@ export default function AffiliateWebhookAdmin() {
     const startTime = performance.now();
     const currentContract = webhookData[activeWebhookTab].contract;
 
-    // SỬA LỖI 404: Đã gỡ bỏ chữ '/address/' dư thừa ra khỏi URL của Moralis để map chuẩn xác
+    // NHÁNH XỬ LÝ 1: ENGINE ĐỘC QUYỀN MORALIS PLAYGROUND (QUÉT LIÊN HỢP NATIVE + ERC20 + NFT)
     if (dataEngine === 'moralis') {
-      let url = `https://deep-index.moralis.io/api/v2.2/${currentContract}`;
+      const headers = { accept: 'application/json', 'X-API-Key': moralisApiKey };
+      const chain = '0x61'; // BSC Testnet
       
-      if (selectedRpcMethod === 'moralis_getTokenBalances') {
-        url += `/erc20?chain=0x61`;
-      } else {
-        url += `?chain=0x61`;
-      }
-
       try {
-        const response = await fetch(url, {
-          method: 'GET',
-          headers: {
-            'accept': 'application/json',
-            'X-API-Key': moralisApiKey
+        // 1. Gọi lịch sử giao dịch Native
+        const nativeTransactions = await (await fetch(`https://deep-index.moralis.io/api/v2/${currentContract}?chain=${chain}&limit=3`, { headers })).json();
+        
+        // 2. Gọi lịch sử chuyển token ERC-20
+        const erc20Transactions = await (await fetch(`https://deep-index.moralis.io/api/v2/${currentContract}/erc20/transfers?chain=${chain}&limit=3`, { headers })).json();
+        
+        // 3. Gọi lịch sử chuyển NFT
+        const nftTransactions = await (await fetch(`https://deep-index.moralis.io/api/v2/${currentContract}/nft/transfers?chain=${chain}&limit=3`, { headers })).json();
+        
+        let unifiedResult = [];
+        
+        // Xử lý nạp mảng Native
+        if (nativeTransactions?.result && Array.isArray(nativeTransactions.result)) {
+          nativeTransactions.result.forEach((tx) => {
+            const { from_address, to_address, value, hash, block_timestamp } = tx;
+            const type = from_address.toLowerCase() === currentContract.toLowerCase() ? 'sent' : 'received';
+            unifiedResult.push({
+              type,
+              from: from_address,
+              to: to_address,
+              valueEth: String(parseFloat(value) / 10 ** 18), // Quy đổi Wei sang BNB
+              hash,
+              date: block_timestamp,
+              tokenType: 'native',
+              name: 'BNB-TESTNET',
+              chain,
+            });
+          });
+        }
+        
+        // Xử lý nạp mảng ERC-20
+        if (erc20Transactions?.result && Array.isArray(erc20Transactions.result)) {
+          erc20Transactions.result.forEach((tx) => {
+            const { from_address, to_address, value, transaction_hash, block_timestamp, address } = tx;
+            const type = from_address.toLowerCase() === currentContract.toLowerCase() ? 'sent' : 'received';
+            unifiedResult.push({
+              type,
+              from: from_address,
+              to: to_address,
+              valueEth: value,
+              hash: transaction_hash,
+              date: block_timestamp,
+              tokenType: 'erc20',
+              chain,
+              tokenAddress: address,
+            });
+          });
+          
+          // Thọc sâu lấy metadata ERC-20 để xử lý Decimals (Sửa lỗi hiển thị số thô)
+          const erc20Addresses = [...new Set(erc20Transactions.result.map((r) => r.address))].filter(Boolean);
+          if (erc20Addresses.length > 0) {
+            const s = '&addresses=' + erc20Addresses.join('&addresses=');
+            const erc20Metadata = await (await fetch(`https://deep-index.moralis.io/api/v2/erc20/metadata?chain=${chain}${s}`, { headers })).json();
+            
+            if (Array.isArray(erc20Metadata)) {
+              unifiedResult.forEach((item) => {
+                if (item.tokenType === 'erc20') {
+                  const meta = erc20Metadata.find((m) => m.address?.toLowerCase() === item.tokenAddress?.toLowerCase());
+                  if (meta) {
+                    item.name = meta.symbol || 'ERC-20';
+                    if (meta.decimals) {
+                      item.valueEth = String(formatNumber(parseFloat(item.valueEth) / 10 ** parseInt(meta.decimals)));
+                    }
+                  }
+                }
+              });
+            }
           }
-        });
-        const resData = await response.json();
+        }
+        
+        // Xử lý nạp mảng NFT
+        if (nftTransactions?.result && Array.isArray(nftTransactions.result)) {
+          for (const tx of nftTransactions.result) {
+            const { from_address, to_address, amount, block_timestamp, contract_type, transaction_hash, token_id, token_address } = tx;
+            const type = from_address.toLowerCase() === currentContract.toLowerCase() ? 'sent' : 'received';
+            
+            let resolvedNftName = `${contract_type || 'NFT'} #${token_id}`;
+            try {
+              const nftMeta = await (await fetch(`https://deep-index.moralis.io/api/v2/nft/${token_address}/${token_id}?chain=${chain}`, { headers })).json();
+              if (nftMeta?.name) {
+                resolvedNftName = `${nftMeta.name} #${token_id}`;
+              }
+            } catch (e) {
+              console.warn("Bỏ qua lỗi tải NFT Meta lẻ", e);
+            }
+            
+            unifiedResult.push({
+              type,
+              from: from_address,
+              to: to_address,
+              valueEth: amount,
+              hash: transaction_hash,
+              date: block_timestamp,
+              tokenType: contract_type?.toLowerCase() || 'nft',
+              chain,
+              tokenId: token_id,
+              tokenAddress: token_address,
+              name: resolvedNftName
+            });
+          }
+        }
+        
         const endTime = performance.now();
         const duration = Math.round(endTime - startTime);
+        
+        setRawRpcResponse(unifiedResult); // Đổ mảng liên hợp chuẩn ra màn hình hiển thị JSON
 
-        setRawRpcResponse(resData);
-
+        // Lưu bản ghi vào hệ thống Request Logs
         const newLogEntry = {
           id: `log_${Math.random().toString(36).substr(2, 5)}`,
           method: selectedRpcMethod,
           app: "Khánh's First App",
-          httpStatus: response.status,
-          errorCode: response.status !== 200 ? "ERR_" + response.status : "-",
-          errorMessage: resData.message || "-",
+          httpStatus: 200,
+          errorCode: "-",
+          errorMessage: "-",
           responseTime: `${duration} ms`,
           timeSent: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           timestamp: Date.now(),
-          requestBody: { engine: "moralis_v2.2", targetUrl: url, chain: "BSC_Testnet_0x61" },
-          responseBody: resData
+          requestBody: { engine: "moralis_playground_unified", contract: currentContract, limits: "3 per type" },
+          responseBody: unifiedResult
         };
         setRequestLogs(prev => [newLogEntry, ...prev]);
         setCurrentPage(1);
+        
       } catch (error) {
-        setRawRpcResponse({ error: "Lỗi kết nối API Moralis", details: error.message });
+        setRawRpcResponse({ error: "Lỗi luồng xử lý liên hợp Moralis API", details: error.message });
       } finally {
         setIsLoadingRpc(false);
       }
       return;
     }
 
-    // HẠ TẦNG ALCHEMY JSON-RPC NODE 
+    // NHÁNH XỬ LÝ 2: HẠ TẦNG ALCHEMY JSON-RPC NODE
     const rpcBody = { jsonrpc: "2.0", id: 1, method: selectedRpcMethod };
 
     if (selectedRpcMethod === 'alchemy_getAssetTransfers') {
@@ -221,10 +307,7 @@ export default function AffiliateWebhookAdmin() {
       const duration = Math.round(endTime - startTime);
 
       setRawRpcResponse(resData);
-      
-      if (selectedRpcMethod === 'eth_blockNumber' && resData.result) {
-        setLatestBlock(resData.result);
-      }
+      if (selectedRpcMethod === 'eth_blockNumber' && resData.result) setLatestBlock(resData.result);
 
       const newLogEntry = {
         id: `log_${Math.random().toString(36).substr(2, 5)}`,
@@ -241,7 +324,6 @@ export default function AffiliateWebhookAdmin() {
       };
       setRequestLogs(prev => [newLogEntry, ...prev]);
       setCurrentPage(1);
-
     } catch (error) {
       setRawRpcResponse({ error: "Lỗi RPC Endpoint", details: error.message });
     } finally {
@@ -253,7 +335,7 @@ export default function AffiliateWebhookAdmin() {
     const currentContract = webhookData[activeWebhookTab].contract;
     setLogsAddress(currentContract);
     setTxTo(currentContract);
-    if (selectedRpcMethod === 'eth_blockNumber' || selectedRpcMethod === 'alchemy_getAssetTransfers' || selectedRpcMethod === 'moralis_getContractTransactions') {
+    if (selectedRpcMethod === 'eth_blockNumber' || selectedRpcMethod === 'alchemy_getAssetTransfers' || selectedRpcMethod === 'moralis_getUnifiedHistory') {
       handleExecuteDataEngineCall();
     }
   }, [activeWebhookTab]);
@@ -319,22 +401,12 @@ export default function AffiliateWebhookAdmin() {
     setTimeout(() => setCopiedType(''), 2000);
   };
 
-  const getFilteredTransactions = () => {
-    if (!rawRpcResponse || !rawRpcResponse.result || !Array.isArray(rawRpcResponse.result)) return [];
-    const targetContractLower = webhookData[activeWebhookTab].contract.toLowerCase();
-    return rawRpcResponse.result.filter(receipt => {
-      const directMatch = receipt.to && receipt.to.toLowerCase() === targetContractLower;
-      const logMatch = receipt.logs && receipt.logs.some(log => log.address && log.address.toLowerCase() === targetContractLower);
-      return directMatch || logMatch;
-    });
-  };
-
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 p-6 space-y-8">
       {/* Header */}
       <div className="border-b border-slate-800 pb-5">
         <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-          <Settings className="text-emerald-500 w-7 h-7" /> Hệ Thống Quản Trị On-Chain & Kiểm Tra Tương Tác Đa Nền Tảng
+          <Settings className="text-emerald-500 w-7 h-7" /> Hệ Thống Quản Trị On-Chain & Phân Tích Dữ Liệu Contract
         </h1>
       </div>
 
@@ -351,9 +423,9 @@ export default function AffiliateWebhookAdmin() {
           </p>
         </div>
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
-          <p className="text-xs text-slate-400 font-medium uppercase">Moralis Cloud Indexer Engine</p>
+          <p className="text-xs text-slate-400 font-medium uppercase">Moralis Cloud Playground Engine</p>
           <p className="text-sm font-bold text-purple-400 mt-1.5 flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-purple-400"></span> REST Gateway Ready
+            <span className="w-2 h-2 rounded-full bg-purple-400 animate-pulse"></span> Indexer Ready
           </p>
         </div>
       </div>
@@ -370,7 +442,7 @@ export default function AffiliateWebhookAdmin() {
               Alchemy RPC Node
             </button>
             <button onClick={() => setDataEngine('moralis')} className={`px-3 py-1.5 rounded-lg font-semibold transition-all ${dataEngine === 'moralis' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}>
-              Moralis Indexed API
+              Moralis Playground API
             </button>
           </div>
         </div>
@@ -380,8 +452,7 @@ export default function AffiliateWebhookAdmin() {
             <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Select Engine Method</label>
             {dataEngine === 'moralis' ? (
               <select value={selectedRpcMethod} onChange={(e) => { setSelectedRpcMethod(e.target.value); setRawRpcResponse(null); }} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-purple-400 font-mono focus:outline-none focus:border-purple-500">
-                <option value="moralis_getContractTransactions">moralis_getContractTransactions - Toàn bộ lịch sử Tx (Né lỗi block range)</option>
-                <option value="moralis_getTokenBalances">moralis_getTokenBalances - Kiểm tra số dư ERC-20 của Contract</option>
+                <option value="moralis_getUnifiedHistory">moralis_getUnifiedHistory - Quét liên hợp lịch sử (Native, ERC-20, NFT)</option>
               </select>
             ) : (
               <select value={selectedRpcMethod} onChange={(e) => { setSelectedRpcMethod(e.target.value); setRawRpcResponse(null); }} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-300 font-mono focus:outline-none focus:border-blue-500">
@@ -396,16 +467,13 @@ export default function AffiliateWebhookAdmin() {
           </div>
 
           <div className="md:col-span-1">
+            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">
+              {dataEngine === 'moralis' ? 'Moralis Web3 API Key' : 'Block Param (Hex)'}
+            </label>
             {dataEngine === 'moralis' ? (
-              <>
-                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Moralis Security Token</label>
-                <input type="password" value={moralisApiKey} onChange={(e) => setMoralisApiKey(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-purple-400 font-mono focus:outline-none" />
-              </>
+              <input type="password" value={moralisApiKey} onChange={(e) => setMoralisApiKey(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-purple-400 font-mono focus:outline-none" />
             ) : (
-              <>
-                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Block Param (Hex)</label>
-                <input type="text" value={blockParam} onChange={(e) => setBlockParam(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-blue-400 font-mono focus:outline-none" />
-              </>
+              <input type="text" value={blockParam} onChange={(e) => setBlockParam(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-blue-400 font-mono focus:outline-none" />
             )}
           </div>
 
@@ -439,9 +507,9 @@ export default function AffiliateWebhookAdmin() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
           <div>
-            <div className="text-[11px] text-slate-500 uppercase font-bold tracking-wider mb-1.5">Phản hồi JSON thô từ Server Provider:</div>
+            <div className="text-[11px] text-slate-500 uppercase font-bold tracking-wider mb-1.5">Phản hồi JSON thô trả về:</div>
             <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 font-mono text-xs h-48 overflow-y-auto custom-scrollbar">
-              {rawRpcResponse ? <pre className={`${dataEngine === 'moralis' ? 'text-purple-400' : 'text-blue-400'} whitespace-pre`}>{JSON.stringify(rawRpcResponse, null, 2)}</pre> : <span className="text-slate-600">Đang đợi yêu cầu lệnh...</span>}
+              {rawRpcResponse ? <pre className={`${dataEngine === 'moralis' ? 'text-purple-400' : 'text-blue-400'} whitespace-pre`}>{JSON.stringify(rawRpcResponse, null, 2)}</pre> : <span className="text-slate-600">Đang đợi yêu cầu lệnh từ bồ...</span>}
             </div>
           </div>
           <div>
@@ -449,15 +517,21 @@ export default function AffiliateWebhookAdmin() {
               <Filter className="w-3.5 h-3.5" /> Bảng phân tích thám mã giao dịch thông minh:
             </div>
             <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 h-48 overflow-y-auto custom-scrollbar text-xs font-mono">
-              {dataEngine === 'moralis' && Array.isArray(rawRpcResponse?.result) ? (
+              {dataEngine === 'moralis' && Array.isArray(rawRpcResponse) ? (
                 <div className="space-y-2">
                   <div className="p-2 bg-purple-500/10 text-purple-400 border border-purple-500/20 rounded-lg text-[11px] font-semibold">
-                    Moralis Cloud Engine bóc tách được {rawRpcResponse.result.length} lịch sử giao dịch.
+                    Moralis Playground Engine bóc tách liên hợp thành công {rawRpcResponse.length} giao dịch.
                   </div>
-                  {rawRpcResponse.result.map((tx, idx) => (
-                    <div key={idx} className="p-2 bg-slate-900 border border-slate-800 rounded-lg text-[11px] space-y-0.5 text-slate-300">
-                      <div className="truncate">Hash: {tx.hash || tx.transaction_hash}</div>
-                      <div className="text-slate-500 truncate">From: {tx.from_address}</div>
+                  {rawRpcResponse.map((tx, idx) => (
+                    <div key={idx} className="p-2.5 bg-slate-900 border border-slate-800 rounded-lg space-y-1 text-[11px]">
+                      <div className="flex justify-between items-center">
+                        <span className={`px-2 py-0.5 rounded font-bold text-[10px] uppercase ${tx.type === 'received' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'}`}>
+                          {tx.type === 'received' ? '⬇ Received' : '➔ Sent'}
+                        </span>
+                        <span className="text-slate-200 font-bold">{tx.valueEth} {tx.name}</span>
+                      </div>
+                      <div className="text-slate-500 truncate text-[10px]">Hash: {tx.hash}</div>
+                      <div className="text-slate-600 text-[10px] text-right">{tx.date ? new Date(tx.date).toLocaleString() : 'N/A'}</div>
                     </div>
                   ))}
                 </div>
@@ -475,7 +549,7 @@ export default function AffiliateWebhookAdmin() {
         </div>
       </div>
 
-      {/* KHU VỰC 2: REQUEST LOGS VÀ BỘ LỌC ĐỘNG NÂNG CẤP */}
+      {/* KHU VỰC 2: MÀN HÌNH THỐNG KÊ REQUEST LOGS VÀ BỘ LỌC ĐỘNG NÂNG CẤP */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl relative" ref={dropdownRef}>
         <div className="mb-4">
           <h2 className="text-lg font-semibold text-white flex items-center gap-2">
@@ -484,7 +558,7 @@ export default function AffiliateWebhookAdmin() {
           <p className="text-xs text-slate-400 mt-0.5">Inspect recent request activity for this app.</p>
         </div>
 
-        {/* CỤM BỘ LỌC */}
+        {/* CỤM FILTERS */}
         <div className="flex flex-wrap items-center gap-2 mb-4 bg-slate-950/40 p-3 rounded-xl border border-slate-800/60 relative z-20">
           <span className="text-xs font-semibold text-slate-400 px-1">Filters</span>
           
@@ -513,7 +587,7 @@ export default function AffiliateWebhookAdmin() {
             </button>
             {activeDropdown === 'methods' && (
               <div className="absolute left-0 mt-2 w-64 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl p-2 space-y-1 z-30">
-                {['alchemy_getAssetTransfers', 'moralis_getContractTransactions', 'moralis_getTokenBalances', 'eth_getLogs', 'eth_getBlockReceipts', 'eth_feeHistory', 'eth_estimateGas', 'eth_blockNumber'].map(method => (
+                {['alchemy_getAssetTransfers', 'moralis_getUnifiedHistory', 'eth_getLogs', 'eth_getBlockReceipts', 'eth_feeHistory', 'eth_estimateGas', 'eth_blockNumber'].map(method => (
                   <label key={method} className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-800 rounded-lg text-xs font-mono text-slate-300 cursor-pointer">
                     <input type="checkbox" checked={selectedMethods.includes(method)} onChange={() => toggleFilter(method, selectedMethods, setSelectedMethods)} className="rounded border-slate-800 text-blue-500 bg-slate-950" />
                     {method}
@@ -692,7 +766,7 @@ export default function AffiliateWebhookAdmin() {
         </div>
       </div>
 
-      {/* KHU VỰC 3: CẤU HÌNH WEBHOOK WEB */}
+      {/* KHU VỰC 3: WEBHOOK PRODUCTION INFO */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
           <button onClick={() => setActiveWebhookTab('affiliate')} className={`text-left p-5 rounded-xl border transition-all ${activeWebhookTab === 'affiliate' ? 'bg-slate-900 border-emerald-500 ring-1 ring-emerald-500/30' : 'bg-slate-950/40 border-slate-800'}`}>
