@@ -58,11 +58,11 @@ const TEXT = {
     privacy: 'Dữ liệu bạn cung cấp đều nằm ở máy của bạn, không bao giờ lưu vào server của chúng tôi. ',
     privacyBold: 'Tất cả dữ liệu là của bạn.',
     anatomyPreviewTitle: 'Bản đồ giải phẫu cơ thể',
-    anatomyPreviewHint: 'Chạm hoặc di chuột vào từng điểm để xem chú thích',
+    anatomyPreviewHint: 'Bấm vào từng điểm để xem chú thích',
     bodyProtectionPreviewTitle: 'Game bảo vệ cơ thể',
-    bodyProtectionPreviewHint: 'Di chuột hoặc chạm vào Cấp 2 để xem trước trò chơi',
+    bodyProtectionPreviewHint: 'Bấm vào Cấp 2 để xem trước trò chơi',
     captainKhanhPreviewTitle: 'Captain Khánh Game',
-    captainKhanhPreviewHint: 'Di chuột hoặc chạm vào Cấp 3 để mở trò chơi',
+    captainKhanhPreviewHint: 'Bấm vào Cấp 3 để mở trò chơi',
     footer: 'Anh Hùng Hiến Tặng · Cùng nhau lan toả sự sống',
     back: 'Quay lại',
     login: 'Đăng nhập',
@@ -103,11 +103,11 @@ const TEXT = {
     privacy: 'The data you provide stays on your device and is never stored on our servers. ',
     privacyBold: 'All your data belongs to you.',
     anatomyPreviewTitle: 'Body anatomy atlas',
-    anatomyPreviewHint: 'Tap or hover over each point for details',
+    anatomyPreviewHint: 'Click each point for details',
     bodyProtectionPreviewTitle: 'Body protection game',
-    bodyProtectionPreviewHint: 'Hover or tap Level 2 to preview the game',
+    bodyProtectionPreviewHint: 'Click Level 2 to preview the game',
     captainKhanhPreviewTitle: 'Captain Khánh Game',
-    captainKhanhPreviewHint: 'Hover or tap Level 3 to open the game',
+    captainKhanhPreviewHint: 'Click Level 3 to open the game',
     footer: 'Donation Hero · Spreading life together',
     back: 'Back',
     login: 'Log in',
@@ -350,21 +350,7 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onBac
                   key={lvl.level}
                   ref={isLevelOne ? anatomyPreviewRef : isLevelTwo ? bodyProtectionPreviewRef : isLevelThree ? captainKhanhPreviewRef : undefined}
                   className={`relative flex flex-col items-center w-[150px] text-center ${isPreviewLevel ? 'group' : ''}`}
-                  {...(isPreviewLevel
-                    ? {
-                        // Desktop: vẫn giữ hover cho mượt (di chuột vào/ra).
-                        onMouseEnter: () => {
-                          if (isLevelOne) setShowAnatomyPreview(true);
-                          if (isLevelTwo) setShowBodyProtectionPreview(true);
-                          if (isLevelThree) setShowCaptainKhanhPreview(true);
-                        },
-                        onMouseLeave: () => {
-                          if (isLevelOne) setShowAnatomyPreview(false);
-                          if (isLevelTwo) setShowBodyProtectionPreview(false);
-                          if (isLevelThree) setShowCaptainKhanhPreview(false);
-                        },
-                      }
-                    : {})}
+
                 >
                   <div className="relative mb-3">
                     {isLevelOne && unlocked && (
@@ -378,8 +364,7 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onBac
                       style={{ clipPath: 'polygon(50% 0%, 95% 25%, 95% 75%, 50% 100%, 5% 75%, 5% 25%)' }}
                       {...(isPreviewLevel
                         ? {
-                            // Mobile/touch: bấm để mở/đóng (tap to toggle),
-                            // vì thiết bị cảm ứng không có sự kiện hover.
+                            // Bấm để mở/đóng popup; không mở bằng hover.
                             onClick: () => {
                               if (isLevelOne) setShowAnatomyPreview((prev) => !prev);
                               if (isLevelTwo) setShowBodyProtectionPreview((prev) => !prev);
@@ -414,9 +399,8 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onBac
                   {/* Popup xem trước bản đồ giải phẫu — chỉ gắn vào thẻ Cấp 1
                   "Người Tìm Hiểu". Điều khiển bằng state showAnatomyPreview
                   (thay vì chỉ CSS group-hover thuần) để:
-                  - Desktop: mở khi hover (onMouseEnter/Leave ở thẻ cha).
-                  - Mobile/cảm ứng: mở/đóng khi tap vào icon (onClick), và tự
-                    đóng khi chạm ra ngoài (xem useEffect pointerdown ở trên).
+                  - Mở/đóng khi bấm vào icon (onClick), và tự đóng khi chạm/click
+                    ra ngoài (xem useEffect pointerdown ở trên).
                   Định vị tuyệt đối phía trên thẻ, căn giữa theo chiều ngang. */}
                   {isLevelOne && (
                     <div
@@ -448,8 +432,7 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onBac
                   )}
 
                   {/* Popup xem trước game bảo vệ cơ thể — gắn vào thẻ Cấp 2
-                  "Người Quan Tâm". Desktop mở khi hover, mobile/cảm ứng
-                  mở/đóng khi tap icon, tương tự popup Cấp 1. */}
+                  "Người Quan Tâm". Mở/đóng khi bấm icon, tương tự popup Cấp 1. */}
                   {isLevelTwo && (
                     <div
                       className={`
@@ -486,7 +469,7 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onBac
                   )}
 
                   {/* Popup iframe Captain Khánh Game — gắn vào thẻ Cấp 3.
-                  Desktop mở khi hover, mobile/cảm ứng mở/đóng khi tap icon. */}
+                  Mở/đóng khi bấm icon. */}
                   {isLevelThree && (
                     <div
                       className={`

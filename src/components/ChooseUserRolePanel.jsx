@@ -37,7 +37,7 @@ const TEXT = {
     roleNote: 'Tôi cũng có thể Hiến / Nhận Tạng trong tương lai.',
     quickOrganTitle: 'Chọn nhanh cơ quan có thể hiến / nhận',
     organPreviewTitle: 'Bản đồ giải phẫu cơ thể',
-    organPreviewHint: 'Đang highlight đúng cơ quan bạn đang chọn',
+    organPreviewHint: 'Bấm vào từng cơ quan để xem chú thích',
     viewAll: 'Tôi chưa muốn hiến tặng',
     legalText: 'Tất cả hoạt động hiến và nhận tạng đều theo quy trình cơ quan pháp luật tại quốc gia của bạn.',
     legalTags: ['An toàn', 'Minh bạch', 'Bảo mật', 'Nhân văn'],
@@ -64,7 +64,7 @@ const TEXT = {
     roleNote: 'I may also Donate / Receive an organ in the future.',
     quickOrganTitle: 'Quickly choose an organ to donate / receive',
     organPreviewTitle: 'Body anatomy atlas',
-    organPreviewHint: 'Highlighting the organ you are choosing',
+    organPreviewHint: 'Click an organ to view its note',
     viewAll: "I don't want to donate yet",
     legalText: 'All organ donation and transplant activities follow the legal procedures of the authorities in your country.',
     legalTags: ['Safe', 'Transparent', 'Secure', 'Humane'],
@@ -245,18 +245,16 @@ export default function ChooseUserRolePanel({ mode = 'guest', onSelectRole, onEn
             <span className={`h-px w-8 ${isDark ? 'bg-gray-600' : 'bg-gray-300'}`} />
           </div>
 
-          <div
-            className="relative flex flex-wrap justify-center gap-3"
-            onMouseLeave={() => setPreviewOrganId(null)}
-          >
+          <div className="relative flex flex-wrap justify-center gap-3">
             {ORGANS.map((organ) => {
               const isActive = selectedOrgan === organ.id;
               return (
                 <button
                   key={organ.id}
-                  onClick={() => setSelectedOrgan(organ.id)}
-                  onMouseEnter={() => setPreviewOrganId(organ.id)}
-                  onFocus={() => setPreviewOrganId(organ.id)}
+                  onClick={() => {
+                    setSelectedOrgan(organ.id);
+                    setPreviewOrganId(organ.anatomyAnnotationId ? organ.id : null);
+                  }}
                   className="flex flex-col items-center gap-1.5 w-[76px] sm:w-[84px]"
                 >
                   <span
