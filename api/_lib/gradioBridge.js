@@ -1,7 +1,7 @@
 // api/_lib/gradioBridge.js
 // Logic dùng chung cho các endpoint gọi một Gradio app từ xa (Hugging Face
 // Space hoặc ModelScope Studio) làm "bridge" tới model thật, thay vì mô
-// phỏng kết quả. Tách ra đây để api/lam-generate.js và api/lhm-generate.js
+// phỏng kết quả. Tách ra đây để api/lam-generate.js
 // không lệch nhau về cách: parse body, convert base64 -> Blob, tự dò
 // endpoint qua view_api(), và luôn trả NGUYÊN VĂN lỗi thật từ upstream.
 
@@ -106,7 +106,7 @@ export async function connectWithWakeRetry(Client, target, opts, attempts = 3) {
   throw lastErr
 }
 
-// ZeroGPU Spaces trên Hugging Face (như 3DAIGC/LAM, 3DAIGC/LHM) hay "ngủ"
+// ZeroGPU Spaces trên Hugging Face (như 3DAIGC/LAM) hay "ngủ"
 // khi rảnh — request đầu tiên sau khi ngủ thường 503 trong lúc HF khởi
 // động container/cấp GPU. Ping thẳng host <space>.hf.space một lần cho
 // "tỉnh", rồi mới retry Client.connect(spaceId) vài lần có backoff.

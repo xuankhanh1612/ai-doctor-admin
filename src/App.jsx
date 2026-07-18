@@ -54,7 +54,6 @@ import My3DAssetPanel from './components/My3DAssetPanel.jsx'
 import TwoDTo3DAssetPanel from './components/TwoDTo3DAssetPanel.jsx'
 import XyzCameraAnglePanel from './components/XyzCameraAnglePanel.jsx'
 import CameraAngle3DStudioPanel from './components/CameraAngle3DStudioPanel.jsx'
-import MyAIAvatarPanel from './components/MyAIAvatarPanel.jsx'
 import Create3DVideoFrom2DPanel from './components/Create3DVideoFrom2DPanel.jsx'
 import OrganConnectionPanel from './components/OrganConnectionPanel.jsx'
 import ChatHistoryPanel from './components/ChatHistoryPanel.jsx'
@@ -208,7 +207,6 @@ export default function App() {
     avatarCreator: 'Tạo Avatar',
     make3DModel: 'Make 3D Model',
     my3dAsset: 'My 3D Asset',
-    myAiAvatar: 'My AI Avatar',
     create3DVideoFrom2D: 'Create 3D Video From 2D',
   }
 
@@ -506,10 +504,6 @@ export default function App() {
               />
             )}
             {active === 'profile'   && <UserProfilePanel />}
-            {active === 'myAiAvatar' && user?.isAdmin && <MyAIAvatarPanel />}
-            {active === 'myAiAvatar' && !user?.isAdmin && (
-              <div style={{ padding: 40, textAlign: 'center', color: '#ff5252' }}>🔒 Admin only</div>
-            )}
             {active === 'create3DVideoFrom2D' && user?.isAdmin && <Create3DVideoFrom2DPanel />}
             {active === 'create3DVideoFrom2D' && !user?.isAdmin && (
               <div style={{ padding: 40, textAlign: 'center', color: '#ff5252' }}>🔒 Admin only</div>
