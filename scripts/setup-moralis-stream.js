@@ -2,7 +2,7 @@
 import fetch from 'node-fetch';
 
 const MORALIS_API_KEY = "vM7xza5AGzWH4ugv4vDQsXrPAYuP9gred2lNE7BJnKwB4D2QNuNs2Eso6Zk5pUMT"; 
-const WEBHOOK_URL = "https://hien-mau-nhan-van.vercel.app/api/moralis-webhook"; // Thay bằng domain Vercel thật của bồ
+const WEBHOOK_URL = "https://hien-mau-nhan-van.vercel.app/api/moralis"; // Thay bằng domain Vercel thật của bồ
 const CONTRACT_ADDRESS = "0x44f787D670Ff4Ef65334D6637960bb7Fe5E1231c";
 
 // Cấu hình ABI sự kiện để Moralis tự động giải mã hex sang dữ liệu chữ và số
