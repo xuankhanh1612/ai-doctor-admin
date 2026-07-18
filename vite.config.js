@@ -2,40 +2,7 @@ import { resolve } from 'node:path'
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import { runInbodyOcr } from './api/_lib/inbodyOcr.js'
-import { lamGenerateHandler } from './api/lam-generate.js'
 import { wanImageToVideoHandler } from './api/wan-image-to-video.js'
-
-// Plugin dev-server: chạy /api/lam-generate THẬT ngay trong `npm run dev`.
-// Cần middleware riêng vì proxy '/api' chung ở dưới forward sang backend
-// FastAPI khác (ai-doctor-engine.vercel.app) — backend đó không có route
-// này, nên nếu để lọt xuống proxy chung sẽ không bao giờ chạy đúng code
-// mới ở api/lam-generate.js lúc dev local (chỉ hoạt động đúng khi đã
-// deploy lên Vercel, nơi file này tự thành serverless function).
-function lamGenerateDevMiddleware() {
-  return {
-    name: 'lam-generate-dev-middleware',
-    configureServer(server) {
-      server.middlewares.use('/api/lam-generate', (req, res) => {
-        // Adapt Vite's plain (req,res) to the minimal req.body / res.status().json() shape lamGenerateHandler expects
-        const wrappedRes = res
-        wrappedRes.status = (code) => { res.statusCode = code; return wrappedRes }
-        wrappedRes.json = (obj) => {
-          res.setHeader('Content-Type', 'application/json')
-          res.end(JSON.stringify(obj))
-          return wrappedRes
-        }
-        wrappedRes.end = wrappedRes.end || (() => res.end())
-        lamGenerateHandler(req, wrappedRes).catch((err) => {
-          console.error('[lam-generate-dev-middleware]', err)
-          res.statusCode = 500
-          res.setHeader('Content-Type', 'application/json')
-          res.end(JSON.stringify({ error: err?.message || 'Internal error' }))
-        })
-      })
-    },
-  }
-}
-
 
 function wanImageToVideoDevMiddleware() {
   return {
@@ -112,7 +79,7 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
 
   return {
-    plugins: [react(), inbodyOcrDevMiddleware(env), lamGenerateDevMiddleware(), wanImageToVideoDevMiddleware()],
+    plugins: [react(), inbodyOcrDevMiddleware(env), wanImageToVideoDevMiddleware()],
     // Include .wasm so Vite processes `?url` imports from node_modules/@mediapipe
     assetsInclude: ['**/*.wasm', '**/*.PNG', '**/*.JPG', '**/*.JPEG', '**/*.HEIC'],
     build: {

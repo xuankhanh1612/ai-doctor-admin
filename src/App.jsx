@@ -56,7 +56,6 @@ import XyzCameraAnglePanel from './components/XyzCameraAnglePanel.jsx'
 import CameraAngle3DStudioPanel from './components/CameraAngle3DStudioPanel.jsx'
 import MyAIAvatarPanel from './components/MyAIAvatarPanel.jsx'
 import Create3DVideoFrom2DPanel from './components/Create3DVideoFrom2DPanel.jsx'
-import MyAIAvatarLAMPanel from './components/MyAIAvatarLAMPanel.jsx'
 import OrganConnectionPanel from './components/OrganConnectionPanel.jsx'
 import ChatHistoryPanel from './components/ChatHistoryPanel.jsx'
 import PatientReflectPanel from './components/PatientReflectPanel.jsx'
@@ -211,7 +210,6 @@ export default function App() {
     my3dAsset: 'My 3D Asset',
     myAiAvatar: 'My AI Avatar',
     create3DVideoFrom2D: 'Create 3D Video From 2D',
-    myAiAvatarLam: 'My AI Avatar (LAM)',
   }
 
   const navigateToRecord = (member) => { setSelectedMember(member); setActive('record') }
@@ -514,10 +512,6 @@ export default function App() {
             )}
             {active === 'create3DVideoFrom2D' && user?.isAdmin && <Create3DVideoFrom2DPanel />}
             {active === 'create3DVideoFrom2D' && !user?.isAdmin && (
-              <div style={{ padding: 40, textAlign: 'center', color: '#ff5252' }}>🔒 Admin only</div>
-            )}
-            {active === 'myAiAvatarLam' && user?.isAdmin && <MyAIAvatarLAMPanel />}
-            {active === 'myAiAvatarLam' && !user?.isAdmin && (
               <div style={{ padding: 40, textAlign: 'center', color: '#ff5252' }}>🔒 Admin only</div>
             )}
             {active === 'avatarCreator' && <AvatarCreatorPanel />}
