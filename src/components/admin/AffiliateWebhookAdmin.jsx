@@ -269,7 +269,6 @@ export default function AffiliateWebhookAdmin() {
     setTimeout(() => setCopiedType(''), 2000);
   };
 
-  // LOGIC BỘ LỌC ĐỘNG
   const filteredRequestLogs = requestLogs.filter(log => {
     const diffMs = Date.now() - log.timestamp;
     if (selectedTimeFilter === '5min' && diffMs > 5 * 60 * 1000) return false;
@@ -389,6 +388,95 @@ export default function AffiliateWebhookAdmin() {
           <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 font-mono text-xs text-blue-400 h-52 overflow-y-auto custom-scrollbar">
             {rawRpcResponse ? <pre>{JSON.stringify(rawRpcResponse, null, 2)}</pre> : <span className="text-slate-600 block text-center pt-20">Đang đợi chạy request...</span>}
           </div>
+        </div>
+      </div>
+
+      {/* ĐÃ BỔ SUNG: ALCHEMY ADVANCED EXPLORER VISUALIZER BẢNG ĐIỆN TỬ FULL-WIDTH */}
+      <div className="border border-slate-800 bg-slate-900 rounded-2xl overflow-hidden shadow-xl">
+        <div className="bg-slate-950/50 border-b border-slate-800 px-4 py-3 text-xs font-bold uppercase text-slate-300 flex items-center justify-between">
+          <div className="flex items-center gap-2"><Database className="w-4 h-4 text-blue-400" /> Alchemy Sandbox Tracker Visualizer</div>
+          <span className="text-[11px] text-slate-500 font-mono">Method: {selectedRpcMethod}</span>
+        </div>
+        <div className="overflow-x-auto min-h-[160px]">
+          {rawRpcResponse?.result ? (
+            <>
+              {/* Trường hợp 1: Kết quả là danh sách Transfers từ alchemy_getAssetTransfers */}
+              {selectedRpcMethod === 'alchemy_getAssetTransfers' && Array.isArray(rawRpcResponse.result.transfers) ? (
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead className="bg-slate-950 border-b border-slate-800 text-slate-400">
+                    <tr>
+                      <th className="p-3">Tx Hash</th>
+                      <th className="p-3">Block</th>
+                      <th className="p-3">From</th>
+                      <th className="p-3 text-center">Dir</th>
+                      <th className="p-3">To</th>
+                      <th className="p-3">Category</th>
+                      <th className="p-3 text-right">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800 text-[13px]">
+                    {rawRpcResponse.result.transfers.map((tx, idx) => (
+                      <tr key={idx} className="hover:bg-slate-800/40 transition-colors">
+                        <td className="p-3 font-mono text-blue-400 truncate max-w-[120px]"><span title={tx.hash}>{shortenAddress(tx.hash)}</span></td>
+                        <td className="p-3 font-mono text-slate-300">{parseInt(tx.blockNum, 16) || tx.blockNum}</td>
+                        <td className="p-3 font-mono text-slate-400">{shortenAddress(tx.from)}</td>
+                        <td className="p-3 text-center">
+                          <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${tx.to?.toLowerCase() === customAddress.toLowerCase() ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'}`}>
+                            {tx.to?.toLowerCase() === customAddress.toLowerCase() ? 'IN' : 'OUT'}
+                          </span>
+                        </td>
+                        <td className="p-3 font-mono text-slate-400">{shortenAddress(tx.to)}</td>
+                        <td className="p-3 text-purple-400 uppercase font-semibold text-[11px]">[{tx.category}]</td>
+                        <td className="p-3 text-right font-bold text-slate-100">{tx.value} <span className="text-xs font-normal text-slate-400">{tx.asset}</span></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : selectedRpcMethod === 'eth_getLogs' && Array.isArray(rawRpcResponse.result) ? (
+                /* Trường hợp 2: Kết quả từ eth_getLogs */
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead className="bg-slate-950 border-b border-slate-800 text-slate-400">
+                    <tr>
+                      <th className="p-3">Tx Hash</th>
+                      <th className="p-3">Block Hex</th>
+                      <th className="p-3">Log Index</th>
+                      <th className="p-3">Contract emitter</th>
+                      <th className="p-3">Topic [0] (Event Sig)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800 text-[13px] font-mono">
+                    {rawRpcResponse.result.map((log, idx) => (
+                      <tr key={idx} className="hover:bg-slate-800/40 transition-colors">
+                        <td className="p-3 text-blue-400">{shortenAddress(log.transactionHash)}</td>
+                        <td className="p-3 text-slate-300">{log.blockNumber}</td>
+                        <td className="p-3 text-slate-400">{log.logIndex}</td>
+                        <td className="p-3 text-emerald-400">{shortenAddress(log.address)}</td>
+                        <td className="p-3 text-purple-400 truncate max-w-[200px]" title={log.topics?.[0]}>{shortenAddress(log.topics?.[0])}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : selectedRpcMethod.startsWith('pm_') && rawRpcResponse.result.paymasterAndData ? (
+                /* Trường hợp 3: Khối Account Abstraction Paymaster Approval Badge */
+                <div className="p-6 flex items-center justify-between bg-purple-950/10 border-l-4 border-l-purple-500">
+                  <div className="space-y-1">
+                    <div className="text-purple-400 font-bold text-sm flex items-center gap-1.5">
+                      <ShieldCheck className="w-4 h-4" /> BUNDLER & PAYMASTER VALIDATION SUCCESS
+                    </div>
+                    <div className="text-xs text-slate-400 max-w-xl leading-relaxed">
+                      Alchemy Gas Policy đã ký duyệt hợp lệ cho UserOperation. Mã hóa chữ ký tài trợ Gas dưới đây đã sẵn sàng để tích hợp vào Engine:
+                    </div>
+                    <div className="bg-slate-950 border border-slate-800 p-2.5 rounded-lg text-xs font-mono text-pink-400 truncate max-w-xl mt-3 select-all">{rawRpcResponse.result.paymasterAndData}</div>
+                  </div>
+                  <span className="bg-purple-500/10 text-purple-400 text-xs px-3 py-1 border border-purple-500/20 font-bold uppercase rounded-xl">ERC-4337 PASS</span>
+                </div>
+              ) : (
+                <div className="text-slate-500 p-6 text-center">Yêu cầu đã thực thi thành công nhưng phương thức này không hỗ trợ hiển thị dạng bảng grid. Vui lòng xem kết quả Json thô phía trên.</div>
+              )}
+            </>
+          ) : (
+            <div className="text-slate-600 text-center py-12 font-medium"><Terminal className="w-8 h-8 mx-auto mb-1 opacity-40 animate-pulse" />Bấm "Run Code" để tải luồng dữ liệu thám mã chuỗi khối lên bảng Visualizer.</div>
+          )}
         </div>
       </div>
 
