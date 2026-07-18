@@ -21,7 +21,6 @@ import { privateKeyToAccount } from 'viem/accounts';
 
 // Các URL cấu hình từ .env
 const PIMLICO_URL = import.meta.env.VITE_PIMLICO_BUNDLER_URL || "https://api.pimlico.io/v2/97/rpc?apikey=VITE_YOUR_PIMLICO_API_KEY";
-const BICONOMY_URL = import.meta.env.VITE_BICONOMY_BUNDLER_URL || "https://bundler.biconomy.io/api/v2/97/YOUR_API_KEY";
 const ALCHEMY_URL = import.meta.env.VITE_ALCHEMY_BUNDLER_URL || "https://bnbsmartchain-testnet.g.alchemy.com/v2/VITE_YOUR_ALCHEMY_API_KEY";
 
 const PAYMASTER_ADDRESS = import.meta.env.VITE_PAYMASTER_CONTRACT_ADDRESS || "0x177858e3450ff286E7d301100363567A555E435f";
@@ -35,7 +34,6 @@ const publicClient = createPublicClient({
 // Danh sách Bundler cho Dropdown
 const BUNDLER_OPTIONS = {
   pimlico: { name: 'Pimlico (Default)', url: PIMLICO_URL },
-  biconomy: { name: 'Biconomy (Custom PM)', url: BICONOMY_URL },
   alchemy: { name: 'Alchemy (Custom PM)', url: ALCHEMY_URL }
 };
 
