@@ -1,6 +1,6 @@
 {
   "functions": {
-    "api/lam-generate.js": {
+    "api/wan-image-to-video.js": {
       "maxDuration": 60
     }
   },
