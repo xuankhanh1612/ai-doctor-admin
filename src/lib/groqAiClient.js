@@ -74,15 +74,27 @@ export async function callGroqChat(messages, systemPrompt, { maxTokens = 1024, t
 export function useVoiceInput(onTranscript, lang = 'vi') {
   const [recording, setRecording] = useState(false)
   const [transcribing, setTranscribing] = useState(false)
+  const [error, setError] = useState('')
   const mediaRecorderRef = useRef(null)
   const chunksRef = useRef([])
   const recordingStartedAtRef = useRef(0)
   const voiceStatsRef = useRef({ activeFrames: 0, peakRms: 0, sampledFrames: 0 })
   const silenceMonitorRef = useRef(null)
+  const onTranscriptRef = useRef(onTranscript)
+
+  useEffect(() => {
+    onTranscriptRef.current = onTranscript
+  }, [onTranscript])
 
   const start = useCallback(async () => {
     if (recording || transcribing) return
     try {
+      setError('')
+      if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+        throw new Error(lang === 'vi'
+          ? 'Trình duyệt này chưa hỗ trợ ghi âm trực tiếp.'
+          : 'This browser does not support direct voice recording.')
+      }
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
         ? 'audio/webm;codecs=opus'
@@ -143,10 +155,14 @@ export function useVoiceInput(onTranscript, lang = 'vi') {
           formData.append('language', lang === 'vi' ? 'vi' : 'en')
           const res = await fetch('/api/groq-whisper', { method: 'POST', body: formData })
           const data = await res.json()
+          if (!res.ok) throw new Error(data?.error?.message || data?.error || `Whisper API error: ${res.status}`)
           const transcript = data?.text?.trim()
-          if (transcript && !isKnownWhisperSilenceHallucination(transcript)) onTranscript(transcript)
+          if (transcript && !isKnownWhisperSilenceHallucination(transcript)) onTranscriptRef.current?.(transcript)
         } catch (err) {
           console.error('[Whisper STT] error:', err)
+          setError(lang === 'vi'
+            ? 'Tôi chưa nghe rõ hoặc chưa chuyển giọng nói thành chữ được. Vui lòng thử lại.'
+            : 'I could not hear clearly or transcribe your voice. Please try again.')
         } finally {
           setTranscribing(false)
         }
@@ -156,8 +172,11 @@ export function useVoiceInput(onTranscript, lang = 'vi') {
       setRecording(true)
     } catch (err) {
       console.error('[Whisper STT] mic error:', err)
+      setRecording(false)
+      setTranscribing(false)
+      setError(err?.message || (lang === 'vi' ? 'Không truy cập được microphone.' : 'Could not access the microphone.'))
     }
-  }, [recording, transcribing, lang, onTranscript])
+  }, [recording, transcribing, lang])
 
   const stop = useCallback(() => {
     if (mediaRecorderRef.current?.state === 'recording') {
@@ -177,7 +196,7 @@ export function useVoiceInput(onTranscript, lang = 'vi') {
     return () => window.removeEventListener(GLOBAL_AUDIO_STOP_EVENT, handleGlobalStop)
   }, [stop])
 
-  return { recording, transcribing, toggle }
+  return { recording, transcribing, toggle, error }
 }
 
 // ─── TTS (Text-to-Speech) ────────────────────────────────────────────────────

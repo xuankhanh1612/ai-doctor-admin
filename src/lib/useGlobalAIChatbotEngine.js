@@ -116,7 +116,7 @@ export function useGlobalAIChatbotEngine({ userKey, activePanelLabel, isVi, onMe
     }
     setInput(prev => (prev ? `${prev} ${text}` : text))
   }
-  const { recording, transcribing, toggle: toggleMic } = useVoiceInput(handleTranscript, isVi ? 'vi' : 'en')
+  const { recording, transcribing, toggle: toggleMic, error: voiceError } = useVoiceInput(handleTranscript, isVi ? 'vi' : 'en')
 
   // ID riêng cho mỗi instance hook (mỗi nơi dùng hook này) để tự phân biệt sự kiện do
   // chính mình phát ra (bỏ qua) với sự kiện do nơi khác phát ra (cần cập nhật theo).
@@ -399,7 +399,7 @@ export function useGlobalAIChatbotEngine({ userKey, activePanelLabel, isVi, onMe
     speaking, speak, stop: stopSpeaking,
     speechPaused, pauseSpeaking, resumeSpeaking, replaySpeaking,
     speechVolume, setSpeechVolume, speechRate, setSpeechRate, hasSpeechReplay,
-    recording, transcribing, toggleMic,
+    recording, transcribing, toggleMic, voiceError,
   }
 }
 

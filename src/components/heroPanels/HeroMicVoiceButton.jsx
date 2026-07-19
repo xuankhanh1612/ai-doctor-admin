@@ -42,7 +42,7 @@ export default function HeroMicVoiceButton({
     busy,
     speaking, stop: stopSpeaking, speechPaused, pauseSpeaking, resumeSpeaking, replaySpeaking,
     speechVolume, setSpeechVolume, speechRate, setSpeechRate, hasSpeechReplay,
-    recording, transcribing, toggleMic,
+    recording, transcribing, toggleMic, voiceError,
   } = useGlobalAIChatbotEngine({ userKey, activePanelLabel, isVi, audioElementRef, autoSubmitVoice: true });
 
   // Khách (guest) cần có 1 phiên anonymous thật (uuid) TRƯỚC khi ghi âm, để
@@ -117,6 +117,12 @@ export default function HeroMicVoiceButton({
         <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full shadow-sm ${isDark ? 'bg-white/10 text-gray-100' : 'bg-white text-gray-700 border border-gray-100'}`}>
           <span>{icon}</span>
           <span>{label}</span>
+        </span>
+      )}
+
+      {voiceError && !isActive && (
+        <span className={`max-w-[360px] rounded-full px-3 py-1.5 text-center text-xs font-semibold shadow-sm ${isDark ? 'bg-red-500/10 text-red-200 border border-red-400/20' : 'bg-red-50 text-red-700 border border-red-100'}`}>
+          {voiceError}
         </span>
       )}
 
