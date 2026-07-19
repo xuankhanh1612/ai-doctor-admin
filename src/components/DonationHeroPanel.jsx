@@ -123,10 +123,9 @@ const TEXT = {
 
 export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onBack, onLogin }) {
   const [currentLevel] = useState(1);
-  // Popup xem trước bản đồ giải phẫu (thẻ Cấp 1 "Người Tìm Hiểu"): trước đây
-  // chỉ dùng CSS group-hover thuần (chỉ hoạt động với chuột trên desktop).
-  // Chuyển sang điều khiển bằng state để hỗ trợ cả thiết bị cảm ứng (tap để
-  // mở/đóng) lẫn desktop (vẫn giữ hover để mượt như trước).
+  // Popup xem trước bản đồ giải phẫu (thẻ Cấp 1 "Người Tìm Hiểu") chỉ được
+  // mở khi người dùng chủ động click/tap hoặc nhấn Enter/Space. Không dùng
+  // hover để mở popup, tránh iframe/game chạy ngầm khi người dùng chỉ rê chuột.
   const [showAnatomyPreview, setShowAnatomyPreview] = useState(false);
   const [showBodyProtectionPreview, setShowBodyProtectionPreview] = useState(false);
   const [showCaptainKhanhPreview, setShowCaptainKhanhPreview] = useState(false);
@@ -402,7 +401,7 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onBac
                   - Mở/đóng khi bấm vào icon (onClick), và tự đóng khi chạm/click
                     ra ngoài (xem useEffect pointerdown ở trên).
                   Định vị tuyệt đối phía trên thẻ, căn giữa theo chiều ngang. */}
-                  {isLevelOne && (
+                  {isLevelOne && showAnatomyPreview && (
                     <div
                       className={`
                         fixed left-2 right-2 bottom-24 mb-0 w-auto translate-x-0
@@ -410,10 +409,7 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onBac
                         sm:w-[min(520px,calc(100vw-2rem))]
                         md:w-[min(580px,calc(100vw-3rem))]
                         lg:w-[min(640px,calc(100vw-4rem))]
-                        transition-all duration-200 ease-out origin-bottom z-30
-                        ${showAnatomyPreview
-                          ? 'opacity-100 scale-100 pointer-events-auto'
-                          : 'opacity-0 scale-95 pointer-events-none'}
+                        transition-all duration-200 ease-out origin-bottom z-30 opacity-100 scale-100 pointer-events-auto
                       `}
                     >
                       <div className={`relative rounded-2xl border p-3 shadow-2xl ${isDark ? 'border-emerald-400/20 bg-[#0f172a]' : 'border-emerald-100 bg-white'}`}>
@@ -433,7 +429,7 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onBac
 
                   {/* Popup xem trước game bảo vệ cơ thể — gắn vào thẻ Cấp 2
                   "Người Quan Tâm". Mở/đóng khi bấm icon, tương tự popup Cấp 1. */}
-                  {isLevelTwo && (
+                  {isLevelTwo && showBodyProtectionPreview && (
                     <div
                       className={`
                         fixed left-2 right-2 bottom-24 mb-0 w-auto translate-x-0
@@ -441,10 +437,7 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onBac
                         sm:w-[min(720px,calc(100vw-2rem))]
                         md:w-[min(820px,calc(100vw-3rem))]
                         lg:w-[min(920px,calc(100vw-4rem))]
-                        transition-all duration-200 ease-out origin-bottom z-30
-                        ${showBodyProtectionPreview
-                          ? 'opacity-100 scale-100 pointer-events-auto'
-                          : 'opacity-0 scale-95 pointer-events-none'}
+                        transition-all duration-200 ease-out origin-bottom z-30 opacity-100 scale-100 pointer-events-auto
                       `}
                     >
                       <div className={`relative rounded-2xl border p-3 shadow-2xl ${isDark ? 'border-emerald-400/20 bg-[#0f172a]' : 'border-emerald-100 bg-white'}`}>
@@ -470,7 +463,7 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onBac
 
                   {/* Popup iframe Captain Khánh Game — gắn vào thẻ Cấp 3.
                   Mở/đóng khi bấm icon. */}
-                  {isLevelThree && (
+                  {isLevelThree && showCaptainKhanhPreview && (
                     <div
                       className={`
                         fixed left-2 right-2 bottom-24 mb-0 w-auto translate-x-0
@@ -478,10 +471,7 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onBac
                         sm:w-[min(720px,calc(100vw-2rem))]
                         md:w-[min(820px,calc(100vw-3rem))]
                         lg:w-[min(920px,calc(100vw-4rem))]
-                        transition-all duration-200 ease-out origin-bottom z-30
-                        ${showCaptainKhanhPreview
-                          ? 'opacity-100 scale-100 pointer-events-auto'
-                          : 'opacity-0 scale-95 pointer-events-none'}
+                        transition-all duration-200 ease-out origin-bottom z-30 opacity-100 scale-100 pointer-events-auto
                       `}
                     >
                       <div className={`relative rounded-2xl border p-3 shadow-2xl ${isDark ? 'border-sky-400/20 bg-[#0f172a]' : 'border-sky-100 bg-white'}`}>
