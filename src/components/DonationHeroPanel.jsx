@@ -7,7 +7,6 @@ import HeroMicVoiceButton from './heroPanels/HeroMicVoiceButton.jsx';
 import HeroPopupCornerCloseButtons from './heroPanels/HeroPopupCornerCloseButtons.jsx';
 import { getOrganById, lowerFirst } from '../data/organs.js';
 import BackButton from './common/BackButton.jsx';
-import ExploreButton from './common/ExploreButton.jsx';
 import AnatomyHoverOverlay from './AnatomyHoverOverlay.jsx';
 
 // ============================================================================
@@ -49,7 +48,6 @@ const TEXT = {
     knowledgeSub: (organLabel) => `Tôi muốn tìm hiểu về hiến tặng ${lowerFirst(organLabel)}`,
     knowledgeSubGeneral: 'Tôi muốn tìm hiểu kiến thức y khoa tổng quát',
     organBadgePrefix: 'Đang tìm hiểu về',
-    exploreBtn: 'Khám phá ngay',
     journeyTitle: 'Hành trình Siêu Anh Hùng',
     levelLabel: 'Cấp',
     current: 'Đang ở đây',
@@ -94,7 +92,6 @@ const TEXT = {
     knowledgeSub: (organLabel) => `I want to learn about ${lowerFirst(organLabel)} donation`,
     knowledgeSubGeneral: 'I want to learn general medical knowledge',
     organBadgePrefix: 'Currently exploring',
-    exploreBtn: 'Explore now',
     journeyTitle: 'Superhero Journey',
     levelLabel: 'Level',
     current: 'You are here',
@@ -261,14 +258,6 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onBac
             )}
           </div>
 
-          {/* CTA nổi bật kiểu "Sci-Fi / Hologram" — dẫn cùng hành động với 2 nút
-          "Hiến tặng ngay" / "Nâng cao kiến thức" bên dưới (onEnterAction cho
-          khách, không gắn onClick cho member vì chưa có trang đích riêng). */}
-          <ExploreButton
-            text={t.exploreBtn}
-            onClick={handleEnterAction}
-            className="mt-7"
-          />
         </div>
 
         {/* 3 lối vào nhanh: trái = Hiến tặng ngay, giữa = mic, phải = Nâng cao kiến thức */}
