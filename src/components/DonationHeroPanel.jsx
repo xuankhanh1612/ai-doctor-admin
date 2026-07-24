@@ -37,9 +37,26 @@ const HERO_ZONE_LAYOUT = [
   { x: 12, y: 23, z: 88, color: '#c084fc' },
 ];
 
-function buildHeroZones(isEn) {
+
+const HERO_ZONE_HUMAN_LAYOUT = {
+  giacmac: { x: 50, y: 10, z: 108 },
+  phoi: { x: 50, y: 27, z: 92 },
+  tim: { x: 50, y: 38, z: 104 },
+  gan: { x: 50, y: 49, z: 82 },
+  than: { x: 50, y: 60, z: 76 },
+  tuy: { x: 50, y: 69, z: 70 },
+  ruot: { x: 50, y: 80, z: 64 },
+  xuong: { x: 26, y: 57, z: 54 },
+  da: { x: 74, y: 57, z: 54 },
+  mauhiem: { x: 26, y: 40, z: 66 },
+  'all-after-death': { x: 74, y: 40, z: 66 },
+};
+
+function buildHeroZones(isEn, stackAsHuman = false) {
   return ORGANS.map((organ, index) => {
-    const layout = HERO_ZONE_LAYOUT[index % HERO_ZONE_LAYOUT.length];
+    const layout = stackAsHuman
+      ? { ...HERO_ZONE_LAYOUT[index % HERO_ZONE_LAYOUT.length], ...(HERO_ZONE_HUMAN_LAYOUT[organ.id] || {}) }
+      : HERO_ZONE_LAYOUT[index % HERO_ZONE_LAYOUT.length];
     const label = isEn ? organ.en : organ.vi;
     return {
       ...layout,
@@ -166,6 +183,7 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onBac
   const [showHeroZonesPreview, setShowHeroZonesPreview] = useState(false);
   const [selectedHeroZoneId, setSelectedHeroZoneId] = useState(null);
   const [mapTilt, setMapTilt] = useState({ x: 58, y: -18 });
+  const [stackHeroZonesAsHuman, setStackHeroZonesAsHuman] = useState(false);
   const anatomyPreviewRef = useRef(null);
   const bodyProtectionPreviewRef = useRef(null);
   const captainKhanhPreviewRef = useRef(null);
@@ -203,9 +221,10 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onBac
   const t = isEn ? TEXT.en : TEXT.vi;
   const JOURNEY_LEVELS = t.levels;
   const organLabel = isEn ? organ.en : organ.vi;
-  const HERO_ZONES = buildHeroZones(isEn);
+  const HERO_ZONES = buildHeroZones(isEn, stackHeroZonesAsHuman);
   const selectedHeroZone = HERO_ZONES.find((zone) => zone.id === (selectedHeroZoneId || organ.id)) || HERO_ZONES[0];
   const heroZonePaths = HERO_ZONES.slice(0, -1).map((zone, index) => ({ from: zone, to: HERO_ZONES[index + 1] }));
+  const heroZoneStackToggleLabel = isEn ? 'Human vertical organ stack' : 'Chồng nội tạng theo cột cơ thể';
   // Nếu ở màn hình trước người dùng chọn "Tôi chưa muốn hiến tặng"
   // (role === 'notDonate') HOẶC chọn thẻ "Rèn luyện sức khỏe"
   // (role === 'train'), trang này không nên nói "tìm hiểu hiến tặng
@@ -231,11 +250,20 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onBac
 
   const renderHeroZonesMap = () => (
     <section className={`overflow-hidden rounded-[28px] border shadow-2xl ${isDark ? 'border-cyan-400/20 bg-slate-950/70 shadow-cyan-950/20' : 'border-cyan-100 bg-white/80 shadow-slate-200/70'}`}>
-      <div className="grid gap-5 p-5 md:grid-cols-[minmax(0,1.25fr)_minmax(260px,0.75fr)] md:p-6">
-        <div>
-          <p className="m-0 text-xs font-extrabold uppercase tracking-[0.16em] text-cyan-500">HERO_ZONES</p>
-          <h2 className={`mt-2 text-2xl font-black leading-tight sm:text-3xl ${isDark ? 'text-gray-100' : 'text-slate-900'}`}>{t.heroZonesPreviewTitle}</h2>
-          <p className={`mt-2 text-sm leading-6 ${isDark ? 'text-gray-300' : 'text-slate-600'}`}>{isEn ? 'Choose an organ zone to focus the anatomy preview before speaking with the hero assistant.' : 'Chọn từng vùng nội tạng để bản đồ giải phẫu focus đúng cơ quan trước khi trò chuyện với trợ lý anh hùng.'}</p>
+      <div className="grid gap-5 p-5 md:grid-cols-[minmax(0,1fr)_minmax(260px,0.75fr)] md:p-6">
+        <div className={`flex items-center justify-between gap-3 rounded-3xl border p-4 ${isDark ? 'border-white/10 bg-white/5' : 'border-cyan-100 bg-white/80'}`}>
+          <div className="text-left">
+            <p className={`m-0 text-[11px] font-bold uppercase tracking-[0.14em] ${isDark ? 'text-cyan-300' : 'text-cyan-700'}`}>{heroZoneStackToggleLabel}</p>
+            <p className={`mt-1 text-xs ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>{isEn ? 'Arrange organ buttons like a friendly body silhouette.' : 'Sắp xếp các nút cơ quan thành dáng người thân thiện.'}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setStackHeroZonesAsHuman((prev) => !prev)}
+            aria-pressed={stackHeroZonesAsHuman}
+            className={`relative h-8 w-14 flex-shrink-0 rounded-full border transition-colors ${stackHeroZonesAsHuman ? 'border-emerald-300 bg-emerald-500' : isDark ? 'border-white/10 bg-slate-800' : 'border-slate-200 bg-slate-100'}`}
+          >
+            <span className={`absolute top-1 h-6 w-6 rounded-full bg-white shadow-md transition-transform ${stackHeroZonesAsHuman ? 'translate-x-6' : 'translate-x-1'}`} />
+          </button>
         </div>
         <div className={`rounded-3xl border p-4 ${isDark ? 'border-white/10 bg-white/5' : 'border-cyan-100 bg-white/80'}`}>
           <div className="text-4xl">{selectedHeroZone.icon}</div>
@@ -318,7 +346,7 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onBac
               }} />
               <span className="text-5xl relative">🧑‍⚕️</span>
             </div>
-            <div className="absolute -bottom-7 left-1/2 z-10 -translate-x-1/2">
+            <div className="absolute left-[calc(100%-10px)] top-1/2 z-10 -translate-y-1/2">
               <HeroMicVoiceButton
                 mode={mode}
                 activePanelLabel="Anh Hùng Hiến Tặng"
