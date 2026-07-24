@@ -4,12 +4,12 @@
 // Hùng") và DonationHeroPanel ("Anh Hùng Hiến Tặng") — để tên + emoji hiển
 // thị của 1 cơ quan luôn khớp nhau giữa 2 màn hình, dù người dùng chọn ở
 // đâu. `id` phải khớp với giá trị lưu vào IndexedDB (useHeroSelection.js).
-// Mặc định ban đầu khi chưa ai chọn gì là 'gan' (Gan/Liver).
+// Mặc định ban đầu khi chưa ai chọn gì là 'mauhiem' (Hiến Máu Nhân Văn / Máu Hiếm).
 // ============================================================================
 
-export const DEFAULT_ORGAN_ID = 'gan';
+export const DEFAULT_ORGAN_ID = 'mauhiem';
 
-const ORGANS = [
+export const ORGANS = [
   { id: 'mauhiem', vi: 'Hiến Máu Nhân Văn / Máu Hiếm', en: 'Blood Donation / Rare Blood', emoji: '🩸', anatomyAnnotationId: 'blood-vessels' },
   { id: 'gan', vi: 'Gan', en: 'Liver', emoji: '🫘', anatomyAnnotationId: 'liver' },
   { id: 'tim', vi: 'Tim', en: 'Heart', emoji: '❤️', anatomyAnnotationId: 'heart' },
