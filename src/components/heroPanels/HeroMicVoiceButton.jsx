@@ -32,6 +32,7 @@ export default function HeroMicVoiceButton({
   buttonSize = 64,
   iconSize = 24,
   holoEffect = false,
+  compact = false,
 }) {
   const { user, loginAnonymous } = useAuth();
   const userKey = user?.uuid || null;
@@ -71,7 +72,7 @@ export default function HeroMicVoiceButton({
           : null;
 
   return (
-    <div className="flex flex-col items-center justify-center gap-2 py-4">
+    <div className={`flex flex-col items-center justify-center gap-2 ${compact ? 'py-0' : 'py-4'}`}>
       <audio ref={audioElementRef} preload="none" style={{ display: 'none' }} />
       <div className={holoEffect ? 'relative group inline-flex items-center justify-center' : ''}>
         {holoEffect && !isActive && (
@@ -107,7 +108,7 @@ export default function HeroMicVoiceButton({
 
       {/* Label tĩnh để 2 trang Anh Hùng cùng hiển thị lời nhắc dưới micro. */}
       {!isActive && (
-        <span className={`font-bold ${isDark ? 'text-gray-100' : 'text-[#16241c]'}`}>
+        <span className={`${compact ? 'rounded-full px-2 py-0.5 text-[10px] shadow-sm backdrop-blur-sm' : ''} font-bold ${compact ? (isDark ? 'bg-slate-950/80 text-cyan-100' : 'bg-white/90 text-emerald-700') : (isDark ? 'text-gray-100' : 'text-[#16241c]')}`}>
           {isVi ? 'Nhấn để nói' : (micLabel || 'Tap to speak')}
         </span>
       )}

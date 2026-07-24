@@ -101,6 +101,8 @@ const TEXT = {
     bodyProtectionPreviewHint: 'Bấm vào Cấp 2 để xem trước trò chơi',
     captainKhanhPreviewTitle: 'Captain Khánh Game',
     captainKhanhPreviewHint: 'Bấm vào Cấp 3 để mở trò chơi',
+    heroZonesPreviewTitle: 'Bản đồ 3D nội tạng anh hùng',
+    heroZonesPreviewHint: 'Bấm vào Cấp 4 để mở bản đồ HERO_ZONES',
     footer: 'Anh Hùng Hiến Tặng · Cùng nhau lan toả sự sống',
     back: 'Quay lại',
     login: 'Đăng nhập',
@@ -138,6 +140,8 @@ const TEXT = {
     bodyProtectionPreviewHint: 'Click Level 2 to preview the game',
     captainKhanhPreviewTitle: 'Captain Khánh Game',
     captainKhanhPreviewHint: 'Click Level 3 to open the game',
+    heroZonesPreviewTitle: '3D hero organ map',
+    heroZonesPreviewHint: 'Click Level 4 to open HERO_ZONES map',
     footer: 'Donation Hero · Spreading life together',
     back: 'Back',
     login: 'Log in',
@@ -159,16 +163,18 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onBac
   const [showAnatomyPreview, setShowAnatomyPreview] = useState(false);
   const [showBodyProtectionPreview, setShowBodyProtectionPreview] = useState(false);
   const [showCaptainKhanhPreview, setShowCaptainKhanhPreview] = useState(false);
+  const [showHeroZonesPreview, setShowHeroZonesPreview] = useState(false);
   const [selectedHeroZoneId, setSelectedHeroZoneId] = useState(null);
   const [mapTilt, setMapTilt] = useState({ x: 58, y: -18 });
   const anatomyPreviewRef = useRef(null);
   const bodyProtectionPreviewRef = useRef(null);
   const captainKhanhPreviewRef = useRef(null);
+  const heroZonesPreviewRef = useRef(null);
 
   // Trên mobile không có sự kiện "hover ra ngoài" để tự đóng popup, nên cần
   // tự bắt sự kiện chạm/click ra ngoài vùng thẻ Cấp 1/Cấp 2 + popup để đóng lại.
   useEffect(() => {
-    if (!showAnatomyPreview && !showBodyProtectionPreview && !showCaptainKhanhPreview) return;
+    if (!showAnatomyPreview && !showBodyProtectionPreview && !showCaptainKhanhPreview && !showHeroZonesPreview) return;
     const handleOutsideInteraction = (event) => {
       if (anatomyPreviewRef.current && !anatomyPreviewRef.current.contains(event.target)) {
         setShowAnatomyPreview(false);
@@ -179,10 +185,13 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onBac
       if (captainKhanhPreviewRef.current && !captainKhanhPreviewRef.current.contains(event.target)) {
         setShowCaptainKhanhPreview(false);
       }
+      if (heroZonesPreviewRef.current && !heroZonesPreviewRef.current.contains(event.target)) {
+        setShowHeroZonesPreview(false);
+      }
     };
     document.addEventListener('pointerdown', handleOutsideInteraction);
     return () => document.removeEventListener('pointerdown', handleOutsideInteraction);
-  }, [showAnatomyPreview, showBodyProtectionPreview, showCaptainKhanhPreview]);
+  }, [showAnatomyPreview, showBodyProtectionPreview, showCaptainKhanhPreview, showHeroZonesPreview]);
 
   const isGuest = mode === 'guest';
   const { isDark, isEn, toggleTheme, toggleLang } = useHeroPanelPrefs();
@@ -219,6 +228,43 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onBac
     const py = (event.clientY - rect.top) / rect.height - 0.5;
     setMapTilt({ x: 58 - py * 10, y: -18 + px * 14 });
   };
+
+  const renderHeroZonesMap = () => (
+    <section className={`overflow-hidden rounded-[28px] border shadow-2xl ${isDark ? 'border-cyan-400/20 bg-slate-950/70 shadow-cyan-950/20' : 'border-cyan-100 bg-white/80 shadow-slate-200/70'}`}>
+      <div className="grid gap-5 p-5 md:grid-cols-[minmax(0,1.25fr)_minmax(260px,0.75fr)] md:p-6">
+        <div>
+          <p className="m-0 text-xs font-extrabold uppercase tracking-[0.16em] text-cyan-500">HERO_ZONES</p>
+          <h2 className={`mt-2 text-2xl font-black leading-tight sm:text-3xl ${isDark ? 'text-gray-100' : 'text-slate-900'}`}>{t.heroZonesPreviewTitle}</h2>
+          <p className={`mt-2 text-sm leading-6 ${isDark ? 'text-gray-300' : 'text-slate-600'}`}>{isEn ? 'Choose an organ zone to focus the anatomy preview before speaking with the hero assistant.' : 'Chọn từng vùng nội tạng để bản đồ giải phẫu focus đúng cơ quan trước khi trò chuyện với trợ lý anh hùng.'}</p>
+        </div>
+        <div className={`rounded-3xl border p-4 ${isDark ? 'border-white/10 bg-white/5' : 'border-cyan-100 bg-white/80'}`}>
+          <div className="text-4xl">{selectedHeroZone.icon}</div>
+          <h3 className={`mt-2 text-xl font-extrabold ${isDark ? 'text-gray-100' : 'text-slate-900'}`}>{selectedHeroZone.title}</h3>
+          <p className={`mt-1 text-sm leading-6 ${isDark ? 'text-gray-300' : 'text-slate-500'}`}>{selectedHeroZone.subtitle}</p>
+          {selectedHeroZone.anatomyAnnotationId ? (
+            <div className="mt-3 overflow-hidden rounded-2xl border border-white/10 bg-slate-950">
+              <AnatomyHoverOverlay focusAnnotationId={selectedHeroZone.anatomyAnnotationId} showOnlyFocus />
+            </div>
+          ) : (
+            <div className={`mt-3 rounded-2xl border px-4 py-6 text-sm ${isDark ? 'border-white/10 bg-slate-900/70 text-gray-300' : 'border-emerald-100 bg-emerald-50 text-emerald-800'}`}>
+              {isEn ? 'This choice represents all donation opportunities after death.' : 'Lựa chọn này đại diện cho tất cả cơ hội hiến tặng sau khi mất.'}
+            </div>
+          )}
+        </div>
+      </div>
+      <div onPointerMove={handleMapPointerMove} onPointerLeave={() => setMapTilt({ x: 58, y: -18 })} className={`relative mx-5 mb-5 min-h-[460px] overflow-hidden rounded-[28px] border md:mx-6 md:mb-6 ${isDark ? 'border-cyan-400/20 bg-gradient-to-b from-slate-900/90 to-slate-950' : 'border-cyan-100 bg-gradient-to-b from-white/90 to-blue-100/80'}`} style={{ perspective: 1100, boxShadow: 'inset 0 0 90px rgba(14,165,233,0.16)' }}>
+        <div className="absolute inset-[12%_8%]" style={{ transformStyle: 'preserve-3d', transform: `rotateX(${mapTilt.x}deg) rotateZ(${mapTilt.y}deg)`, transition: 'transform 180ms ease-out' }}>
+          <div className="absolute inset-0 rounded-full border-2 border-cyan-300/25 bg-[radial-gradient(circle,rgba(34,211,238,0.2),rgba(16,185,129,0.1)_44%,rgba(14,165,233,0.03)_70%)]" style={{ transform: 'translateZ(-18px)' }} />
+          {heroZonePaths.map((path) => <MapPath key={`${path.from.id}-${path.to.id}`} {...path} />)}
+          {HERO_ZONES.map((zone) => (
+            <button key={zone.id} type="button" onClick={() => setSelectedHeroZoneId(zone.id)} aria-label={zone.title} className="absolute grid h-[74px] w-[74px] -translate-x-1/2 -translate-y-1/2 cursor-pointer place-items-center rounded-3xl text-3xl text-white shadow-2xl transition-transform hover:scale-105 sm:h-[88px] sm:w-[88px]" style={{ left: `${zone.x}%`, top: `${zone.y}%`, transform: `translate(-50%, -50%) translateZ(${zone.z}px)`, border: selectedHeroZone.id === zone.id ? `3px solid ${zone.color}` : '1px solid rgba(255,255,255,0.35)', background: `linear-gradient(145deg, ${zone.color}33, rgba(15,23,42,0.84))`, boxShadow: `0 18px 45px ${zone.color}55` }}>
+              <span style={{ transform: `rotateZ(${-mapTilt.y}deg) rotateX(${-mapTilt.x}deg)` }}>{zone.icon}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
 
   return (
     <div
@@ -262,15 +308,29 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onBac
 
         {/* Avatar trợ lý */}
         <div className="flex flex-col items-center text-center">
-          <div className="relative w-40 h-40 mb-6">
+          <div className="relative mb-10 h-44 w-44">
             <Sparkles className="absolute -top-2 -left-6 text-emerald-400" size={22} />
             <Sparkles className="absolute -bottom-1 -right-5 text-emerald-400" size={16} />
-            <div className="absolute inset-0 rounded-full bg-white shadow-[0_0_0_6px_rgba(255,255,255,0.9),0_0_28px_rgba(16,185,129,0.35)]" />
-            <div className="absolute inset-[6px] rounded-full bg-gradient-to-br from-slate-800 via-indigo-700 to-slate-900 flex items-center justify-center overflow-hidden">
+            <div className="absolute inset-2 rounded-full bg-white shadow-[0_0_0_6px_rgba(255,255,255,0.9),0_0_28px_rgba(16,185,129,0.35)]" />
+            <div className="absolute inset-[14px] rounded-full bg-gradient-to-br from-slate-800 via-indigo-700 to-slate-900 flex items-center justify-center overflow-hidden">
               <div className="absolute inset-0 opacity-40" style={{
                 backgroundImage: 'radial-gradient(circle at 30% 30%, rgba(255,180,80,0.5), transparent 55%), radial-gradient(circle at 70% 70%, rgba(56,189,248,0.5), transparent 55%)'
               }} />
               <span className="text-5xl relative">🧑‍⚕️</span>
+            </div>
+            <div className="absolute -bottom-7 left-1/2 z-10 -translate-x-1/2">
+              <HeroMicVoiceButton
+                mode={mode}
+                activePanelLabel="Anh Hùng Hiến Tặng"
+                isVi={!isEn}
+                isDark={isDark}
+                micLabel={t.micLabel}
+                variant="expanded"
+                buttonSize={88}
+                iconSize={34}
+                holoEffect
+                compact
+              />
             </div>
           </div>
 
@@ -297,57 +357,6 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onBac
 
         </div>
 
-        {/* HERO_ZONES — bản đồ 3D đặt trước phần Micro, đồng bộ đủ cơ quan từ màn chọn role */}
-        <section className={`mt-10 overflow-hidden rounded-[28px] border shadow-2xl ${isDark ? 'border-cyan-400/20 bg-slate-950/70 shadow-cyan-950/20' : 'border-cyan-100 bg-white/80 shadow-slate-200/70'}`}>
-          <div className="grid gap-5 p-5 md:grid-cols-[minmax(0,1.25fr)_minmax(260px,0.75fr)] md:p-6">
-            <div>
-              <p className="m-0 text-xs font-extrabold uppercase tracking-[0.16em] text-cyan-500">HERO_ZONES</p>
-              <h2 className={`mt-2 text-2xl font-black leading-tight sm:text-3xl ${isDark ? 'text-gray-100' : 'text-slate-900'}`}>{isEn ? '3D hero organ map' : 'Bản đồ 3D nội tạng anh hùng'}</h2>
-              <p className={`mt-2 text-sm leading-6 ${isDark ? 'text-gray-300' : 'text-slate-600'}`}>{isEn ? 'Choose an organ zone to focus the anatomy preview before speaking with the hero assistant.' : 'Chọn từng vùng nội tạng để bản đồ giải phẫu focus đúng cơ quan trước khi trò chuyện với trợ lý anh hùng.'}</p>
-            </div>
-            <div className={`rounded-3xl border p-4 ${isDark ? 'border-white/10 bg-white/5' : 'border-cyan-100 bg-white/80'}`}>
-              <div className="text-4xl">{selectedHeroZone.icon}</div>
-              <h3 className={`mt-2 text-xl font-extrabold ${isDark ? 'text-gray-100' : 'text-slate-900'}`}>{selectedHeroZone.title}</h3>
-              <p className={`mt-1 text-sm leading-6 ${isDark ? 'text-gray-300' : 'text-slate-500'}`}>{selectedHeroZone.subtitle}</p>
-              {selectedHeroZone.anatomyAnnotationId ? (
-                <div className="mt-3 overflow-hidden rounded-2xl border border-white/10 bg-slate-950">
-                  <AnatomyHoverOverlay focusAnnotationId={selectedHeroZone.anatomyAnnotationId} showOnlyFocus />
-                </div>
-              ) : (
-                <div className={`mt-3 rounded-2xl border px-4 py-6 text-sm ${isDark ? 'border-white/10 bg-slate-900/70 text-gray-300' : 'border-emerald-100 bg-emerald-50 text-emerald-800'}`}>
-                  {isEn ? 'This choice represents all donation opportunities after death.' : 'Lựa chọn này đại diện cho tất cả cơ hội hiến tặng sau khi mất.'}
-                </div>
-              )}
-            </div>
-          </div>
-          <div onPointerMove={handleMapPointerMove} onPointerLeave={() => setMapTilt({ x: 58, y: -18 })} className={`relative mx-5 mb-5 min-h-[460px] overflow-hidden rounded-[28px] border md:mx-6 md:mb-6 ${isDark ? 'border-cyan-400/20 bg-gradient-to-b from-slate-900/90 to-slate-950' : 'border-cyan-100 bg-gradient-to-b from-white/90 to-blue-100/80'}`} style={{ perspective: 1100, boxShadow: 'inset 0 0 90px rgba(14,165,233,0.16)' }}>
-            <div className="absolute inset-[12%_8%]" style={{ transformStyle: 'preserve-3d', transform: `rotateX(${mapTilt.x}deg) rotateZ(${mapTilt.y}deg)`, transition: 'transform 180ms ease-out' }}>
-              <div className="absolute inset-0 rounded-full border-2 border-cyan-300/25 bg-[radial-gradient(circle,rgba(34,211,238,0.2),rgba(16,185,129,0.1)_44%,rgba(14,165,233,0.03)_70%)]" style={{ transform: 'translateZ(-18px)' }} />
-              {heroZonePaths.map((path) => <MapPath key={`${path.from.id}-${path.to.id}`} {...path} />)}
-              {HERO_ZONES.map((zone) => (
-                <button key={zone.id} type="button" onClick={() => setSelectedHeroZoneId(zone.id)} aria-label={zone.title} className="absolute grid h-[74px] w-[74px] -translate-x-1/2 -translate-y-1/2 cursor-pointer place-items-center rounded-3xl text-3xl text-white shadow-2xl transition-transform hover:scale-105 sm:h-[88px] sm:w-[88px]" style={{ left: `${zone.x}%`, top: `${zone.y}%`, transform: `translate(-50%, -50%) translateZ(${zone.z}px)`, border: selectedHeroZone.id === zone.id ? `3px solid ${zone.color}` : '1px solid rgba(255,255,255,0.35)', background: `linear-gradient(145deg, ${zone.color}33, rgba(15,23,42,0.84))`, boxShadow: `0 18px 45px ${zone.color}55` }}>
-                  <span style={{ transform: `rotateZ(${-mapTilt.y}deg) rotateX(${-mapTilt.x}deg)` }}>{zone.icon}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* Micro: trao đổi thoại trực tiếp NGAY TẠI TRANG NÀY — không mở popup chat */}
-        <div className="mt-10 flex justify-center">
-          <HeroMicVoiceButton
-            mode={mode}
-            activePanelLabel="Anh Hùng Hiến Tặng"
-            isVi={!isEn}
-            isDark={isDark}
-            micLabel={t.micLabel}
-            variant="expanded"
-            buttonSize={144}
-            iconSize={58}
-            holoEffect
-          />
-        </div>
-
         {/* Hành trình siêu anh hùng */}
         <div className="mt-14">
           <div className="flex items-center justify-center gap-3 mb-8">
@@ -363,11 +372,12 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onBac
               const isLevelOne = lvl.level === 1;
               const isLevelTwo = lvl.level === 2;
               const isLevelThree = lvl.level === 3;
-              const isPreviewLevel = isLevelOne || isLevelTwo || isLevelThree;
+              const isLevelFour = lvl.level === 4;
+              const isPreviewLevel = isLevelOne || isLevelTwo || isLevelThree || isLevelFour;
               return (
                 <div
                   key={lvl.level}
-                  ref={isLevelOne ? anatomyPreviewRef : isLevelTwo ? bodyProtectionPreviewRef : isLevelThree ? captainKhanhPreviewRef : undefined}
+                  ref={isLevelOne ? anatomyPreviewRef : isLevelTwo ? bodyProtectionPreviewRef : isLevelThree ? captainKhanhPreviewRef : isLevelFour ? heroZonesPreviewRef : undefined}
                   className={`relative flex flex-col items-center w-[150px] text-center ${isPreviewLevel ? 'group' : ''}`}
 
                 >
@@ -388,16 +398,18 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onBac
                               if (isLevelOne) setShowAnatomyPreview((prev) => !prev);
                               if (isLevelTwo) setShowBodyProtectionPreview((prev) => !prev);
                               if (isLevelThree) setShowCaptainKhanhPreview((prev) => !prev);
+                              if (isLevelFour) setShowHeroZonesPreview((prev) => !prev);
                             },
                             role: 'button',
                             tabIndex: 0,
-                            'aria-expanded': isLevelOne ? showAnatomyPreview : isLevelTwo ? showBodyProtectionPreview : showCaptainKhanhPreview,
+                            'aria-expanded': isLevelOne ? showAnatomyPreview : isLevelTwo ? showBodyProtectionPreview : isLevelThree ? showCaptainKhanhPreview : showHeroZonesPreview,
                             onKeyDown: (event) => {
                               if (event.key === 'Enter' || event.key === ' ') {
                                 event.preventDefault();
                                 if (isLevelOne) setShowAnatomyPreview((prev) => !prev);
                                 if (isLevelTwo) setShowBodyProtectionPreview((prev) => !prev);
                                 if (isLevelThree) setShowCaptainKhanhPreview((prev) => !prev);
+                                if (isLevelFour) setShowHeroZonesPreview((prev) => !prev);
                               }
                             },
                           }
@@ -512,6 +524,33 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onBac
                       </div>
                       <div
                         className={`w-3 h-3 rotate-45 mx-auto -mt-1.5 border-r border-b ${isDark ? 'border-sky-400/20 bg-[#0f172a]' : 'border-sky-100 bg-white'}`}
+                      />
+                    </div>
+                  )}
+
+
+                  {/* Popup HERO_ZONES — chỉ xuất hiện khi người dùng bấm Cấp 4. */}
+                  {isLevelFour && showHeroZonesPreview && (
+                    <div
+                      className={`
+                        fixed left-2 right-2 bottom-24 mb-0 w-auto translate-x-0
+                        sm:absolute sm:bottom-full sm:left-1/2 sm:right-auto sm:mb-4 sm:-translate-x-1/2
+                        sm:w-[min(820px,calc(100vw-2rem))]
+                        md:w-[min(920px,calc(100vw-3rem))]
+                        lg:w-[min(1040px,calc(100vw-4rem))]
+                        transition-all duration-200 ease-out origin-bottom z-30 opacity-100 scale-100 pointer-events-auto
+                      `}
+                    >
+                      <div className={`relative max-h-[82vh] overflow-y-auto rounded-2xl border p-3 shadow-2xl ${isDark ? 'border-cyan-400/20 bg-[#0f172a]' : 'border-cyan-100 bg-white'}`}>
+                        <HeroPopupCornerCloseButtons onClose={() => setShowHeroZonesPreview(false)} isDark={isDark} label={isEn ? 'Close popup' : 'Đóng popup'} />
+                        <div className="mb-2 px-10 text-center">
+                          <span className={`text-xs font-bold ${isDark ? 'text-cyan-300' : 'text-cyan-700'}`}>{t.heroZonesPreviewTitle}</span>
+                        </div>
+                        {renderHeroZonesMap()}
+                        <p className={`mt-2 px-1 text-center text-[10px] ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{t.heroZonesPreviewHint}</p>
+                      </div>
+                      <div
+                        className={`w-3 h-3 rotate-45 mx-auto -mt-1.5 border-r border-b ${isDark ? 'border-cyan-400/20 bg-[#0f172a]' : 'border-cyan-100 bg-white'}`}
                       />
                     </div>
                   )}
