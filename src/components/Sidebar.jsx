@@ -37,6 +37,7 @@ export default function Sidebar({ active, onNavigate, openSignal = 0 }) {
 
   const STEPS = [
     { id: 'bodyProtectionJourney', label: 'Hành Trình Bảo Vệ Cơ Thể', step: '01' },
+    { id: 'hero3DMap', label: '3D Map for Hero', step: '01a' },
     { id: 'myPainPathBody', label: 'My Pain Path Body', step: '01b' },
     { id: 'myPainPathBodyPixel', label: 'My Pain Path Body Pixel', step: '01c' },
     { id: 'myPainPathNoiTang', label: 'My Pain Path Nội Tạng', step: '01d' },
