@@ -1,19 +1,19 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { UserPlus, ShieldCheck, HeartHandshake, BookOpen, Lock, Leaf, Sparkles, Award, Star, Zap, ArrowRight, LogIn } from 'lucide-react';
+import { UserPlus, ShieldCheck, Lock, Leaf, Sparkles, Award, Star, LogIn } from 'lucide-react';
 import useHeroPanelPrefs from './heroPanels/useHeroPanelPrefs.js';
 import HeroPanelPrefsToggle from './heroPanels/HeroPanelPrefsToggle.jsx';
 import useHeroSelection from './heroPanels/useHeroSelection.js';
 import HeroMicVoiceButton from './heroPanels/HeroMicVoiceButton.jsx';
 import HeroPopupCornerCloseButtons from './heroPanels/HeroPopupCornerCloseButtons.jsx';
-import { getOrganById, lowerFirst } from '../data/organs.js';
+import { ORGANS, getOrganById, lowerFirst } from '../data/organs.js';
 import BackButton from './common/BackButton.jsx';
 import AnatomyHoverOverlay from './AnatomyHoverOverlay.jsx';
 
 // ============================================================================
 // DonationHeroPanel — màn hình chào mừng cho tính năng "Anh Hùng Hiến Tặng"
-// (hỗ trợ tìm hiểu & đăng ký hiến tặng gan). Dựng theo bản thiết kế tham
-// khảo: avatar trợ lý ở giữa, 3 lối vào nhanh (Hiến tặng ngay / Nhấn để nói
-// / Nâng cao kiến thức), và "Hành trình Siêu Anh Hùng" gồm 5 cấp độ để
+// (hỗ trợ tìm hiểu hành trình hiến tặng). Dựng theo bản thiết kế tham
+// khảo: avatar trợ lý ở giữa, bản đồ HERO_ZONES, Micro, và
+// "Hành trình Siêu Anh Hùng" gồm 5 cấp độ để
 // khuyến khích người dùng quay lại tìm hiểu dần từng bước.
 //
 // Đây là màn hình ĐỘC LẬP với theme sáng/tối chung của app — nhưng CÓ theme
@@ -22,10 +22,57 @@ import AnatomyHoverOverlay from './AnatomyHoverOverlay.jsx';
 // ============================================================================
 
 
-const HOLOGRAM_CARD_CLASS = 'relative group overflow-hidden rounded-2xl border border-white/10 bg-slate-900/80 p-5 text-left shadow-sm backdrop-blur-sm transition-all duration-300 hover:-translate-y-0.5 hover:bg-slate-900 hover:shadow-lg';
-const HOLOGRAM_GLOW_CLASS = 'pointer-events-none absolute -inset-1 rounded-2xl bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 opacity-40 blur-md transition duration-500 group-hover:opacity-100 group-hover:duration-200 group-hover:animate-none animate-pulse';
-const HOLOGRAM_SHINE_CLASS = 'pointer-events-none absolute inset-0 rounded-2xl overflow-hidden';
-const HOLOGRAM_SHINE_BEAM_CLASS = 'absolute top-0 left-[-100%] h-full w-1/2 bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-[-45deg] group-hover:animate-shine';
+
+const HERO_ZONE_LAYOUT = [
+  { x: 15, y: 55, z: 18, color: '#38bdf8' },
+  { x: 31, y: 28, z: 58, color: '#fb7185' },
+  { x: 48, y: 18, z: 82, color: '#a78bfa' },
+  { x: 66, y: 40, z: 48, color: '#22d3ee' },
+  { x: 58, y: 69, z: 34, color: '#34d399' },
+  { x: 79, y: 22, z: 96, color: '#facc15' },
+  { x: 23, y: 78, z: 42, color: '#f97316' },
+  { x: 42, y: 51, z: 68, color: '#ef4444' },
+  { x: 74, y: 65, z: 52, color: '#14b8a6' },
+  { x: 88, y: 47, z: 74, color: '#e879f9' },
+  { x: 12, y: 23, z: 88, color: '#c084fc' },
+];
+
+function buildHeroZones(isEn) {
+  return ORGANS.map((organ, index) => {
+    const layout = HERO_ZONE_LAYOUT[index % HERO_ZONE_LAYOUT.length];
+    const label = isEn ? organ.en : organ.vi;
+    return {
+      ...layout,
+      id: organ.id,
+      icon: organ.emoji,
+      title: label,
+      subtitle: isEn
+        ? `Focus the hero map on ${lowerFirst(label)}.`
+        : `Tập trung bản đồ anh hùng vào ${lowerFirst(label)}.`,
+      anatomyAnnotationId: organ.anatomyAnnotationId,
+    };
+  });
+}
+
+function MapPath({ from, to }) {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const length = Math.sqrt(dx * dx + dy * dy);
+  const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+  return (
+    <div
+      className="absolute h-1 rounded-full shadow-[0_0_18px_rgba(34,211,238,0.65)]"
+      style={{
+        left: `${from.x}%`,
+        top: `${from.y}%`,
+        width: `${length}%`,
+        transformOrigin: '0 50%',
+        transform: `rotate(${angle}deg) translateZ(8px)`,
+        background: 'linear-gradient(90deg, rgba(34,211,238,0.85), rgba(250,204,21,0.7))',
+      }}
+    />
+  );
+}
 
 const TEXT = {
   vi: {
@@ -39,14 +86,7 @@ const TEXT = {
     levelBadge: (level) => (
       <>Bạn đang là <span className="font-bold">siêu anh hùng cấp độ {level}</span> 💚</>
     ),
-    donateTitle: 'Tìm hiểu hiến tặng',
-    donateTitleGeneral: 'Khám phá lối sống khoẻ',
-    donateSub: (organLabel) => `Tôi muốn đăng ký hiến tặng ${lowerFirst(organLabel)}`,
-    donateSubGeneral: 'Tôi muốn tìm hiểu cách chăm sóc sức khỏe mỗi ngày',
     micLabel: 'Nhấn để nói',
-    knowledgeTitle: 'Kiến thức y khoa',
-    knowledgeSub: (organLabel) => `Tôi muốn tìm hiểu về hiến tặng ${lowerFirst(organLabel)}`,
-    knowledgeSubGeneral: 'Tôi muốn tìm hiểu kiến thức y khoa tổng quát',
     organBadgePrefix: 'Đang tìm hiểu về',
     journeyTitle: 'Hành trình Siêu Anh Hùng',
     levelLabel: 'Cấp',
@@ -83,14 +123,7 @@ const TEXT = {
     levelBadge: (level) => (
       <>You're a <span className="font-bold">level {level} superhero</span> 💚</>
     ),
-    donateTitle: 'Explore donation',
-    donateTitleGeneral: 'Explore healthy living',
-    donateSub: (organLabel) => `I want to register to donate my ${lowerFirst(organLabel)}`,
-    donateSubGeneral: 'I want to learn how to take care of my health',
     micLabel: 'Tap to speak',
-    knowledgeTitle: 'Medical knowledge',
-    knowledgeSub: (organLabel) => `I want to learn about ${lowerFirst(organLabel)} donation`,
-    knowledgeSubGeneral: 'I want to learn general medical knowledge',
     organBadgePrefix: 'Currently exploring',
     journeyTitle: 'Superhero Journey',
     levelLabel: 'Level',
@@ -126,6 +159,8 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onBac
   const [showAnatomyPreview, setShowAnatomyPreview] = useState(false);
   const [showBodyProtectionPreview, setShowBodyProtectionPreview] = useState(false);
   const [showCaptainKhanhPreview, setShowCaptainKhanhPreview] = useState(false);
+  const [selectedHeroZoneId, setSelectedHeroZoneId] = useState(null);
+  const [mapTilt, setMapTilt] = useState({ x: 58, y: -18 });
   const anatomyPreviewRef = useRef(null);
   const bodyProtectionPreviewRef = useRef(null);
   const captainKhanhPreviewRef = useRef(null);
@@ -153,12 +188,15 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onBac
   const { isDark, isEn, toggleTheme, toggleLang } = useHeroPanelPrefs();
   // "Trang sau" của ChooseUserRolePanel: đọc lại đúng Cơ quan người dùng đã
   // chọn (lưu trong IndexedDB) để hiển thị đúng tên + hình (emoji) — mặc
-  // định 'gan' (Liver) nếu chưa từng chọn.
+  // định 'mauhiem' (Hiến Máu Nhân Văn / Máu Hiếm) nếu chưa từng chọn.
   const { organId, role } = useHeroSelection();
   const organ = getOrganById(organId);
   const t = isEn ? TEXT.en : TEXT.vi;
   const JOURNEY_LEVELS = t.levels;
   const organLabel = isEn ? organ.en : organ.vi;
+  const HERO_ZONES = buildHeroZones(isEn);
+  const selectedHeroZone = HERO_ZONES.find((zone) => zone.id === (selectedHeroZoneId || organ.id)) || HERO_ZONES[0];
+  const heroZonePaths = HERO_ZONES.slice(0, -1).map((zone, index) => ({ from: zone, to: HERO_ZONES[index + 1] }));
   // Nếu ở màn hình trước người dùng chọn "Tôi chưa muốn hiến tặng"
   // (role === 'notDonate') HOẶC chọn thẻ "Rèn luyện sức khỏe"
   // (role === 'train'), trang này không nên nói "tìm hiểu hiến tặng
@@ -167,16 +205,20 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onBac
   // tổng quát về chăm sóc sức khỏe, đồng bộ hành vi giữa 2 lựa chọn này.
   const isNotDonate = role === 'notDonate' || role === 'train';
   const titleHighlight = isNotDonate ? t.titleHighlightGeneral : t.titleHighlight(organLabel);
-  const donateTitleText = isNotDonate ? t.donateTitleGeneral : t.donateTitle;
-  const donateSubText = isNotDonate ? t.donateSubGeneral : t.donateSub(organLabel);
-  const knowledgeSubText = isNotDonate ? t.knowledgeSubGeneral : t.knowledgeSub(organLabel);
-  // guest (chưa đăng nhập): bấm Tạo tài khoản / Hiến tặng ngay / Nâng cao
-  // kiến thức đều dẫn sang trang Login (onEnterAction do App.jsx truyền
-  // xuống). member (đã đăng nhập, vào từ menu Sidebar): ẩn nút Tạo tài
-  // khoản vì đã có tài khoản rồi; 2 nút hành động tạm chưa có trang đích
-  // riêng nên không gắn onClick (không cần đưa người đã đăng nhập quay lại
-  // Login), chỉ nút mic vẫn hoạt động như nhau ở cả 2 chế độ.
-  const handleEnterAction = isGuest ? onEnterAction : undefined;
+  // guest (chưa đăng nhập): bấm Tạo tài khoản dẫn sang trang Login
+  // (onEnterAction do App.jsx truyền xuống). Các nút "Tìm hiểu hiến tặng"
+  // và "Kiến thức y khoa" đã được bỏ để Micro là lối vào hành động chính.
+
+  useEffect(() => {
+    setSelectedHeroZoneId(organ.id);
+  }, [organ.id]);
+
+  const handleMapPointerMove = (event) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const px = (event.clientX - rect.left) / rect.width - 0.5;
+    const py = (event.clientY - rect.top) / rect.height - 0.5;
+    setMapTilt({ x: 58 - py * 10, y: -18 + px * 14 });
+  };
 
   return (
     <div
@@ -242,11 +284,6 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onBac
           </h1>
 
           <div className="flex flex-wrap items-center justify-center gap-2">
-            <div className={`inline-flex items-center gap-2 rounded-full border shadow-sm px-4 py-2 text-sm ${isDark ? 'bg-white/5 border-white/10 text-gray-200' : 'bg-white border-emerald-100 text-gray-600'}`}>
-              <ShieldCheck size={16} className={isDark ? 'text-emerald-400' : 'text-emerald-600'} />
-              {t.levelBadge(currentLevel)}
-            </div>
-
             {/* Cơ quan đang chọn — tên + hình (emoji), load từ IndexedDB, đồng bộ với
             ChooseUserRolePanel. Ẩn khi người dùng đã chọn "Tôi chưa muốn hiến tặng"
             vì lúc đó cơ quan không còn liên quan đến lựa chọn của họ. */}
@@ -260,32 +297,44 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onBac
 
         </div>
 
-        {/* 3 lối vào nhanh: trái = Hiến tặng ngay, giữa = mic, phải = Nâng cao kiến thức */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-10 items-stretch">
-          <button
-            onClick={handleEnterAction}
-            className={HOLOGRAM_CARD_CLASS}
-          >
-            <div className={HOLOGRAM_GLOW_CLASS} />
-            <div className={HOLOGRAM_SHINE_CLASS}><div className={HOLOGRAM_SHINE_BEAM_CLASS} /></div>
-            <div className="relative">
-              <div className={`w-14 h-14 rounded-xl flex items-center justify-center mb-4 group-hover:scale-105 transition-transform ${isDark ? 'bg-emerald-500/15' : 'bg-emerald-100'}`}>
-                <HeartHandshake className={isDark ? 'text-emerald-400' : 'text-emerald-600'} size={26} />
-              </div>
-              <div className={`font-bold inline-flex items-center gap-1.5 ${isDark ? 'text-emerald-300' : 'text-emerald-700'}`}>
-                {donateTitleText}
-                <Zap size={16} className={isDark ? 'text-emerald-300' : 'text-emerald-600'} fill="currentColor" />
-              </div>
-              <div className="mt-1 text-sm text-slate-300">{donateSubText}</div>
+        {/* HERO_ZONES — bản đồ 3D đặt trước phần Micro, đồng bộ đủ cơ quan từ màn chọn role */}
+        <section className={`mt-10 overflow-hidden rounded-[28px] border shadow-2xl ${isDark ? 'border-cyan-400/20 bg-slate-950/70 shadow-cyan-950/20' : 'border-cyan-100 bg-white/80 shadow-slate-200/70'}`}>
+          <div className="grid gap-5 p-5 md:grid-cols-[minmax(0,1.25fr)_minmax(260px,0.75fr)] md:p-6">
+            <div>
+              <p className="m-0 text-xs font-extrabold uppercase tracking-[0.16em] text-cyan-500">HERO_ZONES</p>
+              <h2 className={`mt-2 text-2xl font-black leading-tight sm:text-3xl ${isDark ? 'text-gray-100' : 'text-slate-900'}`}>{isEn ? '3D hero organ map' : 'Bản đồ 3D nội tạng anh hùng'}</h2>
+              <p className={`mt-2 text-sm leading-6 ${isDark ? 'text-gray-300' : 'text-slate-600'}`}>{isEn ? 'Choose an organ zone to focus the anatomy preview before speaking with the hero assistant.' : 'Chọn từng vùng nội tạng để bản đồ giải phẫu focus đúng cơ quan trước khi trò chuyện với trợ lý anh hùng.'}</p>
             </div>
-          </button>
+            <div className={`rounded-3xl border p-4 ${isDark ? 'border-white/10 bg-white/5' : 'border-cyan-100 bg-white/80'}`}>
+              <div className="text-4xl">{selectedHeroZone.icon}</div>
+              <h3 className={`mt-2 text-xl font-extrabold ${isDark ? 'text-gray-100' : 'text-slate-900'}`}>{selectedHeroZone.title}</h3>
+              <p className={`mt-1 text-sm leading-6 ${isDark ? 'text-gray-300' : 'text-slate-500'}`}>{selectedHeroZone.subtitle}</p>
+              {selectedHeroZone.anatomyAnnotationId ? (
+                <div className="mt-3 overflow-hidden rounded-2xl border border-white/10 bg-slate-950">
+                  <AnatomyHoverOverlay focusAnnotationId={selectedHeroZone.anatomyAnnotationId} showOnlyFocus />
+                </div>
+              ) : (
+                <div className={`mt-3 rounded-2xl border px-4 py-6 text-sm ${isDark ? 'border-white/10 bg-slate-900/70 text-gray-300' : 'border-emerald-100 bg-emerald-50 text-emerald-800'}`}>
+                  {isEn ? 'This choice represents all donation opportunities after death.' : 'Lựa chọn này đại diện cho tất cả cơ hội hiến tặng sau khi mất.'}
+                </div>
+              )}
+            </div>
+          </div>
+          <div onPointerMove={handleMapPointerMove} onPointerLeave={() => setMapTilt({ x: 58, y: -18 })} className={`relative mx-5 mb-5 min-h-[460px] overflow-hidden rounded-[28px] border md:mx-6 md:mb-6 ${isDark ? 'border-cyan-400/20 bg-gradient-to-b from-slate-900/90 to-slate-950' : 'border-cyan-100 bg-gradient-to-b from-white/90 to-blue-100/80'}`} style={{ perspective: 1100, boxShadow: 'inset 0 0 90px rgba(14,165,233,0.16)' }}>
+            <div className="absolute inset-[12%_8%]" style={{ transformStyle: 'preserve-3d', transform: `rotateX(${mapTilt.x}deg) rotateZ(${mapTilt.y}deg)`, transition: 'transform 180ms ease-out' }}>
+              <div className="absolute inset-0 rounded-full border-2 border-cyan-300/25 bg-[radial-gradient(circle,rgba(34,211,238,0.2),rgba(16,185,129,0.1)_44%,rgba(14,165,233,0.03)_70%)]" style={{ transform: 'translateZ(-18px)' }} />
+              {heroZonePaths.map((path) => <MapPath key={`${path.from.id}-${path.to.id}`} {...path} />)}
+              {HERO_ZONES.map((zone) => (
+                <button key={zone.id} type="button" onClick={() => setSelectedHeroZoneId(zone.id)} aria-label={zone.title} className="absolute grid h-[74px] w-[74px] -translate-x-1/2 -translate-y-1/2 cursor-pointer place-items-center rounded-3xl text-3xl text-white shadow-2xl transition-transform hover:scale-105 sm:h-[88px] sm:w-[88px]" style={{ left: `${zone.x}%`, top: `${zone.y}%`, transform: `translate(-50%, -50%) translateZ(${zone.z}px)`, border: selectedHeroZone.id === zone.id ? `3px solid ${zone.color}` : '1px solid rgba(255,255,255,0.35)', background: `linear-gradient(145deg, ${zone.color}33, rgba(15,23,42,0.84))`, boxShadow: `0 18px 45px ${zone.color}55` }}>
+                  <span style={{ transform: `rotateZ(${-mapTilt.y}deg) rotateX(${-mapTilt.x}deg)` }}>{zone.icon}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </section>
 
-          {/* Mic: trao đổi thoại trực tiếp NGAY TẠI TRANG NÀY — không mở popup
-          chat. Nội dung vẫn tự đồng bộ ngầm vào popup chat (kho lưu trữ +
-          sự kiện đồng bộ dùng chung với GlobalAIChatbot); lịch sử hội thoại
-          tự đồng bộ với menu "Lịch sử Chat với AI" vì cả 2 dùng chung 1 kho
-          lưu trữ (globalChatbotStorage.js). Popup chỉ xử lý khi người dùng
-          chủ động mở nó ra. */}
+        {/* Micro: trao đổi thoại trực tiếp NGAY TẠI TRANG NÀY — không mở popup chat */}
+        <div className="mt-10 flex justify-center">
           <HeroMicVoiceButton
             mode={mode}
             activePanelLabel="Anh Hùng Hiến Tặng"
@@ -297,24 +346,6 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onBac
             iconSize={58}
             holoEffect
           />
-
-          <button
-            onClick={handleEnterAction}
-            className={HOLOGRAM_CARD_CLASS}
-          >
-            <div className={HOLOGRAM_GLOW_CLASS} />
-            <div className={HOLOGRAM_SHINE_CLASS}><div className={HOLOGRAM_SHINE_BEAM_CLASS} /></div>
-            <div className="relative">
-              <div className={`w-14 h-14 rounded-xl flex items-center justify-center mb-4 group-hover:scale-105 transition-transform ${isDark ? 'bg-sky-500/15' : 'bg-sky-100'}`}>
-                <BookOpen className={isDark ? 'text-sky-400' : 'text-sky-600'} size={26} />
-              </div>
-              <div className={`font-bold inline-flex items-center gap-1.5 ${isDark ? 'text-sky-300' : 'text-sky-700'}`}>
-                {t.knowledgeTitle}
-                <ArrowRight size={16} className={isDark ? 'text-sky-300' : 'text-sky-600'} />
-              </div>
-              <div className="mt-1 text-sm text-slate-300">{knowledgeSubText}</div>
-            </div>
-          </button>
         </div>
 
         {/* Hành trình siêu anh hùng */}
@@ -502,6 +533,13 @@ export default function DonationHeroPanel({ mode = 'guest', onEnterAction, onBac
                 </div>
               );
             })}
+          </div>
+
+          <div className="mt-8 flex justify-center">
+            <div className={`inline-flex items-center gap-2 rounded-full border shadow-sm px-4 py-2 text-sm ${isDark ? 'bg-white/5 border-white/10 text-gray-200' : 'bg-white border-emerald-100 text-gray-600'}`}>
+              <ShieldCheck size={16} className={isDark ? 'text-emerald-400' : 'text-emerald-600'} />
+              {t.levelBadge(currentLevel)}
+            </div>
           </div>
         </div>
 
